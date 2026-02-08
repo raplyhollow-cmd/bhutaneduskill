@@ -27,10 +27,15 @@ import {
   Menu,
   X,
   ChevronDown,
+  Video,
+  CheckCircle,
+  DollarSign,
+  Clock,
+  Link as LinkIcon,
 } from "lucide-react";
 
 interface SidebarProps {
-  userType: "student" | "teacher" | "parent" | "counselor" | "admin";
+  userType: "student" | "teacher" | "parent" | "counselor" | "admin" | "school-admin";
   userName?: string;
   userImage?: string;
 }
@@ -38,6 +43,12 @@ interface SidebarProps {
 const navigationItems = {
   student: [
     { name: "Dashboard", href: "/student/dashboard", icon: Home },
+    { name: "My Classes", href: "/student/classes", icon: BookOpen },
+    { name: "Homework", href: "/student/homework", icon: ClipboardList },
+    { name: "Learning", href: "/student/learning", icon: Video },
+    { name: "Attendance", href: "/student/attendance", icon: CheckCircle },
+    { name: "Fees", href: "/student/fees", icon: DollarSign },
+    { name: "Tuition", href: "/student/tuition", icon: GraduationCap },
     { name: "Assessments", href: "/student/assessments", icon: ClipboardList },
     { name: "Career Matches", href: "/student/careers", icon: Briefcase },
     { name: "Skills", href: "/student/skills", icon: BookOpen },
@@ -52,9 +63,13 @@ const navigationItems = {
     { name: "Dashboard", href: "/teacher/dashboard", icon: Home },
     { name: "My Classes", href: "/teacher/classes", icon: Users },
     { name: "Students", href: "/teacher/students", icon: GraduationCap },
+    { name: "Homework", href: "/teacher/homework", icon: ClipboardList },
+    { name: "Learning", href: "/teacher/learning", icon: Video },
+    { name: "Attendance", href: "/teacher/attendance", icon: CheckCircle },
     { name: "Assessments", href: "/teacher/assessments", icon: ClipboardList },
     { name: "Reports", href: "/teacher/reports", icon: BarChart3 },
     { name: "Schedule", href: "/teacher/schedule", icon: Calendar },
+    { name: "Live Sessions", href: "/teacher/live-sessions", icon: LinkIcon },
   ],
   parent: [
     { name: "Dashboard", href: "/parent/dashboard", icon: Home },
@@ -86,6 +101,20 @@ const navigationItems = {
     { name: "Reports", href: "/admin/reports", icon: BarChart3 },
     { name: "Settings", href: "/admin/settings", icon: Settings },
   ],
+  "school-admin": [
+    { name: "Dashboard", href: "/school-admin/dashboard", icon: Home },
+    { name: "Students", href: "/school-admin/students", icon: Users },
+    { name: "Teachers", href: "/school-admin/teachers", icon: GraduationCap },
+    { name: "Classes", href: "/school-admin/classes", icon: BookOpen },
+    { name: "Subjects", href: "/school-admin/subjects", icon: FileText },
+    { name: "Attendance", href: "/school-admin/attendance", icon: Calendar },
+    { name: "Homework", href: "/school-admin/homework", icon: ClipboardList },
+    { name: "Results", href: "/school-admin/results", icon: BarChart3 },
+    { name: "Fees", href: "/school-admin/fees", icon: Briefcase },
+    { name: "Tuition", href: "/school-admin/tuition", icon: Award },
+    { name: "Counselors", href: "/school-admin/counselors", icon: MessageSquare },
+    { name: "Analytics", href: "/school-admin/analytics", icon: BarChart3 },
+  ],
 };
 
 const portalColors = {
@@ -94,6 +123,7 @@ const portalColors = {
   parent: "from-ash-grey-600 to-ash-grey-700",
   counselor: "from-oxidized-iron-500 to-oxidized-iron-600",
   admin: "from-lobster-pink-500 to-lobster-pink-600",
+  "school-admin": "from-purple-600 to-purple-700",
 };
 
 const portalNames = {
@@ -102,6 +132,7 @@ const portalNames = {
   parent: "Parent Portal",
   counselor: "Counselor Portal",
   admin: "Admin Portal",
+  "school-admin": "School Admin Portal",
 };
 
 export function PortalSidebar({ userType, userName, userImage }: SidebarProps) {
@@ -242,7 +273,7 @@ export function PortalHeader({
   title,
   subtitle,
 }: {
-  userType: "student" | "teacher" | "parent" | "counselor" | "admin";
+  userType: "student" | "teacher" | "parent" | "counselor" | "admin" | "school-admin";
   userName?: string;
   title?: string;
   subtitle?: string;

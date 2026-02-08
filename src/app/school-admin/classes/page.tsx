@@ -36,6 +36,7 @@ import {
   Check,
   GraduationCap,
   AlertCircle,
+  UserCheck,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -258,7 +259,7 @@ export default function SchoolAdminClassesPage() {
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <ChalkboardTeacher className="w-6 h-6 text-green-600" />
+                <UserCheck className="w-6 h-6 text-green-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">
@@ -556,7 +557,7 @@ export default function SchoolAdminClassesPage() {
               {/* Class Teacher Assignment */}
               <div>
                 <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <ChalkboardTeacher className="w-5 h-5" />
+                  <UserCheck className="w-5 h-5" />
                   Class Teacher Assignment
                 </h3>
                 <div>

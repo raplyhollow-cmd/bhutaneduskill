@@ -4,6 +4,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { TrendingUp, Users, BookOpen, DollarSign, Award, AlertCircle, Calendar, ArrowUp, ArrowDown, Download } from "lucide-react";
 
 export default function SchoolAdminAnalyticsPage() {

@@ -24,6 +24,7 @@ import {
   CheckCircle2,
   Clock,
   Sparkles,
+  GraduationCap,
 } from "lucide-react";
 import Link from "next/link";
 

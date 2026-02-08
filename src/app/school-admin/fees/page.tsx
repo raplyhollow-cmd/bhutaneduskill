@@ -1,70 +1,134 @@
 /**
  * SCHOOL ADMIN - FEE MANAGEMENT
+ * Updated with new FeeManager component
  */
 "use client";
 
-import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { DollarSign, Plus, Search, Receipt, AlertCircle, CheckCircle, Eye, Printer } from "lucide-react";
+import { PortalHeader } from "@/components/shared/portal-sidebar";
+import { FeeManager } from "@/components/fees";
+import { DollarSign } from "lucide-react";
 
-const mockFees = [
-  { id: "FEE001", student: "Tashi Dorji", class: "Class 10 A", total: 45000, paid: 45000, pending: 0, status: "paid", lastPayment: "2025-01-15" },
-  { id: "FEE002", student: "Karma Wangmo", class: "Class 10 B", total: 45000, paid: 30000, pending: 15000, status: "partial", lastPayment: "2025-01-20" },
-  { id: "FEE003", student: "Pema Lhamo", class: "Class 11 A", total: 50000, paid: 0, pending: 50000, status: "pending", lastPayment: null },
+// Mock data
+const mockStructures = [
+  {
+    id: "fs1",
+    name: "Class 10 Tuition",
+    category: "tuition" as const,
+    amount: 15000,
+    frequency: "quarterly" as const,
+    dueDay: 31,
+    classId: "class10",
+    applicableTo: "class" as const,
+    isActive: true,
+  },
+  {
+    id: "fs2",
+    name: "Library Fee",
+    category: "library" as const,
+    amount: 500,
+    frequency: "yearly" as const,
+    dueDay: 15,
+    classId: "all",
+    applicableTo: "all" as const,
+    isActive: true,
+  },
 ];
 
+const mockStudentFees = [
+  {
+    id: "sf1",
+    studentId: "s1",
+    studentName: "Tashi Dorji",
+    studentRoll: "01",
+    classId: "class10a",
+    className: "Class 10 A",
+    structureId: "fs1",
+    structureName: "Class 10 Tuition",
+    amount: 15000,
+    paidAmount: 15000,
+    waivedAmount: 0,
+    dueDate: "2025-01-31",
+    status: "paid" as const,
+  },
+  {
+    id: "sf2",
+    studentId: "s2",
+    studentName: "Karma Wangmo",
+    studentRoll: "02",
+    classId: "class10b",
+    className: "Class 10 B",
+    structureId: "fs1",
+    structureName: "Class 10 Tuition",
+    amount: 15000,
+    paidAmount: 10000,
+    waivedAmount: 0,
+    dueDate: "2025-01-31",
+    status: "partial" as const,
+  },
+  {
+    id: "sf3",
+    studentId: "s3",
+    studentName: "Pema Lhamo",
+    studentRoll: "03",
+    classId: "class11a",
+    className: "Class 11 A",
+    structureId: "fs1",
+    structureName: "Class 10 Tuition",
+    amount: 15000,
+    paidAmount: 0,
+    waivedAmount: 0,
+    dueDate: "2025-01-31",
+    status: "overdue" as const,
+  },
+];
+
+const mockPayments = [
+  {
+    id: "p1",
+    studentFeeId: "sf1",
+    studentName: "Tashi Dorji",
+    amount: 15000,
+    method: "bank_transfer" as const,
+    transactionId: "TXN123456",
+    date: "2025-01-25",
+    receiptNumber: "REC-2025-001234",
+    collectedBy: "Admin",
+  },
+  {
+    id: "p2",
+    studentFeeId: "sf2",
+    studentName: "Karma Wangmo",
+    amount: 10000,
+    method: "cash" as const,
+    date: "2025-01-28",
+    receiptNumber: "REC-2025-001235",
+    collectedBy: "Admin",
+  },
+];
+
+const mockSummary = {
+  totalExpected: 45000,
+  totalCollected: 25000,
+  totalPending: 20000,
+  totalWaived: 0,
+  collectionRate: 56,
+  defaulters: 1,
+};
+
 export default function SchoolAdminFeesPage() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState("All");
-  
-  const filtered = mockFees.filter(f => {
-    const matches = f.student.toLowerCase().includes(searchQuery.toLowerCase());
-    const status = selectedStatus === "All" || f.status === selectedStatus;
-    return matches && status;
-  });
-
-  const getStatusBadge = (status: string) => {
-    const styles = { paid: "bg-green-100 text-green-700 border-green-200", partial: "bg-yellow-100 text-yellow-700 border-yellow-200", pending: "bg-red-100 text-red-700 border-red-200" };
-    return styles[status as keyof typeof styles];
-  };
-
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div><h1 className="text-2xl font-bold">Fee Management</h1><p className="text-gray-600">{filtered.length} records</p></div>
-        <Button className="bg-primary-600"><Plus className="w-4 h-4 mr-2" />Record Payment</Button>
+    <div className="min-h-screen bg-gray-50">
+      <PortalHeader userType="school-admin" userName="Admin" title="Fee Management" />
+      <div className="lg:ml-64 p-6">
+        <FeeManager
+          structures={mockStructures}
+          studentFees={mockStudentFees}
+          payments={mockPayments}
+          summary={mockSummary}
+          onPrintReceipt={(paymentId) => console.log("Print receipt:", paymentId)}
+          onExport={(type) => console.log("Export:", type)}
+        />
       </div>
-
-      <div className="grid md:grid-cols-4 gap-4">
-        <Card><CardContent className="pt-6"><div className="flex items-center gap-3"><div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center"><DollarSign className="w-6 h-6 text-green-600" /></div><div><p className="text-2xl font-bold">Nu. {mockFees.reduce((s,f) => s+f.paid,0).toLocaleString()}</p><p className="text-sm text-gray-500">Collected</p></div></div></CardContent></Card>
-        <Card><CardContent className="pt-6"><div className="flex items-center gap-3"><div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center"><AlertCircle className="w-6 h-6 text-red-600" /></div><div><p className="text-2xl font-bold">Nu. {mockFees.reduce((s,f) => s+f.pending,0).toLocaleString()}</p><p className="text-sm text-gray-500">Pending</p></div></div></CardContent></Card>
-        <Card><CardContent className="pt-6"><div className="flex items-center gap-3"><div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center"><CheckCircle className="w-6 h-6 text-blue-600" /></div><div><p className="text-2xl font-bold">{mockFees.filter(f => f.status === 'paid').length}</p><p className="text-sm text-gray-500">Fully Paid</p></div></div></CardContent></Card>
-        <Card><CardContent className="pt-6"><div className="flex items-center gap-3"><div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center"><Receipt className="w-6 h-6 text-purple-600" /></div><div><p className="text-2xl font-bold">{Math.round((mockFees.filter(f => f.status === 'paid').length/mockFees.length)*100)}%</p><p className="text-sm text-gray-500">Collection Rate</p></div></div></CardContent></Card>
-      </div>
-
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex gap-4 mb-4">
-            <div className="flex-1 relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" /><Input placeholder="Search student..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" /></div>
-            <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)} className="px-3 py-2 border rounded-lg bg-white"><option value="All">All Status</option><option value="paid">Paid</option><option value="partial">Partial</option><option value="pending">Pending</option></select>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead><tr className="border-b"><th className="text-left py-3 px-4">Student</th><th className="text-left py-3 px-4">Class</th><th className="text-left py-3 px-4">Total</th><th className="text-left py-3 px-4">Paid</th><th className="text-left py-3 px-4">Pending</th><th className="text-left py-3 px-4">Last Payment</th><th className="text-left py-3 px-4">Status</th><th className="text-right py-3 px-4">Actions</th></tr></thead>
-              <tbody>
-                {filtered.map(f => (
-                  <tr key={f.id} className="border-b hover:bg-gray-50">
-                    <td className="py-3 px-4 font-medium">{f.student}</td><td className="py-3 px-4">{f.class}</td><td className="py-3 px-4">Nu. {f.total.toLocaleString()}</td><td className="py-3 px-4 text-green-600">Nu. {f.paid.toLocaleString()}</td><td className="py-3 px-4 text-red-600">Nu. {f.pending.toLocaleString()}</td><td className="py-3 px-4">{f.lastPayment || <span className="text-gray-400">-</span>}</td><td className="py-3 px-4"><Badge className={getStatusBadge(f.status)} variant="outline">{f.status}</Badge></td><td className="py-3 px-4 text-right"><div className="flex justify-end gap-1"><Button variant="outline" size="sm"><Receipt className="w-4 h-4" /></Button><Button variant="outline" size="sm"><Eye className="w-4 h-4" /></Button><Button variant="outline" size="sm"><Printer className="w-4 h-4" /></Button></div></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

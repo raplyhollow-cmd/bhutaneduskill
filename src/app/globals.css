@@ -112,105 +112,108 @@
 :root {
   --radius: 0.625rem;
 
-  /* Bhutan-inspired theme using Hunter Green as primary */
-  --background: #f1f4f0; /* ash-grey-50 */
-  --foreground: #152013; /* hunter-green-900 */
+  /* Professional Navy + Teal theme (less green) */
+  --background: #F8F9FA; /* Light gray background */
+  --foreground: #0D1D2D; /* Navy-950 - Dark navy text */
   --card: #ffffff;
-  --card-foreground: #152013;
+  --card-foreground: #0D1D2D;
   --popover: #ffffff;
-  --popover-foreground: #152013;
+  --popover-foreground: #0D1D2D;
 
-  /* Primary: Hunter Green */
-  --primary: #557e4e; /* hunter-green-600 */
-  --primary-foreground: #f0f5ef; /* hunter-green-50 */
+  /* Primary: Professional Navy */
+  --primary: #0F4C75; /* Navy-500 - Professional, trustworthy */
+  --primary-foreground: #F0F4F8; /* Navy-50 - Light navy */
 
-  /* Secondary: Powder Blue */
-  --secondary: #3c89c3; /* powder-blue-500 */
-  --secondary-foreground: #ebf3f9; /* powder-blue-50 */
+  /* Secondary: Modern Teal */
+  --secondary: #2A9D8F; /* Teal - Modern, calm */
+  --secondary-foreground: #F0FDFA; /* Teal-50 - Light teal */
 
-  /* Accent: Oxidized Iron (warm terracotta) */
-  --accent: #d5472a; /* oxidized-iron-500 */
-  --accent-foreground: #fbedea; /* oxidized-iron-50 */
+  /* Accent: Terra Cotta (warmth) */
+  --accent: #F4A261; /* Terra Cotta-400 - Warm accent */
+  --accent-foreground: #FEF6F3; /* Terra Cotta-50 */
 
-  /* Muted: Ash Grey */
-  --muted: #e3e9e2; /* ash-grey-100 */
-  --muted-foreground: #445841; /* ash-grey-700 */
+  /* Bhutan Green: SPARINGLY USED (for cultural identity only) */
+  --bhutan: #557E4E; /* Hunter Green-600 - Subtle accent */
 
-  /* Destructive: Lobster Pink */
-  --destructive: #cb3c34; /* lobster-pink-500 */
-  --destructive-foreground: #faebeb; /* lobster-pink-50 */
+  /* Muted: Gray */
+  --muted: #E2E8F0; /* Gray-200 */
+  --muted-foreground: #64748B; /* Gray-500 */
 
-  --border: #c6d4c4; /* ash-grey-200 */
-  --input: #c6d4c4;
-  --ring: #557e4e; /* hunter-green-600 */
+  /* Destructive */
+  --destructive: #EF4444; /* Red-500 */
+  --destructive-foreground: #FEF2F2; /* Red-50 */
 
-  /* Chart colors using Bhutan palette */
-  --chart-1: #557e4e; /* hunter-green-600 */
-  --chart-2: #3c89c3; /* powder-blue-500 */
-  --chart-3: #d5472a; /* oxidized-iron-500 */
-  --chart-4: #cb3c34; /* lobster-pink-500 */
-  --chart-5: #71936c; /* ash-grey-500 */
+  --border: #CBD5E1; /* Gray-300 */
+  --input: #CBD5E1;
+  --ring: #0F4C75; /* Navy - Primary ring */
+
+  /* Chart colors - Navy/Teal palette */
+  --chart-1: #0F4C75; /* Navy */
+  --chart-2: #2A9D8F; /* Teal */
+  --chart-3: #F4A261; /* Terra Cotta */
+  --chart-4: #547E4E; /* Bhutan Green */
+  --chart-5: #94A3B8; /* Gray-400 */
 
   /* Sidebar colors */
-  --sidebar: #e1ecdf; /* hunter-green-100 */
-  --sidebar-foreground: #152013;
-  --sidebar-primary: #405f3a; /* hunter-green-700 */
-  --sidebar-primary-foreground: #f0f5ef;
-  --sidebar-accent: #c3d8c0; /* hunter-green-200 */
-  --sidebar-accent-foreground: #152013;
-  --sidebar-border: #a6c5a0; /* hunter-green-300 */
-  --sidebar-ring: #557e4e;
+  --sidebar: #F0F4F8; /* Navy-50 */
+  --sidebar-foreground: #0D1D2D;
+  --sidebar-primary: #2A5A82; /* Navy-700 */
+  --sidebar-primary-foreground: #F0F4F8;
+  --sidebar-accent: #2A9D8F; /* Teal accent */
+  --sidebar-accent-foreground: #0D1D2D;
+  --sidebar-border: #9FB3C8; /* Navy-300 */
+  --sidebar-ring: #0F4C75;
 }
 
 .dark {
-  /* Dark mode using deeper Bhutan colors */
-  --background: #10150f; /* ash-grey-950 */
-  --foreground: #f0f5ef; /* hunter-green-50 */
-  --card: #171d16; /* ash-grey-900 */
-  --card-foreground: #f0f5ef;
-  --popover: #171d16;
-  --popover-foreground: #f0f5ef;
+  /* Dark mode using Navy/Teal palette */
+  --background: #0D1D2D; /* Navy-950 - Deep navy */
+  --foreground: #F0F4F8; /* Navy-50 - Light text */
+  --card: #152530;
+  --card-foreground: #F0F4F8;
+  --popover: #152530;
+  --popover-foreground: #F0F4F8;
 
-  /* Primary: Lighter hunter green for dark mode */
-  --primary: #88b181; /* hunter-green-400 */
-  --primary-foreground: #0f160e;
+  /* Primary: Lighter navy for dark mode */
+  --primary: #3B82F6; /* Navy-500 - Lighter navy */
+  --primary-foreground: #F0F4F8;
 
-  /* Secondary: Lighter powder blue */
-  --secondary: #63a0cf; /* powder-blue-400 */
-  --secondary-foreground: #08131b;
+  /* Secondary: Light teal */
+  --secondary: #2DD4BF; /* Teal-400 */
+  --secondary-foreground: #08131B;
 
   /* Accent */
-  --accent: #e6907f; /* oxidized-iron-300 */
-  --accent-foreground: #1e0a06;
+  --accent: #F4A261; /* Terra Cotta-400 */
+  --accent-foreground: #1E0A06;
 
   /* Muted */
-  --muted: #2d3b2b; /* ash-grey-800 */
-  --muted-foreground: #c3d8c0;
+  --muted: #1E293B; /* Gray-800 */
+  --muted-foreground: #9FB3C8;
 
   /* Destructive */
-  --destructive: #e08a85; /* lobster-pink-300 */
-  --destructive-foreground: #1c0807;
+  --destructive: #EF4444;
+  --destructive-foreground: #FEF2F2;
 
-  --border: #2a3f27; /* hunter-green-800 */
-  --input: #2a3f27;
-  --ring: #88b181;
+  --border: #2A5A82; /* Navy-700 */
+  --input: #2A5A82;
+  --ring: #3B82F6;
 
   /* Chart colors for dark mode */
-  --chart-1: #88b181;
-  --chart-2: #63a0cf;
-  --chart-3: #e6907f;
-  --chart-4: #e08a85;
-  --chart-5: #8da88a;
+  --chart-1: #3B82F6;
+  --chart-2: #2DD4BF;
+  --chart-3: #F4A261;
+  --chart-4: #557E4E;
+  --chart-5: #94A3B8;
 
   /* Sidebar dark mode */
-  --sidebar: #0f160e;
-  --sidebar-foreground: #f0f5ef;
-  --sidebar-primary: #a6c5a0;
-  --sidebar-primary-foreground: #0f160e;
-  --sidebar-accent: #2a3f27;
-  --sidebar-accent-foreground: #f0f5ef;
-  --sidebar-border: #405f3a;
-  --sidebar-ring: #88b181;
+  --sidebar: #0D1D2D;
+  --sidebar-foreground: #F0F4F8;
+  --sidebar-primary: #2A9D8F;
+  --sidebar-primary-foreground: #0D1D2D;
+  --sidebar-accent: #3B82F6;
+  --sidebar-accent-foreground: #F0F4F8;
+  --sidebar-border: #1F4263;
+  --sidebar-ring: #3B82F6;
 }
 
 @layer base {
