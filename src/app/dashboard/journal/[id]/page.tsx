@@ -41,7 +41,6 @@ export default function JournalDetailPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch entry details
     const fetchEntry = async () => {
       try {
         const response = await fetch(`/api/journal/${params.id}`);
@@ -142,7 +141,6 @@ export default function JournalDetailPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <Button variant="ghost" onClick={() => router.back()}>
           <ArrowLeft className="w-4 h-4 mr-2" />
@@ -173,7 +171,6 @@ export default function JournalDetailPage() {
         </div>
       </div>
 
-      {/* Entry Content */}
       {isEditing ? (
         <Card>
           <CardHeader>
@@ -196,11 +193,10 @@ export default function JournalDetailPage() {
                   <button
                     key={m.label}
                     onClick={() => setMood(m.label)}
-                    className={`px-4 py-2 rounded-lg border-2 transition-all ${
-                      mood === m.label
-                        ? `${m.color} border-current`
-                        : "border-gray-200 hover:border-gray-300"
-                    }`}
+                    className={
+                      "px-4 py-2 rounded-lg border-2 transition-all " +
+                      (mood === m.label ? m.color + " border-current " : "border-gray-200 hover:border-gray-300 ")
+                    }
                   >
                     <span className="text-xl mr-1">{m.emoji}</span>
                     {m.label}
@@ -259,7 +255,7 @@ export default function JournalDetailPage() {
                       {new Date(entry.date).toLocaleDateString()}
                     </span>
                     {selectedMood && (
-                      <span className={`px-3 py-1 rounded-full ${selectedMood.color}`}>
+                      <span className={"px-3 py-1 rounded-full " + selectedMood.color}>
                         {selectedMood.emoji} {selectedMood.label}
                       </span>
                     )}

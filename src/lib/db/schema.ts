@@ -650,9 +650,9 @@ export const feeStructures = sqliteTable("fee_structures", {
   fees: text("fees", { mode: "json" }).$type<Array<{
     id: string;
     name: string; // "Tuition Fee", "Lab Fee", "Sports Fee"
-    amount: integer; // In Ngultrum (BTN)
+    amount: number; // In Ngultrum (BTN)
     frequency: "monthly" | "quarterly" | "semester" | "annual" | "one_time";
-    isOptional: integer("is_optional", { mode: "boolean" }).default(false);
+    isOptional: number;
     dueDate?: string; // ISO date
   }>>(),
 
@@ -945,9 +945,9 @@ export const tuitionCourses = sqliteTable("tuition_courses", {
     id: string;
     title: string;
     videoUrl: string;
-    duration: integer; // Minutes
+    duration: number; // Minutes
     order: number;
-    isFree: integer("is_free", { mode: "boolean" }).default(false), // Preview lesson
+    isFree: number; // Preview lesson
   }>>(),
 
   // Pricing

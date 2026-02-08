@@ -36,7 +36,6 @@ import {
   DollarSign,
   UserCheck,
   Fingerprint,
-  ChalkboardTeacher,
   CreditCard,
   GraduationCap as GraduationCapIcon,
 } from "lucide-react";
@@ -612,7 +611,7 @@ export const portalConfigs: Record<UserRole, PortalConfig> = {
       {
         path: "/school-admin/teachers",
         label: "Teachers",
-        icon: ChalkboardTeacher,
+        icon: GraduationCap,
         description: "Manage teachers",
         requiresAuth: true,
         allowedRoles: ["school-admin", "admin"],

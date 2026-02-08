@@ -393,7 +393,7 @@ function generateRelevantResources(interests: string[], careers: string[]): Arra
 }
 
 // Data extraction functions
-function extractCareerInterests(message: string): string[] {
+export function extractCareerInterests(message: string): string[] {
   const interests: string[] = [];
   const lowerMessage = message.toLowerCase();
 
@@ -416,7 +416,7 @@ function extractCareerInterests(message: string): string[] {
   return interests;
 }
 
-function extractConcerns(message: string): string[] {
+export function extractConcerns(message: string): string[] {
   const concerns: string[] = [];
   const lowerMessage = message.toLowerCase();
 

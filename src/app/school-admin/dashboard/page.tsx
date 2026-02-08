@@ -14,7 +14,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   Users,
   UserCheck,
-  ChalkboardTeacher,
   Calendar,
   DollarSign,
   TrendingUp,
@@ -201,7 +200,7 @@ export default function SchoolAdminDashboardPage() {
         <Card className="premium-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs font-medium text-gray-500 flex items-center gap-2">
-              <ChalkboardTeacher className="w-3 h-3" />
+              <GraduationCap className="w-3 h-3" />
               Teachers
             </CardTitle>
           </CardHeader>
@@ -391,7 +390,7 @@ export default function SchoolAdminDashboardPage() {
               <CardContent className="pt-6">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-powder-blue-100 rounded-lg flex items-center justify-center">
-                    <ChalkboardTeacher className="w-6 h-6 text-powder-blue-600" />
+                    <GraduationCap className="w-6 h-6 text-powder-blue-600" />
                   </div>
                   <div>
                     <p className="font-medium">Manage Teachers</p>
