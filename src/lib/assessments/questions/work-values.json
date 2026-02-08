@@ -1,0 +1,226 @@
+{
+  "id": "work-values",
+  "name": "Work Values Inventory",
+  "description": "Discover what matters most to you in a career",
+  "duration": 10,
+  "category": "values",
+  "targetAudience": "student",
+  "questions": [
+    {
+      "id": "wv_001",
+      "text": "Having a feeling of accomplishment",
+      "value": "achievement",
+      "options": [
+        { "value": 1, "label": "Not Important" },
+        { "value": 2, "label": "Slightly Important" },
+        { "value": 3, "label": "Moderately Important" },
+        { "value": 4, "label": "Very Important" },
+        { "value": 5, "label": "Essential" }
+      ]
+    },
+    {
+      "id": "wv_002",
+      "text": "Using my abilities to the fullest",
+      "value": "achievement",
+      "options": [
+        { "value": 1, "label": "Not Important" },
+        { "value": 2, "label": "Slightly Important" },
+        { "value": 3, "label": "Moderately Important" },
+        { "value": 4, "label": "Very Important" },
+        { "value": 5, "label": "Essential" }
+      ]
+    },
+    {
+      "id": "wv_003",
+      "text": "Seeing the results of my work",
+      "value": "achievement",
+      "options": [
+        { "value": 1, "label": "Not Important" },
+        { "value": 2, "label": "Slightly Important" },
+        { "value": 3, "label": "Moderately Important" },
+        { "value": 4, "label": "Very Important" },
+        { "value": 5, "label": "Essential" }
+      ]
+    },
+    {
+      "id": "wv_004",
+      "text": "Being able to work without close supervision",
+      "value": "independence",
+      "options": [
+        { "value": 1, "label": "Not Important" },
+        { "value": 2, "label": "Slightly Important" },
+        { "value": 3, "label": "Moderately Important" },
+        { "value": 4, "label": "Very Important" },
+        { "value": 5, "label": "Essential" }
+      ]
+    },
+    {
+      "id": "wv_005",
+      "text": "Having freedom to make my own decisions",
+      "value": "independence",
+      "options": [
+        { "value": 1, "label": "Not Important" },
+        { "value": 2, "label": "Slightly Important" },
+        { "value": 3, "label": "Moderately Important" },
+        { "value": 4, "label": "Very Important" },
+        { "value": 5, "label": "Essential" }
+      ]
+    },
+    {
+      "id": "wv_006",
+      "text": "Setting my own pace and schedule",
+      "value": "independence",
+      "options": [
+        { "value": 1, "label": "Not Important" },
+        { "value": 2, "label": "Slightly Important" },
+        { "value": 3, "label": "Moderately Important" },
+        { "value": 4, "label": "Very Important" },
+        { "value": 5, "label": "Essential" }
+      ]
+    },
+    {
+      "id": "wv_007",
+      "text": "Receiving public recognition for my work",
+      "value": "recognition",
+      "options": [
+        { "value": 1, "label": "Not Important" },
+        { "value": 2, "label": "Slightly Important" },
+        { "value": 3, "label": "Moderately Important" },
+        { "value": 4, "label": "Very Important" },
+        { "value": 5, "label": "Essential" }
+      ]
+    },
+    {
+      "id": "wv_008",
+      "text": "Getting credit when credit is due",
+      "value": "recognition",
+      "options": [
+        { "value": 1, "label": "Not Important" },
+        { "value": 2, "label": "Slightly Important" },
+        { "value": 3, "label": "Moderately Important" },
+        { "value": 4, "label": "Very Important" },
+        { "value": 5, "label": "Essential" }
+      ]
+    },
+    {
+      "id": "wv_009",
+      "text": "Being appreciated by others",
+      "value": "recognition",
+      "options": [
+        { "value": 1, "label": "Not Important" },
+        { "value": 2, "label": "Slightly Important" },
+        { "value": 3, "label": "Moderately Important" },
+        { "value": 4, "label": "Very Important" },
+        { "value": 5, "label": "Essential" }
+      ]
+    },
+    {
+      "id": "wv_010",
+      "text": "Working with people I enjoy",
+      "value": "relationships",
+      "options": [
+        { "value": 1, "label": "Not Important" },
+        { "value": 2, "label": "Slightly Important" },
+        { "value": 3, "label": "Moderately Important" },
+        { "value": 4, "label": "Very Important" },
+        { "value": 5, "label": "Essential" }
+      ]
+    },
+    {
+      "id": "wv_011",
+      "text": "Being part of a team",
+      "value": "relationships",
+      "options": [
+        { "value": 1, "label": "Not Important" },
+        { "value": 2, "label": "Slightly Important" },
+        { "value": 3, "label": "Moderately Important" },
+        { "value": 4, "label": "Very Important" },
+        { "value": 5, "label": "Essential" }
+      ]
+    },
+    {
+      "id": "wv_012",
+      "text": "Having friendly coworkers",
+      "value": "relationships",
+      "options": [
+        { "value": 1, "label": "Not Important" },
+        { "value": 2, "label": "Slightly Important" },
+        { "value": 3, "label": "Moderately Important" },
+        { "value": 4, "label": "Very Important" },
+        { "value": 5, "label": "Essential" }
+      ]
+    },
+    {
+      "id": "wv_013",
+      "text": "Having supportive management",
+      "value": "support",
+      "options": [
+        { "value": 1, "label": "Not Important" },
+        { "value": 2, "label": "Slightly Important" },
+        { "value": 3, "label": "Moderately Important" },
+        { "value": 4, "label": "Very Important" },
+        { "value": 5, "label": "Essential" }
+      ]
+    },
+    {
+      "id": "wv_014",
+      "text": "Working in a positive environment",
+      "value": "support",
+      "options": [
+        { "value": 1, "label": "Not Important" },
+        { "value": 2, "label": "Slightly Important" },
+        { "value": 3, "label": "Moderately Important" },
+        { "value": 4, "label": "Very Important" },
+        { "value": 5, "label": "Essential" }
+      ]
+    },
+    {
+      "id": "wv_015",
+      "text": "Having access to training and development",
+      "value": "support",
+      "options": [
+        { "value": 1, "label": "Not Important" },
+        { "value": 2, "label": "Slightly Important" },
+        { "value": 3, "label": "Moderately Important" },
+        { "value": 4, "label": "Very Important" },
+        { "value": 5, "label": "Essential" }
+      ]
+    },
+    {
+      "id": "wv_016",
+      "text": "Having good pay and benefits",
+      "value": "workingConditions",
+      "options": [
+        { "value": 1, "label": "Not Important" },
+        { "value": 2, "label": "Slightly Important" },
+        { "value": 3, "label": "Moderately Important" },
+        { "value": 4, "label": "Very Important" },
+        { "value": 5, "label": "Essential" }
+      ]
+    },
+    {
+      "id": "wv_017",
+      "text": "Job security and stability",
+      "value": "workingConditions",
+      "options": [
+        { "value": 1, "label": "Not Important" },
+        { "value": 2, "label": "Slightly Important" },
+        { "value": 3, "label": "Moderately Important" },
+        { "value": 4, "label": "Very Important" },
+        { "value": 5, "label": "Essential" }
+      ]
+    },
+    {
+      "id": "wv_018",
+      "text": "Comfortable and safe work environment",
+      "value": "workingConditions",
+      "options": [
+        { "value": 1, "label": "Not Important" },
+        { "value": 2, "label": "Slightly Important" },
+        { "value": 3, "label": "Moderately Important" },
+        { "value": 4, "label": "Very Important" },
+        { "value": 5, "label": "Essential" }
+      ]
+    }
+  ]
+}

@@ -39,3 +39,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# clerk configuration (can include secrets)
+/.clerk/
+
+# database
+*.db
+*.db-shm
+*.db-wal
+local.db
+
+# nul file (windows issue)
+nul

@@ -1,0 +1,227 @@
+{
+  "id": "spark-lite",
+  "name": "Career Spark Lite",
+  "description": "Fun career exploration for students in Grade 8 and below",
+  "duration": 10,
+  "category": "interest",
+  "targetAudience": "student",
+  "targetGrade": "grade-8",
+  "questions": [
+    {
+      "id": "sl_001",
+      "text": "I like working with tools and building things",
+      "category": "R",
+      "options": [
+        { "value": 1, "label": "No, not at all" },
+        { "value": 2, "label": "No, not really" },
+        { "value": 3, "label": "Maybe" },
+        { "value": 4, "label": "Yes, a little" },
+        { "value": 5, "label": "Yes, a lot!" }
+      ]
+    },
+    {
+      "id": "sl_002",
+      "text": "I enjoy fixing things that are broken",
+      "category": "R",
+      "options": [
+        { "value": 1, "label": "No, not at all" },
+        { "value": 2, "label": "No, not really" },
+        { "value": 3, "label": "Maybe" },
+        { "value": 4, "label": "Yes, a little" },
+        { "value": 5, "label": "Yes, a lot!" }
+      ]
+    },
+    {
+      "id": "sl_003",
+      "text": "I like being outdoors",
+      "category": "R",
+      "options": [
+        { "value": 1, "label": "No, not at all" },
+        { "value": 2, "label": "No, not really" },
+        { "value": 3, "label": "Maybe" },
+        { "value": 4, "label": "Yes, a little" },
+        { "value": 5, "label": "Yes, a lot!" }
+      ]
+    },
+    {
+      "id": "sl_004",
+      "text": "I enjoy science experiments",
+      "category": "I",
+      "options": [
+        { "value": 1, "label": "No, not at all" },
+        { "value": 2, "label": "No, not really" },
+        { "value": 3, "label": "Maybe" },
+        { "value": 4, "label": "Yes, a little" },
+        { "value": 5, "label": "Yes, a lot!" }
+      ]
+    },
+    {
+      "id": "sl_005",
+      "text": "I like solving puzzles and brain teasers",
+      "category": "I",
+      "options": [
+        { "value": 1, "label": "No, not at all" },
+        { "value": 2, "label": "No, not really" },
+        { "value": 3, "label": "Maybe" },
+        { "value": 4, "label": "Yes, a little" },
+        { "value": 5, "label": "Yes, a lot!" }
+      ]
+    },
+    {
+      "id": "sl_006",
+      "text": "I enjoy learning how things work",
+      "category": "I",
+      "options": [
+        { "value": 1, "label": "No, not at all" },
+        { "value": 2, "label": "No, not really" },
+        { "value": 3, "label": "Maybe" },
+        { "value": 4, "label": "Yes, a little" },
+        { "value": 5, "label": "Yes, a lot!" }
+      ]
+    },
+    {
+      "id": "sl_007",
+      "text": "I like drawing, painting, or crafting",
+      "category": "A",
+      "options": [
+        { "value": 1, "label": "No, not at all" },
+        { "value": 2, "label": "No, not really" },
+        { "value": 3, "label": "Maybe" },
+        { "value": 4, "label": "Yes, a little" },
+        { "value": 5, "label": "Yes, a lot!" }
+      ]
+    },
+    {
+      "id": "sl_008",
+      "text": "I enjoy music or drama",
+      "category": "A",
+      "options": [
+        { "value": 1, "label": "No, not at all" },
+        { "value": 2, "label": "No, not really" },
+        { "value": 3, "label": "Maybe" },
+        { "value": 4, "label": "Yes, a little" },
+        { "value": 5, "label": "Yes, a lot!" }
+      ]
+    },
+    {
+      "id": "sl_009",
+      "text": "I like using my imagination",
+      "category": "A",
+      "options": [
+        { "value": 1, "label": "No, not at all" },
+        { "value": 2, "label": "No, not really" },
+        { "value": 3, "label": "Maybe" },
+        { "value": 4, "label": "Yes, a little" },
+        { "value": 5, "label": "Yes, a lot!" }
+      ]
+    },
+    {
+      "id": "sl_010",
+      "text": "I enjoy helping people",
+      "category": "S",
+      "options": [
+        { "value": 1, "label": "No, not at all" },
+        { "value": 2, "label": "No, not really" },
+        { "value": 3, "label": "Maybe" },
+        { "value": 4, "label": "Yes, a little" },
+        { "value": 5, "label": "Yes, a lot!" }
+      ]
+    },
+    {
+      "id": "sl_011",
+      "text": "I like teaching others what I know",
+      "category": "S",
+      "options": [
+        { "value": 1, "label": "No, not at all" },
+        { "value": 2, "label": "No, not really" },
+        { "value": 3, "label": "Maybe" },
+        { "value": 4, "label": "Yes, a little" },
+        { "value": 5, "label": "Yes, a lot!" }
+      ]
+    },
+    {
+      "id": "sl_012",
+      "text": "I enjoy working in teams",
+      "category": "S",
+      "options": [
+        { "value": 1, "label": "No, not at all" },
+        { "value": 2, "label": "No, not really" },
+        { "value": 3, "label": "Maybe" },
+        { "value": 4, "label": "Yes, a little" },
+        { "value": 5, "label": "Yes, a lot!" }
+      ]
+    },
+    {
+      "id": "sl_013",
+      "text": "I like being a leader",
+      "category": "E",
+      "options": [
+        { "value": 1, "label": "No, not at all" },
+        { "value": 2, "label": "No, not really" },
+        { "value": 3, "label": "Maybe" },
+        { "value": 4, "label": "Yes, a little" },
+        { "value": 5, "label": "Yes, a lot!" }
+      ]
+    },
+    {
+      "id": "sl_014",
+      "text": "I enjoy persuading others to my point of view",
+      "category": "E",
+      "options": [
+        { "value": 1, "label": "No, not at all" },
+        { "value": 2, "label": "No, not really" },
+        { "value": 3, "label": "Maybe" },
+        { "value": 4, "label": "Yes, a little" },
+        { "value": 5, "label": "Yes, a lot!" }
+      ]
+    },
+    {
+      "id": "sl_015",
+      "text": "I like selling things or ideas",
+      "category": "E",
+      "options": [
+        { "value": 1, "label": "No, not at all" },
+        { "value": 2, "label": "No, not really" },
+        { "value": 3, "label": "Maybe" },
+        { "value": 4, "label": "Yes, a little" },
+        { "value": 5, "label": "Yes, a lot!" }
+      ]
+    },
+    {
+      "id": "sl_016",
+      "text": "I like organizing things",
+      "category": "C",
+      "options": [
+        { "value": 1, "label": "No, not at all" },
+        { "value": 2, "label": "No, not really" },
+        { "value": 3, "label": "Maybe" },
+        { "value": 4, "label": "Yes, a little" },
+        { "value": 5, "label": "Yes, a lot!" }
+      ]
+    },
+    {
+      "id": "sl_017",
+      "text": "I enjoy keeping records and data",
+      "category": "C",
+      "options": [
+        { "value": 1, "label": "No, not at all" },
+        { "value": 2, "label": "No, not really" },
+        { "value": 3, "label": "Maybe" },
+        { "value": 4, "label": "Yes, a little" },
+        { "value": 5, "label": "Yes, a lot!" }
+      ]
+    },
+    {
+      "id": "sl_018",
+      "text": "I like following rules and procedures",
+      "category": "C",
+      "options": [
+        { "value": 1, "label": "No, not at all" },
+        { "value": 2, "label": "No, not really" },
+        { "value": 3, "label": "Maybe" },
+        { "value": 4, "label": "Yes, a little" },
+        { "value": 5, "label": "Yes, a lot!" }
+      ]
+    }
+  ]
+}

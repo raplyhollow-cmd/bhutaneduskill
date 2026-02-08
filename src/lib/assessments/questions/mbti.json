@@ -1,0 +1,218 @@
+{
+  "id": "mbti",
+  "name": "MBTI Personality Assessment",
+  "description": "Discover your personality type based on Myers-Briggs Type Indicator",
+  "duration": 15,
+  "category": "personality",
+  "targetAudience": "student",
+  "questions": [
+    {
+      "id": "mbti_001",
+      "text": "You enjoy social gatherings and parties",
+      "dimension": "EI",
+      "direction": 1,
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "mbti_002",
+      "text": "You prefer spending time alone rather than with others",
+      "dimension": "EI",
+      "direction": -1,
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "mbti_003",
+      "text": "You feel energized after being around people",
+      "dimension": "EI",
+      "direction": 1,
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "mbti_004",
+      "text": "You prefer one-on-one conversations over group discussions",
+      "dimension": "EI",
+      "direction": -1,
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "mbti_005",
+      "text": "You focus on present realities rather than future possibilities",
+      "dimension": "SN",
+      "direction": 1,
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "mbti_006",
+      "text": "You enjoy thinking about abstract concepts and ideas",
+      "dimension": "SN",
+      "direction": -1,
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "mbti_007",
+      "text": "You prefer practical solutions over theoretical ones",
+      "dimension": "SN",
+      "direction": 1,
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "mbti_008",
+      "text": "You often notice patterns that others miss",
+      "dimension": "SN",
+      "direction": -1,
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "mbti_009",
+      "text": "You make decisions based on logic rather than feelings",
+      "dimension": "TF",
+      "direction": 1,
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "mbti_010",
+      "text": "You consider people's feelings when making decisions",
+      "dimension": "TF",
+      "direction": -1,
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "mbti_011",
+      "text": "You value justice over mercy",
+      "dimension": "TF",
+      "direction": 1,
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "mbti_012",
+      "text": "You are easily affected by other people's emotions",
+      "dimension": "TF",
+      "direction": -1,
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "mbti_013",
+      "text": "You prefer to have things decided and settled",
+      "dimension": "JP",
+      "direction": 1,
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "mbti_014",
+      "text": "You like to keep your options open",
+      "dimension": "JP",
+      "direction": -1,
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "mbti_015",
+      "text": "You enjoy making to-do lists and following schedules",
+      "dimension": "JP",
+      "direction": 1,
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "mbti_016",
+      "text": "You prefer spontaneous activities over planned ones",
+      "dimension": "JP",
+      "direction": -1,
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    }
+  ]
+}

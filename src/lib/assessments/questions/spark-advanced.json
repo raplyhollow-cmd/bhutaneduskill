@@ -1,0 +1,299 @@
+{
+  "id": "spark-advanced",
+  "name": "Career Spark Advanced",
+  "description": "Make informed decisions about college subjects and career paths for Grade 11-12",
+  "duration": 15,
+  "category": "interest",
+  "targetAudience": "student",
+  "targetGrade": "grade-11-12",
+  "questions": [
+    {
+      "id": "sa_001",
+      "text": "I enjoy working with my hands and using tools or machinery",
+      "category": "R",
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "sa_002",
+      "text": "I prefer practical, hands-on approaches to solving problems",
+      "category": "R",
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "sa_003",
+      "text": "I enjoy building or repairing things",
+      "category": "R",
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "sa_004",
+      "text": "I am drawn to careers in engineering, mechanics, or agriculture",
+      "category": "R",
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "sa_005",
+      "text": "I enjoy scientific research and investigating complex problems",
+      "category": "I",
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "sa_006",
+      "text": "I prefer analyzing data and finding logical solutions",
+      "category": "I",
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "sa_007",
+      "text": "I enjoy subjects like Physics, Chemistry, and Mathematics",
+      "category": "I",
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "sa_008",
+      "text": "I am curious about scientific discoveries and innovations",
+      "category": "I",
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "sa_009",
+      "text": "I enjoy creative expression through art, music, or writing",
+      "category": "A",
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "sa_010",
+      "text": "I prefer work that allows for self-expression and creativity",
+      "category": "A",
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "sa_011",
+      "text": "I enjoy unconventional and innovative approaches to problems",
+      "category": "A",
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "sa_012",
+      "text": "I am drawn to careers in design, media, or arts",
+      "category": "A",
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "sa_013",
+      "text": "I enjoy helping others with their personal problems",
+      "category": "S",
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "sa_014",
+      "text": "I prefer working collaboratively with people",
+      "category": "S",
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "sa_015",
+      "text": "I enjoy teaching, counseling, or nursing activities",
+      "category": "S",
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "sa_016",
+      "text": "I am drawn to careers in healthcare, education, or social services",
+      "category": "S",
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "sa_017",
+      "text": "I enjoy leading teams and taking initiative",
+      "category": "E",
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "sa_018",
+      "text": "I am comfortable with competition and assertiveness",
+      "category": "E",
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "sa_019",
+      "text": "I enjoy persuading and influencing others",
+      "category": "E",
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "sa_020",
+      "text": "I am drawn to careers in business, law, or politics",
+      "category": "E",
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "sa_021",
+      "text": "I enjoy organizing information and maintaining accurate records",
+      "category": "C",
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "sa_022",
+      "text": "I prefer working in a structured environment with clear procedures",
+      "category": "C",
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "sa_023",
+      "text": "I pay attention to detail and value accuracy",
+      "category": "C",
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    },
+    {
+      "id": "sa_024",
+      "text": "I am drawn to careers in accounting, data analysis, or administration",
+      "category": "C",
+      "options": [
+        { "value": 1, "label": "Strongly Disagree" },
+        { "value": 2, "label": "Disagree" },
+        { "value": 3, "label": "Neutral" },
+        { "value": 4, "label": "Agree" },
+        { "value": 5, "label": "Strongly Agree" }
+      ]
+    }
+  ]
+}

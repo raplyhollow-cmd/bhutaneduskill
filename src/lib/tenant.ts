@@ -42,37 +42,269 @@ export function isValidSchoolCode(code: string): boolean {
   return BHUTAN_SCHOOL_CODES.includes(code.toUpperCase());
 }
 
-// RUB Colleges data
+// RUB Colleges data (Official 10 Constituent Colleges)
+// Source: https://www.rub.edu.bt/index.php/colleges/
 export const RUB_COLLEGES = [
   {
-    id: "cest",
+    id: "cst",
     name: "College of Science and Technology",
-    location: "Thimphu",
-    programs: ["B.E. in Civil Engineering", "B.E. in Electrical Engineering", "Diploma in IT"],
+    shortName: "CST",
+    location: "Rinchending, Phuentsholing",
+    description: "First institute in Bhutan to offer undergraduate engineering programmes",
+    website: "https://www.cst.edu.bt",
+    programs: [
+      { name: "B.E. in Civil Engineering", minMarks: 55, duration: "4 years", eligibility: "Class 12 Science with PCM", seats: 40 },
+      { name: "B.E. in Electrical Engineering", minMarks: 55, duration: "4 years", eligibility: "Class 12 Science with PCM", seats: 40 },
+      { name: "B.E. in Electronics & Communication", minMarks: 55, duration: "4 years", eligibility: "Class 12 Science with PCM", seats: 40 },
+      { name: "B.E. in Information Technology", minMarks: 55, duration: "4 years", eligibility: "Class 12 Science with PCM", seats: 40 },
+      { name: "B.E. in Instrumentation & Control", minMarks: 55, duration: "4 years", eligibility: "Class 12 Science with PCM", seats: 30 },
+      { name: "B.Architecture", minMarks: 55, duration: "5 years", eligibility: "Class 12 Science with PCM", seats: 25 },
+      { name: "B.Sc. in Computer Science", minMarks: 55, duration: "4 years", eligibility: "Class 12 Science with PCM", seats: 40 },
+      { name: "Diploma in IT", minMarks: 45, duration: "3 years", eligibility: "Class 12 any stream", seats: 60 },
+    ],
   },
   {
-    id: "ce",
-    name: "College of Education",
-    location: "Paro",
-    programs: ["B.Ed. Primary", "B.Ed. Secondary", "Postgraduate Diploma in Education"],
+    id: "jnec",
+    name: "Jigme Namgyel Engineering College",
+    shortName: "JNEC",
+    location: "Dewathang, Samdrup Jongkhar",
+    description: "Formerly Royal Bhutan Polytechnic, specializes in applied engineering",
+    website: "https://www.jnec.edu.bt",
+    programs: [
+      { name: "B.E. in Civil Engineering", minMarks: 50, duration: "4 years", eligibility: "Class 12 Science with PCM", seats: 60 },
+      { name: "B.E. in Electrical Engineering", minMarks: 50, duration: "4 years", eligibility: "Class 12 Science with PCM", seats: 40 },
+      { name: "B.E. in Mechanical Engineering", minMarks: 50, duration: "4 years", eligibility: "Class 12 Science with PCM", seats: 40 },
+      { name: "Diploma in Civil Engineering", minMarks: 40, duration: "3 years", eligibility: "Class 10 with Math & Science", seats: 80 },
+      { name: "Diploma in Electrical Engineering", minMarks: 40, duration: "3 years", eligibility: "Class 10 with Math & Science", seats: 60 },
+      { name: "Diploma in Mechanical Engineering", minMarks: 40, duration: "3 years", eligibility: "Class 10 with Math & Science", seats: 60 },
+    ],
+  },
+  {
+    id: "gcit",
+    name: "Gyalpozhing College of Information Technology",
+    shortName: "GCIT",
+    location: "Gyalpozhing, Mongar",
+    description: "Specializes in IT programmes with 'Learning by Doing' approach",
+    website: "https://www.gcit.edu.bt",
+    programs: [
+      { name: "B.C.A (Bachelor of Computer Applications)", minMarks: 45, duration: "4 years", eligibility: "Class 12 any stream", seats: 60 },
+      { name: "B.Sc. in Information Technology", minMarks: 50, duration: "4 years", eligibility: "Class 12 Science", seats: 40 },
+      { name: "Diploma in IT", minMarks: 40, duration: "3 years", eligibility: "Class 12 any stream", seats: 60 },
+    ],
+  },
+  {
+    id: "gcbs",
+    name: "Gedu College of Business Studies",
+    shortName: "GCBS",
+    location: "Gedu",
+    description: "Business administration and commerce programmes",
+    website: "https://www.gcbs.edu.bt",
+    programs: [
+      { name: "B.B.A", minMarks: 45, duration: "4 years", eligibility: "Class 12 any stream", seats: 120 },
+      { name: "B.Com", minMarks: 45, duration: "4 years", eligibility: "Class 12 Commerce", seats: 120 },
+      { name: "B.B.A in Finance", minMarks: 50, duration: "4 years", eligibility: "Class 12 Commerce", seats: 40 },
+      { name: "B.B.A in Marketing", minMarks: 50, duration: "4 years", eligibility: "Class 12 Commerce", seats: 40 },
+    ],
   },
   {
     id: "cnr",
     name: "College of Natural Resources",
-    location: "Lobesa",
-    programs: ["B.Sc. in Agriculture", "B.Sc. in Forestry", "B.Sc. in Animal Science"],
-  },
-  {
-    id: "gaeddu",
-    name: "Gaeddu College of Business Studies",
-    location: "Gaeddu",
-    programs: ["B.B.A", "B.Com", "BBA"],
+    shortName: "CNR",
+    location: "Lobesa, Punakha",
+    description: "Natural resources management programmes",
+    website: "https://www.cnr.edu.bt",
+    programs: [
+      { name: "B.Sc. Agriculture", minMarks: 45, duration: "4 years", eligibility: "Class 12 Science with PCB", seats: 60 },
+      { name: "B.Sc. Forestry", minMarks: 45, duration: "4 years", eligibility: "Class 12 Science with PCB", seats: 40 },
+      { name: "B.Sc. Animal Science", minMarks: 45, duration: "4 years", eligibility: "Class 12 Science with PCB", seats: 40 },
+      { name: "B.Sc. Environment & Climate Studies", minMarks: 50, duration: "4 years", eligibility: "Class 12 Science", seats: 30 },
+      { name: "Diploma in Agriculture", minMarks: 40, duration: "3 years", eligibility: "Class 12 Science", seats: 60 },
+      { name: "Diploma in Animal Husbandry", minMarks: 40, duration: "3 years", eligibility: "Class 12 Science", seats: 40 },
+      { name: "Diploma in Forestry", minMarks: 40, duration: "3 years", eligibility: "Class 12 Science", seats: 40 },
+    ],
   },
   {
     id: "sherubtse",
     name: "Sherubtse College",
-    location: "Kanglung",
-    programs: ["B.A.", "B.Sc.", "B.Com"],
+    shortName: "Sherubtse",
+    location: "Kanglung, Trashigang",
+    description: "Oldest and largest multidisciplinary college in RUB",
+    website: "https://www.sherubtse.edu.bt",
+    programs: [
+      { name: "B.A.", minMarks: 45, duration: "4 years", eligibility: "Class 12 any stream", seats: 180 },
+      { name: "B.Sc.", minMarks: 45, duration: "4 years", eligibility: "Class 12 Science", seats: 180 },
+      { name: "B.Com", minMarks: 45, duration: "4 years", eligibility: "Class 12 Commerce", seats: 120 },
+      { name: "B.A. in History & Dzongkha", minMarks: 45, duration: "4 years", eligibility: "Class 12 any stream", seats: 40 },
+      { name: "B.Sc. in Physical Science", minMarks: 50, duration: "4 years", eligibility: "Class 12 Science with PCM", seats: 40 },
+      { name: "B.Sc. in Life Science", minMarks: 50, duration: "4 years", eligibility: "Class 12 Science with PCB", seats: 40 },
+    ],
+  },
+  {
+    id: "clcs",
+    name: "College of Language and Culture Studies",
+    shortName: "CLCS",
+    location: "Taktse, Trongsa",
+    description: "Language, culture, and Buddhist studies programmes",
+    website: "https://www.clcs.edu.bt",
+    programs: [
+      { name: "B.A. in Language and Culture", minMarks: 45, duration: "4 years", eligibility: "Class 12 any stream", seats: 40 },
+      { name: "B.A. in Language and Literature", minMarks: 45, duration: "4 years", eligibility: "Class 12 any stream", seats: 40 },
+      { name: "B.A. in Bhutanese & Himalayan Studies", minMarks: 45, duration: "4 years", eligibility: "Class 12 any stream", seats: 30 },
+      { name: "Diploma in Language & Communication", minMarks: 40, duration: "2 years", eligibility: "Class 12 any stream", seats: 30 },
+    ],
+  },
+  {
+    id: "pce",
+    name: "Paro College of Education",
+    shortName: "PCE",
+    location: "Paro",
+    description: "Teacher education programmes at diploma, undergraduate and postgraduate levels",
+    website: "https://www.pce.edu.bt",
+    programs: [
+      { name: "B.Ed Primary", minMarks: 45, duration: "4 years", eligibility: "Class 12 any stream", seats: 100 },
+      { name: "B.Ed Secondary", minMarks: 45, duration: "4 years", eligibility: "Class 12 any stream", seats: 100 },
+      { name: "B.Ed Dzongkha", minMarks: 45, duration: "4 years", eligibility: "Class 12 any stream", seats: 30 },
+      { name: "Postgraduate Diploma in Education", minMarks: 45, duration: "1 year", eligibility: "Bachelor's degree", seats: 50 },
+      { name: "Master of Education (Educational Leadership)", minMarks: 50, duration: "2 years", eligibility: "B.Ed + Bachelor's degree", seats: 20 },
+      { name: "Diploma in School Leadership & Management", minMarks: 45, duration: "1 year", eligibility: "In-service teachers", seats: 30 },
+    ],
+  },
+  {
+    id: "sce",
+    name: "Samtse College of Education",
+    shortName: "SCE",
+    location: "Samtse",
+    description: "Teacher education and guidance & counselling programmes",
+    website: "https://www.sce.edu.bt",
+    programs: [
+      { name: "B.Ed Primary", minMarks: 45, duration: "4 years", eligibility: "Class 12 any stream", seats: 100 },
+      { name: "B.Ed Secondary", minMarks: 45, duration: "4 years", eligibility: "Class 12 any stream", seats: 100 },
+      { name: "Postgraduate Diploma in Education", minMarks: 45, duration: "1 year", eligibility: "Bachelor's degree", seats: 50 },
+      { name: "PG Diploma in Guidance & Counseling", minMarks: 45, duration: "1 year", eligibility: "Bachelor's degree", seats: 30 },
+    ],
+  },
+  {
+    id: "ycc",
+    name: "Yonphula Centenary College",
+    shortName: "YCC",
+    location: "Yonphula, Trashigang",
+    description: "POSTGRADUATE programmes in Arts and Sciences",
+    status: "closed",
+    website: "https://www.ycc.edu.bt",
+    programs: [
+      { name: "Master of Arts in English", minMarks: 50, duration: "2 years", eligibility: "Bachelor's degree in English", seats: 20 },
+      { name: "Master of Arts in Dzongkha", minMarks: 50, duration: "2 years", eligibility: "Bachelor's degree in Dzongkha", seats: 20 },
+      { name: "Master of Science in Physics", minMarks: 50, duration: "2 years", eligibility: "B.Sc. in Physics", seats: 15 },
+    ],
+  },
+];
+
+// Private Colleges in Bhutan (NOT part of RUB but recognized)
+// Note: Yonphula Centenary College (YCC) is now CLOSED
+export const PRIVATE_COLLEGES = [
+  {
+    id: "rtc",
+    name: "Royal Thimphu College",
+    shortName: "RTC",
+    location: "Thimphu",
+    description: "Bhutan's first private college, affiliated to RUB",
+    website: "https://www.rtc.edu.bt",
+    isPrivate: true,
+    programs: [
+      { name: "B.Sc. Nursing", minMarks: 55, duration: "4 years", eligibility: "Class 12 Science with PCB", seats: 40, fees: "Nu. 250,000/year" },
+      { name: "B.Sc. Public Health", minMarks: 50, duration: "4 years", eligibility: "Class 12 Science", seats: 30, fees: "Nu. 200,000/year" },
+      { name: "B.A. in English & Dzongkha Studies", minMarks: 45, duration: "4 years", eligibility: "Class 12 any stream", seats: 40, fees: "Nu. 150,000/year" },
+      { name: "B.A. in History & Dzongkha Studies", minMarks: 45, duration: "4 years", eligibility: "Class 12 any stream", seats: 40, fees: "Nu. 150,000/year" },
+      { name: "B.A. in Political Science & Sociology", minMarks: 45, duration: "4 years", eligibility: "Class 12 any stream", seats: 40, fees: "Nu. 150,000/year" },
+      { name: "Bachelor in Counseling", minMarks: 50, duration: "4 years", eligibility: "Class 12 any stream", seats: 30, fees: "Nu. 180,000/year" },
+      { name: "B.B.A", minMarks: 45, duration: "4 years", eligibility: "Class 12 any stream", seats: 60, fees: "Nu. 180,000/year" },
+    ],
+  },
+  {
+    id: "nrc",
+    name: "Norbuling Rigter College",
+    shortName: "NRC",
+    location: "Paro",
+    description: "Private college offering business and management programmes",
+    website: "https://www.nrc.edu.bt",
+    isPrivate: true,
+    programs: [
+      { name: "B.B.A (Hons)", minMarks: 40, duration: "3 years", eligibility: "Class 12 any stream", fees: "Nu. 175,000/year" },
+      { name: "B.A. (Hons) Business Studies", minMarks: 40, duration: "3 years", eligibility: "Class 12 Commerce", fees: "Nu. 175,000/year" },
+      { name: "B.Sc. (Hons) Computing", minMarks: 45, duration: "3 years", eligibility: "Class 12 Science", fees: "Nu. 200,000/year" },
+    ],
+  },
+];
+
+// Technical Training Institutes (TTIs) - Vocational Education
+// These are diploma/certificate level programmes under Ministry of Education and Skills Development
+export const TTI_INSTITUTES = [
+  {
+    id: "tti-thimphu",
+    name: "Technical Training Institute - Thimphu",
+    location: "Thimphu",
+    programs: [
+      { name: "Diploma in Civil Engineering", minMarks: 40, duration: "3 years", eligibility: "Class 10 with Math & Science" },
+      { name: "Diploma in Electrical Engineering", minMarks: 40, duration: "3 years", eligibility: "Class 10 with Math & Science" },
+      { name: "Diploma in Auto Mechanics", minMarks: 40, duration: "3 years", eligibility: "Class 10" },
+      { name: "Certificate in ICT", minMarks: 35, duration: "1 year", eligibility: "Class 10" },
+    ],
+  },
+  {
+    id: "tti-rangjung",
+    name: "Technical Training Institute - Rangjung",
+    location: "Rangjung, Trashigang",
+    programs: [
+      { name: "Diploma in Electrical Engineering", minMarks: 40, duration: "3 years", eligibility: "Class 10 with Math & Science" },
+      { name: "Diploma in Furniture Making", minMarks: 35, duration: "2 years", eligibility: "Class 10" },
+      { name: "Certificate in Electrical", minMarks: 35, duration: "1 year", eligibility: "Class 10" },
+    ],
+  },
+  {
+    id: "tti-chumey",
+    name: "Technical Training Institute - Chumey",
+    location: "Chumey, Bumthang",
+    programs: [
+      { name: "Diploma in Auto Mechanics", minMarks: 40, duration: "3 years", eligibility: "Class 10" },
+      { name: "Certificate in Body Repair & Painting", minMarks: 35, duration: "1 year", eligibility: "Class 10" },
+    ],
+  },
+  {
+    id: "tti-khuruthang",
+    name: "Technical Training Institute - Khuruthang",
+    location: "Khuruthang, Punakha",
+    programs: [
+      { name: "Diploma in Civil Engineering", minMarks: 40, duration: "3 years", eligibility: "Class 10 with Math & Science" },
+      { name: "Diploma in Architecture", minMarks: 45, duration: "3 years", eligibility: "Class 12 Science" },
+    ],
+  },
+];
+
+// Desuung Skilling Programme - Government initiative for youth skills training
+export const DESUUNG_SKILLING = [
+  {
+    id: "dsp-cs",
+    name: "Certificate in Web Applications",
+    duration: "3 months",
+    eligibility: "Class 12 passed",
+    location: "Thimphu",
+    fees: "Free (Government sponsored)",
+  },
+  {
+    id: "dsp-hotel",
+    name: "Certificate in Hospitality Management",
+    duration: "3 months",
+    eligibility: "Class 10 passed",
+    location: "Thimphu",
+    fees: "Free (Government sponsored)",
+  },
+  {
+    id: "dsp-accounting",
+    name: "Certificate in Accounting with Tally",
+    duration: "3 months",
+    eligibility: "Class 12 passed",
+    location: "Thimphu/Phuentsholing",
+    fees: "Free (Government sponsored)",
   },
 ];
 

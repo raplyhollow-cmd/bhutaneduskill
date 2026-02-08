@@ -1,0 +1,146 @@
+{
+  "id": "disc",
+  "name": "DISC Behavior Assessment",
+  "description": "Understand your behavioral style and how you interact with others",
+  "duration": 15,
+  "category": "personality",
+  "targetAudience": "student",
+  "questions": [
+    {
+      "id": "disc_001",
+      "text": "In your approach to work, select what is MOST like you and LEAST like you",
+      "mostOptions": [
+        { "value": "D", "label": "Getting immediate results" },
+        { "value": "I", "label": "Inspiring others" },
+        { "value": "S", "label": "Supporting the team" },
+        { "value": "C", "label": "Ensuring accuracy" }
+      ],
+      "leastOptions": [
+        { "value": "D", "label": "Getting immediate results" },
+        { "value": "I", "label": "Inspiring others" },
+        { "value": "S", "label": "Supporting the team" },
+        { "value": "C", "label": "Ensuring accuracy" }
+      ],
+      "dimension": "D"
+    },
+    {
+      "id": "disc_002",
+      "text": "When dealing with others, select what is MOST like you and LEAST like you",
+      "mostOptions": [
+        { "value": "D", "label": "Being direct and firm" },
+        { "value": "I", "label": "Being friendly and outgoing" },
+        { "value": "S", "label": "Being supportive and understanding" },
+        { "value": "C", "label": "Being logical and objective" }
+      ],
+      "leastOptions": [
+        { "value": "D", "label": "Being direct and firm" },
+        { "value": "I", "label": "Being friendly and outgoing" },
+        { "value": "S", "label": "Being supportive and understanding" },
+        { "value": "C", "label": "Being logical and objective" }
+      ],
+      "dimension": "I"
+    },
+    {
+      "id": "disc_003",
+      "text": "In group situations, select what is MOST like you and LEAST like you",
+      "mostOptions": [
+        { "value": "D", "label": "Taking the lead" },
+        { "value": "I", "label": "Being the center of attention" },
+        { "value": "S", "label": "Being a good team player" },
+        { "value": "C", "label": "Analyzing the situation" }
+      ],
+      "leastOptions": [
+        { "value": "D", "label": "Taking the lead" },
+        { "value": "I", "label": "Being the center of attention" },
+        { "value": "S", "label": "Being a good team player" },
+        { "value": "C", "label": "Analyzing the situation" }
+      ],
+      "dimension": "S"
+    },
+    {
+      "id": "disc_004",
+      "text": "When facing challenges, select what is MOST like you and LEAST like you",
+      "mostOptions": [
+        { "value": "D", "label": "Confronting them head-on" },
+        { "value": "I", "label": "Seeking help from others" },
+        { "value": "S", "label": "Staying calm and steady" },
+        { "value": "C", "label": "Planning carefully" }
+      ],
+      "leastOptions": [
+        { "value": "D", "label": "Confronting them head-on" },
+        { "value": "I", "label": "Seeking help from others" },
+        { "value": "S", "label": "Staying calm and steady" },
+        { "value": "C", "label": "Planning carefully" }
+      ],
+      "dimension": "C"
+    },
+    {
+      "id": "disc_005",
+      "text": "In social situations, select what is MOST like you and LEAST like you",
+      "mostOptions": [
+        { "value": "D", "label": "Being in charge" },
+        { "value": "I", "label": "Meeting new people" },
+        { "value": "S", "label": "Being with close friends" },
+        { "value": "C", "label": "Observing quietly" }
+      ],
+      "leastOptions": [
+        { "value": "D", "label": "Being in charge" },
+        { "value": "I", "label": "Meeting new people" },
+        { "value": "S", "label": "Being with close friends" },
+        { "value": "C", "label": "Observing quietly" }
+      ],
+      "dimension": "I"
+    },
+    {
+      "id": "disc_006",
+      "text": "When communicating, select what is MOST like you and LEAST like you",
+      "mostOptions": [
+        { "value": "D", "label": "Being brief and to the point" },
+        { "value": "I", "label": "Being enthusiastic" },
+        { "value": "S", "label": "Being a good listener" },
+        { "value": "C", "label": "Being factual" }
+      ],
+      "leastOptions": [
+        { "value": "D", "label": "Being brief and to the point" },
+        { "value": "I", "label": "Being enthusiastic" },
+        { "value": "S", "label": "Being a good listener" },
+        { "value": "C", "label": "Being factual" }
+      ],
+      "dimension": "S"
+    },
+    {
+      "id": "disc_007",
+      "text": "When working with others, select what is MOST like you and LEAST like you",
+      "mostOptions": [
+        { "value": "D", "label": "Driving results" },
+        { "value": "I", "label": "Inspiring and motivating" },
+        { "value": "S", "label": "Helping and supporting" },
+        { "value": "C", "label": "Analyzing problems" }
+      ],
+      "leastOptions": [
+        { "value": "D", "label": "Driving results" },
+        { "value": "I", "label": "Inspiring and motivating" },
+        { "value": "S", "label": "Helping and supporting" },
+        { "value": "C", "label": "Analyzing problems" }
+      ],
+      "dimension": "C"
+    },
+    {
+      "id": "disc_008",
+      "text": "In presentations, select what is MOST like you and LEAST like you",
+      "mostOptions": [
+        { "value": "D", "label": "Being direct and confident" },
+        { "value": "I", "label": "Being energetic and dynamic" },
+        { "value": "S", "label": "Being clear and organized" },
+        { "value": "C", "label": "Being detailed and precise" }
+      ],
+      "leastOptions": [
+        { "value": "D", "label": "Being direct and confident" },
+        { "value": "I", "label": "Being energetic and dynamic" },
+        { "value": "S", "label": "Being clear and organized" },
+        { "value": "C", "label": "Being detailed and precise" }
+      ],
+      "dimension": "D"
+    }
+  ]
+}

@@ -1,0 +1,130 @@
+{
+  "id": "learning-styles",
+  "name": "VARK Learning Styles Assessment",
+  "description": "Discover how you learn best - Visual, Auditory, Read/Write, or Kinesthetic",
+  "duration": 10,
+  "category": "learning_style",
+  "targetAudience": "student",
+  "questions": [
+    {
+      "id": "ls_001",
+      "text": "When you need to learn something new, you prefer:",
+      "options": [
+        { "value": "visual", "label": "Watching a video or demonstration" },
+        { "value": "auditory", "label": "Listening to someone explain it" },
+        { "value": "read_write", "label": "Reading about it" },
+        { "value": "kinesthetic", "label": "Trying it out yourself" }
+      ]
+    },
+    {
+      "id": "ls_002",
+      "text": "When giving directions, you prefer to:",
+      "options": [
+        { "value": "visual", "label": "Draw a map" },
+        { "value": "auditory", "label": "Tell them the directions" },
+        { "value": "read_write", "label": "Write down the instructions" },
+        { "value": "kinesthetic", "label": "Show them by going there" }
+      ]
+    },
+    {
+      "id": "ls_003",
+      "text": "When you're bored, you prefer to:",
+      "options": [
+        { "value": "visual", "label": "Watch TV or look at photos" },
+        { "value": "auditory", "label": "Listen to music or podcasts" },
+        { "value": "read_write", "label": "Read a book or write" },
+        { "value": "kinesthetic", "label": "Exercise or do something active" }
+      ]
+    },
+    {
+      "id": "ls_004",
+      "text": "When studying for a test, you prefer to:",
+      "options": [
+        { "value": "visual", "label": "Look at diagrams and charts" },
+        { "value": "auditory", "label": "Discuss the material with friends" },
+        { "value": "read_write", "label": "Read your notes repeatedly" },
+        { "value": "kinesthetic", "label": "Walk around while reciting information" }
+      ]
+    },
+    {
+      "id": "ls_005",
+      "text": "When you meet someone for the first time, you remember:",
+      "options": [
+        { "value": "visual", "label": "Their face" },
+        { "value": "auditory", "label": "Their voice" },
+        { "value": "read_write", "label": "Their name (when written)" },
+        { "value": "kinesthetic", "label": "The handshake or how they felt" }
+      ]
+    },
+    {
+      "id": "ls_006",
+      "text": "When you have a problem, you prefer to:",
+      "options": [
+        { "value": "visual", "label": "Draw a diagram of the situation" },
+        { "value": "auditory", "label": "Talk about it with someone" },
+        { "value": "read_write", "label": "Write down possible solutions" },
+        { "value": "kinesthetic", "label": "Try different solutions" }
+      ]
+    },
+    {
+      "id": "ls_007",
+      "text": "When assembling furniture, you prefer:",
+      "options": [
+        { "value": "visual", "label": "Looking at the pictures" },
+        { "value": "auditory", "label": "Having someone explain the steps" },
+        { "value": "read_write", "label": "Reading the written instructions" },
+        { "value": "kinesthetic", "label": "Just starting to assemble it" }
+      ]
+    },
+    {
+      "id": "ls_008",
+      "text": "When choosing a restaurant, you prefer:",
+      "options": [
+        { "value": "visual", "label": "Looking at photos of the food" },
+        { "value": "auditory", "label": "Hearing recommendations from friends" },
+        { "value": "read_write", "label": "Reading reviews online" },
+        { "value": "kinesthetic", "label": "Trying it out yourself" }
+      ]
+    },
+    {
+      "id": "ls_009",
+      "text": "When watching a movie, you remember:",
+      "options": [
+        { "value": "visual", "label": "The costumes and scenery" },
+        { "value": "auditory", "label": "The dialogue and music" },
+        { "value": "read_write", "label": "Reading the subtitles or plot summary" },
+        { "value": "kinesthetic", "label": "The feelings and emotions" }
+      ]
+    },
+    {
+      "id": "ls_010",
+      "text": "When learning a new game, you prefer:",
+      "options": [
+        { "value": "visual", "label": "Watch others play first" },
+        { "value": "auditory", "label": "Have the rules explained" },
+        { "value": "read_write", "label": "Read the rulebook" },
+        { "value": "kinesthetic", "label": "Just start playing" }
+      ]
+    },
+    {
+      "id": "ls_011",
+      "text": "When you need to concentrate, you prefer:",
+      "options": [
+        { "value": "visual", "label": "A quiet, well-lit space" },
+        { "value": "auditory", "label": "Background music or white noise" },
+        { "value": "read_write", "label": "Having something to read" },
+        { "value": "kinesthetic", "label": "Being able to move around" }
+      ]
+    },
+    {
+      "id": "ls_012",
+      "text": "When shopping for clothes, you prefer:",
+      "options": [
+        { "value": "visual", "label": "Seeing how they look" },
+        { "value": "auditory", "label": "Asking for others' opinions" },
+        { "value": "read_write", "label": "Reading the fabric descriptions" },
+        { "value": "kinesthetic", "label": "Feeling the fabric" }
+      ]
+    }
+  ]
+}
