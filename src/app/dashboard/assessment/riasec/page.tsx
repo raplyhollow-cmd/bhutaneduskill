@@ -175,7 +175,7 @@ export default function AssessmentPage() {
                   <p className="text-sm text-gray-600 mb-2">
                     {categoryNames[category]}
                   </p>
-                  <Progress value={score} className="h-2" />
+                  <Progress value={typeof score === 'number' ? score : 0} className="h-2" />
                 </div>
               );
             })}

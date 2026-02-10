@@ -15,6 +15,16 @@ import {
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
+/**
+ * Organization Switcher Component
+ *
+ * Design Standards:
+ * - Border radius: rounded-lg (8px) for all items and containers
+ * - Padding: px-3 py-2.5 (12px 10px) for menu items
+ * - Touch targets: min-h-[44px] for mobile-friendly interaction
+ * - Container padding: p-2 (8px) for menu list sections
+ */
+
 export interface Organization {
   id: string
   name: string
@@ -136,7 +146,7 @@ export function OrganizationSwitcher({
         whileTap={{ scale: 0.98 }}
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2.5",
+          "flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2.5 min-h-[44px]",
           "hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm",
           "focus:outline-none focus:ring-2 focus:ring-purple-500/20"
         )}
@@ -183,7 +193,7 @@ export function OrganizationSwitcher({
             transition={{ duration: 0.2, ease: "easeOut" }}
             className={cn(
               "absolute left-0 right-0 top-full z-50 mt-2",
-              "rounded-xl border border-gray-200 bg-white shadow-xl",
+              "rounded-lg border border-gray-200 bg-white shadow-xl",
               "overflow-hidden"
             )}
           >
@@ -232,7 +242,7 @@ export function OrganizationSwitcher({
                     setIsOpen(false)
                   }}
                   className={cn(
-                    "flex items-center gap-3 w-full rounded-lg px-3 py-2.5",
+                    "flex items-center gap-3 w-full rounded-lg px-3 py-2.5 min-h-[44px]",
                     "hover:bg-gray-50 transition-colors relative",
                     org.id === activeOrg?.id && "bg-purple-50 hover:bg-purple-100"
                   )}
@@ -276,7 +286,7 @@ export function OrganizationSwitcher({
                     setIsOpen(false)
                   }}
                   className={cn(
-                    "flex items-center gap-3 w-full rounded-lg px-3 py-2.5",
+                    "flex items-center gap-3 w-full rounded-lg px-3 py-2.5 min-h-[44px]",
                     "hover:bg-gray-50 transition-colors"
                   )}
                 >
@@ -309,7 +319,7 @@ export function OrganizationSwitcher({
                   setIsOpen(false)
                 }}
                 className={cn(
-                  "flex items-center gap-3 w-full rounded-lg px-3 py-2.5",
+                  "flex items-center gap-3 w-full rounded-lg px-3 py-2.5 min-h-[44px]",
                   "hover:bg-purple-50 transition-colors text-sm font-medium text-purple-600"
                 )}
               >
@@ -368,7 +378,7 @@ export function OrganizationSwitcherInline({
     <div ref={containerRef} className={cn("relative", className)}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 text-sm hover:bg-gray-100 rounded-lg px-2 py-1.5 transition-colors"
+        className="flex items-center gap-2 text-sm hover:bg-gray-100 rounded-lg px-3 py-2 min-h-[36px] transition-colors"
       >
         <Building2 className="h-4 w-4 text-gray-500" />
         <span className="font-medium">{activeOrg?.name || "Select"}</span>
@@ -381,7 +391,7 @@ export function OrganizationSwitcherInline({
             initial={{ opacity: 0, y: -5 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -5 }}
-            className="absolute left-0 top-full z-50 mt-1 min-w-[200px] rounded-lg border border-gray-200 bg-white shadow-lg p-1"
+            className="absolute left-0 top-full z-50 mt-1 min-w-[200px] rounded-lg border border-gray-200 bg-white shadow-lg p-1.5"
           >
             {organizations.map((org) => (
               <button
@@ -391,7 +401,7 @@ export function OrganizationSwitcherInline({
                   setIsOpen(false)
                 }}
                 className={cn(
-                  "flex items-center gap-2 w-full rounded-md px-3 py-2 text-sm text-left",
+                  "flex items-center gap-2 w-full rounded-lg px-3 py-2 min-h-[36px] text-sm text-left",
                   "hover:bg-gray-100 transition-colors",
                   org.id === activeOrg?.id && "bg-purple-50 text-purple-600"
                 )}
