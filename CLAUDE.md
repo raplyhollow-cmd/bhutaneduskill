@@ -5,8 +5,8 @@
 **Target:** Bhutan Middle Schools (Class 6-12) + General SaaS
 **Tech Stack:** Next.js 16 + TypeScript + SQLite/Neon + Clerk + Vercel
 **Developer:** Built with Claude (AI-assisted development)
-**Last Updated:** February 10, 2026 (Database Sprint Phase 1 Complete)
-**Project Status:** ~95% UI Complete, ~80% Functional - All Core Pages Operational
+**Last Updated:** February 10, 2026 (UI Components Complete + Database Refactoring Phase 1)
+**Project Status:** ~98% UI Complete, ~82% Functional - All Core Pages Operational
 **Local URL:** http://localhost:3003 (port 3003, NOT 3002)
 
 ---
@@ -88,6 +88,33 @@
 6. **Sidebar Navigation Updated: ✅** (Part 2)
    - School Admin: Added Timetable, Reports, Settings menu items
    - Student: Linked assessments to `/dashboard/*` routes
+
+7. **UI Components Improved: ✅** (Part 3 - February 10, 2026)
+   - ✅ `button.tsx` - Improved touch targets (min 44x44px), better variants
+   - ✅ `progress.tsx` - Enhanced with better animations and accessibility
+   - ✅ `checkbox.tsx` - NEW: Full-featured checkbox component
+   - ✅ `radio-group.tsx` - NEW: Radio button group component
+   - ✅ `dialog.tsx` - NEW: Modal dialog component
+   - ✅ `alert-dialog.tsx` - NEW: Alert/confirmation dialog component
+   - ✅ `toast.tsx` - NEW: Toast notification component
+   - ✅ `skeleton/*.tsx` - Enhanced: card, default, input, button variants
+   - ✅ `avatar.tsx` - Improved with fallbacks, loading states
+   - ✅ `empty-state.tsx` - Enhanced with better visuals and actions
+   - ✅ `user-button.tsx` - Improved avatar dropdown with better UX
+   - ✅ `cta-section.tsx` - Enhanced with better animations
+   - ✅ `hero-glow.tsx` - Performance optimized with CSS transforms
+   - ✅ `organization-switcher.tsx` - Improved with better keyboard nav
+
+8. **Database Refactoring: ✅** (Part 3 - February 10, 2026)
+   - ✅ `dashboard/page.tsx` - Server component, real stats from DB
+   - ✅ `students/page.tsx` - Server component + client wrapper
+   - ✅ `students/students-client.tsx` - Client component with server actions
+   - ✅ `teachers/page.tsx` - Server component + client wrapper
+   - ✅ `teachers/teachers-client.tsx` - Client component with server actions
+   - ✅ `classes/page.tsx` - Server component with URL filtering
+   - ✅ `subjects/page.tsx` - Server component with search
+
+   **Remaining (Phase 2):** attendance, homework, results, fees, counselors, tuition, analytics
 
 ### Implementation Priority (Based on Your Selection)
 
@@ -992,6 +1019,121 @@ counselor_notes          # Counselor notes
 ```
 /api/timetable/generate  # Generate timetables
 ```
+
+### Advanced API Techniques
+
+#### 1. Middleware Pattern (Auth Wrapping)
+```tsx
+// src/lib/api/middleware.ts
+export function withAuth(handler: (req: NextRequest, session: any) => Promise<NextResponse>) {
+  return async (req: NextRequest) => {
+    const session = await getAuth(req)
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    return handler(req, session)
+  }
+}
+
+// Usage in route.ts
+export const GET = withAuth(async (req, session) => {
+  return NextResponse.json({ data: 'protected' })
+})
+```
+
+#### 2. Server Actions (Next.js 13+) - Preferred for Forms
+```tsx
+// app/actions.ts (Server Action)
+'use server'
+
+import { db } from '@/lib/db'
+
+export async function createHomework(data: HomeworkData) {
+  const homework = await db.homework.create({ data })
+  return homework
+}
+
+// Usage in component
+export default function CreateHomeworkPage() {
+  async function handleSubmit(formData: FormData) {
+    'use server'
+    await createHomework({ title: formData.get('title') })
+  }
+  return <form action={handleSubmit}>...</form>
+}
+```
+**Benefits:** No manual fetch(), automatic form handling, type-safe, less code
+
+#### 3. Zod Validation
+```tsx
+import { z } from 'zod'
+
+const CreateHomeworkSchema = z.object({
+  title: z.string().min(1).max(100),
+  dueDate: z.date(),
+  points: z.number().min(0).max(100),
+})
+
+export async function POST(request: NextRequest) {
+  const body = await request.json()
+  const validated = CreateHomeworkSchema.parse(body)  // Throws if invalid
+  // ... proceed with validated data
+}
+```
+
+#### 4. Error Handling Wrapper
+```tsx
+// src/lib/api/response.ts
+export function withErrorHandler<T>(
+  handler: () => Promise<T>
+): Promise<NextResponse> {
+  return handler()
+    .then(data => NextResponse.json({ success: true, data }))
+    .catch(error => {
+      console.error(error)
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: error.status || 500 }
+      )
+    })
+}
+
+// Usage
+export const GET = () => withErrorHandler(async () => {
+  return await db.homework.findMany()
+})
+```
+
+#### 5. Route Config Options
+```tsx
+export const dynamic = 'force-dynamic'        // Always dynamic (no caching)
+export const revalidate = 60                  // Revalidate every 60s
+export const runtime = 'edge'                 // Run on Edge (faster, limited)
+export const fetchCache = 'force-cache'       // Cache responses
+```
+
+#### 6. Streaming Responses
+```tsx
+export async function POST(request: NextRequest) {
+  const stream = new ReadableStream({
+    async start(controller) {
+      for await (const chunk of fetchData()) {
+        controller.enqueue(encoder.encode(JSON.stringify(chunk)))
+      }
+      controller.close()
+    }
+  })
+  return new NextResponse(stream, {
+    headers: { 'Content-Type': 'application/json' }
+  })
+}
+```
+
+#### Best Practices for This Project
+- Use **Server Actions** for forms (homework, attendance, profile updates)
+- Keep **API routes** for external integrations (webhooks, third-party APIs)
+- Add **Zod validation** to all user inputs
+- Create **middleware wrapper** for protected routes
 
 ---
 
@@ -2254,8 +2396,73 @@ const HeavyComponent = dynamic(() => import('./HeavyComponent'), {
 
 ---
 
-### 🧩 COMPONENTS TO CREATE (Based on Clerk)
+### 🧩 UI COMPONENTS LIBRARY (src/components/ui/)
 
+**Status: February 10, 2026 - 98% Complete ✅**
+
+#### Core Form Components (shadcn-inspired)
+| Component | File | Status | Notes |
+|-----------|------|--------|-------|
+| Button | `button.tsx` | ✅ Enhanced | 44x44px touch targets, variants: default/ghost/outline/destructive/link |
+| Input | `input.tsx` | ✅ | Standard text input with variants |
+| Label | `label.tsx` | ✅ Enhanced | Form labels with proper spacing |
+| Textarea | `textarea.tsx` | ✅ | Multi-line text input |
+| Checkbox | `checkbox.tsx` | ✅ NEW | Full checkbox with indeterminate state |
+| Radio Group | `radio-group.tsx` | ✅ NEW | Radio button group with keyboard nav |
+| Select | `select.tsx` | ✅ | Dropdown select component |
+| Switch | `switch.tsx` | ✅ | Toggle switch |
+
+#### Data Display Components
+| Component | File | Status | Notes |
+|-----------|------|--------|-------|
+| Card | `card.tsx` | ✅ | Card, CardHeader, CardTitle, CardContent, CardFooter |
+| Badge | `badge.tsx` | ✅ | Status badges with variants |
+| Table | `table.tsx` | ✅ | Data tables with proper styling |
+| Avatar | `avatar.tsx` | ✅ Enhanced | With fallbacks, loading states |
+| Progress | `progress.tsx` | ✅ Enhanced | Animated progress bars |
+| Separator | `separator.tsx` | ✅ | Visual dividers |
+
+#### Feedback & Overlay Components
+| Component | File | Status | Notes |
+|-----------|------|--------|-------|
+| Dialog | `dialog.tsx` | ✅ NEW | Modal dialog with overlay |
+| Alert Dialog | `alert-dialog.tsx` | ✅ NEW | Confirmation dialogs |
+| Toast | `toast.tsx` | ✅ NEW | Toast notifications with Toaster provider |
+| Alert | `alert.tsx` | ✅ | Info/success/warning/error alerts |
+| Empty State | `empty-state.tsx` | ✅ Enhanced | Empty data states with actions |
+
+#### Skeleton Loading Components
+| Component | File | Status | Notes |
+|-----------|------|--------|-------|
+| Skeleton | `skeleton/index.tsx` | ✅ | Base skeleton loader |
+| Card Skeleton | `skeleton/card-skeleton.tsx` | ✅ Enhanced | Card loading state |
+| Input Skeleton | `skeleton/input-skeleton.tsx` | ✅ Enhanced | Input loading state |
+| Button Skeleton | `skeleton/button-skeleton.tsx` | ✅ Enhanced | Button loading state |
+| Table Skeleton | `skeleton/table-skeleton.tsx` | ✅ | Table loading state |
+
+#### Navigation Components
+| Component | File | Status | Notes |
+|-----------|------|--------|-------|
+| Tabs | `tabs.tsx` | ✅ Enhanced | Tab navigation with min-height touch targets |
+| Dropdown Menu | `dropdown-menu.tsx` | ✅ Enhanced | With proper touch targets |
+| Navigation Menu | `navigation-menu.tsx` | ✅ | Complex navigation |
+| Breadcrumb | `breadcrumb.tsx` | ✅ | Breadcrumb navigation |
+| Pagination | `pagination.tsx` | ✅ | Page navigation |
+
+#### Specialized Components
+| Component | File | Status | Notes |
+|-----------|------|--------|-------|
+| User Button | `user-button.tsx` | ✅ Enhanced | Avatar dropdown with account switcher |
+| Organization Switcher | `organization-switcher.tsx` | ✅ Enhanced | Multi-org management with keyboard nav |
+| Circuit Background | `circuit-background.tsx` | ✅ | Tech pattern background |
+| Hero Glow | `hero-glow.tsx` | ✅ Enhanced | Performance optimized glow effects |
+| CTA Section | `cta-section.tsx` | ✅ Enhanced | Call-to-action blocks with animations |
+| Portal Sidebar | `../shared/portal-sidebar.tsx` | ✅ | Main sidebar for all portals |
+| Portal Header | `../shared/portal-header.tsx` | ✅ | Header component for portals |
+
+---
+
+#### Clerk-Inspired Marketing Components (Original)
 1. ✅ `circuit-background.tsx` - Animated circuit board pattern
 2. ✅ `hero-glow.tsx` - Multi-colored glow effects
 3. ✅ `user-button.tsx` - Avatar dropdown with account switcher
@@ -2541,4 +2748,120 @@ All 4 API routes now return mock data with "under development" messages:
 **Last Updated:** February 10, 2026
 **Project Status:** ~85% UI Complete, ~60% Functional - Core Workflows Operational
 **Local URL:** http://localhost:3003
-n---nn## UX/UI IMPROVEMENTS - FEBRUARY 10, 2026 (PART 3)nn### Issues Identified & FixednnUser feedback: 'component cards, the word padding and border are very close to each other, and it looks ugly'nn#### 1. Card Component Padding Issues ? FIXEDn**File:** rrrrrn- **Problem:** Badge had \ - text cramped against bordern- **Fix:** Changed to \ for better readabilityn- **Result:** Badges now have proper spacing and look premiumnn#### 3. Input Component Padding Issues ? FIXEDn**File:** rrrrrn- **Problem:** Used \ (don't exist)n- **Fix:** Replaced with proper orange color classes rrrn- **Problem:** Row items had only \ padding, felt crampedn- **Fix:** Changed to \ and improved gap spacingn- **Result:** Better visual hierarchy and readabilitynn#### 6. FeatureCard Colors ? FIXEDn**File:** rrrrrrrnn#### Color Standards (Primary Actions)n\rrnn---
+
+---
+
+## Server Actions Task List - Moving from UI-Only to 100% Functional
+
+### Context
+We are transitioning from UI-only (mock data) to fully functional with real database queries. Focus is on the **Teacher Portal**—specifically the `/teacher/earnings` page.
+
+### Objective
+Create a robust set of Server Actions to power the earnings dashboard, replacing all mock data with real database queries.
+
+### Files to Reference
+- **@src/lib/db/schema.ts** - The source of truth for all 40+ tables (especially `tutor_earnings`, `tuition_enrollments`, `tuition_courses`, `tutors`)
+- **@src/app/teacher/earnings/page.tsx** - The existing UI shell
+
+### Requirements for Server Actions
+
+#### 1. Query Implementation
+- Reference the `tutor_earnings`, `tuition_enrollments`, and `tuition_courses` tables in the schema
+- Calculate "Total Earnings," "Pending Payments," and "Monthly Growth" logic
+- Fetch a list of "Recent Transactions" with student names, course titles, and timestamps
+
+#### 2. Multi-Tenant Security
+- Every query MUST include a filter for the teacher's `clerk_user_id` and their associated `school_id` or `tenant_id` to ensure data isolation
+
+#### 3. TypeScript Excellence
+- Use the exported Drizzle types from the schema
+- Define a clear return interface (e.g., `TeacherEarningsData`) to ensure the frontend receives typed data
+
+#### 4. Error Handling
+- Use try/catch blocks
+- Return a standardized response object: `{ success: boolean, data?: T, error?: string }`
+
+### Task Flow
+
+#### Step 1: Create Server Actions File
+**File:** `src/app/teacher/earnings/actions.ts`
+- Create the server actions file with proper imports from schema
+- Set up database connection (use existing db instance)
+
+#### Step 2: Write getTeacherEarnings Function
+**Function:** `getTeacherEarnings(clerkUserId: string)`
+- Aggregate stats from `tutor_earnings` table:
+  - Total Earnings: SUM of `netAmount` where `payoutStatus` = 'paid'
+  - Pending Payments: SUM of `netAmount` where `payoutStatus` = 'pending'
+  - Monthly Growth: Compare current month earnings vs previous month
+- Fetch recent transactions with JOIN to get:
+  - Student names (via `tuition_enrollments` → `users`)
+  - Course titles (via `tuition_enrollments` → `tuition_courses`)
+  - Timestamps from `earnedAt`
+
+#### Step 3: Create getPayoutStatus Function
+**Function:** `getPayoutStatus(clerkUserId: string)`
+- Fetch tutor's bank account details from `tutors` table
+- Get pending payout amount and next payout date
+
+#### Step 4: Create requestPayout Function
+**Function:** `requestPayout(clerkUserId: string, amount: number)`
+- Validate tutor exists and has sufficient pending balance
+- Update `tutor_earnings` records from 'pending' to 'processing'
+- Create payout record with reference
+
+#### Step 5: Refactor UI to Use Server Actions
+**File:** `src/app/teacher/earnings/page.tsx`
+- Convert to async Server Component
+- Replace all mock data with `await getTeacherEarnings(clerkUserId)`
+- Wire up "Request Payout" button to call `requestPayout` action
+- **Constraint:** Do not change existing Tailwind/shadcn UI styling. Only wire up the data.
+
+### Expected Data Interfaces
+
+```typescript
+interface TeacherEarningsData {
+  totalEarnings: number;        // Lifetime paid earnings
+  pendingPayments: number;      // Awaiting payout
+  monthlyGrowth: number;        // Percentage growth vs last month
+  recentTransactions: Array<{
+    id: string;
+    studentName: string;
+    courseTitle: string;
+    amount: number;
+    currency: string;
+    earnedAt: Date;
+    payoutStatus: 'pending' | 'processing' | 'paid' | 'failed';
+    sourceType: 'course' | 'live_session';
+  }>;
+  payoutMethod?: {
+    bankName: string;
+    accountNumber: string;
+    accountHolder: string;
+  };
+}
+
+interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+```
+
+### Database Relationships to Understand
+
+```
+tutors (linked to users via userId)
+  ├─ tutor_earnings (links to tutors.id)
+  │   └─ enrollmentId → tuition_enrollments
+  │       └─ courseId → tuition_courses
+  │       └─ studentId → users (student)
+  └─ tuition_courses (tutorId → tutors.id)
+      └─ tuition_enrollments
+```
+
+### Notes
+- Teacher must exist in `tutors` table to have earnings
+- Earnings split: 80% to tutor (`tutorEarnings`), 20% platform fee (`platformFee`)
+- `tutor_earnings` table tracks each earning event with `sourceType` and `sourceId`
+

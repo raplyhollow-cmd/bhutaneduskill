@@ -199,7 +199,7 @@ export default function CareerDetailPage() {
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
-                {career.skills.map((skill) => (
+                {career.skills.map((skill: string) => (
                   <Badge key={skill} variant="secondary" className="px-3 py-1">
                     {skill}
                   </Badge>
@@ -221,7 +221,7 @@ export default function CareerDetailPage() {
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
-                {career.subjects.map((subject) => (
+                {career.subjects.map((subject: string) => (
                   <Badge key={subject} variant="outline" className="px-3 py-1">
                     {subject}
                   </Badge>
@@ -239,7 +239,7 @@ export default function CareerDetailPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {career.educationPath.map((step, index) => (
+              {career.educationPath.map((step: string, index: number) => (
                 <div key={index} className="flex gap-4">
                   <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold flex-shrink-0">
                     {index + 1}
@@ -316,7 +316,7 @@ export default function CareerDetailPage() {
               </div>
               <p className="text-sm text-gray-700">
                 This career strongly matches your interests in{" "}
-                {career.riasecCode.split("").map((c) => {
+                {career.riasecCode.split("").map((c: string) => {
                   const names: Record<string, string> = {
                     R: "Realistic activities",
                     I: "Investigative work",

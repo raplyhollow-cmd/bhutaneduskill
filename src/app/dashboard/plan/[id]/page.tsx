@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Save, Target, Calendar, CheckCircle2, Plus, Trash2, MapPin } from "lucide-react";
+import { ArrowLeft, Save, Target, Calendar, CheckCircle2, Plus, Trash2, MapPin, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
 const CAREER_PHASES = {
