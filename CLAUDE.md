@@ -5,7 +5,7 @@
 **Target:** Bhutan Middle Schools (Class 6-12) + General SaaS
 **Tech Stack:** Next.js 16 + TypeScript + SQLite/Neon + Clerk + Vercel
 **Developer:** Built with Claude (AI-assisted development)
-**Last Updated:** February 10, 2026 (21 Pages Created - All Portals ~95% Complete)
+**Last Updated:** February 10, 2026 (21 Pages + 14 Components Improved - All Portals ~95% Complete)
 **Project Status:** ~95% UI Complete, ~75% Functional - All Core Pages Operational
 **Local URL:** http://localhost:3003 (port 3003, NOT 3002)
 
@@ -1819,7 +1819,14 @@ import { Check, X, ChevronDown, User, Settings } from 'lucide-react'
 
 ## UX/UI Task List
 
-**Last Updated:** February 10, 2026 - ✅ All critical tasks completed
+**Last Updated:** February 10, 2026 (PART 4) - ✅ Component spacing & touch targets improved
+
+**Summary:** 14 components updated for better spacing, consistency, and mobile touch targets
+- Form fields (Input, Select, Textarea) now match: `px-4 py-2.5 h-10 rounded-lg`
+- Dropdown menu items: `px-3 py-2` with `rounded-lg` containers
+- Portal sidebar navigation: `min-h-[44px]` for proper touch targets
+- Tabs: All variants now have minimum height for better mobile interaction
+- Full documentation: See `UX_IMPROVEMENTS.md`
 
 ### 🔴 CRITICAL - Fixes That Break Visibility
 
@@ -1890,9 +1897,34 @@ import { Check, X, ChevronDown, User, Settings } from 'lucide-react'
 
 - [ ] Fix hero text: `text-5xl sm:text-6xl` → `text-3xl sm:text-4xl md:text-5xl lg:text-6xl`
 
-#### 8. Touch Target Sizes
-- [ ] Verify all buttons are minimum 44x44px
-- [ ] Check `src/components/ui/button.tsx`
+#### 8. Touch Target Sizes ✅ COMPLETED (February 10, 2026 - PART 4)
+**Status:** All components now meet minimum 44x44px touch targets
+
+**Files updated (5 components):**
+- [x] `src/components/ui/dropdown-menu.tsx` - Items now `px-3 py-2` with `p-1.5` container
+- [x] `src/components/shared/portal-sidebar.tsx` - Nav items `min-h-[44px]`
+- [x] `src/components/ui/tabs.tsx` - Pills `min-h-[40px]`, default `min-h-[36px]`, vertical `min-h-[40px]`
+- [x] `src/components/ui/label.tsx` - Changed `leading-none` to `leading-tight`
+- [x] `src/components/ui/dropdown-menu.tsx` - Content now `rounded-lg` (8px) for consistency
+
+**Component Spacing Standards (Updated):**
+```tsx
+Card:        px-6 py-5 (24px 20px)
+CardContent: px-6 py-5 (24px 20px)
+Badge:       px-3 py-1.5 (12px 6px)
+Input:       px-4 py-2.5 (16px 10px)
+Select:      px-4 py-2.5 (16px 10px)
+Textarea:    px-4 py-2.5 (16px 10px)
+TableHead:   h-12 px-4
+TableCell:   px-4 py-3
+Button:      px-4 py-2 (default size)
+DropdownItem: px-3 py-2 (12px 8px)
+Tabs (default): px-4 py-2 min-h-[36px]
+Tabs (pills): px-5 py-2.5 min-h-[40px]
+Tabs (underline): py-4 px-3
+```
+
+**Full details:** See `UX_IMPROVEMENTS.md` for all 14 components updated.
 
 ---
 

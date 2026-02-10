@@ -92,11 +92,11 @@ export async function GET(request: NextRequest) {
 
     if (search) {
       const searchLower = search.toLowerCase();
-      filtered = filtered.filter(t =>
-        t.user.firstName?.toLowerCase().includes(searchLower) ||
-        t.user.lastName?.toLowerCase().includes(searchLower) ||
-        t.subjects?.some(s => s.toLowerCase().includes(searchLower)) ||
-        t.bio?.toLowerCase().includes(searchLower)
+      filtered = filtered.filter((t: any) =>
+        (t.user?.firstName?.toLowerCase() || "").includes(searchLower) ||
+        (t.user?.lastName?.toLowerCase() || "").includes(searchLower) ||
+        t.subjects?.some((s: string) => s.toLowerCase().includes(searchLower)) ||
+        (t.bio?.toLowerCase() || "").includes(searchLower)
       );
     }
 

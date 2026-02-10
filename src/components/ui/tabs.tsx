@@ -19,9 +19,9 @@ const TabsList = React.forwardRef<
     ref={ref}
     className={cn(
       "inline-flex items-center",
-      variant === "default" && "rounded-lg bg-gray-100 p-1 gap-1",
-      variant === "pills" && "rounded-full bg-gray-100 p-1 gap-1",
-      variant === "underline" && "border-b border-gray-200 gap-6",
+      variant === "default" && "rounded-lg bg-gray-100 p-1.5 gap-1.5",
+      variant === "pills" && "rounded-full bg-gray-100 p-1.5 gap-1.5",
+      variant === "underline" && "border-b border-gray-200 gap-1",
       className
     )}
     {...props}
@@ -50,17 +50,17 @@ const TabsTrigger = React.forwardRef<
         "disabled:pointer-events-none disabled:opacity-50",
         // Variant styles
         variant === "default" && [
-          "rounded-md px-3 py-1.5 text-sm font-medium",
+          "rounded-md px-4 py-2 text-sm font-medium min-h-[36px]",
           "data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm",
           "data-[state=inactive]:text-gray-600 hover:text-gray-900"
         ],
         variant === "pills" && [
-          "rounded-full px-4 py-2 text-sm font-medium",
+          "rounded-full px-5 py-2.5 text-sm font-medium min-h-[40px]",
           "data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm",
           "data-[state=inactive]:text-gray-600 hover:text-gray-900"
         ],
         variant === "underline" && [
-          "relative border-b-2 py-4 text-sm font-medium transition-colors",
+          "relative border-b-2 py-4 px-3 text-sm font-medium transition-colors",
           "data-[state=active]:border-purple-600 data-[state=active]:text-purple-600",
           "data-[state=inactive]:border-transparent data-[state=inactive]:text-gray-500",
           "hover:data-[state=inactive]:text-gray-700 hover:data-[state=inactive]:border-gray-300"
@@ -276,7 +276,7 @@ export function VerticalTabsTrigger({
   return (
     <TabsPrimitive.Trigger
       className={cn(
-        "relative flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg",
+        "relative flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg min-h-[40px]",
         "transition-colors",
         "data-[state=active]:bg-purple-50 data-[state=active]:text-purple-600",
         "data-[state=inactive]:text-gray-600 hover:bg-gray-100 hover:text-gray-900",

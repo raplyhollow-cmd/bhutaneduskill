@@ -107,12 +107,13 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const [updatedUser] = await db
+    const result = await db
       .update(users)
       .set({ ...updateData, updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning();
 
+    const updatedUser = Array.isArray(result) ? result[0] : result;
     return NextResponse.json({ user: updatedUser });
   } catch (error) {
     console.error("User update error:", error);

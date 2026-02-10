@@ -1,4 +1,4 @@
-## UX/UI IMPROVEMENTS - FEBRUARY 10, 2026 (PART 3)
+## UX/UI IMPROVEMENTS - FEBRUARY 10, 2026 (PART 5)
 
 ### Issues Identified & Fixed
 
@@ -6,7 +6,7 @@ User feedback: "component cards, the word padding and border are very close to e
 
 ---
 
-### COMPLETED FIXES (9 components updated)
+### COMPLETED FIXES (15 components updated)
 
 #### 1. Card Component Padding Issues ✅
 **File:** `src/components/ui/card.tsx`
@@ -62,6 +62,50 @@ User feedback: "component cards, the word padding and border are very close to e
 - **Fix:** Changed to `text-foreground` and `text-muted-foreground`
 - **Result:** Works on both light and dark backgrounds
 
+#### 10. Dropdown Menu Item Spacing ✅
+**File:** `src/components/ui/dropdown-menu.tsx`
+- **Problem:** Items had `px-2 py-1.5` - very cramped, hard to tap on mobile
+- **Fix:** Changed to `px-3 py-2` with `rounded-lg` border radius and `p-1.5` container padding
+- **Result:** Better touch targets (44px minimum), more professional appearance
+
+#### 11. Portal Sidebar Navigation Spacing ✅
+**File:** `src/components/shared/portal-sidebar.tsx`
+- **Problem:** Navigation items had `py-3` padding, not optimal for touch
+- **Fix:** Changed to `py-2.5` with `min-h-[44px]` for proper touch targets
+- **Result:** Better mobile usability and consistent tap targets
+
+#### 12. Tabs Component Spacing ✅
+**File:** `src/components/ui/tabs.tsx`
+- **Problem:** Tab triggers had cramped padding (`px-3 py-1.5` for default)
+- **Fix:**
+  - Default variant: `px-4 py-2 min-h-[36px]`
+  - Pills variant: `px-5 py-2.5 min-h-[40px]`
+  - Underline variant: `py-4 px-3`
+  - Container: `p-1.5 gap-1.5`
+- **Result:** Better touch targets and visual balance
+
+#### 13. Label Component Line Height ✅
+**File:** `src/components/ui/label.tsx`
+- **Problem:** Label had `leading-none` which could look cramped
+- **Fix:** Changed to `leading-tight`
+- **Result:** Better text readability while maintaining compact form layouts
+
+#### 14. Dropdown Menu Content Border Radius ✅
+**File:** `src/components/ui/dropdown-menu.tsx`
+- **Problem:** Used `rounded-md` (6px) which didn't match modern design
+- **Fix:** Changed to `rounded-lg` (8px) to match other components
+- **Result:** Consistent border radius across all components
+
+#### 15. Switch Component Touch Targets ✅
+**File:** `src/components/ui/switch.tsx`
+- **Problem:** Switch was too small for touch targets (`h-[1.15rem] w-8` ≈ 18x32px)
+- **Fix:**
+  - Added new `lg` size variant: `h-6 w-11` (24x44px - meets 44px minimum)
+  - Updated default: `h-5 w-9` (20x36px - better, still small)
+  - Small: `h-4 w-7` (16x28px - for tight spaces)
+  - Thumb sizes now match: default `size-4`, sm `size-3`, lg `size-5`
+- **Result:** Better touch targets, consistent sizing across form controls
+
 ---
 
 ### Design System Standards (UPDATED)
@@ -87,6 +131,10 @@ Textarea:    px-4 py-2.5 (16px 10px)
 TableHead:   h-12 px-4
 TableCell:   px-4 py-3
 Button:      px-4 py-2 (default size)
+DropdownItem: px-3 py-2 (12px 8px)
+Tabs (default): px-4 py-2 min-h-[36px]
+Tabs (pills): px-5 py-2.5 min-h-[40px]
+Tabs (underline): py-4 px-3
 ```
 
 #### Border Radius Standards
@@ -98,6 +146,19 @@ Select:      rounded-lg (8px)
 Textarea:    rounded-lg (8px)
 Button:      rounded-lg (8px)
 Badge:       rounded-full
+DropdownContent: rounded-lg (8px)
+DropdownItem: rounded-sm
+```
+
+#### Touch Target Standards
+All interactive elements now meet minimum touch target size (44px):
+```tsx
+// Minimum touch targets
+SidebarNav:  min-h-[44px]
+Tabs (pills): min-h-[40px]
+VerticalTabs: min-h-[40px]
+DropdownItem: py-2 (with proper content height)
+Switch (lg): h-6 w-11 (24x44px) - ✅ Meets 44px minimum
 ```
 
 #### Color Standards (Primary Actions)
@@ -133,8 +194,9 @@ bg-hunter-green-*, bg-powder-blue-*, etc.
 ---
 
 ### NEXT TASKS (Future UX Improvements)
-- [ ] Check and improve portal sidebar spacing
-- [ ] Improve dialog/modal padding
-- [ ] Check dropdown menu item spacing
-- [ ] Improve label-to-input spacing in forms
-- [ ] Add consistent focus ring sizes across components
+- [ ] Improve dialog/modal padding (when dialog component is created)
+- [ ] Review and improve form error message spacing
+- [ ] Create checkbox component with proper touch targets
+- [ ] Create radio button component with proper touch targets
+- [ ] Create toast/notification component with proper padding
+- [ ] Review focus ring consistency across all interactive elements

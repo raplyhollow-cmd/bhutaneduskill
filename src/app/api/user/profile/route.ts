@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
 // GET /api/user/profile - Get user profile
 export async function GET(req: NextRequest) {
@@ -70,12 +71,12 @@ export async function POST(req: NextRequest) {
           settings: { bio },
           updatedAt: new Date(),
         })
-        .where((users) => eq(users.id, existingUser.id));
+        .where(eq(users.id, existingUser.id));
 
       return NextResponse.json({ success: true, profile: { ...existingUser, ...body } });
     } else {
       // Create new user
-      const newUsers = await db
+      const result = await db
         .insert(users)
         .values({
           id: `user-${Date.now()}`,
@@ -96,7 +97,8 @@ export async function POST(req: NextRequest) {
         })
         .returning();
 
-      return NextResponse.json({ success: true, profile: newUsers[0] });
+      const newUser = Array.isArray(result) ? result[0] : result;
+      return NextResponse.json({ success: true, profile: newUser });
     }
   } catch (error) {
     console.error("Error saving profile:", error);

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { tutors, users, tutorReviews } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -34,8 +34,10 @@ export async function GET(request: NextRequest, { params }: Params) {
 
     // Get recent reviews
     const reviews = await db.query.tutorReviews.findMany({
-      where: eq(tutorReviews.tutorId, id),
-      where: eq(tutorReviews.isPublic, true),
+      where: and(
+        eq(tutorReviews.tutorId, id),
+        eq(tutorReviews.isPublic, true)
+      ),
       with: {
         student: {
           columns: {

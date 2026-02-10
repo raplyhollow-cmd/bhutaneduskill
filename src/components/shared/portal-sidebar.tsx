@@ -349,7 +349,7 @@ export function PortalSidebar({ userType, userName, userImage }: SidebarProps) {
                     <Link
                       href={item.href}
                       onClick={() => setIsMobileMenuOpen(false)}
-                      className="flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 relative group focus:outline-none focus:ring-2 focus:ring-white focus:ring-inset"
+                      className="flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 relative group focus:outline-none focus:ring-2 focus:ring-white focus:ring-inset min-h-[44px]"
                       style={
                         isActive
                           ? {
@@ -401,7 +401,7 @@ export function PortalSidebar({ userType, userName, userImage }: SidebarProps) {
           >
             <Link
               href={`/${userType}/settings`}
-              className="flex items-center gap-3 px-4 py-3 rounded-lg text-white hover:bg-white/10 transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-white focus:ring-inset"
+              className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-white hover:bg-white/10 transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-white focus:ring-inset min-h-[44px]"
               aria-label="Go to settings page"
               onClick={() => setIsMobileMenuOpen(false)}
             >
@@ -415,7 +415,7 @@ export function PortalSidebar({ userType, userName, userImage }: SidebarProps) {
               <span className="font-medium text-white">Settings</span>
             </Link>
             <motion.button
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-white hover:bg-white/10 transition-all duration-200 mt-1 group focus:outline-none focus:ring-2 focus:ring-white focus:ring-inset"
+              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-white hover:bg-white/10 transition-all duration-200 mt-1 group focus:outline-none focus:ring-2 focus:ring-white focus:ring-inset min-h-[44px]"
               onClick={() => {
                 window.location.href = "/sign-out";
               }}
