@@ -31,6 +31,7 @@ import {
   DollarSign,
   Link as LinkIcon,
   Database,
+  TrendingUp,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -47,6 +48,8 @@ const navigationItems = {
     { name: "Homework", href: "/student/homework", icon: ClipboardList },
     { name: "Learning", href: "/student/learning", icon: Video },
     { name: "Attendance", href: "/student/attendance", icon: CheckCircle },
+    { name: "Results", href: "/student/results", icon: BarChart3 },
+    { name: "Progress", href: "/student/progress", icon: TrendingUp },
     { name: "Fees", href: "/student/fees", icon: DollarSign },
     { name: "Tuition", href: "/student/tuition", icon: GraduationCap },
     { name: "Assessments", href: "/dashboard/assessment", icon: ClipboardList },

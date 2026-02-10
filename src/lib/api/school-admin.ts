@@ -6,7 +6,7 @@
  */
 
 import { db } from "@/lib/db";
-import { users, classes, schools, subjects, homework, homeworkSubmissions, attendance, studentFees, feeStructures, counselorAssignments, tuitionCourses, tuitionEnrollments, tutors, examResultsEnhanced, academicTerms, enrollments, teacherAssignments } from "@/lib/db/schema";
+import { users, classes, schools, subjects, homework, homeworkSubmissions, attendance, studentFees, feeStructures, feePayments, counselorAssignments, tuitionCourses, tuitionEnrollments, tutors, examResultsEnhanced, academicTerms, enrollments, teacherAssignments } from "@/lib/db/schema";
 import { eq, and, count, desc, sql, gte, lte, like, inArray } from "drizzle-orm";
 import { auth } from "@clerk/nextjs/server";
 import { cache } from "react";
@@ -1009,4 +1009,384 @@ export async function getTuitionCourses(schoolId: string | null, options: {
   );
 
   return { courses: transformed, total: countResult?.count || 0 };
+}
+
+/**
+ * ANALYTICS DATA
+ */
+
+export interface TopPerformer {
+  id: string;
+  name: string;
+  class: string;
+  grade: number;
+  section: string | null;
+  score: number;
+}
+
+export interface StudentNeedingAttention {
+  id: string;
+  name: string;
+  class: string;
+  issue: string;
+  type: "attendance" | "fees" | "academic";
+}
+
+export interface AttendanceTrend {
+  day: string;
+  present: number;
+  total: number;
+  percentage: number;
+}
+
+export interface PerformanceByGrade {
+  grade: number;
+  passRate: number;
+  avgScore: number;
+  totalStudents: number;
+}
+
+export interface AnalyticsData {
+  totalStudents: number;
+  averageAttendance: number;
+  averageScore: number;
+  feeCollectionRate: number;
+  totalRevenue: number;
+  pendingFees: number;
+  topPerformers: TopPerformer[];
+  studentsNeedingAttention: StudentNeedingAttention[];
+  attendanceTrends: AttendanceTrend[];
+  performanceByGrade: PerformanceByGrade[];
+  // Fee breakdown
+  feesPaid: number;
+  feesPartial: number;
+  feesPending: number;
+}
+
+export async function getAnalytics(schoolId: string | null): Promise<AnalyticsData> {
+  if (!schoolId) {
+    return {
+      totalStudents: 0,
+      averageAttendance: 0,
+      averageScore: 0,
+      feeCollectionRate: 0,
+      totalRevenue: 0,
+      pendingFees: 0,
+      topPerformers: [],
+      studentsNeedingAttention: [],
+      attendanceTrends: [],
+      performanceByGrade: [],
+      feesPaid: 0,
+      feesPartial: 0,
+      feesPending: 0,
+    };
+  }
+
+  // Get current date and date ranges
+  const today = new Date();
+  const todayStr = today.toISOString().split("T")[0];
+  const weekAgo = new Date(today);
+  weekAgo.setDate(weekAgo.getDate() - 7);
+
+  // 1. Total Students
+  const [studentCount] = await db
+    .select({ count: count() })
+    .from(users)
+    .where(and(eq(users.schoolId, schoolId), eq(users.type, "student")));
+
+  const totalStudents = studentCount?.count || 0;
+
+  // 2. Average Attendance (last 7 days)
+  const recentAttendance = await db.query.attendance.findMany({
+    where: and(
+      eq(attendance.schoolId, schoolId),
+      gte(attendance.date, weekAgo.toISOString().split("T")[0])
+    ),
+  });
+
+  let averageAttendance = 0;
+  if (recentAttendance.length > 0) {
+    const presentCount = recentAttendance.filter((a) => a.status === "present" || a.status === "late").length;
+    averageAttendance = Math.round((presentCount / recentAttendance.length) * 100);
+  }
+
+  // 3. Average Score (from exam results)
+  const examResults = await db.query.examResultsEnhanced.findMany({
+    where: eq(examResultsEnhanced.schoolId, schoolId),
+    limit: 1000,
+  });
+
+  let averageScore = 0;
+  if (examResults.length > 0) {
+    const totalPercentage = examResults.reduce((sum, r) => sum + (r.overallPercentage || 0), 0);
+    averageScore = Math.round(totalPercentage / examResults.length);
+  }
+
+  // 4. Fee Data
+  const allStudentFees = await db.query.studentFees.findMany({
+    where: eq(studentFees.schoolId, schoolId),
+    with: {
+      student: true,
+    },
+    limit: 1000,
+  });
+
+  const feesPaid = allStudentFees.filter((f) => f.status === "paid").length;
+  const feesPartial = allStudentFees.filter((f) => f.status === "partial").length;
+  const feesPending = allStudentFees.filter((f) => f.status === "pending").length;
+  const totalFees = allStudentFees.length;
+
+  const feeCollectionRate = totalFees > 0
+    ? Math.round(((feesPaid + feesPartial) / totalFees) * 100)
+    : 0;
+
+  const pendingFees = allStudentFees.filter((f) => (f.amountPending || 0) > 0).length;
+
+  // Calculate total revenue from paid fees
+  const totalRevenue = allStudentFees.reduce((sum, f) => sum + (f.amountPaid || 0), 0);
+
+  // 5. Top Performers (students with highest scores)
+  const topPerformers: TopPerformer[] = [];
+  const studentScores = new Map<string, { score: number; count: number; name: string; grade: number | null; section: string | null }>();
+
+  examResults.forEach((result) => {
+    const existing = studentScores.get(result.studentId);
+    const score = result.overallPercentage || 0;
+    if (existing) {
+      existing.score = Math.max(existing.score, score);
+      existing.count++;
+    } else {
+      studentScores.set(result.studentId, {
+        score,
+        count: 1,
+        name: "",
+        grade: null,
+        section: null,
+      });
+    }
+  });
+
+  // Get student details for top performers
+  const topStudentIds = Array.from(studentScores.entries())
+    .sort((a, b) => b[1].score - a[1].score)
+    .slice(0, 10)
+    .map((e) => e[0]);
+
+  if (topStudentIds.length > 0) {
+    const studentDetails = await db.query.users.findMany({
+      where: and(
+        inArray(users.id, topStudentIds),
+        eq(users.type, "student")
+      ),
+      columns: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        classGrade: true,
+        section: true,
+      },
+    });
+
+    studentDetails.forEach((student) => {
+      const scoreData = studentScores.get(student.id);
+      if (scoreData) {
+        const name = `${student.firstName} ${student.lastName || ""}`.trim();
+        const classStr = student.classGrade && student.section
+          ? `Class ${student.classGrade} ${student.section}`
+          : "Not Assigned";
+
+        topPerformers.push({
+          id: student.id,
+          name,
+          class: classStr,
+          grade: student.classGrade || 0,
+          section: student.section,
+          score: scoreData.score,
+        });
+      }
+    });
+  }
+
+  // Sort by score descending
+  topPerformers.sort((a, b) => b.score - a.score);
+
+  // 6. Students Needing Attention
+  const studentsNeedingAttention: StudentNeedingAttention[] = [];
+
+  // Low attendance students
+  const attendanceByStudent = new Map<string, { present: number; total: number; name: string; class: string }>();
+  recentAttendance.forEach((a) => {
+    const existing = attendanceByStudent.get(a.studentId);
+    if (existing) {
+      existing.total++;
+      if (a.status === "present" || a.status === "late") {
+        existing.present++;
+      }
+    } else {
+      attendanceByStudent.set(a.studentId, {
+        present: (a.status === "present" || a.status === "late") ? 1 : 0,
+        total: 1,
+        name: "",
+        class: "",
+      });
+    }
+  });
+
+  // Find students with low attendance (<75%)
+  for (const [studentId, data] of attendanceByStudent.entries()) {
+    if (data.total >= 5 && (data.present / data.total) < 0.75) {
+      const student = await db.query.users.findFirst({
+        where: eq(users.id, studentId),
+        columns: { firstName: true, lastName: true, classGrade: true, section: true },
+      });
+
+      if (student) {
+        const name = `${student.firstName} ${student.lastName || ""}`.trim();
+        const classStr = student.classGrade && student.section
+          ? `Class ${student.classGrade} ${student.section}`
+          : "Not Assigned";
+        const percentage = Math.round((data.present / data.total) * 100);
+
+        studentsNeedingAttention.push({
+          id: studentId,
+          name,
+          class: classStr,
+          issue: `Low attendance (${percentage}%)`,
+          type: "attendance",
+        });
+      }
+    }
+  }
+
+  // Pending fees students
+  const pendingFeeStudents = allStudentFees
+    .filter((f) => (f.amountPending || 0) > 0)
+    .slice(0, 5);
+
+  for (const fee of pendingFeeStudents) {
+    if (!studentsNeedingAttention.find((s) => s.id === fee.studentId)) {
+      const name = fee.student
+        ? `${fee.student.firstName} ${fee.student.lastName || ""}`.trim()
+        : "Unknown";
+      const classStr = fee.student?.classGrade && fee.student?.section
+        ? `Class ${fee.student.classGrade} ${fee.student.section}`
+        : "Not Assigned";
+
+      studentsNeedingAttention.push({
+        id: fee.studentId,
+        name,
+        class: classStr,
+        issue: "Pending fees",
+        type: "fees",
+      });
+    }
+  }
+
+  // Declining scores (comparing recent vs older results would require more complex logic)
+  // For now, we'll add students with very low scores (<40%)
+  const lowScoreStudents = examResults
+    .filter((r) => (r.overallPercentage || 0) < 40)
+    .slice(0, 5);
+
+  for (const result of lowScoreStudents) {
+    if (!studentsNeedingAttention.find((s) => s.id === result.studentId)) {
+      const student = await db.query.users.findFirst({
+        where: eq(users.id, result.studentId),
+        columns: { firstName: true, lastName: true, classGrade: true, section: true },
+      });
+
+      if (student && studentsNeedingAttention.length < 10) {
+        const name = `${student.firstName} ${student.lastName || ""}`.trim();
+        const classStr = student.classGrade && student.section
+          ? `Class ${student.classGrade} ${student.section}`
+          : "Not Assigned";
+
+        studentsNeedingAttention.push({
+          id: result.studentId,
+          name,
+          class: classStr,
+          issue: "Declining scores",
+          type: "academic",
+        });
+      }
+    }
+  }
+
+  // 7. Attendance Trends by Day (last 5 days)
+  const attendanceTrends: AttendanceTrend[] = [];
+  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  for (let i = 4; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(date.getDate() - i);
+    const dateStr = date.toISOString().split("T")[0];
+    const dayName = dayNames[date.getDay()];
+
+    const dayAttendance = recentAttendance.filter((a) => a.date === dateStr);
+    const present = dayAttendance.filter((a) => a.status === "present" || a.status === "late").length;
+    const total = dayAttendance.length;
+
+    attendanceTrends.push({
+      day: dayName,
+      present,
+      total,
+      percentage: total > 0 ? Math.round((present / total) * 100) : 0,
+    });
+  }
+
+  // 8. Performance by Grade
+  const performanceByGrade: PerformanceByGrade[] = [];
+
+  // Group results by grade
+  const gradeGroups = new Map<number, number[]>();
+
+  for (const result of examResults) {
+    const student = await db.query.users.findFirst({
+      where: eq(users.id, result.studentId),
+      columns: { classGrade: true },
+    });
+
+    const grade = student?.classGrade;
+    if (grade) {
+      if (!gradeGroups.has(grade)) {
+        gradeGroups.set(grade, []);
+      }
+      gradeGroups.get(grade)!.push(result.overallPercentage || 0);
+    }
+  }
+
+  // Calculate pass rate and average for each grade
+  for (const [grade, scores] of gradeGroups.entries()) {
+    if (scores.length > 0) {
+      const avgScore = Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length);
+      const passCount = scores.filter((s) => s >= 40).length;
+      const passRate = Math.round((passCount / scores.length) * 100);
+
+      performanceByGrade.push({
+        grade,
+        passRate,
+        avgScore,
+        totalStudents: scores.length,
+      });
+    }
+  }
+
+  // Sort by grade descending
+  performanceByGrade.sort((a, b) => b.grade - a.grade);
+
+  return {
+    totalStudents,
+    averageAttendance,
+    averageScore,
+    feeCollectionRate,
+    totalRevenue,
+    pendingFees,
+    topPerformers: topPerformers.slice(0, 5),
+    studentsNeedingAttention: studentsNeedingAttention.slice(0, 10),
+    attendanceTrends,
+    performanceByGrade,
+    feesPaid,
+    feesPartial,
+    feesPending,
+  };
 }
