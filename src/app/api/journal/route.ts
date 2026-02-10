@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/db/tenant";
+import { eq } from "drizzle-orm";
 
 // GET /api/journal - Get user's journal entries
 export async function GET(req: NextRequest) {
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest) {
         settings: { ...settings, journalEntries: entries },
         updatedAt: new Date(),
       })
-      .where((users) => users.id === user.id);
+      .where(eq(users.id, user.id));
 
     return NextResponse.json({ success: true, entry: newEntry });
   } catch (error: any) {
