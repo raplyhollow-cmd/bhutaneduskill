@@ -26,11 +26,9 @@ import {
   LogOut,
   Menu,
   X,
-  ChevronDown,
   Video,
   CheckCircle,
   DollarSign,
-  Clock,
   Link as LinkIcon,
   Database,
 } from "lucide-react";
@@ -169,45 +167,20 @@ const portalNames = {
   "school-admin": "School Admin Portal",
 };
 
-const sidebarVariants = {
-  open: {
-    x: 0,
-    transition: {
-      type: "spring",
-      stiffness: 300,
-      damping: 30,
-    },
-  },
-  closed: {
-    x: "-100%",
-    transition: {
-      type: "spring",
-      stiffness: 300,
-      damping: 30,
-    },
-  },
-};
-
-const itemVariants = {
-  open: (i: number) => ({
-    opacity: 1,
-    x: 0,
-    transition: {
-      delay: i * 0.03,
-      type: "spring",
-      stiffness: 300,
-      damping: 24,
-    },
-  }),
-  closed: {
-    opacity: 0,
-    x: -20,
-  },
-};
-
 export function PortalSidebar({ userType, userName, userImage }: SidebarProps) {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Close mobile menu when screen size changes to desktop
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const navigation = navigationItems[userType];
   const portalStyle = portalStyles[userType];
@@ -272,22 +245,19 @@ export function PortalSidebar({ userType, userName, userImage }: SidebarProps) {
         )}
       </AnimatePresence>
 
-      {/* Sidebar */}
-      <motion.aside
+      {/* Sidebar - Desktop: always visible, Mobile: slides in/out */}
+      {/* On desktop (lg+): always visible, on mobile: controlled by isMobileMenuOpen */}
+      <aside
         id="portal-sidebar"
-        className="fixed top-0 left-0 z-40 h-screen w-64 text-white overflow-hidden"
+        className={cn(
+          "fixed top-0 left-0 z-40 h-screen w-64 text-white overflow-hidden transition-transform duration-300 ease-in-out",
+          // Desktop: always visible (translate-x-0)
+          "lg:translate-x-0",
+          // Mobile: hidden by default, visible when menu is open
+          "-translate-x-full",
+          isMobileMenuOpen && "!translate-x-0"
+        )}
         style={{ background: portalStyle.background }}
-        initial={false}
-        variants={sidebarVariants}
-        animate={isMobileMenuOpen ? "open" : "closed"}
-        lg={{
-          x: 0,
-          transition: {
-            type: "spring",
-            stiffness: 300,
-            damping: 30,
-          },
-        }}
         aria-label={`${portalName} navigation`}
       >
         <div className="h-full flex flex-col">
@@ -355,7 +325,7 @@ export function PortalSidebar({ userType, userName, userImage }: SidebarProps) {
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate text-white">{userName}</p>
-                  <p className="text-xs text-white/70 capitalize">{userType}</p>
+                  <p className="text-xs text-white/70 capitalize">{userType.replace("-", " ")}</p>
                 </div>
               </div>
             </motion.div>
@@ -365,14 +335,13 @@ export function PortalSidebar({ userType, userName, userImage }: SidebarProps) {
           <nav className="flex-1 overflow-y-auto p-4" aria-label={`${portalName} navigation menu`}>
             <ul role="list" className="space-y-1">
               {navigation.map((item, index) => {
-                const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                const isActive = pathname === item.href || (pathname.startsWith(item.href + "/") && item.href !== `/${userType}/dashboard`);
                 return (
                   <motion.li
                     key={item.name}
-                    custom={index}
-                    initial="closed"
-                    animate="open"
-                    variants={itemVariants}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.03, type: "spring", stiffness: 300, damping: 24 }}
                   >
                     <Link
                       href={item.href}
@@ -407,7 +376,7 @@ export function PortalSidebar({ userType, userName, userImage }: SidebarProps) {
                         <motion.div
                           className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
                           style={{ background: portalStyle.activeText }}
-                          layoutId="activeIndicator"
+                          layoutId={`active-indicator-${userType}`}
                           transition={{ type: "spring", stiffness: 300, damping: 30 }}
                         />
                       )}
@@ -431,6 +400,7 @@ export function PortalSidebar({ userType, userName, userImage }: SidebarProps) {
               href={`/${userType}/settings`}
               className="flex items-center gap-3 px-4 py-3 rounded-lg text-white hover:bg-white/10 transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-white focus:ring-inset"
               aria-label="Go to settings page"
+              onClick={() => setIsMobileMenuOpen(false)}
             >
               <motion.div
                 whileHover={{ scale: 1.1, rotate: 5 }}
@@ -462,7 +432,7 @@ export function PortalSidebar({ userType, userName, userImage }: SidebarProps) {
             </motion.button>
           </motion.div>
         </div>
-      </motion.aside>
+      </aside>
     </>
   );
 }
@@ -516,7 +486,7 @@ export function PortalHeader({
               >
                 <div className="text-right hidden sm:block">
                   <p className="font-medium text-gray-900">{userName}</p>
-                  <p className="text-xs text-gray-600 capitalize">{userType}</p>
+                  <p className="text-xs text-gray-600 capitalize">{userType.replace("-", " ")}</p>
                 </div>
                 <div
                   className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold shadow-md"
