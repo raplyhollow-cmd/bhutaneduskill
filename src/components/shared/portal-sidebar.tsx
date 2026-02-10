@@ -32,6 +32,7 @@ import {
   DollarSign,
   Clock,
   Link as LinkIcon,
+  Database,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -98,6 +99,7 @@ const navigationItems = {
     { name: "Teachers", href: "/admin/teachers", icon: GraduationCap },
     { name: "Counselors", href: "/admin/counselors", icon: MessageSquare },
     { name: "Assessments", href: "/admin/assessments", icon: ClipboardList },
+    { name: "Content", href: "/admin/content", icon: Database },
     { name: "Careers", href: "/admin/careers", icon: Briefcase },
     { name: "Reports", href: "/admin/reports", icon: BarChart3 },
     { name: "Settings", href: "/admin/settings", icon: Settings },

@@ -1,15 +1,21 @@
 /**
  * ATTENDANCE TRACKER
  * Teacher interface for taking attendance
+ *
+ * Features:
+ * - Display list of students in a class
+ * - Allow marking Present/Absent/Late/Excused
+ * - Show attendance summary
+ * - Save attendance to existing API
+ * - Support quick marking with keyboard shortcuts (P=Present, A=Absent, L=Late, E=Excused)
  */
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Check,
   X,
@@ -21,6 +27,9 @@ import {
   XCircle,
   AlertCircle,
   Download,
+  Keyboard,
+  Save,
+  Loader2,
 } from "lucide-react";
 
 export interface Student {
@@ -56,6 +65,8 @@ interface AttendanceTrackerProps {
   date?: string;
   existingRecords?: AttendanceRecord[];
   onSave: (sessionId: string, records: AttendanceRecord[]) => void | Promise<void>;
+  schoolId?: string;
+  teacherId?: string;
 }
 
 type AttendanceStatus = "present" | "absent" | "late" | "excused";
@@ -78,6 +89,8 @@ export function AttendanceTracker({
   date: initialDate,
   existingRecords = [],
   onSave,
+  schoolId,
+  teacherId,
 }: AttendanceTrackerProps) {
   const [date, setDate] = useState(initialDate || new Date().toISOString().split("T")[0]);
   const [records, setRecords] = useState<Record<string, AttendanceRecord>>(() => {
@@ -97,8 +110,12 @@ export function AttendanceTracker({
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [quickMarkMode, setQuickMarkMode] = useState<AttendanceStatus | null>(null);
+  const [selectedStudentIndex, setSelectedStudentIndex] = useState<number>(0);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">("idle");
+  const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
 
-  // Filter students
+  // Filter students for navigation
   const filteredStudents = useMemo(() => {
     return students.filter((s) =>
       s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -106,7 +123,12 @@ export function AttendanceTracker({
     );
   }, [students, searchQuery]);
 
-  // Stats
+  // Reset selection when filter changes
+  useEffect(() => {
+    setSelectedStudentIndex(0);
+  }, [searchQuery]);
+
+  // Stats calculation
   const stats = useMemo(() => {
     return Object.values(records).reduce(
       (acc, r) => {
@@ -132,6 +154,76 @@ export function AttendanceTracker({
     setNotes((prev) => ({ ...prev, [studentId]: note }));
   };
 
+  // Keyboard shortcuts handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in an input
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
+        return;
+      }
+
+      const key = e.key.toLowerCase();
+
+      // Status shortcuts (P, A, L, E)
+      if (["p", "a", "l", "e"].includes(key)) {
+        e.preventDefault();
+        const currentStudent = filteredStudents[selectedStudentIndex];
+        if (currentStudent) {
+          const statusMap: Record<string, AttendanceStatus> = {
+            p: "present",
+            a: "absent",
+            l: "late",
+            e: "excused",
+          };
+          updateStatus(currentStudent.id, statusMap[key]);
+
+          // Move to next student
+          if (selectedStudentIndex < filteredStudents.length - 1) {
+            setSelectedStudentIndex(selectedStudentIndex + 1);
+          }
+        }
+        return;
+      }
+
+      // Arrow keys for navigation
+      if (key === "arrowdown" && selectedStudentIndex < filteredStudents.length - 1) {
+        e.preventDefault();
+        setSelectedStudentIndex(selectedStudentIndex + 1);
+        return;
+      }
+      if (key === "arrowup" && selectedStudentIndex > 0) {
+        e.preventDefault();
+        setSelectedStudentIndex(selectedStudentIndex - 1);
+        return;
+      }
+
+      // Quick mark mode toggles
+      if (key === "1") setQuickMarkMode("present");
+      if (key === "2") setQuickMarkMode("absent");
+      if (key === "3") setQuickMarkMode("late");
+      if (key === "4") setQuickMarkMode("excused");
+      if (key === "0" || key === "escape") setQuickMarkMode(null);
+
+      // Save shortcut
+      if ((key === "s" && e.ctrlKey) || key === "f5") {
+        e.preventDefault();
+        handleSave();
+        return;
+      }
+
+      // Toggle help
+      if (key === "?") {
+        setShowKeyboardHelp(!showKeyboardHelp);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [filteredStudents, selectedStudentIndex, quickMarkMode, showKeyboardHelp]);
+
   const markAll = (status: AttendanceStatus) => {
     setRecords((prev) => {
       const updated = { ...prev };
@@ -143,10 +235,30 @@ export function AttendanceTracker({
   };
 
   const handleSave = async () => {
-    const recordsArray = Object.values(records);
-    const sessionId = `${classId}-${date}`;
-    await onSave(sessionId, recordsArray);
+    setIsSaving(true);
+    setSaveStatus("idle");
+    try {
+      const recordsArray = Object.values(records);
+      const sessionId = `${classId}-${date}`;
+      await onSave(sessionId, recordsArray);
+      setSaveStatus("success");
+      setTimeout(() => setSaveStatus("idle"), 3000);
+    } catch (error) {
+      console.error("Save error:", error);
+      setSaveStatus("error");
+      setTimeout(() => setSaveStatus("idle"), 3000);
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  // Scroll selected student into view
+  useEffect(() => {
+    const selectedRow = document.querySelector(`[data-student-index="${selectedStudentIndex}"]`);
+    if (selectedRow) {
+      selectedRow.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [selectedStudentIndex]);
 
   const exportCSV = () => {
     const headers = ["Roll Number", "Name", "Status", "Notes"];
@@ -273,6 +385,15 @@ export function AttendanceTracker({
             </div>
 
             <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowKeyboardHelp(!showKeyboardHelp)}
+                title="Keyboard shortcuts (? to toggle)"
+              >
+                <Keyboard className="w-4 h-4 mr-2" />
+                Shortcuts
+              </Button>
               <Search className="w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Search student..."
@@ -288,6 +409,23 @@ export function AttendanceTracker({
             </Button>
           </div>
 
+          {/* Keyboard shortcuts help */}
+          {showKeyboardHelp && (
+            <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+              <h4 className="font-semibold text-sm mb-2 text-blue-900 dark:text-blue-100">Keyboard Shortcuts</h4>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs text-blue-800 dark:text-blue-200">
+                <div><kbd className="px-1.5 py-0.5 bg-white dark:bg-blue-900 rounded border border-blue-300 dark:border-blue-700">P</kbd> Present</div>
+                <div><kbd className="px-1.5 py-0.5 bg-white dark:bg-blue-900 rounded border border-blue-300 dark:border-blue-700">A</kbd> Absent</div>
+                <div><kbd className="px-1.5 py-0.5 bg-white dark:bg-blue-900 rounded border border-blue-300 dark:border-blue-700">L</kbd> Late</div>
+                <div><kbd className="px-1.5 py-0.5 bg-white dark:bg-blue-900 rounded border border-blue-300 dark:border-blue-700">E</kbd> Excused</div>
+                <div><kbd className="px-1.5 py-0.5 bg-white dark:bg-blue-900 rounded border border-blue-300 dark:border-blue-700">↑↓</kbd> Navigate</div>
+                <div><kbd className="px-1.5 py-0.5 bg-white dark:bg-blue-900 rounded border border-blue-300 dark:border-blue-700">1-4</kbd> Quick Mark Mode</div>
+                <div><kbd className="px-1.5 py-0.5 bg-white dark:bg-blue-900 rounded border border-blue-300 dark:border-blue-700">0/Esc</kbd> Clear Mode</div>
+                <div><kbd className="px-1.5 py-0.5 bg-white dark:bg-blue-900 rounded border border-blue-300 dark:border-blue-700">Ctrl+S</kbd> Save</div>
+              </div>
+            </div>
+          )}
+
           {/* Quick mark mode toggle */}
           <div className="mt-4 flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Click mode:</span>
@@ -301,7 +439,7 @@ export function AttendanceTracker({
                     setQuickMarkMode(quickMarkMode === status ? null : status)
                   }
                   className={`
-                    px-3 py-1 rounded text-sm font-medium
+                    px-3 py-1 rounded text-sm font-medium transition-colors
                     ${
                       quickMarkMode === status
                         ? statusConfig[status].bgColor + " " + statusConfig[status].color
@@ -309,10 +447,22 @@ export function AttendanceTracker({
                     }
                   `}
                 >
+                  <span className="opacity-60 mr-1">({["present", "absent", "late", "excused"].indexOf(status) + 1})</span>
                   {statusConfig[status].label}
                 </button>
               ))}
             </div>
+            {quickMarkMode && (
+              <Badge variant="secondary" className="ml-2">
+                Click on any student to mark as {quickMarkMode}
+                <button
+                  onClick={() => setQuickMarkMode(null)}
+                  className="ml-1 hover:bg-muted-foreground/20 rounded-full p-0.5"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </Badge>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -320,7 +470,17 @@ export function AttendanceTracker({
       {/* Student List */}
       <Card>
         <CardHeader>
-          <CardTitle>Students ({filteredStudents.length})</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Students ({filteredStudents.length})</CardTitle>
+            {filteredStudents.length > 0 && (
+              <div className="text-sm text-muted-foreground">
+                Use <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs">P</kbd>
+                <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs ml-1">A</kbd>
+                <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs ml-1">L</kbd>
+                <kbd className="px-1.5 py-0.5 bg-muted rounded text-xs ml-1">E</kbd> to mark
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -334,21 +494,32 @@ export function AttendanceTracker({
                 </tr>
               </thead>
               <tbody>
-                {filteredStudents.map((student) => {
+                {filteredStudents.map((student, index) => {
                   const record = records[student.id];
                   const config = statusConfig[record.status];
+                  const isSelected = index === selectedStudentIndex;
 
                   return (
                     <tr
                       key={student.id}
-                      className="border-b hover:bg-muted/50 cursor-pointer"
+                      data-student-index={index}
+                      className={`
+                        border-b cursor-pointer transition-colors
+                        ${isSelected ? "bg-blue-50 dark:bg-blue-950" : "hover:bg-muted/50"}
+                        ${quickMarkMode ? "hover:bg-muted" : ""}
+                      `}
                       onClick={() => {
                         if (quickMarkMode) {
                           updateStatus(student.id, quickMarkMode);
+                        } else {
+                          setSelectedStudentIndex(index);
                         }
                       }}
                     >
-                      <td className="py-3 px-4 font-medium">{student.rollNumber}</td>
+                      <td className="py-3 px-4 font-medium">
+                        {isSelected && <span className="mr-2">→</span>}
+                        {student.rollNumber}
+                      </td>
                       <td className="py-3 px-4">{student.name}</td>
 
                       <td className="py-3 px-4">
@@ -365,16 +536,17 @@ export function AttendanceTracker({
                                   updateStatus(student.id, status);
                                 }}
                                 className={`
-                                  w-10 h-10 rounded-lg flex items-center justify-center
+                                  w-10 h-10 rounded-lg flex items-center justify-center transition-all
                                   ${
                                     record.status === status
                                       ? statusConfig[status].bgColor +
                                         " " +
-                                        statusConfig[status].color
+                                        statusConfig[status].color +
+                                        " ring-2 ring-offset-1 ring-" + status
                                       : "bg-muted hover:bg-muted/80"
                                   }
                                 `}
-                                title={statusConfig[status].label}
+                                title={`${statusConfig[status].label} (${status[0].toUpperCase()})`}
                               >
                                 <StatusIcon className="w-5 h-5" />
                               </button>
@@ -392,6 +564,7 @@ export function AttendanceTracker({
                           }}
                           placeholder="Add note..."
                           onClick={(e) => e.stopPropagation()}
+                          onFocus={() => setSelectedStudentIndex(index)}
                         />
                       </td>
                     </tr>
@@ -404,11 +577,44 @@ export function AttendanceTracker({
       </Card>
 
       {/* Save */}
-      <div className="flex justify-end">
-        <Button onClick={handleSave} size="lg">
-          <Check className="w-4 h-4 mr-2" />
-          Save Attendance
+      <div className="flex justify-between items-center">
+        <div className="text-sm text-muted-foreground">
+          {saveStatus === "success" && (
+            <span className="text-green-600 flex items-center gap-1">
+              <CheckCircle className="w-4 h-4" />
+              Attendance saved successfully!
+            </span>
+          )}
+          {saveStatus === "error" && (
+            <span className="text-red-600 flex items-center gap-1">
+              <XCircle className="w-4 h-4" />
+              Failed to save. Please try again.
+            </span>
+          )}
+        </div>
+        <Button
+          onClick={handleSave}
+          size="lg"
+          disabled={isSaving}
+          className="min-w-32"
+        >
+          {isSaving ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Save className="w-4 h-4 mr-2" />
+              Save Attendance
+            </>
+          )}
         </Button>
+      </div>
+
+      {/* Footer keyboard hint */}
+      <div className="text-center text-xs text-muted-foreground">
+        Press <kbd className="px-1 py-0.5 bg-muted rounded">?</kbd> to toggle keyboard shortcuts • Press <kbd className="px-1 py-0.5 bg-muted rounded">Ctrl+S</kbd> to save
       </div>
     </div>
   );

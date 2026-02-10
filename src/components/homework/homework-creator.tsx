@@ -4,12 +4,13 @@
  */
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   Plus,
   Trash2,
@@ -22,6 +23,11 @@ import {
   Calendar,
   Users,
   Clock,
+  Upload,
+  FileText,
+  X,
+  Link2,
+  Paperclip,
 } from "lucide-react";
 
 export type QuestionType =
@@ -46,24 +52,55 @@ export interface Question {
   explanation?: string;
 }
 
+export interface HomeworkAttachment {
+  id: string;
+  name: string;
+  url: string;
+  type: string;
+  size: number;
+}
+
+export interface ExternalLink {
+  id: string;
+  title: string;
+  url: string;
+  provider: "google_drive" | "onedrive" | "dropbox" | "other";
+}
+
+export interface ClassOption {
+  id: string;
+  name: string;
+  grade: number;
+  section?: string;
+  studentCount?: number;
+  subject?: string;
+}
+
 export interface HomeworkData {
   title: string;
   description: string;
   subject: string;
-  classId: string;
+  classIds: string[]; // Changed to support multiple classes
   dueDate: string;
   totalPoints: number;
   allowLateSubmission: boolean;
-  showResults: "immediate" | "after_due" | "after_grading";
+  lateSubmissionDeadline?: string;
+  showResults: "immediate" | "after_due" | "manual";
   shuffleQuestions: boolean;
   timeLimit?: number; // minutes
   questions: Question[];
+  attachments?: HomeworkAttachment[];
+  externalLinks?: ExternalLink[];
+  type?: "assignment" | "quiz" | "project" | "reading";
+  maxPoints?: number;
+  passingPoints?: number;
 }
 
 interface HomeworkCreatorProps {
   onSave: (homework: HomeworkData) => void | Promise<void>;
   onCancel?: () => void;
   initialData?: Partial<HomeworkData>;
+  availableClasses?: ClassOption[]; // Added for class selection
 }
 
 const questionTypeLabels: Record<QuestionType, string> = {
@@ -77,21 +114,42 @@ const questionTypeLabels: Record<QuestionType, string> = {
   match_following: "Match the Following",
 };
 
-export function HomeworkCreator({ onSave, onCancel, initialData }: HomeworkCreatorProps) {
+export function HomeworkCreator({ onSave, onCancel, initialData, availableClasses = [] }: HomeworkCreatorProps) {
   const [homework, setHomework] = useState<HomeworkData>({
     title: initialData?.title || "",
     description: initialData?.description || "",
     subject: initialData?.subject || "",
-    classId: initialData?.classId || "",
+    classIds: initialData?.classIds || [],
     dueDate: initialData?.dueDate || "",
     totalPoints: 0,
     allowLateSubmission: true,
-    showResults: "after_grading",
+    showResults: "after_due",
     shuffleQuestions: false,
     questions: initialData?.questions || [],
+    attachments: initialData?.attachments || [],
+    externalLinks: initialData?.externalLinks || [],
+    type: initialData?.type || "assignment",
   });
 
   const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set());
+  const [selectedClasses, setSelectedClasses] = useState<Set<string>>(
+    new Set(initialData?.classIds || [])
+  );
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Toggle class selection
+  const toggleClass = useCallback((classId: string) => {
+    setSelectedClasses((prev) => {
+      const next = new Set(prev);
+      if (next.has(classId)) {
+        next.delete(classId);
+      } else {
+        next.add(classId);
+      }
+      setHomework((prev) => ({ ...prev, classIds: Array.from(next) }));
+      return next;
+    });
+  }, []);
 
   const toggleQuestionExpanded = (questionId: string) => {
     setExpandedQuestions((prev) => {
@@ -151,12 +209,79 @@ export function HomeworkCreator({ onSave, onCancel, initialData }: HomeworkCreat
     });
   };
 
-  const handleSave = () => {
-    if (!homework.title || !homework.dueDate || homework.questions.length === 0) {
-      alert("Please fill in all required fields");
+  const handleSave = async () => {
+    if (!homework.title || !homework.dueDate || homework.classIds.length === 0) {
+      alert("Please fill in all required fields (title, due date, and at least one class)");
       return;
     }
-    onSave(homework);
+    setIsSaving(true);
+    try {
+      await onSave(homework);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Add file attachment
+  const addAttachment = (file: File) => {
+    // In production, this would upload to a storage service
+    const newAttachment: HomeworkAttachment = {
+      id: `att_${Date.now()}`,
+      name: file.name,
+      url: URL.createObjectURL(file), // Temporary local URL
+      type: file.type,
+      size: file.size,
+    };
+    setHomework((prev) => ({
+      ...prev,
+      attachments: [...(prev.attachments || []), newAttachment],
+    }));
+  };
+
+  // Remove attachment
+  const removeAttachment = (attachmentId: string) => {
+    setHomework((prev) => ({
+      ...prev,
+      attachments: prev.attachments?.filter((a) => a.id !== attachmentId),
+    }));
+  };
+
+  // Add external link
+  const addExternalLink = () => {
+    const newLink: ExternalLink = {
+      id: `link_${Date.now()}`,
+      title: "",
+      url: "",
+      provider: "other",
+    };
+    setHomework((prev) => ({
+      ...prev,
+      externalLinks: [...(prev.externalLinks || []), newLink],
+    }));
+  };
+
+  // Update external link
+  const updateExternalLink = (linkId: string, updates: Partial<ExternalLink>) => {
+    setHomework((prev) => ({
+      ...prev,
+      externalLinks: prev.externalLinks?.map((l) =>
+        l.id === linkId ? { ...l, ...updates } : l
+      ),
+    }));
+  };
+
+  // Remove external link
+  const removeExternalLink = (linkId: string) => {
+    setHomework((prev) => ({
+      ...prev,
+      externalLinks: prev.externalLinks?.filter((l) => l.id !== linkId),
+    }));
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
   };
 
   return (
@@ -186,7 +311,7 @@ export function HomeworkCreator({ onSave, onCancel, initialData }: HomeworkCreat
             />
           </div>
 
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid md:grid-cols-4 gap-4">
             <div>
               <label className="text-sm font-medium">Subject *</label>
               <Input
@@ -194,6 +319,22 @@ export function HomeworkCreator({ onSave, onCancel, initialData }: HomeworkCreat
                 onChange={(e) => setHomework({ ...homework, subject: e.target.value })}
                 placeholder="e.g., Mathematics"
               />
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Type</label>
+              <select
+                className="w-full border rounded-md px-3 py-2"
+                value={homework.type}
+                onChange={(e) =>
+                  setHomework({ ...homework, type: e.target.value as HomeworkData["type"] })
+                }
+              >
+                <option value="assignment">Assignment</option>
+                <option value="quiz">Quiz</option>
+                <option value="project">Project</option>
+                <option value="reading">Reading</option>
+              </select>
             </div>
 
             <div>
@@ -221,7 +362,65 @@ export function HomeworkCreator({ onSave, onCancel, initialData }: HomeworkCreat
             </div>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-4">
+          {/* Class Selection */}
+          <div>
+            <label className="text-sm font-medium mb-2 block">
+              Assign to Classes * ({selectedClasses.size} selected)
+            </label>
+            {availableClasses.length > 0 ? (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {availableClasses.map((cls) => (
+                  <button
+                    key={cls.id}
+                    type="button"
+                    onClick={() => toggleClass(cls.id)}
+                    className={`
+                      p-3 border rounded-lg text-left transition-all
+                      ${selectedClasses.has(cls.id)
+                        ? "border-blue-500 bg-blue-50 ring-2 ring-blue-500/20"
+                        : "border-gray-200 hover:border-gray-300"
+                      }
+                    `}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-medium text-sm">{cls.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Grade {cls.grade}{cls.section ? ` - ${cls.section}` : ""}
+                        </p>
+                        {cls.studentCount !== undefined && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            <Users className="w-3 h-3 inline mr-1" />
+                            {cls.studentCount} students
+                          </p>
+                        )}
+                      </div>
+                      <div className={`
+                        w-5 h-5 rounded-full border-2 flex items-center justify-center
+                        ${selectedClasses.has(cls.id)
+                          ? "border-blue-500 bg-blue-500"
+                          : "border-gray-300"
+                        }
+                      `}>
+                        {selectedClasses.has(cls.id) && (
+                          <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="text-sm text-muted-foreground p-4 bg-muted rounded-lg">
+                No classes available. Classes will be loaded from your profile.
+              </div>
+            )}
+          </div>
+
+          {/* Grading Settings */}
+          <div className="grid md:grid-cols-2 gap-4">
             <div>
               <label className="text-sm font-medium">Show Results</label>
               <select
@@ -233,39 +432,72 @@ export function HomeworkCreator({ onSave, onCancel, initialData }: HomeworkCreat
               >
                 <option value="immediate">Immediately after submission</option>
                 <option value="after_due">After due date</option>
-                <option value="after_grading">After grading</option>
+                <option value="manual">After manual grading</option>
               </select>
             </div>
 
-            <div className="flex items-center gap-2 pt-6">
-              <input
-                type="checkbox"
-                id="allowLate"
-                checked={homework.allowLateSubmission}
+            <div>
+              <label className="text-sm font-medium">Passing Score (optional)</label>
+              <Input
+                type="number"
+                min="0"
+                max="100"
+                value={homework.passingPoints || ""}
                 onChange={(e) =>
-                  setHomework({ ...homework, allowLateSubmission: e.target.checked })
+                  setHomework({
+                    ...homework,
+                    passingPoints: e.target.value ? parseInt(e.target.value) : undefined,
+                  })
                 }
+                placeholder="Minimum points to pass"
               />
-              <label htmlFor="allowLate" className="text-sm">
-                Allow late submission
-              </label>
-            </div>
-
-            <div className="flex items-center gap-2 pt-6">
-              <input
-                type="checkbox"
-                id="shuffle"
-                checked={homework.shuffleQuestions}
-                onChange={(e) =>
-                  setHomework({ ...homework, shuffleQuestions: e.target.checked })
-                }
-              />
-              <label htmlFor="shuffle" className="text-sm">
-                Shuffle questions
-              </label>
             </div>
           </div>
 
+          {/* Toggles */}
+          <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Allow Late Submission</p>
+                <p className="text-xs text-muted-foreground">Students can submit after the due date</p>
+              </div>
+              <Switch
+                checked={homework.allowLateSubmission}
+                onCheckedChange={(checked) =>
+                  setHomework({ ...homework, allowLateSubmission: checked })
+                }
+              />
+            </div>
+
+            {homework.allowLateSubmission && (
+              <div className="pl-4">
+                <label className="text-xs font-medium">Late Submission Deadline</label>
+                <Input
+                  type="datetime-local"
+                  value={homework.lateSubmissionDeadline || ""}
+                  onChange={(e) =>
+                    setHomework({ ...homework, lateSubmissionDeadline: e.target.value })
+                  }
+                  className="mt-1"
+                />
+              </div>
+            )}
+
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Shuffle Questions</p>
+                <p className="text-xs text-muted-foreground">Each student sees questions in different order</p>
+              </div>
+              <Switch
+                checked={homework.shuffleQuestions}
+                onCheckedChange={(checked) =>
+                  setHomework({ ...homework, shuffleQuestions: checked })
+                }
+              />
+            </div>
+          </div>
+
+          {/* Stats */}
           <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
             <div className="flex items-center gap-4">
               <BookOpen className="w-5 h-5 text-muted-foreground" />
@@ -279,6 +511,132 @@ export function HomeworkCreator({ onSave, onCancel, initialData }: HomeworkCreat
                 {homework.totalPoints}
               </Badge>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Attachments */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Paperclip className="w-5 h-5" />
+            Attachments & Resources
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* File Upload */}
+          <div>
+            <label className="text-sm font-medium mb-2 block">Upload Files</label>
+            <div className="border-2 border-dashed rounded-lg p-6 text-center">
+              <input
+                type="file"
+                id="file-upload"
+                className="hidden"
+                multiple
+                onChange={(e) => {
+                  const files = Array.from(e.target.files || []);
+                  files.forEach(addAttachment);
+                }}
+              />
+              <label htmlFor="file-upload" className="cursor-pointer">
+                <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">
+                  Click to upload or drag and drop
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  PDF, images, documents (max 10MB each)
+                </p>
+              </label>
+            </div>
+          </div>
+
+          {/* Uploaded Files List */}
+          {homework.attachments && homework.attachments.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Uploaded Files</p>
+              {homework.attachments.map((attachment) => (
+                <div
+                  key={attachment.id}
+                  className="flex items-center gap-3 p-3 bg-muted rounded-lg"
+                >
+                  <FileText className="w-5 h-5 text-muted-foreground" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{attachment.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatFileSize(attachment.size)}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={() => removeAttachment(attachment.id)}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* External Links */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium">External Links</label>
+              <Button variant="outline" size="sm" onClick={addExternalLink}>
+                <Link2 className="w-4 h-4 mr-1" />
+                Add Link
+              </Button>
+            </div>
+
+            {homework.externalLinks && homework.externalLinks.length > 0 ? (
+              <div className="space-y-3">
+                {homework.externalLinks.map((link) => (
+                  <div key={link.id} className="flex gap-2">
+                    <Input
+                      value={link.title}
+                      onChange={(e) =>
+                        updateExternalLink(link.id, { title: e.target.value })
+                      }
+                      placeholder="Link title"
+                      className="flex-1"
+                    />
+                    <Input
+                      value={link.url}
+                      onChange={(e) =>
+                        updateExternalLink(link.id, { url: e.target.value })
+                      }
+                      placeholder="https://..."
+                      className="flex-[2]"
+                    />
+                    <select
+                      value={link.provider}
+                      onChange={(e) =>
+                        updateExternalLink(link.id, {
+                          provider: e.target.value as ExternalLink["provider"],
+                        })
+                      }
+                      className="border rounded-md px-3 py-2"
+                    >
+                      <option value="other">Other</option>
+                      <option value="google_drive">Google Drive</option>
+                      <option value="onedrive">OneDrive</option>
+                      <option value="dropbox">Dropbox</option>
+                    </select>
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      onClick={() => removeExternalLink(link.id)}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground p-3 bg-muted rounded-lg">
+                Add links to Google Drive, OneDrive, or other external resources
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -353,7 +711,7 @@ export function HomeworkCreator({ onSave, onCancel, initialData }: HomeworkCreat
                 onClick={() => addQuestion("math_expression")}
               >
                 <Plus className="w-4 h-4 mr-1" />
-                Math Expression
+                Math
               </Button>
               <Button
                 variant="outline"
@@ -361,7 +719,7 @@ export function HomeworkCreator({ onSave, onCancel, initialData }: HomeworkCreat
                 onClick={() => addQuestion("match_following")}
               >
                 <Plus className="w-4 h-4 mr-1" />
-                Match Following
+                Match
               </Button>
             </div>
           </div>
@@ -371,13 +729,29 @@ export function HomeworkCreator({ onSave, onCancel, initialData }: HomeworkCreat
       {/* Actions */}
       <div className="flex justify-end gap-3">
         {onCancel && (
-          <Button variant="outline" onClick={onCancel}>
+          <Button variant="outline" onClick={onCancel} disabled={isSaving}>
             Cancel
           </Button>
         )}
-        <Button onClick={handleSave}>
-          <Save className="w-4 h-4 mr-2" />
-          Save Homework
+        <Button
+          onClick={handleSave}
+          disabled={isSaving || selectedClasses.size === 0}
+          style={{
+            background: "linear-gradient(135deg, rgb(59 130 246) 0%, rgb(37 99 235) 100%)",
+          }}
+          className="text-white hover:opacity-90"
+        >
+          {isSaving ? (
+            <>
+              <span className="w-4 h-4 mr-2 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Save className="w-4 h-4 mr-2" />
+              Save Homework
+            </>
+          )}
         </Button>
       </div>
     </div>

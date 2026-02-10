@@ -5,11 +5,278 @@
 **Target:** Bhutan Middle Schools (Class 6-12) + General SaaS
 **Tech Stack:** Next.js 16 + TypeScript + SQLite/Neon + Clerk + Vercel
 **Developer:** Built with Claude (AI-assisted development)
-**Last Updated:** February 2026
+**Last Updated:** February 10, 2026
+**Project Status:** ~85% UI Complete, ~15% Functional - Needs Deep Implementation
+**Local URL:** http://localhost:3003 (port 3003, NOT 3002)
 
 ---
 
-## Table of Contents
+## 🚨 CURRENT STATUS - FEBRUARY 2026
+
+### What Works vs What Doesn't
+
+**The project has beautiful UI shells but lacks functional depth.** Users land on portals but can't DO anything meaningful.
+
+| Portal | UI Status | Functional Status | What Works | What's Missing |
+|--------|-----------|-------------------|-------------|----------------|
+| `/dashboard` (Public) | 90% | 80% | ✅ All assessments work | Minor tweaks only |
+| `/student` | 90% | 40% | ✅ Homework submission | ❌ Assessment taking, ❌ Graded feedback |
+| `/teacher` | 95% | 5% | ⚠️ Dashboard only | ❌ Create homework, ❌ Grade, ❌ Take attendance |
+| `/parent` | 70% | 30% | ✅ Child overview | ❌ Multi-child support, ❌ Attendance view, ❌ Fee payment |
+| `/counselor` | 60% | 20% | ✅ Dashboard + export | ❌ Student management, ❌ Career plans |
+| `/school-admin` | 85% | 10% | ⚠️ All pages mock data | ❌ Real CRUD, ❌ Detail pages |
+| `/admin` (Platform) | 50% | 0% | ⚠️ Dashboard only | ❌ All subpages missing |
+| `/portal/*` | 100% | 60% | ✅ Loads but deprecated | - Will redirect to main paths |
+
+### Critical Issues to Fix Immediately
+
+1. **404 Errors:**
+   - `/school-admin` → No page.tsx (shows 404)
+   - `/student` → No page.tsx (shows 404)
+
+2. **Missing Core Components:**
+   - `HomeworkCreator` - Teachers can't create homework
+   - `GradingPanel` - Teachers can't grade submissions
+   - `AttendanceTracker` - Teachers can't take attendance
+   - `ChildSelector` - Parents can't switch between children
+
+3. **Mock Data Everywhere:**
+   - 90% of pages use hardcoded data
+   - Need real database integration
+
+### Implementation Priority (Based on Your Selection)
+
+**Priority #1: School Admin** (B2B customer who pays)
+**Priority #2: Teacher Tools** (Enable core workflows)
+**Priority #3: Student/Parent** (End-user experience)
+**Vision: ONE Unified Product** (Career Guidance + School Management combined)
+
+---
+
+## COMPLETE PAGE MAP - ALL ROUTES NEEDED
+
+### Legend
+- ✅ = Exists and works
+- 🔧 = Exists but needs fixing
+- ❌ = Missing (needs creation)
+- 📄 = Page/Route
+
+### 1. SCHOOL ADMIN (`/school-admin`) - PRIORITY #1
+
+```
+/school-admin
+├── /page.tsx                          🔧 FIX: redirect to /dashboard
+├── /dashboard                         ✅ Works (needs real data)
+├── /students                          ✅ Works (needs real data)
+│   ├── /create                        🔧 Add: Create new student
+│   └── /[id]                          ❌ ADD: Student detail page
+├── /teachers                          ✅ Works (needs real data)
+│   └── /[id]                          ❌ ADD: Teacher detail page
+├── /classes                           ✅ Works (needs real data)
+│   └── /[id]                          ❌ ADD: Class detail + roster
+├── /subjects                          ✅ Works (API functional)
+├── /attendance                        ✅ Works (needs real data)
+├── /homework                          ✅ Basic view
+│   └── /[id]                          ❌ ADD: Homework detail
+├── /results                           ✅ Basic view
+│   └── /[id]                          ❌ ADD: Result detail
+├── /fees                              ✅ FeeManager exists
+├── /tuition                           ✅ Works (needs real data)
+├── /analytics                         ✅ Dashboard (needs real data)
+├── /counselors                        ✅ Works (needs real data)
+├── /timetable                         ❌ ADD NEW
+├── /reports                           ❌ ADD NEW
+└── /settings                          ❌ ADD NEW
+```
+
+### 2. TEACHER (`/teacher`) - PRIORITY #2
+
+```
+/teacher
+├── /page.tsx                          ✅ Works (dashboard)
+├── /classes                           ❌ ADD NEW
+├── /homework
+│   ├── /create                        ❌ ADD: Create homework
+│   ├── /[id]/submissions              ❌ ADD: View submissions
+│   └── /submissions/[id]/grade        ❌ ADD: Grade submission
+├── /attendance
+│   └── /take                          🔧 Page exists, component missing
+├── /learning
+│   └── /create                        ❌ ADD: Create module
+├── /students                          ❌ ADD NEW
+└── /grading                           ❌ ADD NEW
+```
+
+### 3. STUDENT (`/student`) - PRIORITY #3
+
+```
+/student
+├── /page.tsx                          🔧 FIX: redirect to /dashboard
+├── /dashboard                         ✅ Works (needs real data)
+├── /homework
+│   └── /[id]/feedback                 ❌ ADD: View graded work
+├── /learning
+│   └── /[id]/certificate              ❌ ADD: Download certificate
+├── /assessments                       ❌ ADD NEW (or link to /dashboard/assessment)
+├── /results                           ❌ ADD NEW
+└── /achievements                      ❌ ADD NEW
+```
+
+### 4. PARENT (`/parent`)
+
+```
+/parent
+├── /page.tsx                          ✅ Works (dashboard)
+├── /children                          🔧 ADD: Child selection
+├── /attendance                        ❌ ADD NEW
+├── /homework                          ❌ ADD NEW
+├── /results                           ❌ ADD NEW
+├── /fees
+│   └── /pay                           ❌ ADD: Pay online (RMA)
+└── /communication                     ❌ ADD NEW
+```
+
+### 5. COUNSELOR (`/counselor`)
+
+```
+/counselor
+├── /page.tsx                          ✅ Works (dashboard)
+├── /students                          ❌ ADD NEW
+│   └── /[id]                          Student profile
+├── /plans                             ❌ ADD NEW
+├── /schedule                          ❌ ADD NEW
+└── /reports                           ❌ ADD NEW
+```
+
+### 6. PLATFORM ADMIN (`/admin`)
+
+```
+/admin
+├── /page.tsx                          ✅ Works (dashboard, mock data)
+├── /schools                           ❌ ADD NEW - CRITICAL
+├── /users                             ❌ ADD NEW - CRITICAL
+├── /content                           ❌ ADD NEW
+├── /billing                           ❌ ADD NEW
+└── /settings                          ❌ ADD NEW
+```
+
+---
+
+## SPRINT IMPLEMENTATION PLAN
+
+### Sprint 1: Fix Critical 404s + School Admin Foundation (Week 1)
+
+**Goal:** Make School Admin portal minimally functional
+
+**Tasks:**
+1. Create `/school-admin/page.tsx` (redirect to dashboard)
+2. Create `/student/page.tsx` (redirect to dashboard)
+3. Connect School Admin dashboard to real data
+4. Implement Student CRUD (Create, Read, Update, Delete)
+5. Implement Class-Student assignment
+
+**Files to Create:**
+- `src/app/school-admin/page.tsx`
+- `src/app/school-admin/students/create/page.tsx`
+- `src/app/school-admin/students/[id]/page.tsx`
+- `src/app/school-admin/classes/[id]/page.tsx`
+
+### Sprint 2: Teacher Tools Foundation (Week 2)
+
+**Goal:** Teachers can create homework and take attendance
+
+**Tasks:**
+1. Create `HomeworkCreator` component
+2. Create `GradingPanel` component
+3. Create `AttendanceTracker` component
+4. Connect to existing APIs
+
+**Files to Create:**
+- `src/components/homework/homework-creator.tsx`
+- `src/components/homework/grading-panel.tsx`
+- `src/components/attendance/attendance-tracker.tsx`
+- `src/app/teacher/homework/create/page.tsx`
+- `src/app/teacher/homework/[id]/grade/page.tsx`
+
+### Sprint 3: Student Feedback & Parent Portal (Week 3)
+
+**Goal:** Students see grades, Parents monitor children
+
+**Tasks:**
+1. Create graded homework feedback view
+2. Create child selector for parents
+3. Create attendance view for parents
+4. Create homework tracking for parents
+
+**Files to Create:**
+- `src/app/student/homework/[id]/feedback/page.tsx`
+- `src/components/parent/child-selector.tsx`
+- `src/app/parent/attendance/page.tsx`
+- `src/app/parent/homework/page.tsx`
+
+### Sprint 4: School Admin Complete (Week 4)
+
+**Goal:** School Admin fully functional
+
+**Tasks:**
+1. Create detail pages
+2. Implement fee payment integration
+3. Create report generation
+4. Replace all mock data with real DB queries
+
+### Sprint 5: Platform Admin (Week 5)
+
+**Goal:** Multi-tenant management
+
+**Files to Create:**
+- `src/app/admin/schools/page.tsx`
+- `src/app/admin/users/page.tsx`
+- `src/app/admin/content/page.tsx`
+
+### Sprint 6: Counselor & Advanced Features (Week 6)
+
+**Goal:** Counselor portal complete
+
+---
+
+## FILE CREATION CHECKLIST
+
+### Day 1 (Fix 404s)
+- [ ] `src/app/school-admin/page.tsx`
+- [ ] `src/app/student/page.tsx`
+
+### Week 1-2 (School Admin)
+- [ ] `src/app/school-admin/students/create/page.tsx`
+- [ ] `src/app/school-admin/students/[id]/page.tsx`
+- [ ] `src/app/school-admin/classes/[id]/page.tsx`
+
+### Week 2 (Teacher)
+- [ ] `src/components/homework/homework-creator.tsx`
+- [ ] `src/components/homework/grading-panel.tsx`
+- [ ] `src/components/attendance/attendance-tracker.tsx`
+- [ ] `src/app/teacher/homework/create/page.tsx`
+- [ ] `src/app/teacher/homework/[id]/grade/page.tsx`
+
+### Week 3 (Student/Parent)
+- [ ] `src/app/student/homework/[id]/feedback/page.tsx`
+- [ ] `src/components/parent/child-selector.tsx`
+- [ ] `src/app/parent/attendance/page.tsx`
+- [ ] `src/app/parent/homework/page.tsx`
+
+### Week 4-5 (Admin)
+- [ ] `src/app/admin/schools/page.tsx`
+- [ ] `src/app/admin/users/page.tsx`
+- [ ] `src/app/admin/content/page.tsx`
+
+---
+
+**Total:** ~50 pages to create, ~15 components
+**Estimated Time:** 6-8 weeks for full functionality
+**Remember:** UI is 85% complete. We're adding functional depth.
+
+---
+
+## Table of Contents (Original)
 
 1. [Project Overview](#project-overview)
 2. [Technology Stack](#technology-stack)
@@ -1930,20 +2197,29 @@ cd "c:/Users/pc/AI Career/career-guidance"
 npm run dev
 ```
 
-URL: http://localhost:3002 (may vary)
+**URL:** http://localhost:3003 (port 3003, NOT 3002!)
 
 ---
 
-## Portal URLs
+## Portal URLs (Updated Feb 2026)
 
-| Portal | URL |
-|--------|-----|
-| Student | `/student` |
-| Teacher | `/teacher` |
-| Parent | `/parent` |
-| Counselor | `/counselor` |
-| Admin | `/admin` |
-| School Admin | `/school-admin` |
+| Portal | URL | Status |
+|--------|-----|--------|
+| **Main Portals** | | |
+| Student | `/student` | 🔧 Fix: needs page.tsx redirect |
+| Teacher | `/teacher` | ✅ Works |
+| Parent | `/parent` | ✅ Works |
+| Counselor | `/counselor` | ✅ Works |
+| School Admin | `/school-admin` | 🔧 Fix: needs page.tsx redirect |
+| Platform Admin | `/admin` | ✅ Works (dashboard only) |
+| **Public** | | |
+| Career Dashboard | `/dashboard` | ✅ Works |
+| **Deprecated** | | |
+| Generic Portals | `/portal/*` | ⚠️ Will redirect to main paths |
+
+**Port Confusion RESOLVED:**
+- Use `/teacher`, `/student`, `/parent`, `/counselor`, `/school-admin`, `/admin` (with sidebars)
+- Deprecate `/portal/*` paths (simpler versions without sidebars)
 
 ---
 
@@ -2029,6 +2305,6 @@ All 4 API routes now return mock data with "under development" messages:
 
 ---
 
-**Last Updated:** February 2026
-**Project Status:** In Active Development
-**Local URL:** http://localhost:3002
+**Last Updated:** February 10, 2026
+**Project Status:** ~85% UI Complete, ~15% Functional - Sprint Implementation Phase
+**Local URL:** http://localhost:3003
