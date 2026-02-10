@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
         results,
         startedAt: new Date(),
         completedAt: new Date(),
+        createdAt: new Date(),
       })
       .returning();
 
@@ -43,6 +44,7 @@ export async function POST(request: NextRequest) {
       userId: user.id,
       valueData: results.values,
       topValues: results.topValues,
+      createdAt: new Date(),
     });
 
     return NextResponse.json({ success: true, assessmentId: assessment.id });

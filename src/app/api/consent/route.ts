@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { consentRecords, users } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 
 // GET /api/consent - Get consent records
 export async function GET(request: NextRequest) {
@@ -45,15 +45,15 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(consentRecords.parentId, currentUser.id));
     }
 
-    let records;
+    let records: any[];
     if (conditions.length > 0) {
       records = await db.query.consentRecords.findMany({
         where: conditions.length === 1 ? conditions[0] : and(...conditions),
-        orderBy: [consentRecords.createdAt, "desc"],
+        orderBy: desc(consentRecords.createdAt),
       });
     } else if (currentUser.type === "admin" || currentUser.type === "counselor") {
       records = await db.query.consentRecords.findMany({
-        orderBy: [consentRecords.createdAt, "desc"],
+        orderBy: desc(consentRecords.createdAt),
       });
     } else {
       records = [];

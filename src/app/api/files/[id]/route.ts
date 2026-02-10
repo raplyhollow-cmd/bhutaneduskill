@@ -7,7 +7,7 @@ import { readFile } from "fs/promises";
 import { join } from "path";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 // GET /api/files/[id] - Download file or get file metadata
@@ -21,8 +21,9 @@ export async function GET(request: NextRequest, { params }: Params) {
     const { searchParams } = new URL(request.url);
     const download = searchParams.get("download") === "true";
 
+    const { id } = await params;
     const file = await db.query.fileStorage.findFirst({
-      where: eq(fileStorage.id, params.id),
+      where: eq(fileStorage.id, id),
     });
 
     if (!file) {
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     // Increment access count
     await db.update(fileStorage)
       .set({ accessCount: (file.accessCount || 0) + 1 })
-      .where(eq(fileStorage.id, params.id));
+      .where(eq(fileStorage.id, id));
 
     // If just getting metadata, return it
     if (!download) {
@@ -94,8 +95,9 @@ export async function DELETE(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    const { id } = await params;
     const file = await db.query.fileStorage.findFirst({
-      where: eq(fileStorage.id, params.id),
+      where: eq(fileStorage.id, id),
     });
 
     if (!file) {
@@ -108,7 +110,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     }
 
     // Delete from database
-    await db.delete(fileStorage).where(eq(fileStorage.id, params.id));
+    await db.delete(fileStorage).where(eq(fileStorage.id, id));
 
     // For local files, you might want to delete the actual file too
     // This is optional depending on your requirements

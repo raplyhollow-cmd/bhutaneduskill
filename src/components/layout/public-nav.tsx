@@ -21,16 +21,16 @@ export function PublicNav({ transparent = false }: PublicNavProps) {
   ];
 
   return (
-    <nav className={`border-b sticky top-0 z-50 ${
-      transparent ? "bg-white/80 backdrop-blur-sm" : "bg-white"
+    <nav className={`border-b sticky top-0 z-50 backdrop-blur-sm ${
+      transparent ? "bg-white/70 dark:bg-black/50" : "bg-white dark:bg-[#131316]"
     }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-gradient-to-br from-primary to-purple-600 rounded-lg flex items-center justify-center shadow-lg">
               <span className="text-white font-bold text-sm">CC</span>
             </div>
-            <span className="font-bold text-xl text-gray-900">Career Compass</span>
+            <span className="font-bold text-xl text-foreground">Career Compass</span>
             <Badge variant="secondary" className="ml-2 hidden sm:inline-flex">Beta</Badge>
           </Link>
 
@@ -40,7 +40,7 @@ export function PublicNav({ transparent = false }: PublicNavProps) {
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-gray-700 hover:text-blue-600 font-medium transition-colors"
+                className="text-foreground hover:text-primary font-medium transition-colors"
               >
                 {link.name}
               </Link>
@@ -52,15 +52,13 @@ export function PublicNav({ transparent = false }: PublicNavProps) {
               <Button variant="ghost">Sign In</Button>
             </Link>
             <Link href="/sign-up">
-              <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                Get Started
-              </Button>
+              <Button>Get Started</Button>
             </Link>
           </div>
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden p-2"
+            className="md:hidden p-2 text-foreground"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             {mobileMenuOpen ? (
@@ -79,7 +77,7 @@ export function PublicNav({ transparent = false }: PublicNavProps) {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="text-gray-700 hover:text-blue-600 font-medium transition-colors py-2"
+                  className="text-foreground hover:text-primary font-medium transition-colors py-2"
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   {link.name}
@@ -90,9 +88,7 @@ export function PublicNav({ transparent = false }: PublicNavProps) {
                   <Button variant="outline" className="w-full">Sign In</Button>
                 </Link>
                 <Link href="/sign-up" onClick={() => setMobileMenuOpen(false)}>
-                  <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                    Get Started
-                  </Button>
+                  <Button className="w-full">Get Started</Button>
                 </Link>
               </div>
             </div>

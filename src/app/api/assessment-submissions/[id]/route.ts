@@ -7,7 +7,7 @@ import { eq } from "drizzle-orm";
 // PATCH /api/assessment-submissions/[id] - Update submission
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
@@ -15,6 +15,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { id } = await params;
     const body = await request.json();
     const { status, startedAt, completedAt, timeSpent } = body;
 
@@ -29,7 +30,7 @@ export async function PATCH(
     const [updatedSubmission] = await db
       .update(assessmentSubmissions)
       .set({ status, startedAt, completedAt, timeSpent })
-      .where(eq(assessmentSubmissions.id, params.id))
+      .where(eq(assessmentSubmissions.id, id))
       .returning();
 
     return NextResponse.json({ submission: updatedSubmission });
@@ -42,7 +43,7 @@ export async function PATCH(
 // GET /api/assessment-submissions/[id] - Get single submission
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
@@ -50,8 +51,10 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { id } = await params;
+
     const submission = await db.query.assessmentSubmissions.findFirst({
-      where: eq(assessmentSubmissions.id, params.id),
+      where: eq(assessmentSubmissions.id, id),
     });
 
     if (!submission) {
@@ -68,7 +71,7 @@ export async function GET(
 // DELETE /api/assessment-submissions/[id] - Delete submission
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
@@ -76,6 +79,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { id } = await params;
     const currentUser = await db.query.users.findFirst({
       where: eq(users.clerkUserId, userId),
     });
@@ -84,7 +88,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    await db.delete(assessmentSubmissions).where(eq(assessmentSubmissions.id, params.id));
+    await db.delete(assessmentSubmissions).where(eq(assessmentSubmissions.id, id));
 
     return NextResponse.json({ success: true });
   } catch (error) {

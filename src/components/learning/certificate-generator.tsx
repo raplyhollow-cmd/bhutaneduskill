@@ -99,7 +99,7 @@ export function CertificateGenerator({
           {data.schoolLogo && (
             <img
               src={data.schoolLogo}
-              alt="School Logo"
+              alt={`${data.schoolName || 'School'} logo`}
               className="w-20 h-20 mb-4"
             />
           )}

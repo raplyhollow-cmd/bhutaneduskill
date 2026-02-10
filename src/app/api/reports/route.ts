@@ -224,29 +224,29 @@ async function generateStudentProfileReport(userId: string, currentUser: any) {
   // Get assessment results
   const allAssessments = await db.query.assessments.findMany({
     where: eq(assessments.userId, userId),
-    orderBy: [assessments.completedAt, "desc"],
+    orderBy: desc(assessments.completedAt),
   });
 
   const riasecResult = await db.query.riasecResults.findFirst({
     where: eq(riasecResults.userId, userId),
-    orderBy: [riasecResults.createdAt, "desc"],
+    orderBy: desc(riasecResults.createdAt),
   });
 
   const mbtiResult = await db.query.mbtiResults.findFirst({
     where: eq(mbtiResults.userId, userId),
-    orderBy: [mbtiResults.createdAt, "desc"],
+    orderBy: desc(mbtiResults.createdAt),
   });
 
   const discResult = await db.query.discResults.findFirst({
     where: eq(discResults.userId, userId),
-    orderBy: [discResults.createdAt, "desc"],
+    orderBy: desc(discResults.createdAt),
   });
 
   // Get career matches
   const careerMatchesData = await db.query.careerMatches.findMany({
     where: eq(careerMatches.userId, userId),
     with: { career: true },
-    orderBy: [careerMatches.matchScore, "desc"],
+    orderBy: desc(careerMatches.matchScore),
     limit: 10,
   });
 
@@ -258,7 +258,7 @@ async function generateStudentProfileReport(userId: string, currentUser: any) {
   // Get exam results
   const examResultsData = await db.query.examResults.findMany({
     where: eq(examResults.userId, userId),
-    orderBy: [examResults.examYear, "desc"],
+    orderBy: desc(examResults.examYear),
   });
 
   return {
@@ -529,7 +529,7 @@ async function generateMyProgressReport(user: any) {
   const careerMatchesData = await db.query.careerMatches.findMany({
     where: eq(careerMatches.userId, user.id),
     with: { career: true },
-    orderBy: [careerMatches.matchScore, "desc"],
+    orderBy: desc(careerMatches.matchScore),
     limit: 5,
   });
 

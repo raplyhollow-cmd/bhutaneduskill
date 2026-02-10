@@ -55,21 +55,21 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#131316]">
       {/* Top Navigation */}
-      <nav className="bg-white border-b sticky top-0 z-50">
+      <nav className="bg-white dark:bg-[#131316] border-b border-border/50 sticky top-0 z-50">
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center gap-8">
               <Link href="/" className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-gradient-to-br from-primary to-purple-600 rounded-lg flex items-center justify-center shadow-lg">
                   <span className="text-white font-bold text-sm">CC</span>
                 </div>
-                <span className="font-bold text-lg text-gray-900">Career Compass</span>
+                <span className="font-bold text-lg text-foreground">Career Compass</span>
               </Link>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">Welcome back!</span>
+              <span className="text-sm text-muted-foreground">Welcome back!</span>
               <Button variant="ghost" size="sm" asChild>
                 <a href="/sign-out">
                   <LogOut className="w-4 h-4 mr-2" />
@@ -83,17 +83,17 @@ export default async function DashboardLayout({ children }: { children: ReactNod
 
       <div className="flex">
         {/* Sidebar Navigation */}
-        <aside className="w-64 bg-white border-r min-h-[calc(100vh-64px)] p-4">
+        <aside className="w-64 bg-white dark:bg-[#0D0D0D] border-r border-border/50 min-h-[calc(100vh-64px)] p-4">
           <nav className="space-y-6">
             {/* Main Navigation */}
             <div>
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-4">Menu</h3>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-4">Menu</h3>
               <nav className="space-y-1">
                 {navigation.map((item) => (
                   <Link
                     key={item.name}
                     href={item.href}
-                    className="flex items-center gap-3 px-4 py-3 text-gray-700 rounded-lg hover:bg-gray-100 transition-colors"
+                    className="flex items-center gap-3 px-4 py-3 text-foreground rounded-lg hover:bg-accent hover:text-accent-foreground transition-all duration-200"
                   >
                     <item.icon className="w-5 h-5" />
                     <span>{item.name}</span>
@@ -104,18 +104,18 @@ export default async function DashboardLayout({ children }: { children: ReactNod
 
             {/* Portals Section */}
             <div>
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-4">Portals</h3>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-4">Portals</h3>
               <nav className="space-y-1">
                 {portals.map((portal) => (
                   <Link
                     key={portal.name}
                     href={portal.href}
-                    className="flex items-center gap-3 px-4 py-2 text-gray-600 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition-colors text-sm"
+                    className="flex items-center gap-3 px-4 py-2 text-muted-foreground rounded-lg hover:bg-accent hover:text-accent-foreground transition-colors text-sm"
                   >
                     <portal.icon className="w-4 h-4" />
                     <div>
                       <span className="font-medium">{portal.name}</span>
-                      <p className="text-xs text-gray-500">{portal.description}</p>
+                      <p className="text-xs text-muted-foreground">{portal.description}</p>
                     </div>
                   </Link>
                 ))}

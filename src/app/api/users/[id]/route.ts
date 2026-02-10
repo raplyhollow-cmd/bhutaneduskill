@@ -7,9 +7,10 @@ import { eq } from "drizzle-orm";
 // GET /api/users/[id] - Get single user
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -24,7 +25,7 @@ export async function GET(
     }
 
     const user = await db.query.users.findFirst({
-      where: eq(users.id, params.id),
+      where: eq(users.id, id),
     });
 
     if (!user) {
@@ -32,7 +33,7 @@ export async function GET(
     }
 
     // Students can only view their own profile
-    if (currentUser.type === "student" && currentUser.id !== params.id) {
+    if (currentUser.type === "student" && currentUser.id !== id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -46,9 +47,10 @@ export async function GET(
 // DELETE /api/users/[id] - Delete user (admin only)
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -62,7 +64,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    await db.delete(users).where(eq(users.id, params.id));
+    await db.delete(users).where(eq(users.id, id));
 
     return NextResponse.json({ success: true });
   } catch (error) {

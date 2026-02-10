@@ -106,7 +106,7 @@ export function CourseCard({
             {course.thumbnailUrl && (
               <img
                 src={course.thumbnailUrl}
-                alt={course.title}
+                alt={`Thumbnail image for the course: ${course.title}`}
                 className="w-24 h-24 object-cover rounded-lg flex-shrink-0"
               />
             )}
@@ -163,7 +163,7 @@ export function CourseCard({
           {course.thumbnailUrl && (
             <img
               src={course.thumbnailUrl}
-              alt={course.title}
+              alt={`Thumbnail image for the course: ${course.title}`}
               className="w-full h-48 object-cover rounded-lg mb-4"
             />
           )}
@@ -186,7 +186,7 @@ export function CourseCard({
                   {course.tutorAvatar ? (
                     <img
                       src={course.tutorAvatar}
-                      alt={course.tutorName}
+                      alt={`${course.tutorName}'s profile photo`}
                       className="w-8 h-8 rounded-full"
                     />
                   ) : (
@@ -300,7 +300,7 @@ export function CourseCard({
       {course.thumbnailUrl && (
         <img
           src={course.thumbnailUrl}
-          alt={course.title}
+          alt={`Thumbnail image for the course: ${course.title}`}
           className="w-full h-40 object-cover"
         />
       )}
@@ -320,7 +320,7 @@ export function CourseCard({
           {course.tutorAvatar ? (
             <img
               src={course.tutorAvatar}
-              alt={course.tutorName}
+              alt={`${course.tutorName}'s profile photo`}
               className="w-6 h-6 rounded-full"
             />
           ) : (

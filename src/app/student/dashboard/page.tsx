@@ -20,16 +20,16 @@ export default function StudentDashboardPage() {
   return (
     <div className="space-y-8">
       {/* Welcome Banner */}
-      <Card className="bg-gradient-to-r from-hunter-green-600 to-hunter-green-700 text-white border-0">
+      <Card style={{ background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)' }} className="text-white border-0">
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold mb-2">Welcome Back!</h1>
-              <p className="text-hunter-green-50">
+              <p className="text-orange-50">
                 Continue your career exploration journey. You're making great progress!
               </p>
             </div>
-            <Sparkles className="w-16 h-16 text-hunter-green-200 opacity-50" />
+            <Sparkles className="w-16 h-16 text-orange-200 opacity-50" />
           </div>
         </CardContent>
       </Card>
@@ -44,7 +44,7 @@ export default function StudentDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-hunter-green-600">3/5</div>
+            <div className="text-2xl font-bold text-orange-600">3/5</div>
             <p className="text-xs text-gray-500 mt-1">Completed</p>
             <Progress value={60} className="h-2 mt-2" />
           </CardContent>
@@ -58,7 +58,7 @@ export default function StudentDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-powder-blue-600">24</div>
+            <div className="text-2xl font-bold text-blue-600">24</div>
             <p className="text-xs text-gray-500 mt-1">Top matches found</p>
           </CardContent>
         </Card>
@@ -71,7 +71,7 @@ export default function StudentDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-oxidized-iron-600">7/12</div>
+            <div className="text-2xl font-bold text-amber-600">7/12</div>
             <p className="text-xs text-gray-500 mt-1">Goals achieved</p>
             <Progress value={58} className="h-2 mt-2" />
           </CardContent>
@@ -85,7 +85,7 @@ export default function StudentDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-ash-grey-600">1,450</div>
+            <div className="text-2xl font-bold text-gray-600">1,450</div>
             <p className="text-xs text-gray-500 mt-1">Level 5</p>
             <Progress value={45} className="h-2 mt-2" />
           </CardContent>
@@ -99,23 +99,23 @@ export default function StudentDashboardPage() {
           <CardDescription>Based on your profile and progress</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between p-4 bg-hunter-green-50 rounded-lg border border-hunter-green-200">
+          <div className="flex items-center justify-between p-4 bg-orange-50 rounded-lg border border-orange-200">
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-hunter-green-100 rounded-full flex items-center justify-center">
-                <ClipboardCheck className="w-5 h-5 text-hunter-green-600" />
+              <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                <ClipboardCheck className="w-5 h-5 text-orange-600" />
               </div>
               <div>
                 <p className="font-medium text-gray-900">Complete DISC Assessment</p>
                 <p className="text-sm text-gray-500">Discover your behavioral style</p>
               </div>
             </div>
-            <Badge className="bg-hunter-green-100 text-hunter-green-700">Recommended</Badge>
+            <Badge className="bg-orange-100 text-orange-700">Recommended</Badge>
           </div>
 
-          <div className="flex items-center justify-between p-4 bg-powder-blue-50 rounded-lg border border-powder-blue-200">
+          <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-powder-blue-100 rounded-full flex items-center justify-center">
-                <Target className="w-5 h-5 text-powder-blue-600" />
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                <Target className="w-5 h-5 text-blue-600" />
               </div>
               <div>
                 <p className="font-medium text-gray-900">Update Your Career Plan</p>
@@ -130,10 +130,10 @@ export default function StudentDashboardPage() {
             </Button>
           </div>
 
-          <div className="flex items-center justify-between p-4 bg-oxidized-iron-50 rounded-lg border border-oxidized-iron-200">
+          <div className="flex items-center justify-between p-4 bg-amber-50 rounded-lg border border-amber-200">
             <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-oxidized-iron-100 rounded-full flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-oxidized-iron-600" />
+              <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                <BookOpen className="w-5 h-5 text-amber-600" />
               </div>
               <div>
                 <p className="font-medium text-gray-900">Explore RUB Colleges</p>

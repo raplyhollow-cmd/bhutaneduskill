@@ -152,7 +152,7 @@ export default function TeacherDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-hunter-green-600">
+            <div className="text-3xl font-bold text-blue-600">
               {teacherStats.totalStudents}
             </div>
             <p className="text-xs text-gray-500 mt-1">Across all classes</p>
@@ -167,7 +167,7 @@ export default function TeacherDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-powder-blue-600">
+            <div className="text-3xl font-bold text-sky-600">
               {teacherStats.activeClasses}
             </div>
             <p className="text-xs text-gray-500 mt-1">This semester</p>
@@ -182,7 +182,7 @@ export default function TeacherDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-oxidized-iron-600">
+            <div className="text-3xl font-bold text-amber-600">
               {teacherStats.pendingAssessments}
             </div>
             <p className="text-xs text-gray-500 mt-1">Awaiting completion</p>
@@ -197,10 +197,10 @@ export default function TeacherDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-ash-grey-600">
+            <div className="text-3xl font-bold text-gray-600">
               {teacherStats.completedThisWeek}
             </div>
-            <p className="text-xs text-hunter-green-600 mt-1">
+            <p className="text-xs text-blue-600 mt-1">
               <TrendingUp className="w-3 h-3 inline mr-1" />
               +12% from last week
             </p>
@@ -208,7 +208,10 @@ export default function TeacherDashboardPage() {
         </Card>
 
         {/* AI Feature Card - NEW */}
-        <Card className="premium-card bg-gradient-to-br from-purple-50 to-powder-blue-50 border-purple-200">
+        <Card
+          className="premium-card border-purple-200"
+          style={{ background: 'linear-gradient(to bottom right, rgb(250 245 255), rgb(219 234 254))' }}
+        >
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-purple-600" />

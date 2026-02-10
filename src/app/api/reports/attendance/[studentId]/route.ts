@@ -5,12 +5,13 @@ import { attendance, users } from "@/lib/db/schema";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
 
 interface Params {
-  params: { studentId: string };
+  params: Promise<{ studentId: string }>;
 }
 
 // GET /api/reports/attendance/[studentId] - Student attendance report
 export async function GET(request: NextRequest, { params }: Params) {
   try {
+    const { studentId } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     }
 
     // Build conditions
-    const conditions = [eq(attendance.studentId, params.studentId)];
+    const conditions = [eq(attendance.studentId, studentId)];
 
     if (startDate) {
       conditions.push(gte(attendance.date, startDate));
@@ -93,7 +94,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     patterns.needsAttention = stats.attendancePercentage < 75;
 
     return NextResponse.json({
-      studentId: params.studentId,
+      studentId: studentId,
       period: { startDate, endDate, termId },
       stats,
       records,

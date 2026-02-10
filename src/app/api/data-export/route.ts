@@ -154,9 +154,20 @@ export async function POST(request: NextRequest) {
       }
 
       case "careerMatches": {
-        let query = db.select().from(careerMatches);
+        // career_matches doesn't have userId, need to join through assessments
+        let query = db.select({
+          id: careerMatches.id,
+          assessmentId: careerMatches.assessmentId,
+          careerId: careerMatches.careerId,
+          matchScore: careerMatches.matchScore,
+          recommendationText: careerMatches.recommendationText,
+          isTopMatch: careerMatches.isTopMatch,
+          createdAt: careerMatches.createdAt,
+          userId: assessments.userId,
+        }).from(careerMatches).innerJoin(assessments, eq(careerMatches.assessmentId, assessments.id));
+
         if (!isAdmin && user.type === "student") {
-          query = query.where(eq(careerMatches.userId, user.id)) as any;
+          query = query.where(eq(assessments.userId, user.id)) as any;
         }
         data = await query.limit(limit || 1000).offset(offset || 0) as any[];
         break;

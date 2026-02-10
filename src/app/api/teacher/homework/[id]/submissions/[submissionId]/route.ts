@@ -6,12 +6,13 @@ import { eq, and } from "drizzle-orm";
 import { gradeHomework, AutoGradingEngine } from "@/lib/auto-grading";
 
 interface Params {
-  params: { id: string; submissionId: string };
+  params: Promise<{ id: string; submissionId: string }>;
 }
 
 // GET /api/teacher/homework/[id]/submissions/[submissionId] - Get submission details
 export async function GET(request: NextRequest, { params }: Params) {
   try {
+    const { id } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 
     // Verify homework ownership
     const homeworkData = await db.query.homework.findFirst({
-      where: eq(homework.id, params.id),
+      where: eq(homework.id, id),
     });
 
     if (!homeworkData || homeworkData.teacherId !== currentUser.id) {
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     }
 
     const submission = await db.query.homeworkSubmissions.findFirst({
-      where: eq(homeworkSubmissions.id, params.submissionId),
+      where: eq(homeworkSubmissions.id, submissionId),
       with: {
         student: true,
       },
@@ -55,6 +56,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 // PUT /api/teacher/homework/[id]/submissions/[submissionId] - Grade submission
 export async function PUT(request: NextRequest, { params }: Params) {
   try {
+    const { id } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -73,7 +75,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
     // Verify homework ownership
     const homeworkData = await db.query.homework.findFirst({
-      where: eq(homework.id, params.id),
+      where: eq(homework.id, id),
     });
 
     if (!homeworkData || homeworkData.teacherId !== currentUser.id) {
@@ -81,7 +83,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
     }
 
     const submission = await db.query.homeworkSubmissions.findFirst({
-      where: eq(homeworkSubmissions.id, params.submissionId),
+      where: eq(homeworkSubmissions.id, submissionId),
     });
 
     if (!submission) {
@@ -121,7 +123,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
     const [updated] = await db.update(homeworkSubmissions)
       .set(updateData)
-      .where(eq(homeworkSubmissions.id, params.submissionId))
+      .where(eq(homeworkSubmissions.id, submissionId))
       .returning();
 
     return NextResponse.json({ submission: updated });

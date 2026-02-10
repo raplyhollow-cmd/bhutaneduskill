@@ -628,7 +628,7 @@ export class AcademicIntegrityChecker {
     }
 
     // Perfect grammar (no common mistakes)
-    const commonMistakes = ["your" instead of "you're", "its" instead of "it's"];
+    const commonMistakes = ["your instead of you're", "its instead of it's"];
     // This is a simplified check
 
     return Math.min(100, probability);

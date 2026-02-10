@@ -8,13 +8,14 @@ import { requireAuth, canAccessSchool } from "@/lib/db/tenant";
 // GET /api/results/[id] - Get single exam result
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const currentUser = await requireAuth();
 
     const result = await db.query.examResults.findFirst({
-      where: eq(examResults.id, params.id),
+      where: eq(examResults.id, id),
       with: {
         user: true,
       },
@@ -50,13 +51,14 @@ export async function GET(
 // PUT /api/results/[id] - Update exam result
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const currentUser = await requireAuth();
 
     const existingResult = await db.query.examResults.findFirst({
-      where: eq(examResults.id, params.id),
+      where: eq(examResults.id, id),
       with: {
         user: true,
       },
@@ -100,7 +102,7 @@ export async function PUT(
         division,
         isVerified: false, // Reset verification on edit
       })
-      .where(eq(examResults.id, params.id))
+      .where(eq(examResults.id, id))
       .returning();
 
     return NextResponse.json({ success: true, result: updatedResult });
@@ -116,13 +118,14 @@ export async function PUT(
 // DELETE /api/results/[id] - Delete exam result
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const currentUser = await requireAuth();
 
     const existingResult = await db.query.examResults.findFirst({
-      where: eq(examResults.id, params.id),
+      where: eq(examResults.id, id),
       with: {
         user: true,
       },
@@ -142,7 +145,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    await db.delete(examResults).where(eq(examResults.id, params.id));
+    await db.delete(examResults).where(eq(examResults.id, id));
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
@@ -157,13 +160,14 @@ export async function DELETE(
 // PATCH /api/results/[id]/verify - Verify exam result
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const currentUser = await requireAuth();
 
     const existingResult = await db.query.examResults.findFirst({
-      where: eq(examResults.id, params.id),
+      where: eq(examResults.id, id),
       with: {
         user: true,
       },
@@ -189,7 +193,7 @@ export async function PATCH(
         isVerified: true,
         verifiedBy: currentUser.id,
       })
-      .where(eq(examResults.id, params.id))
+      .where(eq(examResults.id, id))
       .returning();
 
     return NextResponse.json({ success: true, result: updatedResult });

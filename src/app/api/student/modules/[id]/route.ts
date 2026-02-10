@@ -5,7 +5,7 @@ import { learningModules, moduleProgress, users } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 // GET /api/student/modules/[id] - Get module details
@@ -24,8 +24,9 @@ export async function GET(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const { id } = await params;
     const module = await db.query.learningModules.findFirst({
-      where: eq(learningModules.id, params.id),
+      where: eq(learningModules.id, id),
       with: {
         subject: true,
         teacher: {
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     // Get student's progress
     const progress = await db.query.moduleProgress.findFirst({
       where: and(
-        eq(moduleProgress.moduleId, params.id),
+        eq(moduleProgress.moduleId, id),
         eq(moduleProgress.studentId, currentUser.id)
       ),
     });

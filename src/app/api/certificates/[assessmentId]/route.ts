@@ -7,9 +7,10 @@ import { eq } from "drizzle-orm";
 // GET /api/certificates/[assessmentId] - Generate certificate for completed assessment
 export async function GET(
   request: NextRequest,
-  { params }: { params: { assessmentId: string } }
+  { params }: { params: Promise<{ assessmentId: string }> }
 ) {
   try {
+    const { assessmentId } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -24,7 +25,7 @@ export async function GET(
     }
 
     const assessment = await db.query.assessments.findFirst({
-      where: eq(assessments.id, params.assessmentId),
+      where: eq(assessments.id, assessmentId),
     });
 
     if (!assessment) {

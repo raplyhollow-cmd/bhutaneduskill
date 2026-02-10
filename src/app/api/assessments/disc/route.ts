@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
         results,
         startedAt: new Date(),
         completedAt: new Date(),
+        createdAt: new Date(),
       })
       .returning();
 
@@ -47,6 +48,7 @@ export async function POST(request: NextRequest) {
       conscientiousness: results.conscientiousness,
       discType: results.primaryType,
       traits: results.traits,
+      createdAt: new Date(),
     });
 
     return NextResponse.json({ success: true, assessmentId: assessment.id });

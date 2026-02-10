@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
-import { eq, and, like, or } from "drizzle-orm";
+import { eq, and, like, or, desc } from "drizzle-orm";
 
 // GET /api/users - Get users (with filters for role, school, etc.)
 export async function GET(request: NextRequest) {
@@ -57,17 +57,17 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(users.schoolId, currentUser.schoolId));
     }
 
-    let userList;
+    let userList: any[];
     if (conditions.length > 0) {
       userList = await query.findMany({
         where: conditions.length === 1 ? conditions[0] : and(...conditions),
         limit,
-        orderBy: [users.createdAt, "desc"],
+        orderBy: desc(users.createdAt),
       });
     } else {
       userList = await query.findMany({
         limit,
-        orderBy: [users.createdAt, "desc"],
+        orderBy: desc(users.createdAt),
       });
     }
 

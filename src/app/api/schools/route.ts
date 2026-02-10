@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { schools, users } from "@/lib/db/schema";
-import { eq, like, or } from "drizzle-orm";
+import { eq, like, or, desc } from "drizzle-orm";
 
 // GET /api/schools - Get schools
 export async function GET(request: NextRequest) {
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ schools: [] });
     }
 
-    let schoolList;
+    let schoolList: any[];
     if (search) {
       schoolList = await db.query.schools.findMany({
         where: or(
@@ -44,12 +44,12 @@ export async function GET(request: NextRequest) {
           like(schools.code, `%${search}%`)
         ),
         limit,
-        orderBy: [schools.createdAt, "desc"],
+        orderBy: desc(schools.createdAt),
       });
     } else {
       schoolList = await db.query.schools.findMany({
         limit,
-        orderBy: [schools.createdAt, "desc"],
+        orderBy: desc(schools.createdAt),
       });
     }
 

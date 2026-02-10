@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { counselorNotes, users } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 
 // GET /api/counselor-notes - Get counselor notes
 export async function GET(request: NextRequest) {
@@ -42,11 +42,11 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(counselorNotes.counselorId, currentUser.id));
     }
 
-    let notes;
+    let notes: any[];
     if (conditions.length > 0) {
       notes = await db.query.counselorNotes.findMany({
         where: conditions.length === 1 ? conditions[0] : and(...conditions),
-        orderBy: [counselorNotes.createdAt, "desc"],
+        orderBy: desc(counselorNotes.createdAt),
       });
     } else {
       notes = [];
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
         counselorId: currentUser.id,
         studentId,
         note,
-        isPrivate: isPrivate ? 1 : 0,
+        isPrivate: !!isPrivate,
         createdAt: new Date(),
         updatedAt: new Date(),
       })

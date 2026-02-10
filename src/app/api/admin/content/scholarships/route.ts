@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ scholarship: newScholarship }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: "Validation failed", details: error.errors }, { status: 400 });
+      return NextResponse.json({ error: "Validation failed", details: error.issues }, { status: 400 });
     }
     console.error("Scholarship creation error:", error);
     return NextResponse.json({ error: "Failed to create scholarship" }, { status: 500 });

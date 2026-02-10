@@ -67,7 +67,7 @@ export function AttendanceReports({
   onExport,
 }: AttendanceReportsProps) {
   const [selectedPeriod, setSelectedPeriod] = useState<"week" | "month" | "term">("month");
-  const [selectedTab, setSelectedTab] = useState<"overview" | "students" |="alerts">("overview");
+  const [selectedTab, setSelectedTab] = useState<"overview" | "students" | "alerts">("overview");
 
   // Calculate overall stats
   const overallStats = useMemo(() => {

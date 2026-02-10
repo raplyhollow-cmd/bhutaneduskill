@@ -33,6 +33,7 @@ import {
   Clock,
   Link as LinkIcon,
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface SidebarProps {
   userType: "student" | "teacher" | "parent" | "counselor" | "admin" | "school-admin";
@@ -117,13 +118,44 @@ const navigationItems = {
   ],
 };
 
-const portalColors = {
-  student: "from-hunter-green-600 to-hunter-green-700",
-  teacher: "from-powder-blue-500 to-powder-blue-600",
-  parent: "from-ash-grey-600 to-ash-grey-700",
-  counselor: "from-oxidized-iron-500 to-oxidized-iron-600",
-  admin: "from-lobster-pink-500 to-lobster-pink-600",
-  "school-admin": "from-purple-600 to-purple-700",
+// Clerk-inspired color scheme for each portal type
+const portalStyles = {
+  student: {
+    background: "linear-gradient(180deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)",
+    hoverBg: "rgba(255, 255, 255, 0.15)",
+    activeBg: "rgb(255 255 255)",
+    activeText: "rgb(194 65 12)",
+  },
+  teacher: {
+    background: "linear-gradient(180deg, rgb(59 130 246) 0%, rgb(37 99 235) 100%)",
+    hoverBg: "rgba(255, 255, 255, 0.15)",
+    activeBg: "rgb(255 255 255)",
+    activeText: "rgb(37 99 235)",
+  },
+  parent: {
+    background: "linear-gradient(180deg, rgb(107 114 128) 0%, rgb(75 85 99) 100%)",
+    hoverBg: "rgba(255, 255, 255, 0.15)",
+    activeBg: "rgb(255 255 255)",
+    activeText: "rgb(75 85 99)",
+  },
+  counselor: {
+    background: "linear-gradient(180deg, rgb(168 85 247) 0%, rgb(147 51 234) 100%)",
+    hoverBg: "rgba(255, 255, 255, 0.15)",
+    activeBg: "rgb(255 255 255)",
+    activeText: "rgb(147 51 234)",
+  },
+  admin: {
+    background: "linear-gradient(180deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)",
+    hoverBg: "rgba(255, 255, 255, 0.15)",
+    activeBg: "rgb(255 255 255)",
+    activeText: "rgb(219 39 119)",
+  },
+  "school-admin": {
+    background: "linear-gradient(180deg, rgb(139 92 246) 0%, rgb(124 58 237) 100%)",
+    hoverBg: "rgba(255, 255, 255, 0.15)",
+    activeBg: "rgb(255 255 255)",
+    activeText: "rgb(124 58 237)",
+  },
 };
 
 const portalNames = {
@@ -135,134 +167,300 @@ const portalNames = {
   "school-admin": "School Admin Portal",
 };
 
+const sidebarVariants = {
+  open: {
+    x: 0,
+    transition: {
+      type: "spring",
+      stiffness: 300,
+      damping: 30,
+    },
+  },
+  closed: {
+    x: "-100%",
+    transition: {
+      type: "spring",
+      stiffness: 300,
+      damping: 30,
+    },
+  },
+};
+
+const itemVariants = {
+  open: (i: number) => ({
+    opacity: 1,
+    x: 0,
+    transition: {
+      delay: i * 0.03,
+      type: "spring",
+      stiffness: 300,
+      damping: 24,
+    },
+  }),
+  closed: {
+    opacity: 0,
+    x: -20,
+  },
+};
+
 export function PortalSidebar({ userType, userName, userImage }: SidebarProps) {
   const pathname = usePathname();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navigation = navigationItems[userType];
-  const portalColor = portalColors[userType];
+  const portalStyle = portalStyles[userType];
   const portalName = portalNames[userType];
 
   return (
     <>
       {/* Mobile menu button */}
-      <div className="lg:hidden fixed top-4 left-4 z-50">
+      <motion.div
+        className="lg:hidden fixed top-4 left-4 z-50"
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      >
         <Button
           size="icon"
           variant="outline"
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="bg-white shadow-lg"
+          className="bg-white shadow-lg border-gray-200 hover:bg-gray-50 text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+          aria-label={isMobileMenuOpen ? "Close portal navigation menu" : "Open portal navigation menu"}
+          aria-expanded={isMobileMenuOpen}
+          aria-controls="portal-sidebar"
         >
-          {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          <AnimatePresence mode="wait">
+            {isMobileMenuOpen ? (
+              <motion.div
+                key="close"
+                initial={{ rotate: -90, opacity: 0 }}
+                animate={{ rotate: 0, opacity: 1 }}
+                exit={{ rotate: 90, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <X className="h-5 w-5" />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="menu"
+                initial={{ rotate: 90, opacity: 0 }}
+                animate={{ rotate: 0, opacity: 1 }}
+                exit={{ rotate: -90, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Menu className="h-5 w-5" />
+              </motion.div>
+            )}
+          </AnimatePresence>
         </Button>
-      </div>
-
-      {/* Sidebar */}
-      <aside
-        className={cn(
-          "fixed top-0 left-0 z-40 h-screen w-64 bg-gradient-to-b text-white transition-transform duration-300 ease-in-out",
-          portalColor,
-          "lg:translate-x-0",
-          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-        )}
-      >
-        {/* Portal Header */}
-        <div className="p-6 border-b border-white/10">
-          <Link href={`/${userType}/dashboard`} className="block">
-            <h1 className="text-xl font-bold flex items-center gap-2">
-              <GraduationCap className="w-6 h-6" />
-              Career Compass
-            </h1>
-            <p className="text-sm text-white/70 mt-1">{portalName}</p>
-          </Link>
-        </div>
-
-        {/* User Info */}
-        {userName && (
-          <div className="p-4 border-b border-white/10">
-            <div className="flex items-center gap-3">
-              {userImage ? (
-                <img
-                  src={userImage}
-                  alt={userName}
-                  className="w-10 h-10 rounded-full bg-white/20"
-                />
-              ) : (
-                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                  <span className="font-semibold">
-                    {userName
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                      .toUpperCase()
-                      .slice(0, 2)}
-                  </span>
-                </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{userName}</p>
-                <p className="text-xs text-white/70 capitalize">{userType}</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto p-4">
-          <ul className="space-y-1">
-            {navigation.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-              return (
-                <li key={item.name}>
-                  <Link
-                    href={item.href}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className={cn(
-                      "flex items-center gap-3 px-4 py-3 rounded-lg transition-colors",
-                      isActive
-                        ? "bg-white text-gray-900 shadow-lg"
-                        : "text-white/80 hover:bg-white/10 hover:text-white"
-                    )}
-                  >
-                    <item.icon className="w-5 h-5" />
-                    <span className="font-medium">{item.name}</span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </nav>
-
-        {/* Footer Actions */}
-        <div className="p-4 border-t border-white/10">
-          <Link
-            href={`/${userType}/settings`}
-            className="flex items-center gap-3 px-4 py-3 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
-          >
-            <Settings className="w-5 h-5" />
-            <span>Settings</span>
-          </Link>
-          <Button
-            variant="ghost"
-            className="w-full justify-start text-white/80 hover:bg-white/10 hover:text-white"
-            onClick={() => {
-              // Clerk sign out will be handled here
-              window.location.href = "/sign-out";
-            }}
-          >
-            <LogOut className="w-5 h-5 mr-3" />
-            Sign Out
-          </Button>
-        </div>
-      </aside>
+      </motion.div>
 
       {/* Overlay for mobile */}
-      {isMobileMenuOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            className="fixed inset-0 bg-black/50 z-30 lg:hidden backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={() => setIsMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Sidebar */}
+      <motion.aside
+        id="portal-sidebar"
+        className="fixed top-0 left-0 z-40 h-screen w-64 text-white overflow-hidden"
+        style={{ background: portalStyle.background }}
+        initial={false}
+        variants={sidebarVariants}
+        animate={isMobileMenuOpen ? "open" : "closed"}
+        lg={{
+          x: 0,
+          transition: {
+            type: "spring",
+            stiffness: 300,
+            damping: 30,
+          },
+        }}
+        aria-label={`${portalName} navigation`}
+      >
+        <div className="h-full flex flex-col">
+          {/* Portal Header */}
+          <motion.div
+            className="p-6 border-b border-white/20"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.4 }}
+          >
+            <Link
+              href={`/${userType}/dashboard`}
+              className="block group"
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              <motion.h1
+                className="text-xl font-bold flex items-center gap-2 text-white"
+                whileHover={{ scale: 1.02 }}
+                transition={{ type: "spring", stiffness: 400 }}
+              >
+                <motion.div
+                  animate={{ rotate: [0, 10, -10, 0] }}
+                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+                >
+                  <GraduationCap className="w-6 h-6" />
+                </motion.div>
+                Career Compass
+              </motion.h1>
+              <p className="text-sm text-white/80 mt-1">{portalName}</p>
+            </Link>
+          </motion.div>
+
+          {/* User Info */}
+          {userName && (
+            <motion.div
+              className="p-4 border-b border-white/20"
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15, duration: 0.4 }}
+            >
+              <div className="flex items-center gap-3">
+                {userImage ? (
+                  <motion.img
+                    src={userImage}
+                    alt={userName}
+                    className="w-10 h-10 rounded-full bg-white/20 border-2 border-white/30"
+                    whileHover={{ scale: 1.1, rotate: 5 }}
+                    transition={{ type: "spring", stiffness: 300 }}
+                  />
+                ) : (
+                  <motion.div
+                    className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center border-2 border-white/30"
+                    whileHover={{ scale: 1.1, rotate: 5 }}
+                    transition={{ type: "spring", stiffness: 300 }}
+                  >
+                    <span className="font-semibold text-white">
+                      {userName
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .toUpperCase()
+                        .slice(0, 2)}
+                    </span>
+                  </motion.div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate text-white">{userName}</p>
+                  <p className="text-xs text-white/70 capitalize">{userType}</p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Navigation */}
+          <nav className="flex-1 overflow-y-auto p-4" aria-label={`${portalName} navigation menu`}>
+            <ul role="list" className="space-y-1">
+              {navigation.map((item, index) => {
+                const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                return (
+                  <motion.li
+                    key={item.name}
+                    custom={index}
+                    initial="closed"
+                    animate="open"
+                    variants={itemVariants}
+                  >
+                    <Link
+                      href={item.href}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 relative group focus:outline-none focus:ring-2 focus:ring-white focus:ring-inset"
+                      style={
+                        isActive
+                          ? {
+                              background: portalStyle.activeBg,
+                              color: portalStyle.activeText,
+                            }
+                          : undefined
+                      }
+                      aria-current={isActive ? "page" : undefined}
+                    >
+                      {!isActive && (
+                        <motion.div
+                          className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100"
+                          style={{ background: portalStyle.hoverBg }}
+                          transition={{ duration: 0.2 }}
+                        />
+                      )}
+                      <motion.div
+                        whileHover={{ scale: 1.1, rotate: isActive ? 0 : 5 }}
+                        transition={{ type: "spring", stiffness: 300 }}
+                        className="relative z-10"
+                      >
+                        <item.icon className="w-5 h-5" style={{ color: isActive ? portalStyle.activeText : 'white' }} />
+                      </motion.div>
+                      <span className="font-medium relative z-10" style={{ color: isActive ? portalStyle.activeText : 'white' }}>{item.name}</span>
+                      {isActive && (
+                        <motion.div
+                          className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
+                          style={{ background: portalStyle.activeText }}
+                          layoutId="activeIndicator"
+                          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                        />
+                      )}
+                    </Link>
+                  </motion.li>
+                );
+              })}
+            </ul>
+          </nav>
+
+          {/* Footer Actions */}
+          <motion.div
+            className="p-4 border-t border-white/20"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.4 }}
+            role="group"
+            aria-label="Account actions"
+          >
+            <Link
+              href={`/${userType}/settings`}
+              className="flex items-center gap-3 px-4 py-3 rounded-lg text-white hover:bg-white/10 transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-white focus:ring-inset"
+              aria-label="Go to settings page"
+            >
+              <motion.div
+                whileHover={{ scale: 1.1, rotate: 5 }}
+                transition={{ type: "spring", stiffness: 300 }}
+                aria-hidden="true"
+              >
+                <Settings className="w-5 h-5 text-white" />
+              </motion.div>
+              <span className="font-medium text-white">Settings</span>
+            </Link>
+            <motion.button
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-white hover:bg-white/10 transition-all duration-200 mt-1 group focus:outline-none focus:ring-2 focus:ring-white focus:ring-inset"
+              onClick={() => {
+                window.location.href = "/sign-out";
+              }}
+              whileHover={{ x: 4 }}
+              whileTap={{ scale: 0.98 }}
+              aria-label="Sign out of your account"
+              type="button"
+            >
+              <motion.div
+                whileHover={{ scale: 1.1, rotate: -5 }}
+                transition={{ type: "spring", stiffness: 300 }}
+                aria-hidden="true"
+              >
+                <LogOut className="w-5 h-5 text-white" />
+              </motion.div>
+              <span className="font-medium text-white">Sign Out</span>
+            </motion.button>
+          </motion.div>
+        </div>
+      </motion.aside>
     </>
   );
 }
@@ -278,40 +476,60 @@ export function PortalHeader({
   title?: string;
   subtitle?: string;
 }) {
+  const portalStyle = portalStyles[userType];
+
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
+    <header className="bg-white/95 backdrop-blur-md border-b border-gray-200 sticky top-0 z-30 shadow-sm">
       <div className="px-6 py-4">
         <div className="flex items-center justify-between">
-          <div className="flex-1">
+          <motion.div
+            className="flex-1"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4 }}
+          >
             <h1 className="text-2xl font-bold text-gray-900">{title || "Dashboard"}</h1>
-            {subtitle && <p className="text-sm text-gray-500 mt-1">{subtitle}</p>}
-          </div>
-          <div className="flex items-center gap-4">
+            {subtitle && <p className="text-sm text-gray-600 mt-1">{subtitle}</p>}
+          </motion.div>
+          <motion.div
+            className="flex items-center gap-4"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+          >
             {/* Notifications placeholder */}
-            <Button variant="ghost" size="icon" className="relative">
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-              <MessageSquare className="w-5 h-5 text-gray-600" />
-            </Button>
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+              <Button variant="ghost" size="icon" className="relative hover:bg-gray-100">
+                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+                <MessageSquare className="w-5 h-5 text-gray-700" />
+              </Button>
+            </motion.div>
+
             {/* User menu */}
             {userName && (
-              <div className="flex items-center gap-3">
+              <motion.div
+                className="flex items-center gap-3"
+                whileHover={{ scale: 1.02 }}
+                transition={{ type: "spring", stiffness: 300 }}
+              >
                 <div className="text-right hidden sm:block">
                   <p className="font-medium text-gray-900">{userName}</p>
-                  <p className="text-xs text-gray-500 capitalize">{userType}</p>
+                  <p className="text-xs text-gray-600 capitalize">{userType}</p>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-hunter-green-100 flex items-center justify-center">
-                  <span className="font-semibold text-hunter-green-700">
-                    {userName
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                      .toUpperCase()
-                      .slice(0, 2)}
-                  </span>
+                <div
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold shadow-md"
+                  style={{ background: portalStyle.background }}
+                >
+                  {userName
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .toUpperCase()
+                    .slice(0, 2)}
                 </div>
-              </div>
+              </motion.div>
             )}
-          </div>
+          </motion.div>
         </div>
       </div>
     </header>

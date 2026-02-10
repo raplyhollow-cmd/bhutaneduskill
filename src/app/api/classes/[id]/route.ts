@@ -7,16 +7,17 @@ import { eq } from "drizzle-orm";
 // GET /api/classes/[id] - Get single class
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const classData = await db.query.classes.findFirst({
-      where: eq(classes.id, params.id),
+      where: eq(classes.id, id),
       with: {
         teacher: true,
         school: true,
@@ -37,9 +38,10 @@ export async function GET(
 // PUT /api/classes/[id] - Update class
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -56,7 +58,7 @@ export async function PUT(
 
     // Check permissions - must be admin or the class teacher
     const classData = await db.query.classes.findFirst({
-      where: eq(classes.id, params.id),
+      where: eq(classes.id, id),
     });
 
     if (!classData) {
@@ -70,7 +72,7 @@ export async function PUT(
     const [updatedClass] = await db
       .update(classes)
       .set({ ...body, updatedAt: new Date() })
-      .where(eq(classes.id, params.id))
+      .where(eq(classes.id, id))
       .returning();
 
     return NextResponse.json({ class: updatedClass });
@@ -83,9 +85,10 @@ export async function PUT(
 // DELETE /api/classes/[id] - Delete class
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -99,7 +102,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    await db.delete(classes).where(eq(classes.id, params.id));
+    await db.delete(classes).where(eq(classes.id, id));
 
     return NextResponse.json({ success: true });
   } catch (error) {

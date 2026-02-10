@@ -91,7 +91,7 @@ export default function CounselorDashboardPage() {
               Export Data
             </Link>
           </Button>
-          <Button className="bg-hunter-green-600 hover:bg-hunter-green-700" asChild>
+          <Button className="bg-purple-600 hover:bg-purple-700" asChild>
             <Link href="/counselor/students">
               <Users className="w-4 h-4 mr-2" />
               View All Students
@@ -110,7 +110,7 @@ export default function CounselorDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-hunter-green-600">{counselorStats.totalStudents}</div>
+            <div className="text-2xl font-bold text-purple-600">{counselorStats.totalStudents}</div>
             <p className="text-xs text-gray-500">Across all schools</p>
           </CardContent>
         </Card>
@@ -123,7 +123,7 @@ export default function CounselorDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-powder-blue-600">{counselorStats.activeSchools}</div>
+            <div className="text-2xl font-bold text-blue-600">{counselorStats.activeSchools}</div>
             <p className="text-xs text-gray-500">Partner schools</p>
           </CardContent>
         </Card>
@@ -136,7 +136,7 @@ export default function CounselorDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-oxidized-iron-600">{counselorStats.pendingReports}</div>
+            <div className="text-2xl font-bold text-amber-600">{counselorStats.pendingReports}</div>
             <p className="text-xs text-gray-500">Awaiting action</p>
           </CardContent>
         </Card>
@@ -149,8 +149,8 @@ export default function CounselorDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-ash-grey-600">{counselorStats.assessmentsThisWeek}</div>
-            <p className="text-xs text-hunter-green-600">+15% this week</p>
+            <div className="text-2xl font-bold text-gray-600">{counselorStats.assessmentsThisWeek}</div>
+            <p className="text-xs text-purple-600">+15% this week</p>
           </CardContent>
         </Card>
 
@@ -193,8 +193,8 @@ export default function CounselorDashboardPage() {
                   >
                     <div className="flex-1">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-hunter-green-100 rounded-full flex items-center justify-center">
-                          <span className="text-hunter-green-700 font-medium">
+                        <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                          <span className="text-purple-700 font-medium">
                             {student.name.split(" ").map((n) => n[0]).join("")}
                           </span>
                         </div>
@@ -252,7 +252,7 @@ export default function CounselorDashboardPage() {
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div
-                      className="bg-gradient-to-r from-hunter-green-500 to-hunter-green-600 h-2 rounded-full transition-all"
+                      className="h-2 rounded-full transition-all" style={{ background: 'linear-gradient(to right, rgb(139 92 246), rgb(124 58 237))' }}
                       style={{ width: `${school.completion}%` }}
                     />
                   </div>
@@ -271,8 +271,8 @@ export default function CounselorDashboardPage() {
         <Card className="premium-card hover:shadow-lg transition-shadow cursor-pointer">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-hunter-green-100 rounded-lg flex items-center justify-center">
-                <Users className="w-6 h-6 text-hunter-green-600" />
+              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                <Users className="w-6 h-6 text-purple-600" />
               </div>
               <div>
                 <p className="font-medium">Manage Students</p>
@@ -285,8 +285,8 @@ export default function CounselorDashboardPage() {
         <Card className="premium-card hover:shadow-lg transition-shadow cursor-pointer">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-powder-blue-100 rounded-lg flex items-center justify-center">
-                <FileText className="w-6 h-6 text-powder-blue-600" />
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <FileText className="w-6 h-6 text-blue-600" />
               </div>
               <div>
                 <p className="font-medium">Generate Reports</p>
@@ -299,8 +299,8 @@ export default function CounselorDashboardPage() {
         <Card className="premium-card hover:shadow-lg transition-shadow cursor-pointer">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-oxidized-iron-100 rounded-lg flex items-center justify-center">
-                <Download className="w-6 h-6 text-oxidized-iron-600" />
+              <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
+                <Download className="w-6 h-6 text-amber-600" />
               </div>
               <div>
                 <p className="font-medium">Export Data</p>
@@ -326,12 +326,12 @@ export default function CounselorDashboardPage() {
       </div>
 
       {/* Data Value Banner - Shows company the value of data */}
-      <Card className="bg-gradient-to-r from-hunter-green-50 to-powder-blue-50 border-hunter-green-200">
+      <Card className="border-purple-200" style={{ background: 'linear-gradient(to right, rgb(168 85 247 / 0.1), rgb(59 130 246 / 0.1))' }}>
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-hunter-green-100 rounded-lg flex items-center justify-center">
-                <Target className="w-6 h-6 text-hunter-green-600" />
+              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                <Target className="w-6 h-6 text-purple-600" />
               </div>
               <div>
                 <h3 className="font-semibold text-gray-900">Your Students' Data is Valuable</h3>

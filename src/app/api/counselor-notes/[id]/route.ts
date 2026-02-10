@@ -7,16 +7,17 @@ import { eq } from "drizzle-orm";
 // GET /api/counselor-notes/[id] - Get single note
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const note = await db.query.counselorNotes.findFirst({
-      where: eq(counselorNotes.id, params.id),
+      where: eq(counselorNotes.id, id),
     });
 
     if (!note) {
@@ -33,9 +34,10 @@ export async function GET(
 // PUT /api/counselor-notes/[id] - Update note
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -51,7 +53,7 @@ export async function PUT(
     }
 
     const note = await db.query.counselorNotes.findFirst({
-      where: eq(counselorNotes.id, params.id),
+      where: eq(counselorNotes.id, id),
     });
 
     if (!note) {
@@ -66,7 +68,7 @@ export async function PUT(
     const [updatedNote] = await db
       .update(counselorNotes)
       .set({ ...body, updatedAt: new Date() })
-      .where(eq(counselorNotes.id, params.id))
+      .where(eq(counselorNotes.id, id))
       .returning();
 
     return NextResponse.json({ note: updatedNote });
@@ -79,9 +81,10 @@ export async function PUT(
 // DELETE /api/counselor-notes/[id] - Delete note
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -96,7 +99,7 @@ export async function DELETE(
     }
 
     const note = await db.query.counselorNotes.findFirst({
-      where: eq(counselorNotes.id, params.id),
+      where: eq(counselorNotes.id, id),
     });
 
     if (!note) {
@@ -108,7 +111,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    await db.delete(counselorNotes).where(eq(counselorNotes.id, params.id));
+    await db.delete(counselorNotes).where(eq(counselorNotes.id, id));
 
     return NextResponse.json({ success: true });
   } catch (error) {

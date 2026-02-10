@@ -6,12 +6,13 @@ import { eq, and } from "drizzle-orm";
 import { gradeHomework } from "@/lib/auto-grading";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 // GET /api/student/homework/[id] - Get homework details
 export async function GET(request: NextRequest, { params }: Params) {
   try {
+    const { id } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     }
 
     const homeworkData = await db.query.homework.findFirst({
-      where: eq(homework.id, params.id),
+      where: eq(homework.id, id),
       with: {
         class: true,
         subject: true,
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     // Get existing submission if any
     const submission = await db.query.homeworkSubmissions.findFirst({
       where: and(
-        eq(homeworkSubmissions.homeworkId, params.id),
+        eq(homeworkSubmissions.homeworkId, id),
         eq(homeworkSubmissions.studentId, currentUser.id)
       ),
     });
@@ -65,6 +66,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 // POST /api/student/homework/[id] - Submit homework
 export async function POST(request: NextRequest, { params }: Params) {
   try {
+    const { id } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -83,7 +85,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     // Get homework details
     const homeworkData = await db.query.homework.findFirst({
-      where: eq(homework.id, params.id),
+      where: eq(homework.id, id),
     });
 
     if (!homeworkData) {
@@ -97,7 +99,7 @@ export async function POST(request: NextRequest, { params }: Params) {
     // Check for existing submission
     const existingSubmission = await db.query.homeworkSubmissions.findFirst({
       where: and(
-        eq(homeworkSubmissions.homeworkId, params.id),
+        eq(homeworkSubmissions.homeworkId, id),
         eq(homeworkSubmissions.studentId, currentUser.id)
       ),
     });
@@ -122,7 +124,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     // Prepare submission data
     const submissionData: any = {
-      homeworkId: params.id,
+      homeworkId: id,
       studentId: currentUser.id,
       answers: answers || {},
       attachments: attachments || [],
@@ -178,6 +180,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 // PUT /api/student/homework/[id] - Update draft
 export async function PUT(request: NextRequest, { params }: Params) {
   try {
+    const { id } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -197,7 +200,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
     // Find existing draft submission
     const existingSubmission = await db.query.homeworkSubmissions.findFirst({
       where: and(
-        eq(homeworkSubmissions.homeworkId, params.id),
+        eq(homeworkSubmissions.homeworkId, id),
         eq(homeworkSubmissions.studentId, currentUser.id)
       ),
     });

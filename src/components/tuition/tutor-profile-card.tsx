@@ -82,7 +82,7 @@ export function TutorProfileCard({
           <div className="flex items-start gap-4">
             <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center text-xl font-bold text-primary flex-shrink-0">
               {tutor.avatar ? (
-                <img src={tutor.avatar} alt={tutor.name} className="w-full h-full rounded-full" />
+                <img src={tutor.avatar} alt={`${tutor.name}'s profile photo`} className="w-full h-full rounded-full" />
               ) : (
                 tutor.name.split(" ").map((n) => n[0]).join("")
               )}
@@ -153,7 +153,7 @@ export function TutorProfileCard({
           <div className="flex items-start gap-6">
             <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center text-2xl font-bold text-primary flex-shrink-0">
               {tutor.avatar ? (
-                <img src={tutor.avatar} alt={tutor.name} className="w-full h-full rounded-full" />
+                <img src={tutor.avatar} alt={`${tutor.name}'s profile photo`} className="w-full h-full rounded-full" />
               ) : (
                 tutor.name.split(" ").map((n) => n[0]).join("")
               )}
@@ -282,7 +282,7 @@ export function TutorProfileCard({
         <div className="flex items-start gap-4">
           <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center text-lg font-bold text-primary flex-shrink-0">
             {tutor.avatar ? (
-              <img src={tutor.avatar} alt={tutor.name} className="w-full h-full rounded-full" />
+              <img src={tutor.avatar} alt={`${tutor.name}'s profile photo`} className="w-full h-full rounded-full" />
             ) : (
               tutor.name.split(" ").map((n) => n[0]).join("")
             )}

@@ -1,0 +1,88 @@
+# Career Compass - Claude Rules
+# Auto-loaded by Claude Code at start of every session
+
+## Project Context
+- **Name:** Career Compass + School Management System
+- **Stack:** Next.js 16 + TypeScript + SQLite/Neon + Clerk + Vercel
+- **Status:** ~85% complete - 6 portals, 91 API routes, 40+ DB tables
+- **Blockers:** CSS class errors, boolean type issues, portal layout inconsistencies
+
+## Critical Rules (Read These First)
+
+### 1. NEVER Use These Tailwind Classes (They Don't Exist)
+```
+from-hunter-green-*, to-hunter-green-*
+from-powder-blue-*, to-powder-blue-*
+from-ash-grey-*, to-ash-grey-*
+from-oxidized-iron-*, to-oxidized-iron-*
+from-lobster-pink-*, to-lobster-pink-*
+bg-ash-grey-*
+```
+
+### 2. ALWAYS Use Inline Styles for Gradients
+```tsx
+// ✅ Correct
+<div style={{ background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)' }}>
+
+// ❌ Wrong
+<div className="bg-gradient-to-r from-hunter-green-600 to-hunter-green-700">
+```
+
+### 3. Portal Color System (Use These RGB Values)
+```typescript
+student:     "rgb(249 115 22) → rgb(194 65 12)"    // Orange
+teacher:     "rgb(59 130 246) → rgb(37 99 235)"    // Blue
+parent:      "rgb(107 114 128) → rgb(75 85 99)"    // Gray
+counselor:   "rgb(168 85 247) → rgb(147 51 234)"   // Purple
+admin:       "rgb(236 72 153) → rgb(219 39 119)"   // Pink
+school-admin: "rgb(139 92 246) → rgb(124 58 237)" // Violet
+```
+
+### 4. Boolean Type Rule (SQLite)
+```tsx
+// ✅ Correct
+isPrivate: !!isPrivate
+isActive: true
+
+// ❌ Wrong
+isPrivate: isPrivate ? 1 : 0
+isActive: 1
+```
+
+### 5. File References (Use @ Mentions)
+- Schema: `@schema.ts` - All 40+ tables defined here
+- API routes: `@src/app/api/` - 91 routes
+- Portal layouts: `@src/app/[portal]/layout.tsx`
+
+## Known Issues to Fix
+
+### Priority 1: Build Blockers
+1. **CSS Class Errors** - 7 files need inline gradient styles
+2. **Boolean Types** - 2 API routes need `!!value` instead of `? 1 : 0`
+3. **Portal Layouts** - Parent/Counselor need layout rewrite
+
+### Priority 2: Polish
+- Mobile responsiveness for tables
+- Loading skeletons
+- Accessibility (ARIA labels, alt text)
+
+## Development Workflow
+
+### Local Dev
+```bash
+cd "c:/Users/pc/AI Career/career-guidance"
+npm run dev
+# Runs at http://localhost:3002
+```
+
+### Before Making Changes
+1. Read the existing file first
+2. Check CLAUDE.md for context
+3. Use `@filename` to reference specific files
+
+## Deployment Readiness
+- ✅ Authentication: Clerk integrated
+- ✅ Database: Schema complete (SQLite → Neon migration pending)
+- ✅ API: 91 routes with rate limiting
+- ⏳ Payment: RMA code ready (needs testing)
+- ⏳ Services: Resend, PostHog, Sentry pending

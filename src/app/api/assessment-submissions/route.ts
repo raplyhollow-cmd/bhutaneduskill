@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { assessmentSubmissions, users, assessments } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 
 // GET /api/assessment-submissions - Get submissions
 export async function GET(request: NextRequest) {
@@ -50,15 +50,15 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(assessmentSubmissions.assignedBy, currentUser.id));
     }
 
-    let submissions;
+    let submissions: any[];
     if (conditions.length > 0) {
       submissions = await db.query.assessmentSubmissions.findMany({
         where: conditions.length === 1 ? conditions[0] : and(...conditions),
-        orderBy: [assessmentSubmissions.createdAt, "desc"],
+        orderBy: desc(assessmentSubmissions.createdAt),
       });
     } else {
       submissions = await db.query.assessmentSubmissions.findMany({
-        orderBy: [assessmentSubmissions.createdAt, "desc"],
+        orderBy: desc(assessmentSubmissions.createdAt),
       });
     }
 

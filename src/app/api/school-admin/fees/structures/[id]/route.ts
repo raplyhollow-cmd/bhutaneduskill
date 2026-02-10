@@ -5,7 +5,7 @@ import { feeStructures, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 // GET /api/school-admin/fees/structures/[id] - Get structure details
@@ -16,8 +16,9 @@ export async function GET(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { id } = await params;
     const structure = await db.query.feeStructures.findFirst({
-      where: eq(feeStructures.id, params.id),
+      where: eq(feeStructures.id, id),
     });
 
     if (!structure) {
@@ -50,6 +51,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const { id } = await params;
     const [updated] = await db.update(feeStructures)
       .set({
         ...(name !== undefined && { name }),
@@ -61,7 +63,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
         ...(isActive !== undefined && { isActive }),
         updatedAt: new Date(),
       })
-      .where(eq(feeStructures.id, params.id))
+      .where(eq(feeStructures.id, id))
       .returning();
 
     return NextResponse.json({ structure: updated });
@@ -87,9 +89,10 @@ export async function DELETE(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const { id } = await params;
     await db.update(feeStructures)
       .set({ isActive: false, updatedAt: new Date() })
-      .where(eq(feeStructures.id, params.id));
+      .where(eq(feeStructures.id, id));
 
     return NextResponse.json({ success: true });
   } catch (error) {

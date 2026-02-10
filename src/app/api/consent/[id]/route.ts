@@ -7,9 +7,10 @@ import { eq } from "drizzle-orm";
 // PATCH /api/consent/[id] - Update consent status (approve/revoke)
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -31,7 +32,7 @@ export async function PATCH(
     }
 
     const record = await db.query.consentRecords.findFirst({
-      where: eq(consentRecords.id, params.id),
+      where: eq(consentRecords.id, id),
     });
 
     if (!record) {
@@ -56,7 +57,7 @@ export async function PATCH(
     const [updatedRecord] = await db
       .update(consentRecords)
       .set(updateData)
-      .where(eq(consentRecords.id, params.id))
+      .where(eq(consentRecords.id, id))
       .returning();
 
     return NextResponse.json({ record: updatedRecord });
@@ -69,16 +70,17 @@ export async function PATCH(
 // GET /api/consent/[id] - Get single consent record
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const record = await db.query.consentRecords.findFirst({
-      where: eq(consentRecords.id, params.id),
+      where: eq(consentRecords.id, id),
     });
 
     if (!record) {

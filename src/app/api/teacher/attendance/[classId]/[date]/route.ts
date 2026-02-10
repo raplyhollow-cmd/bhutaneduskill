@@ -5,12 +5,13 @@ import { attendance, users, classes, enrollments } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 
 interface Params {
-  params: { classId: string; date: string };
+  params: Promise<{ classId: string; date: string }>;
 }
 
 // GET /api/teacher/attendance/[classId]/[date] - Get attendance for class on date
 export async function GET(request: NextRequest, { params }: Params) {
   try {
+    const { classId, date } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     // Get class students
     const classEnrollments = await db.query.enrollments.findMany({
       where: and(
-        eq(enrollments.classId, params.classId),
+        eq(enrollments.classId, classId),
         eq(enrollments.status, "active")
       ),
       with: {
@@ -40,8 +41,8 @@ export async function GET(request: NextRequest, { params }: Params) {
     // Get existing attendance records for this date
     const existingRecords = await db.query.attendance.findMany({
       where: and(
-        eq(attendance.classId, params.classId),
-        eq(attendance.date, params.date)
+        eq(attendance.classId, classId),
+        eq(attendance.date, date)
       ),
     });
 
@@ -54,8 +55,8 @@ export async function GET(request: NextRequest, { params }: Params) {
     }));
 
     return NextResponse.json({
-      date: params.date,
-      classId: params.classId,
+      date: date,
+      classId: classId,
       students: studentsWithAttendance,
     });
   } catch (error) {
@@ -67,6 +68,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 // POST /api/teacher/attendance/[classId]/[date] - Mark attendance for entire class
 export async function POST(request: NextRequest, { params }: Params) {
   try {
+    const { classId, date } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -97,9 +99,9 @@ export async function POST(request: NextRequest, { params }: Params) {
         // Check for existing record
         const existing = await db.query.attendance.findFirst({
           where: and(
-            eq(attendance.classId, params.classId),
+            eq(attendance.classId, classId),
             eq(attendance.studentId, studentId),
-            eq(attendance.date, params.date)
+            eq(attendance.date, date)
           ),
         });
 
@@ -125,9 +127,9 @@ export async function POST(request: NextRequest, { params }: Params) {
             .values({
               id: `att_${Date.now()}_${studentId}`,
               schoolId: currentUser.schoolId,
-              classId: params.classId,
+              classId: classId,
               studentId,
-              date: params.date,
+              date: date,
               status,
               notes,
               reason,

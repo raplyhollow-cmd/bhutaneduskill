@@ -5,7 +5,7 @@ import { learningModules, moduleProgress, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 // GET /api/teacher/modules/[id] - Get module details
@@ -24,8 +24,9 @@ export async function GET(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const { id } = await params;
     const module = await db.query.learningModules.findFirst({
-      where: eq(learningModules.id, params.id),
+      where: eq(learningModules.id, id),
       with: {
         subject: true,
         teacher: {
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 
     // Get enrollment stats
     const enrollments = await db.query.moduleProgress.findMany({
-      where: eq(moduleProgress.moduleId, params.id),
+      where: eq(moduleProgress.moduleId, id),
     });
 
     const stats = {
@@ -82,9 +83,10 @@ export async function PUT(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const { id } = await params;
     // Verify ownership
     const existing = await db.query.learningModules.findFirst({
-      where: eq(learningModules.id, params.id),
+      where: eq(learningModules.id, id),
     });
 
     if (!existing) {
@@ -107,7 +109,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
         ...(maxEnrollments !== undefined && { maxEnrollments }),
         updatedAt: new Date(),
       })
-      .where(eq(learningModules.id, params.id))
+      .where(eq(learningModules.id, id))
       .returning();
 
     return NextResponse.json({ module: updated });
@@ -133,9 +135,10 @@ export async function DELETE(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const { id } = await params;
     // Verify ownership
     const existing = await db.query.learningModules.findFirst({
-      where: eq(learningModules.id, params.id),
+      where: eq(learningModules.id, id),
     });
 
     if (!existing || existing.teacherId !== currentUser.id) {
@@ -144,14 +147,14 @@ export async function DELETE(request: NextRequest, { params }: Params) {
 
     // Check for enrollments
     const enrollments = await db.query.moduleProgress.findMany({
-      where: eq(moduleProgress.moduleId, params.id),
+      where: eq(moduleProgress.moduleId, id),
     });
 
     if (enrollments.length > 0) {
       return NextResponse.json({ error: "Cannot delete module with enrollments" }, { status: 400 });
     }
 
-    await db.delete(learningModules).where(eq(learningModules.id, params.id));
+    await db.delete(learningModules).where(eq(learningModules.id, id));
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -179,8 +182,9 @@ export async function POST(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const { id } = await params;
     const existing = await db.query.learningModules.findFirst({
-      where: eq(learningModules.id, params.id),
+      where: eq(learningModules.id, id),
     });
 
     if (!existing || existing.teacherId !== currentUser.id) {
@@ -190,7 +194,7 @@ export async function POST(request: NextRequest, { params }: Params) {
     if (action === "publish") {
       const [updated] = await db.update(learningModules)
         .set({ isPublished: true, updatedAt: new Date() })
-        .where(eq(learningModules.id, params.id))
+        .where(eq(learningModules.id, id))
         .returning();
 
       return NextResponse.json({ module: updated });

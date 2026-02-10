@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { users, assessments, mbtiResults } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 
 export async function POST(request: NextRequest) {
   try {
@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
         results,
         startedAt: new Date(),
         completedAt: new Date(),
+        createdAt: new Date(),
       })
       .returning();
 
@@ -50,6 +51,7 @@ export async function POST(request: NextRequest) {
       jpScore: results.jpScore,
       personalityType: results.type,
       traits: results.traits,
+      createdAt: new Date(),
     });
 
     return NextResponse.json({ success: true, assessmentId: assessment.id });
@@ -76,7 +78,7 @@ export async function GET(request: NextRequest) {
 
     const userResults = await db.query.mbtiResults.findMany({
       where: eq(mbtiResults.userId, user.id),
-      orderBy: [mbtiResults.createdAt, "desc"],
+      orderBy: desc(mbtiResults.createdAt),
       limit: 10,
     });
 

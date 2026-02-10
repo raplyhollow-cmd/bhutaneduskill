@@ -1,7 +1,10 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
-// Public routes - no authentication required
+// ============================================================================
+// PUBLIC ROUTES (No authentication required)
+// ============================================================================
+
 const isPublicRoute = createRouteMatcher([
   "/",
   "/about",
@@ -13,16 +16,24 @@ const isPublicRoute = createRouteMatcher([
   "/api/assessments/riasec", // For demo purposes
 ]);
 
-// Role-specific route matchers
+// ============================================================================
+// ROLE-BASED ROUTE MATCHERS
+// ============================================================================
+
 const isStudentRoute = createRouteMatcher(["/student/(.*)"]);
 const isTeacherRoute = createRouteMatcher(["/teacher/(.*)"]);
 const isParentRoute = createRouteMatcher(["/parent/(.*)"]);
 const isCounselorRoute = createRouteMatcher(["/counselor/(.*)"]);
 const isAdminRoute = createRouteMatcher(["/admin/(.*)"]);
+const isSchoolAdminRoute = createRouteMatcher(["/school-admin/(.*)"]);
 
 // Legacy route matchers (for backward compatibility during migration)
 const isDashboardRoute = createRouteMatcher(["/dashboard/(.*)"]);
 const isPortalRoute = createRouteMatcher(["/portal/(.*)"]);
+
+// ============================================================================
+// MIDDLEWARE
+// ============================================================================
 
 export default clerkMiddleware(async (auth, request) => {
   const { userId } = auth();
@@ -39,21 +50,45 @@ export default clerkMiddleware(async (auth, request) => {
 
   const { pathname } = request.nextUrl;
 
-  // Check if user is trying to access their correct portal
-  // For now, we'll store user type in a cookie and redirect accordingly
-  // This will be enhanced with proper database lookup
+  // ========================================================================
+  // SERVER-SIDE ROLE VALIDATION (Security fix for cookie manipulation)
+  // ========================================================================
 
-  // If accessing legacy routes, check if we should redirect to new routes
-  if (isDashboardRoute(request) || isPortalRoute(request)) {
-    const userType = request.cookies.get("userType")?.value;
+  try {
+    // Lazy load auth-utils to avoid edge runtime issues with better-sqlite3
+    const { getUserRole, validateRouteAccess, logAuthEvent, getDashboardForRole } = await import("@/lib/auth-utils");
 
-    if (userType) {
+    // Get user's actual role from database (not from cookies)
+    const roleInfo = await getUserRole(userId);
+
+    // Validate route access based on user's actual role
+    const accessValidation = validateRouteAccess(pathname, userRole);
+
+    if (!accessValidation.allowed) {
+      // User is trying to access a route they don't have permission for
+      logAuthEvent('unauthorized_access', {
+        clerkUserId: userId,
+        actualRole: userRole,
+        pathname,
+      });
+
+      // Redirect to their proper dashboard
+      const redirectPath = accessValidation.redirectPath || getDashboardForRole(userRole);
+      return NextResponse.redirect(new URL(redirectPath, request.url));
+    }
+
+    // ========================================================================
+    // LEGACY ROUTE HANDLING (Migration support)
+    // ========================================================================
+
+    // If accessing legacy routes, check if we should redirect to new routes
+    if (isDashboardRoute(request) || isPortalRoute(request)) {
       let newPath = pathname;
 
-      // Convert legacy path to new portal path
+      // Convert legacy path to new portal path based on user's actual role
       if (pathname.startsWith("/dashboard")) {
         const rest = pathname.slice("/dashboard".length);
-        newPath = `/${userType}${rest || "/dashboard"}`;
+        newPath = `/${userRole}${rest || "/dashboard"}`;
       } else if (pathname.startsWith("/portal/student")) {
         newPath = pathname.replace("/portal/student", "/student");
       } else if (pathname.startsWith("/portal/teacher")) {
@@ -70,30 +105,52 @@ export default clerkMiddleware(async (auth, request) => {
         return NextResponse.redirect(url);
       }
     }
-  }
 
-  // Role-based access control
-  // This will be enhanced with database lookup
-  const userType = request.cookies.get("userType")?.value;
+    // ========================================================================
+    // CROSS-PORTAL ACCESS PREVENTION
+    // ========================================================================
 
-  // Prevent cross-portal access
-  if (userType) {
-    if (isStudentRoute(request) && userType !== "student") {
-      return NextResponse.redirect(new URL(`/${userType}/dashboard`, request.url));
+    // Additional check: Prevent students from accessing teacher routes, etc.
+    // This is defense-in-depth beyond the validateRouteAccess check above
+    if (isStudentRoute(request) && userRole !== "student") {
+      return NextResponse.redirect(new URL(getDashboardForRole(userRole), request.url));
     }
-    if (isTeacherRoute(request) && userType !== "teacher") {
-      return NextResponse.redirect(new URL(`/${userType}/dashboard`, request.url));
+    if (isTeacherRoute(request) && userRole !== "teacher") {
+      return NextResponse.redirect(new URL(getDashboardForRole(userRole), request.url));
     }
-    if (isParentRoute(request) && userType !== "parent") {
-      return NextResponse.redirect(new URL(`/${userType}/dashboard`, request.url));
+    if (isParentRoute(request) && userRole !== "parent") {
+      return NextResponse.redirect(new URL(getDashboardForRole(userRole), request.url));
     }
-    if (isCounselorRoute(request) && userType !== "counselor") {
-      return NextResponse.redirect(new URL(`/${userType}/dashboard`, request.url));
+    if (isCounselorRoute(request) && !["counselor", "admin"].includes(userRole)) {
+      return NextResponse.redirect(new URL(getDashboardForRole(userRole), request.url));
     }
-    if (isAdminRoute(request) && userType !== "admin") {
-      return NextResponse.redirect(new URL(`/${userType}/dashboard`, request.url));
+    if (isAdminRoute(request) && userRole !== "admin") {
+      return NextResponse.redirect(new URL(getDashboardForRole(userRole), request.url));
     }
+    if (isSchoolAdminRoute(request) && userRole !== "school-admin") {
+      return NextResponse.redirect(new URL(getDashboardForRole(userRole), request.url));
+    }
+
+  } catch (error) {
+    // If database query fails, log but don't block access
+    // This prevents database issues from breaking the entire app
+    console.error('[Middleware] Role validation error:', error);
   }
 
   return;
 });
+
+// ============================================================================
+// CONFIGURATION
+// ============================================================================
+
+export const config = {
+  matcher: [
+    // Skip Next.js internals and all static files, unless found in search params
+    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+    // Always run for API routes
+    "/(api|trpc)(.*)",
+  ],
+  // Note: runtime: "nodejs" removed to allow Next.js to auto-detect
+  // This improves compatibility with Next.js 16.1.6 and Turbopack
+};

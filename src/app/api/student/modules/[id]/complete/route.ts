@@ -5,7 +5,7 @@ import { moduleProgress, learningModules, users } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 // POST /api/student/modules/[id]/complete - Mark module as completed
@@ -27,9 +27,10 @@ export async function POST(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const { id } = await params;
     const progress = await db.query.moduleProgress.findFirst({
       where: and(
-        eq(moduleProgress.moduleId, params.id),
+        eq(moduleProgress.moduleId, id),
         eq(moduleProgress.studentId, currentUser.id)
       ),
     });
@@ -41,7 +42,7 @@ export async function POST(request: NextRequest, { params }: Params) {
     const now = new Date();
 
     // Generate certificate URL (placeholder)
-    const certificateUrl = `/certificates/modules/${params.id}/${currentUser.id}.pdf`;
+    const certificateUrl = `/certificates/modules/${id}/${currentUser.id}.pdf`;
 
     const [updated] = await db.update(moduleProgress)
       .set({

@@ -11,7 +11,6 @@ import { ReactNode } from "react";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { PortalSidebar, PortalHeader } from "@/components/shared/portal-sidebar";
-import { getPortalConfig } from "@/lib/routing-manager";
 
 export default async function SchoolAdminLayout({ children }: { children: ReactNode }) {
   const { userId } = await auth();
@@ -20,19 +19,17 @@ export default async function SchoolAdminLayout({ children }: { children: ReactN
     redirect("/sign-in");
   }
 
-  const portalConfig = getPortalConfig("school-admin");
-
   return (
-    <div className="min-h-screen bg-ash-grey-50">
+    <div className="min-h-screen bg-gray-50">
       <PortalSidebar userType="school-admin" />
       <div className="lg:pl-64">
         <PortalHeader userType="school-admin" />
         <main className="p-6">
           {/* Portal Banner */}
-          <div className={`mb-6 bg-gradient-to-r ${portalConfig.theme.gradient} text-white rounded-xl p-6 shadow-lg premium-card`}>
+          <div className="mb-6 text-white rounded-xl p-6 shadow-lg premium-card" style={{ background: 'linear-gradient(135deg, rgb(139 92 246) 0%, rgb(124 58 237) 100%)' }}>
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-bold mb-1">Welcome to {portalConfig.name}</h1>
+                <h1 className="text-2xl font-bold mb-1">Welcome to School Admin Portal</h1>
                 <p className="text-white/90">
                   Manage your school, students, teachers, and track progress all in one place.
                 </p>

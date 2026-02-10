@@ -134,7 +134,7 @@ export function ModuleViewer({
             {module.thumbnailUrl && (
               <img
                 src={module.thumbnailUrl}
-                alt={module.title}
+                alt={`Thumbnail image for the learning module: ${module.title}`}
                 className="w-32 h-32 object-cover rounded-lg"
               />
             )}
@@ -346,7 +346,7 @@ function ContentRenderer({ content }: ContentRendererProps) {
       return (
         <div className="rounded-lg overflow-hidden">
           {content.fileUrl ? (
-            <img src={content.fileUrl} alt={content.title} className="w-full" />
+            <img src={content.fileUrl} alt={`Image for: ${content.title || 'learning content'}`} className="w-full" />
           ) : (
             <div className="w-full h-64 bg-muted flex items-center justify-center">
               Image not available

@@ -1,15 +1,14 @@
 /**
  * COUNSELOR PORTAL LAYOUT
  *
+ * For counselors to manage students, generate reports, and provide guidance.
  * Uses the centralized PortalSidebar for consistent navigation.
- * Counselors can manage students, generate reports, and provide guidance.
  */
 
 import { ReactNode } from "react";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { PortalSidebar, PortalHeader } from "@/components/shared/portal-sidebar";
-import { getPortalConfig } from "@/lib/routing-manager";
 
 export default async function CounselorLayout({ children }: { children: ReactNode }) {
   const { userId } = await auth();
@@ -18,19 +17,22 @@ export default async function CounselorLayout({ children }: { children: ReactNod
     redirect("/sign-in");
   }
 
-  const portalConfig = getPortalConfig("counselor");
+  // Counselor portal uses purple gradient
+  const bannerStyle = {
+    background: 'linear-gradient(135deg, rgb(168 85 247) 0%, rgb(147 51 234) 100%)'
+  };
 
   return (
-    <div className="min-h-screen bg-ash-grey-50">
+    <div className="min-h-screen bg-gray-50">
       <PortalSidebar userType="counselor" />
       <div className="lg:pl-64">
         <PortalHeader userType="counselor" />
         <main className="p-6">
           {/* Portal Banner */}
-          <div className={`mb-6 bg-gradient-to-r ${portalConfig.theme.gradient} text-white rounded-xl p-6 shadow-lg premium-card`}>
+          <div className="mb-6 text-white rounded-xl p-6 shadow-lg premium-card" style={bannerStyle}>
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-2xl font-bold mb-1">Welcome to {portalConfig.name}</h1>
+                <h1 className="text-2xl font-bold mb-1">Welcome to Counselor Portal</h1>
                 <p className="text-white/90">
                   Manage students, generate reports, and provide career guidance.
                 </p>

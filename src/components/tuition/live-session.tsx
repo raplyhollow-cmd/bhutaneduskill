@@ -25,7 +25,7 @@ import {
   Maximize2,
   Minimize2,
   Clock,
-  Record,
+  Circle,
 } from "lucide-react";
 
 export interface SessionParticipant {
@@ -143,12 +143,12 @@ export function LiveSession({ session, currentUserId, onEnd }: LiveSessionProps)
         <div className="flex items-center gap-4">
           <h1 className="text-white font-semibold">{session.title}</h1>
           <Badge variant="outline" className="bg-red-500/20 text-red-400 border-red-500/50">
-            <Record className="w-3 h-3 mr-1 animate-pulse" />
+            <Circle className="w-3 h-3 mr-1 animate-pulse" />
             LIVE
           </Badge>
           {isRecording && (
             <Badge className="bg-red-600 text-white">
-              <Record className="w-3 h-3 mr-1" />
+              <Circle className="w-3 h-3 mr-1" />
               Recording
             </Badge>
           )}
@@ -328,7 +328,7 @@ export function LiveSession({ session, currentUserId, onEnd }: LiveSessionProps)
               size="icon"
               onClick={toggleRecording}
             >
-              <Record className="w-5 h-5" />
+              <Circle className="w-5 h-5" />
             </Button>
 
             <Button

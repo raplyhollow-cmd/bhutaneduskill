@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { assessmentTypes, users } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 
 // GET /api/assessment-types - Get assessment types
 export async function GET(request: NextRequest) {
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Build conditions - only show active assessments
-    const conditions = [eq(assessmentTypes.isActive, 1)];
+    const conditions = [eq(assessmentTypes.isActive, true)];
 
     if (category) {
       conditions.push(eq(assessmentTypes.category, category));
@@ -38,16 +38,16 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(assessmentTypes.targetGrade, targetGrade));
     }
 
-    let types;
+    let types: any[];
     if (conditions.length > 1) {
       types = await db.query.assessmentTypes.findMany({
         where: and(...conditions),
-        orderBy: [assessmentTypes.createdAt, "desc"],
+        orderBy: desc(assessmentTypes.createdAt),
       });
     } else {
       types = await db.query.assessmentTypes.findMany({
-        where: eq(assessmentTypes.isActive, 1),
-        orderBy: [assessmentTypes.createdAt, "desc"],
+        where: eq(assessmentTypes.isActive, true),
+        orderBy: desc(assessmentTypes.createdAt),
       });
     }
 
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
         category,
         duration,
         questionCount,
-        isActive: 1,
+        isActive: true,
         createdAt: new Date(),
       })
       .returning();

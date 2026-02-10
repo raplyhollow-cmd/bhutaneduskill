@@ -7,9 +7,10 @@ import { eq } from "drizzle-orm";
 // GET /api/plans/[id] - Get single career plan
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -24,7 +25,7 @@ export async function GET(
     }
 
     const plan = await db.query.careerPlans.findFirst({
-      where: eq(careerPlans.id, params.id),
+      where: eq(careerPlans.id, id),
     });
 
     if (!plan) {
@@ -46,9 +47,10 @@ export async function GET(
 // PUT /api/plans/[id] - Update career plan
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -66,7 +68,7 @@ export async function PUT(
     }
 
     const existingPlan = await db.query.careerPlans.findFirst({
-      where: eq(careerPlans.id, params.id),
+      where: eq(careerPlans.id, id),
     });
 
     if (!existingPlan) {
@@ -91,7 +93,7 @@ export async function PUT(
         updatedAt: new Date(),
         completedAt: status === "completed" ? new Date() : existingPlan.completedAt,
       })
-      .where(eq(careerPlans.id, params.id))
+      .where(eq(careerPlans.id, id))
       .returning();
 
     return NextResponse.json({ plan: updatedPlan });
@@ -104,9 +106,10 @@ export async function PUT(
 // DELETE /api/plans/[id] - Delete career plan
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -121,7 +124,7 @@ export async function DELETE(
     }
 
     const existingPlan = await db.query.careerPlans.findFirst({
-      where: eq(careerPlans.id, params.id),
+      where: eq(careerPlans.id, id),
     });
 
     if (!existingPlan) {
@@ -133,7 +136,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    await db.delete(careerPlans).where(eq(careerPlans.id, params.id));
+    await db.delete(careerPlans).where(eq(careerPlans.id, id));
 
     return NextResponse.json({ success: true });
   } catch (error) {

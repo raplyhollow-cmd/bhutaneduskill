@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    let enrollments;
+    let enrollments: any[];
 
     if (type === "tutor") {
       // Get tutor's enrollments

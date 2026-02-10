@@ -5,12 +5,13 @@ import { homeworkSubmissions, users } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 // POST /api/student/homework/[id]/draft - Save or create draft
 export async function POST(request: NextRequest, { params }: Params) {
   try {
+    const { id } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest, { params }: Params) {
     // Check for existing submission
     const existingSubmission = await db.query.homeworkSubmissions.findFirst({
       where: and(
-        eq(homeworkSubmissions.homeworkId, params.id),
+        eq(homeworkSubmissions.homeworkId, id),
         eq(homeworkSubmissions.studentId, currentUser.id)
       ),
     });
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       const [created] = await db.insert(homeworkSubmissions)
         .values({
           id: `sub_${Date.now()}`,
-          homeworkId: params.id,
+          homeworkId: id,
           studentId: currentUser.id,
           answers: answers || {},
           attachments: attachments || [],

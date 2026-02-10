@@ -5,7 +5,7 @@ import { moduleProgress, learningModules, users } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 // POST /api/student/modules/[id]/progress - Update progress
@@ -27,10 +27,11 @@ export async function POST(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const { id } = await params;
     // Get existing progress
     const progress = await db.query.moduleProgress.findFirst({
       where: and(
-        eq(moduleProgress.moduleId, params.id),
+        eq(moduleProgress.moduleId, id),
         eq(moduleProgress.studentId, currentUser.id)
       ),
     });
@@ -51,7 +52,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     // Get module to calculate progress percentage
     const module = await db.query.learningModules.findFirst({
-      where: eq(learningModules.id, params.id),
+      where: eq(learningModules.id, id),
     });
 
     const totalLessons = module?.lessons?.length || 1;

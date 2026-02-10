@@ -71,6 +71,7 @@ export async function POST(req: NextRequest) {
         hollandCode,
         traits: results.traits || [],
         careerSuggestions: results.careerSuggestions || [],
+        createdAt: new Date(),
       });
     }
 
@@ -111,7 +112,7 @@ export async function POST(req: NextRequest) {
         assessmentId: assessment.id,
         careerId: match.careerId,
         matchScore: match.matchScore,
-        isTopMatch: match.matchScore > 75 ? 1 : 0,
+        isTopMatch: match.matchScore > 75 ? true : false,
         createdAt: new Date(),
       });
     }

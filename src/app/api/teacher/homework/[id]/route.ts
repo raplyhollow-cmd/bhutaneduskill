@@ -5,12 +5,13 @@ import { homework, users, homeworkSubmissions } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 // GET /api/teacher/homework/[id] - Get homework details
 export async function GET(request: NextRequest, { params }: Params) {
   try {
+    const { id } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     }
 
     const homeworkData = await db.query.homework.findFirst({
-      where: eq(homework.id, params.id),
+      where: eq(homework.id, id),
       with: {
         class: true,
         subject: true,
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 
     // Get submission stats
     const submissions = await db.query.homeworkSubmissions.findMany({
-      where: eq(homeworkSubmissions.homeworkId, params.id),
+      where: eq(homeworkSubmissions.homeworkId, id),
     });
 
     const stats = {
@@ -63,6 +64,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 // PUT /api/teacher/homework/[id] - Update homework
 export async function PUT(request: NextRequest, { params }: Params) {
   try {
+    const { id } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -81,7 +83,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
     // Verify ownership
     const existingHomework = await db.query.homework.findFirst({
-      where: eq(homework.id, params.id),
+      where: eq(homework.id, id),
     });
 
     if (!existingHomework) {
@@ -109,7 +111,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
         ...(showAnswersAfter !== undefined && { showAnswersAfter }),
         updatedAt: new Date(),
       })
-      .where(eq(homework.id, params.id))
+      .where(eq(homework.id, id))
       .returning();
 
     return NextResponse.json({ homework: updatedHomework });
@@ -122,6 +124,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
 // DELETE /api/teacher/homework/[id] - Delete homework
 export async function DELETE(request: NextRequest, { params }: Params) {
   try {
+    const { id } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -137,7 +140,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
 
     // Verify ownership
     const existingHomework = await db.query.homework.findFirst({
-      where: eq(homework.id, params.id),
+      where: eq(homework.id, id),
     });
 
     if (!existingHomework) {
@@ -150,14 +153,14 @@ export async function DELETE(request: NextRequest, { params }: Params) {
 
     // Check if there are submissions
     const submissions = await db.query.homeworkSubmissions.findMany({
-      where: eq(homeworkSubmissions.homeworkId, params.id),
+      where: eq(homeworkSubmissions.homeworkId, id),
     });
 
     if (submissions.length > 0) {
       return NextResponse.json({ error: "Cannot delete homework with submissions" }, { status: 400 });
     }
 
-    await db.delete(homework).where(eq(homework.id, params.id));
+    await db.delete(homework).where(eq(homework.id, id));
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -169,6 +172,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
 // POST /api/teacher/homework/[id] - Publish homework
 export async function POST(request: NextRequest, { params }: Params) {
   try {
+    const { id } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -187,7 +191,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     // Verify ownership
     const existingHomework = await db.query.homework.findFirst({
-      where: eq(homework.id, params.id),
+      where: eq(homework.id, id),
     });
 
     if (!existingHomework) {
@@ -201,7 +205,7 @@ export async function POST(request: NextRequest, { params }: Params) {
     if (action === "publish") {
       const [publishedHomework] = await db.update(homework)
         .set({ isPublished: true, updatedAt: new Date() })
-        .where(eq(homework.id, params.id))
+        .where(eq(homework.id, id))
         .returning();
 
       return NextResponse.json({ homework: publishedHomework });
@@ -210,7 +214,7 @@ export async function POST(request: NextRequest, { params }: Params) {
     if (action === "unpublish") {
       const [unpublishedHomework] = await db.update(homework)
         .set({ isPublished: false, updatedAt: new Date() })
-        .where(eq(homework.id, params.id))
+        .where(eq(homework.id, id))
         .returning();
 
       return NextResponse.json({ homework: unpublishedHomework });

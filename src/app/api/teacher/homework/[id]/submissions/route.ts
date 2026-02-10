@@ -5,12 +5,13 @@ import { homework, homeworkSubmissions, users } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 // GET /api/teacher/homework/[id]/submissions - Get all submissions
 export async function GET(request: NextRequest, { params }: Params) {
   try {
+    const { id } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 
     // Verify homework ownership
     const homeworkData = await db.query.homework.findFirst({
-      where: eq(homework.id, params.id),
+      where: eq(homework.id, id),
     });
 
     if (!homeworkData) {
@@ -41,10 +42,10 @@ export async function GET(request: NextRequest, { params }: Params) {
     }
 
     // Get submissions
-    let submissions;
+    let submissions: any[];
     if (status && status !== "all") {
       submissions = await db.query.homeworkSubmissions.findMany({
-        where: eq(homeworkSubmissions.homeworkId, params.id),
+        where: eq(homeworkSubmissions.homeworkId, id),
         with: {
           student: true,
         },
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       submissions = submissions.filter(s => s.status === status);
     } else {
       submissions = await db.query.homeworkSubmissions.findMany({
-        where: eq(homeworkSubmissions.homeworkId, params.id),
+        where: eq(homeworkSubmissions.homeworkId, id),
         with: {
           student: true,
         },

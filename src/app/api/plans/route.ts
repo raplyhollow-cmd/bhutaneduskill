@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { careerPlans } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { requireAuth } from "@/lib/db/tenant";
 
 export async function GET(request: NextRequest) {
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
 
     const plans = await db.query.careerPlans.findMany({
       where: eq(careerPlans.userId, user.id),
-      orderBy: [careerPlans.createdAt, "desc"],
+      orderBy: desc(careerPlans.createdAt),
       limit: 10,
     });
 

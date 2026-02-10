@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { classes, users } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 
 // GET /api/classes - Get classes
 export async function GET(request: NextRequest) {
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(classes.teacherId, currentUser.id));
     }
 
-    let classList;
+    let classList: any[];
     if (conditions.length > 0) {
       classList = await db.query.classes.findMany({
         where: conditions.length === 1 ? conditions[0] : and(...conditions),
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
           teacher: true,
           school: true,
         },
-        orderBy: [classes.createdAt, "desc"],
+        orderBy: desc(classes.createdAt),
       });
     } else {
       classList = await db.query.classes.findMany({
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
           teacher: true,
           school: true,
         },
-        orderBy: [classes.createdAt, "desc"],
+        orderBy: desc(classes.createdAt),
       });
     }
 

@@ -5,14 +5,15 @@ import { tutors, users, tutorReviews } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
 // GET /api/tuition/tutors/[id] - Get tutor profile
 export async function GET(request: NextRequest, { params }: Params) {
   try {
+    const { id } = await params;
     const tutor = await db.query.tutors.findFirst({
-      where: eq(tutors.id, params.id),
+      where: eq(tutors.id, id),
       with: {
         user: {
           columns: {
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 
     // Get recent reviews
     const reviews = await db.query.tutorReviews.findMany({
-      where: eq(tutorReviews.tutorId, params.id),
+      where: eq(tutorReviews.tutorId, id),
       where: eq(tutorReviews.isPublic, true),
       with: {
         student: {
@@ -72,9 +73,10 @@ export async function PUT(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    const { id } = await params;
     // Verify ownership
     const tutor = await db.query.tutors.findFirst({
-      where: eq(tutors.id, params.id),
+      where: eq(tutors.id, id),
     });
 
     if (!tutor) {
@@ -100,7 +102,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
         ...(availableSlots !== undefined && { availableSlots }),
         ...(bankAccount !== undefined && { bankAccount }),
       })
-      .where(eq(tutors.id, params.id))
+      .where(eq(tutors.id, id))
       .returning();
 
     return NextResponse.json({ tutor: updated });

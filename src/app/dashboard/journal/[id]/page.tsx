@@ -282,7 +282,7 @@ export default function JournalDetailPage() {
               )}
             </CardContent>
           </Card>
-        )}
+        )
       )}
     </div>
   );

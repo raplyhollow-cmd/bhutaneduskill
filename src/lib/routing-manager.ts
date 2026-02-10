@@ -66,6 +66,7 @@ export interface PortalConfig {
   theme: {
     primary: string;
     gradient: string;
+    gradientInline: string;
     icon: any;
   };
   routes: RouteConfig[];
@@ -81,8 +82,9 @@ export const portalConfigs: Record<UserRole, PortalConfig> = {
     name: "Student Portal",
     basePath: "/student",
     theme: {
-      primary: "hunter-green",
-      gradient: "from-hunter-green-600 to-hunter-green-700",
+      primary: "orange",
+      gradient: "from-orange-600 to-orange-700",
+      gradientInline: "linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)",
       icon: GraduationCap,
     },
     routes: [
@@ -233,8 +235,9 @@ export const portalConfigs: Record<UserRole, PortalConfig> = {
     name: "Teacher Portal",
     basePath: "/teacher",
     theme: {
-      primary: "powder-blue",
-      gradient: "from-powder-blue-500 to-powder-blue-600",
+      primary: "blue",
+      gradient: "from-blue-600 to-blue-700",
+      gradientInline: "linear-gradient(135deg, rgb(59 130 246) 0%, rgb(37 99 235) 100%)",
       icon: GraduationCap,
     },
     routes: [
@@ -343,8 +346,9 @@ export const portalConfigs: Record<UserRole, PortalConfig> = {
     name: "Parent Portal",
     basePath: "/parent",
     theme: {
-      primary: "neutral",
-      gradient: "from-ash-grey-600 to-ash-grey-700",
+      primary: "gray",
+      gradient: "from-gray-600 to-gray-700",
+      gradientInline: "linear-gradient(135deg, rgb(107 114 128) 0%, rgb(75 85 99) 100%)",
       icon: Users,
     },
     routes: [
@@ -417,8 +421,9 @@ export const portalConfigs: Record<UserRole, PortalConfig> = {
     name: "Counselor Portal",
     basePath: "/counselor",
     theme: {
-      primary: "oxidized-iron",
-      gradient: "from-oxidized-iron-600 to-oxidized-iron-700",
+      primary: "purple",
+      gradient: "from-purple-600 to-purple-700",
+      gradientInline: "linear-gradient(135deg, rgb(168 85 247) 0%, rgb(147 51 234) 100%)",
       icon: GraduationCap,
     },
     routes: [
@@ -501,8 +506,9 @@ export const portalConfigs: Record<UserRole, PortalConfig> = {
     name: "Admin Portal",
     basePath: "/admin",
     theme: {
-      primary: "accent",
-      gradient: "from-oxidized-iron-500 to-oxidized-iron-600",
+      primary: "pink",
+      gradient: "from-pink-600 to-pink-700",
+      gradientInline: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)",
       icon: Settings,
     },
     routes: [
@@ -585,8 +591,9 @@ export const portalConfigs: Record<UserRole, PortalConfig> = {
     name: "School Admin Portal",
     basePath: "/school-admin",
     theme: {
-      primary: "oxidized-iron",
-      gradient: "from-oxidized-iron-600 to-hunter-green-600",
+      primary: "violet",
+      gradient: "from-violet-600 to-violet-700",
+      gradientInline: "linear-gradient(135deg, rgb(139 92 246) 0%, rgb(124 58 237) 100%)",
       icon: Building2,
     },
     routes: [

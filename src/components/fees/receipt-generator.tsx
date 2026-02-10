@@ -148,7 +148,7 @@ export function ReceiptGenerator({
           <div className="text-center border-b-2 border-black pb-4 mb-4">
             <div className="flex items-center justify-center gap-4">
               {data.schoolLogo && (
-                <img src={data.schoolLogo} alt="Logo" className="w-16 h-16" />
+                <img src={data.schoolLogo} alt={`${data.schoolName} logo`} className="w-16 h-16" />
               )}
               <div>
                 <h1 className="text-2xl font-bold">{data.schoolName}</h1>

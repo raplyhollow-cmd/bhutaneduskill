@@ -171,7 +171,7 @@ export default function SchoolAdminDashboardPage() {
               Analytics
             </Link>
           </Button>
-          <Button className="bg-hunter-green-600 hover:bg-hunter-green-700" asChild>
+          <Button className="bg-violet-600 hover:bg-violet-700" asChild>
             <Link href="/school-admin/quick-actions">
               <Sparkles className="w-4 h-4 mr-2" />
               Quick Actions
@@ -190,8 +190,8 @@ export default function SchoolAdminDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-hunter-green-600">{schoolStats.totalStudents}</div>
-            <p className="text-xs text-hunter-green-600 mt-1">
+            <div className="text-2xl font-bold text-violet-600">{schoolStats.totalStudents}</div>
+            <p className="text-xs text-violet-600 mt-1">
               <TrendingUp className="w-3 h-3 inline mr-1" />
               +12 this month
             </p>
@@ -206,7 +206,7 @@ export default function SchoolAdminDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-powder-blue-600">{schoolStats.totalTeachers}</div>
+            <div className="text-2xl font-bold text-blue-600">{schoolStats.totalTeachers}</div>
             <p className="text-xs text-gray-500 mt-1">Active staff</p>
           </CardContent>
         </Card>
@@ -219,7 +219,7 @@ export default function SchoolAdminDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-oxidized-iron-600">{schoolStats.totalClasses}</div>
+            <div className="text-2xl font-bold text-amber-600">{schoolStats.totalClasses}</div>
             <p className="text-xs text-gray-500 mt-1">This semester</p>
           </CardContent>
         </Card>
@@ -232,7 +232,7 @@ export default function SchoolAdminDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-ash-grey-600">{schoolStats.pendingAttendance}</div>
+            <div className="text-2xl font-bold text-gray-600">{schoolStats.pendingAttendance}</div>
             <p className="text-xs text-orange-600 mt-1">Pending today</p>
           </CardContent>
         </Card>
@@ -245,7 +245,7 @@ export default function SchoolAdminDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-ash-grey-600">{schoolStats.pendingFees}</div>
+            <div className="text-2xl font-bold text-gray-600">{schoolStats.pendingFees}</div>
             <p className="text-xs text-orange-600 mt-1">Students</p>
           </CardContent>
         </Card>
@@ -258,7 +258,7 @@ export default function SchoolAdminDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-lg font-bold text-hunter-green-600">
+            <div className="text-lg font-bold text-violet-600">
               Nu. {(schoolStats.totalRevenue / 1000).toFixed(0)}K
             </div>
             <p className="text-xs text-gray-500 mt-1">This month</p>
@@ -289,8 +289,8 @@ export default function SchoolAdminDashboardPage() {
                     className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-hunter-green-100 rounded-lg flex items-center justify-center">
-                        <BookOpen className="w-5 h-5 text-hunter-green-600" />
+                      <div className="w-10 h-10 bg-violet-100 rounded-lg flex items-center justify-center">
+                        <BookOpen className="w-5 h-5 text-violet-600" />
                       </div>
                       <div>
                         <p className="font-medium text-gray-900">{cls.name}</p>
@@ -374,8 +374,8 @@ export default function SchoolAdminDashboardPage() {
             <Link href="/school-admin/students">
               <CardContent className="pt-6">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-hunter-green-100 rounded-lg flex items-center justify-center">
-                    <Users className="w-6 h-6 text-hunter-green-600" />
+                  <div className="w-12 h-12 bg-violet-100 rounded-lg flex items-center justify-center">
+                    <Users className="w-6 h-6 text-violet-600" />
                   </div>
                   <div>
                     <p className="font-medium">Manage Students</p>
@@ -390,8 +390,8 @@ export default function SchoolAdminDashboardPage() {
             <Link href="/school-admin/teachers">
               <CardContent className="pt-6">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-powder-blue-100 rounded-lg flex items-center justify-center">
-                    <GraduationCap className="w-6 h-6 text-powder-blue-600" />
+                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <GraduationCap className="w-6 h-6 text-blue-600" />
                   </div>
                   <div>
                     <p className="font-medium">Manage Teachers</p>
@@ -406,8 +406,8 @@ export default function SchoolAdminDashboardPage() {
             <Link href="/school-admin/classes">
               <CardContent className="pt-6">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-oxidized-iron-100 rounded-lg flex items-center justify-center">
-                    <BookOpen className="w-6 h-6 text-oxidized-iron-600" />
+                  <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
+                    <BookOpen className="w-6 h-6 text-amber-600" />
                   </div>
                   <div>
                     <p className="font-medium">Manage Classes</p>
@@ -543,7 +543,7 @@ export default function SchoolAdminDashboardPage() {
             <div className="space-y-4">
               {upcomingEvents.map((event) => (
                 <div key={event.id} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                  <div className="w-12 h-12 bg-gradient-to-br from-hunter-green-500 to-hunter-green-600 rounded-lg flex items-center justify-center text-white">
+                  <div className="w-12 h-12 rounded-lg flex items-center justify-center text-white" style={{ background: 'linear-gradient(to bottom right, rgb(139 92 246), rgb(124 58 237))' }}>
                     <Clock className="w-6 h-6" />
                   </div>
                   <div className="flex-1">

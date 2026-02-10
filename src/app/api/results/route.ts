@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { users, examResults } from "@/lib/db/schema";
-import { eq, and, or } from "drizzle-orm";
+import { eq, and, or, desc } from "drizzle-orm";
 import { requireAuth, canAccessSchool } from "@/lib/db/tenant";
 
 export async function GET(request: NextRequest) {
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
     // Additional filter by exam type if provided
     let results = await db.query.examResults.findMany({
       where: whereCondition,
-      orderBy: [examResults.examYear, "desc"],
+      orderBy: desc(examResults.examYear),
       with: {
         user: true,
       },

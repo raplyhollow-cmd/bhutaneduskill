@@ -1,4 +1,4 @@
-import { drizzle, LibsqlDatabase } from "drizzle-orm/libsql";
+import { drizzle, LibSQLDatabase } from "drizzle-orm/libsql";
 import { createClient } from "@libsql/client";
 import * as schema from "../src/lib/db/schema";
 import { CAREERS_DATABASE, RUB_COLLEGES, STUDY_ABROAD_REQUIREMENTS } from "../src/lib/tenant";

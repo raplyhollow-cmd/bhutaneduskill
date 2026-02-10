@@ -36,7 +36,7 @@ const dataCategories = [
     description: "All personality, aptitude, and career assessment results",
     icon: Sparkles,
     sources: ["riasecResults", "mbtiResults", "discResults", "workValuesResults", "learningStylesResults"],
-    color: "bg-hunter-green-100 text-hunter-green-700",
+    color: "bg-orange-100 text-orange-700",
   },
   {
     id: "users",
@@ -44,7 +44,7 @@ const dataCategories = [
     description: "Student, teacher, parent, and counselor information",
     icon: Database,
     sources: ["users", "classes", "schools"],
-    color: "bg-powder-blue-100 text-powder-blue-700",
+    color: "bg-blue-100 text-blue-700",
   },
   {
     id: "careers",
@@ -52,7 +52,7 @@ const dataCategories = [
     description: "Career matches, plans, and pathways",
     icon: Briefcase,
     sources: ["careerMatches", "careerPlans"],
-    color: "bg-oxidized-iron-100 text-oxidized-iron-700",
+    color: "bg-red-100 text-red-700",
   },
   {
     id: "academic",
@@ -60,7 +60,7 @@ const dataCategories = [
     description: "Exam results and academic performance",
     icon: FilePieChart,
     sources: ["examResults"],
-    color: "bg-ash-grey-100 text-ash-grey-700",
+    color: "bg-gray-100 text-gray-700",
   },
 ];
 
@@ -100,8 +100,8 @@ export default function DataExportPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-hunter-green-100 rounded-lg flex items-center justify-center">
-                <Database className="w-6 h-6 text-hunter-green-600" />
+              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                <Database className="w-6 h-6 text-orange-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{Object.keys(dataSources).length}</p>
@@ -114,8 +114,8 @@ export default function DataExportPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-powder-blue-100 rounded-lg flex items-center justify-center">
-                <FileJson className="w-6 h-6 text-powder-blue-600" />
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <FileJson className="w-6 h-6 text-blue-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{exportFormats.length}</p>
@@ -128,8 +128,8 @@ export default function DataExportPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-oxidized-iron-100 rounded-lg flex items-center justify-center">
-                <FilePieChart className="w-6 h-6 text-oxidized-iron-600" />
+              <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                <FilePieChart className="w-6 h-6 text-red-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{reportTemplates.length}</p>
@@ -142,8 +142,8 @@ export default function DataExportPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-ash-grey-100 rounded-lg flex items-center justify-center">
-                <Download className="w-6 h-6 text-ash-grey-600" />
+              <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
+                <Download className="w-6 h-6 text-gray-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{recentExports.length}</p>
@@ -180,7 +180,7 @@ export default function DataExportPage() {
                 <Card
                   key={cat.id}
                   className={`cursor-pointer transition-all ${
-                    isSelected ? "ring-2 ring-hunter-green-500 bg-hunter-green-50" : "hover:bg-gray-50"
+                    isSelected ? "ring-2 ring-orange-500 bg-orange-50" : "hover:bg-gray-50"
                   }`}
                   onClick={() => setSelectedCategory(cat.id)}
                 >
@@ -221,7 +221,7 @@ export default function DataExportPage() {
                         key={sourceKey}
                         className={`cursor-pointer transition-all ${
                           isSelected
-                            ? "ring-2 ring-hunter-green-500 bg-hunter-green-50"
+                            ? "ring-2 ring-orange-500 bg-orange-50"
                             : "hover:bg-gray-50"
                         }`}
                         onClick={() => setSelectedSource(sourceKey)}
@@ -230,7 +230,7 @@ export default function DataExportPage() {
                           <div className="flex items-center justify-between mb-2">
                             <h3 className="font-semibold">{source.name}</h3>
                             {isSelected && (
-                              <CheckCircle className="w-5 h-5 text-hunter-green-600" />
+                              <CheckCircle className="w-5 h-5 text-orange-600" />
                             )}
                           </div>
                           <p className="text-sm text-gray-600 mb-3">{source.description}</p>
@@ -261,14 +261,14 @@ export default function DataExportPage() {
                       key={format.id}
                       className={`cursor-pointer transition-all ${
                         isSelected
-                          ? "ring-2 ring-hunter-green-500 bg-hunter-green-50"
+                          ? "ring-2 ring-orange-500 bg-orange-50"
                           : "hover:bg-gray-50"
                       }`}
                       onClick={() => setSelectedFormat(format.id)}
                     >
                       <CardContent className="pt-4">
                         <div className="flex items-center gap-3 mb-2">
-                          <Icon className={`w-6 h-6 ${isSelected ? "text-hunter-green-600" : "text-gray-500"}`} />
+                          <Icon className={`w-6 h-6 ${isSelected ? "text-orange-600" : "text-gray-500"}`} />
                           <h3 className="font-semibold">{format.name}</h3>
                         </div>
                         <p className="text-sm text-gray-600">{format.description}</p>
@@ -281,7 +281,10 @@ export default function DataExportPage() {
           </Card>
 
           {/* Export Button */}
-          <Card className="bg-gradient-to-r from-hunter-green-50 to-powder-blue-50 border-hunter-green-200">
+          <Card
+            className="border-orange-200"
+            style={{ background: 'linear-gradient(to right, rgb(255 247 237), rgb(219 234 254))' }}
+          >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -292,7 +295,7 @@ export default function DataExportPage() {
                 </div>
                 <Button
                   size="lg"
-                  className="bg-hunter-green-600 hover:bg-hunter-green-700"
+                  className="bg-orange-600 hover:bg-orange-700"
                   onClick={async () => {
                     const response = await fetch("/api/data-export", {
                       method: "POST",

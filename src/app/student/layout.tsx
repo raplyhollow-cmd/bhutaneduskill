@@ -39,13 +39,13 @@ export default function StudentLayout({
   if (!userType) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-hunter-green-600 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-ash-grey-50">
+    <div className="min-h-screen bg-gray-50">
       <PortalSidebar userType={userType} userName={userName} />
       <div className="lg:pl-64">
         <PortalHeader userType={userType} userName={userName} />

@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/db/tenant";
+import { desc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { users, riasecResults, mbtiResults, careerMatches, assessments, careerPlans } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -50,21 +51,28 @@ export async function POST(request: NextRequest) {
     // Get assessment results for context
     const riasecResult = await db.query.riasecResults.findFirst({
       where: eq(riasecResults.userId, user.id),
-      orderBy: [riasecResults.createdAt, "desc"],
+      orderBy: desc(riasecResults.createdAt),
     });
 
     const mbtiResult = await db.query.mbtiResults.findFirst({
       where: eq(mbtiResults.userId, user.id),
-      orderBy: [mbtiResults.createdAt, "desc"],
+      orderBy: desc(mbtiResults.createdAt),
     });
 
-    // Get career matches
-    const matches = await db.query.careerMatches.findMany({
-      where: eq(careerMatches.userId, user.id),
-      with: { career: true },
-      orderBy: [careerMatches.matchScore, "desc"],
-      limit: 5,
+    // Get career matches (via assessments)
+    const userAssessments = await db.query.assessments.findMany({
+      where: eq(assessments.userId, user.id),
     });
+    const assessmentIds = userAssessments.map(a => a.id);
+
+    const matches = assessmentIds.length > 0
+      ? await db.query.careerMatches.findMany({
+          where: eq(careerMatches.assessmentId, assessmentIds[0]),
+          with: { career: true },
+          orderBy: desc(careerMatches.matchScore),
+          limit: 5,
+        })
+      : [];
 
     // Get career plan if exists
     const careerPlan = await db.query.careerPlans.findFirst({

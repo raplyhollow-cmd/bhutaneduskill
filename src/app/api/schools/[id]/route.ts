@@ -7,16 +7,17 @@ import { eq } from "drizzle-orm";
 // GET /api/schools/[id] - Get single school
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const school = await db.query.schools.findFirst({
-      where: eq(schools.id, params.id),
+      where: eq(schools.id, id),
     });
 
     if (!school) {
@@ -33,9 +34,10 @@ export async function GET(
 // PUT /api/schools/[id] - Update school
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -53,7 +55,7 @@ export async function PUT(
     const [updatedSchool] = await db
       .update(schools)
       .set(body)
-      .where(eq(schools.id, params.id))
+      .where(eq(schools.id, id))
       .returning();
 
     return NextResponse.json({ school: updatedSchool });
@@ -66,9 +68,10 @@ export async function PUT(
 // DELETE /api/schools/[id] - Delete school
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -82,7 +85,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    await db.delete(schools).where(eq(schools.id, params.id));
+    await db.delete(schools).where(eq(schools.id, id));
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -178,11 +178,12 @@ export function AICareerCoach({
         <Button
           onClick={() => setIsExpanded(true)}
           size="lg"
-          className="rounded-full h-16 w-16 shadow-lg bg-gradient-to-br from-hunter-green-500 to-hunter-green-600 hover:from-hunter-green-600 hover:to-hunter-green-700 animate-pulse-slow"
+          style={{ background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)' }}
+          className="rounded-full h-16 w-16 shadow-lg hover:opacity-90 animate-pulse-slow"
         >
           <Bot className="w-7 h-7" />
         </Button>
-        <Badge className="absolute -top-1 -right-1 bg-oxidized-iron-500 text-white px-2 py-0 text-xs">
+        <Badge className="absolute -top-1 -right-1 text-white px-2 py-0 text-xs" style={{ backgroundColor: 'rgb(239 68 68)' }}>
           AI
         </Badge>
       </div>
@@ -192,14 +193,17 @@ export function AICareerCoach({
   return (
     <Card
       className={cn(
-        "shadow-xl border-hunter-green-200",
+        "shadow-xl border-orange-200",
         !embedded && "fixed bottom-6 right-6 w-96 max-h-[600px] flex flex-col z-50",
         isMinimized && "h-14",
         className
       )}
     >
       {/* Header */}
-      <CardHeader className="bg-gradient-to-r from-hunter-green-500 to-hunter-green-600 text-white p-4 space-y-0">
+      <CardHeader
+        className="text-white p-4 space-y-0"
+        style={{ background: 'linear-gradient(to right, rgb(249 115 22), rgb(194 65 12))' }}
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
@@ -210,7 +214,7 @@ export function AICareerCoach({
                 AI Career Coach
                 <Sparkles className="w-4 h-4 text-yellow-300" />
               </CardTitle>
-              <CardDescription className="text-hunter-green-100 text-xs">
+              <CardDescription className="text-orange-100 text-xs">
                 Online • Ready to help
               </CardDescription>
             </div>
@@ -247,8 +251,8 @@ export function AICareerCoach({
             ))}
             {isLoading && (
               <div className="flex items-start gap-3">
-                <div className="w-8 h-8 bg-hunter-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Bot className="w-4 h-4 text-hunter-green-600" />
+                <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <Bot className="w-4 h-4 text-orange-600" />
                 </div>
                 <div className="bg-gray-100 rounded-2xl rounded-tl-sm px-4 py-3">
                   <div className="flex gap-1">
@@ -277,7 +281,7 @@ export function AICareerCoach({
               <Button
                 onClick={() => handleSend()}
                 disabled={!input.trim() || isLoading}
-                className="bg-hunter-green-600 hover:bg-hunter-green-700"
+                className="bg-orange-600 hover:bg-orange-700"
               >
                 <Send className="w-4 h-4" />
               </Button>
@@ -314,12 +318,12 @@ function MessageBubble({ message }: { message: Message }) {
   return (
     <div className={cn("flex items-start gap-3", isUser && "flex-row-reverse")}>
       {!isUser ? (
-        <div className="w-8 h-8 bg-hunter-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-          <Bot className="w-4 h-4 text-hunter-green-600" />
+        <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
+          <Bot className="w-4 h-4 text-orange-600" />
         </div>
       ) : (
-        <div className="w-8 h-8 bg-powder-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-          <span className="text-xs font-medium text-powder-blue-600">You</span>
+        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+          <span className="text-xs font-medium text-blue-600">You</span>
         </div>
       )}
 
@@ -327,7 +331,7 @@ function MessageBubble({ message }: { message: Message }) {
         className={cn(
           "rounded-2xl px-4 py-3 max-w-[80%]",
           isUser
-            ? "bg-powder-blue-500 text-white rounded-tr-sm"
+            ? "bg-blue-500 text-white rounded-tr-sm"
             : "bg-gray-100 text-gray-800 rounded-tl-sm"
         )}
       >
@@ -342,9 +346,9 @@ function MessageBubble({ message }: { message: Message }) {
                 href={resource.url}
                 className="flex items-center gap-2 text-sm p-2 bg-white rounded-lg hover:bg-gray-50 transition-colors"
               >
-                {resource.type === "assessment" && <Sparkles className="w-4 h-4 text-hunter-green-500" />}
-                {resource.type === "career" && <TrendingUp className="w-4 h-4 text-powder-blue-500" />}
-                {resource.type === "article" && <BookOpen className="w-4 h-4 text-oxidized-iron-500" />}
+                {resource.type === "assessment" && <Sparkles className="w-4 h-4 text-orange-500" />}
+                {resource.type === "career" && <TrendingUp className="w-4 h-4 text-blue-500" />}
+                {resource.type === "article" && <BookOpen className="w-4 h-4 text-gray-500" />}
                 <span className="flex-1">{resource.title}</span>
                 <span className="text-xs text-gray-400">→</span>
               </a>
@@ -354,7 +358,7 @@ function MessageBubble({ message }: { message: Message }) {
 
         <span className={cn(
           "text-xs mt-1 block",
-          isUser ? "text-powder-blue-200" : "text-gray-400"
+          isUser ? "text-blue-200" : "text-gray-400"
         )}>
           {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </span>
