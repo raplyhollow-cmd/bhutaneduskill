@@ -246,7 +246,7 @@ export function CrudCard({
                     e.stopPropagation();
                     handleAdd();
                   }}
-                  className="bg-hunter-green-600 hover:bg-hunter-green-700"
+                  className="bg-orange-600 hover:bg-orange-700"
                 >
                   <Plus className="w-4 h-4 mr-1" />
                   Add
@@ -268,7 +268,7 @@ export function CrudCard({
                 {items.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
+                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
                   >
                     <div className="flex-1 grid gap-2" style={{ gridTemplateColumns: `repeat(${columns.length}, 1fr)` }}>
                       {columns.map((column) => (
@@ -334,7 +334,7 @@ export function CrudCard({
             <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-hunter-green-600 hover:bg-hunter-green-700">
+            <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-orange-600 hover:bg-orange-700">
               {isSubmitting ? "Adding..." : "Add"}
             </Button>
           </DialogFooter>
@@ -362,7 +362,7 @@ export function CrudCard({
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-hunter-green-600 hover:bg-hunter-green-700">
+            <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-orange-600 hover:bg-orange-700">
               {isSubmitting ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>

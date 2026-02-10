@@ -131,8 +131,11 @@ async function getRecentContent() {
     ...recentScholarships.map((c) => ({ ...c, contentType: "scholarship" as const })),
   ]
     .sort((a, b) => {
-      const aDate = a.updatedAt || a.createdAt || 0;
-      const bDate = b.updatedAt || b.createdAt || 0;
+      // Use type guards to safely access properties
+      const aDate =
+        "updatedAt" in a ? (a.updatedAt as Date) : "createdAt" in a ? (a.createdAt as Date) : 0;
+      const bDate =
+        "updatedAt" in b ? (b.updatedAt as Date) : "createdAt" in b ? (b.createdAt as Date) : 0;
       return new Date(bDate).getTime() - new Date(aDate).getTime();
     })
     .slice(0, 10);

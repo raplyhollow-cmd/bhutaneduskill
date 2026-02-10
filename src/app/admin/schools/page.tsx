@@ -30,7 +30,7 @@ import {
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { schools, tenants, districts, users } from "@/lib/db/schema";
-import { desc, count, eq, sql } from "drizzle-orm";
+import { desc, count, eq, sql, and } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 
@@ -41,9 +41,9 @@ async function getSchoolStats(schoolId: string) {
     teacherCount,
     counselorCount,
   ] = await Promise.all([
-    db.select({ count: count() }).from(users).where(eq(users.schoolId, schoolId)).where(eq(users.type, "student")),
-    db.select({ count: count() }).from(users).where(eq(users.schoolId, schoolId)).where(eq(users.type, "teacher")),
-    db.select({ count: count() }).from(users).where(eq(users.schoolId, schoolId)).where(eq(users.type, "counselor")),
+    db.select({ count: count() }).from(users).where(and(eq(users.schoolId, schoolId), eq(users.type, "student"))),
+    db.select({ count: count() }).from(users).where(and(eq(users.schoolId, schoolId), eq(users.type, "teacher"))),
+    db.select({ count: count() }).from(users).where(and(eq(users.schoolId, schoolId), eq(users.type, "counselor"))),
   ]);
 
   return {

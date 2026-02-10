@@ -214,43 +214,43 @@ export const gradients = {
   premium: "linear-gradient(135deg, #557e4e 0%, #3c89c3 50%, #d5472a 100%)",
 } as const;
 
-// Role-based themes (UPDATED with new professional palette)
+// Role-based themes with inline style gradients (use these for portal styling)
 export const roleThemes = {
   student: {
     primary: colors.primary[600], // Navy
     secondary: colors.secondary[500], // Teal
     accent: colors["bhutan-green"][500], // Bhutan green as accent
-    gradient: "from-primary-600 to-secondary-500",
+    gradientInline: "linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)", // Orange
   },
   teacher: {
     primary: colors.secondary[600], // Teal
     secondary: colors["bhutan-green"][500], // Bhutan green
     accent: colors.accent[500], // Terra cotta
-    gradient: "from-secondary-500 to-bhutan-green-500",
+    gradientInline: "linear-gradient(135deg, rgb(59 130 246) 0%, rgb(37 99 235) 100%)", // Blue
   },
   parent: {
     primary: colors["ash-grey"][600], // Grey
     secondary: colors.primary[500], // Navy
     accent: colors.secondary[500], // Teal
-    gradient: "from-ash-grey-600 to-primary-500",
+    gradientInline: "linear-gradient(135deg, rgb(107 114 128) 0%, rgb(75 85 99) 100%)", // Gray
   },
   counselor: {
     primary: colors["oxidized-iron"][600], // Rust
     secondary: colors.primary[500], // Navy
     accent: colors.secondary[500], // Teal
-    gradient: "from-oxidized-iron-500 to-primary-600",
+    gradientInline: "linear-gradient(135deg, rgb(168 85 247) 0%, rgb(147 51 234) 100%)", // Purple
   },
   "school-admin": {
     primary: colors.primary[600], // Navy
     secondary: colors["bhutan-green"][500], // Bhutan green
     accent: colors.accent[500], // Terra cotta
-    gradient: "from-primary-600 to-bhutan-green-600",
+    gradientInline: "linear-gradient(135deg, rgb(139 92 246) 0%, rgb(124 58 237) 100%)", // Violet
   },
   admin: {
     primary: colors.accent[600], // Terra cotta
     secondary: colors.primary[600], // Navy
     accent: colors.secondary[600], // Teal
-    gradient: "from-accent-500 to-primary-600",
+    gradientInline: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)", // Pink
   },
 } as const;
 

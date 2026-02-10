@@ -47,8 +47,8 @@ export function FeatureCard({
         <div className="w-12 h-12 mb-4 flex items-center justify-center text-indigo-400">
           {icon}
         </div>
-        <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
-        <p className="text-gray-400 text-sm">{description}</p>
+        <h3 className="text-lg font-semibold text-foreground mb-2">{title}</h3>
+        <p className="text-muted-foreground text-sm">{description}</p>
       </div>
     </div>
   );
