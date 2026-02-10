@@ -47,10 +47,11 @@ async function getTeacherStats(teacherId: string) {
       .from(classes)
       .where(eq(classes.teacherId, teacherId))
       .then((results) => {
-        // Sum up all students from all classes
-        const totalStudents = results.reduce((sum, _) => {
-          const students = results.flatMap((r) => r.students || []);
-          return students.length;
+        // Each class has a students array with student IDs
+        const totalStudents = results.reduce((sum, r) => {
+          // The students field is a JSON array in the classes table
+          const studentCount = (r as any).students?.length || 0;
+          return sum + studentCount;
         }, 0);
         return [{ count: totalStudents }];
       }),
@@ -169,8 +170,8 @@ export default async function AdminTeachersPage({
   const totalClasses = teachersWithStats.reduce((sum, t) => sum + t.stats.classes, 0);
 
   // Subject distribution
-  const subjectCounts = teachersWithStats.reduce((acc, teacher) => {
-    teacher.subjects?.forEach((subject) => {
+  const subjectCounts = teachersWithStats.reduce((acc: Record<string, number>, teacher) => {
+    teacher.subjects?.forEach((subject: string) => {
       acc[subject] = (acc[subject] || 0) + 1;
     });
     return acc;

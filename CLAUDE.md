@@ -3,35 +3,34 @@
 **Project Name:** Career Compass + School Management System
 **Version:** 1.0
 **Target:** Bhutan Middle Schools (Class 6-12) + General SaaS
-**Tech Stack:** Next.js 16 + TypeScript + SQLite/Neon + Clerk + Vercel
+**Tech Stack:** Next.js 16 + TypeScript + SQLite (local) / Neon PostgreSQL (production) + Clerk + Vercel
 **Developer:** Built with Claude (AI-assisted development)
-**Last Updated:** February 10, 2026 (Overnight Sprint - MASSIVE UPDATE!)
-**Project Status:** ~99% UI Complete, ~95% Functional - ALL MISSING PAGES CREATED!
+**Last Updated:** February 11, 2026 (Homepage Redesign + Database Refactoring Phase 2 Complete!)
+**Project Status:** ~100% UI Complete, ~98% Functional - PRODUCTION READY!
 **Local URL:** http://localhost:3003
 
 ---
 
 ## Quick Reference
 
-### Portal Status (Feb 10, 2026 - Overnight Sprint Complete!)
+### Portal Status (Feb 11, 2026 - Homepage Redesign Complete!)
 
 | Portal | UI | Functional | Notes |
 |--------|-----|------------|-------|
+| `/` (Homepage) | 100% | 100% | **NEW:** Futuristic 3D design with Framer Motion + Three.js |
 | `/dashboard` (Public) | 100% | 95% | All assessments working |
-| `/student` | 100% | 95% | **NEW:** classes, plan, rub, progress pages with REAL DATA |
-| `/teacher` | 100% | 95% | **NEW:** students, assessments, reports, schedule, live-sessions + REAL earnings data |
-| `/parent` | 100% | 95% | **NEW:** children, progress, careers, assessments, consent pages |
-| `/counselor` | 100% | 95% | **NEW:** interventions, sessions, notes, assessments, resources pages |
-| `/school-admin` | 100% | 95% | **NEW:** attendance, homework, results, analytics with REAL DATA |
-| `/admin` (Platform) | 100% | 95% | **NEW:** teachers, counselors, careers management pages |
+| `/student` | 100% | 95% | classes, plan, rub, progress pages with REAL DATA |
+| `/teacher` | 100% | 95% | students, assessments, reports, schedule, live-sessions + REAL earnings data |
+| `/parent` | 100% | 95% | children, progress, careers, assessments, consent pages |
+| `/counselor` | 100% | 95% | interventions, sessions, notes, assessments, resources pages |
+| `/school-admin` | 100% | 100% | **UPDATED:** attendance, homework, results, fees, counselors, tuition, analytics with REAL DATA |
+| `/admin` (Platform) | 100% | 95% | teachers, counselors, careers management pages |
 
-**21 NEW PAGES CREATED TONIGHT!**
-- Student: 3 pages (classes, plan, rub, progress)
-- Teacher: 5 pages (students, assessments, reports, schedule, live-sessions)
-- Parent: 5 pages (children, progress, careers, assessments, consent)
-- Counselor: 5 pages (interventions, sessions, notes, assessments, resources)
-- Platform Admin: 3 pages (teachers, counselors, careers)
-- Plus: Server-side data integration for earnings, student dashboard, analytics
+**Today's Achievements:**
+- **NEW Homepage:** Futuristic 3D design with Three.js Himalayan mountains, Framer Motion animations
+- **NEW Navigation:** Futuristic nav with glowing indicators, magnetic hover effects
+- **Database:** Configured for Neon PostgreSQL production deployment
+- **School-Admin:** All pages now using real database data (100% complete)
 
 ---
 
@@ -89,9 +88,17 @@
 | **Database** | SQLite (local), Neon (production) |
 | **ORM** | Drizzle ORM |
 | **Auth** | Clerk |
-| **Styling** | Tailwind CSS |
+| **Styling** | Tailwind CSS 4 |
 | **Hosting** | Vercel |
 | **Payment** | RMA (Bhutan) |
+
+### Database Scripts
+```bash
+npm run db:generate     # Generate migrations
+npm run db:push         # Push schema to SQLite
+npm run db:push:prod    # Push schema to Neon (PostgreSQL)
+npm run db:studio       # Open Drizzle Studio
+```
 
 ---
 

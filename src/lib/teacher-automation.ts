@@ -248,8 +248,8 @@ export const teacherTools = {
       "Version history",
       "Share with specific classes or all students",
       "Students can highlight and annotate",
-      "Teacher sees who accessed notes",
-    ];
+      "Teacher sees who accessed notes"
+    ] as const
   },
 
   // 2. READING MATERIALS
@@ -260,8 +260,8 @@ export const teacherTools = {
       "Track reading progress (who read what)",
       "Add discussion questions",
       "Embed quizzes in readings",
-      "Text-to-speech for accessibility",
-    ];
+      "Text-to-speech for accessibility"
+    ] as const
   },
 
   // 3. LESSON PLAN BUILDER
@@ -272,8 +272,8 @@ export const teacherTools = {
       "Attach resources",
       "Share with other teachers",
       "Reuse from previous years",
-      "AI suggestions for activities",
-    ];
+      "AI suggestions for activities"
+    ] as const
   },
 
   // 4. QUESTION BANK
@@ -285,8 +285,8 @@ export const teacherTools = {
       "Share with other teachers (school-wide or public)",
       "Import from popular question banks",
       "Auto-generate similar questions using AI",
-      "Difficulty rating based on student performance",
-    ];
+      "Difficulty rating based on student performance"
+    ] as const
   },
 
   // 5. RUBRIC BUILDER
@@ -297,8 +297,8 @@ export const teacherTools = {
       "Click-to-grade using rubric",
       "Auto-calculate scores",
       "Generate feedback from rubric",
-      "Share rubrics with other teachers",
-    ];
+      "Share rubrics with other teachers"
+    ] as const
   },
 
   // 6. PARENT COMMUNICATION
@@ -309,8 +309,8 @@ export const teacherTools = {
       "Absentee alerts",
       "Achievement celebrations",
       "Two-way messaging",
-      "Bulk announcements",
-    ];
+      "Bulk announcements"
+    ] as const
   },
 
   // 7. SEATING CHART GENERATOR
@@ -320,8 +320,8 @@ export const teacherTools = {
       "Randomize seating",
       "Group students by ability",
       "Save multiple arrangements",
-      "Print-friendly export",
-    ];
+      "Print-friendly export"
+    ] as const
   },
 
   // 8. TIMER & BELLS
@@ -331,10 +331,10 @@ export const teacherTools = {
       "Random student picker",
       "Noise level monitor",
       "Break reminders",
-      "Attendance quick-mark",
-    ];
-  },
-};
+      "Attendance quick-mark"
+    ] as const
+  }
+} as const;
 
 // ============================================================================
 // PART 4: GRADING WORKFLOW OPTIMIZATION

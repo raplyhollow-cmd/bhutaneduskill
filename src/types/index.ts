@@ -145,7 +145,7 @@ export interface ParentDashboard {
     child: User;
     latestAssessment?: Assessment;
     recommendedCareers: Career[];
-  };
+  }>;
 }
 
 export interface AdminDashboard {

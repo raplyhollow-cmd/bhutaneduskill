@@ -672,9 +672,9 @@ export default function AdminCareersPage() {
                   return acc;
                 }, {})
               )
-                .sort((a, b) => (b[1] as number) - (a[1] as number))
+                .sort(([, a], [, b]) => (a as number) - (b as number))
                 .slice(0, 8)
-                .map(([skill, count]: [string, number]) => (
+                .map(([skill, count]) => (
                   <div key={skill} className="flex items-center justify-between">
                     <span className="text-sm text-gray-700">{skill}</span>
                     <Badge
@@ -682,7 +682,7 @@ export default function AdminCareersPage() {
                       className="text-xs"
                       style={{ borderColor: "rgb(236 72 153)", color: "rgb(219 39 119)" }}
                     >
-                      {count} careers
+                      {count as number} careers
                     </Badge>
                   </div>
                 ))}
