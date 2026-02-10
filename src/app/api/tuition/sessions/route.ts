@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { liveSessions, tutors, users } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { z } from "zod";
 
 const sessionSchema = z.object({
@@ -28,8 +28,13 @@ export async function GET(request: NextRequest) {
     const tutorId = searchParams.get("tutorId");
     const upcoming = searchParams.get("upcoming") === "true";
 
+    // Build where condition based on filters
+    const whereCondition = upcoming
+      ? eq(liveSessions.status, "scheduled")
+      : undefined;
+
     const sessions = await db.query.liveSessions.findMany({
-      where: eq(liveSessions.status, upcoming ? "scheduled" : undefined),
+      ...(whereCondition && { where: whereCondition }),
       with: {
         tutor: {
           with: {

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
-import { tuitionEnrollments, tuitionCourses, users } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { tuitionEnrollments, tuitionCourses, users, tutors } from "@/lib/db/schema";
+import { eq, and, desc } from "drizzle-orm";
 
 // GET /api/tuition/enrollments - List enrollments
 export async function GET(request: NextRequest) {
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
           student: true,
           course: true,
         },
-        orderBy: [tuitionEnrollments.enrolledAt],
+        orderBy: [desc(tuitionEnrollments.enrolledAt)],
       });
     } else {
       // Get student's enrollments
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
           },
           course: true,
         },
-        orderBy: [tuitionEnrollments.enrolledAt],
+        orderBy: [desc(tuitionEnrollments.enrolledAt)],
       });
     }
 

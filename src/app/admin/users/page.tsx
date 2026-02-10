@@ -27,6 +27,7 @@ import {
   Building2,
   Calendar,
   CheckCircle,
+  X,
   XCircle,
   Clock,
   ChevronDown,
