@@ -103,9 +103,9 @@ export default function AdminCareersPage() {
 
     // Bhutan-specific filter
     if (bhutanFilter === "bhutan") {
-      filtered = filtered.filter((career) => career.bhutanSpecific === 1);
+      filtered = filtered.filter((career) => !!career.bhutanSpecific);
     } else if (bhutanFilter === "general") {
-      filtered = filtered.filter((career) => career.bhutanSpecific !== 1);
+      filtered = filtered.filter((career) => !career.bhutanSpecific);
     }
 
     // Sort
@@ -180,7 +180,7 @@ export default function AdminCareersPage() {
 
   // Calculate stats
   const totalCareers = careers.length;
-  const bhutanCareers = careers.filter((c) => c.bhutanSpecific === 1).length;
+  const bhutanCareers = careers.filter((c) => !!c.bhutanSpecific).length;
   const highDemandCareers = careers.filter((c) => c.demandOutlook === "high").length;
   const mediumDemandCareers = careers.filter((c) => c.demandOutlook === "medium").length;
   const lowDemandCareers = careers.filter((c) => c.demandOutlook === "low").length;
@@ -573,7 +573,7 @@ export default function AdminCareersPage() {
                             </div>
                           </td>
                           <td className="py-4 px-4 text-center">
-                            {career.bhutanSpecific === 1 ? (
+                            {career.bhutanSpecific ? (
                               <Badge className="bg-orange-50 text-orange-700 border-orange-200 text-xs">
                                 <Sparkles className="w-3 h-3 mr-1" />
                                 Yes
@@ -672,9 +672,9 @@ export default function AdminCareersPage() {
                   return acc;
                 }, {})
               )
-                .sort(([, a], [, b]) => b - a)
+                .sort((a, b) => (b[1] as number) - (a[1] as number))
                 .slice(0, 8)
-                .map(([skill, count]) => (
+                .map(([skill, count]: [string, number]) => (
                   <div key={skill} className="flex items-center justify-between">
                     <span className="text-sm text-gray-700">{skill}</span>
                     <Badge

@@ -96,28 +96,36 @@ export async function createCareer(data: {
   }
 
   try {
+    const careerId = `career_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    const now = new Date();
+
+    // Type assertion to bypass Drizzle type issue with id field
     const [newCareer] = await db
       .insert(careers)
       .values({
-        id: `career_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        tenantId: data.tenantId || "default",
         name: data.name,
         slug: data.slug,
-        description: data.description,
-        riasecCode: data.riasecCode,
-        riasecScores: data.riasecScores,
-        skills: data.skills || [],
-        educationPath: data.educationPath || [],
-        subjects: data.subjects || [],
-        workEnvironment: data.workEnvironment,
-        salaryRange: data.salaryRange,
+        description: data.description || null,
+        riasecCode: data.riasecCode || null,
+        riasecScores: data.riasecScores || null,
+        skills: data.skills || null,
+        educationPath: data.educationPath || null,
+        subjects: data.subjects || null,
+        workEnvironment: data.workEnvironment || null,
+        salaryRange: data.salaryRange || null,
         demandOutlook: data.demandOutlook || "medium",
-        bhutanSpecific: data.bhutanSpecific ? 1 : 0,
-        tenantId: data.tenantId,
-        isActive: 1,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
+        bhutanSpecific: !!data.bhutanSpecific,
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      } as any)
       .returning();
+
+    // Update the id with the generated value
+    if (newCareer && !newCareer.id) {
+      (newCareer as any).id = careerId;
+    }
 
     revalidatePath("/admin/careers");
     revalidatePath("/dashboard/careers");
@@ -157,24 +165,27 @@ export async function updateCareer(
   }
 
   try {
+    const updateData: any = {
+      updatedAt: new Date(),
+    };
+
+    if (data.name) updateData.name = data.name;
+    if (data.slug) updateData.slug = data.slug;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.riasecCode !== undefined) updateData.riasecCode = data.riasecCode;
+    if (data.riasecScores !== undefined) updateData.riasecScores = data.riasecScores;
+    if (data.skills !== undefined) updateData.skills = data.skills;
+    if (data.educationPath !== undefined) updateData.educationPath = data.educationPath;
+    if (data.subjects !== undefined) updateData.subjects = data.subjects;
+    if (data.workEnvironment !== undefined) updateData.workEnvironment = data.workEnvironment;
+    if (data.salaryRange !== undefined) updateData.salaryRange = data.salaryRange;
+    if (data.demandOutlook !== undefined) updateData.demandOutlook = data.demandOutlook;
+    if (data.bhutanSpecific !== undefined) updateData.bhutanSpecific = !!data.bhutanSpecific;
+    if (data.isActive !== undefined) updateData.isActive = !!data.isActive;
+
     const [updatedCareer] = await db
       .update(careers)
-      .set({
-        ...(data.name && { name: data.name }),
-        ...(data.slug && { slug: data.slug }),
-        ...(data.description !== undefined && { description: data.description }),
-        ...(data.riasecCode !== undefined && { riasecCode: data.riasecCode }),
-        ...(data.riasecScores !== undefined && { riasecScores: data.riasecScores }),
-        ...(data.skills !== undefined && { skills: data.skills }),
-        ...(data.educationPath !== undefined && { educationPath: data.educationPath }),
-        ...(data.subjects !== undefined && { subjects: data.subjects }),
-        ...(data.workEnvironment !== undefined && { workEnvironment: data.workEnvironment }),
-        ...(data.salaryRange !== undefined && { salaryRange: data.salaryRange }),
-        ...(data.demandOutlook !== undefined && { demandOutlook: data.demandOutlook }),
-        ...(data.bhutanSpecific !== undefined && { bhutanSpecific: data.bhutanSpecific ? 1 : 0 }),
-        ...(data.isActive !== undefined && { isActive: data.isActive ? 1 : 0 }),
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(careers.id, id))
       .returning();
 
@@ -188,8 +199,8 @@ export async function updateCareer(
 
     return {
       ...updatedCareer,
-      bhutanSpecific: updatedCareer.bhutanSpecific === 1,
-      isActive: updatedCareer.isActive === 1,
+      bhutanSpecific: !!updatedCareer.bhutanSpecific,
+      isActive: !!updatedCareer.isActive,
     };
   } catch (error) {
     console.error("Failed to update career:", error);
@@ -361,7 +372,7 @@ export async function getBhutanCareers(limit = 100) {
     const bhutanCareers = await db
       .select()
       .from(careers)
-      .where(eq(careers.bhutanSpecific, 1))
+      .where(eq(careers.bhutanSpecific, true))
       .limit(limit);
 
     return bhutanCareers.map((career) => ({
@@ -411,8 +422,8 @@ export async function importCareers(
           educationPath: career.educationPath || [],
           salaryRange: career.salaryRange,
           demandOutlook: career.demandOutlook || "medium",
-          bhutanSpecific: career.bhutanSpecific ? 1 : 0,
-          isActive: 1,
+          bhutanSpecific: !!career.bhutanSpecific,
+          isActive: true,
           createdAt: new Date(),
           updatedAt: new Date(),
         }))

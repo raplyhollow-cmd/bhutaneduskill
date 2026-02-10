@@ -196,7 +196,7 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
     const allHomework = await db.query.homework.findMany({
       where: and(
         inArray(homework.classId, studentClassIds),
-        sql`${homework.isPublished} = 1`
+        sql`${homework.isPublished} = true`
       ),
       orderBy: [desc(homework.dueDate)],
       limit: 50,
@@ -326,7 +326,7 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
   const completedModules = await db.query.moduleProgress.findMany({
     where: and(
       eq(moduleProgress.studentId, studentId),
-      eq(moduleProgress.isCompleted, 1)
+eq(moduleProgress.isCompleted, true)
     ),
     with: {
       module: true,
@@ -358,7 +358,7 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
       where: and(
         inArray(homework.classId, studentClassIds),
         gte(homework.dueDate, today.toISOString().split("T")[0]),
-        sql`${homework.isPublished} = 1`
+        sql`${homework.isPublished} = true`
       ),
       orderBy: [homework.dueDate],
       limit: 5,
@@ -439,7 +439,7 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
     .from(careerMatches)
     .where(and(
       eq(careerMatches.assessmentId, latestAssessment?.id || ""),
-      eq(careerMatches.isTopMatch, 1)
+eq(careerMatches.isTopMatch, true)
     ));
 
   const careerMatchSummary: CareerMatchSummary = {
@@ -768,7 +768,7 @@ export async function getStudentHomework(options: {
   const homeworkList = await db.query.homework.findMany({
     where: and(
       eq(homework.classId, enrollment.classId),
-      sql`${homework.isPublished} = 1`
+      sql`${homework.isPublished} = true`
     ),
     with: {
       subject: true,

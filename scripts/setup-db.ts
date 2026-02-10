@@ -118,8 +118,8 @@ async function seed() {
       workEnvironment: career.workEnvironment,
       salaryRange: career.salaryRange,
       demandOutlook: career.demandOutlook as any,
-      bhutanSpecific: career.bhutanSpecific ? 1 : 0,
-      isActive: 1,
+      bhutanSpecific: !!career.bhutanSpecific,
+      isActive: true,
       createdAt: new Date(),
       updatedAt: new Date(),
     });

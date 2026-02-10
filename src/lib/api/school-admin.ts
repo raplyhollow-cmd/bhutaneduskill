@@ -880,7 +880,7 @@ export async function getCounselors(schoolId: string | null, options: {
   const assignments = await db.query.counselorAssignments.findMany({
     where: and(
       eq(counselorAssignments.schoolId, schoolId),
-      eq(counselorAssignments.isActive, 1)
+      eq(counselorAssignments.isActive, true)
     ),
     with: {
       counselor: true,

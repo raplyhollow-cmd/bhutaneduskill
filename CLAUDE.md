@@ -35,6 +35,31 @@
 
 ---
 
+## 🎯 What This Project Does
+
+**Dual Product - Connected Ecosystem:**
+
+| Product | Purpose | Users |
+|---------|---------|-------|
+| **Career Guidance** | Help students discover careers & plan their future | Students (Class 6-12), Parents, Counselors |
+| **School Management** | Run daily operations (attendance, homework, fees) | Schools, Teachers, Admins, Parents |
+
+**How Career Counseling is Used:**
+```
+1. DISCOVER (Free, no login) → Take RIASEC test → Get career matches
+2. EXPLORE → Browse careers, RUB colleges, scholarships
+3. SIGN UP (School code) → Connect to school ecosystem
+4. PLAN → Set goals, choose subjects, create roadmap
+5. ACHIEVE → Track grades, homework, attendance (all linked!)
+6. TRANSITION → BCSE results → Apply to RUB → Success! 🎉
+```
+
+**The Flywheel:** Career guidance attracts students → School collects data → Data improves guidance → Better outcomes → More students join
+
+**Full explanation:** [docs/vision-objectives.md](docs/vision-objectives.md)
+
+---
+
 ## Documentation Index
 
 > **Note:** Detailed documentation has been split into focused files for faster loading. See below for links.
@@ -51,6 +76,7 @@
 | **Missing Features** | [docs/missing-features.md](docs/missing-features.md) | 50+ modules (Fedena, Australia, Cambridge, US research) |
 | **Onboarding Wizard** | [docs/onboarding-wizard.md](docs/onboarding-wizard.md) | Guided setup flows for all user types |
 | **Advanced UX/UI** | [docs/advanced-ux-ui.md](docs/advanced-ux-ui.md) | Micro-interactions, transitions, 1L+ user tested patterns |
+| **Vision & Objectives** | [docs/vision-objectives.md](docs/vision-objectives.md) | Dual-product strategy, student journey, flywheel effect |
 
 ---
 
