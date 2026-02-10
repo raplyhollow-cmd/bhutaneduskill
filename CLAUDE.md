@@ -1819,13 +1819,14 @@ import { Check, X, ChevronDown, User, Settings } from 'lucide-react'
 
 ## UX/UI Task List
 
-**Last Updated:** February 10, 2026 (PART 4) - ✅ Component spacing & touch targets improved
+**Last Updated:** February 10, 2026 (PART 5) - ✅ 15 components improved for spacing & touch targets
 
-**Summary:** 14 components updated for better spacing, consistency, and mobile touch targets
+**Summary:** 15 components updated for better spacing, consistency, and mobile touch targets
 - Form fields (Input, Select, Textarea) now match: `px-4 py-2.5 h-10 rounded-lg`
 - Dropdown menu items: `px-3 py-2` with `rounded-lg` containers
 - Portal sidebar navigation: `min-h-[44px]` for proper touch targets
 - Tabs: All variants now have minimum height for better mobile interaction
+- Switch: Added `lg` size variant with `h-6 w-11` (24x44px) for proper touch targets
 - Full documentation: See `UX_IMPROVEMENTS.md`
 
 ### 🔴 CRITICAL - Fixes That Break Visibility

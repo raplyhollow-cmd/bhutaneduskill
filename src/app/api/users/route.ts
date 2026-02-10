@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const [newUser] = await db
+    const result = await db
       .insert(users)
       .values({
         id: `user_${Date.now()}`,
@@ -148,6 +148,8 @@ export async function POST(request: NextRequest) {
         createdAt: new Date(),
       })
       .returning();
+
+    const newUser = Array.isArray(result) ? result[0] : result;
 
     return NextResponse.json({ user: newUser }, { status: 201 });
   } catch (error) {

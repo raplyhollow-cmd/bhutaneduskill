@@ -27,7 +27,6 @@ import {
   Building2,
   Calendar,
   CheckCircle,
-  X,
   XCircle,
   Clock,
   ChevronDown,
@@ -345,9 +344,6 @@ export default async function AdminUsersPage({
               style={{ borderColor: "rgb(236 72 153)", color: "rgb(219 39 119)" }}
             >
               Role: {roleFilter}
-              <button className="ml-2 hover:text-pink-800">
-                <X className="w-3 h-3" />
-              </button>
             </Badge>
           )}
           {statusFilter !== "all" && (
@@ -357,9 +353,6 @@ export default async function AdminUsersPage({
               style={{ borderColor: "rgb(236 72 153)", color: "rgb(219 39 119)" }}
             >
               Status: {statusFilter}
-              <button className="ml-2 hover:text-pink-800">
-                <X className="w-3 h-3" />
-              </button>
             </Badge>
           )}
           {searchQuery && (
@@ -369,14 +362,8 @@ export default async function AdminUsersPage({
               style={{ borderColor: "rgb(236 72 153)", color: "rgb(219 39 119)" }}
             >
               Search: "{searchQuery}"
-              <button className="ml-2 hover:text-pink-800">
-                <X className="w-3 h-3" />
-              </button>
             </Badge>
           )}
-          <Button variant="ghost" size="sm" className="text-gray-500">
-            Clear all filters
-          </Button>
         </div>
       )}
 

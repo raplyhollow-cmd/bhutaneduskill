@@ -170,7 +170,7 @@ export default function AssessmentPage() {
                         <Badge variant="default">Dominant</Badge>
                       )}
                     </div>
-                    <span className="text-sm text-gray-500">{score}%</span>
+                    <span className="text-sm text-gray-500">{String(score)}%</span>
                   </div>
                   <p className="text-sm text-gray-600 mb-2">
                     {categoryNames[category]}

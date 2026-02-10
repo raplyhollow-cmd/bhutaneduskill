@@ -42,7 +42,7 @@ export interface EmptyStateProps {
 
 const sizeStyles = {
   sm: {
-    icon: "h-8 w-8",
+    icon: "h-10 w-10",
     title: "text-sm",
     container: "py-8 px-4",
   },
@@ -99,7 +99,7 @@ function EmptyState({
       initial="hidden"
       animate="visible"
       className={cn(
-        "flex flex-col items-center justify-center text-center",
+        "flex flex-col items-center justify-center text-center rounded-lg",
         styles.container,
         className
       )}
@@ -164,6 +164,7 @@ function EmptyState({
           <Button
             onClick={action.onClick}
             variant={action.variant ?? "default"}
+            className="min-h-[44px]"
           >
             {action.label}
           </Button>

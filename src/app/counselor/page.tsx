@@ -252,8 +252,11 @@ export default function CounselorDashboardPage() {
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div
-                      className="h-2 rounded-full transition-all" style={{ background: 'linear-gradient(to right, rgb(139 92 246), rgb(124 58 237))' }}
-                      style={{ width: `${school.completion}%` }}
+                      className="h-2 rounded-full transition-all"
+                      style={{
+                        background: 'linear-gradient(to right, rgb(139 92 246), rgb(124 58 237))',
+                        width: `${school.completion}%`
+                      }}
                     />
                   </div>
                   <div className="flex items-center justify-between text-xs text-gray-500">

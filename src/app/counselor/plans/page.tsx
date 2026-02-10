@@ -372,7 +372,7 @@ export default function CounselorPlansPage() {
                 <div>
                   <div className="flex items-center justify-between text-sm mb-2">
                     <span className="text-gray-600">Milestones</span>
-                    <span className="font-medium">{completedMilestones}/{totalMilestonestons}</span>
+                    <span className="font-medium">{completedMilestones}/{totalMilestones}</span>
                   </div>
                   <div className="space-y-1">
                     {plan.milestones.slice(0, 3).map((milestone, idx) => (

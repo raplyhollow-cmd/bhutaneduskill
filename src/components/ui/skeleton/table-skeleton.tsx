@@ -57,10 +57,10 @@ export function TableSkeleton({
           <TableHeader>
             <TableRow>
               {Array.from({ length: columns }).map((_, i) => (
-                <TableHead key={i}>
+                <TableHead key={i} className="h-12 px-4">
                   <div
                     className={cn(
-                      "h-4 animate-pulse rounded bg-muted",
+                      "h-4 animate-pulse rounded-lg bg-muted duration-500",
                       getColumnWidth(i)
                     )}
                   />
@@ -73,10 +73,10 @@ export function TableSkeleton({
           {Array.from({ length: rows }).map((_, rowIndex) => (
             <TableRow key={rowIndex}>
               {Array.from({ length: columns }).map((_, colIndex) => (
-                <TableCell key={colIndex}>
+                <TableCell key={colIndex} className="px-4 py-3">
                   <div
                     className={cn(
-                      "h-4 animate-pulse rounded bg-muted",
+                      "h-4 animate-pulse rounded-lg bg-muted duration-500",
                       colIndex === 0 && "w-3/4",
                       colIndex === 1 && "w-full",
                       colIndex === 2 && "w-5/6",

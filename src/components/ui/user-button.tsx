@@ -106,13 +106,13 @@ export function UserButton({
 
   return (
     <div ref={containerRef} className={cn("relative", className)}>
-      {/* Trigger Button */}
+      {/* Trigger Button - Increased min-height for 44px touch target */}
       <motion.button
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2",
+          "flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-4 py-2.5 min-h-[44px]",
           "hover:bg-gray-50 transition-colors shadow-sm",
           "focus:outline-none focus:ring-2 focus:ring-purple-500/20"
         )}
@@ -161,14 +161,14 @@ export function UserButton({
               "overflow-hidden"
             )}
           >
-            {/* Current Account Header */}
+            {/* Current Account Header - Increased padding for better spacing */}
             <div className="border-b border-gray-100 p-4 bg-gray-50/50">
               <button
                 onClick={() => {
                   onManageAccount?.()
                   setIsOpen(false)
                 }}
-                className="flex items-center gap-3 w-full hover:bg-gray-100 rounded-lg p-2 -m-2 transition-colors"
+                className="flex items-center gap-3 w-full hover:bg-gray-100 rounded-lg p-2.5 -m-2.5 transition-colors min-h-[48px]"
               >
                 <Avatar className="h-12 w-12">
                   {activeAccount?.avatar && (
@@ -190,10 +190,10 @@ export function UserButton({
               </button>
             </div>
 
-            {/* Account Switcher */}
+            {/* Account Switcher - Increased padding for better spacing */}
             {accounts.length > 1 && (
               <div className="p-2 border-b border-gray-100">
-                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider px-3 py-2">
+                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider px-3 py-2.5">
                   Switch Account
                 </div>
                 {accounts
@@ -206,7 +206,7 @@ export function UserButton({
                         setIsOpen(false)
                       }}
                       className={cn(
-                        "flex items-center gap-3 w-full rounded-lg px-3 py-2.5",
+                        "flex items-center gap-3 w-full rounded-lg px-3 py-2.5 min-h-[44px]",
                         "hover:bg-gray-50 transition-colors"
                       )}
                     >
@@ -234,7 +234,7 @@ export function UserButton({
               </div>
             )}
 
-            {/* Actions */}
+            {/* Actions - Increased padding and min-height for touch targets */}
             <div className="p-2">
               <button
                 onClick={() => {
@@ -242,11 +242,11 @@ export function UserButton({
                   setIsOpen(false)
                 }}
                 className={cn(
-                  "flex items-center gap-3 w-full rounded-lg px-3 py-2.5",
+                  "flex items-center gap-3 w-full rounded-lg px-3 py-2.5 min-h-[44px]",
                   "hover:bg-gray-50 transition-colors text-sm"
                 )}
               >
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 shrink-0">
                   <Settings className="h-4 w-4 text-gray-600" />
                 </div>
                 <span>Settings</span>
@@ -258,18 +258,18 @@ export function UserButton({
                   setIsOpen(false)
                 }}
                 className={cn(
-                  "flex items-center gap-3 w-full rounded-lg px-3 py-2.5",
+                  "flex items-center gap-3 w-full rounded-lg px-3 py-2.5 min-h-[44px]",
                   "hover:bg-red-50 transition-colors text-sm text-red-600"
                 )}
               >
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-100">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-red-100 shrink-0">
                   <LogOut className="h-4 w-4" />
                 </div>
                 <span>Sign out</span>
               </button>
             </div>
 
-            {/* Create Account */}
+            {/* Create Account - Increased padding and min-height for touch targets */}
             {showCreateAccount && (
               <div className="border-t border-gray-100 p-2">
                 <button
@@ -278,11 +278,11 @@ export function UserButton({
                     setIsOpen(false)
                   }}
                   className={cn(
-                    "flex items-center gap-3 w-full rounded-lg px-3 py-2.5",
+                    "flex items-center gap-3 w-full rounded-lg px-3 py-2.5 min-h-[44px]",
                     "hover:bg-gray-50 transition-colors text-sm"
                   )}
                 >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-purple-100 shrink-0">
                     <Plus className="h-4 w-4 text-purple-600" />
                   </div>
                   <span>Create organization</span>
@@ -290,8 +290,8 @@ export function UserButton({
               </div>
             )}
 
-            {/* Footer */}
-            <div className="border-t border-gray-100 px-3 py-2 text-center">
+            {/* Footer - Increased padding */}
+            <div className="border-t border-gray-100 px-4 py-2.5 text-center">
               <p className="text-xs text-gray-400">
                 Secured by Career Compass
               </p>
@@ -376,14 +376,14 @@ export function UserButtonCompact({
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className="absolute right-0 top-full z-50 mt-2 w-48 rounded-lg border border-gray-200 bg-white shadow-lg p-1"
+            className="absolute right-0 top-full z-50 mt-2 w-48 rounded-lg border border-gray-200 bg-white shadow-lg p-1.5"
           >
             <button
               onClick={() => {
                 onSignOut?.()
                 setIsOpen(false)
               }}
-              className="flex items-center gap-2 w-full rounded-md px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+              className="flex items-center gap-2 w-full rounded-md px-3 py-2 min-h-[40px] text-sm text-red-600 hover:bg-red-50"
             >
               <LogOut className="h-4 w-4" />
               Sign out

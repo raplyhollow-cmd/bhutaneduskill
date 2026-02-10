@@ -47,18 +47,18 @@ export function CardSkeleton({
       <CardHeader className="gap-4">
         {showAvatar && (
           <div className="flex items-center gap-4">
-            <div className="h-12 w-12 animate-pulse rounded-full bg-muted" />
+            <div className="h-12 w-12 animate-pulse rounded-full rounded-lg bg-muted duration-500" />
             <div className="space-y-2 flex-1">
-              <div className="h-4 w-1/3 animate-pulse rounded bg-muted" />
-              <div className="h-3 w-1/4 animate-pulse rounded bg-muted" />
+              <div className="h-4 w-1/3 animate-pulse rounded-lg bg-muted duration-500" />
+              <div className="h-3 w-1/4 animate-pulse rounded-lg bg-muted duration-500" />
             </div>
           </div>
         )}
         {showTitle && (
-          <div className="h-6 w-3/4 animate-pulse rounded bg-muted" />
+          <div className="h-6 w-3/4 animate-pulse rounded-lg bg-muted duration-500" />
         )}
         {showDescription && (
-          <div className="h-4 w-full animate-pulse rounded bg-muted" />
+          <div className="h-4 w-full animate-pulse rounded-lg bg-muted duration-500" />
         )}
       </CardHeader>
       <CardContent className="space-y-3">
@@ -66,7 +66,7 @@ export function CardSkeleton({
           <div
             key={i}
             className={cn(
-              "animate-pulse rounded bg-muted",
+              "animate-pulse rounded-lg bg-muted duration-500",
               i === 0 && "h-4 w-full",
               i === 1 && "h-4 w-5/6",
               i === 2 && "h-4 w-4/6",
@@ -77,8 +77,8 @@ export function CardSkeleton({
       </CardContent>
       {showFooter && (
         <div className="flex items-center justify-between px-6 pb-6 pt-0">
-          <div className="h-8 w-24 animate-pulse rounded bg-muted" />
-          <div className="h-8 w-20 animate-pulse rounded bg-muted" />
+          <div className="h-8 w-24 animate-pulse rounded-lg bg-muted duration-500" />
+          <div className="h-8 w-20 animate-pulse rounded-lg bg-muted duration-500" />
         </div>
       )}
     </Card>
@@ -93,9 +93,9 @@ export function StatCardSkeleton({ className }: { className?: string }) {
     <Card className={cn("w-full", className)}>
       <CardContent className="p-6">
         <div className="space-y-3">
-          <div className="h-4 w-1/2 animate-pulse rounded bg-muted" />
-          <div className="h-8 w-1/3 animate-pulse rounded bg-muted" />
-          <div className="h-3 w-2/3 animate-pulse rounded bg-muted" />
+          <div className="h-4 w-1/2 animate-pulse rounded-lg bg-muted duration-500" />
+          <div className="h-8 w-1/3 animate-pulse rounded-lg bg-muted duration-500" />
+          <div className="h-3 w-2/3 animate-pulse rounded-lg bg-muted duration-500" />
         </div>
       </CardContent>
     </Card>

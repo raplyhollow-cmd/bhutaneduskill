@@ -357,7 +357,7 @@ export default async function CounselorStudentDetailPage({
                 <div className="grid grid-cols-3 gap-3 mb-4">
                   {Object.entries(student.riasecResults).filter(([key]) => key !== 'code').map(([trait, score]) => (
                     <div key={trait} className="text-center p-3 bg-gray-50 rounded-lg">
-                      <p className="text-2xl font-bold" style={{ color: 'rgb(147 51 234)' }}>{score}%</p>
+                      <p className="text-2xl font-bold" style={{ color: 'rgb(147 51 234)' }}>{String(score)}%</p>
                       <p className="text-xs text-gray-600 capitalize">{trait}</p>
                     </div>
                   ))}

@@ -6,6 +6,8 @@
  * - Pending actions
  * - Recent activities
  * - Quick access cards
+ *
+ * Now using real database data via server actions.
  */
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,131 +29,107 @@ import {
   GraduationCap,
 } from "lucide-react";
 import Link from "next/link";
+import { fetchDashboardStats, fetchClasses, fetchAttendanceRecords } from "../_actions";
 
-export default function SchoolAdminDashboardPage() {
-  // Mock data
-  const schoolStats = {
-    totalStudents: 487,
-    totalTeachers: 34,
-    totalClasses: 18,
-    pendingAttendance: 5,
-    pendingFees: 23,
-    totalRevenue: 2850000, // BTN
-  };
+export default async function SchoolAdminDashboardPage() {
+  // Fetch real data from database
+  const [schoolStats, classesData, attendanceData] = await Promise.all([
+    fetchDashboardStats(),
+    fetchClasses({ limit: 10 }),
+    fetchAttendanceRecords({ limit: 10 }),
+  ]);
 
-  const todayClasses = [
-    {
-      id: "1",
-      name: "Class 10 A",
-      teacher: "Tashi Dorji",
-      subject: "Mathematics",
-      time: "9:00 AM",
-      attendanceStatus: "pending",
-    },
-    {
-      id: "2",
-      name: "Class 10 B",
-      teacher: "Karma Wangmo",
-      subject: "English",
-      time: "10:30 AM",
-      attendanceStatus: "completed",
-    },
-    {
-      id: "3",
-      name: "Class 9 A",
-      teacher: "Pema Lhamo",
-      subject: "Physics",
-      time: "11:00 AM",
-      attendanceStatus: "pending",
-    },
-  ];
+  // Transform classes to today's classes format
+  const todayClasses = classesData.classesList.slice(0, 5).map((cls) => ({
+    id: cls.id,
+    name: cls.name,
+    teacher: cls.classTeacher,
+    subject: cls.subjects[0] || "General",
+    time: "9:00 AM",
+    attendanceStatus: "completed" as const,
+  }));
 
+  // Generate pending actions based on stats
   const pendingActions = [
     {
       id: "1",
       type: "attendance",
-      title: "5 classes pending attendance",
-      urgency: "high",
+      title: `${schoolStats.pendingAttendance} classes pending attendance`,
+      urgency: schoolStats.pendingAttendance > 3 ? "high" : "medium" as "high" | "medium" | "low",
       action: "Mark Attendance",
       link: "/school-admin/attendance",
     },
     {
       id: "2",
       type: "fees",
-      title: "23 students with pending fees",
-      urgency: "medium",
+      title: `${schoolStats.pendingFees} students with pending fees`,
+      urgency: schoolStats.pendingFees > 20 ? "high" : "medium" as "high" | "medium" | "low",
       action: "View Details",
       link: "/school-admin/fees",
     },
     {
       id: "3",
       type: "homework",
-      title: "12 homework submissions to grade",
-      urgency: "low",
-      action: "Grade Now",
+      title: "View homework assignments",
+      urgency: "low" as const,
+      action: "View Homework",
       link: "/school-admin/homework",
-    },
-    {
-      id: "4",
-      type: "approval",
-      title: "3 tutor verification requests",
-      urgency: "medium",
-      action: "Review",
-      link: "/school-admin/tutors",
     },
   ];
 
+  // Recent activities (generated from data)
   const recentActivities = [
     {
       id: "1",
       type: "enrollment",
-      message: "5 new students enrolled",
-      time: "2 hours ago",
+      message: `${schoolStats.totalStudents} students enrolled`,
+      time: "This academic year",
       icon: UserCheck,
     },
     {
       id: "2",
       type: "homework",
-      message: "Math homework assigned to Class 10A",
-      time: "4 hours ago",
+      message: `${schoolStats.totalClasses} classes active`,
+      time: "This semester",
       icon: FileText,
     },
     {
       id: "3",
       type: "result",
-      message: "Midterm results published for Class 12",
-      time: "Yesterday",
+      message: `${schoolStats.totalTeachers} teachers on staff`,
+      time: "Current",
       icon: CheckCircle2,
     },
     {
       id: "4",
       type: "fee",
-      message: "45 students paid monthly fees",
-      time: "Yesterday",
+      message: `Revenue: Nu. ${(schoolStats.totalRevenue / 1000).toFixed(0)}K`,
+      time: "This month",
       icon: DollarSign,
     },
   ];
 
+  // Upcoming events (static for now)
   const upcomingEvents = [
     {
       id: "1",
       title: "Parent-Teacher Meeting",
-      date: "March 15, 2025",
-      time: "10:00 AM - 2:00 PM",
+      date: "Upcoming",
+      time: "TBD",
       type: "meeting",
     },
     {
       id: "2",
       title: "Midterm Examinations",
-      date: "March 20-25, 2025",
+      date: "Scheduled",
       time: "All Day",
       type: "exam",
     },
     {
       id: "3",
       title: "Career Counseling Session",
-      date: "March 18, 2025",
-      time: "2:00 PM - 4:00 PM",
+      date: "Available",
+      time: "By Appointment",
       type: "counseling",
     },
   ];
@@ -172,7 +150,7 @@ export default function SchoolAdminDashboardPage() {
             </Link>
           </Button>
           <Button className="bg-violet-600 hover:bg-violet-700" asChild>
-            <Link href="/school-admin/quick-actions">
+            <Link href="/school-admin/students">
               <Sparkles className="w-4 h-4 mr-2" />
               Quick Actions
             </Link>
@@ -193,7 +171,7 @@ export default function SchoolAdminDashboardPage() {
             <div className="text-2xl font-bold text-violet-600">{schoolStats.totalStudents}</div>
             <p className="text-xs text-violet-600 mt-1">
               <TrendingUp className="w-3 h-3 inline mr-1" />
-              +12 this month
+              Enrolled
             </p>
           </CardContent>
         </Card>
@@ -273,17 +251,17 @@ export default function SchoolAdminDashboardPage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle>Today's Classes</CardTitle>
-                  <CardDescription>Mark attendance for scheduled classes</CardDescription>
+                  <CardTitle>Active Classes</CardTitle>
+                  <CardDescription>View and manage class attendance</CardDescription>
                 </div>
                 <Button variant="outline" size="sm" asChild>
-                  <Link href="/school-admin/attendance">View All</Link>
+                  <Link href="/school-admin/classes">View All</Link>
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {todayClasses.map((cls) => (
+                {todayClasses.length > 0 ? todayClasses.map((cls) => (
                   <div
                     key={cls.id}
                     className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
@@ -309,16 +287,15 @@ export default function SchoolAdminDashboardPage() {
                             : "bg-orange-100 text-orange-700"
                         }
                       >
-                        {cls.attendanceStatus === "completed" ? "Completed" : "Pending"}
+                        {cls.attendanceStatus === "completed" ? "Active" : "Pending"}
                       </Badge>
                     </div>
-                    {cls.attendanceStatus === "pending" && (
-                      <Button size="sm" className="ml-4">
-                        Mark
-                      </Button>
-                    )}
                   </div>
-                ))}
+                )) : (
+                  <div className="text-center py-8 text-gray-500">
+                    No classes found. Create your first class to get started.
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

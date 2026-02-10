@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AssessmentContainer, OptionButton } from "@/components/assessment";
 import { ResultsCard, ScoreBar, TraitCard } from "@/components/assessment";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { calculateLearningStyles, getLearningStylesQuestions } from "@/lib/assessments";
 import type { LearningStylesInput, LearningStylesResult } from "@/lib/assessments";
 import { Eye, Ear, BookOpen, Activity } from "lucide-react";
