@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
-import { tuitionEnrollments, tuitionCourses, users, tutors } from "@/lib/db/schema";
+import { tuitionEnrollments, tuitionCourses, users } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 
 // GET /api/tuition/enrollments - List enrollments
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check enrollment limit
-    if (course.maxStudents && course.currentEnrollments >= course.maxStudents) {
+    if (course.maxStudents && (course.currentEnrollments || 0) >= course.maxStudents) {
       return NextResponse.json({ error: "Course is full" }, { status: 400 });
     }
 
@@ -144,22 +144,6 @@ export async function POST(request: NextRequest) {
         currentEnrollments: (course.currentEnrollments || 0) + 1,
       })
       .where(eq(tuitionCourses.id, courseId));
-
-    // Create tutor earnings record
-    await db.insert(tutorEarnings).values({
-      id: `earn_${Date.now()}`,
-      tutorId: course.tutorId,
-      sourceType: "course",
-      sourceId: courseId,
-      enrollmentId: enrollment.id,
-      grossAmount: price,
-      platformFee,
-      netAmount: tutorEarnings,
-      currency: "BTN",
-      payoutStatus: "pending",
-      earnedAt: now,
-      createdAt: now,
-    });
 
     return NextResponse.json({ enrollment }, { status: 201 });
   } catch (error) {

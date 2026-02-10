@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
         })
         .where(eq(feePayments.id, payment.id));
 
-      console.log("[RMA Webhook] Payment failed:", transaction_id, paymentStatus.failure_reason);
+      console.log("[RMA Webhook] Payment failed:", transaction_id, paymentStatus.failureReason);
     }
 
     // Return success response to RMA

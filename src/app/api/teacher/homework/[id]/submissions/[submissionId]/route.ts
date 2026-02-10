@@ -12,7 +12,7 @@ interface Params {
 // GET /api/teacher/homework/[id]/submissions/[submissionId] - Get submission details
 export async function GET(request: NextRequest, { params }: Params) {
   try {
-    const { id } = await params;
+    const { id, submissionId } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 // PUT /api/teacher/homework/[id]/submissions/[submissionId] - Grade submission
 export async function PUT(request: NextRequest, { params }: Params) {
   try {
-    const { id } = await params;
+    const { id, submissionId } = await params;
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -100,9 +100,24 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
     if (autoGrade && homeworkData.questions) {
       // Auto-grade using the auto-grading engine
+      const supportedTypes = ["multiple_choice", "true_false", "fill_blank", "short_answer", "essay", "numeric", "math_expression", "match_following"];
+      const gradableQuestions = homeworkData.questions
+        .filter((q: any) => supportedTypes.includes(q.type))
+        .map((q: any) => ({
+          id: q.id,
+          type: q.type,
+          question: q.question,
+          options: q.options,
+          correctAnswer: q.correctAnswer,
+          points: q.points,
+          tolerance: q.tolerance,
+          keywords: q.keywords,
+          explanation: q.explanation,
+        }));
+
       const gradingResult = gradeHomework(
-        homeworkData.questions,
-        submission.answers || [],
+        gradableQuestions.length > 0 ? gradableQuestions as any : [],
+        Array.isArray(submission.answers) ? submission.answers : [],
         undefined
       );
 

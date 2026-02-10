@@ -112,14 +112,32 @@ export async function POST(request: NextRequest, { params }: Params) {
     const dueDate = new Date(homeworkData.dueDate);
     const isLate = now > dueDate;
 
-    // Auto-grade if questions exist
+    // Auto-grade if questions exist (filter out unsupported question types)
     let gradingResult = null;
     if (homeworkData.questions && homeworkData.questions.length > 0) {
-      gradingResult = gradeHomework(
-        homeworkData.questions,
-        answers || [],
-        integrityMetadata
-      );
+      // Only grade questions with supported types
+      const supportedTypes = ["multiple_choice", "true_false", "fill_blank", "short_answer", "essay", "numeric", "math_expression", "match_following"];
+      const gradableQuestions = homeworkData.questions
+        .filter((q: any) => supportedTypes.includes(q.type))
+        .map((q: any) => ({
+          id: q.id,
+          type: q.type,
+          question: q.question,
+          options: q.options,
+          correctAnswer: q.correctAnswer,
+          points: q.points,
+          tolerance: q.tolerance,
+          keywords: q.keywords,
+          explanation: q.explanation,
+        }));
+
+      if (gradableQuestions.length > 0) {
+        gradingResult = gradeHomework(
+          gradableQuestions as any,
+          answers || [],
+          integrityMetadata
+        );
+      }
     }
 
     // Prepare submission data

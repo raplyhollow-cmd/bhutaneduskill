@@ -15,10 +15,10 @@ const createHomeworkSchema = z.object({
   type: z.enum(["assignment", "quiz", "project", "reading"]),
   questions: z.array(z.object({
     id: z.string(),
-    type: z.enum(["multiple_choice", "short_answer", "essay", "fill_blank", "match", "numeric", "math_expression", "graph_plot", "handwriting"]),
+    type: z.enum(["multiple_choice", "true_false", "short_answer", "essay", "fill_blank", "numeric", "math_expression", "match_following", "match", "graph_plot", "handwriting"]),
     question: z.string(),
     options: z.array(z.string()).optional(),
-    correctAnswer: z.union([z.string(), z.array(z.string)]).optional(),
+    correctAnswer: z.any().optional(),
     points: z.number(),
     explanation: z.string().optional(),
     mathMode: z.boolean().optional(),
@@ -129,6 +129,12 @@ export async function POST(request: NextRequest) {
       maxPoints = validatedData.questions.reduce((sum, q) => sum + q.points, 0);
     }
 
+    // Filter questions to only include types supported by the database
+    const supportedQuestionTypes = ["multiple_choice", "short_answer", "essay", "fill_blank", "numeric", "math_expression", "graph_plot", "handwriting", "match"];
+    const filteredQuestions = (validatedData.questions || []).filter((q: any) =>
+      supportedQuestionTypes.includes(q.type)
+    ) as any[];
+
     const [newHomework] = await db.insert(homework).values({
       id: `hw_${Date.now()}`,
       schoolId: currentUser.schoolId,
@@ -138,8 +144,8 @@ export async function POST(request: NextRequest) {
       title: validatedData.title,
       description: validatedData.description,
       instructions: validatedData.instructions,
-      type: validatedData.type,
-      questions: validatedData.questions || [],
+      type: validatedData.type as any,
+      questions: filteredQuestions,
       attachments: validatedData.attachments || [],
       externalLinks: validatedData.externalLinks || [],
       assignedDate: validatedData.assignedDate,

@@ -52,7 +52,6 @@ export async function POST(request: NextRequest, { params }: Params) {
         quizScore,
         certificateUrl,
         lastAccessedAt: now,
-        updatedAt: now,
       })
       .where(eq(moduleProgress.id, progress.id))
       .returning();

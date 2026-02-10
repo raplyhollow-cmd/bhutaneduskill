@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
 // Skills categories with levels
 const SKILL_CATEGORIES = {
@@ -85,7 +86,7 @@ export async function POST(req: NextRequest) {
         settings: { ...(userProfile.settings as any), skills: currentSkills },
         updatedAt: new Date(),
       })
-      .where((users) => users.id === userProfile.id);
+      .where(eq(users.id, userProfile.id));
 
     return NextResponse.json({
       success: true,

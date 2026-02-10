@@ -64,7 +64,6 @@ export async function POST(request: NextRequest, { params }: Params) {
         currentLesson,
         progressPercentage,
         lastAccessedAt: now,
-        updatedAt: now,
       })
       .where(eq(moduleProgress.id, progress.id))
       .returning();

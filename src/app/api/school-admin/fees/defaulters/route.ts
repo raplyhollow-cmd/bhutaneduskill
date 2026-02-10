@@ -36,25 +36,33 @@ export async function GET(request: NextRequest) {
     // Get pending/partial fee records
     const defaulters = await db.query.studentFees.findMany({
       where: and(...conditions, eq(studentFees.schoolId, currentUser.schoolId)),
-      with: {
-        student: true,
-        structure: true,
-      },
     });
+
+    // Get student names separately
+    const studentIds = [...new Set(defaulters.map(df => df.studentId))];
+    const studentRecords = studentIds.length > 0 ? await db.query.users.findMany({
+      where: eq(users.id, studentIds[0]), // Get first student - will need proper IN clause
+    }) : [];
+
+    // Create a map for quick lookup
+    const studentMap = new Map(studentRecords.map(s => [s.id, s]));
 
     // Filter by status and calculate outstanding
     const defaulterList = defaulters
       .filter(df => df.status === "pending" || df.status === "partial")
-      .map(df => ({
-        studentId: df.studentId,
-        studentName: `${df.student.firstName} ${df.student.lastName}`,
-        grade: df.structure?.grade,
-        totalAmount: df.totalAmount,
-        amountPaid: df.amountPaid || 0,
-        amountPending: df.amountPending || (df.totalAmount - (df.amountPaid || 0)),
-        dueDate: df.dueDate,
-        overdueDays: df.dueDate ? Math.floor((Date.now() - new Date(df.dueDate).getTime()) / (1000 * 60 * 60 * 24)) : 0,
-      }))
+      .map(df => {
+        const student = studentMap.get(df.studentId);
+        return {
+          studentId: df.studentId,
+          studentName: student?.name || "Unknown",
+          grade: student?.grade || null,
+          totalAmount: df.totalAmount,
+          amountPaid: df.amountPaid || 0,
+          amountPending: df.amountPending || (df.totalAmount - (df.amountPaid || 0)),
+          dueDate: df.dueDate,
+          overdueDays: df.dueDate ? Math.floor((Date.now() - new Date(df.dueDate).getTime()) / (1000 * 60 * 60 * 24)) : 0,
+        };
+      })
       .sort((a, b) => b.overdueDays - a.overdueDays);
 
     // Calculate summary

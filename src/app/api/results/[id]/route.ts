@@ -16,14 +16,16 @@ export async function GET(
 
     const result = await db.query.examResults.findFirst({
       where: eq(examResults.id, id),
-      with: {
-        user: true,
-      },
     });
 
     if (!result) {
       return NextResponse.json({ error: "Result not found" }, { status: 404 });
     }
+
+    // Get the user to check school access
+    const resultUser = await db.query.users.findFirst({
+      where: eq(users.id, result.userId),
+    });
 
     // Check access permissions
     if (result.userId !== currentUser.id) {
@@ -33,7 +35,7 @@ export async function GET(
       }
 
       // Verify school access
-      if (!canAccessSchool(currentUser, result.user.schoolId || "")) {
+      if (resultUser && !canAccessSchool(currentUser, resultUser.schoolId || "")) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
     }
@@ -59,14 +61,16 @@ export async function PUT(
 
     const existingResult = await db.query.examResults.findFirst({
       where: eq(examResults.id, id),
-      with: {
-        user: true,
-      },
     });
 
     if (!existingResult) {
       return NextResponse.json({ error: "Result not found" }, { status: 404 });
     }
+
+    // Get the user to check school access
+    const resultUser = await db.query.users.findFirst({
+      where: eq(users.id, existingResult.userId),
+    });
 
     // Check permissions - only counselor, teacher, and admin can edit
     if (!["counselor", "teacher", "admin"].includes(currentUser.type)) {
@@ -74,7 +78,7 @@ export async function PUT(
     }
 
     // Verify school access
-    if (!canAccessSchool(currentUser, existingResult.user.schoolId || "")) {
+    if (resultUser && !canAccessSchool(currentUser, resultUser.schoolId || "")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -126,14 +130,16 @@ export async function DELETE(
 
     const existingResult = await db.query.examResults.findFirst({
       where: eq(examResults.id, id),
-      with: {
-        user: true,
-      },
     });
 
     if (!existingResult) {
       return NextResponse.json({ error: "Result not found" }, { status: 404 });
     }
+
+    // Get the user to check school access
+    const resultUser = await db.query.users.findFirst({
+      where: eq(users.id, existingResult.userId),
+    });
 
     // Check permissions - only admin and counselor can delete
     if (!["admin", "counselor"].includes(currentUser.type)) {
@@ -141,7 +147,7 @@ export async function DELETE(
     }
 
     // Verify school access
-    if (!canAccessSchool(currentUser, existingResult.user.schoolId || "")) {
+    if (resultUser && !canAccessSchool(currentUser, resultUser.schoolId || "")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -168,14 +174,16 @@ export async function PATCH(
 
     const existingResult = await db.query.examResults.findFirst({
       where: eq(examResults.id, id),
-      with: {
-        user: true,
-      },
     });
 
     if (!existingResult) {
       return NextResponse.json({ error: "Result not found" }, { status: 404 });
     }
+
+    // Get the user to check school access
+    const resultUser = await db.query.users.findFirst({
+      where: eq(users.id, existingResult.userId),
+    });
 
     // Only counselors and admins can verify results
     if (!["counselor", "admin"].includes(currentUser.type)) {
@@ -183,7 +191,7 @@ export async function PATCH(
     }
 
     // Verify school access
-    if (!canAccessSchool(currentUser, existingResult.user.schoolId || "")) {
+    if (resultUser && !canAccessSchool(currentUser, resultUser.schoolId || "")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

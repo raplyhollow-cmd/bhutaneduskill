@@ -9,7 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/db/tenant";
 import { db } from "@/lib/db";
-import { users, assessments, riasecResults, mbtiResults, discResults, careerMatches, careerPlans, examResults, classes } from "@/lib/db/schema";
+import { users, assessments, riasecResults, mbtiResults, discResults, careerMatches, careerPlans, examResults, classes, careers } from "@/lib/db/schema";
 import { eq, and, desc, count, sql } from "drizzle-orm";
 
 // ============================================================================
@@ -242,13 +242,28 @@ async function generateStudentProfileReport(userId: string, currentUser: any) {
     orderBy: desc(discResults.createdAt),
   });
 
-  // Get career matches
-  const careerMatchesData = await db.query.careerMatches.findMany({
-    where: eq(careerMatches.userId, userId),
-    with: { career: true },
-    orderBy: desc(careerMatches.matchScore),
-    limit: 10,
-  });
+  // Get career matches (need to join through assessments since careerMatches doesn't have userId)
+  const careerMatchesData = await db
+    .select({
+      id: careerMatches.id,
+      assessmentId: careerMatches.assessmentId,
+      careerId: careerMatches.careerId,
+      matchScore: careerMatches.matchScore,
+      recommendationText: careerMatches.recommendationText,
+      isTopMatch: careerMatches.isTopMatch,
+      createdAt: careerMatches.createdAt,
+      career: {
+        id: careers.id,
+        name: careers.name,
+        riasecCode: careers.riasecCode,
+      },
+    })
+    .from(careerMatches)
+    .innerJoin(assessments, eq(careerMatches.assessmentId, assessments.id))
+    .innerJoin(careers, eq(careerMatches.careerId, careers.id))
+    .where(eq(assessments.userId, userId))
+    .orderBy(desc(careerMatches.matchScore))
+    .limit(10);
 
   // Get career plan
   const careerPlanData = await db.query.careerPlans.findFirst({
@@ -296,9 +311,9 @@ async function generateStudentProfileReport(userId: string, currentUser: any) {
     },
     careerMatches: careerMatchesData.map((m) => ({
       career: m.career?.name,
-      category: m.career?.category,
+      riasecCode: m.career?.riasecCode,
       matchScore: m.matchScore,
-      matchReason: m.matchReason,
+      matchReason: m.recommendationText,
     })),
     careerPlan: careerPlanData ? {
       targetCareer: careerPlanData.targetCareer,
@@ -326,7 +341,7 @@ async function generateClassSummaryReport(classId: string, currentUser: any) {
     throw new Error("Class not found");
   }
 
-  const studentIds = classData.studentIds || [];
+  const studentIds = classData.students || [];
 
   // Get all students in class
   const classStudents = await db.query.users.findMany({
@@ -344,7 +359,7 @@ async function generateClassSummaryReport(classId: string, currentUser: any) {
         where: eq(riasecResults.userId, student.id),
       });
 
-      const examResults = await db.query.examResults.findMany({
+      const studentExamResults = await db.query.examResults.findMany({
         where: eq(examResults.userId, student.id),
       });
 
@@ -355,7 +370,7 @@ async function generateClassSummaryReport(classId: string, currentUser: any) {
         assessmentsCompleted: studentAssessments.filter((a) => a.status === "completed").length,
         totalAssessments: studentAssessments.length,
         hollandCode: riasecResult?.hollandCode || null,
-        latestExamResult: examResults[0] || null,
+        latestExamResult: studentExamResults[0] || null,
       };
     })
   );
@@ -518,7 +533,7 @@ async function generateSchoolPerformanceReport(parameters: any, currentUser: any
 }
 
 async function generateMyProgressReport(user: any) {
-  const assessments = await db.query.assessments.findMany({
+  const allAssessments = await db.query.assessments.findMany({
     where: eq(assessments.userId, user.id),
   });
 
@@ -526,12 +541,23 @@ async function generateMyProgressReport(user: any) {
     where: eq(riasecResults.userId, user.id),
   });
 
-  const careerMatchesData = await db.query.careerMatches.findMany({
-    where: eq(careerMatches.userId, user.id),
-    with: { career: true },
-    orderBy: desc(careerMatches.matchScore),
-    limit: 5,
-  });
+  // Get career matches through join (careerMatches doesn't have userId)
+  const careerMatchesData = await db
+    .select({
+      id: careerMatches.id,
+      matchScore: careerMatches.matchScore,
+      recommendationText: careerMatches.recommendationText,
+      career: {
+        id: careers.id,
+        name: careers.name,
+      },
+    })
+    .from(careerMatches)
+    .innerJoin(assessments, eq(careerMatches.assessmentId, assessments.id))
+    .innerJoin(careers, eq(careerMatches.careerId, careers.id))
+    .where(eq(assessments.userId, user.id))
+    .orderBy(desc(careerMatches.matchScore))
+    .limit(5);
 
   const careerPlan = await db.query.careerPlans.findFirst({
     where: eq(careerPlans.userId, user.id),
@@ -547,9 +573,9 @@ async function generateMyProgressReport(user: any) {
       grade: user.grade,
     },
     assessments: {
-      completed: assessments.filter((a) => a.status === "completed").length,
-      inProgress: assessments.filter((a) => a.status === "in_progress").length,
-      total: assessments.length,
+      completed: allAssessments.filter((a) => a.status === "completed").length,
+      inProgress: allAssessments.filter((a) => a.status === "in_progress").length,
+      total: allAssessments.length,
     },
     personalityProfile: {
       hollandCode: riasecResult?.hollandCode,
@@ -562,8 +588,8 @@ async function generateMyProgressReport(user: any) {
     careerPlan: careerPlan ? {
       targetCareer: careerPlan.targetCareer,
       currentPhase: careerPlan.currentPhase,
-      milestonesCompleted: careerPlan.milestones?.filter((m: any) => m.completed).length || 0,
-      totalMilestones: careerPlan.milestones?.length || 0,
+      milestonesCompleted: Array.isArray(careerPlan.milestones) ? careerPlan.milestones.filter((m: any) => m.completed).length : 0,
+      totalMilestones: Array.isArray(careerPlan.milestones) ? careerPlan.milestones.length : 0,
     } : null,
     academicResults: examResultsData.map((r) => ({
       examType: r.examType,

@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Match by career clusters if student has RIASEC results
-      if (riasecResult && scholarship.careerClusters && scholarship.careerClusters.length > 0) {
+      if (riasecResult && Array.isArray(scholarship.careerClusters) && scholarship.careerClusters.length > 0) {
         const studentClusters = [riasecResult.hollandCode].flat();
         const hasClusterMatch = scholarship.careerClusters.some(cluster =>
           studentClusters.some(code => cluster.includes(code))
@@ -58,14 +58,14 @@ export async function GET(request: NextRequest) {
       }
 
       // Match by interests (RIASEC codes)
-      if (riasecResult && scholarship.requiredInterests && scholarship.requiredInterests.length > 0) {
+      if (riasecResult && Array.isArray(scholarship.requiredInterests) && scholarship.requiredInterests.length > 0) {
         const studentInterests = [
-          riasecResult.realistic > 0 ? "R" : null,
-          riasecResult.investigative > 0 ? "I" : null,
-          riasecResult.artistic > 0 ? "A" : null,
-          riasecResult.social > 0 ? "S" : null,
-          riasecResult.enterprising > 0 ? "E" : null,
-          riasecResult.conventional > 0 ? "C" : null,
+          (riasecResult.realistic ?? 0) > 0 ? "R" : null,
+          (riasecResult.investigative ?? 0) > 0 ? "I" : null,
+          (riasecResult.artistic ?? 0) > 0 ? "A" : null,
+          (riasecResult.social ?? 0) > 0 ? "S" : null,
+          (riasecResult.enterprising ?? 0) > 0 ? "E" : null,
+          (riasecResult.conventional ?? 0) > 0 ? "C" : null,
         ].filter(Boolean);
 
         const hasInterestMatch = scholarship.requiredInterests.some(interest =>
@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
       let score = 50; // Base score
 
       // Increase score for exact matches
-      if (riasecResult && scholarship.careerClusters && scholarship.careerClusters.length > 0) {
+      if (riasecResult && Array.isArray(scholarship.careerClusters) && scholarship.careerClusters.length > 0) {
         score += 20;
       }
 

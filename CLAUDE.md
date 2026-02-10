@@ -1967,18 +1967,20 @@ URL: http://localhost:3002 (may vary)
 - [x] Missing `createdAt` fields in assessment inserts
 - [x] Boolean values: `isTopMatch: 1` → `isTopMatch: true`
 
-### 🔴 CRITICAL - Remaining Build Errors
+### ✅ COMPLETED - Build Errors (February 10, 2026)
 
-#### 1. Boolean Type Errors (SQLite expects `true/false`, not `1/0`)
-- [ ] Fix `counselor-notes/route.ts:93` - `isPrivate: isPrivate ? 1 : 0` → `isPrivate: !!isPrivate`
-- [ ] Fix `school-admin/subjects/[id]/route.ts:64` - `isActive: isActive ? 1 : 0` → `isActive: !!isActive`
+#### 1. Boolean Type Errors ✅ FIXED
+- [x] `counselor-notes/route.ts:93` - Already uses `isPrivate: !!isPrivate`
+- [x] `school-admin/subjects/[id]/route.ts:64` - Already uses `isActive: !!isActive`
 
-#### 2. External Schema Imports (Tables not integrated into main DB schema)
-These API routes reference tables in separate schema files that aren't in the main DB schema:
-- [ ] `transport/routes/route.ts` - Needs simplification
-- [ ] `library/circulation/route.ts` - Needs simplification
-- [ ] `library/books/route.ts` - Needs simplification
-- [ ] `communication/messages/route.ts` - Needs simplification
+#### 2. External Schema Imports ✅ SIMPLIFIED
+All 4 API routes now return mock data with "under development" messages:
+- [x] `transport/routes/route.ts` - Returns mock routes data
+- [x] `library/circulation/route.ts` - Returns mock circulation data
+- [x] `library/books/route.ts` - Returns mock books data
+- [x] `communication/messages/route.ts` - Returns mock messages data
+
+**Note:** These features (Transport, Library, Messaging) are marked as "under development" and will be fully implemented when their schemas are integrated into the main database.
 
 ---
 

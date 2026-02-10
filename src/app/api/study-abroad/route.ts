@@ -25,7 +25,7 @@ function calculateReadinessScore(
   }
 
   // Language requirement (40 points)
-  if (countryReq.ielts) {
+  if ("ielts" in countryReq && countryReq.ielts) {
     if (userStats.hasIELTS && userStats.ieltsScore) {
       if (userStats.ieltsScore >= countryReq.ielts) {
         score += 40;
@@ -33,7 +33,7 @@ function calculateReadinessScore(
         score += (userStats.ieltsScore / countryReq.ielts) * 30;
       }
     }
-  } else if (country.country === "usa" && countryReq.sat) {
+  } else if ("sat" in countryReq && countryReq.sat) {
     if (userStats.hasSAT && userStats.satScore) {
       if (userStats.satScore >= countryReq.sat) {
         score += 40;

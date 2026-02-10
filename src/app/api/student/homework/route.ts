@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
-import { homework, users, classes, enrollments } from "@/lib/db/schema";
+import { homework, users, classes, enrollments, homeworkSubmissions } from "@/lib/db/schema";
 import { eq, and, or, asc, inArray } from "drizzle-orm";
 
 // GET /api/student/homework - List assigned homework (sorted by due date)
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
 
       let hwStatus = "pending";
       if (submission) {
-        hwStatus = submission.status;
+        hwStatus = submission.status || "pending";
       } else if (now > dueDate) {
         hwStatus = "overdue";
       }
