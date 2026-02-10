@@ -1352,52 +1352,45 @@ import { Check, X, ChevronDown, User, Settings } from 'lucide-react'
 
 ## UX/UI Task List
 
+**Last Updated:** February 10, 2026 - ✅ All critical tasks completed
+
 ### 🔴 CRITICAL - Fixes That Break Visibility
 
-#### 1. Fix Undefined Tailwind Classes
-**Issue:** 7 files use undefined gradient classes like `from-hunter-green-600`, `bg-ash-grey-50`
+#### 1. Fix Undefined Tailwind Classes ✅ COMPLETED
+**Status:** All files already fixed - only 1 file needed corrections
 
-**Files affected:**
-- [ ] `src/app/school-admin/dashboard/page.tsx`
-- [ ] `src/lib/routing-manager.ts` - deprecate/fix gradient class definitions
-- [ ] `src/app/counselor/page.tsx`
-- [ ] `src/components/ai/career-coach.tsx`
-- [ ] `src/app/counselor/data-export/page.tsx`
-- [ ] `src/app/student/dashboard/page.tsx`
+**Files affected (6 already OK, 1 fixed):**
+- [x] `src/app/school-admin/dashboard/page.tsx` - Already fixed
+- [x] `src/lib/routing-manager.ts` - Already fixed (uses `gradientInline`)
+- [x] `src/app/counselor/page.tsx` - Already fixed (uses inline styles)
+- [x] `src/components/ai/career-coach.tsx` - ✅ Fixed (replaced `hunter-green`, `powder-blue`, `oxidized-iron` with standard colors)
+- [x] `src/app/counselor/data-export/page.tsx` - Already fixed
+- [x] `src/app/student/dashboard/page.tsx` - Already fixed (uses inline styles)
 
-**Fix:** Replace with inline styles using RGB values from portal color scheme above
+**Fix Applied:** Replaced undefined classes with proper Tailwind colors (orange-*, blue-*, gray-*)
 
-#### 2. Fix Portal Layouts
-**Issue:** `parent` and `counselor` layouts still use broken `getPortalConfig()` with undefined classes
+#### 2. Fix Portal Layouts ✅ COMPLETED
+**Status:** All portal layouts already use proper inline styles
 
-- [ ] `src/app/parent/layout.tsx`
-  - Replace `bg-ash-grey-50` → `bg-gray-50`
-  - Remove `getPortalConfig` import
-  - Use inline style: `linear-gradient(135deg, rgb(107 114 128) 0%, rgb(75 85 99) 100%)`
-
-- [ ] `src/app/counselor/layout.tsx`
-  - Replace `bg-ash-grey-50` → `bg-gray-50`
-  - Remove `getPortalConfig` import
-  - Use inline style: `linear-gradient(135deg, rgb(168 85 247) 0%, rgb(147 51 234) 100%)`
-
-- [ ] `src/app/admin/layout.tsx`
-  - Complete rewrite to use PortalSidebar/PortalHeader pattern
-  - Use inline style: `linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)`
+**Files:**
+- [x] `src/app/parent/layout.tsx` - Uses `linear-gradient(135deg, rgb(107 114 128) 0%, rgb(75 85 99) 100%)`
+- [x] `src/app/counselor/layout.tsx` - Uses `linear-gradient(135deg, rgb(168 85 247) 0%, rgb(147 51 234) 100%)`
+- [x] `src/app/admin/layout.tsx` - Uses `linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)`
 
 ---
 
 ### 🟠 HIGH PRIORITY - Accessibility
 
-#### 3. Navigation ARIA Labels
+#### 3. Navigation ARIA Labels ✅ COMPLETED
 **File:** `src/components/layout/evolved-nav.tsx`
 
-- [ ] Add `aria-label="Toggle mobile menu"` to mobile menu button
-- [ ] Add `aria-expanded={mobileMenuOpen}` to menu button
-- [ ] Add `aria-current="page"` to active navigation links
-- [ ] Add skip navigation link at top of component
+- [x] Skip navigation link added (line 79-84)
+- [x] `aria-label="Toggle mobile menu"` on mobile menu button (line 177)
+- [x] `aria-expanded={mobileMenuOpen}` on menu button (line 178)
+- [x] `aria-current="page"` on active navigation links (lines 138, 210)
 
 #### 4. Loading States with ARIA
-**Pattern to apply:**
+**Pattern to apply (for future components):**
 ```tsx
 <div role="status" aria-live="polite" aria-label="Loading">
   <span className="sr-only">Loading content...</span>
@@ -1405,26 +1398,25 @@ import { Check, X, ChevronDown, User, Settings } from 'lucide-react'
 </div>
 ```
 
-#### 5. Image Alt Text
-- [ ] `src/components/tuition/tutor-profile-card.tsx` - lines 85, 156, 285
+#### 5. Image Alt Text ✅ COMPLETED
+- [x] `src/components/tuition/tutor-profile-card.tsx` - All images have proper alt text (lines 85, 156, 285)
 
 ---
 
 ### 🟡 MEDIUM - Responsive Design
 
-#### 6. Table Responsiveness
-**Pattern:**
-```tsx
-<div className="overflow-x-auto">
-  <table className="min-w-full">
-    {/* Table content */}
-  </table>
-</div>
-```
+#### 6. Table Responsiveness ✅ COMPLETED
+**Status:** All 8 tables already have `overflow-x-auto` wrapper
 
-**Files:**
-- [ ] `src/app/portal/teacher/page.tsx`
-- [ ] Any other dashboard with tables
+**Files verified:**
+- [x] `src/app/portal/teacher/page.tsx`
+- [x] `src/app/student/attendance/page.tsx`
+- [x] `src/app/dashboard/study-abroad/compare/page.tsx`
+- [x] `src/app/school-admin/teachers/page.tsx`
+- [x] `src/app/school-admin/students/page.tsx`
+- [x] `src/app/school-admin/results/page.tsx`
+- [x] `src/app/school-admin/homework/page.tsx`
+- [x] `src/app/school-admin/attendance/page.tsx`
 
 #### 7. Mobile Typography
 **File:** `src/app/page.tsx`
