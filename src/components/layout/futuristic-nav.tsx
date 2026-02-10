@@ -88,11 +88,7 @@ export function FuturisticNav({ transparent = false }: FuturisticNavProps) {
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ type: "spring", stiffness: 100, damping: 20 }}
-      className={`sticky top-0 z-50 transition-all duration-500 ${
-        isScrolled || transparent
-          ? "bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl border-b border-gray-200/50 shadow-lg shadow-orange-500/5"
-          : "bg-transparent"
-      }`}
+      className="fixed top-0 left-0 right-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-b border-gray-200/50 shadow-sm transition-all duration-300"
       aria-label="Main navigation"
     >
       {/* Animated gradient line at bottom */}

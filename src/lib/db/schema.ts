@@ -54,6 +54,7 @@ export const users = sqliteTable("users", {
   tenantId: text("tenant_id").notNull().references(() => tenants.id),
   schoolId: text("school_id").references(() => schools.id),
   type: text("type", { enum: ["student", "teacher", "parent", "admin", "counselor"] }).notNull(),
+  role: text("role", { enum: ["student", "teacher", "parent", "admin", "school_admin", "counselor"] }).notNull(), // For Clerk compatibility
   email: text("email"),
   phone: text("phone"),
   firstName: text("first_name").notNull(),
@@ -71,7 +72,9 @@ export const users = sqliteTable("users", {
   occupation: text("occupation"),
   relationship: text("relationship"),
   clerkUserId: text("clerk_user_id").unique(),
+  clerkId: text("clerk_id").unique(), // Alias for clerkUserId
   emailVerified: integer("email_verified", { mode: "boolean" }).default(false),
+  onboardingComplete: integer("onboarding_complete", { mode: "boolean" }).default(false),
   settings: text("settings", { mode: "json" }),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   lastLoginAt: integer("last_login_at", { mode: "timestamp" }),
@@ -1286,9 +1289,130 @@ export const contentAudit = sqliteTable("content_audit", {
   createdAt: integer("created_at", { mode: "timestamp" }),
 });
 
+// ============================================================================
+// ONBOARDING WIZARD
+// ============================================================================
+
+// Track user progress through onboarding wizard
+export const wizardProgress = sqliteTable("wizard_progress", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userType: text("user_type", { enum: ["student", "teacher", "parent", "admin", "school_admin", "counselor"] }).notNull(),
+  currentStep: integer("current_step").notNull().default(1),
+  totalSteps: integer("total_steps").notNull().default(5),
+  completed: integer("completed", { mode: "boolean" }).default(false),
+  data: text("data", { mode: "json" }), // Store collected form data
+  skippedSteps: text("skipped_steps", { mode: "json" }).$type<string[]>(),
+  startedAt: integer("started_at", { mode: "timestamp" }).notNull(),
+  completedAt: integer("completed_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+// ============================================================================
+// ANNOUNCEMENTS & NOTIFICATIONS
+// ============================================================================
+
+/**
+ * Announcements - Official school announcements and notices
+ */
+export const announcements = sqliteTable("announcements", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }),
+  tenantId: text("tenant_id").notNull().references(() => tenants.id, { onDelete: "cascade" }),
+
+  // Author
+  authorId: text("author_id").notNull().references(() => users.id),
+  authorName: text("author_name").notNull(), // Denormalized for display
+  authorRole: text("author_role"), // "school_admin", "teacher", etc.
+
+  // Content
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  excerpt: text("excerpt"), // Short summary for cards
+
+  // Target audience
+  targetAudience: text("target_audience", { enum: ["all", "students", "teachers", "parents", "staff", "counselor"] }).default("all"),
+  targetGradeLevel: text("target_grade_level"), // Optional: specific grades (e.g., "X", "XII")
+  targetClassIds: text("target_class_ids", { mode: "json" }).$type<string[]>(), // Specific classes
+  targetUserIds: text("target_user_ids", { mode: "json" }).$type<string[]>(), // Specific users
+
+  // Priority & categorization
+  priority: text("priority", { enum: ["low", "normal", "high", "urgent"] }).default("normal"),
+  category: text("category"), // "academic", "event", "holiday", "exam", "general", "emergency"
+
+  // Status flags
+  isPublished: integer("is_published", { mode: "boolean" }).default(false),
+  isPinned: integer("is_pinned", { mode: "boolean" }).default(false),
+  isArchived: integer("is_archived", { mode: "boolean" }).default(false),
+
+  // Attachments
+  attachments: text("attachments", { mode: "json" }).$type<Array<{
+    name: string;
+    url: string;
+    type: string;
+    size: number;
+  }>>(),
+
+  // Scheduling
+  publishDate: text("publish_date"), // ISO date string when to publish
+  expiryDate: text("expiry_date"), // ISO date string when to expire
+
+  // Engagement tracking
+  viewCount: integer("view_count").default(0),
+
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  publishedAt: integer("published_at", { mode: "timestamp" }),
+});
+
+/**
+ * Announcement Reads - Track who has read which announcements
+ */
+export const announcementReads = sqliteTable("announcement_reads", {
+  id: text("id").primaryKey(),
+  announcementId: text("announcement_id").notNull().references(() => announcements.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  readAt: integer("read_at", { mode: "timestamp" }).notNull(),
+
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+/**
+ * Notification Preferences - User notification settings
+ */
+export const notificationPreferences = sqliteTable("notification_preferences", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+
+  // Email notifications
+  emailEnabled: integer("email_enabled", { mode: "boolean" }).default(true),
+  emailAnnouncements: integer("email_announcements", { mode: "boolean" }).default(true),
+  emailHomework: integer("email_homework", { mode: "boolean" }).default(true),
+  emailAttendance: integer("email_attendance", { mode: "boolean" }).default(true),
+  emailFees: integer("email_fees", { mode: "boolean" }).default(true),
+
+  // Push notifications (in-app)
+  pushEnabled: integer("push_enabled", { mode: "boolean" }).default(true),
+  pushAnnouncements: integer("push_announcements", { mode: "boolean" }).default(true),
+  pushMessages: integer("push_messages", { mode: "boolean" }).default(true),
+  pushHomework: integer("push_homework", { mode: "boolean" }).default(true),
+
+  // Quiet hours
+  quietHoursStart: text("quiet_hours_start"), // HH:MM format
+  quietHoursEnd: text("quiet_hours_end"), // HH:MM format
+
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
 // Additional type exports
 export type College = typeof colleges.$inferSelect;
 export type RubProgram = typeof rubPrograms.$inferSelect;
 export type Scholarship = typeof scholarships.$inferSelect;
 export type DataSource = typeof dataSources.$inferSelect;
 export type ContentAudit = typeof contentAudit.$inferSelect;
+export type WizardProgress = typeof wizardProgress.$inferSelect;
+export type Announcement = typeof announcements.$inferSelect;
+export type AnnouncementRead = typeof announcementReads.$inferSelect;
+export type NotificationPreference = typeof notificationPreferences.$inferSelect;

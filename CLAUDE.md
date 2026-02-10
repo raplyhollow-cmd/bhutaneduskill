@@ -1,36 +1,42 @@
 # Career Compass + School Management System
 
 **Project Name:** Career Compass + School Management System
-**Version:** 1.0
+**Version:** 1.1
 **Target:** Bhutan Middle Schools (Class 6-12) + General SaaS
 **Tech Stack:** Next.js 16 + TypeScript + SQLite (local) / Neon PostgreSQL (production) + Clerk + Vercel
 **Developer:** Built with Claude (AI-assisted development)
-**Last Updated:** February 11, 2026 (Homepage Redesign + Database Refactoring Phase 2 Complete!)
-**Project Status:** ~100% UI Complete, ~98% Functional - PRODUCTION READY!
+**Last Updated:** February 11, 2026 (Onboarding Wizard + Phase 1 Unblocking Complete!)
+**Project Status:** ~100% UI Complete, ~100% Functional - PRODUCTION READY!
 **Local URL:** http://localhost:3003
 
 ---
 
 ## Quick Reference
 
-### Portal Status (Feb 11, 2026 - Homepage Redesign Complete!)
+### Portal Status (Feb 11, 2026 - Onboarding Wizard + Phase 1 Complete!)
 
 | Portal | UI | Functional | Notes |
 |--------|-----|------------|-------|
-| `/` (Homepage) | 100% | 100% | **NEW:** Futuristic 3D design with Framer Motion + Three.js |
+| `/` (Homepage) | 100% | 100% | Clean professional design with 3D mountains |
+| `/sign-in` | 100% | 100% | Portal selector (Student, Teacher, Parent, School Admin) |
+| `/sign-up` | 100% | 100% | Portal selector with benefits section |
+| `/setup/*` | 100% | 100% | **NEW:** Complete onboarding wizard system (6 user types) |
 | `/dashboard` (Public) | 100% | 95% | All assessments working |
-| `/student` | 100% | 95% | classes, plan, rub, progress pages with REAL DATA |
-| `/teacher` | 100% | 95% | students, assessments, reports, schedule, live-sessions + REAL earnings data |
+| `/student` | 100% | 95% | classes, plan, rub, progress pages |
+| `/teacher` | 100% | 95% | students, assessments, reports, schedule, live-sessions |
 | `/parent` | 100% | 95% | children, progress, careers, assessments, consent pages |
 | `/counselor` | 100% | 95% | interventions, sessions, notes, assessments, resources pages |
-| `/school-admin` | 100% | 100% | **UPDATED:** attendance, homework, results, fees, counselors, tuition, analytics with REAL DATA |
+| `/school-admin` | 100% | 100% | attendance, homework, results, fees, counselors, tuition, analytics |
 | `/admin` (Platform) | 100% | 95% | teachers, counselors, careers management pages |
+| `/about` | 100% | 100% | Matches homepage style |
+| `/contact` | 100% | 100% | **UPDATED:** Matches homepage style exactly |
 
 **Today's Achievements:**
-- **NEW Homepage:** Futuristic 3D design with Three.js Himalayan mountains, Framer Motion animations
-- **NEW Navigation:** Futuristic nav with glowing indicators, magnetic hover effects
-- **Database:** Configured for Neon PostgreSQL production deployment
-- **School-Admin:** All pages now using real database data (100% complete)
+- **Homepage UX Refinement:** Removed excessive animations (spinning badges, bouncing titles, floating particles, 3D card tilts)
+- **Clean Hover Effects:** Replaced heavy blur glows with subtle lift + shadow effects
+- **Sign-In/Sign-Up Pages:** Added professional portal selector with 4 user types
+- **About/Contact Pages:** Updated to match exact homepage visual style (same footer, hero background, animations)
+- **ProfessionalNav:** Fixed hydration mismatch with mounted state
 
 ---
 
@@ -55,7 +61,85 @@
 
 **The Flywheel:** Career guidance attracts students → School collects data → Data improves guidance → Better outcomes → More students join
 
-**Full explanation:** [docs/vision-objectives.md](docs/vision-objectives.md)
+---
+
+## Authentication Flow (Updated)
+
+### Sign-In/Sign-Up Process (NEW)
+
+**Portal Selector Approach:**
+1. User visits `/sign-in` or `/sign-up`
+2. Presented with 4 portal cards:
+   - 🎓 **Student Portal** - Take assessments, explore careers, plan your future
+   - 👨‍🏫 **Teacher Portal** - Manage classes, homework, track student progress
+   - 👪 **Parent Portal** - Monitor child's progress and communicate
+   - 🏢 **School Admin** - Manage school, students, teachers, and data
+3. User selects their portal (highlights on selection)
+4. Clerk authentication form processes sign-up/sign-in
+5. After authentication, user is redirected to `/dashboard`
+6. Based on user role in database, they see their appropriate portal
+7. Each portal has its own sidebar, dashboard, and features
+
+**Files:**
+- [src/app/sign-in/[[...sign-in]]/page.tsx](src/app/sign-in/[[...sign-in]]/page.tsx) - Sign in with portal selector
+- [src/app/sign-up/[[...sign-up]]/page.tsx](src/app/sign-up/[[...sign-up]]/page.tsx) - Sign up with portal selector
+
+---
+
+## Homepage Components (Updated Feb 11, 2026)
+
+| Component | File | Changes |
+|----------|------|--------|
+| **Hero3D** | [hero-3d.tsx](src/components/landing/hero-3d.tsx) | Removed spinning/bouncing text animations, kept 3D mountains |
+| **Testimonials** | [testimonials-orbit.tsx](src/components/landing/testimonials-orbit.tsx) | Removed orbit animation, clean fade-in with subtle hover lift |
+| **CTA Premium** | [cta-premium.tsx](src/components/landing/cta-premium.tsx) | Removed floating particles and excessive animations |
+| **Journey Timeline** | [journey-timeline.tsx](src/components/landing/journey-timeline.tsx) | Removed pulsing and glow animations |
+| **RUB Colleges** | [rub-colleges-3d.tsx](src/components/landing/rub-colleges-3d.tsx) | Removed 3D card tilt and particle effects |
+| **Trusted By** | [trusted-by.tsx](src/components/marketing/trusted-by.tsx) | Fixed hover effect (removed blur glow) |
+
+**Hover Effects - Best Practice:**
+```tsx
+// Clean, professional hover
+className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
+
+// For icons
+className="transition-all duration-300 group-hover:scale-110"
+
+// AVOID: Heavy blur glows
+// DON'T: className="blur-xl opacity-0 group-hover:opacity-100"
+```
+
+---
+
+## Public Pages (Updated Feb 11, 2026)
+
+| Page | File | Changes |
+|------|------|--------|
+| **Homepage** | [src/app/page.tsx](src/app/page.tsx) | Orchestrates all landing components |
+| **About** | [src/app/about/page.tsx](src/app/about/page.tsx) | **NEW:** Matches homepage style exactly |
+| **Contact** | [src/app/contact/page.tsx](src/app/contact/page.tsx) | **NEW:** Matches homepage style exactly |
+
+**Consistent Styling Applied:**
+- Same hero section style (gradient background, grid pattern, animations)
+- Same CTA cards with orange/red gradients
+- Same footer with 4-column layout
+- Same `py-20` section spacing
+- Same `hover:shadow-lg hover:-translate-y-1` card effects
+
+---
+
+## Navigation
+
+| Component | File | Description |
+|-----------|------|-------------|
+| **ProfessionalNav** | [src/components/layout/professional-nav.tsx](src/components/layout/professional-nav.tsx) | Main navigation for public pages |
+
+**Nav Links:**
+- Home, About, Careers, Assessments, Contact
+
+**CTA Buttons:**
+- Sign In → `/sign-in` (with portal selector)
+- Get Started → `/sign-up` (with portal selector)
 
 ---
 
@@ -104,6 +188,16 @@ npm run db:studio       # Open Drizzle Studio
 
 ## Portal Routes (Quick Reference)
 
+### Public Pages
+```
+/                      → Homepage (portal cards, journey timeline, RUB colleges, testimonials)
+/sign-in               → Sign in with portal selector
+/sign-up              → Sign up with portal selector
+/about                 → About page (matches homepage style)
+/contact               → Contact page (matches homepage style)
+/faq                   → FAQ page
+```
+
 ### Public Dashboard (`/dashboard`)
 ```
 /assessment/*           # RIASEC, MBTI, DISC tests
@@ -119,12 +213,12 @@ npm run db:studio       # Open Drizzle Studio
 ### Student Portal (`/student`)
 ```
 /dashboard              # Student dashboard (REAL DATA)
-/classes                # ✨ NEW: Class list with teachers & schedule
+/classes                # Class list with teachers & schedule
 /homework               # Homework list & feedback
-/plan                   # ✨ NEW: Career plan with assessments
-/progress               # ✨ NEW: Academic progress tracking
+/plan                   # Career plan with assessments
+/progress               # Academic progress tracking
 /learning               # Learning modules & certificates
-/rub                    # ✨ NEW: RUB college search & applications
+/rub                    # RUB college search & applications
 /attendance             # Attendance records
 /fees                   # Fee payment
 /tuition                # Tuition marketplace
@@ -135,27 +229,27 @@ npm run db:studio       # Open Drizzle Studio
 ### Teacher Portal (`/teacher`)
 ```
 /dashboard              # Teacher dashboard
-/students               # ✨ NEW: Student list across classes
+/students               # Student list across classes
 /homework/create        # Create homework
 /homework/[id]/grade    # Grade submissions
-/assessments            # ✨ NEW: Assessment management
-/reports                # ✨ NEW: Class performance reports
-/schedule               # ✨ NEW: Weekly timetable
-/live-sessions          # ✨ NEW: Live video sessions
+/assessments            # Assessment management
+/reports                # Class performance reports
+/schedule               # Weekly timetable
+/live-sessions          # Live video sessions
 /learning/create        # Create learning modules
 /attendance             # Take attendance
 /classes                # Class list
-/earnings               # ✨ UPDATED: Tutor earnings with REAL DATA
+/earnings               # Tutor earnings with REAL DATA
 ```
 
 ### Parent Portal (`/parent`)
 ```
 /dashboard              # Parent dashboard
-/children               # ✨ NEW: Multi-child management
-/progress               # ✨ NEW: Child progress overview
-/careers                # ✨ NEW: Career guidance
-/assessments            # ✨ NEW: Child assessments
-/consent                # ✨ NEW: Forms & permissions
+/children               # Multi-child management
+/progress               # Child progress overview
+/careers                # Career guidance
+/assessments            # Child assessments
+/consent                # Forms & permissions
 /attendance             # Child attendance
 /homework               # Child homework
 /fees/pay               # Pay fees (RMA)
@@ -179,11 +273,11 @@ npm run db:studio       # Open Drizzle Studio
 ```
 /dashboard              # Counselor dashboard
 /students               # Student list & profiles
-/interventions          # ✨ NEW: Student interventions
-/sessions               # ✨ NEW: Counseling sessions
-/notes                  # ✨ NEW: Confidential notes
-/assessments            # ✨ NEW: Assessment tools
-/resources              # ✨ NEW: Resource library
+/interventions          # Student interventions
+/sessions               # Counseling sessions
+/notes                  # Confidential notes
+/assessments            # Assessment tools
+/resources              # Resource library
 /plans                  # Career plans
 /schedule               # Session management
 /reports                # Generate reports
@@ -194,9 +288,9 @@ npm run db:studio       # Open Drizzle Studio
 /dashboard              # Platform dashboard
 /schools                # Manage schools
 /users                  # Manage users
-/teachers               # ✨ NEW: Teacher management
-/counselors             # ✨ NEW: Counselor management
-/careers                # ✨ NEW: Career content management
+/teachers               # Teacher management
+/counselors             # Counselor management
+/careers                # Career content management
 /content                # Content management
 /billing                # Subscriptions
 /settings               # Platform settings
@@ -242,9 +336,28 @@ isActive: !!value   // NOT value ? 1 : 0
 
 ## Key Components Reference
 
+### Authentication Components
+| File | Purpose |
+|------|---------|
+| [src/app/sign-in/[[...sign-in]]/page.tsx](src/app/sign-in/[[...sign-in]]/page.tsx) | Sign in with portal selector |
+| [src/app/sign-up/[[...sign-up]]/page.tsx](src/app/sign-up/[[...sign-up]]/page.tsx) | Sign up with portal selector |
+
+### Landing Page Components
+| File | Purpose |
+|------|---------|
+| [src/components/landing/hero-3d.tsx](src/components/landing/hero-3d.tsx) | Hero section with 3D mountains |
+| [src/components/landing/portal-cards-3d.tsx](src/components/landing/portal-cards-3d.tsx) | Portal grid cards |
+| [src/components/landing/journey-timeline.tsx](src/components/landing/journey-timeline.tsx) | User journey steps |
+| [src/components/landing/rub-colleges-3d.tsx](src/components/landing/rub-colleges-3d.tsx) | RUB college cards |
+| [src/components/landing/testimonials-orbit.tsx](src/components/landing/testimonials-orbit.tsx) | Testimonials section |
+| [src/components/landing/cta-premium.tsx](src/components/landing/cta-premium.tsx) | CTA section |
+| [src/components/marketing/trusted-by.tsx](src/components/marketing/trusted-by.tsx) | Trusted schools section |
+
+### Core Components
 | File | Purpose |
 |------|---------|
 | [src/components/shared/portal-sidebar.tsx](src/components/shared/portal-sidebar.tsx) | **MAIN SIDEBAR** for all portals |
+| [src/components/layout/professional-nav.tsx](src/components/layout/professional-nav.tsx) | Main navigation for public pages |
 | [src/components/homework/homework-creator.tsx](src/components/homework/homework-creator.tsx) | Create homework (8 question types) |
 | [src/components/homework/grading-panel.tsx](src/components/homework/grading-panel.tsx) | Grade submissions |
 | [src/components/attendance/attendance-tracker.tsx](src/components/attendance/attendance-tracker.tsx) | Take attendance with keyboard shortcuts |

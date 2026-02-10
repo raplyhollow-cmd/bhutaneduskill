@@ -901,7 +901,6 @@ export function getRedirectForLegacyPath(path: string, role: UserRole): string |
     "/dashboard/rub": getBasePathForRole(role) + "/rub",
     "/dashboard/results": getBasePathForRole(role) + "/results",
     "/dashboard/journal": getBasePathForRole(role) + "/journal",
-    "/portal/counselor": "/counselor/dashboard",
   };
 
   // Exact match

@@ -675,7 +675,7 @@ export default function CounselorInterventionsPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold" style={{ background: 'linear-gradient(135deg, rgb(168 85 247), rgb(147 51 234))' }}>
-                    {selectedIntervention.studentName.split(" ").map((n) => n[0]).join("")}
+                    {selectedIntervention.studentName.split(" ").map((n: string) => n[0]).join("")}
                   </div>
                   <div>
                     <CardTitle>{selectedIntervention.studentName}</CardTitle>

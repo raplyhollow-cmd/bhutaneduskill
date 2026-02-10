@@ -117,45 +117,23 @@ export function TrustedBy({ className }: TrustedByProps) {
               <motion.div
                 key={school.id}
                 variants={itemVariants}
-                whileHover={{ scale: 1.05, transition: { duration: 0.2 } }}
-                className="group relative flex flex-col items-center justify-center rounded-xl border border-gray-200 bg-white p-6 transition-all duration-300 hover:border-orange-200 hover:shadow-lg dark:border-gray-800 dark:bg-gray-900 dark:hover:border-orange-900/50"
+                whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                className="group relative flex flex-col items-center justify-center rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:shadow-lg dark:border-gray-800 dark:bg-gray-900"
               >
                 {/* Logo Container */}
                 <div className="relative mb-3">
-                  {/* Outline/Gray version - default */}
-                  <Icon
-                    className="h-10 w-10 text-gray-400 transition-all duration-300 group-hover:text-gray-200 dark:text-gray-600"
-                    style={{ position: "absolute", inset: 0, opacity: 1 }}
-                  />
-                  {/* Colored version - on hover */}
                   <Icon
                     className="h-10 w-10 transition-all duration-300 group-hover:scale-110"
                     style={{
                       color: school.color,
-                      opacity: 0,
-                      transform: "translateY(8px)",
-                      transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
                     }}
                   />
-                  {/* Final state for colored version */}
-                  <style>{`
-                    .group:hover .lucide-icon-colored {
-                      opacity: 1;
-                      transform: translateY(0);
-                    }
-                  `}</style>
                 </div>
 
                 {/* School Name */}
                 <span className="text-sm font-medium text-gray-600 transition-colors duration-300 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-gray-200">
                   {school.name}
                 </span>
-
-                {/* Glow effect on hover */}
-                <div
-                  className="absolute inset-0 rounded-xl opacity-0 transition-opacity duration-300 group-hover:opacity-100 -z-10 blur-xl"
-                  style={{ backgroundColor: school.color }}
-                />
               </motion.div>
             );
           })}
@@ -200,14 +178,13 @@ export function SchoolLogo({ name, icon: Icon, color, className }: SchoolLogoPro
   return (
     <div
       className={cn(
-        "group relative flex flex-col items-center justify-center rounded-xl border border-gray-200 bg-white p-6 transition-all duration-300 hover:border-orange-200 hover:shadow-lg dark:border-gray-800 dark:bg-gray-900 dark:hover:border-orange-900/50",
+        "group relative flex flex-col items-center justify-center rounded-xl border-2 border-gray-200 bg-white p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg dark:border-gray-800 dark:bg-gray-900",
         className
       )}
     >
       <div className="relative mb-3">
-        <Icon className="h-10 w-10 text-gray-400 transition-all duration-300 group-hover:text-gray-200 dark:text-gray-600" />
         <Icon
-          className="absolute inset-0 h-10 w-10 transition-all duration-300 opacity-0 group-hover:opacity-100 group-hover:scale-110"
+          className="h-10 w-10 transition-all duration-300 group-hover:scale-110"
           style={{ color }}
         />
       </div>

@@ -265,3 +265,390 @@ export async function fetchAnalytics(): Promise<AnalyticsData> {
   const schoolId = await getCachedSchoolId();
   return getAnalytics(schoolId);
 }
+
+// ============================================================================
+// ANNOUNCEMENTS ACTIONS
+// ============================================================================
+
+export type AnnouncementData = {
+  id: string;
+  title: string;
+  content: string;
+  excerpt: string | null;
+  targetAudience: string;
+  targetGradeLevel: string | null;
+  targetClassIds: string[] | null;
+  priority: string;
+  category: string | null;
+  isPublished: boolean;
+  isPinned: boolean;
+  isArchived: boolean;
+  publishDate: string | null;
+  expiryDate: string | null;
+  viewCount: number;
+  authorId: string;
+  authorName: string;
+  authorRole: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  publishedAt: Date | null;
+};
+
+/**
+ * Fetch announcements for the current school
+ */
+export async function fetchAnnouncements(options: {
+  search?: string;
+  isPublished?: boolean;
+  isArchived?: boolean;
+  priority?: string;
+  category?: string;
+  limit?: number;
+  offset?: number;
+} = {}): Promise<{ announcements: AnnouncementData[]; total: number }> {
+  const schoolId = await getCachedSchoolId();
+
+  if (!schoolId) {
+    return { announcements: [], total: 0 };
+  }
+
+  try {
+    const { db } = await import("@/lib/db");
+    const { announcements: announcementsTable } = await import("@/lib/db/schema");
+    const { eq, and, desc, or, like, count, sql } = await import("drizzle-orm");
+
+    // Build conditions
+    const conditions = [eq(announcementsTable.schoolId, schoolId)];
+
+    if (options.isPublished !== undefined) {
+      conditions.push(eq(announcementsTable.isPublished, !!options.isPublished));
+    }
+
+    if (options.isArchived !== undefined) {
+      conditions.push(eq(announcementsTable.isArchived, !!options.isArchived));
+    } else {
+      // By default, exclude archived unless explicitly requested
+      conditions.push(eq(announcementsTable.isArchived, false));
+    }
+
+    if (options.priority) {
+      conditions.push(eq(announcementsTable.priority, options.priority));
+    }
+
+    if (options.category) {
+      conditions.push(eq(announcementsTable.category, options.category));
+    }
+
+    if (options.search) {
+      conditions.push(
+        or(
+          like(announcementsTable.title, `%${options.search}%`),
+          like(announcementsTable.content, `%${options.search}%`)
+        )
+      );
+    }
+
+    // Get total count
+    const [{ value: total }] = await db
+      .select({ value: count() })
+      .from(announcementsTable)
+      .where(and(...conditions));
+
+    // Fetch announcements
+    const results = await db
+      .select()
+      .from(announcementsTable)
+      .where(and(...conditions))
+      .orderBy(desc(announcementsTable.isPinned), desc(announcementsTable.createdAt))
+      .limit(options.limit || 50)
+      .offset(options.offset || 0);
+
+    return {
+      announcements: results as AnnouncementData[],
+      total: total as number,
+    };
+  } catch (error) {
+    console.error("Failed to fetch announcements:", error);
+    return { announcements: [], total: 0 };
+  }
+}
+
+/**
+ * Get a single announcement by ID
+ */
+export async function fetchAnnouncementById(id: string): Promise<AnnouncementData | null> {
+  const schoolId = await getCachedSchoolId();
+
+  if (!schoolId) {
+    return null;
+  }
+
+  try {
+    const { db } = await import("@/lib/db");
+    const { announcements: announcementsTable } = await import("@/lib/db/schema");
+    const { eq, and } = await import("drizzle-orm");
+
+    const [announcement] = await db
+      .select()
+      .from(announcementsTable)
+      .where(and(eq(announcementsTable.id, id), eq(announcementsTable.schoolId, schoolId)))
+      .limit(1);
+
+    return (announcement as AnnouncementData) || null;
+  } catch (error) {
+    console.error("Failed to fetch announcement:", error);
+    return null;
+  }
+}
+
+/**
+ * Create a new announcement
+ */
+export async function createAnnouncement(data: {
+  title: string;
+  content: string;
+  excerpt?: string;
+  targetAudience: "all" | "students" | "teachers" | "parents" | "staff" | "counselor";
+  targetGradeLevel?: string;
+  targetClassIds?: string[];
+  targetUserIds?: string[];
+  priority?: "low" | "normal" | "high" | "urgent";
+  category?: string;
+  publishDate?: string;
+  expiryDate?: string;
+  isPublished?: boolean;
+  isPinned?: boolean;
+  attachments?: Array<{ name: string; url: string; type: string; size: number }>;
+}) {
+  const schoolId = await getCachedSchoolId();
+
+  if (!schoolId) {
+    return { success: false, error: "School not found" };
+  }
+
+  try {
+    const { db } = await import("@/lib/db");
+    const { announcements: announcementsTable } = await import("@/lib/db/schema");
+    const { auth } = await import("@clerk/nextjs/server");
+    const { userId } = await auth();
+
+    if (!userId) {
+      return { success: false, error: "Unauthorized" };
+    }
+
+    // Get user info for author fields
+    const { users } = await import("@/lib/db/schema");
+    const { eq } = await import("drizzle-orm");
+
+    const [user] = await db
+      .select({ firstName: users.firstName, lastName: users.lastName, role: users.role })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    const authorName = user ? `${user.firstName} ${user.lastName || ""}`.trim() : "Admin";
+    const authorRole = user?.role || "school_admin";
+
+    const now = new Date();
+    const publishedAt = data.isPublished ? now : null;
+
+    const [announcement] = await db
+      .insert(announcementsTable)
+      .values({
+        id: `ann_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        schoolId,
+        tenantId: "", // Will be set by trigger or default
+        authorId: userId,
+        authorName,
+        authorRole,
+        title: data.title,
+        content: data.content,
+        excerpt: data.excerpt || null,
+        targetAudience: data.targetAudience,
+        targetGradeLevel: data.targetGradeLevel || null,
+        targetClassIds: data.targetClassIds || null,
+        targetUserIds: data.targetUserIds || null,
+        priority: data.priority || "normal",
+        category: data.category || "general",
+        isPublished: !!data.isPublished,
+        isPinned: !!data.isPinned,
+        isArchived: false,
+        attachments: data.attachments || null,
+        publishDate: data.publishDate || null,
+        expiryDate: data.expiryDate || null,
+        viewCount: 0,
+        createdAt: now,
+        updatedAt: now,
+        publishedAt,
+      })
+      .returning();
+
+    return { success: true, announcement };
+  } catch (error) {
+    console.error("Failed to create announcement:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to create announcement",
+    };
+  }
+}
+
+/**
+ * Update an existing announcement
+ */
+export async function updateAnnouncement(
+  id: string,
+  data: {
+    title?: string;
+    content?: string;
+    excerpt?: string;
+    targetAudience?: "all" | "students" | "teachers" | "parents" | "staff" | "counselor";
+    targetGradeLevel?: string;
+    targetClassIds?: string[];
+    targetUserIds?: string[];
+    priority?: "low" | "normal" | "high" | "urgent";
+    category?: string;
+    publishDate?: string;
+    expiryDate?: string;
+    isPublished?: boolean;
+    isPinned?: boolean;
+    isArchived?: boolean;
+    attachments?: Array<{ name: string; url: string; type: string; size: number }>;
+  }
+) {
+  const schoolId = await getCachedSchoolId();
+
+  if (!schoolId) {
+    return { success: false, error: "School not found" };
+  }
+
+  try {
+    const { db } = await import("@/lib/db");
+    const { announcements: announcementsTable } = await import("@/lib/db/schema");
+    const { eq, and } = await import("drizzle-orm");
+
+    // Check if announcement exists and belongs to school
+    const existing = await db
+      .select()
+      .from(announcementsTable)
+      .where(and(eq(announcementsTable.id, id), eq(announcementsTable.schoolId, schoolId)))
+      .limit(1);
+
+    if (!existing.length) {
+      return { success: false, error: "Announcement not found" };
+    }
+
+    // Build update object
+    const updateData: Record<string, any> = {
+      updatedAt: new Date(),
+    };
+
+    // If publishing for the first time
+    if (data.isPublished && !existing[0].isPublished) {
+      updateData.publishedAt = new Date();
+    }
+
+    // Add other fields
+    if (data.title !== undefined) updateData.title = data.title;
+    if (data.content !== undefined) updateData.content = data.content;
+    if (data.excerpt !== undefined) updateData.excerpt = data.excerpt;
+    if (data.targetAudience !== undefined) updateData.targetAudience = data.targetAudience;
+    if (data.targetGradeLevel !== undefined) updateData.targetGradeLevel = data.targetGradeLevel;
+    if (data.targetClassIds !== undefined) updateData.targetClassIds = data.targetClassIds;
+    if (data.targetUserIds !== undefined) updateData.targetUserIds = data.targetUserIds;
+    if (data.priority !== undefined) updateData.priority = data.priority;
+    if (data.category !== undefined) updateData.category = data.category;
+    if (data.publishDate !== undefined) updateData.publishDate = data.publishDate;
+    if (data.expiryDate !== undefined) updateData.expiryDate = data.expiryDate;
+    if (data.isPublished !== undefined) updateData.isPublished = !!data.isPublished;
+    if (data.isPinned !== undefined) updateData.isPinned = !!data.isPinned;
+    if (data.isArchived !== undefined) updateData.isArchived = !!data.isArchived;
+    if (data.attachments !== undefined) updateData.attachments = data.attachments;
+
+    const [updated] = await db
+      .update(announcementsTable)
+      .set(updateData)
+      .where(and(eq(announcementsTable.id, id), eq(announcementsTable.schoolId, schoolId)))
+      .returning();
+
+    return { success: true, announcement: updated };
+  } catch (error) {
+    console.error("Failed to update announcement:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to update announcement",
+    };
+  }
+}
+
+/**
+ * Delete an announcement
+ */
+export async function deleteAnnouncement(id: string) {
+  const schoolId = await getCachedSchoolId();
+
+  if (!schoolId) {
+    return { success: false, error: "School not found" };
+  }
+
+  try {
+    const { db } = await import("@/lib/db");
+    const { announcements: announcementsTable } = await import("@/lib/db/schema");
+    const { eq, and } = await import("drizzle-orm");
+
+    await db
+      .delete(announcementsTable)
+      .where(and(eq(announcementsTable.id, id), eq(announcementsTable.schoolId, schoolId)));
+
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to delete announcement:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete announcement",
+    };
+  }
+}
+
+/**
+ * Toggle announcement pin status
+ */
+export async function togglePinAnnouncement(id: string) {
+  const schoolId = await getCachedSchoolId();
+
+  if (!schoolId) {
+    return { success: false, error: "School not found" };
+  }
+
+  try {
+    const { db } = await import("@/lib/db");
+    const { announcements: announcementsTable } = await import("@/lib/db/schema");
+    const { eq, and } = await import("drizzle-orm");
+
+    // Get current state
+    const [current] = await db
+      .select({ isPinned: announcementsTable.isPinned })
+      .from(announcementsTable)
+      .where(and(eq(announcementsTable.id, id), eq(announcementsTable.schoolId, schoolId)))
+      .limit(1);
+
+    if (!current) {
+      return { success: false, error: "Announcement not found" };
+    }
+
+    // Toggle
+    const [updated] = await db
+      .update(announcementsTable)
+      .set({ isPinned: !current.isPinned, updatedAt: new Date() })
+      .where(and(eq(announcementsTable.id, id), eq(announcementsTable.schoolId, schoolId)))
+      .returning();
+
+    return { success: true, announcement: updated };
+  } catch (error) {
+    console.error("Failed to toggle pin:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to toggle pin",
+    };
+  }
+}

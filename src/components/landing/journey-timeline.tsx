@@ -1,7 +1,6 @@
 "use client";
 
-import { motion, useScroll, useTransform } from "framer-motion";
-import { useRef, useState } from "react";
+import { motion } from "framer-motion";
 import { CheckCircle2, Circle, ArrowRight, Sparkles, Target, BookOpen, GraduationCap, Plane } from "lucide-react";
 
 interface JourneyStep {
@@ -58,77 +57,27 @@ const journeySteps: JourneyStep[] = [
 
 function JourneyCard({ step, isActive, isCompleted }: { step: JourneyStep; isActive: boolean; isCompleted: boolean }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, x: -50 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.5 }}
-      className="relative"
-    >
-      {/* Connection line */}
-      {step.id < journeySteps.length && (
-        <motion.div
-          className="absolute top-24 left-8 w-0.5 h-24 -z-10"
-          initial={{ scaleY: 0, originY: 0 }}
-          animate={{ scaleY: isCompleted ? 1 : 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-        >
-          <div className="w-full h-full bg-gradient-to-b from-gray-300 to-transparent dark:from-gray-700" />
-        </motion.div>
-      )}
-
+    <div className="relative">
       {/* Card */}
-      <motion.div
-        className={`relative p-6 rounded-2xl border-2 transition-all duration-500 ${
+      <div
+        className={`relative p-6 rounded-2xl border-2 transition-all duration-300 ${
           isActive
             ? "bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/30 dark:to-red-950/30 border-orange-300 dark:border-orange-700 shadow-xl shadow-orange-500/20"
             : isCompleted
             ? "bg-white dark:bg-gray-900 border-green-300 dark:border-green-700"
             : "bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800"
-        }`}
-        whileHover={{ scale: 1.02, y: -5 }}
-        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+        } hover:shadow-lg hover:-translate-y-1`}
       >
-        {/* Glow effect for active */}
-        {isActive && (
-          <motion.div
-            className="absolute -inset-4 bg-gradient-to-r from-orange-500/20 to-red-500/20 rounded-3xl blur-xl -z-10"
-            animate={{
-              scale: [1, 1.1, 1],
-              opacity: [0.5, 0.8, 0.5],
-            }}
-            transition={{
-              duration: 2,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-          />
-        )}
-
         {/* Status Icon */}
         <div className="absolute -top-4 -left-4">
           {isCompleted ? (
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: "spring", stiffness: 200 }}
-              className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center shadow-lg"
-            >
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center shadow-lg">
               <CheckCircle2 className="w-6 h-6 text-white" />
-            </motion.div>
+            </div>
           ) : isActive ? (
-            <motion.div
-              animate={{
-                scale: [1, 1.1, 1],
-                rotate: [0, 5, -5, 0],
-              }}
-              transition={{
-                duration: 2,
-                repeat: Infinity,
-              }}
-              className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center shadow-lg"
-            >
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center shadow-lg">
               <Circle className="w-6 h-6 text-white fill-white" />
-            </motion.div>
+            </div>
           ) : (
             <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center">
               <Circle className="w-6 h-6 text-gray-400" />
@@ -140,19 +89,9 @@ function JourneyCard({ step, isActive, isCompleted }: { step: JourneyStep; isAct
         <div className="pl-4">
           {/* Icon & Title */}
           <div className="flex items-start gap-4 mb-3">
-            <motion.div
-              className={`p-3 rounded-xl bg-gradient-to-br ${step.color} text-white`}
-              animate={isActive ? {
-                rotateY: [0, 360],
-              } : {}}
-              transition={{
-                duration: 1,
-                repeat: isActive ? Infinity : 0,
-                repeatDelay: 2,
-              }}
-            >
+            <div className={`p-3 rounded-xl bg-gradient-to-br ${step.color} text-white`}>
               {step.icon}
-            </motion.div>
+            </div>
             <div className="flex-1">
               <h3 className="text-xl font-bold text-gray-900 dark:text-white">
                 {step.title}
@@ -169,95 +108,36 @@ function JourneyCard({ step, isActive, isCompleted }: { step: JourneyStep; isAct
           <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
             {step.description}
           </p>
-
-          {/* Active indicator */}
-          {isActive && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="mt-4 flex items-center gap-2 text-sm font-semibold text-orange-600 dark:text-orange-400"
-            >
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
-              </span>
-              Current Focus
-            </motion.div>
-          )}
         </div>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 }
 
 export function JourneyTimeline() {
-  const sectionRef = useRef<HTMLElement>(null);
-  const [activeStep, setActiveStep] = useState(1);
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ["start end", "end start"],
-  });
-
-  // Map scroll progress to active step
-  useTransform(scrollYProgress, [0, 1], [1, journeySteps.length]);
+  const [activeStep, setActiveStep] = React.useState(1);
 
   return (
-    <section
-      ref={sectionRef}
-      className="relative py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-white via-blue-50/30 to-white dark:from-gray-950 dark:via-blue-950/20 dark:to-gray-950 overflow-hidden"
-    >
-      {/* Animated background */}
-      <div className="absolute inset-0">
-        <motion.div
-          className="absolute top-0 left-1/4 w-96 h-96 bg-orange-400/5 rounded-full blur-3xl"
-          animate={{
-            scale: [1, 1.2, 1],
-            x: [0, 50, 0],
-            y: [0, 30, 0],
-          }}
-          transition={{
-            duration: 10,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-        />
-        <motion.div
-          className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-400/5 rounded-full blur-3xl"
-          animate={{
-            scale: [1, 1.3, 1],
-            x: [0, -50, 0],
-            y: [0, -30, 0],
-          }}
-          transition={{
-            duration: 12,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 1,
-          }}
-        />
-      </div>
+    <section className="relative py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-white via-blue-50/30 to-white dark:from-gray-950 dark:via-blue-950/20 dark:to-gray-950 overflow-hidden">
+      {/* Static background */}
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-orange-400/5 rounded-full blur-3xl" />
+      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-400/5 rounded-full blur-3xl" />
 
       <div className="relative max-w-7xl mx-auto">
         {/* Header */}
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <motion.div
-            initial={{ scale: 0, rotate: -180 }}
-            whileInView={{ scale: 1, rotate: 0 }}
-            viewport={{ once: true }}
-            transition={{ type: "spring", stiffness: 200, delay: 0.2 }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 dark:from-blue-950/50 dark:to-cyan-950/50 border border-blue-200 dark:border-blue-900/50 mb-6"
-          >
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 dark:from-blue-950/50 dark:to-cyan-950/50 border border-blue-200 dark:border-blue-900/50 mb-6">
             <span className="text-2xl">🗺️</span>
             <span className="text-sm font-semibold text-blue-700 dark:text-blue-400">
               Your Journey to Success
             </span>
-          </motion.div>
+          </div>
 
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6">
             From Confusion to
@@ -277,17 +157,11 @@ export function JourneyTimeline() {
           initial={{ scaleX: 0 }}
           whileInView={{ scaleX: 1 }}
           viewport={{ once: true }}
-          transition={{ duration: 1, delay: 0.3 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
           className="mb-12"
         >
           <div className="h-2 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
-            <motion.div
-              className="h-full bg-gradient-to-r from-orange-500 via-red-500 to-orange-500"
-              initial={{ width: "20%" }}
-              whileInView={{ width: "100%" }}
-              viewport={{ once: true }}
-              transition={{ duration: 2, ease: "easeInOut" }}
-            />
+            <div className="h-full bg-gradient-to-r from-orange-500 via-red-500 to-orange-500 w-full" />
           </div>
           <div className="flex justify-between mt-2 text-sm text-gray-500 dark:text-gray-400">
             <span>Start</span>
@@ -300,14 +174,12 @@ export function JourneyTimeline() {
           {journeySteps.map((step, index) => (
             <motion.div
               key={step.id}
-              initial={{ opacity: 0, y: 50 }}
+              initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-100px" }}
               transition={{
                 delay: index * 0.1,
                 duration: 0.5,
-                type: "spring",
-                stiffness: 100,
               }}
               onViewportEnter={() => setActiveStep(step.id)}
             >
@@ -325,7 +197,7 @@ export function JourneyTimeline() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ delay: 0.5 }}
+          transition={{ delay: 0.3 }}
           className="mt-16 text-center"
         >
           <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-orange-100 to-red-100 dark:from-orange-950/50 dark:to-red-950/50 border border-orange-200 dark:border-orange-900/50">
@@ -346,3 +218,6 @@ export function JourneyTimeline() {
     </section>
   );
 }
+
+// Add React import
+import React from "react";

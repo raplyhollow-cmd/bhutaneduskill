@@ -48,6 +48,7 @@ import {
   ChevronDown,
   X,
   Plus,
+  Download,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -122,12 +123,14 @@ const mockChildren: Child[] = [
   {
     id: "child1",
     name: "Tashi Dorji",
+    firstName: "Tashi",
     grade: "Class 10",
     school: "Yangchenphug HSS",
   },
   {
     id: "child2",
     name: "Pema Lhamo",
+    firstName: "Pema",
     grade: "Class 8",
     school: "Motithang HSS",
   },

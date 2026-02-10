@@ -256,9 +256,8 @@ export default function ParentChildrenPage() {
             <Card
               key={child.id}
               className={`transition-all hover:shadow-lg cursor-pointer ${
-                isSelected ? "ring-2" : ""
+                isSelected ? "ring-2 ring-gray-400" : ""
               }`}
-              style={isSelected ? { ringColor: "rgb(107 114 128)" } : {}}
               onClick={() => setSelectedChild(child)}
             >
               <CardContent className="pt-6">

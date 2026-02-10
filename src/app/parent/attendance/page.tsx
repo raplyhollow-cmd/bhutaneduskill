@@ -32,12 +32,14 @@ const mockChildren: Child[] = [
   {
     id: "child1",
     name: "Tashi Dorji",
+    firstName: "Tashi",
     grade: "Class 10",
     school: "Yangchenphug HSS",
   },
   {
     id: "child2",
     name: "Pema Lhamo",
+    firstName: "Pema",
     grade: "Class 8",
     school: "Motithang HSS",
   },
@@ -279,14 +281,13 @@ export default function ParentAttendancePage() {
                 <div
                   key={day}
                   className={`aspect-square rounded-lg flex items-center justify-center text-sm relative
-                    ${isToday ? "ring-2 ring-offset-1" : ""}
+                    ${isToday ? "ring-2 ring-offset-1 ring-gray-400" : ""}
                     ${attendance?.status === "absent" ? "bg-red-100" : ""}
                     ${attendance?.status === "present" ? "bg-green-100" : ""}
                     ${attendance?.status === "late" ? "bg-yellow-100" : ""}
                     ${attendance?.status === "excused" ? "bg-blue-100" : ""}
                     ${!attendance ? "bg-gray-50" : ""}
                   `}
-                  style={isToday ? { ringColor: "rgb(107 114 128)" } : {}}
                 >
                   <span className={isToday ? "font-bold" : ""}>{day}</span>
                   {attendance && (

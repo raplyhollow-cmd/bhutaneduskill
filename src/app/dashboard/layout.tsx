@@ -48,10 +48,10 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   ];
 
   const portals = [
-    { name: "Student Portal", href: "/portal/student", icon: User, description: "Your personal learning hub" },
-    { name: "Parent Portal", href: "/portal/parent", icon: Users, description: "Track your child's progress" },
-    { name: "Teacher Portal", href: "/portal/teacher", icon: GraduationCap, description: "Class analytics & insights" },
-    { name: "Counselor Portal", href: "/portal/counselor", icon: MessageSquare, description: "Student guidance & sessions" },
+    { name: "Student Portal", href: "/student", icon: User, description: "Your personal learning hub" },
+    { name: "Parent Portal", href: "/parent", icon: Users, description: "Track your child's progress" },
+    { name: "Teacher Portal", href: "/teacher", icon: GraduationCap, description: "Class analytics & insights" },
+    { name: "Counselor Portal", href: "/counselor", icon: MessageSquare, description: "Student guidance & sessions" },
   ];
 
   return (

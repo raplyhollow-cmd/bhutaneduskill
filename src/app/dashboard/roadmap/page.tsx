@@ -13,9 +13,11 @@ import {
   TrendingUp,
   CheckCircle2,
   ArrowRight,
+  ArrowLeft,
   Calendar,
   Clock,
   DollarSign,
+  Bookmark,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -418,24 +420,24 @@ export default function RoadmapPage() {
 
           <Card className="bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0">
             <CardHeader>
-              <CardTitle className="text-2xl">{roadmap.name} Roadmap</CardTitle>
+              <CardTitle className="text-2xl">{roadmap?.name} Roadmap</CardTitle>
               <CardDescription className="text-blue-100">
-                Complete journey from Class 6 to your dream career • {roadmap.timeline}
+                Complete journey from Class 6 to your dream career • {roadmap?.timeline}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid md:grid-cols-3 gap-6">
                 <div className="flex items-center gap-2">
                   <Clock className="w-5 h-5" />
-                  <span>{roadmap.timeline} journey</span>
+                  <span>{roadmap?.timeline} journey</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <DollarSign className="w-5 h-5" />
-                  <span>{roadmap.salary} potential</span>
+                  <span>{roadmap?.salary} potential</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Target className="w-5 h-5" />
-                  <span>Requires: {roadmap.skills.join(", ")}</span>
+                  <span>Requires: {roadmap?.skills.join(", ")}</span>
                 </div>
               </div>
             </CardContent>
@@ -443,7 +445,7 @@ export default function RoadmapPage() {
 
           {/* Roadmap Stages */}
           <div className="space-y-6">
-            {roadmap.stages.map((stage, index) => (
+            {roadmap?.stages.map((stage, index) => (
               <Card key={index} className="border-2 border-gray-200">
                 <CardHeader>
                   <div className="flex items-center gap-4">

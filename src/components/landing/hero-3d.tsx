@@ -14,7 +14,7 @@ function Mountain({ position, scale, color }: { position: [number, number, numbe
 
   useFrame((state) => {
     if (meshRef.current) {
-      meshRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.1) * 0.02;
+      meshRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.05) * 0.01;
     }
   });
 
@@ -42,7 +42,7 @@ function MountainRange() {
 
   useFrame((state) => {
     if (groupRef.current) {
-      groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.05) * 0.03;
+      groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.03) * 0.01;
     }
   });
 
@@ -67,13 +67,13 @@ function MountainRange() {
   );
 }
 
-// Floating particles
+// Floating particles - reduced
 function FloatingParticles() {
   const particlesRef = useRef<THREE.Points>(null);
 
   useFrame((state) => {
     if (particlesRef.current) {
-      particlesRef.current.rotation.y = state.clock.elapsedTime * 0.02;
+      particlesRef.current.rotation.y = state.clock.elapsedTime * 0.01;
     }
   });
 
@@ -82,29 +82,21 @@ function FloatingParticles() {
       <bufferGeometry>
         <bufferAttribute
           attach="attributes-position"
-          count={500}
-          array={Float32Array.from({ length: 1500 }, () => (Math.random() - 0.5) * 20)}
+          count={200}
+          array={Float32Array.from({ length: 600 }, () => (Math.random() - 0.5) * 20)}
         />
       </bufferGeometry>
-      <pointsMaterial size={0.02} color="#f97316" transparent opacity={0.6} />
+      <pointsMaterial size={0.02} color="#f97316" transparent opacity={0.4} />
     </points>
   );
 }
 
-// Sunrise glow
+// Sunrise glow - subtle
 function SunriseGlow() {
-  const meshRef = useRef<THREE.Mesh>(null);
-
-  useFrame((state) => {
-    if (meshRef.current) {
-      meshRef.current.position.y = Math.sin(state.clock.elapsedTime * 0.3) * 0.1 - 2;
-    }
-  });
-
   return (
-    <mesh ref={meshRef} position={[0, -2, -5]}>
+    <mesh position={[0, -2, -5]}>
       <sphereGeometry args={[3, 32, 32]} />
-      <meshBasicMaterial color="#f97316" transparent opacity={0.3} />
+      <meshBasicMaterial color="#f97316" transparent opacity={0.15} />
     </mesh>
   );
 }
@@ -120,7 +112,7 @@ function Scene() {
         maxPolarAngle={Math.PI / 2.2}
         minPolarAngle={Math.PI / 3}
         autoRotate
-        autoRotateSpeed={0.5}
+        autoRotateSpeed={0.3}
       />
 
       <ambientLight intensity={0.5} />
@@ -129,7 +121,7 @@ function Scene() {
 
       <MountainRange />
       <FloatingParticles />
-      <Sparkles count={100} scale={10} size={2} speed={0.4} opacity={0.5} color="#f97316" />
+      <Sparkles count={50} scale={10} size={2} speed={0.2} opacity={0.3} color="#f97316" />
       <SunriseGlow />
 
       <Environment preset="sunset" />
@@ -137,15 +129,15 @@ function Scene() {
   );
 }
 
-// Text variants for animations
+// Text variants for animations - simplified
 const textVariants = {
-  hidden: { opacity: 0, y: 30 },
+  hidden: { opacity: 0, y: 20 },
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
     transition: {
-      delay: i * 0.1,
-      duration: 0.8,
+      delay: i * 0.08,
+      duration: 0.6,
       ease: [0.25, 0.4, 0.25, 1],
     },
   }),
@@ -160,40 +152,15 @@ export function Hero3D() {
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-b from-orange-50 via-white to-orange-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
-      {/* Animated background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-orange-100/30 via-transparent to-red-100/30 dark:from-orange-950/20 dark:via-transparent dark:to-red-950/20" />
+      {/* Static background gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-orange-100/20 via-transparent to-red-100/20 dark:from-orange-950/10 dark:via-transparent dark:to-red-950/10" />
 
-      {/* Floating circles */}
-      <motion.div
-        className="absolute top-20 left-10 w-64 h-64 bg-orange-400/10 rounded-full blur-3xl"
-        animate={{
-          scale: [1, 1.2, 1],
-          x: [0, 50, 0],
-          y: [0, 30, 0],
-        }}
-        transition={{
-          duration: 8,
-          repeat: Infinity,
-          ease: "easeInOut",
-        }}
-      />
-      <motion.div
-        className="absolute bottom-20 right-10 w-96 h-96 bg-red-400/10 rounded-full blur-3xl"
-        animate={{
-          scale: [1, 1.3, 1],
-          x: [0, -50, 0],
-          y: [0, -30, 0],
-        }}
-        transition={{
-          duration: 10,
-          repeat: Infinity,
-          ease: "easeInOut",
-          delay: 1,
-        }}
-      />
+      {/* Subtle floating circles - reduced motion */}
+      <div className="absolute top-20 left-10 w-64 h-64 bg-orange-400/5 rounded-full blur-3xl" />
+      <div className="absolute bottom-20 right-10 w-96 h-96 bg-red-400/5 rounded-full blur-3xl" />
 
       {/* Grid pattern overlay */}
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(249,115,22,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(249,115,22,0.03)_1px,transparent_1px)] bg-[size:60px_60px]" />
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(249,115,22,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(249,115,22,0.02)_1px,transparent_1px)] bg-[size:60px_60px]" />
 
       {/* 3D Canvas - Left Side */}
       <div className="absolute left-0 top-0 w-1/2 h-full hidden lg:block">
@@ -214,7 +181,7 @@ export function Hero3D() {
 
           {/* Right - Content */}
           <div className="text-center lg:text-left">
-            {/* Badge */}
+            {/* Badge - NO spinning animation */}
             <motion.div
               custom={0}
               initial="hidden"
@@ -222,24 +189,13 @@ export function Hero3D() {
               variants={textVariants}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-orange-100 to-red-100 dark:from-orange-950/50 dark:to-red-950/50 border border-orange-200 dark:border-orange-900/50 mb-6"
             >
-              <motion.span
-                animate={{
-                  scale: [1, 1.2, 1],
-                  rotate: [0, 10, -10, 0],
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                }}
-              >
-                🇧🇹
-              </motion.span>
+              <span className="text-lg">🇧🇹</span>
               <span className="text-sm font-medium text-orange-700 dark:text-orange-400">
                 Built for Bhutanese Students
               </span>
             </motion.div>
 
-            {/* Main Heading */}
+            {/* Main Heading - NO bouncing animation */}
             <motion.h1
               custom={1}
               initial="hidden"
@@ -251,41 +207,9 @@ export function Hero3D() {
               <span className="block bg-gradient-to-r from-orange-600 via-red-600 to-orange-600 bg-clip-text text-transparent">
                 Confusion
               </span>
-              <motion.span
-                className="block relative inline-block"
-                animate={{
-                  y: [0, -5, 0],
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-              >
+              <span className="block">
                 to Career Clarity
-                <motion.svg
-                  className="absolute -bottom-2 left-0 w-full"
-                  height="8"
-                  initial={{ pathLength: 0 }}
-                  animate={{ pathLength: 1 }}
-                  transition={{ delay: 1, duration: 1, ease: "easeInOut" }}
-                >
-                  <path
-                    d="M0 4 Q 150 8, 300 4"
-                    stroke="url(#gradient)"
-                    strokeWidth="4"
-                    fill="none"
-                    strokeLinecap="round"
-                  />
-                  <defs>
-                    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#f97316" />
-                      <stop offset="50%" stopColor="#dc2626" />
-                      <stop offset="100%" stopColor="#f97316" />
-                    </linearGradient>
-                  </defs>
-                </motion.svg>
-              </motion.span>
+              </span>
             </motion.h1>
 
             {/* Description */}
@@ -310,23 +234,20 @@ export function Hero3D() {
             >
               {["Free Assessments", "RUB Integration", "Study Abroad", "AI Matching"].map(
                 (feature, i) => (
-                  <motion.div
+                  <div
                     key={feature}
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: 0.8 + i * 0.1 }}
                     className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm"
                   >
-                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full" />
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       {feature}
                     </span>
-                  </motion.div>
+                  </div>
                 )
               )}
             </motion.div>
 
-            {/* CTA Buttons */}
+            {/* CTA Buttons - subtle hover only */}
             <motion.div
               custom={4}
               initial="hidden"
@@ -335,43 +256,28 @@ export function Hero3D() {
               className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start"
             >
               <Link href="/dashboard/assessment">
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <Button
-                    size="lg"
-                    className="h-14 px-8 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white font-semibold text-lg shadow-xl shadow-orange-500/30 relative overflow-hidden group"
-                  >
-                    <span className="relative z-10 flex items-center gap-2">
-                      <Compass className="w-5 h-5" />
-                      Start Free Assessment
-                    </span>
-                    <motion.span
-                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                      animate={{
-                        x: ["-100%", "100%"],
-                      }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        repeatDelay: 1,
-                      }}
-                    />
-                  </Button>
-                </motion.div>
+                <Button
+                  size="lg"
+                  className="h-14 px-8 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white font-semibold text-lg shadow-xl shadow-orange-500/30 transition-all"
+                >
+                  <span className="flex items-center gap-2">
+                    <Compass className="w-5 h-5" />
+                    Start Free Assessment
+                  </span>
+                </Button>
               </Link>
 
               <Link href="/about">
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="h-14 px-8 border-2 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 font-semibold text-lg group"
-                  >
-                    <span className="flex items-center gap-2">
-                      Learn More
-                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                    </span>
-                  </Button>
-                </motion.div>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="h-14 px-8 border-2 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 font-semibold text-lg group"
+                >
+                  <span className="flex items-center gap-2">
+                    Learn More
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </span>
+                </Button>
               </Link>
             </motion.div>
 
@@ -386,15 +292,12 @@ export function Hero3D() {
               <div className="flex items-center gap-6 justify-center lg:justify-start">
                 <div className="flex -space-x-3">
                   {[1, 2, 3, 4].map((i) => (
-                    <motion.div
+                    <div
                       key={i}
-                      initial={{ x: -20, opacity: 0 }}
-                      animate={{ x: 0, opacity: 1 }}
-                      transition={{ delay: 1 + i * 0.1 }}
                       className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-red-500 border-2 border-white dark:border-gray-900 flex items-center justify-center text-white text-xs font-bold"
                     >
                       {i}
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
                 <div>
@@ -411,27 +314,19 @@ export function Hero3D() {
         </div>
       </div>
 
-      {/* Scroll indicator */}
+      {/* Simple scroll indicator - reduced motion */}
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1.5, duration: 0.8 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1 }}
         className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
       >
         <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-widest">
           Scroll to explore
         </span>
-        <motion.div
-          animate={{ y: [0, 10, 0] }}
-          transition={{ duration: 1.5, repeat: Infinity }}
-          className="w-6 h-10 rounded-full border-2 border-gray-300 dark:border-gray-700 flex justify-center pt-2"
-        >
-          <motion.div
-            animate={{ opacity: [0.5, 1, 0.5] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-            className="w-1 h-2 bg-orange-500 rounded-full"
-          />
-        </motion.div>
+        <div className="w-6 h-10 rounded-full border-2 border-gray-300 dark:border-gray-700 flex justify-center pt-2">
+          <div className="w-1 h-2 bg-orange-500 rounded-full" />
+        </div>
       </motion.div>
     </section>
   );

@@ -32,6 +32,7 @@ import {
   Link as LinkIcon,
   Database,
   TrendingUp,
+  Megaphone,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -52,6 +53,7 @@ const navigationItems = {
     { name: "Progress", href: "/student/progress", icon: TrendingUp },
     { name: "Fees", href: "/student/fees", icon: DollarSign },
     { name: "Tuition", href: "/student/tuition", icon: GraduationCap },
+    { name: "Announcements", href: "/student/announcements", icon: Megaphone },
     { name: "Assessments", href: "/dashboard/assessment", icon: ClipboardList },
     { name: "Career Matches", href: "/dashboard/careers", icon: Briefcase },
     { name: "Skills", href: "/dashboard/skills", icon: BookOpen },
@@ -118,6 +120,7 @@ const navigationItems = {
     { name: "Fees", href: "/school-admin/fees", icon: Briefcase },
     { name: "Tuition", href: "/school-admin/tuition", icon: Award },
     { name: "Counselors", href: "/school-admin/counselors", icon: MessageSquare },
+    { name: "Announcements", href: "/school-admin/announcements", icon: Megaphone },
     { name: "Reports", href: "/school-admin/reports", icon: BarChart3 },
     { name: "Analytics", href: "/school-admin/analytics", icon: BarChart3 },
     { name: "Settings", href: "/school-admin/settings", icon: Settings },

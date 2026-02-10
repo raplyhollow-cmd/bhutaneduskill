@@ -396,3 +396,174 @@ export async function fetchFeeStatus() {
     return null;
   }
 }
+
+// ============================================================================
+// ANNOUNCEMENTS ACTIONS
+// ============================================================================
+
+export type StudentAnnouncementData = {
+  id: string;
+  title: string;
+  content: string;
+  excerpt: string | null;
+  priority: string;
+  category: string | null;
+  isPinned: boolean;
+  authorName: string;
+  createdAt: Date;
+  attachments: Array<{ name: string; url: string; type: string; size: number }> | null;
+};
+
+/**
+ * Fetch announcements relevant to the current student
+ */
+export async function fetchStudentAnnouncements(): Promise<{
+  announcements: StudentAnnouncementData[];
+  pinned: StudentAnnouncementData[];
+}> {
+  const authData = await getCachedStudentId();
+  if (!authData) {
+    return { announcements: [], pinned: [] };
+  }
+
+  const { id: studentId, schoolId, classGrade } = authData;
+
+  if (!schoolId) {
+    return { announcements: [], pinned: [] };
+  }
+
+  try {
+    const { db } = await import("@/lib/db");
+    const { announcements: announcementsTable } = await import("@/lib/db/schema");
+    const { eq, and, or, desc, sql } = await import("drizzle-orm");
+
+    const now = new Date().toISOString();
+
+    // Build conditions for student-visible announcements:
+    // 1. Published
+    // 2. Not expired
+    // 3. Targeted to: "all", "students", or this specific user/grade
+    const conditions = [
+      eq(announcementsTable.schoolId, schoolId),
+      eq(announcementsTable.isPublished, true),
+      eq(announcementsTable.isArchived, false),
+      or(
+        sql`${announcementsTable.expiryDate} IS NULL`,
+        sql`${announcementsTable.expiryDate} > ${now}`
+      ),
+      or(
+        eq(announcementsTable.targetAudience, "all"),
+        eq(announcementsTable.targetAudience, "students"),
+        // Could add specific user targeting here
+      ),
+    ];
+
+    // Filter by grade level if specified
+    if (classGrade) {
+      conditions.push(
+        or(
+          sql`${announcementsTable.targetGradeLevel} IS NULL`,
+          eq(announcementsTable.targetGradeLevel, String(classGrade))
+        )
+      );
+    }
+
+    const allAnnouncements = await db
+      .select()
+      .from(announcementsTable)
+      .where(and(...conditions))
+      .orderBy(desc(announcementsTable.isPinned), desc(announcementsTable.createdAt));
+
+    // Separate pinned and regular
+    const pinned = allAnnouncements
+      .filter((a) => a.isPinned)
+      .map((a) => ({
+        id: a.id,
+        title: a.title,
+        content: a.content,
+        excerpt: a.excerpt,
+        priority: a.priority,
+        category: a.category,
+        isPinned: a.isPinned,
+        authorName: a.authorName,
+        createdAt: a.createdAt,
+        attachments: a.attachments as any,
+      }));
+
+    const regular = allAnnouncements
+      .filter((a) => !a.isPinned)
+      .map((a) => ({
+        id: a.id,
+        title: a.title,
+        content: a.content,
+        excerpt: a.excerpt,
+        priority: a.priority,
+        category: a.category,
+        isPinned: a.isPinned,
+        authorName: a.authorName,
+        createdAt: a.createdAt,
+        attachments: a.attachments as any,
+      }));
+
+    return {
+      announcements: regular,
+      pinned,
+    };
+  } catch (error) {
+    console.error("Failed to fetch announcements:", error);
+    return { announcements: [], pinned: [] };
+  }
+}
+
+/**
+ * Mark announcement as read
+ */
+export async function markAnnouncementAsRead(announcementId: string) {
+  const authData = await getCachedStudentId();
+  if (!authData) {
+    return { success: false, error: "Student not found" };
+  }
+
+  const { id: studentId } = authData;
+
+  try {
+    const { db } = await import("@/lib/db");
+    const { announcementReads } = await import("@/lib/db/schema");
+    const { eq } = await import("drizzle-orm");
+
+    // Check if already read
+    const existing = await db.query.announcementReads.findFirst({
+      where: and(
+        eq(announcementReads.announcementId, announcementId),
+        eq(announcementReads.userId, studentId)
+      ),
+    });
+
+    if (!existing) {
+      await db.insert(announcementReads).values({
+        id: `ar_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        announcementId,
+        userId: studentId,
+        readAt: new Date(),
+        createdAt: new Date(),
+      });
+
+      // Increment view count
+      const { announcements: announcementsTable } = await import("@/lib/db/schema");
+      await db
+        .update(announcementsTable)
+        .set({
+          viewCount: sql`${announcementsTable.viewCount} + 1`,
+        })
+        .where(eq(announcementsTable.id, announcementId));
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to mark announcement as read:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to mark as read",
+    };
+  }
+}

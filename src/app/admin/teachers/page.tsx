@@ -488,7 +488,7 @@ export default async function AdminTeachersPage({
                       <td className="py-4 px-4">
                         <div className="flex flex-wrap gap-1">
                           {teacher.subjects && teacher.subjects.length > 0 ? (
-                            teacher.subjects.slice(0, 2).map((subject) => (
+                            teacher.subjects.slice(0, 2).map((subject: string) => (
                               <Badge
                                 key={subject}
                                 variant="outline"
