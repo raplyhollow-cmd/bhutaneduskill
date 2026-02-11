@@ -1,11 +1,10 @@
 {
-  "buildCommand": "vercel build",
+  "buildCommand": "vercel build --prod",
   "outputDirectory": ".next",
   "framework": "nextjs",
   "installCommand": "npm install",
-  "regions": ["sin1"],
   "env": {
     "DATABASE_URL": "postgresql://neondb_owner:npg_zEGrNB2cl7wk@ep-soft-rain-aigc3qom-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require"
   }
-  }
+}
 }

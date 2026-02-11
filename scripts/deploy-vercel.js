@@ -1,23 +1,16 @@
 #!/usr/bin/env node
 /**
- * Deploy to Vercel with Environment Variables
+ * Deploy to Vercel - Simplified version
  *
- * This script helps you deploy to Vercel by:
- * 1. Running the build
- * 2. Prompting for and setting environment variables
+ * This script builds your project and gives you deployment commands
  */
 
 const { execSync } = require("child_process");
 
-console.log("🚀 Career Compass - Vercel Deployment Helper");
-console.log("\nThis script will:");
-console.log("1. Build the project");
-console.log("2. Deploy to Vercel (preview)");
-console.log("3. Prompt for environment variables");
-console.log("\nPress Ctrl+C to cancel at any time.\n");
+console.log("🚀 Career Compass - Deploy to Vercel\n");
 
 // Step 1: Build
-console.log("\n📦 Step 1: Building project...");
+console.log("\n📦 Step 1: Building project...\n");
 const buildResult = execSync("npm run build", {
   cwd: __dirname,
   stdio: "inherit",
@@ -25,35 +18,54 @@ const buildResult = execSync("npm run build", {
 });
 
 if (buildResult.status !== 0) {
-  console.error("❌ Build failed!");
+  console.error("\n❌ Build failed!");
+  console.error("   Run 'npm run build' locally to check errors");
   process.exit(1);
 }
 console.log("✅ Build completed!\n");
 
-// Step 2: Deploy to preview
-console.log("\n🚀 Step 2: Deploying to Vercel (preview)...");
-console.log("\n📝 IMPORTANT: Before deploying, add these environment variables in Vercel:");
-console.log("\n   DATABASE_URL=postgresql://...");
-console.log("   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_...");
-console.log("   CLERK_SECRET_KEY=sk_live_...");
-console.log("   NEXT_PUBLIC_APP_URL=https://your-project.vercel.app");
-console.log("\n💡 Type 'y' to continue, or Ctrl+C to cancel...\n");
+// Step 2: Display deployment commands
+console.log("\n📋 Step 2: Add these environment variables in Vercel:\n");
 
-// Deploy command
-const deployCmd = "vercel --yes";
-console.log(`\n📋 Running: vercel --yes\n`);
+const envVars = [
+  { name: "DATABASE_URL", value: "postgresql://neondb_owner:npg_zEGrNB2cl7wk@ep-soft-rain-aigc3qom-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require" },
+  { name: "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", value: "pk_live_... (get from Clerk Dashboard)" },
+  { name: "CLERK_SECRET_KEY", value: "sk_live_... (get from Clerk Dashboard)" },
+  { name: "NEXT_PUBLIC_APP_URL", value: "https://your-project.vercel.app" }
+];
 
-try {
-  require("child_process").execSync(deployCmd, {
-    cwd: __dirname,
-    stdio: "inherit",
-    shell: true,
-    stdio: [process.stdin, process.stdout, process.stderr]
-  });
-} catch (error) {
-  console.error("\n❌ Vercel CLI not found!");
-  console.error("\n   Please install it first: npm i -g vercel");
-  process.exit(1);
+console.log("\nRequired Environment Variables:\n");
+envVars.forEach((v) => {
+  console.log(`   ${v.name}=`);
+  console.log(v.value || "[your value here]");
+  console.log("");
+});
+
+console.log("\n📋 Vercel Deployment Commands:\n");
+console.log("   # Install Vercel CLI (once):");
+console.log("   npm i -g vercel");
+console.log("");
+console.log("   # Login to Vercel:");
+console.log("   vercel login");
+console.log("");
+console.log("   # Deploy to preview:");
+console.log("   vercel --prod");
+console.log("");
+console.log("   # Deploy to production:");
+console.log("   vercel --prod --yes");
+console.log("");
+
+console.log("\n📋 After deployment, your app will be live at:");
+console.log("   https://your-project.vercel.app\n");
+
+console.log("\n💡 Documentation:");
+console.log("   https://vercel.com/docs/deployments");
+console.log("");
+console.log("\n✅ You're ready to deploy!\n");
+
+// Success message
+if (buildResult.status === 0) {
+  console.log("\n✅ All checks passed! You can now deploy.");
+} else {
+  console.log("\n⚠️  Fix build errors before deploying.");
 }
-
-console.log("\n✅ Done! Check your Vercel dashboard for the deployment URL.\n");
