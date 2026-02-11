@@ -23,7 +23,7 @@ export default async function SchoolAdminResultsPage({
   const search = searchParams.search || "";
 
   // Get initial data from database
-  let initialResults = [];
+  let initialResults: any[] = [];
   let initialTotal = 0;
 
   try {

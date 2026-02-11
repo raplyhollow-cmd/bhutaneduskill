@@ -349,7 +349,8 @@ export default async function SchoolAdminClassesPage({
                 variant="outline"
                 size="sm"
                 disabled={page === totalPages}
-                href={`?page=${page + 1}&search=${search}&grade=${grade}&section=${section}&status=${status}`}
+                asChild={page !== totalPages}
+                {...(page !== totalPages && { href: `?page=${page + 1}&search=${search}&grade=${grade}&section=${section}&status=${status}` })}
               >
                 <ChevronRight className="w-4 h-4" />
               </Button>

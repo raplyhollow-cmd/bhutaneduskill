@@ -28,6 +28,7 @@ import {
   BarChart3,
   TrendingUp,
   Clock,
+  Check,
   Filter,
   Search,
   FileSpreadsheet,

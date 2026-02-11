@@ -37,8 +37,7 @@ export function FeeClient({ initialData }: FeeClientProps) {
   const handleRefresh = async () => {
     setLoading(true);
     try {
-      const schoolId = "current"; // Would get from auth in real implementation
-      const newData = await fetchFeeData(schoolId);
+      const newData = await fetchFeeData();
       setData(newData);
     } catch (error) {
       console.error("Failed to refresh fee data:", error);
@@ -58,8 +57,6 @@ export function FeeClient({ initialData }: FeeClientProps) {
           summary={data.summary}
           onPrintReceipt={(paymentId) => console.log("Print receipt:", paymentId)}
           onExport={(type) => console.log("Export:", type)}
-          onRefresh={handleRefresh}
-          loading={loading}
         />
       </div>
     </div>

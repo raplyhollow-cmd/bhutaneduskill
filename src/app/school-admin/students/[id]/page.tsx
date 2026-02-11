@@ -272,7 +272,7 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
                 <DollarSign className="w-6 h-6 text-green-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900">Nu. {totalPaid.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-gray-900">Nu. {feeStats.totalPaid.toLocaleString()}</p>
                 <p className="text-sm text-gray-500">Fees Paid</p>
               </div>
             </div>
@@ -298,7 +298,7 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
                 <BookOpen className="w-6 h-6 text-yellow-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900">{homeworkSubmissions.length}</p>
+                <p className="text-2xl font-bold text-gray-900">{Array.isArray(homeworkSubmissions) ? homeworkSubmissions.length : 0}</p>
                 <p className="text-sm text-gray-500">Homework Done</p>
               </div>
             </div>

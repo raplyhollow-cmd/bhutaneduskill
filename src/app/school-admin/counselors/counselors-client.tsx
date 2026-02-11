@@ -17,8 +17,8 @@ import { fetchCounselors } from "../_actions";
 interface Counselor {
   id: string;
   name: string;
-  email: string;
-  phone: string;
+  email: string | null;
+  phone: string | null;
   assignedSchools: string[];
   totalStudents: number;
   isActive: boolean;
