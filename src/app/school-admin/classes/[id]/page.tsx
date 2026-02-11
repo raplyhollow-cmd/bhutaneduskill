@@ -437,33 +437,32 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-violet-100 rounded-full flex items-center justify-center">
                               <span className="text-violet-600 font-medium text-sm">
-                                {((enrollment.student.firstName && enrollment.student.firstName[0]) || "") + ((enrollment.student.lastName && enrollment.student.lastName[0]) || "")}
+                                {((enrollment.student as any)?.firstName?.[0] ?? '') + ((enrollment.student as any)?.lastName?.[0] ?? '')}
                               </span>
-                              {/* @ts-nocheck */}
                             </div>
                             <div>
                               <Link
                                 href={`/school-admin/students/${enrollment.studentId}`}
                                 className="font-medium text-gray-900 hover:text-violet-600"
                               >
-                                {(enrollment.student.firstName && enrollment.student.firstName[0]) || ""} {(enrollment.student.lastName && enrollment.student.lastName[0]) || ""}
+                                {(enrollment.student as any)?.firstName ?? ''} {(enrollment.student as any)?.lastName ?? ''}
                               </Link>
-                              <p className="text-sm text-gray-500">{enrollment.student.email || "No email"}</p>
+                              <p className="text-sm text-gray-500">{(enrollment.student as any)?.email || "No email"}</p>
                             </div>
                           </div>
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex flex-col gap-1 text-sm">
-                            {enrollment.student.phone && (
+                            {(enrollment.student as any)?.phone && (
                               <div className="flex items-center gap-1 text-gray-600">
                                 <Phone className="w-3 h-3" />
-                                {enrollment.student.phone}
+                                {(enrollment.student as any).phone}
                               </div>
                             )}
-                            {enrollment.student.email && (
+                            {(enrollment.student as any)?.email && (
                               <div className="flex items-center gap-1 text-gray-600">
                                 <Mail className="w-3 h-3" />
-                                {enrollment.student.email}
+                                {(enrollment.student as any).email}
                               </div>
                             )}
                           </div>
