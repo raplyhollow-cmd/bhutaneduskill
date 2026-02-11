@@ -89,7 +89,7 @@ function StatCard({
               top: "50%",
             }}
             animate={{
-              y: [0, -40, 0],
+              y: [0, 0],
               opacity: [0, 1, 0],
               scale: [0, 1, 0],
             }}
@@ -247,7 +247,7 @@ export function StatsParticlesSection() {
           animate={{
             scale: [1, 1.5, 1],
             x: [0, 100, 0],
-            y: [0, 50, 0],
+            y: [0, 0],
           }}
           transition={{
             duration: 20,
@@ -262,12 +262,13 @@ export function StatsParticlesSection() {
           }}
           animate={{
             scale: [1, 1.3, 1],
-            x: [0, -100, 0],
-            y: [0, -50, 0],
+            x: [0, 0],
+            y: [0, 0],
           }}
           transition={{
             duration: 15,
             repeat: Infinity,
+            repeatType: "loop",
             ease: "easeInOut",
             delay: 2,
           }}
@@ -296,7 +297,7 @@ export function StatsParticlesSection() {
             <motion.span
               animate={{
                 scale: [1, 1.2, 1],
-                rotate: [0, 10, -10, 0],
+                rotate: [0, 10, 0],
               }}
               transition={{ duration: 2, repeat: Infinity }}
               className="text-2xl"

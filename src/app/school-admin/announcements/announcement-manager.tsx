@@ -176,7 +176,16 @@ export function ClientAnnouncementManager({
                 setShowEditDialog(false);
                 setSelectedId(null);
               }}
-              initialData={selectedAnnouncement}
+              initialData={{
+                title: selectedAnnouncement.title,
+                content: selectedAnnouncement.content,
+                excerpt: selectedAnnouncement.excerpt ?? undefined,
+                targetAudience: selectedAnnouncement.targetAudience as "all" | "students" | "teachers" | "parents" | "staff" | "counselor",
+                priority: selectedAnnouncement.priority as "low" | "normal" | "high" | "urgent",
+                category: selectedAnnouncement.category ?? undefined,
+                isPublished: selectedAnnouncement.isPublished,
+                isPinned: selectedAnnouncement.isPinned,
+              }}
               isSubmitting={isSubmitting}
             />
           )}

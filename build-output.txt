@@ -1,0 +1,24 @@
+
+> career-guidance@0.1.0 build
+> next build
+
+▲ Next.js 16.1.6 (Turbopack)
+- Environments: .env.local
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+✓ Compiled successfully in 2.6min
+  Running TypeScript ...
+Failed to compile.
+
+./src/app/school-admin/classes/[id]/page.tsx:440:55
+Type error: Property 'firstName' does not exist on type '{ [x: string]: any; }[]'.
+
+[0m [90m 438 |[39m                             [33m<[39m[33mdiv[39m className[33m=[39m[32m"w-10 h-10 bg-violet-100 rounded-full flex items-center justify-center"[39m[33m>[39m
+ [90m 439 |[39m                               [33m<[39m[33mspan[39m className[33m=[39m[32m"text-violet-600 font-medium text-sm"[39m[33m>[39m
+[31m[1m>[22m[39m[90m 440 |[39m                                 {((enrollment[33m.[39mstudent[33m.[39mfirstName [33m&&[39m enrollment[33m.[39mstudent[33m.[39mfirstName[[35m0[39m]) [33m||[39m [32m""[39m) [33m+[39m ((enrollment[33m.[39mstudent[33m.[39mlastName [33m&&[39m enrollment[33m.[39mstudent[33m.[39mlastName[[35m0[39m]) [33m||[39m [32m""[39m)}
+ [90m     |[39m                                                       [31m[1m^[22m[39m
+ [90m 441 |[39m                               [33m<[39m[33m/[39m[33mspan[39m[33m>[39m
+ [90m 442 |[39m                               {[90m/* @ts-nocheck */[39m}
+ [90m 443 |[39m                             [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m[0m
+Next.js build worker exited with code: 1 and signal: null

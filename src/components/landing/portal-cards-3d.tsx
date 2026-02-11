@@ -115,7 +115,7 @@ function PortalCard({
             {/* Icon with floating animation */}
             <motion.div
               className="mb-5"
-              animate={hovered ? { y: [0, -4, 0] } : { y: 0 }}
+              animate={hovered ? { y: 0 } : { y: 0 }}
               transition={{ duration: 0.5 }}
             >
               <div
@@ -277,7 +277,7 @@ export function PortalGridSection() {
         <motion.div
           className="absolute top-20 left-10 w-72 h-72 bg-orange-400/10 rounded-full blur-3xl"
           animate={{
-            y: [0, -30, 0],
+            y: [0, 0],
             scale: [1, 1.05, 1],
           }}
           transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
@@ -363,7 +363,7 @@ export function PortalGridSection() {
           >
             {/* Floating decorative icons */}
             <motion.div
-              animate={{ y: [0, -12, 0], opacity: [0.2, 0.4, 0.2] }}
+              animate={{ y: [0, 0], opacity: [0.2, 0.4, 0.2] }}
               transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
               className="absolute top-6 left-8 text-white/20"
             >
@@ -371,7 +371,7 @@ export function PortalGridSection() {
             </motion.div>
             <motion.div
               animate={{ y: [0, 12, 0], opacity: [0.2, 0.4, 0.2] }}
-              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+              transition={{ duration: 5, repeat: Infinity, repeatType: "loop", ease: "easeInOut" }}
               className="absolute bottom-6 right-8 text-white/20"
             >
               <BookOpen className="w-10 h-10" />

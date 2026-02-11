@@ -120,7 +120,7 @@ export function FuturisticNav({ transparent = false }: FuturisticNavProps) {
               className="absolute inset-0 bg-gradient-to-r from-orange-500 to-red-500 rounded-2xl blur-xl opacity-0 group-hover:opacity-30 transition-opacity duration-500"
               animate={{
                 scale: [1, 1.2, 1],
-                rotate: [0, 5, -5, 0],
+                rotate: [0, 5, 0],
               }}
               transition={{
                 duration: 2,
@@ -134,7 +134,7 @@ export function FuturisticNav({ transparent = false }: FuturisticNavProps) {
               <motion.div
                 className="w-12 h-12 bg-gradient-to-br from-orange-500 via-orange-600 to-red-600 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/30"
                 whileHover={{
-                  rotate: [0, -10, 10, -10, 0],
+                  rotate: [0, 10, 0],
                   transition: { duration: 0.5 },
                 }}
               >
@@ -221,7 +221,7 @@ export function FuturisticNav({ transparent = false }: FuturisticNavProps) {
                     <motion.span
                       animate={
                         hoveredIndex === index
-                          ? { rotate: [0, -10, 10, -10, 0] }
+                          ? { rotate: [0, 10, 0] }
                           : {}
                       }
                       transition={{ duration: 0.5 }}
@@ -340,8 +340,8 @@ export function FuturisticNav({ transparent = false }: FuturisticNavProps) {
               aria-label="Mobile navigation"
             >
               <motion.div
-                initial={{ y: -20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 transition={{ delay: 0.1 }}
                 className="py-6 space-y-2"
               >

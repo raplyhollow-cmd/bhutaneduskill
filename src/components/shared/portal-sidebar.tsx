@@ -273,7 +273,7 @@ export function PortalSidebar({ userType, userName, userImage }: SidebarProps) {
           {/* Portal Header */}
           <motion.div
             className="p-6 border-b border-white/20"
-            initial={{ opacity: 0, y: -20 }}
+            initial={{ opacity: 0, y: 0 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1, duration: 0.4 }}
           >
@@ -288,8 +288,8 @@ export function PortalSidebar({ userType, userName, userImage }: SidebarProps) {
                 transition={{ type: "spring", stiffness: 400 }}
               >
                 <motion.div
-                  animate={{ rotate: [0, 10, -10, 0] }}
-                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+                  animate={{ rotate: [0, 10, 0] }}
+                  transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 3 }}
                 >
                   <GraduationCap className="w-6 h-6" />
                 </motion.div>
@@ -348,7 +348,7 @@ export function PortalSidebar({ userType, userName, userImage }: SidebarProps) {
                 return (
                   <motion.li
                     key={item.name}
-                    initial={{ opacity: 0, x: -20 }}
+                    initial={{ opacity: 0, x: 0 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.03, type: "spring", stiffness: 300, damping: 24 }}
                   >
@@ -465,7 +465,7 @@ export function PortalHeader({
         <div className="flex items-center justify-between">
           <motion.div
             className="flex-1"
-            initial={{ opacity: 0, x: -20 }}
+            initial={{ opacity: 0, x: 0 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.4 }}
           >
@@ -474,7 +474,7 @@ export function PortalHeader({
           </motion.div>
           <motion.div
             className="flex items-center gap-4"
-            initial={{ opacity: 0, x: 20 }}
+            initial={{ opacity: 0, x: 0 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.4, delay: 0.1 }}
           >

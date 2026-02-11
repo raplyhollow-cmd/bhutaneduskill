@@ -14,7 +14,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AttendanceClient } from "./attendance-client";
 import { getAttendanceRecords } from "@/lib/api/school-admin";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { users, classes } from "@/lib/db/schema";
 import { db } from "@/lib/db";
 
@@ -47,7 +47,7 @@ export default async function SchoolAdminAttendancePage({
 
   // Get total student count for the school
   const [studentCountResult] = await db
-    .select({ count: { count: () => 1 } })
+    .select({ count: sql<number>`count(*)` })
     .from(users)
     .where(eq(users.type, "student"));
 

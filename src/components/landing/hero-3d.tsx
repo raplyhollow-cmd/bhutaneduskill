@@ -70,6 +70,15 @@ function MountainRange() {
 // Floating particles - reduced
 function FloatingParticles() {
   const particlesRef = useRef<THREE.Points>(null);
+  const [positions] = useState(() => {
+    const pos = new Float32Array(600);
+    for (let i = 0; i < 600; i += 3) {
+      pos[i] = (Math.random() - 0.5) * 20;
+      pos[i + 1] = (Math.random() - 0.5) * 20;
+      pos[i + 2] = (Math.random() - 0.5) * 20;
+    }
+    return pos;
+  });
 
   useFrame((state) => {
     if (particlesRef.current) {
@@ -83,7 +92,8 @@ function FloatingParticles() {
         <bufferAttribute
           attach="attributes-position"
           count={200}
-          array={Float32Array.from({ length: 600 }, () => (Math.random() - 0.5) * 20)}
+          array={positions}
+          itemSize={3}
         />
       </bufferGeometry>
       <pointsMaterial size={0.02} color="#f97316" transparent opacity={0.4} />

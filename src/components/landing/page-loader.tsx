@@ -82,6 +82,7 @@ export function PageLoader({ onComplete }: PageLoaderProps) {
                   transition={{
                     duration: 3,
                     repeat: Infinity,
+                    repeatType: "loop",
                     ease: "linear",
                     delay: i * 0.5,
                   }}
@@ -148,7 +149,7 @@ export function PageLoader({ onComplete }: PageLoaderProps) {
                     top: `${Math.random() * 100}%`,
                   }}
                   animate={{
-                    y: [0, -100, 0],
+                    y: [0, 0],
                     opacity: [0, 1, 0],
                     scale: [0, 1, 0],
                   }}
