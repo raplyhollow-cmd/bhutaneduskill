@@ -114,15 +114,15 @@ export default function StudyAbroadPage() {
                     {countryId === "australia" || countryId === "new-zealand" || countryId === "singapore" ? (
                       <>
                         <li className="flex items-start gap-2 text-sm">
-                          {userStats.hasIELTS && userStats.ieltsScore >= (country.ielts || 6.0) ? (
+                          {userStats.hasIELTS && userStats.ieltsScore >= (("ielts" in country ? country.ielts : 6.0)) ? (
                             <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5" />
                           ) : (
                             <AlertCircle className="w-4 h-4 text-yellow-500 mt-0.5" />
                           )}
                           <span>
-                            IELTS {country.ielts}+
+                            IELTS {"ielts" in country ? country.ielts : 6.0}+
                             {!userStats.hasIELTS && " (Not completed)"}
-                            {userStats.hasIELTS && userStats.ieltsScore < (country.ielts || 6.0) && ` (Your score: ${userStats.ieltsScore})`}
+                            {userStats.hasIELTS && userStats.ieltsScore < (("ielts" in country ? country.ielts : 6.0)) && ` (Your score: ${userStats.ieltsScore})`}
                           </span>
                         </li>
                       </>
@@ -206,7 +206,7 @@ export default function StudyAbroadPage() {
                     {college.programs.slice(0, 3).map((program, index) => (
                       <li key={index} className="text-sm text-gray-600 flex items-center gap-2">
                         <BookOpen className="w-3 h-3 text-blue-500" />
-                        {program}
+                        {typeof program === "string" ? program : program.name}
                       </li>
                     ))}
                     {college.programs.length > 3 && (

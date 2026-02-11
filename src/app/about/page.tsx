@@ -98,7 +98,7 @@ export default function AboutPage() {
       transition: {
         delay: i * 0.08,
         duration: 0.6,
-        ease: [0.25, 0.4, 0.25, 1],
+        ease: [0.25, 0.4, 0.25, 1] as const,
       },
     }),
   };

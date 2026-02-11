@@ -2,19 +2,7 @@ import { Suspense } from "react";
 import { fetchAnnouncements } from "../_actions";
 import type { AnnouncementFormData } from "@/components/announcements";
 import { revalidatePath } from "next/cache";
-import dynamic from "next/dynamic";
-
-const ClientAnnouncementManager = dynamic(
-  () => import("./announcement-manager").then((mod) => mod.ClientAnnouncementManager),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex items-center justify-center py-12">
-        <div className="text-gray-500">Loading announcements...</div>
-      </div>
-    ),
-  }
-);
+import { AnnouncementManagerWrapper } from "./announcement-manager-wrapper";
 
 interface PageProps {
   searchParams: {
@@ -100,7 +88,7 @@ export default async function AnnouncementsPage({ searchParams }: PageProps) {
 
       {/* Announcements Manager */}
       <Suspense fallback={<LoadingState />}>
-        <ClientAnnouncementManager
+        <AnnouncementManagerWrapper
           announcements={announcements}
           total={total}
           onCreate={handleCreate}

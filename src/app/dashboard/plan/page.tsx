@@ -151,7 +151,7 @@ export default function CareerPlanPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-lg">{p.targetCareer || "Untitled Plan"}</h3>
-                    <p className="text-sm text-gray-500">Phase: {CAREER_PHASES[p.currentPhase]?.name || p.currentPhase}</p>
+                    <p className="text-sm text-gray-500">Phase: {CAREER_PHASES[p.currentPhase as keyof typeof CAREER_PHASES]?.name || p.currentPhase}</p>
                   </div>
                   <ArrowRight className="w-5 h-5 text-gray-400" />
                 </div>
@@ -227,7 +227,7 @@ export default function CareerPlanPage() {
               </div>
               <div className="text-right">
                 <p className="text-blue-100 text-sm">Current Phase</p>
-                <p className="text-xl font-semibold">{CAREER_PHASES[activePlan.currentPhase]?.name}</p>
+                <p className="text-xl font-semibold">{CAREER_PHASES[activePlan.currentPhase as keyof typeof CAREER_PHASES]?.name}</p>
               </div>
             </div>
           </CardContent>

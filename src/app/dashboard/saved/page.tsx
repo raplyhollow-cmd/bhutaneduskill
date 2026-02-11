@@ -63,19 +63,17 @@ export default function SavedPage() {
   const careerItems = CAREERS_DATABASE.filter((c) => savedCareers.includes(c.id));
   const scholarshipItems = SCHOLARSHIPS.filter((s) => savedScholarships.includes(s.id));
 
-  let filteredItems: Array<{ type: string; item: any; savedAt: string }> = [];
+  type FilteredItem = { type: "career" | "scholarship"; item: any; savedAt: string };
+
+  const filteredItems: FilteredItem[] = [];
 
   if (filter === "all" || filter === "career") {
-    filteredItems = [
-      ...filteredItems,
-      ...careerItems.map((c) => ({ type: "career", item: c, savedAt: "" })),
-    ];
+    const careerFiltered: FilteredItem[] = careerItems.map((c) => ({ type: "career" as const, item: c, savedAt: "" }));
+    filteredItems.push(...careerFiltered);
   }
   if (filter === "all" || filter === "scholarship") {
-    filteredItems = [
-      ...filteredItems,
-      ...scholarshipItems.map((s) => ({ type: "scholarship", item: s, savedAt: "" })),
-    ];
+    const scholarshipFiltered: FilteredItem[] = scholarshipItems.map((s) => ({ type: "scholarship" as const, item: s, savedAt: "" }));
+    filteredItems.push(...scholarshipFiltered);
   }
 
   return (

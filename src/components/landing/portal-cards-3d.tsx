@@ -70,7 +70,7 @@ function PortalCard({
             borderColor: hovered ? color : "rgb(229, 231, 235)",
             borderWidth: hovered ? "2px" : "1px",
             boxShadow: hovered
-              ? `0 20px 40px -10px ${color.replace("linear-gradient(135deg, ", "").replace(")", "").replace(", " ", ", ")}, 0 10px 30px 0px rgb(0 0 0 / 0.1)`
+              ? `0 20px 40px -10px ${color.replace("linear-gradient(135deg, ", "").replace(")", "").replace(/, /g, ",")}, 0 10px 30px 0px rgb(0 0 0 / 0.1)`
               : "0 4px 6px -1px rgb(0 0 0 / 0.1)",
             transform: hovered ? "translateY(-8px) scale(1.02)" : "translateY(0) scale(1)",
           }}

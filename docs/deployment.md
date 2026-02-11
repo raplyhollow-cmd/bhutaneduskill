@@ -11,11 +11,32 @@
 
 ## Before Production Deployment
 
-### 1. Database Migration
+### 1. Database Migration (SQLite → Neon)
 
-- Migrate from SQLite to Neon PostgreSQL
-- Update all database queries
-- Test in staging environment
+#### Option A: Fresh Start (Empty Database)
+```bash
+# 1. Create Neon project at neon.tech
+# 2. Get your DATABASE_URL
+# 3. Push schema to Neon
+npx drizzle-kit push:pg --config=drizzle.config.prod.ts
+```
+
+#### Option B: Migrate Existing SQLite Data
+```bash
+# 1. Create Neon project at neon.tech
+# 2. Get your DATABASE_URL
+# 3. Set environment variable
+export DATABASE_URL="postgresql://user:password@ep-xxx.aws.neon.tech/neondb"
+
+# 4. Run migration script
+npm run migrate:neon
+```
+
+The migration script ([`scripts/migrate-sqlite-to-neon.ts`](../scripts/migrate-sqlite-to-neon.ts)):
+- Exports all data from `local.db`
+- Converts SQLite formats to PostgreSQL
+- Imports to Neon in correct dependency order
+- Shows progress and error summary
 
 ### 2. Environment Variables Setup
 

@@ -332,20 +332,21 @@ export async function fetchAnnouncements(options: {
     }
 
     if (options.priority) {
-      conditions.push(eq(announcementsTable.priority, options.priority));
+      conditions.push(eq(announcementsTable.priority, options.priority as "low" | "normal" | "high" | "urgent"));
     }
 
     if (options.category) {
-      conditions.push(eq(announcementsTable.category, options.category));
+      conditions.push(eq(announcementsTable.category, options.category as "general" | "event" | "exam" | "holiday" | "urgent"));
     }
 
     if (options.search) {
-      conditions.push(
-        or(
-          like(announcementsTable.title, `%${options.search}%`),
-          like(announcementsTable.content, `%${options.search}%`)
-        )
+      const searchCondition = or(
+        like(announcementsTable.title, `%${options.search}%`),
+        like(announcementsTable.content, `%${options.search}%`)
       );
+      if (searchCondition) {
+        conditions.push(searchCondition);
+      }
     }
 
     // Get total count

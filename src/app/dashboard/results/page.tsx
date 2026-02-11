@@ -146,9 +146,8 @@ export default function ResultsPage() {
                     <Select
                       value={subject.subject}
                       onValueChange={(value) => handleSubjectChange(index, "subject", value)}
-                      className="flex-1"
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="flex-1">
                         <SelectValue placeholder="Select subject" />
                       </SelectTrigger>
                       <SelectContent>

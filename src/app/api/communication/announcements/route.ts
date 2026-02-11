@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (priority) {
-      conditions.push(eq(announcementsTable.priority, priority));
+      conditions.push(eq(announcementsTable.priority, priority as "low" | "normal" | "high" | "urgent"));
     }
 
     // Filter by audience based on user type
@@ -85,16 +85,20 @@ export async function GET(request: NextRequest) {
     } else if (user.type === "admin") {
       audienceConditions.push(eq(announcementsTable.targetAudience, "staff"));
     }
-    conditions.push(or(...audienceConditions));
+    const audienceFilter = or(...audienceConditions);
+    if (audienceFilter) {
+      conditions.push(audienceFilter);
+    }
 
     // Exclude expired announcements
     const now = new Date().toISOString();
-    conditions.push(
-      or(
-        sql`${announcementsTable.expiryDate} IS NULL`,
-        sql`${announcementsTable.expiryDate} > ${now}`
-      )
+    const expiryFilter = or(
+      sql`${announcementsTable.expiryDate} IS NULL`,
+      sql`${announcementsTable.expiryDate} > ${now}`
     );
+    if (expiryFilter) {
+      conditions.push(expiryFilter);
+    }
 
     // Get total count
     const [{ value: total }] = await db

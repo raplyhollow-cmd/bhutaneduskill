@@ -168,7 +168,7 @@ export default function RUBPage() {
                   Related Careers
                 </h4>
                 <div className="flex flex-wrap gap-2">
-                  {getRelatedCareers(college.programs).map((career) => (
+                  {getRelatedCareers(college.programs.map((p: any) => p.name)).map((career) => (
                     <Badge key={career} variant="outline" className="text-xs">
                       {career}
                     </Badge>
