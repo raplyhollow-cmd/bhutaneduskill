@@ -82,6 +82,7 @@ function getMBTIProfile(
 ): MBTIResult {
   const profiles: Record<string, Omit<MBTIResult, "eiScore" | "snScore" | "tfScore" | "jpScore">> = {
     ISTJ: {
+      type: "ISTJ",
       description: "The Inspector: Practical, fact-minded, and reliable.",
       traits: ["Responsible", "Detail-oriented", "Loyal", "Organized"],
       strengths: ["Honest and direct", "Dedicated", "Patient", "Very organized"],
@@ -98,6 +99,7 @@ function getMBTIProfile(
       ],
     },
     ISFJ: {
+      type: "ISFJ",
       description: "The Protector: Dedicated and warm protectors, always ready to defend loved ones.",
       traits: ["Supportive", "Patient", "Reliable", "Warm"],
       strengths: ["Supportive", "Reliable", "Patient", "Imaginative"],
@@ -113,6 +115,7 @@ function getMBTIProfile(
       ],
     },
     INFJ: {
+      type: "INFJ",
       description: "The Counselor: Quiet and mystical, yet very inspiring and tireless idealists.",
       traits: ["Insightful", "Principled", "Compassionate", "Altruistic"],
       strengths: ["Creative", "Insightful", "Principled", "Altruistic"],
@@ -129,6 +132,7 @@ function getMBTIProfile(
       ],
     },
     INTJ: {
+      type: "INTJ",
       description: "The Mastermind: Imaginative and strategic thinkers, with a plan for everything.",
       traits: ["Strategic", "Analytical", "Independent", "Determined"],
       strengths: ["Hard-working", "Open-minded", "Strategic", "Rational"],
@@ -144,6 +148,7 @@ function getMBTIProfile(
       ],
     },
     ISTP: {
+      type: "ISTP",
       description: "The Craftsman: Bold and practical experimenters, masters of all kinds of tools.",
       traits: ["Practical", "Observant", "Analytical", "Flexible"],
       strengths: ["Optimistic", "Creative", "Practical", "Spontaneous"],
@@ -160,6 +165,7 @@ function getMBTIProfile(
       ],
     },
     ISFP: {
+      type: "ISFP",
       description: "The Composer: Flexible and charming artists, always ready to explore something new.",
       traits: ["Gentle", "Sensitive", "Kind", "Artistic"],
       strengths: ["Charming", "Sensitive", "Imaginative", "Passionate"],
@@ -176,6 +182,7 @@ function getMBTIProfile(
       ],
     },
     INFP: {
+      type: "INFP",
       description: "The Healer: Poetic, kind and altruistic, always eager to help a good cause.",
       traits: ["Idealistic", "Loyal", "Creative", "Curious"],
       strengths: ["Creative", "Dedicated", "Generous", "Open-minded"],
@@ -192,6 +199,7 @@ function getMBTIProfile(
       ],
     },
     INTP: {
+      type: "INTP",
       description: "The Architect: Innovative inventors with an unquenchable thirst for knowledge.",
       traits: ["Logical", "Abstract", "Independent", "Analytical"],
       strengths: ["Analytical", "Original", "Open-minded", "Honest"],
@@ -208,6 +216,7 @@ function getMBTIProfile(
       ],
     },
     ESTP: {
+      type: "ESTP",
       description: "The Promoter: Smart, energetic and very perceptive people, who truly enjoy living on the edge.",
       traits: ["Energetic", "Perceptive", "Spontaneous", "Practical"],
       strengths: ["Bold", "Rational", "Original", "Perceptive"],
@@ -224,6 +233,7 @@ function getMBTIProfile(
       ],
     },
     ESFP: {
+      type: "ESFP",
       description: "The Performer: Spontaneous, energetic and enthusiastic people - life is never boring around them.",
       traits: ["Enthusiastic", "Friendly", "Spontaneous", "Practical"],
       strengths: ["Bold", "Original", "Aesthetics", "People skills"],
@@ -240,6 +250,7 @@ function getMBTIProfile(
       ],
     },
     ENFP: {
+      type: "ENFP",
       description: "The Champion: Enthusiastic, creative and sociable free spirits, who can always find a reason to smile.",
       traits: ["Enthusiastic", "Creative", "Sociable", "Communicative"],
       strengths: ["Curious", "Observant", "Energetic", "Excellent communicators"],
@@ -256,6 +267,7 @@ function getMBTIProfile(
       ],
     },
     ENTP: {
+      type: "ENTP",
       description: "The Debater: Smart and curious thinkers who cannot resist an intellectual challenge.",
       traits: ["Innovative", "Curious", "Versatile", "Energetic"],
       strengths: ["Knowledgeable", "Quick thinker", "Original", "Excellent brainstormer"],
@@ -272,6 +284,7 @@ function getMBTIProfile(
       ],
     },
     ESTJ: {
+      type: "ESTJ",
       description: "The Supervisor: Excellent administrators, unsurpassed at managing things or people.",
       traits: ["Organized", "Dedicated", "Practical", "Traditional"],
       strengths: ["Dedicated", "Strong-willed", "Direct", "Honest"],
@@ -288,6 +301,7 @@ function getMBTIProfile(
       ],
     },
     ESFJ: {
+      type: "ESFJ",
       description: "The Provider: Very dedicated, warm and protective, always eager to help.",
       traits: ["Warm", "Loyal", "Helpful", "Organized"],
       strengths: ["Strong practical skills", "Strong sense of duty", "Loyal", "Sensitive"],
@@ -304,6 +318,7 @@ function getMBTIProfile(
       ],
     },
     ENFJ: {
+      type: "ENFJ",
       description: "The Teacher: Charismatic and inspiring leaders, able to mesmerize their listeners.",
       traits: ["Charismatic", "Inspiring", "Altruistic", "Natural leaders"],
       strengths: ["Tolerant", "Reliable", "Charismatic", "Altruistic"],
@@ -320,6 +335,7 @@ function getMBTIProfile(
       ],
     },
     ENTJ: {
+      type: "ENTJ",
       description: "The Commander: Bold, imaginative and strong-willed leaders, always finding a way.",
       traits: ["Bold", "Strategic", "Confident", "Organized"],
       strengths: ["Efficient", "Energetic", "Confident", "Strong-willed"],

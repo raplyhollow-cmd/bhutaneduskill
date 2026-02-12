@@ -69,7 +69,6 @@ const TabsTrigger = React.forwardRef<
       )}
       {...props}
       onSelect={() => setIsActive(true)}
-      onDeselect={() => setIsActive(false)}
     >
       {children}
       {variant === "underline" && showIndicator && (

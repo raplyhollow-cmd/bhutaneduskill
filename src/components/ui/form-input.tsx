@@ -15,6 +15,7 @@ interface FormInputProps extends Omit<React.ComponentProps<"input">, "size"> {
   containerClassName?: string
   inputClassName?: string
   size?: "sm" | "md" | "lg"
+  icon?: string
 }
 
 /**
@@ -314,6 +315,11 @@ export function OTPInput({
   )
   const inputRefs = React.useRef<(HTMLInputElement | null)[]>([])
 
+  // Fix ref type
+  const setInputRef = (index: number, el: HTMLInputElement | null) => {
+    inputRefs.current[index] = el
+  }
+
   React.useEffect(() => {
     if (value) {
       setValues(value.padEnd(length, "0").slice(0, length).split(""))
@@ -345,7 +351,7 @@ export function OTPInput({
       {Array.from({ length }).map((_, index) => (
         <input
           key={index}
-          ref={(el) => (inputRefs.current[index] = el)}
+          ref={(el) => setInputRef(index, el)}
           type="text"
           inputMode="numeric"
           pattern="[0-9]*"

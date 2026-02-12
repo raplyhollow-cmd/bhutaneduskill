@@ -133,9 +133,9 @@ export function CrudCard({
     setIsSubmitting(true);
     try {
       if (isAddDialogOpen && onAdd) {
-        await onAdd(formData);
+        await onAdd({ ...formData, id: crypto.randomUUID?.() || `id_${Date.now()}` } as CrudItem);
       } else if (isEditDialogOpen && onEdit && selectedItem) {
-        await onEdit(selectedItem.id, formData);
+        await onEdit(selectedItem.id, { ...formData, id: selectedItem.id } as CrudItem);
       }
       setIsAddDialogOpen(false);
       setIsEditDialogOpen(false);

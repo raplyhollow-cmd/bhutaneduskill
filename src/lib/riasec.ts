@@ -125,7 +125,7 @@ export function matchCareers(
       return {
         career: {
           ...career,
-          slug: career.slug || career.name.toLowerCase().replace(/\s+/g, "-"),
+          slug: (career as any).slug || career.name.toLowerCase().replace(/\s+/g, "-"),
         } as any,
         matchScore: Math.round(Math.min(alignmentScore, 100)),
       };

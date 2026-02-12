@@ -894,7 +894,7 @@ export async function getCounselors(schoolId: string | null, options: {
 
   const transformed: CounselorData[] = await Promise.all(
     uniqueCounselors.map(async (assignment) => {
-      const counselor = assignment.counselor;
+      const counselor = assignment.counselor as typeof assignment.counselor & { firstName: string; lastName?: string; id: string; email: string; phone?: string };
       const name = `${counselor.firstName} ${counselor.lastName || ""}`.trim();
 
       // Get all schools assigned to this counselor

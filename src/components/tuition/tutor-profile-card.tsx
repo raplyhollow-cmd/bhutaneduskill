@@ -19,6 +19,33 @@ import {
   Briefcase,
 } from "lucide-react";
 
+export interface TuitionCourse {
+  id: string;
+  title: string;
+  description: string;
+  subject: string;
+  level: string;
+  price: number;
+  duration: string;
+  tutorId: string;
+}
+
+export interface LiveSessionData {
+  id: string;
+  title: string;
+  description: string;
+  tutorId: string;
+  scheduledFor: Date;
+  duration: number;
+  maxParticipants: number;
+}
+
+export interface SessionParticipant {
+  userId: string;
+  name: string;
+  joinedAt: Date;
+}
+
 export interface TutorProfile {
   id: string;
   name: string;
