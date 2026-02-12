@@ -445,7 +445,7 @@ export function SearchDialog({
   // ============================================================================
 
   React.useEffect(() => {
-    const performSearch = async () => {
+    const doSearch = async () => {
       setIsSearching(true);
 
       if (onSearch) {
@@ -467,7 +467,7 @@ export function SearchDialog({
       setIsSearching(false);
     };
 
-    const timeoutId = setTimeout(performSearch, 200);
+    const timeoutId = setTimeout(doSearch, 200);
     return () => clearTimeout(timeoutId);
   }, [query, searchScope, allItems, onSearch]);
 

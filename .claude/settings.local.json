@@ -21,7 +21,8 @@
       "Bash(npx prettier:*)",
       "Bash(dir:*)",
       "Bash(npx drizzle-kit push:*)",
-      "Bash(npm run db:setup:*)"
+      "Bash(npm run db:setup:*)",
+      "Bash(more:*)"
     ]
   }
 }
