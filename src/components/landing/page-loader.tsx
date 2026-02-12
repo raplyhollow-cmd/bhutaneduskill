@@ -53,6 +53,7 @@ export function PageLoader({ onComplete }: PageLoaderProps) {
               transition={{
                 duration: 3,
                 repeat: Infinity,
+                repeatType: "loop",
                 ease: "linear",
               }}
             />
@@ -96,6 +97,7 @@ export function PageLoader({ onComplete }: PageLoaderProps) {
                     transition={{
                       duration: 1.5,
                       repeat: Infinity,
+                      repeatType: "loop",
                     }}
                   />
                 </motion.div>
@@ -149,13 +151,13 @@ export function PageLoader({ onComplete }: PageLoaderProps) {
                     top: `${Math.random() * 100}%`,
                   }}
                   animate={{
-                    y: [0, 0],
                     opacity: [0, 1, 0],
                     scale: [0, 1, 0],
                   }}
                   transition={{
                     duration: 2 + Math.random() * 2,
                     repeat: Infinity,
+                    repeatType: "loop",
                     delay: Math.random() * 2,
                     ease: "easeOut",
                   }}

@@ -98,7 +98,7 @@ export async function submitHomework(data: {
   try {
     const { db } = await import("@/lib/db");
     const { homeworkSubmissions: homeworkSubmissionsTable, homework: homeworkTable } = await import("@/lib/db/schema");
-    const { eq, and } = await import("drizzle-orm");
+    const { eq, and, sql } = await import("drizzle-orm");
 
     // Get homework details
     const homework = await db.query.homework.findFirst({
@@ -298,7 +298,7 @@ export async function selfCheckIn(data: {
   try {
     const { db } = await import("@/lib/db");
     const { attendance: attendanceTable } = await import("@/lib/db/schema");
-    const { eq, and } = await import("drizzle-orm");
+    const { eq, and, sql } = await import("drizzle-orm");
 
     const today = new Date().toISOString().split("T")[0];
     const now = new Date();
@@ -406,12 +406,25 @@ export type StudentAnnouncementData = {
   title: string;
   content: string;
   excerpt: string | null;
-  priority: string;
+  priority: string | null;
   category: string | null;
   isPinned: boolean;
   authorName: string;
   createdAt: Date;
   attachments: Array<{ name: string; url: string; type: string; size: number }> | null;
+  // Additional fields for AnnouncementCard compatibility
+  targetAudience: string | null;
+  targetGradeLevel: string | null;
+  targetClassIds: string[] | null;
+  isPublished: boolean | null;
+  isArchived: boolean | null;
+  publishDate: string | null;
+  expiryDate: string | null;
+  viewCount: number | null;
+  authorId: string;
+  authorRole: string | null;
+  updatedAt: Date;
+  publishedAt: Date | null;
 };
 
 /**
@@ -476,7 +489,7 @@ export async function fetchStudentAnnouncements(): Promise<{
 
     // Separate pinned and regular
     const pinned = allAnnouncements
-      .filter((a) => a.isPinned)
+      .filter((a) => a.isPinned === true)
       .map((a) => ({
         id: a.id,
         title: a.title,
@@ -484,14 +497,26 @@ export async function fetchStudentAnnouncements(): Promise<{
         excerpt: a.excerpt,
         priority: a.priority,
         category: a.category,
-        isPinned: a.isPinned,
+        isPinned: a.isPinned === true,
         authorName: a.authorName,
         createdAt: a.createdAt,
         attachments: a.attachments as any,
+        targetAudience: a.targetAudience,
+        targetGradeLevel: a.targetGradeLevel,
+        targetClassIds: a.targetClassIds,
+        isPublished: a.isPublished,
+        isArchived: a.isArchived,
+        publishDate: a.publishDate,
+        expiryDate: a.expiryDate,
+        viewCount: a.viewCount,
+        authorId: a.authorId,
+        authorRole: a.authorRole,
+        updatedAt: a.updatedAt,
+        publishedAt: a.publishedAt,
       }));
 
     const regular = allAnnouncements
-      .filter((a) => !a.isPinned)
+      .filter((a) => a.isPinned !== true)
       .map((a) => ({
         id: a.id,
         title: a.title,
@@ -499,10 +524,22 @@ export async function fetchStudentAnnouncements(): Promise<{
         excerpt: a.excerpt,
         priority: a.priority,
         category: a.category,
-        isPinned: a.isPinned,
+        isPinned: a.isPinned === true,
         authorName: a.authorName,
         createdAt: a.createdAt,
         attachments: a.attachments as any,
+        targetAudience: a.targetAudience,
+        targetGradeLevel: a.targetGradeLevel,
+        targetClassIds: a.targetClassIds,
+        isPublished: a.isPublished,
+        isArchived: a.isArchived,
+        publishDate: a.publishDate,
+        expiryDate: a.expiryDate,
+        viewCount: a.viewCount,
+        authorId: a.authorId,
+        authorRole: a.authorRole,
+        updatedAt: a.updatedAt,
+        publishedAt: a.publishedAt,
       }));
 
     return {
@@ -529,7 +566,7 @@ export async function markAnnouncementAsRead(announcementId: string) {
   try {
     const { db } = await import("@/lib/db");
     const { announcementReads } = await import("@/lib/db/schema");
-    const { eq } = await import("drizzle-orm");
+    const { eq, and, sql } = await import("drizzle-orm");
 
     // Check if already read
     const existing = await db.query.announcementReads.findFirst({

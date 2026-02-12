@@ -76,7 +76,7 @@ export default function ParentWizard() {
       case 1:
         return verifiedSchool !== null;
       case 2:
-        return fullName && email && phone && relationship;
+        return !!(fullName && email && phone && relationship);
       case 3:
         return children.length > 0;
       case 4:

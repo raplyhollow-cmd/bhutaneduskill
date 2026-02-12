@@ -8,11 +8,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { AnnouncementData } from "@/app/school-admin/_actions";
+import type { StudentAnnouncementData } from "@/app/student/_actions";
 import { Button } from "@/components/ui/button";
 
 interface StudentAnnouncementListProps {
-  announcements: AnnouncementData[];
+  announcements: StudentAnnouncementData[];
 }
 
 export function StudentAnnouncementList({ announcements }: StudentAnnouncementListProps) {

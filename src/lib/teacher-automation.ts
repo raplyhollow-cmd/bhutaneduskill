@@ -7,7 +7,8 @@
  * 3. Teacher productivity tools
  */
 
-import { SqliteSql } from "drizzle-orm/sqlite-core";
+// Note: Database schema definitions moved to separate schema file
+// This file is primarily documentation/specification
 
 // ============================================================================
 // PART 1: ACADEMIC INTEGRITY SOLUTIONS
@@ -108,37 +109,15 @@ export interface AcademicIntegrityMeasures {
 }
 
 // Database table for integrity tracking
+// NOTE: Schema definition moved to db/schema.ts
+// Example structure for reference:
+/*
 export const academicIntegrityLogs = sqliteTable("academic_integrity_logs", {
   id: text("id").primaryKey(),
   submissionId: text("submission_id").notNull().references(() => homeworkSubmissions.id),
-
-  // Behavioral metrics
-  typingSpeed: integer("typing_speed"), // Words per minute
-  keystrokeDynamics: text("keystroke_dynamics", { mode: "json" }), // Key press timings
-
-  // Activity flags
-  tabSwitches: integer("tab_switches").default(0),
-  copyPasteEvents: integer("copy_paste_events").default(0),
-  timeSpent: integer("time_spent"), // Seconds
-  idleTime: integer("idle_time"), // Seconds with no activity
-
-  // Proctoring
-  proctoringMode: text("proctoring_mode"), // "basic", "standard", "strict"
-  cameraRecordingUrl: text("camera_recording_url"),
-  suspiciousActivities: text("suspicious_activities", { mode: "json" }), // Array of flagged events
-
-  // Environment
-  ipAddress: text("ip_address"),
-  userAgent: text("user_agent"),
-  deviceFingerprint: text("device_fingerprint"),
-  geolocation: text("geolocation", { mode: "json" }),
-
-  // Integrity score
-  integrityScore: integer("integrity_score"), // 0-100, higher = more trustworthy
-  flags: text("flags", { mode: "json" }), // Array of integrity concerns
-
-  createdAt: integer("created_at", { mode: "timestamp" }),
+  // ... rest of schema
 });
+*/
 
 // ============================================================================
 // PART 2: AUTOMATED GRADING SYSTEM

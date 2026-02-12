@@ -53,11 +53,11 @@ export default function PlatformAdminWizard() {
   const canGoNext = () => {
     switch (currentStep) {
       case 1:
-        return orgName && orgSlug && timezone;
+        return !!(orgName && orgSlug && timezone);
       case 2:
-        return adminName && adminEmail && adminPhone;
+        return !!(adminName && adminEmail && adminPhone);
       case 3:
-        return schoolName && district;
+        return !!(schoolName && district);
       default:
         return true;
     }

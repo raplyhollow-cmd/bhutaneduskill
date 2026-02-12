@@ -1,15 +1,34 @@
 "use client";
 
-import { ProfessionalNav } from "@/components/layout/professional-nav";
+import { FloatingNav } from "@/components/layout/floating-nav";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Mail as MailIcon, Phone, MapPin, MessageCircle, Clock, Send, Users, GraduationCap, Building, CheckCircle2, Zap, Heart } from "lucide-react";
+import { Mail as MailIcon, Phone, MapPin, MessageCircle, Clock, Send, Users, GraduationCap, Building, CheckCircle2, Zap, Heart, Sparkles, ArrowRight, School, Crown } from "lucide-react";
 import Link from "next/link";
 import { Facebook, Instagram, Linkedin, Twitter } from "lucide-react";
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { type: "spring", stiffness: 100, damping: 15 },
+  },
+};
 
 export default function ContactPage() {
   const teamContacts = [
@@ -48,115 +67,103 @@ export default function ContactPage() {
   ];
 
   const contactReasons = [
-    { icon: Building, title: "School Partnership", description: "Bring Career Compass to your school" },
+    { icon: Building, title: "School Partnership", description: "Bring the platform to your school" },
     { icon: GraduationCap, title: "Student Inquiry", description: "Questions about features and careers" },
     { icon: Users, title: "Parent Consultation", description: "Learn how we can help your child" },
     { icon: Zap, title: "Technical Support", description: "Platform issues and feature requests" },
   ];
 
-  const getWhatsAppLink = (phone: string) => `https://wa.me/${phone}`;
+  const ecosystemBadges = [
+    { icon: School, label: "Schools" },
+    { icon: GraduationCap, label: "Teachers" },
+    { icon: Users, label: "Parents" },
+    { icon: Crown, label: "Ministry" },
+  ];
 
-  // Text variants for animations - matching Hero3D
-  const textVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: (i: number) => ({
-      opacity: 1,
-      y: 0,
-      transition: {
-        delay: i * 0.08,
-        duration: 0.6,
-        ease: [0.25, 0.4, 0.25, 1] as const,
-      },
-    }),
-  };
+  const getWhatsAppLink = (phone: string) => `https://wa.me/${phone}`;
 
   return (
     <main className="min-h-screen bg-white dark:bg-gray-950">
       {/* Navigation */}
-      <ProfessionalNav />
+      <FloatingNav />
 
-      {/* Spacer for fixed nav */}
-      <div className="h-16" />
-
-      {/* Hero Section - Matching homepage Hero3D style */}
-      <section className="relative min-h-[70vh] flex items-center justify-center overflow-hidden bg-gradient-to-b from-orange-50 via-white to-orange-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
-        {/* Static background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-br from-orange-100/20 via-transparent to-red-100/20 dark:from-orange-950/10 dark:via-transparent dark:to-red-950/10" />
-
-        {/* Subtle floating circles */}
-        <div className="absolute top-20 left-10 w-64 h-64 bg-orange-400/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-red-400/5 rounded-full blur-3xl" />
-
-        {/* Grid pattern overlay */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(249,115,22,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(249,115,22,0.02)_1px,transparent_1px)] bg-[size:60px_60px]" />
+      {/* Hero Section - Premium */}
+      <section className="relative min-h-[50vh] flex items-center justify-center overflow-hidden bg-gradient-to-b from-orange-50 via-white to-orange-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
+        {/* Premium Background */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute w-96 h-96 rounded-full top-[-100px] right-[-100px] bg-gradient-to-br from-orange-400/20 to-red-400/20 blur-[100px]" />
+          <div className="absolute w-80 h-80 rounded-full bottom-[-50px] left-[-50px] bg-gradient-to-br from-purple-400/15 to-pink-400/15 blur-[80px]" />
+          <div className="absolute inset-0 opacity-20 dark:opacity-5">
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(249,115,22,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(249,115,22,0.03)_1px,transparent_1px)] bg-[size:80px_80px]" />
+          </div>
+        </div>
 
         {/* Content */}
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center">
-          {/* Badge */}
           <motion.div
-            custom={0}
-            initial="hidden"
-            animate="visible"
-            variants={textVariants}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-orange-100 to-red-100 dark:from-orange-950/50 dark:to-red-950/50 border border-orange-200 dark:border-orange-900/50 mb-6"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
           >
-            <span className="text-lg">💬</span>
-            <span className="text-sm font-medium text-orange-700 dark:text-orange-400">
-              Get in Touch
+            {/* Badge */}
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-orange-100 to-red-100 dark:from-orange-950/50 dark:to-red-950/50 border border-orange-200 dark:border-orange-900/50 text-sm font-medium text-orange-700 dark:text-orange-400 mb-6">
+              <span className="text-lg">💬</span>
+              <span>Get in Touch</span>
             </span>
-          </motion.div>
 
-          {/* Main Heading */}
-          <motion.h1
-            custom={1}
-            initial="hidden"
-            animate="visible"
-            variants={textVariants}
-            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 dark:text-white leading-tight mb-6"
-          >
-            <span className="block">Let's Start a</span>
-            <span className="block bg-gradient-to-r from-orange-600 via-red-600 to-orange-600 bg-clip-text text-transparent">
-              Conversation
-            </span>
-          </motion.h1>
+            {/* Main Heading */}
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-gray-900 dark:text-white leading-tight mb-4">
+              Let's Start a
+              <span className="block bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+                Conversation
+              </span>
+            </h1>
 
-          {/* Description */}
-          <motion.p
-            custom={2}
-            initial="hidden"
-            animate="visible"
-            variants={textVariants}
-            className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-2xl mx-auto"
-          >
-            We're here to help students, parents, teachers, and schools
-          </motion.p>
+            {/* Description */}
+            <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-2xl mx-auto">
+              We're here to help schools, teachers, parents, students, and the ministry
+            </p>
 
-          {/* CTA Buttons */}
-          <motion.div
-            custom={3}
-            initial="hidden"
-            animate="visible"
-            variants={textVariants}
-            className="flex flex-col sm:flex-row gap-4 justify-center"
-          >
-            <Link href="/sign-up">
-              <Button
-                size="lg"
-                className="h-14 px-8 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white font-semibold text-lg shadow-xl shadow-orange-500/30 transition-all"
-              >
-                Get Started Free
-              </Button>
-            </Link>
+            {/* Ecosystem Badges */}
+            <div className="flex flex-wrap gap-3 justify-center mb-8">
+              {ecosystemBadges.map((badge) => (
+                <div
+                  key={badge.label}
+                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm"
+                >
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                    <badge.icon className="w-4 h-4" />
+                    {badge.label}
+                  </span>
+                </div>
+              ))}
+            </div>
 
-            <a href="https://wa.me/97517397454" target="_blank" rel="noopener noreferrer">
-              <Button
-                size="lg"
-                variant="outline"
-                className="h-14 px-8 border-2 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 font-semibold text-lg"
-              >
-                WhatsApp Us
-              </Button>
-            </a>
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link href="/sign-up">
+                <Button
+                  size="lg"
+                  className="h-14 px-8 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white font-semibold text-lg shadow-xl shadow-orange-500/30 transition-all"
+                >
+                  <span className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5" />
+                    Get Started Free
+                  </span>
+                </Button>
+              </Link>
+
+              <a href="https://wa.me/97517397454" target="_blank" rel="noopener noreferrer">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="h-14 px-8 border-2 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 font-semibold text-lg"
+                >
+                  WhatsApp Us
+                </Button>
+              </a>
+            </div>
           </motion.div>
         </div>
       </section>
@@ -176,14 +183,17 @@ export default function ContactPage() {
               Choose the category that best describes your inquiry
             </p>
           </motion.div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-50px" }}
+            className="grid md:grid-cols-2 lg:grid-cols-4 gap-4"
+          >
             {contactReasons.map((reason, index) => (
               <motion.div
                 key={index}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-50px" }}
-                transition={{ delay: index * 0.1 }}
+                variants={itemVariants}
               >
                 <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1 h-full">
                   <CardContent className="p-6">
@@ -196,7 +206,7 @@ export default function ContactPage() {
                 </Card>
               </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
@@ -311,48 +321,8 @@ export default function ContactPage() {
         </div>
       </section>
 
-      {/* Business Hours */}
+      {/* Contact Info Cards */}
       <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-gray-900">
-        <div className="max-w-4xl mx-auto">
-          <Card className="bg-gradient-to-br from-orange-600 to-red-600 text-white border-0">
-            <CardContent className="p-8">
-              <div className="flex items-center gap-4 mb-6">
-                <Clock className="w-8 h-8" />
-                <div>
-                  <h3 className="text-xl font-bold">Business Hours</h3>
-                  <p className="text-orange-100">We're available to help you during these hours</p>
-                </div>
-              </div>
-              <div className="grid md:grid-cols-3 gap-4">
-                <div className="bg-white/10 rounded-lg p-4">
-                  <p className="font-semibold mb-1 flex items-center gap-2">
-                    <CheckCircle2 className="w-5 h-5" />
-                    Monday - Friday
-                  </p>
-                  <p className="text-orange-100">9:00 AM - 6:00 PM</p>
-                </div>
-                <div className="bg-white/10 rounded-lg p-4">
-                  <p className="font-semibold mb-1 flex items-center gap-2">
-                    <CheckCircle2 className="w-5 h-5" />
-                    Saturday
-                  </p>
-                  <p className="text-orange-100">10:00 AM - 2:00 PM</p>
-                </div>
-                <div className="bg-white/10 rounded-lg p-4">
-                  <p className="font-semibold mb-1 flex items-center gap-2">
-                    <Clock className="w-5 h-5" />
-                    Sunday
-                  </p>
-                  <p className="text-orange-100">Closed</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
-
-      {/* Contact Info */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -365,14 +335,14 @@ export default function ContactPage() {
             </h2>
           </motion.div>
           <div className="grid md:grid-cols-3 gap-4">
-            <a href="mailto:info@careercompass.bt" className="block">
+            <a href="mailto:info@bhutaneduskill.com" className="block">
               <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1 h-full">
                 <CardContent className="p-6 text-center">
                   <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center mx-auto mb-3">
                     <MailIcon className="w-6 h-6 text-white" />
                   </div>
                   <h3 className="font-semibold text-gray-900 dark:text-white mb-1">Email</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">info@careercompass.bt</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">info@bhutaneduskill.com</p>
                 </CardContent>
               </Card>
             </a>
@@ -400,20 +370,83 @@ export default function ContactPage() {
         </div>
       </section>
 
-      {/* CTA Section - Matching homepage style */}
+      {/* Business Hours */}
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
-          <Card className="bg-gradient-to-br from-orange-600 to-red-600 text-white border-0">
-            <CardContent className="p-12 text-center">
-              <h2 className="text-3xl sm:text-4xl font-bold mb-4">Ready to Get Started?</h2>
-              <p className="text-xl text-orange-100 mb-8 max-w-2xl mx-auto">
-                Join thousands of students discovering their path to success
-              </p>
-              <Button size="lg" className="bg-white text-orange-600 hover:bg-orange-50 px-10 py-6" asChild>
-                <Link href="/sign-up">Start Free</Link>
-              </Button>
-            </CardContent>
-          </Card>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <Card className="bg-gradient-to-br from-orange-600 to-red-600 text-white border-0">
+              <CardContent className="p-8">
+                <div className="flex items-center gap-4 mb-6">
+                  <Clock className="w-8 h-8" />
+                  <div>
+                    <h3 className="text-xl font-bold">Business Hours</h3>
+                    <p className="text-orange-100">We're available to help you during these hours</p>
+                  </div>
+                </div>
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className="bg-white/10 rounded-lg p-4">
+                    <p className="font-semibold mb-1 flex items-center gap-2">
+                      <CheckCircle2 className="w-5 h-5" />
+                      Monday - Friday
+                    </p>
+                    <p className="text-orange-100">9:00 AM - 6:00 PM</p>
+                  </div>
+                  <div className="bg-white/10 rounded-lg p-4">
+                    <p className="font-semibold mb-1 flex items-center gap-2">
+                      <CheckCircle2 className="w-5 h-5" />
+                      Saturday
+                    </p>
+                    <p className="text-orange-100">10:00 AM - 2:00 PM</p>
+                  </div>
+                  <div className="bg-white/10 rounded-lg p-4">
+                    <p className="font-semibold mb-1 flex items-center gap-2">
+                      <Clock className="w-5 h-5" />
+                      Sunday
+                    </p>
+                    <p className="text-orange-100">Closed</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* CTA Section - Premium */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <Card className="bg-gradient-to-br from-orange-600 to-red-600 text-white border-0">
+              <CardContent className="p-12 text-center">
+                <Sparkles className="w-12 h-12 mx-auto mb-4" />
+                <h2 className="text-3xl sm:text-4xl font-bold mb-4">Ready to Get Started?</h2>
+                <p className="text-xl text-orange-100 mb-8 max-w-2xl mx-auto">
+                  Join thousands of schools, teachers, parents, and students using our platform
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <Button size="lg" className="bg-white text-orange-600 hover:bg-orange-50 px-10 py-6 rounded-full" asChild>
+                    <Link href="/sign-up">Start Free</Link>
+                  </Button>
+                  <Button size="lg" variant="outline" className="bg-transparent border-2 border-white text-white hover:bg-white/10 px-10 py-6 rounded-full" asChild>
+                    <Link href="/about">
+                      Learn More
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
         </div>
       </section>
 
@@ -432,7 +465,7 @@ export default function ContactPage() {
                 </span>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                AI-powered career guidance for Bhutanese students.
+                Complete education management system with AI-powered career guidance.
               </p>
               <div className="flex gap-2">
                 {[
@@ -525,7 +558,7 @@ export default function ContactPage() {
           {/* Bottom */}
           <div className="pt-8 border-t border-gray-200 dark:border-gray-800 flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              &copy; {new Date().getFullYear()} Career Compass. All rights reserved.
+              &copy; {new Date().getFullYear()} Bhutan Edu Skill. All rights reserved.
             </p>
             <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
               Built with <Heart className="w-4 h-4 text-red-500 fill-red-500" /> for Bhutan

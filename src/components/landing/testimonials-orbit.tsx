@@ -1,184 +1,285 @@
 "use client";
 
-import { Card, CardContent } from "@/components/ui/card";
-import { Star, Quote } from "lucide-react";
 import { motion } from "framer-motion";
+import { Quote, Star } from "lucide-react";
+import { useState } from "react";
 
-interface TestimonialProps {
-  name: string;
-  role: string;
-  school: string;
-  quote: string;
-  rating: number;
-  avatar: string;
-  color: string;
-}
+const testimonials = [
+  {
+    quote: "The career assessment showed me paths I never knew existed. Now I'm confident about my future!",
+    name: "Karma Y.",
+    role: "Class 12, Motithang HSS",
+    avatar: "KY",
+    rating: 5,
+    color: "from-orange-500 to-red-500",
+  },
+  {
+    quote: "I can finally track homework and progress in one place. My students are more engaged than ever.",
+    name: "Mrs. Tshering",
+    role: "Math Teacher, Thimphu HSS",
+    avatar: "MT",
+    rating: 5,
+    color: "from-blue-500 to-indigo-600",
+  },
+  {
+    quote: "I can see my daughter's attendance and grades instantly. Communication with teachers is so easy now!",
+    name: "Pema L.",
+    role: "Parent, Thimphu",
+    avatar: "PL",
+    rating: 5,
+    color: "from-purple-500 to-pink-500",
+  },
+];
 
-function TestimonialCard({ name, role, school, quote, rating, avatar, color }: TestimonialProps) {
+// Testimonial card with avatar pulse
+function TestimonialCard({
+  testimonial,
+  index,
+}: {
+  testimonial: typeof testimonials[0];
+  index: number;
+}) {
+  const [isHovered, setIsHovered] = useState(false);
+
   return (
-    <Card className="h-full transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
-      <CardContent className="p-6">
-        {/* Stars */}
+    <motion.div
+      initial={{ opacity: 0, y: 30, scale: 0.9 }}
+      whileInView={{ opacity: 1, y: 0, scale: 1 }}
+      viewport={{ once: true, margin: "-50px" }}
+      transition={{
+        delay: index * 0.15,
+        duration: 0.6,
+        type: "spring",
+        stiffness: 100,
+      }}
+      onHoverStart={() => setIsHovered(true)}
+      onHoverEnd={() => setIsHovered(false)}
+      className="relative group"
+    >
+      <div
+        className={`relative h-full p-6 md:p-8 rounded-3xl transition-all duration-500 overflow-hidden ${
+          isHovered
+            ? "bg-white dark:bg-gray-900 shadow-2xl shadow-orange-500/10 border-2 border-orange-200 dark:border-orange-800"
+            : "bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 shadow-lg"
+        }`}
+      >
+        {/* Shimmer effect on hover */}
+        <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmerBorder_2s_linear_infinite] bg-gradient-to-r from-transparent via-orange-500/10 to-transparent pointer-events-none" />
+
+        {/* Quote icon with animation */}
+        <motion.div
+          animate={isHovered ? { rotate: [0, -5, 5, -5, 0] } : {}}
+          transition={{ duration: 0.5 }}
+          className="mb-4"
+        >
+          <Quote className={`w-8 h-8 bg-gradient-to-br ${testimonial.color} bg-clip-text text-transparent opacity-30`} />
+        </motion.div>
+
+        {/* Quote text */}
+        <p className="text-gray-700 dark:text-gray-300 text-base leading-relaxed mb-6">
+          "{testimonial.quote}"
+        </p>
+
+        {/* Rating stars */}
         <div className="flex gap-1 mb-4">
-          {[...Array(5)].map((_, i) => (
-            <Star
+          {Array.from({ length: testimonial.rating }).map((_, i) => (
+            <motion.span
               key={i}
-              className={`w-5 h-5 ${i < rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}`}
-            />
+              initial={{ scale: 0, rotate: -180 }}
+              whileInView={{ scale: 1, rotate: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: index * 0.15 + i * 0.05, duration: 0.3 }}
+            >
+              <Star className="w-4 h-4 fill-orange-400 text-orange-400" />
+            </motion.span>
           ))}
         </div>
 
-        {/* Quote */}
-        <p className="text-gray-700 dark:text-gray-300 mb-6 leading-relaxed">
-          "{quote}"
-        </p>
-
-        {/* Author */}
-        <div className="flex items-center gap-3">
-          <div
-            className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-md"
-            style={{
-              background: `linear-gradient(135deg, ${color}, ${color}dd)`,
-            }}
+        {/* Author info with avatar */}
+        <div className="flex items-center gap-4">
+          {/* Avatar with pulse effect */}
+          <motion.div
+            className={`relative w-14 h-14 rounded-full bg-gradient-to-br ${testimonial.color} flex items-center justify-center text-white font-bold shadow-lg`}
+            animate={isHovered ? { scale: [1, 1.1, 1] } : {}}
+            transition={{ duration: 0.5 }}
           >
-            {avatar}
-          </div>
+            {/* Pulse ring on hover */}
+            {isHovered && (
+              <motion.div
+                initial={{ scale: 1, opacity: 0.5 }}
+                animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0, 0.5] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+                className={`absolute inset-0 rounded-full bg-gradient-to-br ${testimonial.color}`}
+                style={{ filter: "blur(8px)", zIndex: -1 }}
+              />
+            )}
+            <span className="relative z-10 text-sm">{testimonial.avatar}</span>
+          </motion.div>
+
+          {/* Name and role */}
           <div>
-            <div className="font-semibold text-gray-900 dark:text-white">{name}</div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              {role} • {school}
-            </div>
+            <h4 className="font-semibold text-gray-900 dark:text-white group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
+              {testimonial.name}
+            </h4>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {testimonial.role}
+            </p>
           </div>
         </div>
-      </CardContent>
-    </Card>
+
+        {/* Decorative corner accent */}
+        <div
+          className={`absolute bottom-0 right-0 w-16 h-16 bg-gradient-to-tl ${testimonial.color} opacity-0 group-hover:opacity-10 transition-opacity duration-500 rounded-tl-3xl`}
+        />
+      </div>
+    </motion.div>
   );
 }
 
 export function TestimonialsOrbit() {
-  const testimonials: TestimonialProps[] = [
-    {
-      name: "Tashi Wangmo",
-      role: "Class 12 Student",
-      school: "Yangchenphug HSS",
-      quote: "Career Compass helped me discover my passion for environmental science. The assessment was spot-on!",
-      rating: 5,
-      avatar: "TW",
-      color: "#f97316",
-    },
-    {
-      name: "Karma Dorji",
-      role: "Class 10 Student",
-      school: "Motithang HSS",
-      quote: "I was confused about what subjects to choose in Class 11. This platform made everything clear.",
-      rating: 5,
-      avatar: "KD",
-      color: "#3b82f6",
-    },
-    {
-      name: "Dechen Wangmo",
-      role: "RUB Student",
-      school: "CST Graduate",
-      quote: "The RUB college search feature helped me find the perfect engineering program. Now pursuing my dreams!",
-      rating: 5,
-      avatar: "DW",
-      color: "#10b981",
-    },
-    {
-      name: "Sonam Tshering",
-      role: "Class 11 Student",
-      school: "Pelkhil HSS",
-      quote: "The study abroad guidance is incredible. I now know exactly what I need to do to study in Australia.",
-      rating: 5,
-      avatar: "ST",
-      color: "#8b5cf6",
-    },
-  ];
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.5 },
-    },
-  };
-
   return (
-    <section className="py-20 px-4 sm:px-6 lg:px-8 bg-white dark:bg-gray-950">
-      <div className="max-w-7xl mx-auto">
+    <section className="relative py-24 bg-white dark:bg-gray-950 overflow-hidden">
+      {/* Background orbital effects */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <motion.div
+          animate={{
+            scale: [1, 1.2, 1],
+            rotate: [0, 180, 360],
+          }}
+          transition={{
+            duration: 30,
+            repeat: Infinity,
+            ease: "linear",
+          }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full border border-orange-500/5"
+        />
+        <motion.div
+          animate={{
+            scale: [1.2, 1, 1.2],
+            rotate: [360, 180, 0],
+          }}
+          transition={{
+            duration: 25,
+            repeat: Infinity,
+            ease: "linear",
+          }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full border border-blue-500/5"
+        />
+        <motion.div
+          animate={{
+            scale: [1, 1.3, 1],
+            rotate: [0, -180, -360],
+          }}
+          transition={{
+            duration: 35,
+            repeat: Infinity,
+            ease: "linear",
+          }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full border border-purple-500/5"
+        />
+      </div>
+
+      <div className="relative z-10 max-w-6xl mx-auto px-6">
         {/* Header */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-12"
+          className="text-center mb-16"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-purple-100 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900/50 mb-6">
-            <Quote className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-            <span className="text-sm font-semibold text-purple-700 dark:text-purple-400">
-              Success Stories
-            </span>
-          </div>
-          <h2 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-            Students Like You Love Us
+          <motion.span
+            initial={{ opacity: 0, scale: 0.8 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-sm font-medium mb-4"
+          >
+            <Star className="w-4 h-4 fill-current" />
+            Trusted by thousands
+          </motion.span>
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+            Loved by
+            <span className="block gradient-text-animated mt-2">Students & Teachers</span>
           </h2>
           <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-            Join thousands of Bhutanese students who have found their path with Career Compass
+            Join thousands of happy students, teachers, and parents across Bhutan.
           </p>
         </motion.div>
 
         {/* Testimonials Grid */}
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-50px" }}
-          className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12"
-        >
-          {testimonials.map((testimonial) => (
-            <motion.div key={testimonial.name} variants={itemVariants}>
-              <TestimonialCard {...testimonial} />
-            </motion.div>
+        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-16">
+          {testimonials.map((testimonial, index) => (
+            <TestimonialCard key={testimonial.name} testimonial={testimonial} index={index} />
           ))}
-        </motion.div>
+        </div>
 
-        {/* Stats */}
+        {/* Stats bar with animated counters */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ delay: 0.3, duration: 0.6 }}
-          className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto"
+          transition={{ delay: 0.3 }}
+          className="max-w-4xl mx-auto"
+        >
+          <div className="flex flex-wrap justify-center gap-8 md:gap-16 text-center">
+            {[
+              { value: "500+", label: "Schools", icon: "🏫" },
+              { value: "50K+", label: "Students", icon: "🎓" },
+              { value: "10K+", label: "Teachers", icon: "👨‍🏫" },
+              { value: "25K+", label: "Parents", icon: "👪" },
+            ].map((stat, index) => (
+              <motion.div
+                key={stat.label}
+                initial={{ opacity: 0, scale: 0.8 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.4 + index * 0.1, type: "spring" }}
+                className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 hover:border-orange-300 dark:hover:border-orange-700 hover:shadow-lg hover:shadow-orange-500/10 transition-all group"
+              >
+                <motion.span
+                  animate={{ rotate: [0, 10, -10, 0] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut", delay: index * 0.5 }}
+                  className="text-3xl"
+                >
+                  {stat.icon}
+                </motion.span>
+                <div className="text-left">
+                  <div className="text-2xl md:text-3xl font-bold gradient-text-animated">
+                    {stat.value}
+                  </div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                    {stat.label}
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Trust badges */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.5 }}
+          className="mt-12 flex flex-wrap justify-center gap-6"
         >
           {[
-            { value: "4.9/5", label: "Average Rating" },
-            { value: "2,500+", label: "Reviews" },
-            { value: "95%", label: "Would Recommend" },
-            { value: "50+", label: "Schools" },
-          ].map((stat) => (
-            <div
-              key={stat.label}
-              className="text-center p-4 rounded-2xl bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 border border-purple-200 dark:border-purple-900/50"
+            { text: "SOC 2 Compliant", icon: "🔒" },
+            { text: "GDPR Ready", icon: "🛡️" },
+            { text: "99.9% Uptime", icon: "⚡" },
+          ].map((badge, index) => (
+            <motion.div
+              key={badge.text}
+              initial={{ opacity: 0, x: -10 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.6 + index * 0.1 }}
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 dark:bg-gray-800 text-sm text-gray-700 dark:text-gray-300"
             >
-              <div className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                {stat.value}
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                {stat.label}
-              </div>
-            </div>
+              <span>{badge.icon}</span>
+              <span>{badge.text}</span>
+            </motion.div>
           ))}
         </motion.div>
       </div>

@@ -51,7 +51,7 @@ export function calculateRIASEC(
   });
 
   // Normalize scores to 0-100 scale
-  const maxPossible = Math.max(...ObjectValues(categoryCounts)) * 5;
+  const maxPossible = Math.max(...Object.values(categoryCounts)) * 5;
 
   const normalizedScores: RIASECScores = {
     realistic: Math.round((rawScores.realistic / (categoryCounts.realistic * 5 || 1)) * 100),

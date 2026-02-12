@@ -61,9 +61,9 @@ export default function SchoolAdminWizard() {
       case 1:
         return verifiedSchool !== null;
       case 2:
-        return fullName && email && phone && position;
+        return !!(fullName && email && phone && position);
       case 3:
-        return gradeLevels.length > 0 && academicYear;
+        return gradeLevels.length > 0 && !!academicYear;
       case 4:
         return true; // Can skip import
       default:

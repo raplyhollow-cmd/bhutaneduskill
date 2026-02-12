@@ -1,13 +1,16 @@
 "use client";
 
 import { AnnouncementData } from "@/app/school-admin/_actions";
+import type { StudentAnnouncementData } from "@/app/student/_actions";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar, Eye, Pin, User } from "lucide-react";
 
+type AnnouncementCardData = AnnouncementData | StudentAnnouncementData;
+
 interface AnnouncementCardProps {
-  announcement: AnnouncementData;
+  announcement: AnnouncementCardData;
   onView?: (id: string) => void;
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => void;

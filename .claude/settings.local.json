@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(for port in 3000 3001 3002 3003 3004:*)",
+      "Bash(do:*)",
+      "Bash(findstr:*)",
+      "Bash(done)",
+      "Bash(taskkill:*)",
+      "Bash(ping:*)",
+      "Bash(netstat:*)",
+      "Bash(powershell:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm run build:*)",
+      "Bash(git checkout:*)",
+      "Bash(cd:*)",
+      "Bash(npx next dev:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npx kill-port:*)",
+      "Bash(PORT=3004 npm run dev:*)",
+      "Bash(PORT=3005 npm run dev:*)",
+      "Bash(npx prettier:*)"
+    ]
+  }
+}

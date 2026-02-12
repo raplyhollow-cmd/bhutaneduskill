@@ -70,7 +70,7 @@ export default function CounselorWizard() {
       case 1:
         return verifiedSchool !== null;
       case 2:
-        return fullName && email && phone && qualifications;
+        return !!(fullName && email && phone && qualifications);
       case 3:
         return true;
       default:

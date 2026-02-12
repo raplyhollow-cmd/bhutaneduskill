@@ -5,6 +5,7 @@
 "use client";
 
 import { useState } from "react";
+import React from "react";
 import { PortalHeader } from "@/components/shared/portal-sidebar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -226,7 +227,7 @@ const nextLevelXP = 1500;
 const prevLevelXP = 1000;
 const levelProgress = ((currentXP - prevLevelXP) / (nextLevelXP - prevLevelXP)) * 100;
 
-const categoryIcons: Record<string, JSX.Element> = {
+const categoryIcons: Record<string, React.JSX.Element> = {
   compass: <Target className="w-8 h-8" />,
   brain: <Sparkles className="w-8 h-8" />,
   "clipboard-check": <CheckCircle2 className="w-8 h-8" />,

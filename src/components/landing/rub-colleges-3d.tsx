@@ -2,109 +2,180 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { GraduationCap, MapPin, Users, BookOpen, ExternalLink } from "lucide-react";
+import { MapPin, GraduationCap, ArrowRight, Building } from "lucide-react";
+import { useRef, useState, useCallback } from "react";
 
-interface CollegeCardProps {
-  name: string;
-  location: string;
-  programs: string[];
-  students: string;
-  image: string;
-  color: string;
-  link: string;
-  index: number;
-}
+const colleges = [
+  {
+    short: "CST",
+    name: "College of Science and Technology",
+    location: "Phuentsholing",
+    programs: "Engineering, Architecture, IT",
+    color: "from-blue-500 to-cyan-500",
+    icon: "🔧",
+  },
+  {
+    short: "CoE",
+    name: "College of Education",
+    location: "Paro",
+    programs: "B.Ed Primary, B.Ed Secondary",
+    color: "from-green-500 to-emerald-500",
+    icon: "📚",
+  },
+  {
+    short: "CNR",
+    name: "College of Natural Resources",
+    location: "Lobesa",
+    programs: "Agriculture, Forestry, Environment",
+    color: "from-lime-500 to-green-500",
+    icon: "🌿",
+  },
+  {
+    short: "GCBS",
+    name: "Gaeddu College of Business Studies",
+    location: "Gaeddu",
+    programs: "BBA, B.Com",
+    color: "from-purple-500 to-pink-500",
+    icon: "💼",
+  },
+  {
+    short: "Sherubtse",
+    name: "Sherubtse College",
+    location: "Trashigang",
+    programs: "Arts, Science, Commerce",
+    color: "from-orange-500 to-red-500",
+    icon: "🎓",
+  },
+];
 
-export function CollegeCard3D({
-  name,
-  location,
-  programs,
-  students,
-  color,
-  link,
+// Expanding card component
+function ExpandingCollegeCard({
+  college,
   index,
-}: CollegeCardProps) {
+}: {
+  college: typeof colleges[0];
+  index: number;
+}) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    setMousePosition({ x, y });
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setMousePosition({ x: 50, y: 50 });
+  }, []);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-50px" }}
       transition={{
-        delay: index * 0.08,
+        delay: index * 0.1,
         duration: 0.5,
+        type: "spring",
+        stiffness: 100,
       }}
-      className="relative h-full"
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      className="relative group"
     >
-      <Link href={link} className="block h-full">
-        {/* Card with simple hover effect */}
-        <div className="relative h-full bg-white dark:bg-gray-900 rounded-3xl p-6 border-2 border-gray-100 dark:border-gray-800 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-          {/* College Logo/Image area */}
+      <Link href="/dashboard/rub" className="block">
+        <div
+          className={`relative overflow-hidden rounded-2xl bg-white dark:bg-gray-900 border-2 transition-all duration-500 ${
+            isExpanded
+              ? "border-orange-400 dark:border-orange-600 shadow-2xl shadow-orange-500/20"
+              : "border-gray-200 dark:border-gray-800 shadow-lg hover:shadow-xl"
+          }`}
+          style={{
+            background: isExpanded
+              ? `linear-gradient(135deg, rgba(255,255,255,1), rgba(251,146,60,0.05))`
+              : "rgba(255,255,255,0.95)",
+          }}
+        >
+          {/* Spotlight effect */}
           <div
-            className="relative h-32 rounded-2xl mb-4 flex items-center justify-center overflow-hidden"
+            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
             style={{
-              background: `linear-gradient(135deg, ${color}20, ${color}40)`,
+              background: `radial-gradient(circle 300px at ${mousePosition.x}% ${mousePosition.y}%, rgba(249, 115, 22, 0.1), transparent 60%)`,
             }}
-          >
-            {/* Static pattern */}
-            <div
-              className="absolute inset-0 opacity-20"
-              style={{
-                backgroundImage: `radial-gradient(circle, ${color} 1px, transparent 1px)`,
-                backgroundSize: "20px 20px",
-              }}
-            />
-            <GraduationCap className="w-16 h-16" style={{ color: color }} />
-          </div>
+          />
 
           {/* Content */}
-          <div className="relative z-10">
-            {/* Location badge */}
-            <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 mb-2">
-              <MapPin className="w-3.5 h-3.5" />
-              <span>{location}</span>
-            </div>
-
-            {/* Name */}
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
-              {name}
-            </h3>
-
-            {/* Stats */}
-            <div className="flex items-center gap-4 mb-4 text-sm">
-              <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
-                <Users className="w-4 h-4" />
-                <span>{students}</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
-                <BookOpen className="w-4 h-4" />
-                <span>{programs.length}+ Programs</span>
-              </div>
-            </div>
-
-            {/* Programs preview */}
-            <div className="flex flex-wrap gap-1.5 mb-4">
-              {programs.slice(0, 3).map((program) => (
-                <span
-                  key={program}
-                  className="px-2 py-1 text-xs rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+          <div className="relative z-10 p-5 md:p-6">
+            {/* Header with badge */}
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-center gap-3">
+                {/* Short name badge */}
+                <motion.div
+                  animate={isExpanded ? { rotate: [0, -5, 5, -5, 0] } : {}}
+                  transition={{ duration: 0.4 }}
+                  className="w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg"
+                  style={{
+                    background: `linear-gradient(to bottom right, ${college.color})`,
+                  }}
                 >
-                  {program}
-                </span>
-              ))}
-              {programs.length > 3 && (
-                <span className="px-2 py-1 text-xs rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500">
-                  +{programs.length - 3}
-                </span>
-              )}
+                  {college.short}
+                </motion.div>
+                <div>
+                  <h3 className="font-bold text-gray-900 dark:text-white text-base md:text-lg group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
+                    {college.name}
+                  </h3>
+                  <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                    <MapPin className="w-3.5 h-3.5" />
+                    {college.location}
+                  </div>
+                </div>
+              </div>
+
+              {/* Animated icon */}
+              <motion.span
+                animate={isExpanded ? { rotate: 360 } : {}}
+                transition={{ duration: 0.6, type: "spring" }}
+                className="text-2xl"
+              >
+                {college.icon}
+              </motion.span>
             </div>
 
-            {/* Explore link */}
+            {/* Programs - expandable */}
             <div
-              className="flex items-center gap-2 text-sm font-semibold transition-all group"
-              style={{ color: color }}
+              className={`overflow-hidden transition-all duration-500 ${
+                isExpanded ? "max-h-20 opacity-100 mt-4" : "max-h-0 opacity-0"
+              }`}
             >
-              Explore Programs
-              <ExternalLink className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              <div className="pt-4 border-t border-gray-200 dark:border-gray-800">
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Programs offered:
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {college.programs}
+                </p>
+              </div>
+            </div>
+
+            {/* Hover reveal indicator */}
+            <div className="flex items-center justify-between mt-3">
+              <div className="flex items-center gap-2">
+                <GraduationCap className="w-4 h-4 text-orange-500" />
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  View all programs
+                </span>
+              </div>
+              <motion.div
+                animate={{ x: isExpanded ? 5 : 0 }}
+                className="p-2 rounded-full text-white flex items-center justify-center"
+                style={{
+                  background: `linear-gradient(to bottom right, ${college.color})`,
+                }}
+              >
+                <ArrowRight className="w-4 h-4" />
+              </motion.div>
             </div>
           </div>
         </div>
@@ -113,170 +184,125 @@ export function CollegeCard3D({
   );
 }
 
-// RUB Colleges Section
 export function RUBCollegesSection() {
-  const colleges = [
-    {
-      name: "College of Science and Technology",
-      location: "Rinchending, Phuentsholing",
-      programs: ["Engineering", "Architecture", "IT", "Electronics"],
-      students: "1,200+",
-      color: "#3b82f6",
-      link: "/dashboard/rub",
-    },
-    {
-      name: "College of Education",
-      location: "Paro",
-      programs: ["B.Ed Primary", "B.Ed Secondary", "M.Ed"],
-      students: "800+",
-      color: "#10b981",
-      link: "/dashboard/rub",
-    },
-    {
-      name: "College of Natural Resources",
-      location: "Lobesa, Punakha",
-      programs: ["Agriculture", "Forestry", "Animal Science"],
-      students: "600+",
-      color: "#22c55e",
-      link: "/dashboard/rub",
-    },
-    {
-      name: "Gaeddu College of Business Studies",
-      location: "Gaeddu, Chukha",
-      programs: ["BBA", "B.Com", "MBA"],
-      students: "900+",
-      color: "#f59e0b",
-      link: "/dashboard/rub",
-    },
-    {
-      name: "Sherubtse College",
-      location: "Kanglung, Trashigang",
-      programs: ["Arts", "Science", "Economics", "Dzongkha"],
-      students: "1,500+",
-      color: "#8b5cf6",
-      link: "/dashboard/rub",
-    },
-    {
-      name: "Royal Thimphu College",
-      location: "Thimphu",
-      programs: ["Business", "IT", "Social Work"],
-      students: "700+",
-      color: "#ec4899",
-      link: "/dashboard/rub",
-    },
-  ];
+  const ref = useRef(null);
 
   return (
-    <section className="relative py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-white via-green-50/30 to-white dark:from-gray-950 dark:via-green-950/20 dark:to-gray-950 overflow-hidden">
-      {/* Static background */}
-      <div className="absolute top-20 right-20 w-96 h-96 bg-green-400/5 rounded-full blur-3xl" />
-      <div className="absolute bottom-20 left-20 w-96 h-96 bg-blue-400/5 rounded-full blur-3xl" />
-
-      <div className="relative max-w-7xl mx-auto">
-        {/* Header */}
+    <section className="relative py-24 bg-gradient-to-b from-gray-50/50 to-white dark:from-gray-900/30 dark:to-gray-950 overflow-hidden">
+      {/* Background decoration */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          animate={{
+            y: [0, -30, 0],
+            x: [0, 20, 0],
+          }}
+          transition={{
+            duration: 20,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+          className="absolute top-1/4 left-[10%] w-64 h-64 bg-orange-500/5 rounded-full blur-3xl"
+        />
+        <motion.div
+          animate={{
+            y: [0, 30, 0],
+            x: [0, -20, 0],
+          }}
+          transition={{
+            duration: 15,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+          className="absolute bottom-1/4 right-[10%] w-80 h-80 bg-blue-500/5 rounded-full blur-3xl"
+        />
+      </div>
+
+      <div className="relative z-10 max-w-6xl mx-auto px-6">
+        {/* Header with parallax effect */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-950/50 dark:to-emerald-950/50 border border-green-200 dark:border-green-900/50 mb-6">
-            <span className="text-2xl">🎓</span>
-            <span className="text-sm font-semibold text-green-700 dark:text-green-400">
-              Royal University of Bhutan
-            </span>
-          </div>
-
-          <h2 className="text-4xl sm:text-5xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6">
-            Your Path to
-            <span className="bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-              {" "}RUB Colleges
-            </span>
-          </h2>
-
-          <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto mb-8">
-            Explore all 11 Royal University of Bhutan colleges. Find the perfect program that matches
-            your career goals and interests.
-          </p>
-
-          {/* Stats row */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
+            initial={{ scale: 0.8, opacity: 0 }}
+            whileInView={{ scale: 1, opacity: 1 }}
             viewport={{ once: true }}
-            transition={{ delay: 0.2 }}
-            className="flex flex-wrap justify-center gap-8"
+            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-sm font-medium mb-4"
           >
-            <div className="text-center">
-              <div className="text-3xl font-bold text-gray-900 dark:text-white">11</div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">Colleges</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-gray-900 dark:text-white">60+</div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">Programs</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-gray-900 dark:text-white">6,000+</div>
-              <div className="text-sm text-gray-500 dark:text-gray-400">Students</div>
-            </div>
+            <Building className="w-4 h-4" />
+            Royal University of Bhutan
           </motion.div>
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+            Your Path to
+            <span className="block gradient-text-animated mt-2">Higher Education</span>
+          </h2>
+          <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+            Explore all 11 RUB colleges, their programs, and find the perfect fit for your future.
+          </p>
         </motion.div>
 
         {/* Colleges Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-2 gap-4 mb-8">
           {colleges.map((college, index) => (
-            <div key={college.name} className="h-[360px]">
-              <CollegeCard3D {...college} index={index} />
-            </div>
+            <ExpandingCollegeCard key={college.short} college={college} index={index} />
           ))}
         </div>
 
-        {/* View All Button */}
+        {/* Additional colleges notice */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.3 }}
-          className="mt-12 text-center"
+          className="text-center"
         >
-          <Link
-            href="/dashboard/rub"
-            className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-2xl font-semibold shadow-xl shadow-green-500/30 transition-all hover:scale-105"
-          >
-            <GraduationCap className="w-5 h-5" />
-            View All RUB Colleges
-            <ExternalLink className="w-5 h-5" />
-          </Link>
+          <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+            <span className="text-gray-600 dark:text-gray-400">
+              Plus 6 more colleges across Bhutan
+            </span>
+            <Link
+              href="/dashboard/rub"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-full text-sm font-medium hover:shadow-lg hover:shadow-orange-500/30 hover:scale-105 transition-all"
+            >
+              View all colleges
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
         </motion.div>
 
-        {/* Additional colleges */}
+        {/* Quick stats */}
         <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.4 }}
-          className="mt-12 p-6 rounded-2xl bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 border border-gray-200 dark:border-gray-800"
+          className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto"
         >
-          <p className="text-center text-gray-600 dark:text-gray-400 mb-4 font-medium">
-            More RUB Colleges
-          </p>
-          <div className="flex flex-wrap justify-center gap-3">
-            {[
-              "College of Language and Culture Studies",
-              "Samtse College of Education",
-              "Paro College of Education",
-              "Jigme Singye Wangchuck School of Law",
-              "Yonphula Centenary College",
-            ].map((college, i) => (
-              <span
-                key={college}
-                className="px-4 py-2 bg-white dark:bg-gray-900 rounded-full text-sm text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700"
-              >
-                {college}
-              </span>
-            ))}
-          </div>
+          {[
+            { value: "11", label: "Colleges" },
+            { value: "50+", label: "Programs" },
+            { value: "8", label: "Locations" },
+            { value: "100%", label: "Placement" },
+          ].map((stat, index) => (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, scale: 0.8 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.5 + index * 0.05 }}
+              className="text-center p-4 rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:border-orange-300 dark:hover:border-orange-700 hover:shadow-lg hover:shadow-orange-500/10 transition-all group"
+            >
+              <div className="text-2xl md:text-3xl font-bold gradient-text-animated mb-1">
+                {stat.value}
+              </div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                {stat.label}
+              </div>
+            </motion.div>
+          ))}
         </motion.div>
       </div>
     </section>

@@ -33,6 +33,7 @@ import {
   List,
   BookOpen,
   GraduationCap,
+  Check,
 } from "lucide-react";
 
 // Mock data

@@ -57,11 +57,11 @@ export default function StudentWizard() {
       case 1:
         return verifiedSchool !== null;
       case 2:
-        return fullName && dateOfBirth && gender && bloodGroup;
+        return !!(fullName && dateOfBirth && gender && bloodGroup);
       case 3:
-        return grade && section;
+        return !!(grade && section);
       case 4:
-        return guardianName && guardianPhone;
+        return !!(guardianName && guardianPhone);
       default:
         return true;
     }

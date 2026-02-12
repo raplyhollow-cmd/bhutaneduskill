@@ -21,14 +21,19 @@ export async function getCurrentStudentId() {
   // Get student record from Clerk user ID
   const student = await db.query.users.findFirst({
     where: eq(users.clerkUserId, userId),
-    columns: { id: true, schoolId: true },
+    columns: { id: true, schoolId: true, classGrade: true, section: true },
   });
 
   if (!student || student.type !== "student") {
     return null;
   }
 
-  return { id: student.id, schoolId: student.schoolId };
+  return {
+    id: student.id,
+    schoolId: student.schoolId,
+    classGrade: student.classGrade,
+    section: student.section,
+  };
 }
 
 /**

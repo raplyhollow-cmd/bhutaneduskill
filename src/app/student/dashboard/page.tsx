@@ -11,6 +11,7 @@
  * Now using real database data via server actions.
  */
 
+import { redirect } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -115,8 +116,8 @@ export default async function StudentDashboardPage() {
   try {
     dashboardData = await fetchStudentDashboard();
   } catch (error) {
-    // If not authenticated or error, return loading state or redirect
-    return <DashboardSkeleton />;
+    // If not authenticated, redirect to sign in
+    redirect("/sign-in?redirect=/student/dashboard");
   }
 
   const { student, homework, assessments, attendance, achievements, deadlines, careerMatches, fees } = dashboardData;

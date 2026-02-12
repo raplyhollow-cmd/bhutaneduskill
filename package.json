@@ -12,7 +12,7 @@
     "db:setup": "tsx scripts/setup-db.ts",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
-    "db:push:prod": "drizzle-kit push:pg --config=drizzle.config.prod.ts",
+    "db:push:prod": "drizzle-kit push --config=drizzle.config.prod.ts",
     "db:studio": "drizzle-kit studio",
     "migrate:neon": "tsx scripts/migrate-sqlite-to-neon.ts"
   },
@@ -30,7 +30,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.1",
-    "framer-motion": "^12.34.0",
+    "framer-motion": "^11.18.2",
     "lucide-react": "^0.563.0",
     "next": "16.1.6",
     "next-intl": "^4.8.2",

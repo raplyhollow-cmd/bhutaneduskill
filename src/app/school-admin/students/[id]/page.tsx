@@ -72,7 +72,7 @@ async function getStudentData(studentId: string) {
     with: {
       class: true,
     },
-  });
+  }) as any;
 
   // Get attendance stats (last 30 days)
   const attendanceRecords = await db.query.attendance.findMany({
@@ -128,7 +128,7 @@ async function getStudentData(studentId: string) {
       homework: true,
     },
     limit: 10,
-  });
+  }) as any;
 
   return {
     student,
@@ -144,7 +144,7 @@ async function getStudentData(studentId: string) {
     },
     assessmentResults,
     examResults,
-    homeworkSubmissions,
+    homeworkSubmissions: homeworkSubs,
   };
 }
 
@@ -531,8 +531,8 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
                         </div>
                         <div className="text-right">
                           <p className="font-medium">Nu. {(fee.amountPaid || 0).toLocaleString()}</p>
-                          <Badge className={getFeeStatusBadge(fee.status)} variant="outline" size="sm">
-                            {fee.status}
+                          <Badge className={getFeeStatusBadge(fee.status || "pending")} variant="outline">
+                            {fee.status || "Pending"}
                           </Badge>
                         </div>
                       </div>
@@ -612,7 +612,7 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
             <CardContent>
               {homeworkSubmissions.length > 0 ? (
                 <div className="space-y-3">
-                  {homeworkSubmissions.map((submission) => (
+                  {homeworkSubmissions.map((submission: any) => (
                     <div key={submission.id} className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">

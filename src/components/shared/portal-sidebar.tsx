@@ -289,7 +289,7 @@ export function PortalSidebar({ userType, userName, userImage }: SidebarProps) {
               >
                 <motion.div
                   animate={{ rotate: [0, 10, 0] }}
-                  transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 3 }}
+                  transition={{ duration: 0.5, repeat: Infinity, repeatType: "loop", repeatDelay: 3 }}
                 >
                   <GraduationCap className="w-6 h-6" />
                 </motion.div>

@@ -77,7 +77,7 @@ export default function TeacherWizard() {
       case 1:
         return verifiedSchool !== null;
       case 2:
-        return fullName && email && phone;
+        return !!(fullName && email && phone);
       case 3:
         return selectedSubjects.length > 0 && selectedClasses.length > 0;
       case 4:

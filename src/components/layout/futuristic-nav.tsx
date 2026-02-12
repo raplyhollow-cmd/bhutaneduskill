@@ -125,6 +125,7 @@ export function FuturisticNav({ transparent = false }: FuturisticNavProps) {
               transition={{
                 duration: 2,
                 repeat: Infinity,
+                repeatType: "loop",
                 repeatDelay: 1,
               }}
             />
@@ -151,6 +152,7 @@ export function FuturisticNav({ transparent = false }: FuturisticNavProps) {
                 transition={{
                   duration: 3,
                   repeat: Infinity,
+                  repeatType: "loop",
                   ease: "easeInOut",
                 }}
               />
@@ -269,6 +271,7 @@ export function FuturisticNav({ transparent = false }: FuturisticNavProps) {
                   transition={{
                     duration: 2,
                     repeat: Infinity,
+                    repeatType: "loop",
                     repeatDelay: 1,
                   }}
                 />

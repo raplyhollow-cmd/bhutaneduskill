@@ -13,7 +13,7 @@
  * Used to verify actual file type regardless of extension
  */
 export const FILE_MAGIC_NUMBERS: Record<string, {
-  signature: number[];
+  signature: number[] | null;
   offset: number;
   extension: string[];
   mimeType: string[];
