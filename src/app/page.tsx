@@ -1,6 +1,6 @@
 "use client";
 
-import { FloatingNav } from "@/components/layout/floating-nav";
+import { CompactNav } from "@/components/layout/compact-nav";
 import { HeroSection } from "@/components/landing/hero-section";
 import { FeaturesSection } from "@/components/landing/features-section";
 import { PortalGridSection } from "@/components/landing/portal-cards-3d";
@@ -40,8 +40,8 @@ const companyLinks = [
 export default function HomePage() {
   return (
     <main className="min-h-screen bg-white dark:bg-gray-950">
-      {/* Floating Navigation */}
-      <FloatingNav />
+      {/* Compact Navigation - Desktop floating pill + Mobile bottom tab bar */}
+      <CompactNav />
 
       {/* Hero Section */}
       <HeroSection />

@@ -1,6 +1,6 @@
 "use client";
 
-import { FloatingNav } from "@/components/layout/floating-nav";
+import { CompactNav } from "@/components/layout/compact-nav";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -108,8 +108,8 @@ export default function AboutPage() {
 
   return (
     <main className="min-h-screen bg-white dark:bg-gray-950">
-      {/* Navigation */}
-      <FloatingNav />
+      {/* Compact Navigation - Desktop floating pill + Mobile bottom tab bar */}
+      <CompactNav />
 
       {/* Hero Section - Premium */}
       <section className="relative min-h-[60vh] flex items-center justify-center overflow-hidden bg-gradient-to-b from-orange-50 via-white to-orange-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
