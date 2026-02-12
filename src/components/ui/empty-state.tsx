@@ -122,8 +122,8 @@ function EmptyState({
           variants={iconVariants}
           className="mb-4 text-gray-400 dark:text-gray-600"
         >
-          {React.isValidElement(icon) ? React.cloneElement(icon, {
-            className: cn(styles.icon, icon.props?.className),
+          {React.isValidElement(icon) ? React.cloneElement(icon as React.ReactElement<any>, {
+            className: cn(styles.icon, (icon as React.ReactElement<any>).props?.className),
           }) : icon}
         </motion.div>
       )}

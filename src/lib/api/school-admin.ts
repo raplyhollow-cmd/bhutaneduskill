@@ -793,7 +793,7 @@ export async function getFeeData(schoolId: string | null) {
     limit: 100,
   });
 
-  const studentFees: StudentFeeData[] = await Promise.all(
+  const studentFeesData: StudentFeeData[] = await Promise.all(
     studentFeesList.map(async (sf) => {
       const studentName = sf.student
         ? `${sf.student.firstName} ${sf.student.lastName || ""}`.trim()
@@ -830,12 +830,12 @@ export async function getFeeData(schoolId: string | null) {
   );
 
   // Summary calculations
-  const totalExpected = studentFees.reduce((sum, sf) => sum + sf.amount, 0);
-  const totalCollected = studentFees.reduce((sum, sf) => sum + sf.paidAmount, 0);
-  const totalWaived = studentFees.reduce((sum, sf) => sum + sf.waivedAmount, 0);
+  const totalExpected = studentFeesData.reduce((sum, sf) => sum + sf.amount, 0);
+  const totalCollected = studentFeesData.reduce((sum, sf) => sum + sf.paidAmount, 0);
+  const totalWaived = studentFeesData.reduce((sum, sf) => sum + sf.waivedAmount, 0);
   const totalPending = totalExpected - totalCollected - totalWaived;
   const collectionRate = totalExpected > 0 ? Math.round((totalCollected / totalExpected) * 100) : 0;
-  const defaulters = studentFees.filter((sf) => sf.status === "overdue").length;
+  const defaulters = studentFeesData.filter((sf) => sf.status === "overdue").length;
 
   const summary: FeeSummaryData = {
     totalExpected,
@@ -848,7 +848,7 @@ export async function getFeeData(schoolId: string | null) {
 
   return {
     structures,
-    studentFees,
+    studentFees: studentFeesData,
     payments: [], // Would need to implement feePayments table
     summary,
   };
@@ -894,7 +894,7 @@ export async function getCounselors(schoolId: string | null, options: {
 
   const transformed: CounselorData[] = await Promise.all(
     uniqueCounselors.map(async (assignment) => {
-      const counselor = assignment.counselor as typeof assignment.counselor & { firstName: string; lastName?: string; id: string; email: string; phone?: string };
+      const counselor = (assignment as any).counselor;
       const name = `${counselor.firstName} ${counselor.lastName || ""}`.trim();
 
       // Get all schools assigned to this counselor

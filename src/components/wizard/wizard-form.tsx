@@ -1,16 +1,16 @@
 "use client";
 
 import { ReactNode } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, UseFormReturn, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ZodSchema } from "zod";
 import { WizardNavigation } from "./wizard-navigation";
 
-interface WizardFormProps<T> {
-  schema: ZodSchema<T>;
+interface WizardFormProps<T extends Record<string, any>> {
+  schema: ZodSchema<any>;
   defaultValues?: Partial<T>;
   onSubmit: (data: T) => void | Promise<void>;
-  children: (methods: ReturnType<typeof useForm<T>>) => ReactNode;
+  children: (methods: UseFormReturn<T, any>) => ReactNode;
   currentStep: number;
   totalSteps: number;
   canGoNext: boolean;
@@ -40,8 +40,8 @@ export function WizardForm<T extends Record<string, any>>({
   skipLabel,
 }: WizardFormProps<T>) {
   const methods = useForm<T>({
-    resolver: zodResolver(schema),
-    defaultValues,
+    resolver: zodResolver(schema) as any,
+    defaultValues: defaultValues as any,
   });
 
   const handleSubmit = async (data: T) => {
@@ -49,8 +49,8 @@ export function WizardForm<T extends Record<string, any>>({
   };
 
   return (
-    <form onSubmit={methods.handleSubmit(handleSubmit)}>
-      {children(methods)}
+    <form onSubmit={methods.handleSubmit(handleSubmit as SubmitHandler<T>)}>
+      {children(methods as UseFormReturn<T, any>)}
 
       <WizardNavigation
         currentStep={currentStep}
@@ -58,7 +58,7 @@ export function WizardForm<T extends Record<string, any>>({
         canGoNext={canGoNext}
         canGoBack={currentStep > 1}
         isNextLoading={isSubmitting}
-        onNext={methods.handleSubmit(handleSubmit)}
+        onNext={methods.handleSubmit(handleSubmit as SubmitHandler<T>)}
         onBack={onBack}
         onSkip={onSkip}
         nextLabel={nextLabel}

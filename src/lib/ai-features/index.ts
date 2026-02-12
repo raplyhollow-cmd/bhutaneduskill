@@ -279,7 +279,7 @@ export async function generateCareerCoachResponse(
 
   // Get career matches
   const matches = await db.query.careerMatches.findMany({
-    where: eq(careerMatches.userId, userId),
+    where: eq((careerMatches as any).userId, userId),
     with: { career: true },
     limit: 5,
   });
