@@ -148,8 +148,8 @@ export class BCSEApiClient {
   ): Promise<BCSERegistrationResponse> {
     try {
       const response = await this.apiRequest("/registrations", "POST", {
-        schoolCode: this.config.schoolCode,
         ...registration,
+        schoolCode: registration.schoolCode || this.config.schoolCode,
       });
 
       return {

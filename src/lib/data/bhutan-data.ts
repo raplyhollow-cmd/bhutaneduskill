@@ -5,6 +5,8 @@
  * This data will be seeded into the database during initial setup.
  */
 
+import { districts, schools } from "@/lib/db/schema";
+
 export const bhutanDistricts = [
   {
     id: "district-thimphu",

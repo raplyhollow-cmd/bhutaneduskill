@@ -14,8 +14,3 @@ export {
   IntegrationBadge,
   IntegrationGrid,
 } from "./integrations";
-
-// Re-export types for TypeScript consumers
-export type { default } from "./trusted-by";
-export type { default } from "./testimonials";
-export type { default } from "./integrations";

@@ -421,7 +421,7 @@ export async function exportData(request: ExportRequest, userId: string, userRol
     const source = dataSources[dataSource];
 
     if (!source) {
-      return { success: false, format: options.format, error: "Unknown data source" };
+      return { success: false, format: options.format, filename: "", error: "Unknown data source" };
     }
 
     // Get data from database (this would be implemented per source)
@@ -432,7 +432,7 @@ export async function exportData(request: ExportRequest, userId: string, userRol
     let filteredData = data;
     if (options.filters) {
       filteredData = data.filter((item) =>
-        Object.entries(options.filters).every(([key, value]) =>
+        Object.entries(options.filters || {}).every(([key, value]) =>
           getNestedValue(item, key) === value
         )
       );
@@ -492,7 +492,7 @@ export async function exportData(request: ExportRequest, userId: string, userRol
         break;
 
       default:
-        return { success: false, format: options.format, error: "Unsupported format" };
+        return { success: false, format: options.format, filename: "", error: "Unsupported format" };
     }
 
     return {
@@ -507,6 +507,7 @@ export async function exportData(request: ExportRequest, userId: string, userRol
     return {
       success: false,
       format: request.options.format,
+      filename: "",
       error: error.message || "Export failed",
     };
   }

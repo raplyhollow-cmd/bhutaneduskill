@@ -156,7 +156,7 @@ export default async function AdminTeachersPage({
 
   // Get unique schools for filter
   const uniqueSchools = Array.from(
-    new Map(allTeachers.filter((t) => t.schoolName).map((t) => [t.schoolId, t])).values()
+    new Map(allTeachers.filter((t: any) => t.schoolName).map((t: any) => [t.schoolId, t])).values()
   );
 
   // Get all subjects
@@ -281,9 +281,9 @@ export default async function AdminTeachersPage({
         <CardContent>
           <div className="flex flex-wrap gap-3">
             {Object.entries(subjectCounts)
-              .sort(([, a], [, b]) => b - a)
+              .sort(([, a]: [string, any], [, b]: [string, any]) => b - a)
               .slice(0, 10)
-              .map(([subject, count]) => (
+              .map(([subject, count]: [string, number]) => (
                 <Badge
                   key={subject}
                   variant="outline"
@@ -321,7 +321,7 @@ export default async function AdminTeachersPage({
               className="px-4 py-3 min-h-[44px] rounded-lg border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 outline-none bg-white"
             >
               <option value="all">All Schools</option>
-              {uniqueSchools.map((school) => (
+              {uniqueSchools.map((school: any) => (
                 <option key={school.schoolId} value={school.schoolId}>
                   {school.schoolName}
                 </option>
@@ -333,7 +333,7 @@ export default async function AdminTeachersPage({
               className="px-4 py-3 min-h-[44px] rounded-lg border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 outline-none bg-white"
             >
               <option value="all">All Subjects</option>
-              {allSubjects.map((subject) => (
+              {allSubjects.map((subject: string) => (
                 <option key={subject} value={subject}>
                   {subject}
                 </option>
@@ -368,7 +368,7 @@ export default async function AdminTeachersPage({
               className="px-3 py-1"
               style={{ borderColor: "rgb(236 72 153)", color: "rgb(219 39 119)" }}
             >
-              School: {uniqueSchools.find((s) => s.schoolId === schoolFilter)?.schoolName}
+              School: {(uniqueSchools as any[]).find((s: any) => s.schoolId === schoolFilter)?.schoolName}
             </Badge>
           )}
           {subjectFilter !== "all" && (

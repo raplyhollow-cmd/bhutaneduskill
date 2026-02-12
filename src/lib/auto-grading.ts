@@ -388,8 +388,8 @@ export class AutoGradingEngine {
    * Grade match the following questions
    */
   private static gradeMatchFollowing(question: Question, answer: StudentAnswer): GradingResult {
-    const correct = question.correctAnswer as Array<{ left: string; right: string }>;
-    const given = answer.answer as Array<{ left: string; right: string }>;
+    const correct = question.correctAnswer as unknown as Array<{ left: string; right: string }>;
+    const given = answer.answer as unknown as Array<{ left: string; right: string }>;
 
     if (!Array.isArray(given) || given.length !== correct.length) {
       return {

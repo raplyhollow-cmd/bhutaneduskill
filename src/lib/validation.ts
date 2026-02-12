@@ -154,7 +154,7 @@ export const userProfileSchema = z.object({
  */
 export const riasecAnswerSchema = z.object({
   assessmentId: z.string().optional(),
-  answers: z.record(z.number().min(1).max(5)),
+  answers: z.record(z.string(), z.number().min(1).max(5)),
   status: z.enum(['in_progress', 'completed', 'abandoned']).optional(),
 });
 
@@ -177,7 +177,7 @@ export const mbtiAnswerSchema = z.object({
  */
 export const discAnswerSchema = z.object({
   assessmentId: z.string().optional(),
-  answers: z.record(z.number().min(1).max(4)),
+  answers: z.record(z.string(), z.number().min(1).max(4)),
   status: z.enum(['in_progress', 'completed', 'abandoned']).optional(),
 });
 
@@ -202,7 +202,7 @@ export const workValuesAnswerSchema = z.object({
  */
 export const learningStylesAnswerSchema = z.object({
   assessmentId: z.string().optional(),
-  answers: z.record(z.number().min(1).max(4)),
+  answers: z.record(z.string(), z.number().min(1).max(4)),
   status: z.enum(['in_progress', 'completed', 'abandoned']).optional(),
 });
 

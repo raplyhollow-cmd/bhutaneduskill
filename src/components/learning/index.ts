@@ -5,6 +5,7 @@ export type {
   LearningModule,
   ModuleLesson,
   ModuleContent,
-  StudentProgress,
-  CertificateData,
 } from "./module-creator";
+export type {
+  CertificateData,
+} from "./certificate-generator";

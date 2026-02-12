@@ -1,3 +1,3 @@
 import { createClient } from "@libsql/client";
 
-export const client = createClient(process.env.DATABASE_URL!);
+export const client = createClient({ url: process.env.DATABASE_URL! });

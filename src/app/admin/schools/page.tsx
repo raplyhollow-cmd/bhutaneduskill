@@ -84,7 +84,7 @@ export default async function AdminSchoolsPage() {
 
   // Get stats for each school
   const schoolsWithStats = await Promise.all(
-    allSchools.map(async (school) => ({
+    allSchools.map(async (school: any) => ({
       ...school,
       stats: await getSchoolStats(school.id),
     }))
@@ -195,7 +195,7 @@ export default async function AdminSchoolsPage() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3">
-            {Object.entries(schoolTypes).map(([type, count]) => (
+            {Object.entries(schoolTypes).map(([type, count]: [string, number]) => (
               <Badge
                 key={type}
                 variant="outline"

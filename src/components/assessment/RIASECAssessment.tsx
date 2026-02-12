@@ -78,7 +78,7 @@ export function RIASECAssessment({ title, description, questions, assessmentType
                 key={category}
                 label={category}
                 description={CATEGORY_NAMES[category]}
-                score={score}
+                score={score as number}
                 isHighest={result.dominantTraits.includes(category)}
               />
             ))}

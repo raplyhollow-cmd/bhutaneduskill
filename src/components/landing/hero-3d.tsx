@@ -4,9 +4,10 @@ import { useRef, useEffect, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, PerspectiveCamera, Environment, Float, Stars, Sparkles } from "@react-three/drei";
 import { motion } from "framer-motion";
-import { ArrowRight, Compass, MountainSun, Sparkles as SparklesIcon } from "lucide-react";
+import { ArrowRight, Compass, Mountain, Sparkles as SparklesIcon } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import * as THREE from "three";
 
 // 3D Mountain Component
 function Mountain({ position, scale, color }: { position: [number, number, number]; scale: number; color: string }) {

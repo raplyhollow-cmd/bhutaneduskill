@@ -337,10 +337,10 @@ function getMBTIProfile(
     },
   };
 
-  const profile = profiles[type] || profiles["ISTJ"];
+  const profile = profiles[type as keyof typeof profiles] || profiles["ISTJ"];
 
   return {
-    type: type as any,
+    type: type,
     eiScore,
     snScore,
     tfScore,

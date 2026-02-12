@@ -153,7 +153,7 @@ export default async function AdminCounselorsPage({
 
   // Get unique schools for filter
   const uniqueSchools = Array.from(
-    new Map(allCounselors.filter((c) => c.schoolName).map((c) => [c.schoolId, c])).values()
+    new Map(allCounselors.filter((c: any) => c.schoolName).map((c: any) => [c.schoolId, c])).values()
   );
 
   // Calculate platform-wide stats
@@ -278,7 +278,7 @@ export default async function AdminCounselorsPage({
               className="px-4 py-3 min-h-[44px] rounded-lg border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 outline-none bg-white"
             >
               <option value="all">All Schools</option>
-              {uniqueSchools.map((school) => (
+              {uniqueSchools.map((school: any) => (
                 <option key={school.schoolId} value={school.schoolId}>
                   {school.schoolName}
                 </option>
@@ -313,7 +313,7 @@ export default async function AdminCounselorsPage({
               className="px-3 py-1"
               style={{ borderColor: "rgb(236 72 153)", color: "rgb(219 39 119)" }}
             >
-              School: {uniqueSchools.find((s) => s.schoolId === schoolFilter)?.schoolName}
+              School: {(uniqueSchools as any[]).find((s: any) => s.schoolId === schoolFilter)?.schoolName}
             </Badge>
           )}
           {statusFilter !== "all" && (
@@ -628,7 +628,7 @@ export default async function AdminCounselorsPage({
         </CardHeader>
         <CardContent>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {uniqueSchools.slice(0, 6).map((school) => {
+            {uniqueSchools.slice(0, 6).map((school: any) => {
               const schoolCounselors = counselorsWithData.filter((c) =>
                 c.assignments.some((a) => a.schoolId === school.schoolId)
               );

@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, GraduationCap, Target, Globe, Award, BookOpen, Heart, CheckCircle2, Phone, Mail as MailIcon, School, Crown, TrendingUp, BarChart3, Sparkles, ArrowRight } from "lucide-react";
+import { Users, GraduationCap, Target, Globe, Award, BookOpen, Heart, CheckCircle2, Phone, Mail as MailIcon, School, Crown, TrendingUp, BarChart3, Sparkles, ArrowRight, MessageCircle, Linkedin as LinkedinIcon, MapPin } from "lucide-react";
 import Link from "next/link";
 import { Facebook, Instagram, Linkedin, Twitter } from "lucide-react";
 
@@ -267,22 +267,26 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Team Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
+      {/* Team Section - Upgraded */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-white to-gray-50 dark:from-gray-950 dark:to-gray-900">
         <div className="max-w-7xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="text-center mb-12"
+            className="text-center mb-16"
           >
-            <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">Meet Our Team</h2>
-            <p className="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-orange-100 to-red-100 dark:from-orange-950/50 dark:to-red-950/50 border border-orange-200 dark:border-orange-900/50 text-sm font-medium text-orange-700 dark:text-orange-400 mb-6">
+              <Users className="w-4 h-4" />
+              <span>Leadership Team</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-4">Meet Our Team</h2>
+            <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
               Experienced professionals dedicated to transforming education in Bhutan
             </p>
           </motion.div>
-          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {team.map((member, index) => (
               <motion.div
                 key={index}
@@ -290,31 +294,77 @@ export default function AboutPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-50px" }}
                 transition={{ delay: index * 0.1 }}
+                whileHover={{ y: -8 }}
+                className="group"
               >
-                <Card className="transition-all duration-300 hover:shadow-lg hover:-translate-y-1 h-full">
-                  <div className={`h-24 bg-gradient-to-r ${member.color} rounded-t-lg`} />
-                  <CardContent className="p-6">
-                    <div className="flex items-center gap-4 mb-4 -mt-12">
-                      <div className="w-20 h-20 rounded-full bg-white dark:bg-gray-800 border-4 border-white shadow-lg flex items-center justify-center">
-                        <member.icon className="w-10 h-10 text-gray-400" />
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">{member.name}</h3>
-                        <Badge className={`bg-gradient-to-r ${member.color} text-white border-0`}>
-                          {member.role}
-                        </Badge>
+                <Card className="overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 h-full bg-white dark:bg-gray-800">
+                  {/* Header with gradient */}
+                  <div className={`h-28 bg-gradient-to-br ${member.color} relative overflow-hidden`}>
+                    {/* Pattern overlay */}
+                    <div className="absolute inset-0 opacity-20">
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.3)_0%,transparent_50%)]" />
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(255,255,255,0.2)_0%,transparent_50%)]" />
+                    </div>
+                    {/* Role badge */}
+                    <div className="absolute top-4 left-4 right-4">
+                      <span className="inline-block px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-xs font-semibold text-white border border-white/30">
+                        {member.role}
+                      </span>
+                    </div>
+                  </div>
+
+                  <CardContent className="p-6 -mt-12 relative">
+                    {/* Avatar */}
+                    <div className="flex justify-center mb-4">
+                      <div className="relative">
+                        <div className="w-24 h-24 rounded-2xl bg-white dark:bg-gray-800 border-4 border-white dark:border-gray-800 shadow-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                          <div className={`w-20 h-20 rounded-xl bg-gradient-to-br ${member.color} flex items-center justify-center`}>
+                            <member.icon className="w-10 h-10 text-white" />
+                          </div>
+                        </div>
+                        {/* Status indicator */}
+                        <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-4 border-white dark:border-gray-800" />
                       </div>
                     </div>
-                    <p className="text-gray-600 dark:text-gray-400 mb-4">{member.description}</p>
-                    <a
-                      href={getWhatsAppLink(member.whatsapp)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-medium transition-colors"
-                    >
-                      <Phone className="w-4 h-4" />
-                      WhatsApp
-                    </a>
+
+                    {/* Name */}
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white text-center mb-2">
+                      {member.name}
+                    </h3>
+
+                    {/* Description */}
+                    <p className="text-sm text-gray-600 dark:text-gray-400 text-center mb-6 line-clamp-2">
+                      {member.description}
+                    </p>
+
+                    {/* Contact buttons */}
+                    <div className="space-y-2">
+                      <a
+                        href={getWhatsAppLink(member.whatsapp)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl text-sm font-medium transition-all duration-300 hover:shadow-lg hover:shadow-green-500/25"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        WhatsApp
+                      </a>
+                      <div className="grid grid-cols-2 gap-2">
+                        <a
+                          href={`tel:${member.phone}`}
+                          className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-medium transition-colors"
+                        >
+                          <Phone className="w-3.5 h-3.5" />
+                          Call
+                        </a>
+                        <a
+                          href={`mailto:info@bhutaneduskill.com`}
+                          className="flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-medium transition-colors"
+                        >
+                          <MailIcon className="w-3.5 h-3.5" />
+                          Email
+                        </a>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
               </motion.div>

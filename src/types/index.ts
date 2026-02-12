@@ -1,6 +1,15 @@
 // User Types
 export type UserType = "student" | "teacher" | "parent" | "admin";
 
+export interface Class {
+  id: string;
+  name: string;
+  grade: number;
+  section?: string;
+  teacherId?: string;
+  schoolId: string;
+}
+
 export interface User {
   id: string;
   tenantId: string;
