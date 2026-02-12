@@ -278,10 +278,9 @@ export function PartnerInstitutionCard({
           <div className="relative h-16 w-16">
             {/* Outline version - visible by default */}
             <div className="absolute inset-0 flex items-center justify-center transition-all duration-300 group-hover:scale-90 group-hover:opacity-0">
-              <Icon
-                className="h-12 w-12"
-                style={{ color: "rgb(156 163 175)" }}
-              />
+              <div className="h-12 w-12 text-gray-400">
+                <Icon className="h-12 w-12" />
+              </div>
             </div>
             {/* Filled/Colored version - visible on hover */}
             <div

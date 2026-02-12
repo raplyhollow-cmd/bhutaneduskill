@@ -9,65 +9,6 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import * as THREE from "three";
 
-// 3D Mountain Component
-function Mountain3D({ position, scale, color }: { position: [number, number, number]; scale: number; color: string }) {
-  const meshRef = useRef<THREE.Mesh>(null);
-
-  useFrame((state) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.05) * 0.01;
-    }
-  });
-
-  return (
-    <mesh ref={meshRef} position={position} scale={scale}>
-      <coneGeometry args={[1, 2, 4]} />
-      <meshStandardMaterial color={color} roughness={0.8} metalness={0.2} />
-    </mesh>
-  );
-}
-
-// Snow Cap Component
-function SnowCap({ position }: { position: [number, number, number] }) {
-  return (
-    <mesh position={position}>
-      <sphereGeometry args={[0.3, 8, 8]} />
-      <meshStandardMaterial color="#ffffff" roughness={1} metalness={0} />
-    </mesh>
-  );
-}
-
-// Himalayan Mountain Range
-function MountainRange() {
-  const groupRef = useRef<THREE.Group>(null);
-
-  useFrame((state) => {
-    if (groupRef.current) {
-      groupRef.current.rotation.y = Math.sin(state.clock.elapsedTime * 0.03) * 0.01;
-    }
-  });
-
-  return (
-    <group ref={groupRef}>
-      {/* Main mountains */}
-      <Mountain3D position={[0, 0, 0]} scale={2} color="#8B7355" />
-      <SnowCap position={[0, 1.8, 0]} />
-
-      <Mountain3D position={[-3, -0.5, -2]} scale={1.5} color="#9C8B7A" />
-      <SnowCap position={[-3, 1, -2]} />
-
-      <Mountain3D position={[3, -0.5, -2]} scale={1.5} color="#9C8B7A" />
-      <SnowCap position={[3, 1, -2]} />
-
-      <Mountain3D position={[-5, -1, -4]} scale={1.2} color="#8B7355" />
-      <Mountain3D position={[5, -1, -4]} scale={1.2} color="#8B7355" />
-
-      <Mountain3D position={[-2, -0.8, 1]} scale={0.8} color="#A8998A" />
-      <Mountain3D position={[2, -0.8, 1]} scale={0.8} color="#A8998A" />
-    </group>
-  );
-}
-
 // Floating particles - reduced
 function FloatingParticles() {
   const particlesRef = useRef<THREE.Points>(null);
@@ -130,7 +71,6 @@ function Scene() {
       <directionalLight position={[10, 10, 5]} intensity={1} color="#fff7ed" />
       <pointLight position={[0, 5, 0]} intensity={0.5} color="#f97316" />
 
-      <MountainRange />
       <FloatingParticles />
       <Sparkles count={50} scale={10} size={2} speed={0.2} opacity={0.3} color="#f97316" />
       <SunriseGlow />

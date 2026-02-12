@@ -62,21 +62,14 @@ const portals = [
 ];
 
 function rgbToRgba(rgb: string, alpha: number = 0.8): string {
-  const match = rgb.match(/rgb\((\d+),\s*\)/g);
-  if (!match) return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-  const [r = parseInt(match?.[1]) || "0"), g = parseInt(match?.[2] || "0");
-  const b = parseInt(match?.[3] || "0");
+  const match = rgb.match(/rgb\((\d+)\s+(\d+)\s+(\d+)\)/);
+  if (!match) return rgb;
+  const [, r, g, b] = match;
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 function PortalCard({ portal, index }: { portal: typeof portals[0]; index: number }) {
-  const portalColor = portal.color;
-  const rgb = { r: parseInt(portalColor.match[1]), g: parseInt(portalColor.match[2]) || 0), b: parseInt(portalColor.match[3]) || 0 };
-  const headerRgb = `rgb(${r}, ${g}, ${b})`;
-  const headerRgba = `rgba(${r}, ${g}, ${b}, ${alpha})`;
-  const bgOpacity = 0.1;
-
-  const headerBg = `linear-gradient(135deg, ${headerRgb} 0%, ${headerRgb} 100%)`;
+  const Icon = portal.icon;
 
   return (
     <motion.div
@@ -89,37 +82,47 @@ function PortalCard({ portal, index }: { portal: typeof portals[0]; index: numbe
     >
       <Link href={portal.href} className="block h-full group">
         <div
-          className="relative h-full p-8 rounded-3xl transition-all duration-300 overflow-hidden group-hover:shadow-2xl"
-          style={{
-            backgroundColor: portal.bg,
-            borderColor: portal.color,
-          }}
+          className="relative h-full p-8 rounded-3xl transition-all duration-300 overflow-hidden group-hover:shadow-2xl bg-white dark:bg-gray-800"
         >
-          {/* Gradient header */}
-          <div className="relative h-32 rounded-2xl overflow-hidden">
-            <div className="absolute inset-0 bg-black/5" />
-            <div className="relative h-full flex flex-col items-center justify-center">
-              <Icon className="w-16 h-16 text-white" strokeWidth={1.5} />
-            </div>
+          {/* Icon */}
+          <div className="relative h-24 rounded-2xl overflow-hidden mb-4 flex items-center justify-center">
+            <div
+              className="absolute inset-0 opacity-10"
+              style={{ backgroundColor: portal.color }}
+            />
+            <Icon className="w-12 h-12 relative z-10" style={{ color: portal.color }} strokeWidth={1.5} />
+          </div>
 
           {/* Content */}
-          <div className="p-6">
-            <h3 className="text-2xl font-bold" style={{ color: portal.color }}>
+          <div>
+            <h3 className="text-2xl font-bold mb-2" style={{ color: portal.color }}>
               {portal.title}
             </h3>
-            <p className="text-base text-gray-600 dark:text-gray-400 leading-relaxed">
+            <p className="text-gray-600 dark:text-gray-400">
               {portal.description}
             </p>
           </div>
 
-          {/* Arrow that animates on hover */}
-          <div className="flex items-center gap-2 mt-4">
-            <span className="text-sm font-medium">Explore portal</span>
-            <ArrowRight className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-2" strokeWidth={2} />
+          {/* Arrow on hover */}
+          <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
+            <ArrowRight className="w-5 h-5" style={{ color: portal.color }} />
           </div>
         </div>
+      </Link>
+    </motion.div>
+  );
+}
+
+export function PortalCards3D() {
+  return (
+    <section className="py-20 px-4">
+      <div className="max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {portals.map((portal, index) => (
+            <PortalCard key={portal.href} portal={portal} index={index} />
+          ))}
+        </div>
       </div>
-    </Link>
-  </motion.div>
+    </section>
   );
 }

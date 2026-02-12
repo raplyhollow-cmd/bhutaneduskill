@@ -182,10 +182,9 @@ export function SchoolLogo({ name, icon: Icon, color, className }: SchoolLogoPro
         className
       )}
     >
-      <div className="relative mb-3">
+      <div className="relative mb-3" style={{ color }}>
         <Icon
           className="h-10 w-10 transition-all duration-300 group-hover:scale-110"
-          style={{ color }}
         />
       </div>
       <span className="text-sm font-medium text-gray-600 transition-colors duration-300 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-gray-200">
