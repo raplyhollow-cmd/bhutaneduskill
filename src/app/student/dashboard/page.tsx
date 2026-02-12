@@ -111,13 +111,13 @@ function formatRelativeDate(dateString: string): string {
 }
 
 export default async function StudentDashboardPage() {
-  // Fetch real data from database
   let dashboardData;
   try {
     dashboardData = await fetchStudentDashboard();
   } catch (error) {
-    // If not authenticated, redirect to sign in
-    redirect("/sign-in?redirect=/student/dashboard");
+    // Student not found in database - redirect to setup
+    console.error("Dashboard error:", error);
+    redirect("/setup/student");
   }
 
   const { student, homework, assessments, attendance, achievements, deadlines, careerMatches, fees } = dashboardData;

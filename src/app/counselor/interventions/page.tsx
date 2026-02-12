@@ -11,7 +11,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +36,7 @@ import {
   Eye,
   Edit,
   MoreVertical,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -190,8 +191,47 @@ export default function CounselorInterventionsPage() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
+  // Data states
+  const [interventions, setInterventions] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch data on mount
+  useEffect(() => {
+    fetchInterventionsData();
+  }, []);
+
+  const fetchInterventionsData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch("/api/counselor/interventions");
+      if (!response.ok) {
+        throw new Error("Failed to fetch interventions data");
+      }
+
+      const data = await response.json();
+      setInterventions(data.interventions || []);
+      setStats(data.stats || null);
+    } catch (err) {
+      console.error("Error fetching interventions:", err);
+      setError("Failed to load interventions. Please try again.");
+      setInterventions([]);
+      setStats({
+        totalInterventions: 0,
+        activeInterventions: 0,
+        completedThisMonth: 0,
+        highPriorityCount: 0,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Filter interventions
-  const filteredInterventions = mockInterventions.filter((intervention) => {
+  const filteredInterventions = interventions.filter((intervention) => {
     const matchesSearch =
       intervention.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       intervention.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -243,9 +283,21 @@ export default function CounselorInterventionsPage() {
   };
 
   // Stats
-  const activeInterventions = mockInterventions.filter((i) => i.status === "active").length;
-  const completedThisMonth = mockInterventions.filter((i) => i.status === "completed").length;
-  const highPriorityCount = mockInterventions.filter((i) => i.priority === "high" && i.status !== "completed").length;
+  const activeInterventions = stats?.activeInterventions ?? interventions.filter((i) => i.status === "active").length;
+  const completedThisMonth = stats?.completedThisMonth ?? interventions.filter((i) => i.status === "completed").length;
+  const highPriorityCount = stats?.highPriorityCount ?? interventions.filter((i) => i.priority === "high" && i.status !== "completed").length;
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" style={{ color: "rgb(147 51 234)" }} />
+          <p className="text-gray-600">Loading interventions...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -276,7 +328,7 @@ export default function CounselorInterventionsPage() {
                 <AlertCircle className="w-6 h-6" style={{ color: 'rgb(147 51 234)' }} />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900">{mockInterventions.length}</p>
+                <p className="text-2xl font-bold text-gray-900">{stats?.totalInterventions ?? interventions.length}</p>
                 <p className="text-sm text-gray-500">Total Interventions</p>
               </div>
             </div>
@@ -491,7 +543,7 @@ export default function CounselorInterventionsPage() {
       </div>
 
       {/* Empty State */}
-      {paginatedInterventions.length === 0 && (
+      {paginatedInterventions.length === 0 && !loading && (
         <Card>
           <CardContent className="py-12 text-center">
             <AlertCircle className="w-16 h-16 mx-auto mb-4 text-gray-300" />

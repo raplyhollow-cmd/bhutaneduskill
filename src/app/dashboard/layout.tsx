@@ -71,7 +71,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
             <div className="flex items-center gap-4">
               <span className="text-sm text-muted-foreground">Welcome back!</span>
               <Button variant="ghost" size="sm" asChild>
-                <a href="/sign-out">
+                <a href="/sign-in">
                   <LogOut className="w-4 h-4 mr-2" />
                   Sign Out
                 </a>

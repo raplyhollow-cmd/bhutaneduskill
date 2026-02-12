@@ -11,7 +11,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,7 @@ import {
   FileText,
   MessageSquare,
   X as XIcon,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -200,8 +201,47 @@ export default function CounselorSessionsPage() {
   const [selectedSession, setSelectedSession] = useState<any>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
+  // Data states
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch data on mount
+  useEffect(() => {
+    fetchSessionsData();
+  }, []);
+
+  const fetchSessionsData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch("/api/counselor/sessions");
+      if (!response.ok) {
+        throw new Error("Failed to fetch sessions data");
+      }
+
+      const data = await response.json();
+      setSessions(data.sessions || []);
+      setStats(data.stats || null);
+    } catch (err) {
+      console.error("Error fetching sessions:", err);
+      setError("Failed to load sessions. Please try again.");
+      setSessions([]);
+      setStats({
+        upcomingSessions: 0,
+        completedToday: 0,
+        totalHours: 0,
+        groupSessions: 0,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Filter sessions
-  const filteredSessions = mockSessions.filter((session) => {
+  const filteredSessions = sessions.filter((session) => {
     const matchesSearch =
       (session.studentName && session.studentName.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (session.topic && session.topic.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -255,13 +295,25 @@ export default function CounselorSessionsPage() {
   };
 
   // Stats
-  const upcomingSessions = mockSessions.filter((s) => s.status === "scheduled").length;
-  const completedToday = mockSessions.filter((s) => s.status === "completed").length;
-  const totalHours = mockSessions.filter((s) => s.status === "completed").reduce((acc, s) => {
+  const upcomingSessions = sessions.filter((s) => s.status === "scheduled").length;
+  const completedToday = sessions.filter((s) => s.status === "completed").length;
+  const totalHours = sessions.filter((s) => s.status === "completed").reduce((acc, s) => {
     const [startH, startM] = s.startTime.split(":").map(Number);
     const [endH, endM] = s.endTime.split(":").map(Number);
     return acc + (endH * 60 + endM - startH * 60 - startM) / 60;
   }, 0);
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" style={{ color: "rgb(147 51 234)" }} />
+          <p className="text-gray-600">Loading sessions...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -302,65 +354,65 @@ export default function CounselorSessionsPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgb(168 85 247 / 0.2), rgb(147 51 234 / 0.2))' }}>
-                <Calendar className="w-6 h-6" style={{ color: 'rgb(147 51 234)' }} />
+      {stats && (
+        <div className="grid md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgb(168 85 247 / 0.2), rgb(147 51 234 / 0.2))' }}>
+                  <Calendar className="w-6 h-6" style={{ color: 'rgb(147 51 234)' }} />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{stats.upcomingSessions || upcomingSessions}</p>
+                  <p className="text-sm text-gray-500">Upcoming Sessions</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{upcomingSessions}</p>
-                <p className="text-sm text-gray-500">Upcoming Sessions</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 text-green-600" />
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{stats.completedToday || completedToday}</p>
+                  <p className="text-sm text-gray-500">Completed</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{completedToday}</p>
-                <p className="text-sm text-gray-500">Completed</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Clock className="w-6 h-6 text-blue-600" />
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <Clock className="w-6 h-6 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{stats.totalHours || totalHours.toFixed(1)}h</p>
+                  <p className="text-sm text-gray-500">Hours This Week</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{totalHours.toFixed(1)}h</p>
-                <p className="text-sm text-gray-500">Hours This Week</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                <Users className="w-6 h-6 text-orange-600" />
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                  <Users className="w-6 h-6 text-orange-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{stats.groupSessions || sessions.filter((s) => s.type === "group").length}</p>
+                  <p className="text-sm text-gray-500">Group Sessions</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">
-                  {mockSessions.filter((s) => s.type === "group").length}
-                </p>
-                <p className="text-sm text-gray-500">Group Sessions</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Filters */}
       <Card>
@@ -492,7 +544,7 @@ export default function CounselorSessionsPage() {
             </div>
             <div className="grid grid-cols-7 gap-1">
               {generateCalendarDays().map((dayInfo, idx) => {
-                const hasSessions = dayInfo.date && mockSessions.some(
+                const hasSessions = dayInfo.date && sessions.some(
                   (s) => new Date(s.date).toDateString() === dayInfo.date.toDateString()
                 );
                 const isPast = dayInfo.date && dayInfo.date < new Date();
@@ -528,7 +580,7 @@ export default function CounselorSessionsPage() {
       )}
 
       {/* Empty State */}
-      {filteredSessions.length === 0 && (
+      {filteredSessions.length === 0 && !loading && (
         <Card>
           <CardContent className="py-12 text-center">
             <Calendar className="w-16 h-16 mx-auto mb-4 text-gray-300" />

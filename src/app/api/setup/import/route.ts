@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     const userRecord = await db
       .select()
       .from(users)
-      .where(eq(users.clerkId, user.id))
+      .where(eq(users.clerkUserId, user.id))
       .limit(1);
 
     if (userRecord.length === 0) {

@@ -16,6 +16,7 @@ import {
   Loader2,
 } from "lucide-react";
 import Link from "next/link";
+import { AICareerCoach } from "@/components/ai/career-coach";
 
 export default function DashboardPage() {
   const { user, isLoaded } = useUser();
@@ -299,6 +300,12 @@ export default function DashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* AI Career Coach - Floating Chat Button */}
+      <AICareerCoach
+        userId={user?.id}
+        userName={profile?.firstName || profile?.name || "Student"}
+      />
     </div>
   );
 }

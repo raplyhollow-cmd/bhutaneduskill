@@ -14,10 +14,12 @@
     "db:push": "drizzle-kit push",
     "db:push:prod": "drizzle-kit push --config=drizzle.config.prod.ts",
     "db:studio": "drizzle-kit studio",
-    "migrate:neon": "tsx scripts/migrate-sqlite-to-neon.ts"
+    "migrate:neon": "tsx scripts/migrate-sqlite-to-neon.ts",
+    "db:seed": "tsx src/lib/db/seed.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.37.3",
+    "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^5.2.2",
     "@libsql/client": "^0.17.0",
     "@neondatabase/serverless": "^1.0.2",
@@ -52,6 +54,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pg": "^8.16.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "dotenv-cli": "^11.0.0",

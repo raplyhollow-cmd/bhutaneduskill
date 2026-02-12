@@ -11,8 +11,8 @@
 
 "use client";
 
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -20,9 +20,7 @@ import {
   FileText,
   Plus,
   Search,
-  Filter,
   Eye,
-  EyeOff,
   Calendar,
   User,
   GraduationCap,
@@ -39,149 +37,110 @@ import {
   Heart,
   TrendingUp,
   Tag,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 
-// Mock notes data using counselor_notes table structure
-const mockNotes = [
-  {
-    id: "NOTE001",
-    counselorId: "COUN001",
-    studentId: "STU001",
-    studentName: "Tashi Dorji",
-    grade: 12,
-    school: "Thimphu Higher Secondary School",
-    category: "academic",
-    note: "Student showing excellent progress in mathematics. Recently completed calculus unit with 92%. Teacher reports increased class participation. Recommended for advanced placement program.",
-    isPrivate: false,
-    isSensitive: false,
-    createdAt: "2024-02-10T10:30:00",
-    updatedAt: "2024-02-10T10:30:00",
-    tags: ["mathematics", "achievement", "placement"],
-  },
-  {
-    id: "NOTE002",
-    counselorId: "COUN001",
-    studentId: "STU002",
-    studentName: "Karma Wangmo",
-    grade: 10,
-    school: "Yangchenphug Higher Secondary School",
-    category: "personal",
-    note: "Family situation impacting attendance. Mother experiencing health issues. Student responsible for caring for younger siblings. Referenced school social worker for family support. Will monitor attendance weekly.",
-    isPrivate: true,
-    isSensitive: true,
-    createdAt: "2024-02-08T14:20:00",
-    updatedAt: "2024-02-10T09:15:00",
-    tags: ["family", "attendance", "social-work"],
-  },
-  {
-    id: "NOTE003",
-    counselorId: "COUN001",
-    studentId: "STU003",
-    studentName: "Pema Lhamo",
-    grade: 11,
-    school: "Moiyul Goenpa HSS",
-    category: "behavioral",
-    note: "Significant improvement in social adjustment. Student joined debate club and made friends. Reports feeling more connected to school community. Previous concerns about isolation have been resolved.",
-    isPrivate: false,
-    isSensitive: false,
-    createdAt: "2024-02-05T11:00:00",
-    updatedAt: "2024-02-05T11:00:00",
-    tags: ["social", "improvement", "extracurricular"],
-  },
-  {
-    id: "NOTE004",
-    counselorId: "COUN001",
-    studentId: "STU004",
-    studentName: "Dorji Wangchuk",
-    grade: 12,
-    school: "Pelkhil HSS",
-    category: "academic",
-    note: "Career exploration session completed. Student expressed strong interest in civil engineering but concerned about mathematics requirements. Provided information on RUB engineering programs and scholarship opportunities. Recommended summer bridge program.",
-    isPrivate: false,
-    isSensitive: false,
-    createdAt: "2024-02-03T15:45:00",
-    updatedAt: "2024-02-03T15:45:00",
-    tags: ["career", "engineering", "RUB", "scholarship"],
-  },
-  {
-    id: "NOTE005",
-    counselorId: "COUN001",
-    studentId: "STU005",
-    studentName: "Sonam Yangdon",
-    grade: 10,
-    school: "Rigsum HSS",
-    category: "academic",
-    note: "Anxiety regarding upcoming board exams. Student expressing pressure from family expectations. Discussed stress management techniques and created study schedule. Recommended speaking with school psychologist for additional support.",
-    isPrivate: true,
-    isSensitive: false,
-    createdAt: "2024-02-01T09:30:00",
-    updatedAt: "2024-02-07T13:20:00",
-    tags: ["exams", "anxiety", "stress-management"],
-  },
-  {
-    id: "NOTE006",
-    counselorId: "COUN001",
-    studentId: "STU006",
-    studentName: "Karma Tshering",
-    grade: 11,
-    school: "Thimphu HSS",
-    category: "behavioral",
-    note: "Incident report: Student involved in conflict with peer during lunch. Mediated discussion between both parties. Root cause identified as misunderstanding. Both students agreed to resolution and will participate in restorative justice activity.",
-    isPrivate: true,
-    isSensitive: false,
-    createdAt: "2024-01-30T16:00:00",
-    updatedAt: "2024-01-30T16:00:00",
-    tags: ["conflict", "mediation", "restorative-justice"],
-  },
-  {
-    id: "NOTE007",
-    counselorId: "COUN001",
-    studentId: "STU007",
-    studentName: "Tshering Yangdon",
-    grade: 12,
-    school: "Yangchenphug HSS",
-    category: "personal",
-    note: "Student shared aspirations to pursue data science career. Excellent RIASEC results showing strong investigative and conventional scores. Provided resources on online courses and RUB computer science programs. Student very motivated.",
-    isPrivate: false,
-    isSensitive: false,
-    createdAt: "2024-01-28T10:15:00",
-    updatedAt: "2024-01-28T10:15:00",
-    tags: ["career", "data-science", "RIASEC"],
-  },
-  {
-    id: "NOTE008",
-    counselorId: "COUN001",
-    studentId: "STU008",
-    studentName: "Dorji Tshering",
-    grade: 9,
-    school: "Moiyul Goenpa HSS",
-    category: "academic",
-    note: "Initial career counseling session. Student uncertain about interests. Introduced to various career clusters through interactive assessment. Scheduled follow-up session after family discusses options at home.",
-    isPrivate: false,
-    isSensitive: false,
-    createdAt: "2024-01-25T14:00:00",
-    updatedAt: "2024-01-25T14:00:00",
-    tags: ["career-exploration", "assessment", "initial"],
-  },
-];
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface CounselorNoteData {
+  id: string;
+  counselorId: string;
+  studentId: string;
+  studentName: string;
+  grade: number | null;
+  school: string | null;
+  category: string;
+  note: string;
+  isPrivate: boolean;
+  isSensitive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  tags: string[];
+}
+
+interface CounselorNotesStats {
+  totalNotes: number;
+  privateNotes: number;
+  sensitiveNotes: number;
+  thisWeekNotes: number;
+}
+
+// ============================================================================
+// CONSTANTS
+// ============================================================================
 
 const categoryOptions = ["All", "Academic", "Behavioral", "Personal", "Career"];
 const privacyOptions = ["All", "Private", "Shared"];
-const schoolOptions = ["All", "Thimphu HSS", "Yangchenphug HSS", "Moiyul Goenpa HSS", "Pelkhil HSS", "Rigsum HSS"];
+
+// ============================================================================
+// PAGE COMPONENT
+// ============================================================================
 
 export default function CounselorNotesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedPrivacy, setSelectedPrivacy] = useState("All");
-  const [selectedSchool, setSelectedSchool] = useState("All");
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [selectedNote, setSelectedNote] = useState<any>(null);
+  const [selectedNote, setSelectedNote] = useState<CounselorNoteData | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
+  // Data states
+  const [notes, setNotes] = useState<CounselorNoteData[]>([]);
+  const [stats, setStats] = useState<CounselorNotesStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch data on mount
+  useEffect(() => {
+    fetchNotesData();
+  }, []);
+
+  const fetchNotesData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch("/api/counselor-notes");
+      if (!response.ok) {
+        throw new Error("Failed to fetch notes data");
+      }
+
+      const data = await response.json();
+      setNotes(data.notes || []);
+
+      // Calculate stats
+      const totalNotes = data.notes.length;
+      const privateNotes = data.notes.filter((n: CounselorNoteData) => n.isPrivate).length;
+      const sensitiveNotes = data.notes.filter((n: CounselorNoteData) => n.isSensitive).length;
+      const thisWeekNotes = data.notes.filter((n: CounselorNoteData) => {
+        const noteDate = new Date(n.createdAt);
+        const today = new Date();
+        const weekAgo = new Date(today.setDate(today.getDate() - 7));
+        return noteDate >= weekAgo;
+      }).length;
+
+      setStats({ totalNotes, privateNotes, sensitiveNotes, thisWeekNotes });
+    } catch (err) {
+      console.error("Error fetching notes:", err);
+      setError("Failed to load notes. Please try again.");
+      setNotes([]);
+      setStats({
+        totalNotes: 0,
+        privateNotes: 0,
+        sensitiveNotes: 0,
+        thisWeekNotes: 0,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Filter notes
-  const filteredNotes = mockNotes.filter((note) => {
+  const filteredNotes = notes.filter((note) => {
     const matchesSearch =
       note.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       note.note.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -191,9 +150,8 @@ export default function CounselorNotesPage() {
     const matchesPrivacy = selectedPrivacy === "All" ||
       (selectedPrivacy === "Private" && note.isPrivate) ||
       (selectedPrivacy === "Shared" && !note.isPrivate);
-    const matchesSchool = selectedSchool === "All" || note.school === selectedSchool;
 
-    return matchesSearch && matchesCategory && matchesPrivacy && matchesSchool;
+    return matchesSearch && matchesCategory && matchesPrivacy;
   });
 
   // Pagination
@@ -207,27 +165,30 @@ export default function CounselorNotesPage() {
       behavioral: "bg-orange-100 text-orange-700 border-orange-200",
       personal: "bg-purple-100 text-purple-700 border-purple-200",
       career: "bg-green-100 text-green-700 border-green-200",
+      general: "bg-gray-100 text-gray-700 border-gray-200",
     };
     const icons = {
       academic: BookOpen,
       behavioral: AlertCircle,
       personal: Heart,
       career: TrendingUp,
+      general: FileText,
     };
-    const Icon = icons[category as keyof typeof icons] || BookOpen;
-    return { className: styles[category as keyof typeof styles] || styles.academic, icon: Icon };
+    const Icon = icons[category as keyof typeof icons] || FileText;
+    return { className: styles[category as keyof typeof styles] || styles.general, icon: Icon };
   };
 
-  // Stats
-  const totalNotes = mockNotes.length;
-  const privateNotes = mockNotes.filter((n) => n.isPrivate).length;
-  const sensitiveNotes = mockNotes.filter((n) => n.isSensitive).length;
-  const thisWeekNotes = mockNotes.filter((n) => {
-    const noteDate = new Date(n.createdAt);
-    const today = new Date();
-    const weekAgo = new Date(today.setDate(today.getDate() - 7));
-    return noteDate >= weekAgo;
-  }).length;
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" style={{ color: "rgb(147 51 234)" }} />
+          <p className="text-gray-600">Loading notes...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -250,63 +211,65 @@ export default function CounselorNotesPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgb(168 85 247 / 0.2), rgb(147 51 234 / 0.2))' }}>
-                <FileText className="w-6 h-6" style={{ color: 'rgb(147 51 234)' }} />
+      {stats && (
+        <div className="grid md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgb(168 85 247 / 0.2), rgb(147 51 234 / 0.2))' }}>
+                  <FileText className="w-6 h-6" style={{ color: 'rgb(147 51 234)' }} />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{stats.totalNotes}</p>
+                  <p className="text-sm text-gray-500">Total Notes</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{totalNotes}</p>
-                <p className="text-sm text-gray-500">Total Notes</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <Lock className="w-6 h-6 text-purple-600" />
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <Lock className="w-6 h-6 text-purple-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{stats.privateNotes}</p>
+                  <p className="text-sm text-gray-500">Private Notes</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{privateNotes}</p>
-                <p className="text-sm text-gray-500">Private Notes</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                <AlertCircle className="w-6 h-6 text-red-600" />
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                  <AlertCircle className="w-6 h-6 text-red-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{stats.sensitiveNotes}</p>
+                  <p className="text-sm text-gray-500">Sensitive</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{sensitiveNotes}</p>
-                <p className="text-sm text-gray-500">Sensitive</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <Calendar className="w-6 h-6 text-green-600" />
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                  <Calendar className="w-6 h-6 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{stats.thisWeekNotes}</p>
+                  <p className="text-sm text-gray-500">This Week</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{thisWeekNotes}</p>
-                <p className="text-sm text-gray-500">This Week</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Filters */}
       <Card>
@@ -344,18 +307,6 @@ export default function CounselorNotesPage() {
               {privacyOptions.map((privacy) => (
                 <option key={privacy} value={privacy}>
                   {privacy === "All" ? "All Privacy" : privacy}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={selectedSchool}
-              onChange={(e) => setSelectedSchool(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-            >
-              {schoolOptions.map((school) => (
-                <option key={school} value={school}>
-                  {school === "All" ? "All Schools" : school}
                 </option>
               ))}
             </select>
@@ -438,7 +389,7 @@ export default function CounselorNotesPage() {
       </div>
 
       {/* Empty State */}
-      {paginatedNotes.length === 0 && (
+      {paginatedNotes.length === 0 && !loading && (
         <Card>
           <CardContent className="py-12 text-center">
             <FileText className="w-16 h-16 mx-auto mb-4 text-gray-300" />
@@ -448,7 +399,6 @@ export default function CounselorNotesPage() {
               setSearchQuery("");
               setSelectedCategory("All");
               setSelectedPrivacy("All");
-              setSelectedSchool("All");
             }}>
               Clear Filters
             </Button>
@@ -491,6 +441,7 @@ export default function CounselorNotesPage() {
                   variant={currentPage === pageNum ? "default" : "outline"}
                   size="sm"
                   onClick={() => setCurrentPage(pageNum)}
+                  className={currentPage === pageNum ? "" : ""}
                   style={currentPage === pageNum ? { background: 'linear-gradient(135deg, rgb(168 85 247), rgb(147 51 234))' } : {}}
                 >
                   {pageNum}
@@ -517,7 +468,7 @@ export default function CounselorNotesPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>Create New Note</CardTitle>
-                  <CardDescription>Add a confidential counselor note</CardDescription>
+                  <p className="text-sm text-gray-500">Add a confidential counselor note</p>
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => setShowCreateModal(false)}>
                   <Trash2 className="w-5 h-5" />
@@ -611,11 +562,11 @@ export default function CounselorNotesPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold" style={{ background: 'linear-gradient(135deg, rgb(168 85 247), rgb(147 51 234))' }}>
-                    {selectedNote.studentName.split(" ").map((n: string) => n[0]).join("")}
+                    {selectedNote.studentName.split(" ").map((n) => n[0]).join("")}
                   </div>
                   <div>
                     <CardTitle>{selectedNote.studentName}</CardTitle>
-                    <CardDescription>Grade {selectedNote.grade} - {selectedNote.id}</CardDescription>
+                    <p className="text-sm text-gray-500">Grade {selectedNote.grade} - {selectedNote.id}</p>
                   </div>
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => setShowDetailModal(false)}>
@@ -659,7 +610,7 @@ export default function CounselorNotesPage() {
               <div>
                 <h4 className="font-medium text-gray-900 mb-2">Tags</h4>
                 <div className="flex flex-wrap gap-2">
-                  {selectedNote.tags.map((tag: string, idx: number) => (
+                  {selectedNote.tags.map((tag, idx) => (
                     <Badge key={idx} className="bg-gray-100 text-gray-700 border-gray-200" variant="outline">
                       <Tag className="w-3 h-3 mr-1" />
                       {tag}

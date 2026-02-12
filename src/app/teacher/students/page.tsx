@@ -35,19 +35,35 @@ import Link from "next/link";
 
 interface Student {
   id: string;
+  name: string;
   firstName: string;
   lastName: string;
   email?: string;
-  phone?: string;
+  profilePicture?: string;
   classGrade: number;
   section: string;
-  rollNumber?: string;
-  classId: string;
   className: string;
-  attendanceRate?: number;
-  homeworkCompletion?: number;
-  lastAssessment?: string;
+  classId: string;
+  rollNumber?: string;
+  attendanceSummary: {
+    present: number;
+    absent: number;
+    percentage: number | null;
+    totalRecorded: number;
+  };
+  homeworkSummary: {
+    submitted: number;
+    graded: number;
+    pending: number;
+    total: number;
+  };
+  enrolledAt?: string;
+}
+
+interface StudentWithAttention extends Student {
   needsAttention?: boolean;
+  attendanceRate: number;
+  homeworkCompletion: number;
 }
 
 interface ClassData {
@@ -59,10 +75,11 @@ interface ClassData {
 }
 
 export default function TeacherStudentsPage() {
-  const [students, setStudents] = useState<Student[]>([]);
+  const [students, setStudents] = useState<StudentWithAttention[]>([]);
   const [classes, setClasses] = useState<ClassData[]>([]);
-  const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
+  const [filteredStudents, setFilteredStudents] = useState<StudentWithAttention[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedClass, setSelectedClass] = useState<string>("all");
   const [selectedSubject, setSelectedSubject] = useState<string>("all");
@@ -73,152 +90,50 @@ export default function TeacherStudentsPage() {
     const fetchData = async () => {
       try {
         setIsLoading(true);
+        setError(null);
 
         // Fetch teacher's classes and students
         const response = await fetch("/api/teacher/students");
-        if (response.ok) {
-          const data = await response.json();
-          setClasses(data.classes || []);
-          setStudents(data.students || []);
-          setFilteredStudents(data.students || []);
-        } else {
-          // Use mock data for now
-          const mockClasses: ClassData[] = [
-            { id: "c1", name: "Class 10 A", grade: 10, section: "A", subject: "Mathematics" },
-            { id: "c2", name: "Class 10 B", grade: 10, section: "B", subject: "Mathematics" },
-            { id: "c3", name: "Class 9 A", grade: 9, section: "A", subject: "Physics" },
-            { id: "c4", name: "Class 8 A", grade: 8, section: "A", subject: "Mathematics" },
-          ];
-
-          const mockStudents: Student[] = [
-            {
-              id: "s1",
-              firstName: "Tashi",
-              lastName: "Dorji",
-              email: "tashi.dorji@school.edu.bt",
-              phone: "+975-17-123456",
-              classGrade: 10,
-              section: "A",
-              rollNumber: "01",
-              classId: "c1",
-              className: "Class 10 A",
-              attendanceRate: 95,
-              homeworkCompletion: 88,
-              lastAssessment: "RIASEC - AIR",
-            },
-            {
-              id: "s2",
-              firstName: "Karma",
-              lastName: "Wangmo",
-              email: "karma.wangmo@school.edu.bt",
-              phone: "+975-17-234567",
-              classGrade: 10,
-              section: "A",
-              rollNumber: "02",
-              classId: "c1",
-              className: "Class 10 A",
-              attendanceRate: 82,
-              homeworkCompletion: 75,
-              lastAssessment: "Not started",
-              needsAttention: true,
-            },
-            {
-              id: "s3",
-              firstName: "Pema",
-              lastName: "Lhamo",
-              email: "pema.lhamo@school.edu.bt",
-              phone: "+975-17-345678",
-              classGrade: 10,
-              section: "B",
-              rollNumber: "01",
-              classId: "c2",
-              className: "Class 10 B",
-              attendanceRate: 91,
-              homeworkCompletion: 92,
-              lastAssessment: "RIASEC - SIE",
-            },
-            {
-              id: "s4",
-              firstName: "Dorji",
-              lastName: "Wangchuk",
-              email: "dorji.wangchuk@school.edu.bt",
-              classGrade: 9,
-              section: "A",
-              rollNumber: "05",
-              classId: "c3",
-              className: "Class 9 A",
-              attendanceRate: 78,
-              homeworkCompletion: 65,
-              lastAssessment: "MBTI - INFJ",
-              needsAttention: true,
-            },
-            {
-              id: "s5",
-              firstName: "Sonam",
-              lastName: "Choden",
-              email: "sonam.choden@school.edu.bt",
-              phone: "+975-17-456789",
-              classGrade: 9,
-              section: "A",
-              rollNumber: "06",
-              classId: "c3",
-              className: "Class 9 A",
-              attendanceRate: 98,
-              homeworkCompletion: 100,
-              lastAssessment: "RIASEC - CES",
-            },
-            {
-              id: "s6",
-              firstName: "Jigme",
-              lastName: "Tenzin",
-              email: "jigme.tenzin@school.edu.bt",
-              classGrade: 8,
-              section: "A",
-              rollNumber: "03",
-              classId: "c4",
-              className: "Class 8 A",
-              attendanceRate: 85,
-              homeworkCompletion: 80,
-              lastAssessment: "DISC - Steady",
-            },
-            {
-              id: "s7",
-              firstName: "Dechen",
-              lastName: "Wangmo",
-              email: "dechen.wangmo@school.edu.bt",
-              phone: "+975-17-567890",
-              classGrade: 8,
-              section: "A",
-              rollNumber: "04",
-              classId: "c4",
-              className: "Class 8 A",
-              attendanceRate: 72,
-              homeworkCompletion: 58,
-              lastAssessment: "In progress",
-              needsAttention: true,
-            },
-            {
-              id: "s8",
-              firstName: "Kinley",
-              lastName: "Dorji",
-              email: "kinley.dorji@school.edu.bt",
-              classGrade: 10,
-              section: "B",
-              rollNumber: "03",
-              classId: "c2",
-              className: "Class 10 B",
-              attendanceRate: 89,
-              homeworkCompletion: 85,
-              lastAssessment: "RIASEC - RIA",
-            },
-          ];
-
-          setClasses(mockClasses);
-          setStudents(mockStudents);
-          setFilteredStudents(mockStudents);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch data: ${response.statusText}`);
         }
-      } catch (error) {
-        console.error("Error fetching student data:", error);
+
+        const data = await response.json();
+
+        // Process API data to match our interface
+        const apiClasses: ClassData[] = (data.studentsByClass || []).map((cls: any) => ({
+          id: cls.classId,
+          name: cls.className,
+          grade: cls.grade,
+          section: cls.section,
+          subject: undefined, // Will be populated if subject info is available
+        }));
+
+        const apiStudents: StudentWithAttention[] = (data.students || []).map((s: any) => {
+          // Calculate needsAttention based on attendance and homework
+          const attendanceRate = s.attendanceSummary?.percentage ?? 100;
+          const homeworkCompletion = s.homeworkSummary?.total > 0
+            ? Math.round((s.homeworkSummary.graded / s.homeworkSummary.total) * 100)
+            : 100;
+
+          return {
+            ...s,
+            attendanceRate,
+            homeworkCompletion,
+            needsAttention: (attendanceRate < 80) || (homeworkCompletion < 70),
+          };
+        });
+
+        setClasses(apiClasses.length > 0 ? apiClasses : []);
+        setStudents(apiStudents);
+        setFilteredStudents(apiStudents);
+      } catch (err) {
+        console.error("Error fetching student data:", err);
+        setError(err instanceof Error ? err.message : "Failed to load students");
+        // Set empty arrays on error
+        setClasses([]);
+        setStudents([]);
+        setFilteredStudents([]);
       } finally {
         setIsLoading(false);
       }
@@ -420,6 +335,25 @@ export default function TeacherStudentsPage() {
             </div>
           </CardContent>
         </Card>
+      ) : error ? (
+        <Card>
+          <CardContent className="pt-6 flex items-center justify-center py-12">
+            <div className="flex flex-col items-center gap-4 text-center">
+              <AlertCircle className="w-12 h-12 text-red-500" />
+              <div>
+                <p className="text-lg font-semibold text-gray-900">Error Loading Students</p>
+                <p className="text-sm text-gray-600 mt-1">{error}</p>
+              </div>
+              <Button
+                onClick={() => window.location.reload()}
+                variant="outline"
+                className="mt-2"
+              >
+                Try Again
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       ) : filteredStudents.length === 0 ? (
         <Card>
           <CardContent className="pt-6 py-12 text-center">
@@ -512,15 +446,11 @@ export default function TeacherStudentsPage() {
                           <span className="truncate max-w-[200px]">{student.email}</span>
                         </div>
                       )}
-                      {student.phone && (
-                        <div className="flex items-center gap-1.5 text-sm text-gray-600">
-                          <Phone className="w-3.5 h-3.5" />
-                          <span>{student.phone}</span>
-                        </div>
-                      )}
                       <div className="flex items-center gap-1.5 text-sm text-gray-600">
                         <GraduationCap className="w-3.5 h-3.5" />
-                        <span>Last: {student.lastAssessment || "N/A"}</span>
+                        <span>
+                          {student.homeworkSummary?.total ?? 0} homework submitted
+                        </span>
                       </div>
 
                       <div className="ml-auto flex items-center gap-2">

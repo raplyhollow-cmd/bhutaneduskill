@@ -28,110 +28,119 @@ import {
   CheckCircle,
   AlertCircle,
   ChevronRight,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
-// Mock data - will be replaced with real data from database
-const mockClasses = [
-  {
-    id: "class-1",
-    name: "Class 10 A",
-    subject: "Mathematics",
-    grade: 10,
-    section: "A",
-    room: "Room 201",
-    students: 42,
-    schedule: "Mon, Wed, Fri - 10:00 AM",
-    nextClass: "Tomorrow, 10:00 AM",
-    attendanceRate: 92,
-    homeworkCompletion: 78,
-    averageScore: 76,
-    topic: "Quadratic Equations",
-    status: "active" as const,
-  },
-  {
-    id: "class-2",
-    name: "Class 10 B",
-    subject: "Mathematics",
-    grade: 10,
-    section: "B",
-    room: "Room 202",
-    students: 38,
-    schedule: "Tue, Thu - 2:00 PM",
-    nextClass: "Today, 2:00 PM",
-    attendanceRate: 88,
-    homeworkCompletion: 72,
-    averageScore: 71,
-    topic: "Trigonometry",
-    status: "active" as const,
-  },
-  {
-    id: "class-3",
-    name: "Class 9 A",
-    subject: "Mathematics",
-    grade: 9,
-    section: "A",
-    room: "Room 101",
-    students: 40,
-    schedule: "Mon, Wed, Fri - 9:00 AM",
-    nextClass: "Wednesday, 9:00 AM",
-    attendanceRate: 95,
-    homeworkCompletion: 85,
-    averageScore: 82,
-    topic: "Linear Equations",
-    status: "active" as const,
-  },
-  {
-    id: "class-4",
-    name: "Class 8 A",
-    subject: "Mathematics",
-    grade: 8,
-    section: "A",
-    room: "Room 103",
-    students: 36,
-    schedule: "Tue, Thu - 11:00 AM",
-    nextClass: "Thursday, 11:00 AM",
-    attendanceRate: 90,
-    homeworkCompletion: 80,
-    averageScore: 79,
-    topic: "Algebra Basics",
-    status: "active" as const,
-  },
-];
+interface TeacherClass {
+  id: string;
+  name: string;
+  grade: number;
+  section: string;
+  academicYear?: string;
+  subjectId?: string;
+  schoolId?: string;
+  teacherId?: string;
+  room?: string;
+  capacity?: number;
+  schedule?: string;
+  status?: "active" | "archived";
+  createdAt?: string;
+  updatedAt?: string;
+  teacher?: {
+    id: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+  };
+  school?: {
+    id: string;
+    name: string;
+  };
+  // Computed properties
+  students?: number;
+  attendanceRate?: number;
+  homeworkCompletion?: number;
+  averageScore?: number;
+  topic?: string;
+  nextClass?: string;
+}
 
 type FilterStatus = "all" | "active" | "archived";
 
 export default function TeacherClassesPage() {
+  const [classes, setClasses] = useState<TeacherClass[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<FilterStatus>("all");
   const [sortBy, setSortBy] = useState<"name" | "students" | "schedule">("name");
 
+  // Fetch classes from API
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const response = await fetch("/api/classes");
+        if (!response.ok) {
+          throw new Error(`Failed to fetch classes: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+
+        // Process and enrich class data
+        const processedClasses: TeacherClass[] = (data.classes || []).map((cls: any) => ({
+          ...cls,
+          students: 0, // Will be populated when enrollments are fetched
+          attendanceRate: 90, // Default placeholder - can be calculated from actual data
+          homeworkCompletion: 80, // Default placeholder
+          averageScore: 75, // Default placeholder
+          topic: "Current topic", // Default placeholder
+          nextClass: "Scheduled", // Default placeholder
+          status: cls.status || "active",
+        }));
+
+        setClasses(processedClasses);
+      } catch (err) {
+        console.error("Error fetching classes:", err);
+        setError(err instanceof Error ? err.message : "Failed to load classes");
+        setClasses([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchClasses();
+  }, []);
+
   // Filter and sort classes
-  const filteredClasses = mockClasses
+  const filteredClasses = classes
     .filter((cls) => {
       const matchesSearch =
         cls.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        cls.subject.toLowerCase().includes(searchQuery.toLowerCase());
+        (cls.section?.toLowerCase().includes(searchQuery.toLowerCase()));
       const matchesStatus = statusFilter === "all" || cls.status === statusFilter;
       return matchesSearch && matchesStatus;
     })
     .sort((a, b) => {
       if (sortBy === "name") return a.name.localeCompare(b.name);
-      if (sortBy === "students") return b.students - a.students;
-      if (sortBy === "schedule") return a.schedule.localeCompare(b.schedule);
+      if (sortBy === "students") return (b.students || 0) - (a.students || 0);
+      if (sortBy === "schedule") return (a.schedule || "").localeCompare(b.schedule || "");
       return 0;
     });
 
   const stats = {
-    totalClasses: mockClasses.length,
-    totalStudents: mockClasses.reduce((sum, cls) => sum + cls.students, 0),
-    avgAttendance: Math.round(
-      mockClasses.reduce((sum, cls) => sum + cls.attendanceRate, 0) / mockClasses.length
-    ),
-    avgCompletion: Math.round(
-      mockClasses.reduce((sum, cls) => sum + cls.homeworkCompletion, 0) / mockClasses.length
-    ),
+    totalClasses: classes.length,
+    totalStudents: classes.reduce((sum, cls) => sum + (cls.students || 0), 0),
+    avgAttendance: classes.length
+      ? Math.round(classes.reduce((sum, cls) => sum + (cls.attendanceRate || 0), 0) / classes.length)
+      : 0,
+    avgCompletion: classes.length
+      ? Math.round(classes.reduce((sum, cls) => sum + (cls.homeworkCompletion || 0), 0) / classes.length)
+      : 0,
   };
 
   return (
@@ -233,8 +242,36 @@ export default function TeacherClassesPage() {
         </CardContent>
       </Card>
 
-      {/* Classes Grid */}
-      {filteredClasses.length === 0 ? (
+      {/* Loading State */}
+      {isLoading ? (
+        <Card>
+          <CardContent className="py-12 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+              <p className="text-gray-600">Loading classes...</p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : error ? (
+        <Card>
+          <CardContent className="py-12 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-4 text-center">
+              <AlertCircle className="w-12 h-12 text-red-500" />
+              <div>
+                <p className="text-lg font-semibold text-gray-900">Error Loading Classes</p>
+                <p className="text-sm text-gray-600 mt-1">{error}</p>
+              </div>
+              <Button
+                onClick={() => window.location.reload()}
+                variant="outline"
+                className="mt-2"
+              >
+                Try Again
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : filteredClasses.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-4" />
@@ -257,7 +294,9 @@ export default function TeacherClassesPage() {
                 <div className="flex items-start justify-between">
                   <div>
                     <CardTitle className="text-lg">{cls.name}</CardTitle>
-                    <CardDescription className="mt-1">{cls.subject}</CardDescription>
+                    <CardDescription className="mt-1">
+                      Grade {cls.grade} - {cls.section}
+                    </CardDescription>
                   </div>
                   <Button variant="ghost" size="icon-sm">
                     <MoreVertical className="w-4 h-4" />
@@ -269,22 +308,22 @@ export default function TeacherClassesPage() {
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="flex items-center gap-2 text-gray-600">
                     <Users className="w-4 h-4" />
-                    <span>{cls.students} students</span>
+                    <span>{cls.students || 0} students</span>
                   </div>
                   <div className="flex items-center gap-2 text-gray-600">
                     <Calendar className="w-4 h-4" />
-                    <span>{cls.room}</span>
+                    <span>{cls.room || "TBD"}</span>
                   </div>
                   <div className="flex items-center gap-2 text-gray-600 col-span-2">
                     <Clock className="w-4 h-4" />
-                    <span>{cls.schedule}</span>
+                    <span>{cls.schedule || "Schedule not set"}</span>
                   </div>
                 </div>
 
                 {/* Current Topic */}
                 <div className="bg-blue-50 rounded-lg p-3">
                   <p className="text-xs text-blue-600 font-medium mb-1">Current Topic</p>
-                  <p className="text-sm font-medium text-gray-900">{cls.topic}</p>
+                  <p className="text-sm font-medium text-gray-900">{cls.topic || "Not set"}</p>
                 </div>
 
                 {/* Progress Bars */}
@@ -292,24 +331,24 @@ export default function TeacherClassesPage() {
                   <div>
                     <div className="flex items-center justify-between text-xs mb-1">
                       <span className="text-gray-500">Attendance</span>
-                      <span className="font-medium text-gray-700">{cls.attendanceRate}%</span>
+                      <span className="font-medium text-gray-700">{cls.attendanceRate || 0}%</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-1.5">
                       <div
                         className="bg-green-500 h-1.5 rounded-full transition-all"
-                        style={{ width: `${cls.attendanceRate}%` }}
+                        style={{ width: `${cls.attendanceRate || 0}%` }}
                       />
                     </div>
                   </div>
                   <div>
                     <div className="flex items-center justify-between text-xs mb-1">
                       <span className="text-gray-500">Homework</span>
-                      <span className="font-medium text-gray-700">{cls.homeworkCompletion}%</span>
+                      <span className="font-medium text-gray-700">{cls.homeworkCompletion || 0}%</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-1.5">
                       <div
                         className="bg-blue-500 h-1.5 rounded-full transition-all"
-                        style={{ width: `${cls.homeworkCompletion}%` }}
+                        style={{ width: `${cls.homeworkCompletion || 0}%` }}
                       />
                     </div>
                   </div>

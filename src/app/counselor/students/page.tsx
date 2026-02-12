@@ -11,220 +11,134 @@
 
 "use client";
 
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Users,
   Search,
-  Filter,
   AlertCircle,
   Eye,
   GraduationCap,
-  BookOpen,
   Target,
   Calendar,
-  TrendingUp,
   CheckCircle,
-  Clock,
   MapPin,
   Mail,
-  Phone,
-  FileText,
   ChevronLeft,
   ChevronRight,
   Download,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 
-// Mock student data for counselors
-const mockStudents = [
-  {
-    id: "STU001",
-    name: "Tashi Dorji",
-    email: "tashi.dorji@school.edu.bt",
-    phone: "+975 17 12 34 56",
-    grade: 12,
-    section: "A",
-    school: "Thimphu Higher Secondary School",
-    counselor: "Dr. Karma Wangchuk",
-    assessmentStatus: "completed",
-    assessmentsTaken: 4,
-    topCareer: "Software Engineer",
-    careerMatch: 92,
-    planStatus: "in_progress",
-    lastSession: "2 days ago",
-    needsAttention: false,
-    gpa: 3.8,
-    attendanceRate: 94,
-  },
-  {
-    id: "STU002",
-    name: "Karma Wangmo",
-    email: "karma.wangmo@school.edu.bt",
-    phone: "+975 17 23 45 78",
-    grade: 10,
-    section: "B",
-    school: "Yangchenphug Higher Secondary School",
-    counselor: "Dr. Karma Wangchuk",
-    assessmentStatus: "in_progress",
-    assessmentsTaken: 2,
-    topCareer: null,
-    careerMatch: null,
-    planStatus: "not_started",
-    lastSession: "1 week ago",
-    needsAttention: true,
-    gpa: 3.2,
-    attendanceRate: 88,
-  },
-  {
-    id: "STU003",
-    name: "Pema Lhamo",
-    email: "pema.lhamo@school.edu.bt",
-    phone: "+975 17 34 56 89",
-    grade: 11,
-    section: "A",
-    school: "Moiyul Goenpa HSS",
-    counselor: "Dr. Karma Wangchuk",
-    assessmentStatus: "pending",
-    assessmentsTaken: 0,
-    topCareer: null,
-    careerMatch: null,
-    planStatus: "not_started",
-    lastSession: "Never",
-    needsAttention: true,
-    gpa: 2.9,
-    attendanceRate: 76,
-  },
-  {
-    id: "STU004",
-    name: "Dorji Wangchuk",
-    email: "dorji.wangchuk@school.edu.bt",
-    phone: "+975 17 45 67 90",
-    grade: 12,
-    section: "A",
-    school: "Pelkhil HSS",
-    counselor: "Dr. Karma Wangchuk",
-    assessmentStatus: "completed",
-    assessmentsTaken: 5,
-    topCareer: "Civil Engineer",
-    careerMatch: 88,
-    planStatus: "completed",
-    lastSession: "3 days ago",
-    needsAttention: false,
-    gpa: 3.5,
-    attendanceRate: 91,
-  },
-  {
-    id: "STU005",
-    name: "Sonam Yangdon",
-    email: "sonam.yangdon@school.edu.bt",
-    phone: "+975 17 56 78 01",
-    grade: 10,
-    section: "A",
-    school: "Rigsum HSS",
-    counselor: "Dr. Karma Wangchuk",
-    assessmentStatus: "completed",
-    assessmentsTaken: 3,
-    topCareer: "Nurse",
-    careerMatch: 85,
-    planStatus: "in_progress",
-    lastSession: "5 days ago",
-    needsAttention: false,
-    gpa: 3.6,
-    attendanceRate: 96,
-  },
-  {
-    id: "STU006",
-    name: "Karma Tshering",
-    email: "karma.tshering@school.edu.bt",
-    phone: "+975 17 67 89 12",
-    grade: 11,
-    section: "B",
-    school: "Thimphu HSS",
-    counselor: "Dr. Karma Wangchuk",
-    assessmentStatus: "in_progress",
-    assessmentsTaken: 1,
-    topCareer: null,
-    careerMatch: null,
-    planStatus: "not_started",
-    lastSession: "2 weeks ago",
-    needsAttention: true,
-    gpa: 3.0,
-    attendanceRate: 82,
-  },
-  {
-    id: "STU007",
-    name: "Tshering Yangdon",
-    email: "tshering.yangdon@school.edu.bt",
-    phone: "+975 17 78 91 23",
-    grade: 12,
-    section: "B",
-    school: "Yangchenphug HSS",
-    counselor: "Dr. Karma Wangchuk",
-    assessmentStatus: "completed",
-    assessmentsTaken: 4,
-    topCareer: "Data Scientist",
-    careerMatch: 90,
-    planStatus: "completed",
-    lastSession: "1 week ago",
-    needsAttention: false,
-    gpa: 3.9,
-    attendanceRate: 97,
-  },
-  {
-    id: "STU008",
-    name: "Dorji Tshering",
-    email: "dorji.tshering@school.edu.bt",
-    phone: "+975 17 89 12 34",
-    grade: 9,
-    section: "A",
-    school: "Moiyul Goenpa HSS",
-    counselor: "Dr. Karma Wangchuk",
-    assessmentStatus: "pending",
-    assessmentsTaken: 0,
-    topCareer: null,
-    careerMatch: null,
-    planStatus: "not_started",
-    lastSession: "Never",
-    needsAttention: true,
-    gpa: null,
-    attendanceRate: 85,
-  },
-];
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface CounselorStudentData {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  grade: number | null;
+  section: string | null;
+  school: string | null;
+  counselorId: string;
+  assessmentStatus: "completed" | "in_progress" | "pending";
+  assessmentsTaken: number;
+  topCareer: string | null;
+  careerMatch: number | null;
+  planStatus: "completed" | "in_progress" | "not_started";
+  lastSession: string;
+  needsAttention: boolean;
+  gpa: number | null;
+  attendanceRate: number;
+}
+
+interface CounselorStats {
+  totalStudents: number;
+  studentsCompletedAssessments: number;
+  studentsWithCareerPlans: number;
+  studentsNeedingAttention: number;
+}
+
+// ============================================================================
+// CONSTANTS
+// ============================================================================
 
 const gradeOptions = ["All", "9", "10", "11", "12"];
 const assessmentStatusOptions = ["All", "Completed", "In Progress", "Pending"];
 const planStatusOptions = ["All", "Not Started", "In Progress", "Completed"];
-const schoolOptions = ["All", "Thimphu HSS", "Yangchenphug HSS", "Moiyul Goenpa HSS", "Pelkhil HSS", "Rigsum HSS"];
+
+// ============================================================================
+// PAGE COMPONENT
+// ============================================================================
 
 export default function CounselorStudentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedGrade, setSelectedGrade] = useState("All");
   const [selectedAssessmentStatus, setSelectedAssessmentStatus] = useState("All");
   const [selectedPlanStatus, setSelectedPlanStatus] = useState("All");
-  const [selectedSchool, setSelectedSchool] = useState("All");
   const [showNeedsAttention, setShowNeedsAttention] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
+  // Data states
+  const [students, setStudents] = useState<CounselorStudentData[]>([]);
+  const [stats, setStats] = useState<CounselorStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch data on mount
+  useEffect(() => {
+    fetchStudentsData();
+  }, []);
+
+  const fetchStudentsData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch("/api/counselor/students");
+      if (!response.ok) {
+        throw new Error("Failed to fetch students data");
+      }
+
+      const data = await response.json();
+      setStudents(data.students || []);
+      setStats(data.stats || null);
+    } catch (err) {
+      console.error("Error fetching students:", err);
+      setError("Failed to load students. Please try again.");
+      setStudents([]);
+      setStats({
+        totalStudents: 0,
+        studentsCompletedAssessments: 0,
+        studentsWithCareerPlans: 0,
+        studentsNeedingAttention: 0,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Filter students
-  const filteredStudents = mockStudents.filter((student) => {
+  const filteredStudents = students.filter((student) => {
     const matchesSearch =
       student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (student.email && student.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
       student.id.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesGrade = selectedGrade === "All" || student.grade.toString() === selectedGrade;
+    const matchesGrade = selectedGrade === "All" || student.grade?.toString() === selectedGrade;
     const matchesAssessmentStatus = selectedAssessmentStatus === "All" ||
       student.assessmentStatus.toLowerCase().replace(" ", "_") === selectedAssessmentStatus.toLowerCase().replace(" ", "_");
     const matchesPlanStatus = selectedPlanStatus === "All" ||
       student.planStatus.toLowerCase().replace(" ", "_") === selectedPlanStatus.toLowerCase().replace(" ", "_");
-    const matchesSchool = selectedSchool === "All" || student.school === selectedSchool;
     const matchesAttention = !showNeedsAttention || student.needsAttention;
 
-    return matchesSearch && matchesGrade && matchesAssessmentStatus && matchesPlanStatus && matchesSchool && matchesAttention;
+    return matchesSearch && matchesGrade && matchesAssessmentStatus && matchesPlanStatus && matchesAttention;
   });
 
   // Pagination
@@ -260,11 +174,35 @@ export default function CounselorStudentsPage() {
     return { className: styles[status as keyof typeof styles] || styles.not_started, label: labels[status as keyof typeof labels] || status };
   };
 
-  // Stats calculations
-  const totalStudents = mockStudents.length;
-  const studentsCompletedAssessments = mockStudents.filter((s) => s.assessmentStatus === "completed").length;
-  const studentsWithCareerPlans = mockStudents.filter((s) => s.planStatus === "completed").length;
-  const studentsNeedingAttention = mockStudents.filter((s) => s.needsAttention).length;
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" style={{ color: "rgb(147 51 234)" }} />
+          <p className="text-gray-600">Loading students...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error && students.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Card className="max-w-md w-full">
+          <CardContent className="py-12 text-center">
+            <AlertCircle className="w-16 h-16 mx-auto mb-4 text-red-400" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Data</h3>
+            <p className="text-gray-500 mb-4">{error}</p>
+            <Button onClick={fetchStudentsData} style={{ background: 'linear-gradient(135deg, rgb(168 85 247), rgb(147 51 234))' }}>
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -285,63 +223,65 @@ export default function CounselorStudentsPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgb(168 85 247 / 0.2), rgb(147 51 234 / 0.2))' }}>
-                <Users className="w-6 h-6" style={{ color: 'rgb(147 51 234)' }} />
+      {stats && (
+        <div className="grid md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgb(168 85 247 / 0.2), rgb(147 51 234 / 0.2))' }}>
+                  <Users className="w-6 h-6" style={{ color: 'rgb(147 51 234)' }} />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{stats.totalStudents}</p>
+                  <p className="text-sm text-gray-500">Total Students</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{totalStudents}</p>
-                <p className="text-sm text-gray-500">Total Students</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 text-green-600" />
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                  <CheckCircle className="w-6 h-6 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{stats.studentsCompletedAssessments}</p>
+                  <p className="text-sm text-gray-500">Assessments Done</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{studentsCompletedAssessments}</p>
-                <p className="text-sm text-gray-500">Assessments Done</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Target className="w-6 h-6 text-blue-600" />
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <Target className="w-6 h-6 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{stats.studentsWithCareerPlans}</p>
+                  <p className="text-sm text-gray-500">Career Plans</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{studentsWithCareerPlans}</p>
-                <p className="text-sm text-gray-500">Career Plans</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                <AlertCircle className="w-6 h-6 text-orange-600" />
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                  <AlertCircle className="w-6 h-6 text-orange-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{stats.studentsNeedingAttention}</p>
+                  <p className="text-sm text-gray-500">Need Attention</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{studentsNeedingAttention}</p>
-                <p className="text-sm text-gray-500">Need Attention</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Filters */}
       <Card>
@@ -399,19 +339,6 @@ export default function CounselorStudentsPage() {
               ))}
             </select>
 
-            {/* School Filter */}
-            <select
-              value={selectedSchool}
-              onChange={(e) => setSelectedSchool(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-            >
-              {schoolOptions.map((school) => (
-                <option key={school} value={school}>
-                  {school === "All" ? "All Schools" : school}
-                </option>
-              ))}
-            </select>
-
             {/* Needs Attention Toggle */}
             <label className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg bg-white cursor-pointer hover:bg-gray-50">
               <input
@@ -454,20 +381,24 @@ export default function CounselorStudentsPage() {
                 {/* School & Grade */}
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <GraduationCap className="w-4 h-4" />
-                  <span>Grade {student.grade} - Section {student.section}</span>
+                  <span>Grade {student.grade} - Section {student.section || "N/A"}</span>
                 </div>
 
                 {/* School */}
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <MapPin className="w-4 h-4" />
-                  <span className="truncate">{student.school}</span>
-                </div>
+                {student.school && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <MapPin className="w-4 h-4" />
+                    <span className="truncate">{student.school}</span>
+                  </div>
+                )}
 
                 {/* Contact */}
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <Mail className="w-4 h-4" />
-                  <span className="truncate">{student.email}</span>
-                </div>
+                {student.email && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Mail className="w-4 h-4" />
+                    <span className="truncate">{student.email}</span>
+                  </div>
+                )}
 
                 {/* Badges */}
                 <div className="flex items-center gap-2 flex-wrap">
@@ -520,7 +451,7 @@ export default function CounselorStudentsPage() {
       </div>
 
       {/* Empty State */}
-      {paginatedStudents.length === 0 && (
+      {paginatedStudents.length === 0 && !loading && (
         <Card>
           <CardContent className="py-12 text-center">
             <Users className="w-16 h-16 mx-auto mb-4 text-gray-300" />
@@ -531,7 +462,6 @@ export default function CounselorStudentsPage() {
               setSelectedGrade("All");
               setSelectedAssessmentStatus("All");
               setSelectedPlanStatus("All");
-              setSelectedSchool("All");
               setShowNeedsAttention(false);
             }}>
               Clear Filters

@@ -13,7 +13,6 @@ const isProtectedRoute = createRouteMatcher([
 
 export default clerkMiddleware(async (auth, request) => {
   // Only check auth for protected routes
-  // All other routes (/, /dashboard, /about, etc.) are public
   if (isProtectedRoute(request)) {
     const { userId } = await auth();
     if (!userId) {

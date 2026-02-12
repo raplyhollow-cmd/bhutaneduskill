@@ -178,12 +178,16 @@ export function AICareerCoach({
         <Button
           onClick={() => setIsExpanded(true)}
           size="lg"
-          style={{ background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)' }}
-          className="rounded-full h-16 w-16 shadow-lg hover:opacity-90 animate-pulse-slow"
+          style={{
+            background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)',
+            border: 'none',
+            boxShadow: '0 4px 14px rgba(0, 0, 0.15)'
+          }}
+          className="rounded-full h-16 w-16 hover:scale-105 transition-transform animate-pulse-slow"
         >
-          <Bot className="w-7 h-7" />
+          <Bot className="w-7 h-7 text-white" />
         </Button>
-        <Badge className="absolute -top-1 -right-1 text-white px-2 py-0 text-xs" style={{ backgroundColor: 'rgb(239 68 68)' }}>
+        <Badge className="absolute -top-1 -right-1 text-white px-2 py-0 text-xs shadow-md" style={{ backgroundColor: 'rgb(239 68 68)' }}>
           AI
         </Badge>
       </div>
@@ -193,7 +197,7 @@ export function AICareerCoach({
   return (
     <Card
       className={cn(
-        "shadow-xl border-orange-200",
+        "shadow-xl border-orange-200 bg-white",
         !embedded && "fixed bottom-6 right-6 w-96 max-h-[600px] flex flex-col z-50",
         isMinimized && "h-14",
         className
