@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { GraduationCap, BookOpen, Users, HeartHandshake } from "lucide-react";
+import { GraduationCap, BookOpen, Users, HeartHandshake, Building, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Portal {
@@ -42,6 +42,20 @@ const portals: Portal[] = [
     icon: HeartHandshake,
     color: "rgb(168 85 247)",
     description: "Student interventions, sessions, resources"
+  },
+  {
+    name: "School Admin",
+    href: "/school-admin",
+    icon: Building,
+    color: "rgb(139 92 246)",
+    description: "Manage school operations, students, teachers"
+  },
+  {
+    name: "Platform Admin",
+    href: "/admin",
+    icon: Shield,
+    color: "rgb(236 72 153)",
+    description: "Platform management, schools, billing"
   },
 ];
 
@@ -139,7 +153,7 @@ export function PortalSelector({ isOpen, onClose, triggerRef }: PortalSelectorPr
             transition={{ duration: 0.2 }}
             className="hidden md:block fixed z-50 left-1/2 -translate-x-1/2 top-20"
           >
-            <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 p-2 w-80">
+            <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 p-2 w-96">
               <div className="grid grid-cols-2 gap-2">
                 {portals.map((portal) => {
                   const Icon = portal.icon;
@@ -148,7 +162,7 @@ export function PortalSelector({ isOpen, onClose, triggerRef }: PortalSelectorPr
                       key={portal.name}
                       href={portal.href}
                       onClick={onClose}
-                      className="group relative overflow-hidden rounded-xl p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all duration-200"
+                      className="group relative overflow-hidden rounded-xl p-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all duration-200"
                     >
                       {/* Hover glow effect */}
                       <div
@@ -158,12 +172,12 @@ export function PortalSelector({ isOpen, onClose, triggerRef }: PortalSelectorPr
 
                       <div className="relative">
                         <div
-                          className="w-10 h-10 rounded-lg flex items-center justify-center mb-2 mx-auto group-hover:scale-110 transition-transform duration-200"
+                          className="w-9 h-9 rounded-lg flex items-center justify-center mb-2 mx-auto group-hover:scale-110 transition-transform duration-200"
                           style={{ background: `${portal.color}15` }}
                         >
-                          <Icon className="w-5 h-5" style={{ color: portal.color }} />
+                          <Icon className="w-4 h-4" style={{ color: portal.color }} />
                         </div>
-                        <p className="text-sm font-medium text-center text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
+                        <p className="text-xs font-medium text-center text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors leading-tight">
                           {portal.name}
                         </p>
                       </div>

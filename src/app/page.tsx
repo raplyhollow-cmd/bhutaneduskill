@@ -3,7 +3,7 @@
 import { CompactNav } from "@/components/layout/compact-nav";
 import { HeroSection } from "@/components/landing/hero-section";
 import { FeaturesSection } from "@/components/landing/features-section";
-import { PortalGridSection } from "@/components/landing/portal-cards-3d";
+import { HowItWorksSection } from "@/components/landing/how-it-works-section";
 import { RUBCollegesSection } from "@/components/landing/rub-colleges-3d";
 import { TestimonialsOrbit } from "@/components/landing/testimonials-orbit";
 import { CTASection } from "@/components/landing/cta-section";
@@ -29,6 +29,8 @@ const portalLinks = [
   { name: "Teacher Portal", href: "/teacher" },
   { name: "Parent Portal", href: "/parent" },
   { name: "Counselor Portal", href: "/counselor" },
+  { name: "School Admin", href: "/school-admin" },
+  { name: "Platform Admin", href: "/admin" },
 ];
 
 const companyLinks = [
@@ -49,8 +51,8 @@ export default function HomePage() {
       {/* Features Section */}
       <FeaturesSection />
 
-      {/* Portals Grid Section */}
-      <PortalGridSection />
+      {/* How It Works Section */}
+      <HowItWorksSection />
 
       {/* RUB Colleges Section */}
       <RUBCollegesSection />
@@ -65,7 +67,7 @@ export default function HomePage() {
       <footer className="border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
         <div className="max-w-7xl mx-auto px-6 py-16">
           {/* Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-12 mb-12">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 mb-12">
             {/* Brand Column */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}

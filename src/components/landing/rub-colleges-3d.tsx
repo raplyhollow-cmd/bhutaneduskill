@@ -2,182 +2,62 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { MapPin, GraduationCap, ArrowRight, Building } from "lucide-react";
-import { useRef, useState, useCallback } from "react";
+import { ArrowRight, Building, GraduationCap, MapPin, Users, BookOpen } from "lucide-react";
 
-const colleges = [
+const categories = [
   {
-    short: "CST",
-    name: "College of Science and Technology",
-    location: "Phuentsholing",
-    programs: "Engineering, Architecture, IT",
+    icon: Building,
+    title: "Engineering & Technology",
+    programs: "8 programs",
     color: "from-blue-500 to-cyan-500",
-    icon: "🔧",
   },
   {
-    short: "CoE",
-    name: "College of Education",
-    location: "Paro",
-    programs: "B.Ed Primary, B.Ed Secondary",
-    color: "from-green-500 to-emerald-500",
-    icon: "📚",
-  },
-  {
-    short: "CNR",
-    name: "College of Natural Resources",
-    location: "Lobesa",
-    programs: "Agriculture, Forestry, Environment",
-    color: "from-lime-500 to-green-500",
-    icon: "🌿",
-  },
-  {
-    short: "GCBS",
-    name: "Gaeddu College of Business Studies",
-    location: "Gaeddu",
-    programs: "BBA, B.Com",
+    icon: BookOpen,
+    title: "Business & Commerce",
+    programs: "12 programs",
     color: "from-purple-500 to-pink-500",
-    icon: "💼",
   },
   {
-    short: "Sherubtse",
-    name: "Sherubtse College",
-    location: "Trashigang",
-    programs: "Arts, Science, Commerce",
+    icon: GraduationCap,
+    title: "Education",
+    programs: "6 programs",
+    color: "from-green-500 to-emerald-500",
+  },
+  {
+    icon: Users,
+    title: "Arts & Humanities",
+    programs: "15 programs",
     color: "from-orange-500 to-red-500",
-    icon: "🎓",
   },
 ];
 
-// Expanding card component
-function ExpandingCollegeCard({
-  college,
-  index,
-}: {
-  college: typeof colleges[0];
-  index: number;
-}) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+const locations = [
+  "Thimphu", "Paro", "Phuentsholing", "Trashigang",
+  "Gaeddu", "Lobesa", "Kanglung", "Samtse"
+];
 
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    setMousePosition({ x, y });
-  }, []);
-
-  const handleMouseLeave = useCallback(() => {
-    setMousePosition({ x: 50, y: 50 });
-  }, []);
+function ProgramCategory({ category, index }: { category: typeof categories[0]; index: number }) {
+  const Icon = category.icon;
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 30 }}
+      initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-50px" }}
-      transition={{
-        delay: index * 0.1,
-        duration: 0.5,
-        type: "spring",
-        stiffness: 100,
-      }}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      className="relative group"
+      viewport={{ once: true }}
+      transition={{ delay: index * 0.1, duration: 0.4 }}
+      className="group"
     >
       <Link href="/dashboard/rub" className="block">
-        <div
-          className={`relative overflow-hidden rounded-2xl bg-white dark:bg-gray-900 border-2 transition-all duration-500 ${
-            isExpanded
-              ? "border-orange-400 dark:border-orange-600 shadow-2xl shadow-orange-500/20"
-              : "border-gray-200 dark:border-gray-800 shadow-lg hover:shadow-xl"
-          }`}
-          style={{
-            background: isExpanded
-              ? `linear-gradient(135deg, rgba(255,255,255,1), rgba(251,146,60,0.05))`
-              : "rgba(255,255,255,0.95)",
-          }}
-        >
-          {/* Spotlight effect */}
-          <div
-            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-            style={{
-              background: `radial-gradient(circle 300px at ${mousePosition.x}% ${mousePosition.y}%, rgba(249, 115, 22, 0.1), transparent 60%)`,
-            }}
-          />
-
-          {/* Content */}
-          <div className="relative z-10 p-5 md:p-6">
-            {/* Header with badge */}
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center gap-3">
-                {/* Short name badge */}
-                <motion.div
-                  animate={isExpanded ? { rotate: [0, -5, 5, -5, 0] } : {}}
-                  transition={{ duration: 0.4 }}
-                  className="w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-lg"
-                  style={{
-                    background: `linear-gradient(to bottom right, ${college.color})`,
-                  }}
-                >
-                  {college.short}
-                </motion.div>
-                <div>
-                  <h3 className="font-bold text-gray-900 dark:text-white text-base md:text-lg group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
-                    {college.name}
-                  </h3>
-                  <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                    <MapPin className="w-3.5 h-3.5" />
-                    {college.location}
-                  </div>
-                </div>
-              </div>
-
-              {/* Animated icon */}
-              <motion.span
-                animate={isExpanded ? { rotate: 360 } : {}}
-                transition={{ duration: 0.6, type: "spring" }}
-                className="text-2xl"
-              >
-                {college.icon}
-              </motion.span>
-            </div>
-
-            {/* Programs - expandable */}
-            <div
-              className={`overflow-hidden transition-all duration-500 ${
-                isExpanded ? "max-h-20 opacity-100 mt-4" : "max-h-0 opacity-0"
-              }`}
-            >
-              <div className="pt-4 border-t border-gray-200 dark:border-gray-800">
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Programs offered:
-                </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  {college.programs}
-                </p>
-              </div>
-            </div>
-
-            {/* Hover reveal indicator */}
-            <div className="flex items-center justify-between mt-3">
-              <div className="flex items-center gap-2">
-                <GraduationCap className="w-4 h-4 text-orange-500" />
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  View all programs
-                </span>
-              </div>
-              <motion.div
-                animate={{ x: isExpanded ? 5 : 0 }}
-                className="p-2 rounded-full text-white flex items-center justify-center"
-                style={{
-                  background: `linear-gradient(to bottom right, ${college.color})`,
-                }}
-              >
-                <ArrowRight className="w-4 h-4" />
-              </motion.div>
-            </div>
+        <div className="p-5 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-lg transition-all duration-300">
+          <div className={`inline-flex p-2.5 rounded-lg bg-gradient-to-br ${category.color} mb-3 group-hover:scale-110 transition-transform duration-300`}>
+            <Icon className="w-5 h-5 text-white" strokeWidth={2} />
           </div>
+          <h4 className="font-semibold text-gray-950 dark:text-white mb-1">
+            {category.title}
+          </h4>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {category.programs}
+          </p>
         </div>
       </Link>
     </motion.div>
@@ -185,124 +65,139 @@ function ExpandingCollegeCard({
 }
 
 export function RUBCollegesSection() {
-  const ref = useRef(null);
-
   return (
-    <section className="relative py-24 bg-gradient-to-b from-gray-50/50 to-white dark:from-gray-900/30 dark:to-gray-950 overflow-hidden">
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+    <section className="py-24 bg-white dark:bg-gray-950">
+      <div className="max-w-6xl mx-auto px-6">
+        {/* Header */}
         <motion.div
-          animate={{
-            y: [0, -30, 0],
-            x: [0, 20, 0],
-          }}
-          transition={{
-            duration: 20,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-          className="absolute top-1/4 left-[10%] w-64 h-64 bg-orange-500/5 rounded-full blur-3xl"
-        />
-        <motion.div
-          animate={{
-            y: [0, 30, 0],
-            x: [0, -20, 0],
-          }}
-          transition={{
-            duration: 15,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-          className="absolute bottom-1/4 right-[10%] w-80 h-80 bg-blue-500/5 rounded-full blur-3xl"
-        />
-      </div>
-
-      <div className="relative z-10 max-w-6xl mx-auto px-6">
-        {/* Header with parallax effect */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            whileInView={{ scale: 1, opacity: 1 }}
-            viewport={{ once: true }}
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-sm font-medium mb-4"
-          >
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-sm font-medium mb-4">
             <Building className="w-4 h-4" />
             Royal University of Bhutan
-          </motion.div>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-4">
-            Your Path to
-            <span className="block gradient-text-animated mt-2">Higher Education</span>
+          </div>
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-gray-950 dark:text-white mb-4">
+            Your Path to{" "}
+            <span className="bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+              Higher Education
+            </span>
           </h2>
           <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-            Explore all 11 RUB colleges, their programs, and find the perfect fit for your future.
+            Explore programs across 11 colleges and find the perfect fit for your future.
           </p>
         </motion.div>
 
-        {/* Colleges Grid */}
-        <div className="grid md:grid-cols-2 gap-4 mb-8">
-          {colleges.map((college, index) => (
-            <ExpandingCollegeCard key={college.short} college={college} index={index} />
-          ))}
-        </div>
-
-        {/* Additional colleges notice */}
+        {/* Main Visual - Stats Grid */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ delay: 0.3 }}
-          className="text-center"
+          transition={{ delay: 0.2 }}
+          className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12"
         >
-          <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-            <span className="text-gray-600 dark:text-gray-400">
-              Plus 6 more colleges across Bhutan
-            </span>
-            <Link
-              href="/dashboard/rub"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-full text-sm font-medium hover:shadow-lg hover:shadow-orange-500/30 hover:scale-105 transition-all"
+          {[
+            { value: "11", label: "Colleges", icon: Building },
+            { value: "50+", label: "Programs", icon: BookOpen },
+            { value: "8", label: "Districts", icon: MapPin },
+            { value: "5000+", label: "Students", icon: Users },
+          ].map((stat, index) => (
+            <motion.div
+              key={stat.label}
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.3 + index * 0.05 }}
+              className="relative group"
             >
-              View all colleges
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
+              <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-red-500/10 rounded-2xl transform group-hover:scale-105 transition-transform duration-300" />
+              <div className="relative p-6 text-center">
+                <stat.icon className="w-6 h-6 mx-auto mb-3 text-orange-500" strokeWidth={1.5} />
+                <div className="text-3xl md:text-4xl font-bold text-gray-950 dark:text-white mb-1">
+                  {stat.value}
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  {stat.label}
+                </div>
+              </div>
+            </motion.div>
+          ))}
         </motion.div>
 
-        {/* Quick stats */}
+        {/* Program Categories - Compact Grid */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ delay: 0.4 }}
-          className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto"
+          className="mb-12"
         >
-          {[
-            { value: "11", label: "Colleges" },
-            { value: "50+", label: "Programs" },
-            { value: "8", label: "Locations" },
-            { value: "100%", label: "Placement" },
-          ].map((stat, index) => (
-            <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, scale: 0.8 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.5 + index * 0.05 }}
-              className="text-center p-4 rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:border-orange-300 dark:hover:border-orange-700 hover:shadow-lg hover:shadow-orange-500/10 transition-all group"
+          <h3 className="text-xl font-semibold text-gray-950 dark:text-white mb-6 text-center">
+            Explore by Field of Study
+          </h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {categories.map((category, index) => (
+              <ProgramCategory key={category.title} category={category} index={index} />
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Locations Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.5 }}
+          className="bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-950/20 dark:to-red-950/20 rounded-2xl p-8 mb-12"
+        >
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div>
+              <h4 className="text-lg font-semibold text-gray-950 dark:text-white mb-2">
+                Colleges Across Bhutan
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {locations.map((location) => (
+                  <span
+                    key={location}
+                    className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-white dark:bg-gray-900 text-sm text-gray-700 dark:text-gray-300"
+                  >
+                    <MapPin className="w-3 h-3 text-orange-500" />
+                    {location}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <Link
+              href="/dashboard/rub"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl font-semibold hover:from-orange-700 hover:to-red-700 hover:shadow-lg hover:shadow-orange-500/30 hover:-translate-y-0.5 transition-all duration-300 whitespace-nowrap"
             >
-              <div className="text-2xl md:text-3xl font-bold gradient-text-animated mb-1">
-                {stat.value}
-              </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                {stat.label}
-              </div>
-            </motion.div>
-          ))}
+              Explore All Colleges
+              <ArrowRight className="w-5 h-5" strokeWidth={2} />
+            </Link>
+          </div>
+        </motion.div>
+
+        {/* Simple Steps */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.6 }}
+          className="text-center"
+        >
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            Take career assessments to discover which programs match your strengths
+          </p>
+          <Link
+            href="/dashboard/assessment"
+            className="inline-flex items-center gap-2 px-8 py-4 bg-white dark:bg-gray-900 text-gray-950 dark:text-white rounded-xl font-semibold border-2 border-gray-200 dark:border-gray-800 hover:border-orange-500 dark:hover:border-orange-500 hover:shadow-lg transition-all duration-300"
+          >
+            Take Free Assessment
+            <ArrowRight className="w-5 h-5" strokeWidth={2} />
+          </Link>
         </motion.div>
       </div>
     </section>

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Compass, Home, User, MoreHorizontal, LogIn, Zap } from "lucide-react";
+import { Compass, Home, User, MoreHorizontal, LogIn, Zap, GraduationCap, BookOpen, Users, HeartHandshake, Building, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PortalSelector } from "./portal-selector";
 import { MobileMenuSheet } from "./mobile-menu-sheet";
@@ -14,37 +14,56 @@ const navLinks = [
   { name: "About", href: "/about", icon: User },
 ];
 
+const portals = [
+  {
+    name: "Student",
+    href: "/student",
+    icon: GraduationCap,
+    color: "rgb(249 115 22)",
+    description: "Take assessments, explore careers, plan your future"
+  },
+  {
+    name: "Teacher",
+    href: "/teacher",
+    icon: BookOpen,
+    color: "rgb(59 130 246)",
+    description: "Manage classes, homework, track student progress"
+  },
+  {
+    name: "Parent",
+    href: "/parent",
+    icon: Users,
+    color: "rgb(107 114 128)",
+    description: "Monitor child's progress and communicate"
+  },
+  {
+    name: "Counselor",
+    href: "/counselor",
+    icon: HeartHandshake,
+    color: "rgb(168 85 247)",
+    description: "Student interventions, sessions, resources"
+  },
+  {
+    name: "School Admin",
+    href: "/school-admin",
+    icon: Building,
+    color: "rgb(139 92 246)",
+    description: "Manage school operations, students, teachers"
+  },
+  {
+    name: "Platform Admin",
+    href: "/admin",
+    icon: Shield,
+    color: "rgb(236 72 153)",
+    description: "Platform management, schools, billing"
+  },
+];
+
 export function CompactNav() {
   const pathname = usePathname();
   const [portalOpen, setPortalOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
-  const [lastScrollY, setLastScrollY] = useState(0);
-  const [navVisible, setNavVisible] = useState(true);
   const portalButtonRef = useRef<HTMLButtonElement>(null);
-
-  // Scroll handling
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      const scrollingDown = currentScrollY > lastScrollY;
-      const nearTop = currentScrollY < 50;
-
-      setScrolled(currentScrollY > 20);
-
-      // Hide on scroll down, show on scroll up or near top
-      if (scrollingDown && !nearTop) {
-        setNavVisible(false);
-      } else {
-        setNavVisible(true);
-      }
-
-      setLastScrollY(currentScrollY);
-    };
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [lastScrollY]);
 
   const handlePortalClick = () => {
     setPortalOpen(true);
@@ -54,7 +73,7 @@ export function CompactNav() {
   const MobileTabBar = () => (
     <motion.nav
       initial={{ y: 100 }}
-      animate={{ y: navVisible ? 0 : 100 }}
+      animate={{ y: 0 }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
       className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl border-t border-gray-200/50 dark:border-gray-800/50 pb-safe"
       style={{
@@ -140,10 +159,7 @@ export function CompactNav() {
   const DesktopPillNav = () => (
     <motion.nav
       initial={{ y: -100, opacity: 0 }}
-      animate={{
-        y: navVisible ? 16 : -100,
-        opacity: navVisible ? 1 : 0,
-      }}
+      animate={{ y: 16, opacity: 1 }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
       className="hidden md:block fixed top-4 left-1/2 -translate-x-1/2 z-40"
     >
@@ -189,20 +205,57 @@ export function CompactNav() {
 
         <div className="w-px h-6 bg-gray-200 dark:bg-gray-700" />
 
-        {/* Portals Dropdown */}
-        <button
-          ref={portalButtonRef}
-          onClick={handlePortalClick}
-          className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-200 text-sm font-medium",
-            portalOpen
-              ? "text-orange-600 dark:text-orange-400 bg-orange-50/50 dark:bg-orange-400/10"
-              : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
-          )}
+        {/* Portals Dropdown - Hover */}
+        <div
+          className="relative group"
         >
-          <Compass className="w-4 h-4" />
-          <span>Portals</span>
-        </button>
+          <button
+            ref={portalButtonRef}
+            onClick={handlePortalClick}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-200 text-sm font-medium",
+              portalOpen
+                ? "text-orange-600 dark:text-orange-400 bg-orange-50/50 dark:bg-orange-400/10"
+                : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
+            )}
+          >
+            <Compass className="w-4 h-4" />
+            <span>Portals</span>
+          </button>
+
+          {/* Hover Dropdown */}
+          <div className="absolute left-1/2 -translate-x-1/2 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible z-50">
+            <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 p-2 w-64">
+              <div className="grid grid-cols-1 gap-1">
+                {portals.map((portal) => {
+                  const Icon = portal.icon;
+                  return (
+                    <Link
+                      key={portal.name}
+                      href={portal.href}
+                      className="group/item flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all duration-200"
+                    >
+                      <div
+                        className="w-9 h-9 rounded-lg flex items-center justify-center group-hover/item:scale-110 transition-transform duration-200 flex-shrink-0"
+                        style={{ background: `${portal.color}15` }}
+                      >
+                        <Icon className="w-4 h-4" style={{ color: portal.color }} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover/item:text-gray-900 dark:group-hover/item:text-white transition-colors truncate">
+                          {portal.name}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-500 truncate">
+                          {portal.description}
+                        </p>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
 
         <div className="w-px h-6 bg-gray-200 dark:bg-gray-700" />
 
@@ -238,15 +291,6 @@ export function CompactNav() {
           <span className="hidden lg:inline">Get Started</span>
         </Link>
       </div>
-
-      {/* Desktop Portal Dropdown (rendered below the nav) */}
-      <AnimatePresence>
-        {portalOpen && (
-          <div className="fixed inset-0 z-30" onClick={() => setPortalOpen(false)}>
-            {/* This creates an overlay that closes the dropdown */}
-          </div>
-        )}
-      </AnimatePresence>
     </motion.nav>
   );
 
