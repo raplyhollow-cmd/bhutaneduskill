@@ -280,7 +280,7 @@ export default function TeacherSchedulePage() {
 
   const getUpcomingClasses = () => {
     const now = new Date();
-    const currentDay = now.toLocaleLowerCase("en-US", { weekday: "long" }) as typeof weekDays[number];
+    const currentDay = now.toLocaleString("en-US", { weekday: "long" }).toLowerCase() as typeof weekDays[number];
     const currentTime = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
 
     return schedule

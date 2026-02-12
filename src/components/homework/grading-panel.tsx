@@ -142,7 +142,7 @@ export function GradingPanel({
         questions.map((q) => ({
           ...q,
           correctAnswer: q.correctAnswer,
-        })),
+        })) as any,
         submission.answers,
         submission.metadata
       );

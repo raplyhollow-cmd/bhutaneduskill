@@ -76,7 +76,7 @@ export default function CreateHomeworkPage() {
     try {
       // Convert HomeworkCreator format to API format
       const apiData = {
-        classId: homeworkData.classId,
+        classId: homeworkData.classIds[0], // Take first class for API
         title: homeworkData.title,
         description: homeworkData.description,
         instructions: homeworkData.description,
@@ -162,7 +162,7 @@ export default function CreateHomeworkPage() {
             onSave={handleSave}
             onCancel={handleCancel}
             initialData={{
-              classId: classes[0]?.id || "",
+              classIds: classes[0]?.id ? [classes[0].id] : [],
               subject: subjects[0]?.name || "",
             }}
           />

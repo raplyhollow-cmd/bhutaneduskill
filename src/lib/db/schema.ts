@@ -64,7 +64,7 @@ export const users = sqliteTable("users", {
   dateOfBirth: text("date_of_birth"),
   classGrade: integer("class_grade"),
   section: text("section"),
-  parentId: text("parent_id").references(() => users.id),
+  parentId: text("parent_id").references((): any => users.id),
   // Teacher specific
   employeeId: text("employee_id"),
   subjects: text("subjects", { mode: "json" }).$type<string[]>(),
@@ -744,7 +744,7 @@ export const learningModules = sqliteTable("learning_modules", {
     content: string; // Rich text/markdown
     videoUrl?: string;
     attachments?: Array<{ name: string; url: string; type: string }>;
-    duration: integer; // Minutes (estimated)
+    duration: number; // Minutes (estimated)
     order: number;
   }>>(),
 

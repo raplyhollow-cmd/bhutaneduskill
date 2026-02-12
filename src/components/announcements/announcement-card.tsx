@@ -58,9 +58,10 @@ export function AnnouncementCard({
   onTogglePin,
   showActions = true,
 }: AnnouncementCardProps) {
-  const formatDate = (dateStr: string | null) => {
+  const formatDate = (dateStr: string | null | Date) => {
     if (!dateStr) return null;
-    return new Date(dateStr).toLocaleDateString("en-US", {
+    const date = typeof dateStr === 'string' ? new Date(dateStr) : dateStr;
+    return date.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -156,7 +157,7 @@ export function AnnouncementCard({
 
         <div className="flex flex-wrap items-center gap-2">
           <Badge className={priorityColors[announcement.priority as keyof typeof priorityColors]}>
-            {announcement.priority.charAt(0).toUpperCase() + announcement.priority.slice(1)} Priority
+            {announcement.priority?.charAt(0).toUpperCase() + announcement.priority?.slice(1) || "Normal"} Priority
           </Badge>
           {announcement.category && (
             <Badge variant="outline">
@@ -164,7 +165,7 @@ export function AnnouncementCard({
             </Badge>
           )}
           <Badge variant="secondary">
-            {audienceLabels[announcement.targetAudience] || announcement.targetAudience}
+            {audienceLabels[announcement.targetAudience as string] || announcement.targetAudience}
           </Badge>
           {announcement.targetGradeLevel && (
             <Badge variant="outline">Class {announcement.targetGradeLevel}</Badge>

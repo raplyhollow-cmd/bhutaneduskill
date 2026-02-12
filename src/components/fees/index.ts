@@ -5,5 +5,7 @@ export type {
   StudentFee,
   Payment,
   FeeSummary,
-  ReceiptData,
 } from "./fee-manager";
+export type {
+  ReceiptData,
+} from "./receipt-generator";

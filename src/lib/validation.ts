@@ -123,7 +123,7 @@ export const createUserSchema = z.object({
   subjects: z.array(z.string()).optional(),
   occupation: z.string().optional(),
   relationship: z.string().optional(),
-  settings: z.record(z.any()).optional(),
+  settings: z.record(z.string(), z.any()).optional(),
 });
 
 /**
@@ -142,7 +142,7 @@ export const userProfileSchema = z.object({
   phone: bhutanPhoneSchema.optional(),
   profilePicture: z.string().url().optional(),
   dateOfBirth: dateSchema.optional(),
-  settings: z.record(z.any()).optional(),
+  settings: z.record(z.string(), z.any()).optional(),
 });
 
 // ============================================================================
@@ -212,7 +212,7 @@ export const learningStylesAnswerSchema = z.object({
 export const assessmentSubmissionSchema = z.object({
   assessmentId: z.string().min(1, 'Assessment ID is required'),
   type: z.enum(['riasec', 'mbti', 'disc', 'work_values', 'learning_styles']),
-  answers: z.record(z.any()),
+  answers: z.record(z.string(), z.any()),
 });
 
 // ============================================================================
@@ -285,7 +285,7 @@ export const homeworkSchema = z.object({
  */
 export const homeworkSubmissionSchema = z.object({
   homeworkId: z.string().min(1, 'Homework ID is required'),
-  answers: z.record(z.any()),
+  answers: z.record(z.string(), z.any()),
   attachments: z.array(z.object({
     name: z.string(),
     url: z.string().url(),
@@ -456,7 +456,7 @@ export const schoolSchema = z.object({
   contactPhone: bhutanPhoneSchema.optional(),
   schoolType: schoolTypeEnum,
   level: z.string().optional(),
-  settings: z.record(z.any()).optional(),
+  settings: z.record(z.string(), z.any()).optional(),
 });
 
 /**

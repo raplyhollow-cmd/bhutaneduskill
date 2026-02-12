@@ -359,7 +359,6 @@ export const infrastructureReports = sqliteTable("infrastructure_reports", {
   // Furniture and equipment
   studentFurnitureCount: integer("student_furniture_count"),
   teacherFurnitureCount: integer("teacher_furniture_count"),
-  computerCount: integer("computer_count"),
   projectorCount: integer("projector_count"),
 
   // Condition assessment

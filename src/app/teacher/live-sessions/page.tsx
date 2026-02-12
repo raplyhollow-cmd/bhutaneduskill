@@ -539,8 +539,8 @@ export default function TeacherLiveSessionsPage() {
                               setNewSession({
                                 ...newSession,
                                 title: session.title,
-                                description: session.description,
-                                subject: session.subject,
+                                description: session.description || "",
+                                subject: session.subject || "",
                                 classId: session.classId,
                               });
                               setShowCreateModal(true);

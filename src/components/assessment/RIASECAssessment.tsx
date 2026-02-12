@@ -6,6 +6,8 @@ import { ResultsCard, ScoreBar, SuggestionCard } from "@/components/assessment";
 import { calculateRIASEC } from "@/lib/riasec";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 interface RIASECAssessmentProps {
   title: string;

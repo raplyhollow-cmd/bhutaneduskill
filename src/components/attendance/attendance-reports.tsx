@@ -259,7 +259,7 @@ export function AttendanceReports({
                   </thead>
                   <tbody>
                     {summary.map((student) => (
-                      <tr key={student.id} className="border-b hover:bg-muted/50">
+                      <tr key={student.studentId} className="border-b hover:bg-muted/50">
                         <td className="py-3 px-4 font-medium">{student.rollNumber}</td>
                         <td className="py-3 px-4">{student.studentName}</td>
                         <td className="py-3 px-4 text-center text-green-600">{student.present}</td>

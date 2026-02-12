@@ -107,7 +107,7 @@ export function CheckInKiosk({
           studentId: targetId,
           studentName: `Student ${targetId}`, // In real app, fetch name
           checkInTime: new Date().toLocaleTimeString(),
-          status: "checked-in",
+          status: "checked-in" as const,
         },
         ...prev,
       ].slice(0, 5));
@@ -123,7 +123,7 @@ export function CheckInKiosk({
 
   const handleCheckOut = async (studentId: string) => {
     try {
-      await onCheckOut(studentId);
+      await onCheckOut?.(studentId);
       setRecentCheckIns((prev) =>
         prev.map((s) =>
           s.studentId === studentId

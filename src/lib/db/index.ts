@@ -20,7 +20,7 @@ import * as schema from "./schema";
 const databaseUrl = process.env.DATABASE_URL;
 const isProduction = process.env.NODE_ENV === "production";
 
-let db: ReturnType<typeof drizzle<typeof schema>>;
+let db: any;
 
 if (databaseUrl && isProduction) {
   // PRODUCTION: Use Neon PostgreSQL

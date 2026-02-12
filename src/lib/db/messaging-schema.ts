@@ -3,7 +3,7 @@
  * Add these tables to your existing schema
  */
 
-import { sqliteTable, text, integer, boolean } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 
 // ============================================================================
 // MESSAGING & CONVERSATIONS

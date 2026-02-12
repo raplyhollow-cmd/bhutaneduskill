@@ -5,9 +5,13 @@ export type {
   Student,
   AttendanceRecord,
   AttendanceSession,
+} from "./attendance-tracker";
+export type {
   CheckInMetadata,
   CheckInStatus,
+} from "./check-in-kiosk";
+export type {
   AttendanceSummary,
   DailyAttendance,
   AttendanceAlert,
-} from "./attendance-tracker";
+} from "./attendance-reports";

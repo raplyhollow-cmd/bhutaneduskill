@@ -7,7 +7,7 @@ export async function runMigrations() {
   console.log("Running migrations...");
 
   try {
-    await migrate(db, { migrationsFolder: path.join(process.cwd(), "drizzle") });
+    await migrate(db as any, { migrationsFolder: path.join(process.cwd(), "drizzle") });
     console.log("Migrations completed!");
   } catch (error) {
     console.error("Migration failed:", error);

@@ -290,7 +290,7 @@ export function AICareerCoach({
             {/* Quick suggestions */}
             {messages[messages.length - 1]?.role === "assistant" &&
              messages[messages.length - 1]?.suggestions &&
-             messages[messages.length - 1].suggestions.length > 0 && (
+             messages[messages.length - 1]?.suggestions.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {messages[messages.length - 1].suggestions!.map((suggestion, index) => (
                   <Button

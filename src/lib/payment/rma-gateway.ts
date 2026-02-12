@@ -285,10 +285,10 @@ export class RMAGateway {
     reason?: string
   ): Promise<{ success: boolean; refundId?: string; error?: string }> {
     try {
-      const params = {
+      const params: Record<string, string> = {
         merchant_id: this.config.merchantId,
         transaction_id: transactionId,
-        refund_amount: amount ? amount.toFixed(2) : undefined,
+        refund_amount: amount ? amount.toFixed(2) : '0',
         refund_reason: reason || 'Refund requested',
         timestamp: Date.now().toString(),
       };
