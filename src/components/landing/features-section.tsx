@@ -2,68 +2,77 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { ArrowRight, Brain, BookOpen, TrendingUp, Users, Zap, Target, BarChart3 } from "lucide-react";
+import { Brain, BookOpen, TrendingUp, Users, Zap, Target } from "lucide-react";
 
 const features = [
   {
     icon: Brain,
     title: "AI Career Discovery",
-    description: "Get personalized career recommendations based on your strengths.",
+    description: "Personalized recommendations based on your strengths.",
+    color: "from-violet-500 to-purple-600",
   },
   {
     icon: BookOpen,
     title: "School Management",
-    description: "Attendance, homework, grades — everything in one place.",
-  },
-  {
-    icon: TrendingUp,
-    title: "Progress Tracking",
-    description: "Real-time updates on student growth and performance.",
+    description: "Attendance, homework, grades in one place.",
+    color: "from-blue-500 to-cyan-600",
   },
   {
     icon: Users,
     title: "Parent Portal",
-    description: "Monitor your child's journey, stay connected.",
+    description: "Monitor your child's journey in real-time.",
+    color: "from-green-500 to-emerald-600",
   },
   {
     icon: Zap,
-    title: "Real-time Updates",
-    description: "Instant notifications for homework and announcements.",
+    title: "Instant Updates",
+    description: "Real-time notifications for announcements.",
+    color: "from-orange-500 to-red-600",
   },
   {
     icon: Target,
     title: "Goal Setting",
-    description: "Set academic and career goals, track progress.",
+    description: "Set goals and track your progress.",
+    color: "from-pink-500 to-rose-600",
+  },
+  {
+    icon: TrendingUp,
+    title: "Progress Analytics",
+    description: "Visual dashboards showing growth trends.",
+    color: "from-indigo-500 to-purple-600",
   },
 ];
 
 function FeatureCard({ feature, index }: { feature: typeof features[0]; index: number }) {
+  const Icon = feature.icon;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-50px" }}
-      transition={{ delay: index * 0.05, duration: 0.4 }}
+      viewport={{ once: true }}
+      transition={{ delay: index * 0.1, duration: 0.4 }}
     >
-      <Link
-        href="/dashboard"
-        className="group block h-full p-6 rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-lg transition-all duration-300"
-      >
-        <div className={`inline-flex p-3 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 mb-4 group-hover:scale-110 transition-transform duration-300`}>
-          <feature.icon className="w-6 h-6 text-white" strokeWidth={2} />
-        </div>
+      <Link href="/dashboard" className="group block">
+        <div className="relative p-8 rounded-3xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 hover:border-gray-200 dark:hover:border-gray-700 hover:shadow-2xl hover:-translate-y-1 transition-all duration-500">
+          {/* Icon with gradient ring */}
+          <div className="relative mb-6">
+            <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${feature.color} opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-500`} />
+            <div className={`relative w-14 h-14 rounded-2xl bg-gradient-to-br ${feature.color} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+              <Icon className="w-7 h-7 text-white" strokeWidth={1.5} />
+            </div>
+          </div>
 
-        <h3 className="text-lg font-semibold text-gray-950 dark:text-white mb-2 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
-          {feature.title}
-        </h3>
+          {/* Content */}
+          <h3 className="text-xl font-semibold text-gray-950 dark:text-white mb-3 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
+            {feature.title}
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+            {feature.description}
+          </p>
 
-        <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-          {feature.description}
-        </p>
-
-        <div className="flex items-center gap-2 text-sm font-medium text-gray-400 dark:text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity">
-          Learn more
-          <ArrowRight className="w-4 h-4" />
+          {/* Decorative corner accent */}
+          <div className={`absolute top-0 right-0 w-20 h-20 bg-gradient-to-bl ${feature.color} opacity-0 group-hover:opacity-5 rounded-br-3xl rounded-tl-3xl transition-opacity duration-500`} />
         </div>
       </Link>
     </motion.div>
@@ -72,29 +81,26 @@ function FeatureCard({ feature, index }: { feature: typeof features[0]; index: n
 
 export function FeaturesSection() {
   return (
-    <section className="relative py-24 bg-white dark:bg-gray-950 overflow-hidden">
-      <div className="relative z-10 max-w-7xl mx-auto px-6">
+    <section className="relative py-32 bg-white dark:bg-gray-950">
+      <div className="max-w-6xl mx-auto px-6">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-12"
+          className="text-center mb-20"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 text-sm font-medium mb-4">
-            Features
-          </div>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-gray-950 dark:text-white mb-4">
-            Everything you need.
+          <h2 className="text-4xl sm:text-5xl font-semibold text-gray-950 dark:text-white mb-4">
+            Built for modern education
           </h2>
-          <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-            Powerful tools to manage every aspect of education.
+          <p className="text-lg text-gray-400">
+            Everything schools and students need, in one place.
           </p>
         </motion.div>
 
-        {/* Feature Grid - Clerk style bento */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Grid */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {features.map((feature, index) => (
             <FeatureCard key={feature.title} feature={feature} index={index} />
           ))}

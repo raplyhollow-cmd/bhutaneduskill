@@ -37,7 +37,11 @@ export async function GET(request: NextRequest) {
     // Build where conditions based on filters
     const conditions = [];
     if (role) {
-      conditions.push(eq(users.type, role));
+      // Type guard to ensure role is valid
+      const validRoles = ["student", "teacher", "parent", "admin", "counselor"] as const;
+      if (validRoles.includes(role as any)) {
+        conditions.push(eq(users.type, role as any));
+      }
     }
     if (schoolId && currentUser.type !== "teacher") {
       conditions.push(eq(users.schoolId, schoolId));

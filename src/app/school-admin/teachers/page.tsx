@@ -46,9 +46,6 @@ export default async function SchoolAdminTeachersPage() {
       phone: users.phone,
       employeeId: users.employeeId,
       subjects: users.subjects,
-      department: users.department,
-      qualification: users.qualification,
-      isActive: users.isActive,
       schoolId: users.schoolId,
       schoolName: schools.name,
     })

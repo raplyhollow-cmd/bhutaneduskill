@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { homework, users, classes, enrollments, homeworkSubmissions } from "@/lib/db/schema";
 import { eq, and, or, asc, inArray } from "drizzle-orm";
+import type { HomeworkSubmission } from "@/lib/db/schema";
 
 // GET /api/student/homework - List assigned homework (sorted by due date)
 export async function GET(request: NextRequest) {
@@ -53,7 +54,7 @@ export async function GET(request: NextRequest) {
       where: eq(homeworkSubmissions.studentId, currentUser.id),
     });
 
-    const submissionMap = new Map(submissions.map(s => [s.homeworkId, s]));
+    const submissionMap = new Map<string, HomeworkSubmission>(submissions.map(s => [s.homeworkId, s]));
 
     // Enrich homework with status
     const enrichedHomework = allHomework.map(hw => {
