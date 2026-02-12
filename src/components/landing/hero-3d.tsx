@@ -130,7 +130,7 @@ function Scene() {
       <directionalLight position={[10, 10, 5]} intensity={1} color="#fff7ed" />
       <pointLight position={[0, 5, 0]} intensity={0.5} color="#f97316" />
 
-      <Mountain3DRange />
+      <MountainRange />
       <FloatingParticles />
       <Sparkles count={50} scale={10} size={2} speed={0.2} opacity={0.3} color="#f97316" />
       <SunriseGlow />
