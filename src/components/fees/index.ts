@@ -1,11 +1,10 @@
 export { FeeManager } from "./fee-manager";
-export { ReceiptGenerator, generateReceiptNumber, createReceiptData } from "./receipt-generator";
+export { ReceiptGenerator } from "./receipt-generator";
+
+// Re-export types for type checking
 export type {
   FeeStructure,
   StudentFee,
   Payment,
   FeeSummary,
-} from "./fee-manager";
-export type {
-  ReceiptData,
-} from "./receipt-generator";
+} from "@/lib/db/schema";

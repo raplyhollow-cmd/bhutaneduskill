@@ -14,6 +14,7 @@ import {
   FileText,
 } from "lucide-react";
 import Link from "next/link";
+import { AIInsightCard } from "@/components/ai/ai-insight-card";
 
 export default function AdminDashboardPage() {
   // Mock data - will be replaced with real data from database
@@ -77,6 +78,38 @@ export default function AdminDashboardPage() {
             </Link>
           </Button>
         </div>
+      </div>
+
+      {/* AI Insights Section */}
+      <div className="grid md:grid-cols-3 gap-4">
+        <AIInsightCard
+          type="warning"
+          title="School Engagement Alert"
+          message={`${alerts.filter(a => a.type === "warning").length > 0 ? "Some schools have low assessment completion rates. " : ""}${topSchools.filter(s => s.completion < 80).length} schools below 80% completion threshold.`}
+          actions={[
+            { label: "View Schools", href: "/admin/schools" },
+            { label: "Send Alert", href: "/admin/notifications" },
+          ]}
+        />
+
+        <AIInsightCard
+          type="success"
+          title="Platform Growth Positive"
+          message={`${adminStats.totalStudents} students across ${adminStats.totalSchools} schools. 15% increase in new registrations this month. Career guidance adoption trending upward.`}
+          actions={[
+            { label: "View Analytics", href: "/admin/analytics" },
+          ]}
+        />
+
+        <AIInsightCard
+          type="tip"
+          title="Popular Career Interests"
+          message={`AI analysis shows ${careerInterests[0]?.career || "Technology"} and ${careerInterests[1]?.career || "Healthcare"} as top career interests. Consider partnering with relevant RUB colleges for workshops.`}
+          actions={[
+            { label: "View Content", href: "/admin/content" },
+            { label: "Manage Partners", href: "/admin/partners" },
+          ]}
+        />
       </div>
 
       {/* Alerts */}

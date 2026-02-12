@@ -12,7 +12,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,80 +22,109 @@ import {
   Clock,
   Plus,
   Edit,
-  Trash2,
   Printer,
   Download,
-  Eye,
-  ChevronLeft,
-  ChevronRight,
   Filter,
   Grid3x3,
   List,
   BookOpen,
   GraduationCap,
   Check,
+  Loader2,
 } from "lucide-react";
 
-// Mock data
-const classes = [
-  { id: "1", name: "Class 10 A", section: "A", grade: "10", students: 32 },
-  { id: "2", name: "Class 10 B", section: "B", grade: "10", students: 30 },
-  { id: "3", name: "Class 11 A", section: "A", grade: "11", students: 28 },
-  { id: "4", name: "Class 11 B", section: "B", grade: "11", students: 25 },
-  { id: "5", name: "Class 12 A", section: "A", grade: "12", students: 22 },
-];
+// Local types instead of importing from server API
+interface ClassData {
+  id: string;
+  name: string;
+  grade: number;
+  section: string;
+}
 
-const subjects = [
-  { id: "1", name: "Mathematics", code: "MATH", color: "bg-blue-100 text-blue-700 border-blue-300" },
-  { id: "2", name: "English", code: "ENG", color: "bg-green-100 text-green-700 border-green-300" },
-  { id: "3", name: "Dzongkha", code: "DZO", color: "bg-red-100 text-red-700 border-red-300" },
-  { id: "4", name: "Physics", code: "PHY", color: "bg-purple-100 text-purple-700 border-purple-300" },
-  { id: "5", name: "Chemistry", code: "CHEM", color: "bg-orange-100 text-orange-700 border-orange-300" },
-  { id: "6", name: "Biology", code: "BIO", color: "bg-lime-100 text-lime-700 border-lime-300" },
-  { id: "7", name: "History", code: "HIST", color: "bg-yellow-100 text-yellow-700 border-yellow-300" },
-  { id: "8", name: "Geography", code: "GEOG", color: "bg-teal-100 text-teal-700 border-teal-300" },
-  { id: "9", name: "Computer Science", code: "CS", color: "bg-pink-100 text-pink-700 border-pink-300" },
-  { id: "10", name: "Economics", code: "ECON", color: "bg-indigo-100 text-indigo-700 border-indigo-300" },
-];
+interface SubjectData {
+  id: string;
+  name: string;
+  code: string;
+  color: string;
+}
 
-const teachers = [
-  { id: "TCH001", name: "Tashi Dorji", subjects: ["Mathematics", "Physics"] },
-  { id: "TCH002", name: "Karma Wangmo", subjects: ["English", "Literature"] },
-  { id: "TCH003", name: "Pema Lhamo", subjects: ["Chemistry", "Biology"] },
-  { id: "TCH004", name: "Dorji Wangchuk", subjects: ["Dzongkha", "History"] },
-  { id: "TCH005", name: "Sonam Yangdon", subjects: ["Computer Science"] },
-];
+interface TeacherData {
+  id: string;
+  name: string;
+  subject: string;
+}
 
-const timeSlots = [
-  { id: "1", period: "1", startTime: "8:00", endTime: "8:45" },
-  { id: "2", period: "2", startTime: "8:45", endTime: "9:30" },
-  { id: "3", period: "3", startTime: "9:45", endTime: "10:30" },
-  { id: "4", period: "4", startTime: "10:30", endTime: "11:15" },
-  { id: "5", period: "5", startTime: "11:30", endTime: "12:15" },
-  { id: "6", period: "6", startTime: "12:15", endTime: "1:00" },
-  { id: "7", period: "7", startTime: "2:00", endTime: "2:45" },
-  { id: "8", period: "8", startTime: "2:45", endTime: "3:30" },
-];
+interface TimeSlotData {
+  id: string;
+  label: string;
+  startTime: string;
+  endTime: string;
+}
 
+interface TimetableData {
+  classId: string;
+  className: string;
+  timetable: Record<string, Record<string, string>>;
+}
+
+// Week days for timetable
 const weekDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
-// Mock timetable data for Class 10 A
-const mockTimetable: Record<string, Record<string, { subjectId: string; teacherId: string } | null>> = {
-  "1": { Monday: { subjectId: "1", teacherId: "TCH001" }, Tuesday: { subjectId: "2", teacherId: "TCH002" }, Wednesday: { subjectId: "1", teacherId: "TCH001" }, Thursday: { subjectId: "3", teacherId: "TCH004" }, Friday: { subjectId: "4", teacherId: "TCH001" } },
-  "2": { Monday: { subjectId: "2", teacherId: "TCH002" }, Tuesday: { subjectId: "1", teacherId: "TCH001" }, Wednesday: { subjectId: "4", teacherId: "TCH001" }, Thursday: { subjectId: "1", teacherId: "TCH001" }, Friday: { subjectId: "2", teacherId: "TCH002" } },
-  "3": { Monday: { subjectId: "3", teacherId: "TCH004" }, Tuesday: { subjectId: "4", teacherId: "TCH001" }, Wednesday: { subjectId: "2", teacherId: "TCH002" }, Thursday: { subjectId: "5", teacherId: "TCH003" }, Friday: { subjectId: "3", teacherId: "TCH004" } },
-  "4": { Monday: { subjectId: "5", teacherId: "TCH003" }, Tuesday: { subjectId: "3", teacherId: "TCH004" }, Wednesday: { subjectId: "5", teacherId: "TCH003" }, Thursday: { subjectId: "2", teacherId: "TCH002" }, Friday: { subjectId: "4", teacherId: "TCH001" } },
-  "5": { Monday: { subjectId: "6", teacherId: "TCH003" }, Tuesday: { subjectId: "5", teacherId: "TCH003" }, Wednesday: { subjectId: "6", teacherId: "TCH003" }, Thursday: { subjectId: "7", teacherId: "TCH004" }, Friday: { subjectId: "9", teacherId: "TCH005" } },
-  "6": { Monday: null, Tuesday: null, Wednesday: null, Thursday: null, Friday: null }, // Lunch break
-  "7": { Monday: { subjectId: "8", teacherId: "TCH004" }, Tuesday: { subjectId: "9", teacherId: "TCH005" }, Wednesday: { subjectId: "7", teacherId: "TCH004" }, Thursday: { subjectId: "6", teacherId: "TCH003" }, Friday: { subjectId: "10", teacherId: "TCH004" } },
-  "8": { Monday: { subjectId: "9", teacherId: "TCH005" }, Tuesday: { subjectId: "10", teacherId: "TCH004" }, Wednesday: { subjectId: "9", teacherId: "TCH005" }, Thursday: { subjectId: "3", teacherId: "TCH004" }, Friday: { subjectId: "1", teacherId: "TCH001" } },
-};
-
 export default function TimetablePage() {
-  const [selectedClass, setSelectedClass] = useState(classes[0]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Data state
+  const [classes, setClasses] = useState<ClassData[]>([]);
+  const [subjects, setSubjects] = useState<SubjectData[]>([]);
+  const [teachers, setTeachers] = useState<TeacherData[]>([]);
+  const [timeSlots, setTimeSlots] = useState<TimeSlotData[]>([]);
+  const [timetable, setTimetable] = useState<TimetableData | null>(null);
+
+  // UI state
+  const [selectedClass, setSelectedClass] = useState<ClassData | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingCell, setEditingCell] = useState<{ periodId: string; day: string } | null>(null);
+
+  // Fetch data on mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        // For now, use school ID from localStorage or default
+        // In production, this would come from auth context
+        const schoolId = localStorage.getItem("schoolId") || null;
+
+        // Fetch from API instead of importing server-side code
+        const response = await fetch(`/api/school-admin/timetable?schoolId=${schoolId}`);
+        if (!response.ok) throw new Error("Failed to fetch timetable");
+
+        const data = await response.json();
+
+        setClasses(data.classes);
+        setSubjects(data.subjects);
+        setTeachers(data.teachers);
+        setTimeSlots(data.timeSlots);
+
+        if (data.timetable) {
+          setTimetable(data.timetable);
+          setSelectedClass(data.classes.find((c) => c.id === data.timetable?.classId) || data.classes[0] || null);
+        } else if (data.classes.length > 0) {
+          setSelectedClass(data.classes[0]);
+        }
+      } catch (err) {
+        console.error("Error fetching timetable data:", err);
+        setError("Failed to load timetable data. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const getSubjectById = (id: string) => subjects.find((s) => s.id === id);
   const getTeacherById = (id: string) => teachers.find((t) => t.id === id);
@@ -106,14 +135,75 @@ export default function TimetablePage() {
   };
 
   const getCellContent = (periodId: string, day: string) => {
-    const cell = mockTimetable[periodId]?.[day];
-    if (!cell) return null;
+    if (!timetable) return null;
 
-    const subject = getSubjectById(cell.subjectId);
-    const teacher = getTeacherById(cell.teacherId);
+    const entry = timetable.entries.find(
+      (e) => e.periodId === periodId && e.day === day
+    );
 
-    return { subject, teacher };
+    if (!entry) return null;
+
+    const subject = getSubjectById(entry.subjectId || "");
+    const teacher = getTeacherById(entry.teacherId || "");
+
+    return { subject, teacher, entry };
   };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleExport = () => {
+    // Export functionality would be implemented here
+    alert("Export functionality would be implemented with a backend service");
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-violet-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading timetable data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center">
+          <Calendar className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">Unable to Load Timetable</h3>
+          <p className="text-gray-500 mb-4">{error}</p>
+          <Button variant="outline" onClick={() => window.location.reload()}>
+            Try Again
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (classes.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center">
+          <GraduationCap className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">No Classes Found</h3>
+          <p className="text-gray-500 mb-4">
+            Create classes first before setting up timetables.
+          </p>
+          <Button
+            className="text-white"
+            style={{ background: "linear-gradient(135deg, rgb(139 92 246) 0%, rgb(124 58 237) 100%)" }}
+            onClick={() => (window.location.href = "/school-admin/classes")}
+          >
+            Manage Classes
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -124,11 +214,11 @@ export default function TimetablePage() {
           <p className="text-gray-600 mt-1">Create and manage class timetables</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => window.print()}>
+          <Button variant="outline" onClick={handlePrint}>
             <Printer className="w-4 h-4 mr-2" />
             Print
           </Button>
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleExport}>
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>
@@ -213,12 +303,12 @@ export default function TimetablePage() {
                   key={cls.id}
                   onClick={() => setSelectedClass(cls)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                    selectedClass.id === cls.id
+                    selectedClass?.id === cls.id
                       ? "text-white shadow-md"
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                   style={
-                    selectedClass.id === cls.id
+                    selectedClass?.id === cls.id
                       ? { background: "linear-gradient(135deg, rgb(139 92 246) 0%, rgb(124 58 237) 100%)" }
                       : {}
                   }
@@ -249,98 +339,120 @@ export default function TimetablePage() {
       </Card>
 
       {/* Timetable Grid */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-violet-600" />
-                Weekly Timetable - {selectedClass.name}
-              </CardTitle>
-              <CardDescription>Academic Year 2025</CardDescription>
+      {selectedClass && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-violet-600" />
+                  Weekly Timetable - {selectedClass.name}
+                </CardTitle>
+                <CardDescription>
+                  {selectedClass.grade} {selectedClass.section ? `- ${selectedClass.section}` : ""} • Academic Year 2025
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm">
+                  <Edit className="w-4 h-4 mr-2" />
+                  Edit
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm">
-                <Edit className="w-4 h-4 mr-2" />
-                Edit
-              </Button>
+          </CardHeader>
+          <CardContent>
+            {/* Legend */}
+            <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b">
+              {subjects.slice(0, 8).map((subject) => (
+                <Badge
+                  key={subject.id}
+                  className="bg-gray-100 text-gray-700 border-gray-300"
+                  variant="outline"
+                >
+                  {subject.code || subject.name}
+                </Badge>
+              ))}
+              {subjects.length > 8 && (
+                <Badge className="bg-gray-100 text-gray-700 border-gray-300" variant="outline">
+                  +{subjects.length - 8} more
+                </Badge>
+              )}
             </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {/* Legend */}
-          <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b">
-            {subjects.map((subject) => (
-              <Badge key={subject.id} className={subject.color} variant="outline">
-                {subject.code}
-              </Badge>
-            ))}
-          </div>
 
-          {/* Timetable Grid */}
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-medium text-gray-600 bg-gray-50 min-w-[100px]">
-                    Time
-                  </th>
-                  {weekDays.map((day) => (
-                    <th key={day} className="text-center py-3 px-4 font-medium text-gray-600 bg-gray-50 min-w-[140px]">
-                      {day}
+            {/* Timetable Grid */}
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-4 font-medium text-gray-600 bg-gray-50 min-w-[100px]">
+                      Time
                     </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {timeSlots.map((slot) => (
-                  <tr key={slot.id} className="border-b border-gray-100">
-                    <td className="py-2 px-4 bg-gray-50">
-                      <div className="text-center">
-                        <p className="font-medium text-gray-900">Period {slot.period}</p>
-                        <p className="text-xs text-gray-500">
-                          {slot.startTime} - {slot.endTime}
-                        </p>
-                      </div>
-                    </td>
-                    {weekDays.map((day) => {
-                      const cell = getCellContent(slot.id, day);
-                      const isBreak = slot.period === "6";
-
-                      return (
-                        <td key={day} className="py-2 px-2">
-                          {isBreak ? (
-                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 text-center">
-                              <p className="text-sm font-medium text-yellow-700">Lunch Break</p>
-                            </div>
-                          ) : cell ? (
-                            <button
-                              onClick={() => handleCellClick(slot.id, day)}
-                              className={`w-full text-left rounded-lg p-2 border transition-all hover:shadow-md ${
-                                cell.subject?.color || "border-gray-200"
-                              }`}
-                            >
-                              <p className="font-medium text-sm">{cell.subject?.name}</p>
-                              <p className="text-xs opacity-75">{cell.teacher?.name}</p>
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleCellClick(slot.id, day)}
-                              className="w-full h-full min-h-[60px] rounded-lg border-2 border-dashed border-gray-300 hover:border-violet-400 hover:bg-violet-50 transition-all flex items-center justify-center"
-                            >
-                              <Plus className="w-5 h-5 text-gray-400" />
-                            </button>
-                          )}
-                        </td>
-                      );
-                    })}
+                    {weekDays.map((day) => (
+                      <th key={day} className="text-center py-3 px-4 font-medium text-gray-600 bg-gray-50 min-w-[140px]">
+                        {day}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
+                </thead>
+                <tbody>
+                  {timeSlots.map((slot) => {
+                    const cell = timetable?.entries.find((e) => e.periodId === slot.id);
+
+                    return (
+                      <tr key={slot.id} className="border-b border-gray-100">
+                        <td className="py-2 px-4 bg-gray-50">
+                          <div className="text-center">
+                            <p className="font-medium text-gray-900">Period {slot.period}</p>
+                            <p className="text-xs text-gray-500">
+                              {slot.startTime} - {slot.endTime}
+                            </p>
+                          </div>
+                        </td>
+                        {weekDays.map((day) => {
+                          const cellContent = getCellContent(slot.id, day);
+                          const isBreak = slot.isBreak;
+
+                          return (
+                            <td key={day} className="py-2 px-2">
+                              {isBreak ? (
+                                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 text-center">
+                                  <p className="text-sm font-medium text-yellow-700">Lunch Break</p>
+                                </div>
+                              ) : cellContent ? (
+                                <button
+                                  onClick={() => handleCellClick(slot.id, day)}
+                                  className="w-full text-left rounded-lg p-2 border border-gray-200 bg-white transition-all hover:shadow-md hover:border-violet-300"
+                                >
+                                  <p className="font-medium text-sm text-gray-900">
+                                    {cellContent.subject?.name || "Free Period"}
+                                  </p>
+                                  {cellContent.teacher && (
+                                    <p className="text-xs text-gray-500">{cellContent.teacher.name}</p>
+                                  )}
+                                  {cellContent.entry?.room && (
+                                    <p className="text-xs text-gray-400">{cellContent.entry.room}</p>
+                                  )}
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleCellClick(slot.id, day)}
+                                  className="w-full h-full min-h-[60px] rounded-lg border-2 border-dashed border-gray-300 hover:border-violet-400 hover:bg-violet-50 transition-all flex items-center justify-center"
+                                >
+                                  <Plus className="w-5 h-5 text-gray-400" />
+                                </button>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Quick Actions */}
       <Card>
@@ -405,7 +517,7 @@ export default function TimetablePage() {
                   <option value="">Select a subject</option>
                   {subjects.map((subject) => (
                     <option key={subject.id} value={subject.id}>
-                      {subject.name} ({subject.code})
+                      {subject.name} ({subject.code || "N/A"})
                     </option>
                   ))}
                 </select>
@@ -417,7 +529,7 @@ export default function TimetablePage() {
                   <option value="">Select a teacher</option>
                   {teachers.map((teacher) => (
                     <option key={teacher.id} value={teacher.id}>
-                      {teacher.name} ({teacher.subjects.join(", ")})
+                      {teacher.name} ({teacher.subjects.join(", ") || "No subjects"})
                     </option>
                   ))}
                 </select>

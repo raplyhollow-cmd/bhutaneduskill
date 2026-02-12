@@ -495,3 +495,82 @@ export async function getCounselorStats(counselorId: string | null) {
     sensitiveNotes: 0, // Would need isSensitive field
   };
 }
+
+/**
+ * COUNSELOR RESOURCES DATA
+ */
+
+export interface ResourceData {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  type: "pdf" | "video" | "document" | "spreadsheet" | "link";
+  url: string;
+  fileSize?: string;
+  pages?: number;
+  duration?: string;
+  tags: string[];
+  isFeatured: boolean;
+  downloads?: number;
+  views?: number;
+  addedDate: string;
+}
+
+export interface ResourceCategory {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  color: string;
+}
+
+export interface ResourceStats {
+  totalResources: number;
+  totalDownloads: number;
+  featuredCount: number;
+  categoriesCount: number;
+}
+
+export async function getResourcesData(counselorId: string | null): Promise<{
+  resources: ResourceData[];
+  categories: ResourceCategory[];
+  stats: ResourceStats;
+}> {
+  if (!counselorId) {
+    return {
+      resources: [],
+      categories: [],
+      stats: {
+        totalResources: 0,
+        totalDownloads: 0,
+        featuredCount: 0,
+        categoriesCount: 0,
+      },
+    };
+  }
+
+  // For now, return empty arrays - resources would be stored in a resources table
+  // In production, this would query from counselor_resources table
+  const categories: ResourceCategory[] = [
+    { id: "all", name: "All Resources", icon: "BookOpen", color: "bg-gray-100 text-gray-600", description: "All counseling resources" },
+    { id: "career", name: "Career Resources", icon: "TrendingUp", color: "bg-purple-100 text-purple-600", description: "Career guidance resources" },
+    { id: "college", name: "College Applications", icon: "GraduationCap", color: "bg-blue-100 text-blue-600", description: "College and university application guides" },
+    { id: "scholarship", name: "Scholarships", icon: "Award", color: "bg-green-100 text-green-600", description: "Scholarship information and resources" },
+    { id: "mental-health", name: "Mental Health", icon: "Heart", color: "bg-red-100 text-red-600", description: "Student mental health and wellness resources" },
+    { id: "study-skills", name: "Study Skills", icon: "Brain", color: "bg-yellow-100 text-yellow-600", description: "Study skills and learning techniques" },
+    { id: "rub", name: "RUB Colleges", icon: "Building2", color: "bg-violet-100 text-violet-600", description: "Royal University of Bhutan college information" },
+    { id: "international", name: "Study Abroad", icon: "Globe", color: "bg-cyan-100 text-cyan-600", description: "International education opportunities" },
+  ];
+
+  return {
+    resources: [],
+    categories,
+    stats: {
+      totalResources: 0,
+      totalDownloads: 0,
+      featuredCount: 0,
+      categoriesCount: categories.length,
+    },
+  };
+}

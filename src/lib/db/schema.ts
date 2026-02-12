@@ -1,5 +1,157 @@
 import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 
+// Re-export additional library schema tables (not books/circulation which exist separately)
+export {
+  bookCopies,
+  reservations,
+  digitalResources,
+  digitalAccessLog,
+  libraryMembers,
+  bookReviews,
+  finePayments as libraryFinePayments,
+  librarySettings,
+  libraryVendors,
+} from "./library-schema";
+
+// Re-export types from library schema
+export type {
+  BookCopy,
+  Reservation,
+  DigitalResource,
+  DigitalAccessLog,
+  LibraryMember,
+  BookReview,
+  FinePayment as LibraryFinePayment,
+  LibrarySettings,
+  LibraryVendor,
+} from "./library-schema";
+
+// Re-export transport schema tables (comprehensive transport management)
+export {
+  busAttendance,
+  vehicleMaintenance,
+  vehicleTracking,
+  transportIncidents,
+} from "./transport-schema";
+
+// Re-export transport types
+export type {
+  BusAttendance,
+  VehicleMaintenance,
+  VehicleTracking,
+  TransportIncident,
+} from "./transport-schema";
+
+// Re-export hostel schema tables (comprehensive hostel management)
+export {
+  hostelBuildings,
+  hostelRooms,
+  hostelAllocations,
+  hostelAttendance,
+  roomInspections,
+  hostelLeaveRequests,
+  hostelComplaints,
+  hostelVisitors,
+  hostelFacilities,
+  hostelMess,
+  messAttendance,
+  hostelFees,
+  hostelPayments,
+  hostelRules,
+} from "./hostel-schema";
+
+// Re-export hostel types
+export type {
+  HostelBuilding,
+  HostelRoom,
+  HostelAllocation,
+  HostelAttendance,
+  RoomInspection,
+  HostelLeaveRequest,
+  HostelComplaint,
+  HostelVisitor,
+  HostelFacility,
+  HostelMess,
+  MessAttendance,
+  HostelFee,
+  HostelPayment,
+  HostelRule,
+} from "./hostel-schema";
+
+// Re-export inventory schema tables (comprehensive inventory management)
+export {
+  inventoryCategories,
+  inventoryItems,
+  inventoryTransactions,
+  purchaseOrders,
+  inventoryVendors,
+  assetAssignments,
+  assetMaintenance,
+  assetDisposal,
+  stockAdjustments,
+  inventoryAlerts,
+  inventoryReports,
+  inventorySettings,
+} from "./inventory-schema";
+
+// Re-export inventory types
+export type {
+  InventoryCategory,
+  InventoryItem,
+  InventoryTransaction,
+  PurchaseOrder,
+  InventoryVendor,
+  AssetAssignment,
+  AssetMaintenance,
+  AssetDisposal,
+  StockAdjustment,
+  InventoryAlert,
+  InventoryReport,
+  InventorySettings,
+} from "./inventory-schema";
+
+// Re-export RUB schema tables (Royal University of Bhutan integration)
+export {
+  rubColleges,
+  rubPrograms,
+  rubApplications,
+  rubScholarships,
+  rubScholarshipApplications,
+  rubApiConfig,
+  rubSyncLogs,
+} from "./rub-schema";
+
+// Re-export RUB types
+export type {
+  RUBCollege,
+  RUBProgram,
+  RUBApplication,
+  RUBScholarship,
+  RUBScholarshipApplication,
+  RUBApiConfig,
+  RUBSyncLog,
+} from "./rub-schema";
+
+// Re-export timetable schema tables (comprehensive timetable management)
+export {
+  timePeriods,
+  timetableEntries,
+  rooms,
+  timetableConflicts,
+  examSchedules,
+  examEntries,
+} from "./timetable-schema";
+
+// Re-export timetable types
+export type {
+  TimePeriod,
+  TimetableEntry,
+  Room,
+  TimetableConflict,
+  ExamSchedule,
+  ExamEntry,
+} from "./timetable-schema";
+
 // ============================================================================
 // DISTRICTS (Predefined Bhutan Data)
 // ============================================================================
@@ -165,6 +317,25 @@ export const classes = sqliteTable("classes", {
   section: text("section"),
   academicYear: text("academic_year").notNull(),
   students: text("students", { mode: "json" }).$type<string[]>(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+// Class Subjects (links classes to subjects with teachers)
+export const classSubjects = sqliteTable("class_subjects", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").notNull().references(() => schools.id),
+  classId: text("class_id").notNull().references(() => classes.id),
+  subjectId: text("subject_id").notNull().references(() => subjects.id),
+  teacherId: text("teacher_id").notNull().references(() => users.id),
+
+  // Allocation details
+  periodsPerWeek: integer("periods_per_week").default(5), // Number of periods per week
+  isCoreSubject: integer("is_core_subject", { mode: "boolean" }).default(true), // Core vs elective
+
+  // Room assignment
+  roomId: text("room_id"), // References rooms table from timetable-schema
+
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
 });
@@ -336,6 +507,7 @@ export type Career = typeof careers.$inferSelect;
 export type CareerMatch = typeof careerMatches.$inferSelect;
 export type ConsentRecord = typeof consentRecords.$inferSelect;
 export type Class = typeof classes.$inferSelect;
+export type ClassSubject = typeof classSubjects.$inferSelect;
 export type AssessmentType = typeof assessmentTypes.$inferSelect;
 export type AssessmentSubmission = typeof assessmentSubmissions.$inferSelect;
 export type MBTIResult = typeof mbtiResults.$inferSelect;
@@ -1416,3 +1588,403 @@ export type WizardProgress = typeof wizardProgress.$inferSelect;
 export type Announcement = typeof announcements.$inferSelect;
 export type AnnouncementRead = typeof announcementReads.$inferSelect;
 export type NotificationPreference = typeof notificationPreferences.$inferSelect;
+
+// ============================================================================
+// LEAVE MANAGEMENT
+// ============================================================================
+
+/**
+ * Leave Requests - Student and Teacher leave applications
+ */
+export const leaveRequests = sqliteTable("leave_requests", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").notNull().references(() => schools.id),
+
+  // Applicant
+  applicantId: text("applicant_id").notNull().references(() => users.id),
+  applicantType: text("applicant_type").notNull(), // "student", "teacher", "staff"
+
+  // Leave details
+  leaveType: text("leave_type").notNull(), // "sick", "casual", "emergency", "vacation", "official"
+  reason: text("reason").notNull(),
+
+  // Dates
+  fromDate: text("from_date").notNull(), // ISO date
+  toDate: text("to_date").notNull(), // ISO date
+  numberOfDays: integer("number_of_days").notNull(),
+
+  // Attachments (medical certificate, etc.)
+  attachments: text("attachments", { mode: "json" }).$type<Array<{
+    name: string;
+    url: string;
+    type: string;
+  }>>(),
+
+  // Status
+  status: text("status").notNull().default("pending"), // "pending", "approved", "rejected", "cancelled"
+
+  // Approval
+  approvedBy: text("approved_by").references(() => users.id),
+  approvedAt: text("approved_at"), // ISO date
+  rejectionReason: text("rejection_reason"),
+
+  // Alternative arrangements (for teachers)
+  substituteTeacherId: text("substitute_teacher_id").references(() => users.id),
+  leaveHandoverNotes: text("leave_handover_notes"),
+
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+// ============================================================================
+// EVENTS CALENDAR
+// ============================================================================
+
+/**
+ * School Events - Calendar events for all users
+ */
+export const schoolEvents = sqliteTable("school_events", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").notNull().references(() => schools.id),
+  tenantId: text("tenant_id").notNull().references(() => tenants.id),
+
+  // Event details
+  title: text("title").notNull(),
+  description: text("description"),
+
+  // Type and category
+  eventType: text("event_type").notNull(), // "academic", "holiday", "exam", "sports", "cultural", "meeting", "parent_teacher", "other"
+  category: text("category"),
+
+  // Dates and times
+  startDate: text("start_date").notNull(), // ISO date
+  endDate: text("end_date"), // ISO date (if multi-day)
+  startTime: text("start_time"), // HH:MM format
+  endTime: text("end_time"), // HH:MM format
+  isAllDay: integer("is_all_day", { mode: "boolean" }).default(false),
+
+  // Location
+  location: text("location"),
+  venue: text("venue"),
+
+  // Target audience
+  targetAudience: text("target_audience", { mode: "json" }).$type<string[]>(), // ["all", "students", "teachers", "parents", "class_10"]
+  targetGradeLevels: text("target_grade_levels", { mode: "json" }).$type<number[]>(),
+  targetClassIds: text("target_class_ids", { mode: "json" }).$type<string[]>(),
+
+  // Recurrence
+  isRecurring: integer("is_recurring", { mode: "boolean" }).default(false),
+  recurrencePattern: text("recurrence_pattern"), // "daily", "weekly", "monthly", "yearly"
+  recurrenceEndDate: text("recurrence_end_date"),
+
+  // Organizer
+  organizedBy: text("organized_by").references(() => users.id),
+  organizerName: text("organizer_name"), // Denormalized
+
+  // Status
+  status: text("status").notNull().default("published"), // "draft", "published", "cancelled", "completed"
+
+  // Attendance/RSVP
+  requiresRSVP: integer("requires_rsvp", { mode: "boolean" }).default(false),
+  rsvpDeadline: text("rsvp_deadline"),
+
+  // Attachments
+  attachments: text("attachments", { mode: "json" }).$type<Array<{
+    name: string;
+    url: string;
+    type: string;
+  }>>(),
+
+  // Color coding for calendar UI
+  color: text("color"), // Hex color for calendar display
+
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+/**
+ * Event RSVPs - Track responses to events
+ */
+export const eventRsvps = sqliteTable("event_rsvps", {
+  id: text("id").primaryKey(),
+  eventId: text("event_id").notNull().references(() => schoolEvents.id),
+  userId: text("user_id").notNull().references(() => users.id),
+
+  // Response
+  response: text("response").notNull(), // "going", "not_going", "maybe"
+
+  // Guests
+  additionalGuests: integer("additional_guests").default(0),
+  guestNames: text("guest_names", { mode: "json" }).$type<string[]>(),
+
+  // Comments
+  comments: text("comments"),
+
+  respondedAt: integer("responded_at", { mode: "timestamp" }).notNull(),
+
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+});
+
+// ============================================================================
+// LIBRARY MANAGEMENT (Placeholder tables for future implementation)
+// ============================================================================
+
+/**
+ * Books - Library catalog
+ */
+export const books = sqliteTable("books", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").notNull().references(() => schools.id),
+
+  // Book details
+  title: text("title").notNull(),
+  author: text("author").notNull(),
+  isbn: text("isbn").unique(),
+  publisher: text("publisher"),
+  publishYear: integer("publish_year"),
+
+  // Classification
+  category: text("category"), // "fiction", "non-fiction", "reference", etc.
+  genre: text("genre"),
+  readingLevel: text("reading_level"), // "easy", "medium", "advanced"
+
+  // Physical details
+  location: text("location"), // Shelf/cabinet location
+  totalCopies: integer("total_copies").default(1),
+  availableCopies: integer("available_copies").default(1),
+
+  // Status
+  status: text("status").notNull().default("available"), // "available", "borrowed", "lost", "damaged", "maintenance"
+  isActive: integer("is_active", { mode: "boolean" }).default(true),
+
+  // Tracking
+  currentBorrowerId: text("current_borrower_id").references(() => users.id),
+  dueDate: text("due_date"), // ISO date
+  totalBorrows: integer("total_borrows").default(0),
+
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+/**
+ * Circulation - Book borrowing records
+ */
+export const circulation = sqliteTable("circulation", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").notNull().references(() => schools.id),
+  bookId: text("book_id").notNull().references(() => books.id),
+
+  // Borrower details
+  borrowerId: text("borrower_id").notNull().references(() => users.id),
+  borrowerType: text("borrower_type").notNull(), // "student", "teacher", "staff"
+  borrowerName: text("borrower_name").notNull(),
+
+  // Dates
+  borrowDate: text("borrow_date").notNull(), // ISO date
+  dueDate: text("due_date").notNull(), // ISO date
+  actualReturnDate: text("actual_return_date"), // ISO date
+
+  // Status
+  status: text("status").notNull().default("borrowed"), // "borrowed", "returned", "overdue"
+
+  // Renewal
+  renewalCount: integer("renewal_count").default(0),
+  maxRenewals: integer("max_renewals").default(3),
+
+  // Notes
+  notes: text("notes"), // Damages, late returns, etc.
+
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+// ============================================================================
+// TRANSPORT MANAGEMENT (Placeholder tables for future implementation)
+// ============================================================================
+
+/**
+ * Transport Routes - School bus routes
+ */
+export const transportRoutes = sqliteTable("transport_routes", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").notNull().references(() => schools.id),
+
+  // Route details
+  routeName: text("route_name").notNull(),
+  routeNumber: text("route_number").notNull(),
+  startPoint: text("start_point").notNull(), // "Thimphu Town"
+  endPoint: text("end_point").notNull(), // "School Campus"
+
+  // Schedule
+  departureTime: text("departure_time").notNull(), // HH:MM format
+  arrivalTime: text("arrival_time").notNull(),
+
+  // Capacity
+  capacity: integer("capacity").default(40),
+  currentStudents: integer("current_students").default(0),
+
+  // Status
+  isActive: integer("is_active", { mode: "boolean" }).default(true),
+
+  // Route details (stops, landmarks)
+  routeDetails: text("route_details", { mode: "json" }),
+
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+/**
+ * Transport Allocations - Student bus assignments
+ */
+export const transportAllocations = sqliteTable("transport_allocations", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").notNull().references(() => schools.id),
+  routeId: text("route_id").notNull().references(() => transportRoutes.id),
+  studentId: text("student_id").notNull().references(() => users.id),
+
+  // Pickup/Drop details
+  pickupPoint: text("pickup_point").notNull(),
+  pickupTime: text("pickup_time"), // HH:MM
+  dropPoint: text("drop_point").notNull(),
+  dropTime: text("drop_time"), // HH:MM
+
+  // Billing
+  feePerMonth: integer("fee_per_month"),
+  feeStatus: text("fee_status").default("pending"), // "pending", "paid", "waived"
+
+  // Academic year
+  academicYear: text("academic_year").notNull(),
+
+  // Status
+  isActive: integer("is_active", { mode: "boolean" }).default(true),
+
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+/**
+ * Vehicles - School vehicles
+ */
+export const vehicles = sqliteTable("vehicles", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").notNull().references(() => schools.id),
+
+  // Vehicle details
+  vehicleNumber: text("vehicle_number").notNull().unique(),
+  vehicleType: text("vehicle_type").notNull(), // "bus", "van", "car"
+  capacity: integer("capacity").notNull(),
+  make: text("make"), // "Toyota", "Tata"
+  model: text("model"), // "Coaster", "Winger"
+
+  // Registration
+  registrationNumber: text("registration_number").notNull(),
+  registrationExpiry: text("registration_expiry"), // ISO date
+  insuranceExpiry: text("insurance_expiry"), // ISO date
+
+  // Assignment
+  assignedRouteId: text("assigned_route_id").references(() => transportRoutes.id),
+
+  // Status
+  status: text("status").notNull().default("active"), // "active", "maintenance", "retired"
+
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+/**
+ * Drivers - Vehicle drivers
+ */
+export const drivers = sqliteTable("drivers", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").notNull().references(() => schools.id),
+  userId: text("user_id").references(() => users.id),
+
+  // Personal details
+  name: text("name").notNull(),
+  phone: text("phone").notNull(),
+  address: text("address"),
+
+  // License
+  licenseNumber: text("license_number").notNull(),
+  licenseType: text("license_type").notNull(), // "light", "heavy", "public"
+  licenseExpiry: text("license_expiry"), // ISO date
+
+  // Assignment
+  assignedVehicleId: text("assigned_vehicle_id").references(() => vehicles.id),
+
+  // Verification
+  policeVerified: integer("police_verified", { mode: "boolean" }).default(false),
+  verificationDate: text("verification_date"),
+
+  // Status
+  isActive: integer("is_active", { mode: "boolean" }).default(true),
+
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+// Additional type exports for new tables
+export type LeaveRequest = typeof leaveRequests.$inferSelect;
+export type SchoolEvent = typeof schoolEvents.$inferSelect;
+export type EventRsvp = typeof eventRsvps.$inferSelect;
+export type Book = typeof books.$inferSelect;
+export type Circulation = typeof circulation.$inferSelect;
+export type TransportRoute = typeof transportRoutes.$inferSelect;
+export type TransportAllocation = typeof transportAllocations.$inferSelect;
+export type Vehicle = typeof vehicles.$inferSelect;
+export type Driver = typeof drivers.$inferSelect;
+
+// ============================================================================
+// ADDITIONAL PLACEHOLDER TABLES (for future features)
+// ============================================================================
+
+/**
+ * Partners - RUB colleges and industry partners for career workshops
+ */
+export const partners = sqliteTable("partners", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").references(() => schools.id),
+  name: text("name").notNull(),
+  type: text("type").notNull(),
+  category: text("category"),
+  email: text("email"),
+  phone: text("phone"),
+  website: text("website"),
+  address: text("address"),
+  partnershipDate: text("partnership_date"),
+  status: text("status").notNull().default("active"),
+  workshopsConducted: integer("workshops_conducted").default(0),
+  studentsPlaced: integer("students_placed").default(0),
+  description: text("description"),
+  contactPerson: text("contact_person"),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+/**
+ * Digital Resources - Counselor resources for career guidance
+ */
+export const digitalResources = sqliteTable("digital_resources", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").references(() => schools.id),
+  title: text("title").notNull(),
+  description: text("description"),
+  type: text("type").notNull(),
+  category: text("category"),
+  url: text("url"),
+  content: text("content", { mode: "json" }),
+  tags: text("tags", { mode: "json" }).$type<string[]>(),
+  targetAudience: text("target_audience"),
+  isPublic: integer("is_public", { mode: "boolean" }).default(false),
+  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  viewCount: integer("view_count").default(0),
+  downloadCount: integer("download_count").default(0),
+  createdBy: text("created_by").references(() => users.id),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+});
+
+export type Partner = typeof partners.$inferSelect;
+export type DigitalResource = typeof digitalResources.$inferSelect;
+export type Partner = typeof partners.$inferSelect;
+export type DigitalResource = typeof digitalResources.$inferSelect;

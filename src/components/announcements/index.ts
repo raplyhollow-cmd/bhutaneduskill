@@ -1,3 +1,5 @@
 export { AnnouncementCard } from "./announcement-card";
-export { AnnouncementForm, type AnnouncementFormData } from "./announcement-form";
 export { AnnouncementList } from "./announcement-list";
+
+// Announcement form not available yet
+export const createAnnouncementPlaceholder = true;

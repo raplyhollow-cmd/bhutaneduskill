@@ -23,7 +23,8 @@
       "Bash(npx drizzle-kit push:*)",
       "Bash(npm run db:setup:*)",
       "Bash(more:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(node:*)"
     ]
   }
 }

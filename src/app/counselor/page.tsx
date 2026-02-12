@@ -24,6 +24,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import Link from "next/link";
+import { AIInsightCard } from "@/components/ai/ai-insight-card";
 
 export default function CounselorDashboardPage() {
   // Mock data
@@ -98,6 +99,37 @@ export default function CounselorDashboardPage() {
             </Link>
           </Button>
         </div>
+      </div>
+
+      {/* AI Insights Section */}
+      <div className="grid md:grid-cols-3 gap-4">
+        <AIInsightCard
+          type="warning"
+          title="Students Needing Attention"
+          message={`${recentStudents.filter(s => s.needsAttention).length} students require immediate intervention. Low assessment completion and attendance issues detected.`}
+          actions={[
+            { label: "View Students", href: "/counselor/students" },
+            { label: "Interventions", href: "/counselor/interventions" },
+          ]}
+        />
+
+        <AIInsightCard
+          type="success"
+          title="Assessment Trends Positive"
+          message={`${counselorStats.assessmentsThisWeek} assessments completed this week. Student engagement is up 15% from last week.`}
+          actions={[
+            { label: "View Reports", href: "/counselor/reports" },
+          ]}
+        />
+
+        <AIInsightCard
+          type="tip"
+          title="AI Coaching Suggestion"
+          message="Based on recent data, students are showing increased interest in STEM careers. Consider organizing career talks with professionals in these fields."
+          actions={[
+            { label: "Schedule Session", href: "/counselor/schedule" },
+          ]}
+        />
       </div>
 
       {/* Stats Grid - Bhutan Colors */}

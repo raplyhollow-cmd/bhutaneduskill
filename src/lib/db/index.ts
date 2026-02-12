@@ -16,6 +16,9 @@ import { drizzle as drizzleNeon } from "drizzle-orm/neon-http";
 import { neon } from "@neondatabase/serverless";
 import * as schema from "./schema";
 
+// Only use this file in server components or API routes
+// For client components, use server actions instead
+
 // Determine database type
 const databaseUrl = process.env.DATABASE_URL;
 const isProduction = process.env.NODE_ENV === "production";
@@ -34,12 +37,6 @@ if (isPostgresUrl) {
     },
   });
 
-  db = drizzleNeon(neonClient, { schema });
-} else if (databaseUrl && databaseUrl.startsWith("postgres")) {
-  // PRODUCTION: Direct PostgreSQL connection (alternative)
-  console.log("🔌 Using PostgreSQL (production)");
-
-  const neonClient = neon(databaseUrl);
   db = drizzleNeon(neonClient, { schema });
 } else {
   // LOCAL: Use SQLite

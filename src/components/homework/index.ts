@@ -1,16 +1,11 @@
 export { HomeworkCreator } from "./homework-creator";
-export { HomeworkSubmission } from "./homework-submission";
 export { GradingPanel } from "./grading-panel";
+export { HomeworkSubmission } from "./homework-submission";
 export type {
   QuestionType,
   Question,
   HomeworkData,
 } from "./homework-creator";
-export type {
-  HomeworkAssignment,
-  StudentAnswer,
-  SubmissionMetadata,
-} from "./homework-submission";
 export type {
   HomeworkQuestion,
   StudentSubmission,
