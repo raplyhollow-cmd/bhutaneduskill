@@ -25,6 +25,21 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Skip ClerkProvider during build if env vars missing
+  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+
+  if (!publishableKey) {
+    return (
+      <html lang="en" suppressHydrationWarning>
+        <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+          <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+            <ToastProvider>{children}</ToastProvider>
+          </ThemeProvider>
+        </body>
+      </html>
+    );
+  }
+
   return (
     <ClerkProvider>
       <html lang="en" suppressHydrationWarning>

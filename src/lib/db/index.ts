@@ -19,10 +19,12 @@ import * as schema from "./schema";
 // Determine database type
 const databaseUrl = process.env.DATABASE_URL;
 const isProduction = process.env.NODE_ENV === "production";
+// Check if DATABASE_URL is a valid PostgreSQL connection string
+const isPostgresUrl = databaseUrl && (databaseUrl.startsWith("postgres://") || databaseUrl.startsWith("postgresql://"));
 
 let db: any;
 
-if (databaseUrl && isProduction) {
+if (isPostgresUrl) {
   // PRODUCTION: Use Neon PostgreSQL
   console.log("🔌 Using Neon PostgreSQL (production)");
 
