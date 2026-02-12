@@ -29,7 +29,7 @@ const mockTutors = [
     languages: ["Dzongkha", "English"],
     pricing: { hourlyRate: 500, currency: "Nu." },
     stats: { rating: 4.8, reviewCount: 45, studentCount: 120, completedSessions: 350 },
-    availability: { type: "online" },
+    availability: { type: "online" as ("online" | "in-person" | "both") },
     isVerified: true,
   },
   {
@@ -82,13 +82,13 @@ const mockCourses = [
     thumbnailUrl: "",
     category: "Academic",
     subject: "English",
-    level: ["class12"] as const,
+    level: ["class12"],
     tutorId: "t2",
     tutorName: "Tshering Yangden",
     tutorRating: 4.6,
     pricing: { type: "paid", amount: 3500, currency: "Nu.", duration: "2 months" },
     schedule: {
-      type: "hybrid" as const,
+      type: "hybrid",
       startDate: "2025-02-20",
       totalSessions: 24,
     },
@@ -197,7 +197,7 @@ export default function StudentTuitionPage() {
             {filteredTutors.map((tutor) => (
               <TutorProfileCard
                 key={tutor.id}
-                tutor={tutor}
+                tutor={tutor as any}
                 variant="detailed"
                 onViewProfile={handleViewProfile}
                 onBook={handleBook}
@@ -209,7 +209,7 @@ export default function StudentTuitionPage() {
             {filteredCourses.map((course) => (
               <CourseCard
                 key={course.id}
-                course={course}
+                course={course as any}
                 variant="default"
                 onEnroll={handleEnroll}
                 onViewDetails={handleViewCourse}

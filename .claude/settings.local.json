@@ -18,7 +18,10 @@
       "Bash(npx kill-port:*)",
       "Bash(PORT=3004 npm run dev:*)",
       "Bash(PORT=3005 npm run dev:*)",
-      "Bash(npx prettier:*)"
+      "Bash(npx prettier:*)",
+      "Bash(dir:*)",
+      "Bash(npx drizzle-kit push:*)",
+      "Bash(npm run db:setup:*)"
     ]
   }
 }

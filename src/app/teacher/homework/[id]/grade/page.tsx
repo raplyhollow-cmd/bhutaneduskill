@@ -164,6 +164,7 @@ export default function GradeHomeworkPage() {
     answers: s.answers || [],
     submittedAt: s.submittedAt,
     metadata: s.metadata,
+    status: "draft",
   }));
 
   return (
