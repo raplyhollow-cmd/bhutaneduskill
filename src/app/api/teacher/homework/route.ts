@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { homework, users, classes, subjects } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
@@ -46,25 +46,18 @@ const createHomeworkSchema = z.object({
 
 // GET /api/teacher/homework - List all homework created by teacher
 export async function GET(request: NextRequest) {
+  const authResult = await requireAuth(['teacher', 'admin']);
+  if ('error' in authResult) {
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+  }
+
+  const { user: currentUser } = authResult;
+
+  const { searchParams } = new URL(request.url);
+  const status = searchParams.get("status"); // draft, published, closed
+  const classId = searchParams.get("classId");
+
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const status = searchParams.get("status"); // draft, published, closed
-    const classId = searchParams.get("classId");
-
-    // Get current user
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || currentUser.type !== "teacher") {
-      return NextResponse.json({ error: "Forbidden - Teachers only" }, { status: 403 });
-    }
-
     // Build conditions - get classes taught by this teacher
     const teacherClasses = await db.query.classes.findMany({
       where: eq(classes.teacherId, currentUser.id),
@@ -101,23 +94,16 @@ export async function GET(request: NextRequest) {
 
 // POST /api/teacher/homework - Create new homework
 export async function POST(request: NextRequest) {
-  try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const authResult = await requireAuth(['teacher', 'admin']);
+  if ('error' in authResult) {
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+  }
 
+  const { user: currentUser } = authResult;
+
+  try {
     const body = await request.json();
     const validatedData = createHomeworkSchema.parse(body);
-
-    // Get current user
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || currentUser.type !== "teacher") {
-      return NextResponse.json({ error: "Forbidden - Teachers only" }, { status: 403 });
-    }
 
     // Verify the class belongs to this teacher's school
     const classInfo = await db.query.classes.findFirst({

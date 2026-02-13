@@ -126,9 +126,7 @@ export async function submitHomework(data: {
       await db
         .update(homeworkSubmissionsTable)
         .set({
-          answers: data.answers as any,
-          textAnswers: data.textAnswers as any,
-          attachments: data.attachments as any,
+          content: { answers: data.answers, textAnswers: data.textAnswers, attachments: data.attachments } as any,
           isLate: !!isLate,
           submittedAt: now,
           status: "submitted",
@@ -142,18 +140,18 @@ export async function submitHomework(data: {
       const [newSubmission] = await db
         .insert(homeworkSubmissionsTable)
         .values({
-          id: `SUB-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          ...({
+            id: `SUB-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          }),
           homeworkId: data.homeworkId,
           studentId,
-          answers: data.answers as any,
-          textAnswers: data.textAnswers as any,
-          attachments: data.attachments as any,
+          content: { answers: data.answers, textAnswers: data.textAnswers, attachments: data.attachments } as any,
           isLate: !!isLate,
           submittedAt: now,
           status: "submitted",
           createdAt: now,
           updatedAt: now,
-        })
+        } as any)
         .returning();
 
       return { success: true, submissionId: newSubmission.id };
@@ -329,9 +327,7 @@ export async function selfCheckIn(data: {
       checkInTime,
       checkInLocation: data.location as any,
       enteredBy: studentId,
-      createdAt: now,
-      updatedAt: now,
-    });
+      });
 
     return { success: true, checkInTime };
   } catch (error) {

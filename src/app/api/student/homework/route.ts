@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { homework, users, classes, enrollments, homeworkSubmissions } from "@/lib/db/schema";
 import { eq, and, or, asc, inArray } from "drizzle-orm";
@@ -7,23 +7,17 @@ import type { HomeworkSubmission } from "@/lib/db/schema";
 
 // GET /api/student/homework - List assigned homework (sorted by due date)
 export async function GET(request: NextRequest) {
+  const authResult = await requireAuth(['student', 'teacher', 'counselor', 'admin']);
+  if ('error' in authResult) {
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+  }
+
+  const { user: currentUser } = authResult;
+
+  const { searchParams } = new URL(request.url);
+  const status = searchParams.get("status"); // pending, submitted, all
+
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const status = searchParams.get("status"); // pending, submitted, all
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || currentUser.type !== "student") {
-      return NextResponse.json({ error: "Forbidden - Students only" }, { status: 403 });
-    }
-
     // Get student's class enrollments
     const studentEnrollments = await db.query.enrollments.findMany({
       where: eq(enrollments.studentId, currentUser.id),

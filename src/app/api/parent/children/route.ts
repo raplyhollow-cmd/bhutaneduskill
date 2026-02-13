@@ -123,10 +123,10 @@ export async function GET(request: NextRequest) {
           section: childData.section,
           dateOfBirth: childData.dateOfBirth,
           currentClass: currentClassData ? {
-            id: currentClassData.id,
-            name: currentClassData.name,
-            grade: currentClassData.grade,
-            section: currentClassData.section,
+            id: (currentClassData as any).id,
+            name: (currentClassData as any).name,
+            grade: (currentClassData as any).grade,
+            section: (currentClassData as any).section,
           } : null,
           attendanceSummary: {
             present: presentDays,

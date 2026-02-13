@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { pgTable, text, integer, boolean, timestamp, json, jsonb } from "drizzle-orm/pg-core";
 import { sql, eq, and, or, desc, like, inArray } from "drizzle-orm";
 import { rubColleges, rubScholarships } from "./rub-schema";
 
@@ -40,7 +40,7 @@ export {
 // USERS TABLE
 // ============================================================================
 
-export const users = sqliteTable("users", {
+export const users = pgTable("users", {
   id: text("id").primaryKey(),
   clerkUserId: text("clerk_user_id").notNull().unique(),
   type: text("type").notNull(), // "student" | "teacher" | "parent" | "school_admin" | "admin" | "counselor"
@@ -69,16 +69,16 @@ export const users = sqliteTable("users", {
   enrollmentDate: text("enrollment_date").notNull(),
   lastLogin: text("last_login").notNull(),
   employeeId: text("employee_id"),
-  subjects: text("subjects", { mode: "json" }).$type<string[]>(),
+  subjects: json("subjects").$type<string[]>(),
   tenantId: text("tenant_id").references(() => tenants.id),
-  emailVerified: integer("email_verified", { mode: "boolean" }).default(false),
-  onboardingComplete: integer("onboarding_complete", { mode: "boolean" }).default(false),
+  emailVerified: boolean("email_verified").default(false),
+  onboardingComplete: boolean("onboarding_complete").default(false),
   clerkId: text("clerk_id").unique(),
   classGrade: integer("class_grade"),
   parentId: text("parent_id").references(() => users.id),
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type User = typeof users.$inferSelect;
@@ -87,7 +87,7 @@ export type User = typeof users.$inferSelect;
 // SCHOOLS TABLE
 // ============================================================================
 
-export const schools = sqliteTable("schools", {
+export const schools = pgTable("schools", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   code: text("code").unique().notNull(),
@@ -105,7 +105,7 @@ export const schools = sqliteTable("schools", {
   accreditationStatus: text("accreditation_status").notNull(),
   maxStudents: integer("max_students").notNull(),
   campusSize: text("campus_size").notNull(),
-  facilities: text("facilities", { mode: "json" }).$type<string[]>(),
+  facilities: json("facilities").$type<string[]>(),
   board: text("board").notNull(),
   principalName: text("principal_name").notNull(),
   principalEmail: text("principal_email").notNull(),
@@ -120,9 +120,9 @@ export const schools = sqliteTable("schools", {
   contactPhone: text("contact_phone"),
   tenantId: text("tenant_id").references(() => tenants.id),
   districtId: text("district_id").references(() => districts.id),
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type School = typeof schools.$inferSelect;
@@ -131,7 +131,7 @@ export type School = typeof schools.$inferSelect;
 // BOOKS TABLE
 // ============================================================================
 
-export const books = sqliteTable("books", {
+export const books = pgTable("books", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
@@ -145,9 +145,9 @@ export const books = sqliteTable("books", {
   publisher: text("publisher").notNull(),
   language: text("language").notNull(),
   status: text("status"), // "available" | "borrowed" | "reserved" | "lost"
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type Book = typeof books.$inferSelect;
@@ -156,7 +156,7 @@ export type Book = typeof books.$inferSelect;
 // CLASSES TABLE
 // ============================================================================
 
-export const classes = sqliteTable("classes", {
+export const classes = pgTable("classes", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
@@ -170,9 +170,14 @@ export const classes = sqliteTable("classes", {
   classTeacherName: text("class_teacher_name").notNull(),
   teacherId: text("teacher_id").references(() => users.id),
   academicYear: text("academic_year"),
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  students: json("students").$type<Array<{
+    id: string;
+    name: string;
+    rollNumber: string;
+  }>>(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type Class = typeof classes.$inferSelect;
@@ -181,7 +186,7 @@ export type Class = typeof classes.$inferSelect;
 // SUBJECTS TABLE
 // ============================================================================
 
-export const subjects = sqliteTable("subjects", {
+export const subjects = pgTable("subjects", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
@@ -189,9 +194,9 @@ export const subjects = sqliteTable("subjects", {
   type: text("type").notNull(), // "core" | "elective" | "language" | "additional"
   description: text("description").notNull(),
   grade: integer("grade"),
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type Subject = typeof subjects.$inferSelect;
@@ -200,7 +205,7 @@ export type Subject = typeof subjects.$inferSelect;
 // ASSESSMENT TYPES TABLE
 // ============================================================================
 
-export const assessmentTypes = sqliteTable("assessment_types", {
+export const assessmentTypes = pgTable("assessment_types", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description").notNull(),
@@ -210,9 +215,9 @@ export const assessmentTypes = sqliteTable("assessment_types", {
   category: text("category"),
   targetAudience: text("target_audience"),
   targetGrade: integer("target_grade"),
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type AssessmentType = typeof assessmentTypes.$inferSelect;
@@ -221,18 +226,18 @@ export type AssessmentType = typeof assessmentTypes.$inferSelect;
 // ASSESSMENT QUESTIONS TABLE
 // ============================================================================
 
-export const assessmentQuestions = sqliteTable("assessment_questions", {
+export const assessmentQuestions = pgTable("assessment_questions", {
   id: text("id").primaryKey(),
   assessmentTypeId: text("assessment_type_id").references(() => assessmentTypes.id, { onDelete: "cascade" }),
   questionText: text("question_text").notNull(),
-  questionData: text("question_data", { mode: "json" }).$type<any>(),
-  options: text("options", { mode: "json" }).$type<string[]>(),
+  questionData: json("question_data").$type<any>(),
+  options: json("options").$type<string[]>(),
   correctAnswer: text("correct_answer").notNull(),
   points: integer("points").notNull(),
   order: integer("order").notNull(),
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type AssessmentQuestion = typeof assessmentQuestions.$inferSelect;
@@ -241,23 +246,23 @@ export type AssessmentQuestion = typeof assessmentQuestions.$inferSelect;
 // ASSESSMENT RESULTS TABLE
 // ============================================================================
 
-export const assessmentResults = sqliteTable("assessment_results", {
+export const assessmentResults = pgTable("assessment_results", {
   id: text("id").primaryKey(),
   assessmentId: text("assessment_id").references(() => assessments.id, { onDelete: "cascade" }),
   studentId: text("student_id").references(() => users.id, { onDelete: "cascade" }),
   questionId: text("question_id").references(() => assessmentQuestions.id),
-  selectedOptionId: text("selected_option_id").references(() => assessmentQuestions.options),
+  selectedOptionId: text("selected_option_id"), // References an option ID from the JSON options array (no FK constraint)
   selectedOptionText: text("selected_option_text").notNull(),
   answer: text("answer").notNull(),
   score: integer("score").notNull(),
   points: integer("points").notNull(),
-  isPassed: integer("is_passed", { mode: "boolean" }).default(true),
-  completedAt: integer("completed_at", { mode: "timestamp" }).notNull(),
-  startedAt: integer("started_at", { mode: "timestamp" }).notNull(),
+  isPassed: boolean("is_passed").default(true),
+  completedAt: timestamp("completed_at", { withTimezone: true }).notNull(),
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
   timeSpent: integer("time_spent").notNull(), // in seconds
   feedback: text("feedback").notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type AssessmentResult = typeof assessmentResults.$inferSelect;
@@ -266,18 +271,24 @@ export type AssessmentResult = typeof assessmentResults.$inferSelect;
 // ASSESSMENT SUBMISSIONS TABLE
 // ============================================================================
 
-export const assessmentSubmissions = sqliteTable("assessment_submissions", {
+export const assessmentSubmissions = pgTable("assessment_submissions", {
   id: text("id").primaryKey(),
   assessmentId: text("assessment_id").references(() => assessments.id, { onDelete: "cascade" }),
   userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
   assignedBy: text("assigned_by").references(() => users.id, { onDelete: "cascade" }),
   status: text("status").notNull(), // "pending" | "submitted" | "graded" | "returned"
   score: integer("score"),
+  answers: json("answers").$type<Array<{
+    questionId: string;
+    selectedOptionId: string;
+    text: string;
+  }>>(),
+  textAnswers: json("text_answers").$type<Record<string, string>>(),
   feedback: text("feedback"),
-  submittedAt: integer("submitted_at", { mode: "timestamp" }),
-  gradedAt: integer("graded_at", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  submittedAt: timestamp("submitted_at", { withTimezone: true }),
+  gradedAt: timestamp("graded_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type AssessmentSubmission = typeof assessmentSubmissions.$inferSelect;
@@ -286,7 +297,7 @@ export type AssessmentSubmission = typeof assessmentSubmissions.$inferSelect;
 // ASSESSMENTS TABLE
 // ============================================================================
 
-export const assessments = sqliteTable("assessments", {
+export const assessments = pgTable("assessments", {
   id: text("id").primaryKey(),
   classId: text("class_id").references(() => classes.id, { onDelete: "cascade" }),
   assessmentTypeId: text("assessment_type_id").references(() => assessmentTypes.id),
@@ -298,10 +309,17 @@ export const assessments = sqliteTable("assessments", {
   userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
   status: text("status"), // "draft" | "published" | "archived"
   type: text("type"), // "riasec" | "mbti" | "disc" | "work_values"
-  completedAt: integer("completed_at", { mode: "timestamp" }),
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  startedAt: timestamp("started_at", { withTimezone: true }), // When the assessment was started
+  results: json("results").$type<Array<{
+    questionId: string;
+    answer: string | string[];
+    score: number;
+    correct: boolean;
+  }>>(), // Assessment results/answers
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type Assessment = typeof assessments.$inferSelect;
@@ -310,7 +328,7 @@ export type Assessment = typeof assessments.$inferSelect;
 // ANNOUNCEMENTS TABLE
 // ============================================================================
 
-export const announcements = sqliteTable("announcements", {
+export const announcements = pgTable("announcements", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }),
   classId: text("class_id").references(() => classes.id),
@@ -320,18 +338,18 @@ export const announcements = sqliteTable("announcements", {
   priority: text("priority").notNull(), // "low" | "normal" | "high" | "urgent"
   targetAudience: text("target_audience").notNull(), // "all" | "students" | "teachers" | "parents" | "staff" | "counselor"
   targetGradeLevel: text("target_grade_level").notNull(), // e.g., "10-12"
-  targetClassIds: text("target_class_ids", { mode: "json" }).$type<string[]>(),
-  targetUserIds: text("target_user_ids", { mode: "json" }).$type<string[]>(),
+  targetClassIds: json("target_class_ids").$type<string[]>(),
+  targetUserIds: json("target_user_ids").$type<string[]>(),
   category: text("category").notNull(),
   publishDate: text("publish_date").notNull(),
   expiryDate: text("expiry_date").notNull(),
-  isPinned: integer("is_pinned", { mode: "boolean" }).default(false),
-  isPublished: integer("is_published", { mode: "boolean" }).default(false),
+  isPinned: boolean("is_pinned").default(false),
+  isPublished: boolean("is_published").default(false),
   viewCount: integer("view_count").default(0),
-  isArchived: integer("is_archived", { mode: "boolean" }).default(false),
-  publishedAt: integer("published_at", { mode: "timestamp" }).notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  isArchived: boolean("is_archived").default(false),
+  publishedAt: timestamp("published_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type Announcement = typeof announcements.$inferSelect;
@@ -340,7 +358,7 @@ export type Announcement = typeof announcements.$inferSelect;
 // USER PROGRESS TABLE
 // ============================================================================
 
-export const userProgress = sqliteTable("user_progress", {
+export const userProgress = pgTable("user_progress", {
   id: text("id").primaryKey(),
   studentId: text("student_id").references(() => users.id, { onDelete: "cascade" }),
   type: text("type").notNull(), // "academic" | "career" | "behavioral" | "attendance"
@@ -348,7 +366,7 @@ export const userProgress = sqliteTable("user_progress", {
   metricValue: text("metric_value").notNull(),
   targetValue: text("target_value").notNull(),
   date: text("date").notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
 
 export type UserProgress = typeof userProgress.$inferSelect;
@@ -357,7 +375,7 @@ export type UserProgress = typeof userProgress.$inferSelect;
 // ACHIEVEMENTS TABLE
 // ============================================================================
 
-export const achievements = sqliteTable("achievements", {
+export const achievements = pgTable("achievements", {
   id: text("id").primaryKey(),
   studentId: text("student_id").references(() => users.id, { onDelete: "cascade" }),
   type: text("type").notNull(), // "academic" | "attendance" | "behavioral" | "extracurricular" | "competition" | "certification"
@@ -367,7 +385,7 @@ export const achievements = sqliteTable("achievements", {
   level: text("level").notNull(), // "school" | "class" | "national" | "international"
   certificateUrl: text("certificate_url").notNull(),
   issuer: text("issuer").notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
 
 export type Achievement = typeof achievements.$inferSelect;
@@ -376,14 +394,14 @@ export type Achievement = typeof achievements.$inferSelect;
 // ATTENDANCE RECORDS TABLE
 // ============================================================================
 
-export const attendanceRecords = sqliteTable("attendance_records", {
+export const attendanceRecords = pgTable("attendance_records", {
   id: text("id").primaryKey(),
   studentId: text("student_id").references(() => users.id, { onDelete: "cascade" }),
   date: text("date").notNull(),
   status: text("status").notNull(), // "present" | "absent" | "late" | "excused"
   notes: text("notes").notNull(),
   recordedBy: text("recorded_by").references(() => users.id),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
 
 export type AttendanceRecord = typeof attendanceRecords.$inferSelect;
@@ -392,21 +410,25 @@ export type AttendanceRecord = typeof attendanceRecords.$inferSelect;
 // FEE PAYMENTS TABLE
 // ============================================================================
 
-export const feePayments = sqliteTable("fee_payments", {
+export const feePayments = pgTable("fee_payments", {
   id: text("id").primaryKey(),
   studentFeeId: text("student_fee_id").references(() => studentFees.id, { onDelete: "cascade" }),
   amount: integer("amount").notNull(),
   paidDate: text("paid_date").notNull(),
   method: text("method").notNull(), // "cash" | "online" | "bank" | "waived"
+  paymentMethod: text("payment_method"), // Alias for method - "cash" | "online" | "bank_transfer" | "upi" | "check"
   transactionId: text("transaction_id").notNull(),
   receiptNumber: text("receipt_number").notNull(),
   status: text("status").notNull(), // "pending" | "paid" | "failed"
-  isRecurring: integer("is_recurring", { mode: "boolean" }).default(false),
+  isRecurring: boolean("is_recurring").default(false),
   dueDate: text("due_date").notNull(),
-  paidAt: integer("paid_at", { mode: "timestamp" }).notNull(),
+  paidAt: timestamp("paid_at", { withTimezone: true }).notNull(),
   schoolId: text("school_id").references(() => schools.id),
-  collectedAt: integer("collected_at", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  collectedAt: timestamp("collected_at", { withTimezone: true }),
+  lastPaymentDate: text("last_payment_date"),
+  amountPending: integer("amount_pending"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }),
 });
 
 export type FeePayment = typeof feePayments.$inferSelect;
@@ -415,22 +437,26 @@ export type FeePayment = typeof feePayments.$inferSelect;
 // STUDENT FEES TABLE
 // ============================================================================
 
-export const studentFees = sqliteTable("student_fees", {
+export const studentFees = pgTable("student_fees", {
   id: text("id").primaryKey(),
   studentId: text("student_id").references(() => users.id, { onDelete: "cascade" }),
   feeType: text("fee_type").notNull(), // "tuition" | "library" | "lab" | "transport" | "hostel" | "activity" | "uniform" | "exam" | "other"
   amount: integer("amount").notNull(),
+  totalAmount: integer("total_amount"),
+  amountPaid: integer("amount_paid"),
+  amountWaived: integer("amount_waived"),
+  entryMethod: text("entry_method"), // "cash" | "card" | "bank_transfer" | "online"
   currency: text("currency").notNull(), // "BTN" | "USD" | "INR"
   frequency: text("frequency").notNull(), // "monthly" | "quarterly" | "yearly" | "one-time"
   dueDate: text("due_date").notNull(),
   year: integer("year").notNull(),
   status: text("status").notNull(), // "pending" | "paid" | "waived" | "partial"
-  isRecurring: integer("is_recurring", { mode: "boolean" }).default(false),
+  isRecurring: boolean("is_recurring").default(false),
   description: text("description").notNull(),
   schoolId: text("school_id").references(() => schools.id),
   amountPending: integer("amount_pending"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type StudentFee = typeof studentFees.$inferSelect;
@@ -439,7 +465,7 @@ export type StudentFee = typeof studentFees.$inferSelect;
 // HOMEWORK TABLE
 // ============================================================================
 
-export const homework = sqliteTable("homework", {
+export const homework = pgTable("homework", {
   id: text("id").primaryKey(),
   classId: text("class_id").references(() => classes.id, { onDelete: "cascade" }),
   subjectId: text("subject_id").references(() => subjects.id),
@@ -449,10 +475,27 @@ export const homework = sqliteTable("homework", {
   assignedDate: text("assigned_date").notNull(),
   totalPoints: integer("total_points").notNull(),
   passingScore: integer("passing_score").notNull(),
-  isPublished: integer("is_published", { mode: "boolean" }).default(false),
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  questions: json("questions").$type<Array<{
+    id: string;
+    type: string;
+    text: string;
+    options?: string[];
+    correctAnswer?: string | string[];
+    points: number;
+  }>>(),
+  attachments: json("attachments").$type<Array<{
+    id: string;
+    name: string;
+    type: string;
+    url: string;
+  }>>(),
+  authorId: text("author_id").references(() => users.id),
+  authorName: text("author_name"),
+  authorRole: text("author_role"), // "teacher" | "school_admin"
+  isPublished: boolean("is_published").default(false),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type Homework = typeof homework.$inferSelect;
@@ -461,19 +504,19 @@ export type Homework = typeof homework.$inferSelect;
 // HOMEWORK SUBMISSIONS TABLE
 // ============================================================================
 
-export const homeworkSubmissions = sqliteTable("homework_submissions", {
+export const homeworkSubmissions = pgTable("homework_submissions", {
   id: text("id").primaryKey(),
   homeworkId: text("homework_id").references(() => homework.id, { onDelete: "cascade" }),
   studentId: text("student_id").references(() => users.id, { onDelete: "cascade" }),
-  submittedAt: integer("submitted_at", { mode: "timestamp" }).notNull(),
-  content: text("content", { mode: "json" }).$type<any>(),
-  gradedAt: integer("graded_at", { mode: "timestamp" }).notNull(),
+  submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull(),
+  content: json("content").$type<any>(),
+  gradedAt: timestamp("graded_at", { withTimezone: true }).notNull(),
   score: integer("score").notNull(),
   feedback: text("feedback").notNull(),
   status: text("status").notNull(), // "submitted" | "graded" | "returned"
-  isLate: integer("is_late", { mode: "boolean" }).default(false),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  isLate: boolean("is_late").default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type HomeworkSubmission = typeof homeworkSubmissions.$inferSelect;
@@ -482,17 +525,17 @@ export type HomeworkSubmission = typeof homeworkSubmissions.$inferSelect;
 // CLASS SUBJECTS TABLE
 // ============================================================================
 
-export const classSubjects = sqliteTable("class_subjects", {
+export const classSubjects = pgTable("class_subjects", {
   id: text("id").primaryKey(),
   classId: text("class_id").references(() => classes.id, { onDelete: "cascade" }),
   subjectId: text("subject_id").references(() => subjects.id),
   teacherId: text("teacher_id").references(() => users.id),
   periodsPerWeek: integer("periods_per_week").notNull(),
-  isCoreSubject: integer("is_core_subject", { mode: "boolean" }).default(true),
+  isCoreSubject: boolean("is_core_subject").default(true),
   roomId: text("room_id").references(() => rooms.id),
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type ClassSubject = typeof classSubjects.$inferSelect;
@@ -501,23 +544,23 @@ export type ClassSubject = typeof classSubjects.$inferSelect;
 // TIMETABLE ENTRIES TABLE
 // ============================================================================
 
-export const timetableEntries = sqliteTable("timetable_entries", {
+export const timetableEntries = pgTable("timetable_entries", {
   id: text("id").primaryKey(),
   classId: text("class_id").references(() => classes.id, { onDelete: "cascade" }),
   subjectId: text("subject_id").references(() => subjects.id),
   teacherId: text("teacher_id").references(() => users.id),
-  teacherName: text("teacher_name", { mode: "json" }).notNull(),
+  teacherName: json("teacher_name").notNull(),
   roomId: text("room_id").references(() => rooms.id),
-  roomName: text("room_name", { mode: "json" }).notNull(),
+  roomName: json("room_name").notNull(),
   periodId: text("period_id").references(() => timePeriods.id),
   periodName: text("period_name").notNull(),
   dayOfWeek: text("day_of_week").notNull(),
   startTime: text("start_time").notNull(),
   endTime: text("end_time").notNull(),
-  isDoublePeriod: integer("is_double_period", { mode: "boolean" }).default(false),
+  isDoublePeriod: boolean("is_double_period").default(false),
   notes: text("notes").notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type TimetableEntry = typeof timetableEntries.$inferSelect;
@@ -526,7 +569,7 @@ export type TimetableEntry = typeof timetableEntries.$inferSelect;
 // TIME PERIODS TABLE
 // ============================================================================
 
-export const timePeriods = sqliteTable("time_periods", {
+export const timePeriods = pgTable("time_periods", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
@@ -535,10 +578,10 @@ export const timePeriods = sqliteTable("time_periods", {
   endTime: text("end_time").notNull(),
   duration: integer("duration").notNull(), // in minutes
   order: integer("order").notNull(),
-  isBreak: integer("is_break", { mode: "boolean" }).default(false),
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  isBreak: boolean("is_break").default(false),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type TimePeriod = typeof timePeriods.$inferSelect;
@@ -547,7 +590,7 @@ export type TimePeriod = typeof timePeriods.$inferSelect;
 // ROOMS TABLE
 // ============================================================================
 
-export const rooms = sqliteTable("rooms", {
+export const rooms = pgTable("rooms", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
@@ -556,15 +599,15 @@ export const rooms = sqliteTable("rooms", {
   capacity: integer("capacity").notNull(),
   floor: integer("floor").notNull(),
   building: text("building").notNull(),
-  hasProjector: integer("has_projector", { mode: "boolean" }).default(false),
-  hasComputers: integer("has_computers", { mode: "boolean" }).default(false),
-  hasSmartBoard: integer("has_smart_board", { mode: "boolean" }).default(false),
-  hasWhiteboard: integer("has_whiteboard", { mode: "boolean" }).default(false),
-  hasAc: integer("has_ac", { mode: "boolean" }).default(false),
-  facilities: text("facilities", { mode: "json" }).$type<string[]>(),
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  hasProjector: boolean("has_projector").default(false),
+  hasComputers: boolean("has_computers").default(false),
+  hasSmartBoard: boolean("has_smart_board").default(false),
+  hasWhiteboard: boolean("has_whiteboard").default(false),
+  hasAc: boolean("has_ac").default(false),
+  facilities: json("facilities").$type<string[]>(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type Room = typeof rooms.$inferSelect;
@@ -573,7 +616,7 @@ export type Room = typeof rooms.$inferSelect;
 // PARTNERS TABLE
 // ============================================================================
 
-export const partners = sqliteTable("partners", {
+export const partners = pgTable("partners", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
@@ -586,8 +629,8 @@ export const partners = sqliteTable("partners", {
   status: text("status").notNull().default("active"),
   workshopsConducted: integer("workshops_conducted").default(0),
   studentsPlaced: integer("students_placed").default(0),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type Partner = typeof partners.$inferSelect;
@@ -596,7 +639,7 @@ export type Partner = typeof partners.$inferSelect;
 // COUNSELOR RESOURCES TABLE
 // ============================================================================
 
-export const counselorResources = sqliteTable("counselor_resources", {
+export const counselorResources = pgTable("counselor_resources", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").references(() => schools.id),
   title: text("title").notNull(),
@@ -604,16 +647,16 @@ export const counselorResources = sqliteTable("counselor_resources", {
   type: text("type").notNull(),
   category: text("category").notNull(),
   url: text("url").notNull(),
-  content: text("content", { mode: "json" }).$type<any>(),
-  tags: text("tags", { mode: "json" }).$type<string[]>(),
+  content: json("content").$type<any>(),
+  tags: json("tags").$type<string[]>(),
   targetAudience: text("target_audience").notNull(),
-  isPublic: integer("is_public", { mode: "boolean" }).default(false),
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  isPublic: boolean("is_public").default(false),
+  isActive: boolean("is_active").default(true),
   viewCount: integer("view_count").default(0),
   downloadCount: integer("download_count").default(0),
   createdBy: text("created_by").references(() => users.id),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type CounselorResource = typeof counselorResources.$inferSelect;
@@ -622,7 +665,7 @@ export type CounselorResource = typeof counselorResources.$inferSelect;
 // ENROLLMENTS TABLE
 // ============================================================================
 
-export const enrollments = sqliteTable("enrollments", {
+export const enrollments = pgTable("enrollments", {
   id: text("id").primaryKey(),
   studentId: text("student_id").references(() => users.id, { onDelete: "cascade" }),
   classId: text("class_id").references(() => classes.id, { onDelete: "cascade" }),
@@ -631,8 +674,8 @@ export const enrollments = sqliteTable("enrollments", {
   status: text("status").notNull(), // "active" | "withdrawn" | "completed" | "transferred"
   rollNumber: text("roll_number"),
   section: text("section"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type Enrollment = typeof enrollments.$inferSelect;
@@ -641,17 +684,17 @@ export type Enrollment = typeof enrollments.$inferSelect;
 // TEACHER ASSIGNMENTS TABLE
 // ============================================================================
 
-export const teacherAssignments = sqliteTable("teacher_assignments", {
+export const teacherAssignments = pgTable("teacher_assignments", {
   id: text("id").primaryKey(),
   teacherId: text("teacher_id").references(() => users.id, { onDelete: "cascade" }),
   classId: text("class_id").references(() => classes.id, { onDelete: "cascade" }),
   subjectId: text("subject_id").references(() => subjects.id),
   academicYear: text("academic_year").notNull(),
   role: text("role").notNull(), // "homeroom" | "subject_teacher" | "both"
-  isPrimary: integer("is_primary", { mode: "boolean" }).default(false),
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  isPrimary: boolean("is_primary").default(false),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type TeacherAssignment = typeof teacherAssignments.$inferSelect;
@@ -660,16 +703,16 @@ export type TeacherAssignment = typeof teacherAssignments.$inferSelect;
 // COUNSELOR ASSIGNMENTS TABLE
 // ============================================================================
 
-export const counselorAssignments = sqliteTable("counselor_assignments", {
+export const counselorAssignments = pgTable("counselor_assignments", {
   id: text("id").primaryKey(),
   counselorId: text("counselor_id").references(() => users.id, { onDelete: "cascade" }),
   schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }),
-  assignedClasses: text("assigned_classes", { mode: "json" }).$type<string[]>(),
-  assignedGrades: text("assigned_grades", { mode: "json" }).$type<number[]>(),
+  assignedClasses: json("assigned_classes").$type<string[]>(),
+  assignedGrades: json("assigned_grades").$type<number[]>(),
   academicYear: text("academic_year").notNull(),
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type CounselorAssignment = typeof counselorAssignments.$inferSelect;
@@ -678,7 +721,7 @@ export type CounselorAssignment = typeof counselorAssignments.$inferSelect;
 // FEE STRUCTURES TABLE
 // ============================================================================
 
-export const feeStructures = sqliteTable("fee_structures", {
+export const feeStructures = pgTable("fee_structures", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
@@ -686,16 +729,16 @@ export const feeStructures = sqliteTable("fee_structures", {
   academicYear: text("academic_year").notNull(),
   grade: integer("grade").notNull(),
   totalFees: integer("total_fees").notNull(),
-  breakdown: text("breakdown", { mode: "json" }).$type<Array<{
+  breakdown: json("breakdown").$type<Array<{
     feeType: string;
     amount: number;
     frequency: string;
   }>>(),
-  isRecurring: integer("is_recurring", { mode: "boolean" }).default(false),
+  isRecurring: boolean("is_recurring").default(false),
   currency: text("currency").notNull().default("BTN"),
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type FeeStructure = typeof feeStructures.$inferSelect;
@@ -704,15 +747,15 @@ export type FeeStructure = typeof feeStructures.$inferSelect;
 // DISTRICTS TABLE
 // ============================================================================
 
-export const districts = sqliteTable("districts", {
+export const districts = pgTable("districts", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   code: text("code").unique().notNull(),
   dzongkhag: text("dzongkhag").notNull(),
   country: text("country").notNull().default("Bhutan"),
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type District = typeof districts.$inferSelect;
@@ -721,7 +764,7 @@ export type District = typeof districts.$inferSelect;
 // TENANTS TABLE
 // ============================================================================
 
-export const tenants = sqliteTable("tenants", {
+export const tenants = pgTable("tenants", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   slug: text("slug").unique().notNull(),
@@ -729,10 +772,10 @@ export const tenants = sqliteTable("tenants", {
   logo: text("logo").notNull(),
   primaryColor: text("primary_color").notNull(),
   secondaryColor: text("secondary_color").notNull(),
-  settings: text("settings", { mode: "json" }).$type<Record<string, any>>(),
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  settings: json("settings").$type<Record<string, any>>(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type Tenant = typeof tenants.$inferSelect;
@@ -741,7 +784,7 @@ export type Tenant = typeof tenants.$inferSelect;
 // EXAM RESULTS ENHANCED TABLE
 // ============================================================================
 
-export const examResultsEnhanced = sqliteTable("exam_results_enhanced", {
+export const examResultsEnhanced = pgTable("exam_results_enhanced", {
   id: text("id").primaryKey(),
   studentId: text("student_id").references(() => users.id, { onDelete: "cascade" }),
   userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
@@ -751,7 +794,7 @@ export const examResultsEnhanced = sqliteTable("exam_results_enhanced", {
   term: text("term").notNull(),
   examDate: text("exam_date").notNull(),
   examYear: integer("exam_year"),
-  subjects: text("subjects", { mode: "json" }).$type<Array<{
+  subjects: json("subjects").$type<Array<{
     subjectId: string;
     subjectName: string;
     marksObtained: number;
@@ -759,15 +802,28 @@ export const examResultsEnhanced = sqliteTable("exam_results_enhanced", {
     grade: string;
     percentage: number;
   }>>(),
+  subjectResults: json("subject_results").$type<Array<{
+    subjectId: string;
+    subjectName: string;
+    marksObtained: number;
+    maxMarks: number;
+    grade: string;
+    percentage: number;
+  }>>(),
+  overallPercentage: integer("overall_percentage"),
   totalMarks: integer("total_marks").notNull(),
   maxTotalMarks: integer("max_total_marks").notNull(),
+  totalMaxMarks: integer("total_max_marks"),
+  totalMarksObtained: integer("total_marks_obtained"),
   percentage: integer("percentage").notNull(),
   grade: text("grade").notNull(),
   rank: integer("rank"),
   classRank: integer("class_rank"),
   remarks: text("remarks"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  division: text("division"),
+  traits: json("traits").$type<string[]>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type ExamResultEnhanced = typeof examResultsEnhanced.$inferSelect;
@@ -776,17 +832,17 @@ export type ExamResultEnhanced = typeof examResultsEnhanced.$inferSelect;
 // ACADEMIC TERMS TABLE
 // ============================================================================
 
-export const academicTerms = sqliteTable("academic_terms", {
+export const academicTerms = pgTable("academic_terms", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   academicYear: text("academic_year").notNull(),
   startDate: text("start_date").notNull(),
   endDate: text("end_date").notNull(),
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
-  isCurrent: integer("is_current", { mode: "boolean" }).default(false),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  isActive: boolean("is_active").default(true),
+  isCurrent: boolean("is_current").default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type AcademicTerm = typeof academicTerms.$inferSelect;
@@ -795,17 +851,18 @@ export type AcademicTerm = typeof academicTerms.$inferSelect;
 // ATTENDANCE (simplified alias) TABLE
 // ============================================================================
 
-export const attendance = sqliteTable("attendance", {
+export const attendance = pgTable("attendance", {
   id: text("id").primaryKey(),
   studentId: text("student_id").references(() => users.id, { onDelete: "cascade" }),
   classId: text("class_id").references(() => classes.id, { onDelete: "cascade" }),
   schoolId: text("school_id").references(() => schools.id),
   date: text("date").notNull(),
+  checkInTime: text("check_in_time"), // Time when attendance was recorded
   status: text("status").notNull(), // "present" | "absent" | "late" | "excused"
   recordedBy: text("recorded_by").references(() => users.id),
   notes: text("notes"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type Attendance = typeof attendance.$inferSelect;
@@ -814,7 +871,7 @@ export type Attendance = typeof attendance.$inferSelect;
 // CAREER MATCHES TABLE
 // ============================================================================
 
-export const careerMatches = sqliteTable("career_matches", {
+export const careerMatches = pgTable("career_matches", {
   id: text("id").primaryKey(),
   studentId: text("student_id").references(() => users.id, { onDelete: "cascade" }),
   careerId: text("career_id").notNull(),
@@ -822,10 +879,10 @@ export const careerMatches = sqliteTable("career_matches", {
   matchScore: integer("match_score").notNull(),
   matchReason: text("match_reason").notNull(),
   recommendationText: text("recommendation_text"),
-  isTopMatch: integer("is_top_match", { mode: "boolean" }).default(false),
+  isTopMatch: boolean("is_top_match").default(false),
   assessmentType: text("assessment_type").notNull(), // "riasec" | "mbti" | "work_values"
   assessmentId: text("assessment_id"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
 
 export type CareerMatch = typeof careerMatches.$inferSelect;
@@ -834,19 +891,19 @@ export type CareerMatch = typeof careerMatches.$inferSelect;
 // CAREER PLANS TABLE
 // ============================================================================
 
-export const careerPlans = sqliteTable("career_plans", {
+export const careerPlans = pgTable("career_plans", {
   id: text("id").primaryKey(),
   studentId: text("student_id").references(() => users.id, { onDelete: "cascade" }).unique(),
   userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
   targetCareer: text("target_career").notNull(),
   targetCareerId: text("target_career_id").notNull(),
-  shortTermGoals: text("short_term_goals", { mode: "json" }).$type<string[]>(),
-  longTermGoals: text("long_term_goals", { mode: "json" }).$type<string[]>(),
-  subjects: text("subjects", { mode: "json" }).$type<Array<{
+  shortTermGoals: json("short_term_goals").$type<string[]>(),
+  longTermGoals: json("long_term_goals").$type<string[]>(),
+  subjects: json("subjects").$type<Array<{
     subject: string;
     importance: string;
   }>>(),
-  milestones: text("milestones", { mode: "json" }).$type<Array<{
+  milestones: json("milestones").$type<Array<{
     title: string;
     deadline: string;
     completed: boolean;
@@ -854,8 +911,8 @@ export const careerPlans = sqliteTable("career_plans", {
   notes: text("notes"),
   counselorNotes: text("counselor_notes"),
   status: text("status").notNull().default("active"), // "active" | "achieved" | "changed"
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type CareerPlan = typeof careerPlans.$inferSelect;
@@ -864,10 +921,10 @@ export type CareerPlan = typeof careerPlans.$inferSelect;
 // RIASEC RESULTS TABLE
 // ============================================================================
 
-export const riasecResults = sqliteTable("riasec_results", {
+export const riasecResults = pgTable("riasec_results", {
   id: text("id").primaryKey(),
   userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
-  scores: text("scores", { mode: "json" }).$type<{
+  scores: json("scores").$type<{
     realistic: number;
     investigative: number;
     artistic: number;
@@ -878,9 +935,9 @@ export const riasecResults = sqliteTable("riasec_results", {
   primaryHollandCode: text("primary_holland_code").notNull(),
   secondaryHollandCode: text("secondary_holland_code").notNull(),
   hollandCode: text("holland_code"), // The 3-letter RIASEC code
-  recommendedCareers: text("recommended_careers", { mode: "json" }).$type<string[]>().notNull(),
-  completedAt: integer("completed_at", { mode: "timestamp" }).notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  recommendedCareers: json("recommended_careers").$type<string[]>().notNull(),
+  completedAt: timestamp("completed_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
 
 export type RiasecResult = typeof riasecResults.$inferSelect;
@@ -889,11 +946,11 @@ export type RiasecResult = typeof riasecResults.$inferSelect;
 // MBTI RESULTS TABLE
 // ============================================================================
 
-export const mbtiResults = sqliteTable("mbti_results", {
+export const mbtiResults = pgTable("mbti_results", {
   id: text("id").primaryKey(),
   userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
   personalityType: text("personality_type").notNull(), // "INTJ", "ENFP", etc.
-  scores: text("scores", { mode: "json" }).$type<{
+  scores: json("scores").$type<{
     e: number;
     i: number;
     s: number;
@@ -904,11 +961,11 @@ export const mbtiResults = sqliteTable("mbti_results", {
     p: number;
   }>().notNull(),
   description: text("description").notNull(),
-  strengths: text("strengths", { mode: "json" }).$type<string[]>().notNull(),
-  weaknesses: text("weaknesses", { mode: "json" }).$type<string[]>().notNull(),
-  recommendedCareers: text("recommended_careers", { mode: "json" }).$type<string[]>().notNull(),
-  completedAt: integer("completed_at", { mode: "timestamp" }).notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  strengths: json("strengths").$type<string[]>().notNull(),
+  weaknesses: json("weaknesses").$type<string[]>().notNull(),
+  recommendedCareers: json("recommended_careers").$type<string[]>().notNull(),
+  completedAt: timestamp("completed_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
 
 export type MBTIResult = typeof mbtiResults.$inferSelect;
@@ -917,22 +974,22 @@ export type MBTIResult = typeof mbtiResults.$inferSelect;
 // DISC RESULTS TABLE
 // ============================================================================
 
-export const discResults = sqliteTable("disc_results", {
+export const discResults = pgTable("disc_results", {
   id: text("id").primaryKey(),
   userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
   dominantStyle: text("dominant_style").notNull(), // "D" | "I" | "S" | "C"
-  scores: text("scores", { mode: "json" }).$type<{
+  scores: json("scores").$type<{
     d: number;
     i: number;
     s: number;
     c: number;
   }>().notNull(),
   description: text("description").notNull(),
-  strengths: text("strengths", { mode: "json" }).$type<string[]>().notNull(),
-  weaknesses: text("weaknesses", { mode: "json" }).$type<string[]>().notNull(),
-  recommendedCareers: text("recommended_careers", { mode: "json" }).$type<string[]>().notNull(),
-  completedAt: integer("completed_at", { mode: "timestamp" }).notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  strengths: json("strengths").$type<string[]>().notNull(),
+  weaknesses: json("weaknesses").$type<string[]>().notNull(),
+  recommendedCareers: json("recommended_careers").$type<string[]>().notNull(),
+  completedAt: timestamp("completed_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
 
 export type DiscResult = typeof discResults.$inferSelect;
@@ -941,17 +998,17 @@ export type DiscResult = typeof discResults.$inferSelect;
 // WORK VALUES RESULTS TABLE
 // ============================================================================
 
-export const workValuesResults = sqliteTable("work_values_results", {
+export const workValuesResults = pgTable("work_values_results", {
   id: text("id").primaryKey(),
   userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
-  topValues: text("top_values", { mode: "json" }).$type<Array<{
+  topValues: json("top_values").$type<Array<{
     value: string;
     score: number;
   }>>().notNull(),
   description: text("description").notNull(),
-  recommendedCareers: text("recommended_careers", { mode: "json" }).$type<string[]>().notNull(),
-  completedAt: integer("completed_at", { mode: "timestamp" }).notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  recommendedCareers: json("recommended_careers").$type<string[]>().notNull(),
+  completedAt: timestamp("completed_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
 
 export type WorkValuesResult = typeof workValuesResults.$inferSelect;
@@ -960,16 +1017,16 @@ export type WorkValuesResult = typeof workValuesResults.$inferSelect;
 // LEARNING STYLES RESULTS TABLE
 // ============================================================================
 
-export const learningStylesResults = sqliteTable("learning_styles_results", {
+export const learningStylesResults = pgTable("learning_styles_results", {
   id: text("id").primaryKey(),
   userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
   visualScore: integer("visual_score").notNull(),
   auditoryScore: integer("auditory_score").notNull(),
   kinestheticScore: integer("kinesthetic_score").notNull(),
   dominantStyle: text("dominant_style").notNull(), // "visual" | "auditory" | "kinesthetic"
-  recommendations: text("recommendations", { mode: "json" }).$type<string[]>().notNull(),
-  completedAt: integer("completed_at", { mode: "timestamp" }).notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  recommendations: json("recommendations").$type<string[]>().notNull(),
+  completedAt: timestamp("completed_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
 
 export type LearningStylesResult = typeof learningStylesResults.$inferSelect;
@@ -978,7 +1035,7 @@ export type LearningStylesResult = typeof learningStylesResults.$inferSelect;
 // LEARNING MODULES TABLE
 // ============================================================================
 
-export const learningModules = sqliteTable("learning_modules", {
+export const learningModules = pgTable("learning_modules", {
   id: text("id").primaryKey(),
   title: text("title").notNull(),
   description: text("description").notNull(),
@@ -988,18 +1045,18 @@ export const learningModules = sqliteTable("learning_modules", {
   category: text("category").notNull(), // "subject" | "skill" | "exam_prep" | "career"
   level: text("level").notNull(), // "beginner" | "intermediate" | "advanced"
   duration: integer("duration").notNull(), // in minutes
-  content: text("content", { mode: "json" }).$type<any>(),
+  content: json("content").$type<any>(),
   thumbnail: text("thumbnail").notNull(),
-  isPublic: integer("is_public", { mode: "boolean" }).default(false),
-  isPremium: integer("is_premium", { mode: "boolean" }).default(false),
-  isPublished: integer("is_published", { mode: "boolean" }).default(false),
+  isPublic: boolean("is_public").default(false),
+  isPremium: boolean("is_premium").default(false),
+  isPublished: boolean("is_published").default(false),
   price: integer("price").default(0),
-  tags: text("tags", { mode: "json" }).$type<string[]>(),
-  objectives: text("objectives", { mode: "json" }).$type<string[]>(),
-  prerequisites: text("prerequisites", { mode: "json" }).$type<string[]>(),
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  tags: json("tags").$type<string[]>(),
+  objectives: json("objectives").$type<string[]>(),
+  prerequisites: json("prerequisites").$type<string[]>(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type LearningModule = typeof learningModules.$inferSelect;
@@ -1008,20 +1065,21 @@ export type LearningModule = typeof learningModules.$inferSelect;
 // MODULE PROGRESS TABLE
 // ============================================================================
 
-export const moduleProgress = sqliteTable("module_progress", {
+export const moduleProgress = pgTable("module_progress", {
   id: text("id").primaryKey(),
   studentId: text("student_id").references(() => users.id, { onDelete: "cascade" }),
   moduleId: text("module_id").references(() => learningModules.id, { onDelete: "cascade" }),
   status: text("status").notNull(), // "not_started" | "in_progress" | "completed"
+  isCompleted: boolean("is_completed"), // Computed field for easier queries
   progress: integer("progress").notNull(), // 0-100
-  completedLessons: text("completed_lessons", { mode: "json" }).$type<string[]>(),
+  completedLessons: json("completed_lessons").$type<string[]>(),
   currentLesson: text("current_lesson"),
   timeSpent: integer("time_spent").notNull(), // in seconds
-  lastAccessedAt: integer("last_accessed_at", { mode: "timestamp" }).notNull(),
-  completedAt: integer("completed_at", { mode: "timestamp" }),
+  lastAccessedAt: timestamp("last_accessed_at", { withTimezone: true }).notNull(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
   certificateUrl: text("certificate_url"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type ModuleProgress = typeof moduleProgress.$inferSelect;
@@ -1030,7 +1088,7 @@ export type ModuleProgress = typeof moduleProgress.$inferSelect;
 // TUITION COURSES TABLE
 // ============================================================================
 
-export const tuitionCourses = sqliteTable("tuition_courses", {
+export const tuitionCourses = pgTable("tuition_courses", {
   id: text("id").primaryKey(),
   tutorId: text("tutor_id").references(() => users.id, { onDelete: "cascade" }),
   subjectId: text("subject_id").references(() => subjects.id),
@@ -1044,21 +1102,24 @@ export const tuitionCourses = sqliteTable("tuition_courses", {
   currency: text("currency").notNull().default("BTN"),
   maxStudents: integer("max_students").notNull(),
   currentStudents: integer("current_students").default(0),
-  schedule: text("schedule", { mode: "json" }).$type<Array<{
+  maxEnrollments: integer("max_enrollments"),
+  schedule: json("schedule").$type<Array<{
     day: string;
     startTime: string;
     endTime: string;
   }>>(),
   mode: text("mode").notNull(), // "online" | "in_person" | "hybrid"
   location: text("location"),
+  schoolId: text("school_id"),
   meetingLink: text("meeting_link"),
   thumbnail: text("thumbnail").notNull(),
-  tags: text("tags", { mode: "json" }).$type<string[]>(),
-  requirements: text("requirements", { mode: "json" }).$type<string[]>(),
+  tags: json("tags").$type<string[]>(),
+  requirements: json("requirements").$type<string[]>(),
+  prerequisites: json("prerequisites").$type<string[]>(),
   status: text("status"), // "draft" | "published" | "archived"
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type TuitionCourse = typeof tuitionCourses.$inferSelect;
@@ -1067,24 +1128,24 @@ export type TuitionCourse = typeof tuitionCourses.$inferSelect;
 // TUITION ENROLLMENTS TABLE
 // ============================================================================
 
-export const tuitionEnrollments = sqliteTable("tuition_enrollments", {
+export const tuitionEnrollments = pgTable("tuition_enrollments", {
   id: text("id").primaryKey(),
   courseId: text("course_id").references(() => tuitionCourses.id, { onDelete: "cascade" }),
   studentId: text("student_id").references(() => users.id, { onDelete: "cascade" }),
   tutorId: text("tutor_id").references(() => users.id, { onDelete: "cascade" }),
   status: text("status").notNull(), // "active" | "completed" | "cancelled" | "suspended"
   enrollmentDate: text("enrollment_date").notNull(),
-  enrolledAt: integer("enrolled_at", { mode: "timestamp" }),
+  enrolledAt: timestamp("enrolled_at", { withTimezone: true }),
   completionDate: text("completion_date"),
-  completedAt: integer("completed_at", { mode: "timestamp" }),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
   sessionsCompleted: integer("sessions_completed").default(0),
   totalPaid: integer("total_paid").default(0),
   tutorEarnings: integer("tutor_earnings"),
   notes: text("notes"),
   rating: integer("rating"), // 1-5
   review: text("review"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type TuitionEnrollment = typeof tuitionEnrollments.$inferSelect;
@@ -1093,24 +1154,25 @@ export type TuitionEnrollment = typeof tuitionEnrollments.$inferSelect;
 // TUTORS TABLE
 // ============================================================================
 
-export const tutors = sqliteTable("tutors", {
+export const tutors = pgTable("tutors", {
   id: text("id").primaryKey(),
   userId: text("user_id").references(() => users.id, { onDelete: "cascade" }).unique(),
   bio: text("bio").notNull(),
-  subjects: text("subjects", { mode: "json" }).$type<Array<{
+  subjects: json("subjects").$type<Array<{
     subjectId: string;
     subjectName: string;
     proficiency: string; // "beginner" | "intermediate" | "expert"
   }>>().notNull(),
-  qualifications: text("qualifications", { mode: "json" }).$type<Array<{
+  qualifications: json("qualifications").$type<Array<{
     degree: string;
     institution: string;
     year: number;
   }>>().notNull(),
   experience: integer("experience").notNull(), // in years
   hourlyRate: integer("hourly_rate").notNull(),
+  hourlyRateOnline: integer("hourly_rate_online"), // Online session rate
   currency: text("currency").notNull().default("BTN"),
-  availability: text("availability", { mode: "json" }).$type<Array<{
+  availability: json("availability").$type<Array<{
     day: string;
     slots: Array<{
       start: string;
@@ -1119,14 +1181,16 @@ export const tutors = sqliteTable("tutors", {
   }>>(),
   teachingMode: text("teaching_mode").notNull(), // "online" | "in_person" | "both"
   location: text("location"),
+  district: text("district"),
+  department: text("department"),
   averageRating: integer("average_rating"), // 0-500 (5.00 * 100)
   totalReviews: integer("total_reviews").default(0),
   totalStudents: integer("total_students").default(0),
-  isVerified: integer("is_verified", { mode: "boolean" }).default(false),
+  isVerified: boolean("is_verified").default(false),
   verificationDocument: text("verification_document"),
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type Tutor = typeof tutors.$inferSelect;
@@ -1135,19 +1199,21 @@ export type Tutor = typeof tutors.$inferSelect;
 // TUTOR EARNINGS TABLE
 // ============================================================================
 
-export const tutorEarnings = sqliteTable("tutor_earnings", {
+export const tutorEarnings = pgTable("tutor_earnings", {
   id: text("id").primaryKey(),
   tutorId: text("tutor_id").references(() => users.id, { onDelete: "cascade" }),
   enrollmentId: text("enrollment_id").references(() => tuitionEnrollments.id),
   amount: integer("amount").notNull(),
+  netAmount: integer("net_amount"), // Alias for amount - commission/refund adjusted
   currency: text("currency").notNull().default("BTN"),
   type: text("type").notNull(), // "session" | "bonus" | "refund" | "commission"
   status: text("status").notNull(), // "pending" | "available" | "withdrawn"
   payoutStatus: text("payout_status"), // "pending" | "processing" | "paid"
   sessionDate: text("session_date").notNull(),
-  earnedAt: integer("earned_at", { mode: "timestamp" }),
-  withdrawnAt: integer("withdrawn_at", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  earnedAt: timestamp("earned_at", { withTimezone: true }),
+  withdrawnAt: timestamp("withdrawn_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }),
 });
 
 export type TutorEarning = typeof tutorEarnings.$inferSelect;
@@ -1156,25 +1222,27 @@ export type TutorEarning = typeof tutorEarnings.$inferSelect;
 // LIVE SESSIONS TABLE
 // ============================================================================
 
-export const liveSessions = sqliteTable("live_sessions", {
+export const liveSessions = pgTable("live_sessions", {
   id: text("id").primaryKey(),
   courseId: text("course_id").references(() => tuitionCourses.id, { onDelete: "cascade" }),
   tutorId: text("tutor_id").references(() => users.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   description: text("description").notNull(),
   scheduledStart: text("scheduled_start").notNull(),
+  startTime: text("start_time"), // Alias for scheduledStart
   scheduledEnd: text("scheduled_end").notNull(),
-  actualStart: integer("actual_start", { mode: "timestamp" }),
-  actualEnd: integer("actual_end", { mode: "timestamp" }),
+  actualStart: timestamp("actual_start", { withTimezone: true }),
+  actualEnd: timestamp("actual_end", { withTimezone: true }),
   meetingLink: text("meeting_link"),
   meetingId: text("meeting_id"),
   recordingUrl: text("recording_url"),
   status: text("status").notNull(), // "scheduled" | "live" | "completed" | "cancelled"
   participants: integer("participants").default(0),
   maxParticipants: integer("maxparticipants"),
+  currentParticipants: integer("current_participants"),
   notes: text("notes"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type LiveSession = typeof liveSessions.$inferSelect;
@@ -1183,7 +1251,7 @@ export type LiveSession = typeof liveSessions.$inferSelect;
 // TUTOR REVIEWS TABLE
 // ============================================================================
 
-export const tutorReviews = sqliteTable("tutor_reviews", {
+export const tutorReviews = pgTable("tutor_reviews", {
   id: text("id").primaryKey(),
   tutorId: text("tutor_id").references(() => users.id, { onDelete: "cascade" }),
   studentId: text("student_id").references(() => users.id, { onDelete: "cascade" }),
@@ -1191,10 +1259,10 @@ export const tutorReviews = sqliteTable("tutor_reviews", {
   rating: integer("rating").notNull(), // 1-5
   review: text("review").notNull(),
   response: text("response"),
-  isVerified: integer("is_verified", { mode: "boolean" }).default(false),
-  isPublic: integer("is_public", { mode: "boolean" }).default(true),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  isVerified: boolean("is_verified").default(false),
+  isPublic: boolean("is_public").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type TutorReview = typeof tutorReviews.$inferSelect;
@@ -1203,7 +1271,7 @@ export type TutorReview = typeof tutorReviews.$inferSelect;
 // LEAVE REQUESTS TABLE
 // ============================================================================
 
-export const leaveRequests = sqliteTable("leave_requests", {
+export const leaveRequests = pgTable("leave_requests", {
   id: text("id").primaryKey(),
   studentId: text("student_id").references(() => users.id, { onDelete: "cascade" }),
   schoolId: text("school_id").references(() => schools.id),
@@ -1215,11 +1283,13 @@ export const leaveRequests = sqliteTable("leave_requests", {
   reason: text("reason").notNull(),
   status: text("status").notNull(), // "pending" | "approved" | "rejected" | "cancelled"
   approvedBy: text("approved_by").references(() => users.id),
-  approvedAt: integer("approved_at", { mode: "timestamp" }),
+  substituteTeacherId: text("substitute_teacher_id").references(() => users.id), // Teacher covering during leave
+  leaveHandoverNotes: text("leave_handover_notes"), // Notes for handover before leaving
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
   rejectionReason: text("rejection_reason"),
-  documents: text("documents", { mode: "json" }).$type<string[]>(),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  documents: json("documents").$type<string[]>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type LeaveRequest = typeof leaveRequests.$inferSelect;
@@ -1228,7 +1298,7 @@ export type LeaveRequest = typeof leaveRequests.$inferSelect;
 // VEHICLES TABLE
 // ============================================================================
 
-export const vehicles = sqliteTable("vehicles", {
+export const vehicles = pgTable("vehicles", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }),
   routeId: text("route_id").notNull(),
@@ -1241,13 +1311,13 @@ export const vehicles = sqliteTable("vehicles", {
   conductorName: text("conductor_name"),
   conductorPhone: text("conductor_phone"),
   status: text("status").notNull(), // "active" | "maintenance" | "inactive"
-  gpsEnabled: integer("gps_enabled", { mode: "boolean" }).default(true),
+  gpsEnabled: boolean("gps_enabled").default(true),
   trackingDeviceId: text("tracking_device_id"),
   insuranceExpiry: text("insurance_expiry"),
   pollutionExpiry: text("pollution_expiry"),
   fitnessExpiry: text("fitness_expiry"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type Vehicle = typeof vehicles.$inferSelect;
@@ -1256,14 +1326,14 @@ export type Vehicle = typeof vehicles.$inferSelect;
 // TRANSPORT ROUTES TABLE
 // ============================================================================
 
-export const transportRoutes = sqliteTable("transport_routes", {
+export const transportRoutes = pgTable("transport_routes", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   routeNumber: text("route_number").unique().notNull(),
   startLocation: text("start_location").notNull(),
   endLocation: text("end_location").notNull(),
-  stops: text("stops", { mode: "json" }).$type<Array<{
+  stops: json("stops").$type<Array<{
     name: string;
     location: { lat: string; lng: string };
     time: string;
@@ -1271,9 +1341,9 @@ export const transportRoutes = sqliteTable("transport_routes", {
   distance: integer("distance").notNull(), // in km
   estimatedTime: integer("estimated_time").notNull(), // in minutes
   fee: integer("fee").notNull(),
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type TransportRoute = typeof transportRoutes.$inferSelect;
@@ -1282,7 +1352,7 @@ export type TransportRoute = typeof transportRoutes.$inferSelect;
 // TRANSPORT ALLOCATIONS TABLE
 // ============================================================================
 
-export const transportAllocations = sqliteTable("transport_allocations", {
+export const transportAllocations = pgTable("transport_allocations", {
   id: text("id").primaryKey(),
   studentId: text("student_id").references(() => users.id, { onDelete: "cascade" }).unique(),
   routeId: text("route_id").references(() => transportRoutes.id, { onDelete: "cascade" }),
@@ -1293,10 +1363,10 @@ export const transportAllocations = sqliteTable("transport_allocations", {
   dropTime: text("drop_time").notNull(),
   academicYear: text("academic_year").notNull(),
   fee: integer("fee").notNull(),
-  isPaid: integer("is_paid", { mode: "boolean" }).default(false),
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  isPaid: boolean("is_paid").default(false),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type TransportAllocation = typeof transportAllocations.$inferSelect;
@@ -1305,7 +1375,7 @@ export type TransportAllocation = typeof transportAllocations.$inferSelect;
 // CIRCULATION TABLE
 // ============================================================================
 
-export const circulation = sqliteTable("circulation", {
+export const circulation = pgTable("circulation", {
   id: text("id").primaryKey(),
   bookId: text("book_id").references(() => books.id, { onDelete: "cascade" }),
   studentId: text("student_id").references(() => users.id, { onDelete: "cascade" }),
@@ -1315,12 +1385,12 @@ export const circulation = sqliteTable("circulation", {
   returnDate: text("return_date"),
   status: text("status").notNull(), // "borrowed" | "returned" | "overdue" | "lost"
   fine: integer("fine").default(0),
-  finePaid: integer("fine_paid", { mode: "boolean" }).default(false),
+  finePaid: boolean("fine_paid").default(false),
   renewals: integer("renewals").default(0),
   maxRenewals: integer("max_renewals").notNull(),
   notes: text("notes"),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type Circulation = typeof circulation.$inferSelect;
@@ -1329,7 +1399,7 @@ export type Circulation = typeof circulation.$inferSelect;
 // CONSENT RECORDS TABLE
 // ============================================================================
 
-export const consentRecords = sqliteTable("consent_records", {
+export const consentRecords = pgTable("consent_records", {
   id: text("id").primaryKey(),
   studentId: text("student_id").references(() => users.id, { onDelete: "cascade" }),
   userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
@@ -1338,13 +1408,13 @@ export const consentRecords = sqliteTable("consent_records", {
   title: text("title").notNull(),
   description: text("description").notNull(),
   status: text("status").notNull(), // "pending" | "approved" | "declined" | "revoked"
-  consentGiven: integer("consent_given", { mode: "boolean" }).default(false),
-  consentDate: integer("consent_date", { mode: "timestamp" }),
+  consentGiven: boolean("consent_given").default(false),
+  consentDate: timestamp("consent_date", { withTimezone: true }),
   ipAddress: text("ip_address"),
   documentUrl: text("document_url"),
-  expiresAt: integer("expires_at", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type ConsentRecord = typeof consentRecords.$inferSelect;
@@ -1353,25 +1423,27 @@ export type ConsentRecord = typeof consentRecords.$inferSelect;
 // COUNSELOR NOTES TABLE
 // ============================================================================
 
-export const counselorNotes = sqliteTable("counselor_notes", {
+export const counselorNotes = pgTable("counselor_notes", {
   id: text("id").primaryKey(),
   counselorId: text("counselor_id").references(() => users.id, { onDelete: "cascade" }),
   studentId: text("student_id").references(() => users.id, { onDelete: "cascade" }),
   noteType: text("note_type").notNull(), // "session" | "observation" | "intervention" | "follow_up"
   title: text("title").notNull(),
+  note: text("note"), // Main note content
   content: text("content").notNull(),
-  isConfidential: integer("is_confidential", { mode: "boolean" }).default(false),
-  tags: text("tags", { mode: "json" }).$type<string[]>(),
-  relatedIssues: text("related_issues", { mode: "json" }).$type<string[]>(),
-  actionItems: text("action_items", { mode: "json" }).$type<Array<{
+  isConfidential: boolean("is_confidential").default(false),
+  isPrivate: boolean("is_private").default(false),
+  tags: json("tags").$type<string[]>(),
+  relatedIssues: json("related_issues").$type<string[]>(),
+  actionItems: json("action_items").$type<Array<{
     action: string;
     completed: boolean;
     dueDate: string;
   }>>(),
   followUpDate: text("follow_up_date"),
   sessionDate: text("session_date").notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type CounselorNote = typeof counselorNotes.$inferSelect;
@@ -1380,16 +1452,16 @@ export type CounselorNote = typeof counselorNotes.$inferSelect;
 // WIZARD PROGRESS TABLE
 // ============================================================================
 
-export const wizardProgress = sqliteTable("wizard_progress", {
+export const wizardProgress = pgTable("wizard_progress", {
   id: text("id").primaryKey(),
   userId: text("user_id").references(() => users.id, { onDelete: "cascade" }).unique(),
   currentStep: text("current_step").notNull(),
-  completedSteps: text("completed_steps", { mode: "json" }).$type<string[]>(),
-  data: text("data", { mode: "json" }).$type<Record<string, any>>(),
-  isCompleted: integer("is_completed", { mode: "boolean" }).default(false),
-  lastUpdated: integer("last_updated", { mode: "timestamp" }).notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  completedSteps: json("completed_steps").$type<string[]>(),
+  data: json("data").$type<Record<string, any>>(),
+  isCompleted: boolean("is_completed").default(false),
+  lastUpdated: timestamp("last_updated", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type WizardProgress = typeof wizardProgress.$inferSelect;
@@ -1398,7 +1470,7 @@ export type WizardProgress = typeof wizardProgress.$inferSelect;
 // FILE STORAGE TABLE
 // ============================================================================
 
-export const fileStorage = sqliteTable("file_storage", {
+export const fileStorage = pgTable("file_storage", {
   id: text("id").primaryKey(),
   userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
   fileName: text("file_name").notNull(),
@@ -1408,9 +1480,10 @@ export const fileStorage = sqliteTable("file_storage", {
   path: text("path").notNull(),
   url: text("url").notNull(),
   category: text("category").notNull(), // "profile" | "homework" | "document" | "certificate" | "other"
-  isPublic: integer("is_public", { mode: "boolean" }).default(false),
-  expiresAt: integer("expires_at", { mode: "timestamp" }),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  isPublic: boolean("is_public").default(false),
+  accessCount: integer("access_count").default(0), // Number of times the file has been accessed
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
 
 export type FileStorage = typeof fileStorage.$inferSelect;
@@ -1419,7 +1492,7 @@ export type FileStorage = typeof fileStorage.$inferSelect;
 // SCHOOL EVENTS TABLE
 // ============================================================================
 
-export const schoolEvents = sqliteTable("school_events", {
+export const schoolEvents = pgTable("school_events", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
@@ -1428,19 +1501,19 @@ export const schoolEvents = sqliteTable("school_events", {
   startDate: text("start_date").notNull(),
   endDate: text("end_date").notNull(),
   location: text("location").notNull(),
-  isAllDay: integer("is_all_day", { mode: "boolean" }).default(false),
-  targetAudience: text("target_audience", { mode: "json" }).$type<string[]>(), // ["all", "students", "teachers", "parents", "class_X"]
-  isRecurring: integer("is_recurring", { mode: "boolean" }).default(false),
+  isAllDay: boolean("is_all_day").default(false),
+  targetAudience: json("target_audience").$type<string[]>(), // ["all", "students", "teachers", "parents", "class_X"]
+  isRecurring: boolean("is_recurring").default(false),
   recurrencePattern: text("recurrence_pattern"), // "daily" | "weekly" | "monthly" | "yearly"
   status: text("status").notNull(), // "upcoming" | "ongoing" | "completed" | "cancelled"
-  reminders: text("reminders", { mode: "json" }).$type<Array<{
+  reminders: json("reminders").$type<Array<{
     type: string;
     minutes: number;
   }>>(),
-  attachments: text("attachments", { mode: "json" }).$type<string[]>(),
+  attachments: json("attachments").$type<string[]>(),
   createdBy: text("created_by").references(() => users.id),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type SchoolEvent = typeof schoolEvents.$inferSelect;
@@ -1449,20 +1522,20 @@ export type SchoolEvent = typeof schoolEvents.$inferSelect;
 // DATA SOURCES TABLE
 // ============================================================================
 
-export const dataSources = sqliteTable("data_sources", {
+export const dataSources = pgTable("data_sources", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   type: text("type").notNull(), // "api" | "database" | "file" | "manual"
   endpoint: text("endpoint").notNull(),
   authMethod: text("auth_method"), // "none" | "api_key" | "oauth" | "basic"
-  config: text("config", { mode: "json" }).$type<Record<string, any>>(),
-  lastSyncAt: integer("last_sync_at", { mode: "timestamp" }),
+  config: json("config").$type<Record<string, any>>(),
+  lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
   status: text("status").notNull(), // "active" | "inactive" | "error"
   errorMessage: text("error_message"),
   syncFrequency: integer("sync_frequency"), // in minutes
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type DataSource = typeof dataSources.$inferSelect;
@@ -1471,7 +1544,7 @@ export type DataSource = typeof dataSources.$inferSelect;
 // CAREERS TABLE (Job/Career Information)
 // ============================================================================
 
-export const careers = sqliteTable("careers", {
+export const careers = pgTable("careers", {
   id: text("id").primaryKey(),
   title: text("title").notNull(),
   name: text("name").notNull(), // Alias for title, for compatibility
@@ -1480,27 +1553,27 @@ export const careers = sqliteTable("careers", {
   category: text("category").notNull(),
   industry: text("industry").notNull(),
   riasecCode: text("riasec_code"), // R, I, A, S, E, C
-  hollandCodes: text("holland_codes", { mode: "json" }).$type<string[]>(),
+  hollandCodes: json("holland_codes").$type<string[]>(),
   educationLevel: text("education_level").notNull(), // "high_school" | "certificate" | "diploma" | "bachelor" | "master" | "phd"
   typicalSalary: text("typical_salary"),
   salaryCurrency: text("salary_currency").default("BTN"),
   growthOutlook: text("growth_outlook"), // "growing" | "stable" | "declining"
-  skills: text("skills", { mode: "json" }).$type<string[]>(),
-  subjects: text("subjects", { mode: "json" }).$type<string[]>(),
+  skills: json("skills").$type<string[]>(),
+  subjects: json("subjects").$type<string[]>(),
   workEnvironment: text("work_environment").notNull(),
-  bhutanSpecific: integer("bhutan_specific", { mode: "boolean" }).default(false),
+  bhutanSpecific: boolean("bhutan_specific").default(false),
   bhutanDemand: text("bhutan_demand"), // "high" | "medium" | "low"
-  rubPrograms: text("rub_programs", { mode: "json" }).$type<Array<{
+  rubPrograms: json("rub_programs").$type<Array<{
     collegeId: string;
     programId: string;
     programName: string;
   }>>(),
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  isActive: boolean("is_active").default(true),
   viewCount: integer("view_count").default(0),
   icon: text("icon").notNull(),
   color: text("color").notNull(),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type Career = typeof careers.$inferSelect;
@@ -1520,24 +1593,24 @@ export {
 } from "./transport-schema";
 
 // Announcement reads table for tracking read receipts
-export const announcementReads = sqliteTable("announcement_reads", {
+export const announcementReads = pgTable("announcement_reads", {
   id: text("id").primaryKey(),
   announcementId: text("announcement_id").references(() => announcements.id, { onDelete: "cascade" }).notNull(),
   userId: text("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
-  readAt: integer("read_at", { mode: "timestamp" }).notNull(),
+  readAt: timestamp("read_at", { withTimezone: true }).notNull(),
 });
 
 export type AnnouncementRead = typeof announcementReads.$inferSelect;
 
 // Tuition categories table
-export const tuitionCategories = sqliteTable("tuition_categories", {
+export const tuitionCategories = pgTable("tuition_categories", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   description: text("description").notNull(),
   icon: text("icon").notNull(),
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 export type TuitionCategory = typeof tuitionCategories.$inferSelect;

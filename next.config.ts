@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["better-sqlite3", "@clerk/nextjs/server", "drizzle-orm/better-sqlite3"],
+  // No serverExternalPackages needed - we use Neon PostgreSQL (not native modules)
 };
 
 export default nextConfig;

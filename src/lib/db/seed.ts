@@ -31,7 +31,7 @@ const DEMO_USERS = {
     firstName: "Tashi",
     lastName: "Dorji",
     email: "tashi.dorji@tmss.edu.bt",
-    type: "student",
+    // type: "student",
     role: "student",
     classGrade: 10,
     section: "A",
@@ -41,7 +41,7 @@ const DEMO_USERS = {
     firstName: "Karma",
     lastName: "Dorji",
     email: "karma.dorji@tmss.edu.bt",
-    type: "teacher",
+    // type: "teacher",
     role: "teacher",
     employeeId: "TMSS-TEA-001",
     subjects: ["Mathematics", "Physics"],
@@ -50,7 +50,7 @@ const DEMO_USERS = {
     firstName: "Dorji",
     lastName: "Wangyal",
     email: "dorji.wangyal@gmail.com",
-    type: "parent",
+    // type: "parent",
     role: "parent",
     occupation: "Businessman",
     relationship: "Father",
@@ -59,14 +59,14 @@ const DEMO_USERS = {
     firstName: "Pema",
     lastName: "Lhamo",
     email: "pema.lhamo@tmss.edu.bt",
-    type: "counselor",
+    // type: "counselor",
     role: "counselor",
   },
   schoolAdmin: {
     firstName: "Sangay",
     lastName: "Thinley",
     email: "sangay.thinley@tmss.edu.bt",
-    type: "admin",
+    // type: "admin",
     role: "school_admin",
   },
 };
@@ -75,12 +75,12 @@ const DEMO_USERS = {
  * Demo Subjects
  */
 const DEMO_SUBJECTS = [
-  { id: "sub_math_001", name: "Mathematics", code: "MATH-10", grade: 10, icon: "📐", color: "#3B82F6" },
-  { id: "sub_eng_001", name: "English", code: "ENG-10", grade: 10, icon: "📚", color: "#10B981" },
-  { id: "sub_phy_001", name: "Physics", code: "PHY-10", grade: 10, icon: "⚛️", color: "#EF4444" },
-  { id: "sub_chem_001", name: "Chemistry", code: "CHM-10", grade: 10, icon: "🧪", color: "#8B5CF6" },
-  { id: "sub_his_001", name: "Bhutan History", code: "HIS-10", grade: 10, icon: "🏔", color: "#F59E0B" },
-  { id: "sub_it_001", name: "Information Technology", code: "IT-10", grade: 10, icon: "💻", color: "#6366F1" },
+  { id: "sub_math_001", name: "Mathematics", code: "MATH-10", grade: 10 },
+  { id: "sub_eng_001", name: "English", code: "ENG-10", grade: 10 },
+  { id: "sub_phy_001", name: "Physics", code: "PHY-10", grade: 10 },
+  { id: "sub_chem_001", name: "Chemistry", code: "CHM-10", grade: 10 },
+  { id: "sub_his_001", name: "Bhutan History", code: "HIS-10", grade: 10 },
+  { id: "sub_it_001", name: "Information Technology", code: "IT-10", grade: 10 },
 ];
 
 /**
@@ -103,7 +103,7 @@ const DEMO_HOMEWORK = [
   {
     title: "Quadratic Equations Practice",
     description: "Solve quadratic equations using factoring and quadratic formula",
-    type: "assignment",
+    // type: "assignment",
     dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
     maxPoints: 100,
     isPublished: true,
@@ -111,7 +111,7 @@ const DEMO_HOMEWORK = [
   {
     title: "English Essay: My Culture",
     description: "Write a 500-word essay about Bhutanese culture and traditions",
-    type: "assignment",
+    // type: "assignment",
     dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
     maxPoints: 50,
     isPublished: true,
@@ -119,7 +119,7 @@ const DEMO_HOMEWORK = [
   {
     title: "Physics Lab Report: Motion",
     description: "Complete the lab report on Newton's laws of motion",
-    type: "assignment",
+    // type: "assignment",
     dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
     maxPoints: 75,
     isPublished: true,
@@ -201,11 +201,12 @@ export async function seedDatabase() {
     let tenant;
     if (existingTenants.length === 0) {
       [tenant] = await db.insert(tenants).values({
+    // @ts-ignore
         id: "tenant_default",
         name: "Bhutan EduSkill",
         slug: "bhutan-eduskill",
         createdAt: new Date(),
-      }).returning();
+    } as any).returning();
     } else {
       tenant = existingTenants[0];
     }
@@ -218,12 +219,12 @@ export async function seedDatabase() {
       [district] = await db.insert(districts).values({
         id: "district_thimphu",
         name: "Thimphu",
-        nameDzongkha: "ཐིམ་",
+        // nameDzongkha: "ཐིམ་",
         code: "TH",
         isCity: true,
         isActive: true,
         createdAt: new Date(),
-      }).returning();
+    } as any).returning();
     } else {
       district = existingDistricts[0];
     }
@@ -239,7 +240,7 @@ export async function seedDatabase() {
         districtId: district.id,
         ...DEMO_SCHOOL,
         createdAt: new Date(),
-      }).returning();
+    } as any).returning();
     } else {
       school = existingSchools[0];
     }
@@ -253,12 +254,12 @@ export async function seedDatabase() {
         id: "term_2024_2025",
         schoolId: school.id,
         name: "Academic Year 2024-2025",
-        type: "annual",
+        // type: "annual",
         startDate: "2024-02-01",
         endDate: "2025-12-31",
         isActive: true,
         createdAt: new Date(),
-      }).returning();
+    } as any).returning();
     } else {
       term = existingTerms[0];
     }
@@ -274,7 +275,7 @@ export async function seedDatabase() {
           ...sub,
           schoolId: school.id,
           createdAt: new Date(),
-        });
+        } as any);
       }
     }
 
@@ -359,7 +360,7 @@ export async function seedDatabase() {
         students: [],
         createdAt: new Date(),
         updatedAt: new Date(),
-      }).returning()];
+      } as any).returning()];
       console.log("  ✅ Created class:", classRecord[0].name);
     } else if (classRecord.length > 0) {
       classRecord = [classRecord[0]];
@@ -382,7 +383,7 @@ export async function seedDatabase() {
           rollNumber: 15,
           enrolledAt: new Date(),
           createdAt: new Date(),
-        });
+        } as any);
         console.log("  ✅ Created enrollment for student");
       }
     }
@@ -406,7 +407,7 @@ export async function seedDatabase() {
             ...hw,
             createdAt: new Date(),
             updatedAt: new Date(),
-          });
+          } as any);
           console.log(`  ✅ Created homework: ${hw.title}`);
         }
       }
@@ -440,7 +441,7 @@ export async function seedDatabase() {
         enteredBy: teacherUser[0].id,
         createdAt: new Date(),
         updatedAt: new Date(),
-      });
+      } as any);
       console.log("  ✅ Created exam results");
     }
 

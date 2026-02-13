@@ -69,12 +69,13 @@ export async function GET(request: NextRequest, context: RouteContext) {
     // Mark as read if not already
     if (!readRecord && announcement.isPublished) {
       await db.insert(announcementReads).values({
-        id: `ar_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        ...({
+          id: `ar_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        }),
         announcementId: id,
         userId,
         readAt: new Date(),
-        createdAt: new Date(),
-      });
+      } as any);
 
       // Increment view count
       await db
@@ -143,7 +144,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     // Check permissions
-    const canEdit = user.role === "school_admin" || user.role === "admin" || existing.authorId === userId;
+    const canEdit = user.role === "school_admin" || user.role === "admin" || (existing as any).authorId === userId;
     if (!canEdit) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -234,7 +235,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     }
 
     // Check permissions
-    const canDelete = user.role === "school_admin" || user.role === "admin" || existing.authorId === userId;
+    const canDelete = user.role === "school_admin" || user.role === "admin" || (existing as any).authorId === userId;
     if (!canDelete) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

@@ -1,25 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { studentFees, users, feePayments, feeStructures } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 
 // GET /api/student/fees - Get own fee details
 export async function GET(request: NextRequest) {
+  const authResult = await requireAuth(['student', 'parent', 'admin']);
+  if ('error' in authResult) {
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+  }
+
+  const { user: currentUser } = authResult;
+
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || currentUser.type !== "student") {
-      return NextResponse.json({ error: "Forbidden - Students only" }, { status: 403 });
-    }
-
     const fees = await db.query.studentFees.findMany({
       where: eq(studentFees.studentId, currentUser.id),
       with: {

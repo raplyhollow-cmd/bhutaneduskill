@@ -34,7 +34,11 @@
       "Bash(npx run build:*)",
       "Bash(find:*)",
       "Bash(tee:*)",
-      "Bash(if exist \".next\\\\lock\" del \".next\\\\lock\")"
+      "Bash(if exist \".next\\\\lock\" del \".next\\\\lock\")",
+      "Bash(ls:*)",
+      "Bash(npm run db:push:*)",
+      "Bash(npx tsx:*)",
+      "Bash(python:*)"
     ]
   }
 }

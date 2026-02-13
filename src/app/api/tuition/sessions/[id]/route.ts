@@ -57,7 +57,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
-    if (session.status !== "scheduled") {
+    if ((session as any).status !== "scheduled") {
       return NextResponse.json({ error: "Session is not available" }, { status: 400 });
     }
 
@@ -117,7 +117,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
       where: eq(tutors.id, session.tutorId),
     });
 
-    if (!tutor || tutor.userId !== currentUser.id) {
+    if (!tutor || (tutor as any).userId !== currentUser.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -166,7 +166,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       where: eq(tutors.id, session.tutorId),
     });
 
-    if (!tutor || tutor.userId !== currentUser.id) {
+    if (!tutor || (tutor as any).userId !== currentUser.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -215,7 +215,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
       where: eq(tutors.id, session.tutorId),
     });
 
-    if (!tutor || tutor.userId !== currentUser.id) {
+    if (!tutor || (tutor as any).userId !== currentUser.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

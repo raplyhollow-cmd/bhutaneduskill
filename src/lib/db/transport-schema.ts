@@ -3,7 +3,7 @@
  * Handles school bus routes, vehicle tracking, and driver management
  */
 
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { pgTable, text, integer, boolean, timestamp, pgEnum , json} from "drizzle-orm/pg-core";
 
 // ============================================================================
 // VEHICLES
@@ -12,12 +12,13 @@ import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 /**
  * School transport vehicles (buses, vans)
  */
-export const vehicles = sqliteTable("vehicles", {
+export const vehicles = pgTable("vehicles", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
   // Vehicle details
   registrationNumber: text("registration_number").notNull().unique(),
+  vehicleNumber: text("vehicle_number"), // License plate number
   vehicleType: text("vehicle_type").notNull(), // "bus", "van", "minibus"
   make: text("make"), // Toyota, Tata, etc.
   model: text("model"),
@@ -29,10 +30,10 @@ export const vehicles = sqliteTable("vehicles", {
   standingCapacity: integer("standing_capacity").default(0),
 
   // Features
-  hasAC: integer("has_ac", { mode: "boolean" }).default(false),
-  hasCCTV: integer("has_cctv", { mode: "boolean" }).default(false),
-  hasGPS: integer("has_gps", { mode: "boolean" }).default(false),
-  hasSpeedLimiter: integer("has_speed_limiter", { mode: "boolean" }).default(false),
+  hasAC: boolean("has_ac").default(false),
+  hasCCTV: boolean("has_cctv").default(false),
+  hasGPS: boolean("has_gps").default(false),
+  hasSpeedLimiter: boolean("has_speed_limiter").default(false),
 
   // Documents
   insuranceExpiry: text("insurance_expiry"), // ISO date
@@ -45,8 +46,8 @@ export const vehicles = sqliteTable("vehicles", {
   // Notes
   notes: text("notes"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -56,7 +57,7 @@ export const vehicles = sqliteTable("vehicles", {
 /**
  * Transport vehicle drivers
  */
-export const drivers = sqliteTable("drivers", {
+export const drivers = pgTable("drivers", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -81,11 +82,11 @@ export const drivers = sqliteTable("drivers", {
   status: text("status").notNull().default("active"), // "active", "inactive", "on_leave"
 
   // Background check
-  backgroundCheckVerified: integer("background_check_verified", { mode: "boolean" }).default(false),
+  backgroundCheckVerified: boolean("background_check_verified").default(false),
   backgroundCheckDate: text("background_check_date"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -95,17 +96,18 @@ export const drivers = sqliteTable("drivers", {
 /**
  * Bus routes for school transport
  */
-export const transportRoutes = sqliteTable("transport_routes", {
+export const transportRoutes = pgTable("transport_routes", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
   // Route details
   routeNumber: text("route_number").notNull(),
   routeName: text("route_name").notNull(), // "Thimphu City - Route 1"
+  name: text("name"), // Alias for route_name
   description: text("description"),
 
   // Route path (JSON array of stops)
-  stops: text("stops", { mode: "json" }).$type<Array<{
+  stops: json("stops").$type<Array<{
     id: string;
     name: string;
     location: {
@@ -141,11 +143,11 @@ export const transportRoutes = sqliteTable("transport_routes", {
   fee: integer("fee"), // Transport fee per month per student
 
   // Status
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  isActive: boolean("is_active").default(true),
   academicYear: text("academic_year").notNull(),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -155,7 +157,7 @@ export const transportRoutes = sqliteTable("transport_routes", {
 /**
  * Student transport route allocations
  */
-export const transportAllocations = sqliteTable("transport_allocations", {
+export const transportAllocations = pgTable("transport_allocations", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -184,14 +186,14 @@ export const transportAllocations = sqliteTable("transport_allocations", {
   status: text("status").notNull().default("active"), // "active", "inactive", "changed"
 
   // Fee
-  feeWaived: integer("fee_waived", { mode: "boolean" }).default(false),
+  feeWaived: boolean("fee_waived").default(false),
   notes: text("notes"),
 
   startDate: text("start_date"), // ISO date
   endDate: text("end_date"), // ISO date
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -201,7 +203,7 @@ export const transportAllocations = sqliteTable("transport_allocations", {
 /**
  * Daily bus attendance tracking
  */
-export const busAttendance = sqliteTable("bus_attendance", {
+export const busAttendance = pgTable("bus_attendance", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -221,8 +223,8 @@ export const busAttendance = sqliteTable("bus_attendance", {
   // Check-in details
   pickupTime: text("pickup_time"), // Actual time
   dropTime: text("drop_time"), // Actual time
-  pickupLocation: text("pickup_location", { mode: "json" }), // GPS coordinates
-  dropLocation: text("drop_location", { mode: "json" }), // GPS coordinates
+  pickupLocation: json("pickup_location"), // GPS coordinates
+  dropLocation: json("drop_location"), // GPS coordinates
 
   // Marked by
   markedBy: text("marked_by"), // Driver/attendant user ID
@@ -231,8 +233,8 @@ export const busAttendance = sqliteTable("bus_attendance", {
   absenceReason: text("absence_reason"),
   notes: text("notes"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -242,7 +244,7 @@ export const busAttendance = sqliteTable("bus_attendance", {
 /**
  * Vehicle maintenance records
  */
-export const vehicleMaintenance = sqliteTable("vehicle_maintenance", {
+export const vehicleMaintenance = pgTable("vehicle_maintenance", {
   id: text("id").primaryKey(),
   vehicleId: text("vehicle_id").notNull(),
 
@@ -274,8 +276,8 @@ export const vehicleMaintenance = sqliteTable("vehicle_maintenance", {
   // Notes
   notes: text("notes"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -285,9 +287,10 @@ export const vehicleMaintenance = sqliteTable("vehicle_maintenance", {
 /**
  * Real-time vehicle location tracking
  */
-export const vehicleTracking = sqliteTable("vehicle_tracking", {
+export const vehicleTracking = pgTable("vehicle_tracking", {
   id: text("id").primaryKey(),
   vehicleId: text("vehicle_id").notNull(),
+  assignedRouteId: text("assigned_route_id"), // Route currently assigned
 
   // Location
   latitude: text("latitude").notNull(),
@@ -304,9 +307,10 @@ export const vehicleTracking = sqliteTable("vehicle_tracking", {
   studentsOnBoard: integer("students_on_board").default(0),
 
   // Timestamp
-  timestamp: integer("timestamp", { mode: "timestamp" }).notNull(),
+  timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }),
 });
 
 // ============================================================================
@@ -316,7 +320,7 @@ export const vehicleTracking = sqliteTable("vehicle_tracking", {
 /**
  * Transport-related incident reports
  */
-export const transportIncidents = sqliteTable("transport_incidents", {
+export const transportIncidents = pgTable("transport_incidents", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -333,7 +337,7 @@ export const transportIncidents = sqliteTable("transport_incidents", {
   // Vehicles and people involved
   vehicleId: text("vehicle_id"),
   driverId: text("driver_id"),
-  studentsInvolved: text("students_involved", { mode: "json" }).$type<string[]>(), // Student IDs
+  studentsInvolved: json("students_involved").$type<string[]>(), // Student IDs
 
   // Action taken
   actionTaken: text("action_taken"),
@@ -346,8 +350,8 @@ export const transportIncidents = sqliteTable("transport_incidents", {
   // Reported by
   reportedBy: text("reported_by"), // User ID
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================

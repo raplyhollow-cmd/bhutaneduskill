@@ -65,11 +65,14 @@ async function getAllCounselors(limit = 100) {
     .select({
       id: users.id,
       name: users.name,
+      firstName: users.firstName,
+      lastName: users.lastName,
       email: users.email,
       phone: users.phone,
       schoolId: users.schoolId,
       createdAt: users.createdAt,
       lastLogin: users.lastLogin,
+      emailVerified: users.emailVerified,
       schoolName: schools.name,
       schoolCode: schools.code,
       tenantName: tenants.name,
@@ -120,8 +123,8 @@ export default async function AdminCounselorsPage({
   if (searchQuery) {
     allCounselors = allCounselors.filter(
       (counselor) =>
-        counselor.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        counselor.lastName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+ (counselor as any).firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (counselor as any).lastName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         counselor.email?.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }
@@ -131,9 +134,9 @@ export default async function AdminCounselorsPage({
   }
 
   if (statusFilter === "verified") {
-    allCounselors = allCounselors.filter((counselor) => counselor.emailVerified);
+    allCounselors = allCounselors.filter((counselor) => (counselor as any).emailVerified);
   } else if (statusFilter === "pending") {
-    allCounselors = allCounselors.filter((counselor) => !counselor.emailVerified);
+    allCounselors = allCounselors.filter((counselor) => !(counselor as any).emailVerified);
   }
 
   // Get stats and assignments for each counselor
@@ -395,7 +398,7 @@ export default async function AdminCounselorsPage({
                           </div>
                           <div>
                             <p className="font-medium text-gray-900">
-                              {counselor.firstName} {counselor.lastName}
+                              {(counselor as any).firstName} {(counselor as any).lastName}
                             </p>
                             <p className="text-sm text-gray-500">{counselor.email || "No email"}</p>
                             {counselor.phone && (
@@ -414,7 +417,7 @@ export default async function AdminCounselorsPage({
                               <div key={assignment.schoolId} className="flex items-center gap-2">
                                 <Building2 className="w-3 h-3 text-gray-400" />
                                 <span className="text-sm text-gray-700">{assignment.schoolName}</span>
-                                {assignment.isPrimary && (
+                                {(assignment as any).isPrimary && (
                                   <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
                                     Primary
                                   </Badge>
@@ -444,21 +447,21 @@ export default async function AdminCounselorsPage({
                         </span>
                       </td>
                       <td className="py-4 px-4">
-                        {counselor.lastLoginAt ? (
+                        {(counselor as any).lastLogin ? (
                           <div className="text-sm text-gray-600">
-                            {new Date(counselor.lastLoginAt).toLocaleDateString()}
+                            {new Date((counselor as any).lastLogin).toLocaleDateString()}
                           </div>
                         ) : (
                           <span className="text-sm text-gray-400">Never</span>
                         )}
                       </td>
                       <td className="py-4 px-4 text-center">
-                        {!counselor.emailVerified ? (
+                        {!(counselor as any).emailVerified ? (
                           <Badge className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs">
                             <Clock className="w-3 h-3 mr-1" />
                             Pending
                           </Badge>
-                        ) : counselor.lastLoginAt ? (
+                        ) : (counselor as any).lastLogin ? (
                           <Badge className="bg-green-50 text-green-700 border-green-200 text-xs">
                             <CheckCircle className="w-3 h-3 mr-1" />
                             Active
@@ -496,7 +499,7 @@ export default async function AdminCounselorsPage({
                           >
                             <Building2 className="w-4 h-4" />
                           </Button>
-                          {!counselor.emailVerified && (
+                          {!(counselor as any).emailVerified && (
                             <Button
                               variant="ghost"
                               size="icon"
@@ -736,7 +739,7 @@ export default async function AdminCounselorsPage({
                         {counselor.schoolName} • {counselor.stats.assignedSchools} school(s)
                       </p>
                     </div>
-                    {!counselor.emailVerified ? (
+                    {!(counselor as any).emailVerified ? (
                       <Badge className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs">
                         <Clock className="w-3 h-3 mr-1" />
                         Pending

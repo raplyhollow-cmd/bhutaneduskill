@@ -3,7 +3,7 @@
  * Handles hostel buildings, rooms, allocations, attendance, and facilities
  */
 
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { pgTable, text, integer, boolean, timestamp, pgEnum , json} from "drizzle-orm/pg-core";
 
 // ============================================================================
 // HOSTEL BUILDINGS
@@ -12,7 +12,7 @@ import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 /**
  * Hostel buildings/dormitories
  */
-export const hostelBuildings = sqliteTable("hostel_buildings", {
+export const hostelBuildings = pgTable("hostel_buildings", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -32,25 +32,25 @@ export const hostelBuildings = sqliteTable("hostel_buildings", {
   totalCapacity: integer("total_capacity"), // Total beds
 
   // Facilities
-  hasCommonRoom: integer("has_common_room", { mode: "boolean" }).default(false),
-  hasStudyRoom: integer("has_study_room", { mode: "boolean" }).default(false),
-  hasTVRoom: integer("has_tv_room", { mode: "boolean" }).default(false),
-  hasKitchen: integer("has_kitchen", { mode: "boolean" }).default(false),
-  hasLaundry: integer("has_laundry", { mode: "boolean" }).default(false),
-  hasGym: integer("has_gym", { mode: "boolean" }).default(false),
-  hasPrayerRoom: integer("has_prayer_room", { mode: "boolean" }).default(false),
+  hasCommonRoom: boolean("has_common_room").default(false),
+  hasStudyRoom: boolean("has_study_room").default(false),
+  hasTVRoom: boolean("has_tv_room").default(false),
+  hasKitchen: boolean("has_kitchen").default(false),
+  hasLaundry: boolean("has_laundry").default(false),
+  hasGym: boolean("has_gym").default(false),
+  hasPrayerRoom: boolean("has_prayer_room").default(false),
 
   // Utilities
-  hasHotWater: integer("has_hot_water", { mode: "boolean" }).default(false),
-  hasAC: integer("has_ac", { mode: "boolean" }).default(false),
-  hasHeating: integer("has_heating", { mode: "boolean" }).default(false),
-  hasWiFi: integer("has_wifi", { mode: "boolean" }).default(false),
+  hasHotWater: boolean("has_hot_water").default(false),
+  hasAC: boolean("has_ac").default(false),
+  hasHeating: boolean("has_heating").default(false),
+  hasWiFi: boolean("has_wifi").default(false),
 
   // Safety
-  hasFireExtinguisher: integer("has_fire_extinguisher", { mode: "boolean" }).default(false),
-  hasFireAlarm: integer("has_fire_alarm", { mode: "boolean" }).default(false),
-  hasCCTV: integer("has_cctv", { mode: "boolean" }).default(false),
-  hasSecurityGuard: integer("has_security_guard", { mode: "boolean" }).default(false),
+  hasFireExtinguisher: boolean("has_fire_extinguisher").default(false),
+  hasFireAlarm: boolean("has_fire_alarm").default(false),
+  hasCCTV: boolean("has_cctv").default(false),
+  hasSecurityGuard: boolean("has_security_guard").default(false),
 
   // Warden info
   wardenId: text("warden_id"), // Staff user ID
@@ -63,8 +63,8 @@ export const hostelBuildings = sqliteTable("hostel_buildings", {
   // Notes
   notes: text("notes"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -74,7 +74,7 @@ export const hostelBuildings = sqliteTable("hostel_buildings", {
 /**
  * Individual rooms within hostels
  */
-export const hostelRooms = sqliteTable("hostel_rooms", {
+export const hostelRooms = pgTable("hostel_rooms", {
   id: text("id").primaryKey(),
   hostelId: text("hostel_id").notNull(),
   schoolId: text("school_id").notNull(),
@@ -89,17 +89,17 @@ export const hostelRooms = sqliteTable("hostel_rooms", {
   occupiedBeds: integer("occupied_beds").default(0),
 
   // Facilities
-  hasAttachedBathroom: integer("has_attached_bathroom", { mode: "boolean" }).default(false),
-  hasBalcony: integer("has_balcony", { mode: "boolean" }).default(false),
-  hasAC: integer("has_ac", { mode: "boolean" }).default(false),
-  hasStudyTable: integer("has_study_table", { mode: "boolean" }).default(true),
-  hasWardrobe: integer("has_wardrobe", { mode: "boolean" }).default(true),
+  hasAttachedBathroom: boolean("has_attached_bathroom").default(false),
+  hasBalcony: boolean("has_balcony").default(false),
+  hasAC: boolean("has_ac").default(false),
+  hasStudyTable: boolean("has_study_table").default(true),
+  hasWardrobe: boolean("has_wardrobe").default(true),
 
   // Dimensions
   area: integer("area"), // Square feet
 
   // Bed details
-  bedDetails: text("bed_details", { mode: "json" }).$type<Array<{
+  bedDetails: json("bed_details").$type<Array<{
     bedNumber: string;
     occupied: boolean;
     occupantId?: string;
@@ -116,8 +116,8 @@ export const hostelRooms = sqliteTable("hostel_rooms", {
   lastMaintenanceDate: text("last_maintenance_date"),
   nextMaintenanceDate: text("next_maintenance_date"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -127,7 +127,7 @@ export const hostelRooms = sqliteTable("hostel_rooms", {
 /**
  * Student hostel room allocations
  */
-export const hostelAllocations = sqliteTable("hostel_allocations", {
+export const hostelAllocations = pgTable("hostel_allocations", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -178,8 +178,8 @@ export const hostelAllocations = sqliteTable("hostel_allocations", {
   // Notes
   notes: text("notes"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -189,7 +189,7 @@ export const hostelAllocations = sqliteTable("hostel_allocations", {
 /**
  * Daily hostel attendance (night stay)
  */
-export const hostelAttendance = sqliteTable("hostel_attendance", {
+export const hostelAttendance = pgTable("hostel_attendance", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -227,8 +227,8 @@ export const hostelAttendance = sqliteTable("hostel_attendance", {
   remarks: text("remarks"),
   markedBy: text("marked_by"), // Warden/user ID
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -238,7 +238,7 @@ export const hostelAttendance = sqliteTable("hostel_attendance", {
 /**
  * Regular room inspections by wardens
  */
-export const roomInspections = sqliteTable("room_inspections", {
+export const roomInspections = pgTable("room_inspections", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -262,7 +262,7 @@ export const roomInspections = sqliteTable("room_inspections", {
   overallScore: integer("overall_score"), // 1-5
 
   // Findings
-  findings: text("findings", { mode: "json" }).$type<Array<{
+  findings: json("findings").$type<Array<{
     category: string;
     issue: string;
     severity: "low" | "medium" | "high";
@@ -270,26 +270,26 @@ export const roomInspections = sqliteTable("room_inspections", {
   }>>(),
 
   // Violations
-  violationsFound: integer("violations_found", { mode: "boolean" }).default(false),
+  violationsFound: boolean("violations_found").default(false),
   violationDetails: text("violation_details"),
   violationPenalty: text("violation_penalty"),
 
   // Prohibited items found
-  prohibitedItems: text("prohibited_items", { mode: "json" }).$type<string[]>(),
+  prohibitedItems: json("prohibited_items").$type<string[]>(),
 
   // Follow-up required
-  followUpRequired: integer("follow_up_required", { mode: "boolean" }).default(false),
+  followUpRequired: boolean("follow_up_required").default(false),
   followUpDate: text("follow_up_date"),
   followUpActions: text("follow_up_actions"),
 
   // Photos
-  photoUrls: text("photo_urls", { mode: "json" }).$type<string[]>(),
+  photoUrls: json("photo_urls").$type<string[]>(),
 
   // Status
   status: text("status").notNull().default("completed"), // "completed", "follow_up_pending", "resolved"
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -299,7 +299,7 @@ export const roomInspections = sqliteTable("room_inspections", {
 /**
  * Student leave requests for hostel
  */
-export const hostelLeaveRequests = sqliteTable("hostel_leave_requests", {
+export const hostelLeaveRequests = pgTable("hostel_leave_requests", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -330,7 +330,7 @@ export const hostelLeaveRequests = sqliteTable("hostel_leave_requests", {
   companionPhone: text("companion_phone"),
 
   // Parent approval
-  parentApproved: integer("parent_approved", { mode: "boolean" }).default(false),
+  parentApproved: boolean("parent_approved").default(false),
   parentApprovalDate: text("parent_approval_date"),
   parentName: text("parent_name"),
   parentPhone: text("parent_phone"),
@@ -345,7 +345,7 @@ export const hostelLeaveRequests = sqliteTable("hostel_leave_requests", {
   rejectionReason: text("rejection_reason"),
 
   // Gate pass
-  gatePassIssued: integer("gate_pass_issued", { mode: "boolean" }).default(false),
+  gatePassIssued: boolean("gate_pass_issued").default(false),
   gatePassNumber: text("gate_pass_number"),
 
   // Actuals
@@ -353,8 +353,8 @@ export const hostelLeaveRequests = sqliteTable("hostel_leave_requests", {
   actualReturnTime: text("actual_return_time"),
   lateReturnReason: text("late_return_reason"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -364,7 +364,7 @@ export const hostelLeaveRequests = sqliteTable("hostel_leave_requests", {
 /**
  * Hostel maintenance and discipline complaints
  */
-export const hostelComplaints = sqliteTable("hostel_complaints", {
+export const hostelComplaints = pgTable("hostel_complaints", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -389,7 +389,7 @@ export const hostelComplaints = sqliteTable("hostel_complaints", {
   priority: text("priority").notNull().default("medium"), // "low", "medium", "high", "emergency"
 
   // Photos
-  photoUrls: text("photo_urls", { mode: "json" }).$type<string[]>(),
+  photoUrls: json("photo_urls").$type<string[]>(),
 
   // Status
   status: text("status").notNull().default("open"), // "open", "in_progress", "resolved", "rejected", "closed"
@@ -405,8 +405,8 @@ export const hostelComplaints = sqliteTable("hostel_complaints", {
   complainantSatisfaction: integer("complainant_satisfaction"), // 1-5 rating
   complainantFeedback: text("complainant_feedback"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -416,7 +416,7 @@ export const hostelComplaints = sqliteTable("hostel_complaints", {
 /**
  * Visitor log for hostel
  */
-export const hostelVisitors = sqliteTable("hostel_visitors", {
+export const hostelVisitors = pgTable("hostel_visitors", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -447,10 +447,10 @@ export const hostelVisitors = sqliteTable("hostel_visitors", {
   approvalNotes: text("approval_notes"),
 
   // Items brought/given
-  itemsBrought: text("items_brought", { mode: "json" }).$type<string[]>(),
+  itemsBrought: json("items_brought").$type<string[]>(),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -460,7 +460,7 @@ export const hostelVisitors = sqliteTable("hostel_visitors", {
 /**
  * Common facilities and amenities in hostels
  */
-export const hostelFacilities = sqliteTable("hostel_facilities", {
+export const hostelFacilities = pgTable("hostel_facilities", {
   id: text("id").primaryKey(),
   hostelId: text("hostel_id").notNull(),
   schoolId: text("school_id").notNull(),
@@ -480,10 +480,10 @@ export const hostelFacilities = sqliteTable("hostel_facilities", {
   // Availability
   openTime: text("open_time"), // HH:MM
   closeTime: text("close_time"), // HH:MM
-  availableDays: text("available_days", { mode: "json" }).$type<string[]>(), // ["monday", "tuesday", ...]
+  availableDays: json("available_days").$type<string[]>(), // ["monday", "tuesday", ...]
 
   // Equipment
-  equipment: text("equipment", { mode: "json" }).$type<Array<{
+  equipment: json("equipment").$type<Array<{
     name: string;
     quantity: number;
     condition: string;
@@ -493,13 +493,13 @@ export const hostelFacilities = sqliteTable("hostel_facilities", {
   status: text("status").notNull().default("active"), // "active", "maintenance", "inactive"
 
   // Rules
-  rules: text("rules", { mode: "json" }).$type<string[]>(),
+  rules: json("rules").$type<string[]>(),
 
   // In charge
   inChargeStaffId: text("in_charge_staff_id"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -509,7 +509,7 @@ export const hostelFacilities = sqliteTable("hostel_facilities", {
 /**
  * Mess/dining hall management
  */
-export const hostelMess = sqliteTable("hostel_mess", {
+export const hostelMess = pgTable("hostel_mess", {
   id: text("id").primaryKey(),
   hostelId: text("hostel_id").notNull(),
   schoolId: text("school_id").notNull(),
@@ -530,7 +530,7 @@ export const hostelMess = sqliteTable("hostel_mess", {
   dinnerEnd: text("dinner_end"),
 
   // Menu
-  weeklyMenu: text("weekly_menu", { mode: "json" }).$type<{
+  weeklyMenu: json("weekly_menu").$type<{
     monday: { breakfast: string[]; lunch: string[]; dinner: string[]; snacks?: string[] };
     tuesday: { breakfast: string[]; lunch: string[]; dinner: string[]; snacks?: string[] };
     wednesday: { breakfast: string[]; lunch: string[]; dinner: string[]; snacks?: string[] };
@@ -542,13 +542,13 @@ export const hostelMess = sqliteTable("hostel_mess", {
 
   // Staff
   messManager: text("mess_manager"), // Staff user ID
-  cooks: text("cooks", { mode: "json" }).$type<string[]>(), // Staff IDs
+  cooks: json("cooks").$type<string[]>(), // Staff IDs
 
   // Status
   status: text("status").notNull().default("active"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -558,7 +558,7 @@ export const hostelMess = sqliteTable("hostel_mess", {
 /**
  * Daily meal attendance
  */
-export const messAttendance = sqliteTable("mess_attendance", {
+export const messAttendance = pgTable("mess_attendance", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -570,17 +570,17 @@ export const messAttendance = sqliteTable("mess_attendance", {
   date: text("date").notNull(), // ISO date
 
   // Meal attendance
-  breakfastPresent: integer("breakfast_present", { mode: "boolean" }),
-  lunchPresent: integer("lunch_present", { mode: "boolean" }),
-  dinnerPresent: integer("dinner_present", { mode: "boolean" }),
-  snacksPresent: integer("snacks_present", { mode: "boolean" }),
+  breakfastPresent: boolean("breakfast_present"),
+  lunchPresent: boolean("lunch_present"),
+  dinnerPresent: boolean("dinner_present"),
+  snacksPresent: boolean("snacks_present"),
 
   // Special meal requests
   specialDiet: text("special_diet"), // "vegan", "gluten_free", etc.
   skipReason: text("skip_reason"), // If skipped meals
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -590,7 +590,7 @@ export const messAttendance = sqliteTable("mess_attendance", {
 /**
  * Hostel fee structure and payments
  */
-export const hostelFees = sqliteTable("hostel_fees", {
+export const hostelFees = pgTable("hostel_fees", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -606,7 +606,7 @@ export const hostelFees = sqliteTable("hostel_fees", {
   monthlyFee: integer("monthly_fee"),
 
   // Mess fees
-  messFeeIncluded: integer("mess_fee_included", { mode: "boolean" }).default(true),
+  messFeeIncluded: boolean("mess_fee_included").default(true),
   monthlyMessFee: integer("monthly_mess_fee"),
 
   // Other charges
@@ -614,8 +614,8 @@ export const hostelFees = sqliteTable("hostel_fees", {
   waterCharge: integer("water_charge"), // Monthly
   maintenanceCharge: integer("maintenance_charge"), // Annual
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -625,7 +625,7 @@ export const hostelFees = sqliteTable("hostel_fees", {
 /**
  * Individual hostel fee payments
  */
-export const hostelPayments = sqliteTable("hostel_payments", {
+export const hostelPayments = pgTable("hostel_payments", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -657,8 +657,8 @@ export const hostelPayments = sqliteTable("hostel_payments", {
   refundReason: text("refund_reason"),
   refundDate: text("refund_date"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -668,7 +668,7 @@ export const hostelPayments = sqliteTable("hostel_payments", {
 /**
  * Hostel rules and regulations
  */
-export const hostelRules = sqliteTable("hostel_rules", {
+export const hostelRules = pgTable("hostel_rules", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -691,10 +691,10 @@ export const hostelRules = sqliteTable("hostel_rules", {
 
   // Display
   displayOrder: integer("display_order"),
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  isActive: boolean("is_active").default(true),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================

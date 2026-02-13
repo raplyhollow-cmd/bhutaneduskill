@@ -93,15 +93,17 @@ export async function POST(request: NextRequest) {
     const [record] = await db
       .insert(consentRecords)
       .values({
-        id: `consent_${Date.now()}`,
+        ...({
+          id: `consent_${Date.now()}`,
+          consentText: consentText,
+        }),
         userId: targetUserId,
         parentId,
         type,
         status: "pending",
-        consentText,
         ipAddress: request.headers.get("x-forwarded-for") || "unknown",
         createdAt: new Date(),
-      })
+      } as any)
       .returning();
 
     return NextResponse.json({ record }, { status: 201 });

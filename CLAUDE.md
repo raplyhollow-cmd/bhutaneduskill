@@ -248,6 +248,8 @@ className="transition-all duration-300 group-hover:scale-110"
 | **Onboarding Wizard** | [docs/onboarding-wizard.md](docs/onboarding-wizard.md) | Guided setup flows for all user types |
 | **Advanced UX/UI** | [docs/advanced-ux-ui.md](docs/advanced-ux-ui.md) | Micro-interactions, transitions, 1L+ user tested patterns |
 | **Vision & Objectives** | [docs/vision-objectives.md](docs/vision-objectives.md) | Dual-product strategy, student journey, flywheel effect |
+| **Mobile App Plan** | [docs/mobile-app-plan.md](docs/mobile-app-plan.md) | Premium mobile SaaS transformation plan |
+| **Mobile App Progress** | [docs/mobile-app-progress.md](docs/mobile-app-progress.md) | Implementation progress & completed components |
 
 ---
 
@@ -957,5 +959,256 @@ import { ReportCardGenerator } from "@/components/reports";
 - D+: 30-39% (Poor)
 - D: 20-29% (Very Poor)
 - E/F: Below 20% (Fail)
+
+---
+
+## Premium Mobile App Experience Plan (Feb 13, 2026)
+
+**Goal:** Transform into premium mobile SaaS with Vercel/Clerk-inspired design. Installable PWA with app-like feel.
+
+### Priority Matrix
+
+| Priority | Phase | Time | Status |
+|----------|-------|------|--------|
+| **P0** | Security Fixes | 1 day | ⚠️ BLOCKING |
+| **P0** | Error Handling | 1-2 days | Pending |
+| **P0** | Build Validation | 1 day | Pending |
+| **P1** | TypeScript Cleanup | 2-3 days | Pending |
+| **P1** | PWA Features | 1 day | Pending |
+| **P1** | Premium Mobile Components | 2-3 days | Pending |
+| **P1** | Mobile UX Fixes | 2-3 days | Pending |
+| **P2** | Portal Redesign (Vercel) | 3-5 days | Pending |
+
+### Critical Issues (P0 - DO FIRST)
+
+**Security:**
+- ⚠️ DELETE `import.env` - Contains production credentials
+- Add auth to 16 unprotected API routes
+- Add CORS headers to all API routes
+- Create `src/lib/env.ts` with Zod validation
+
+**Error Handling:**
+- Create `src/app/error.tsx` - Global error boundary
+- Create `src/app/not-found.tsx` - Custom 404 page
+- Create `src/lib/api-error-handler.ts`
+- Create `src/lib/logger.ts` - Replace all console.log
+
+**Build Validation:**
+- Create `scripts/prebuild-check.ts`
+- Enable strict mode in `tsconfig.json`
+- Fix all TypeScript errors before building
+
+### Mobile UX Fixes (P1)
+
+**Navigation:**
+- Bottom tab bar (5 tabs max, thumb-friendly)
+- Fix back-to-top button: `bottom-20 right-4` on mobile (above tab bar)
+- Full-screen modals for forms (slide up from bottom)
+
+**Cards:**
+- Mobile: 2-column grid with `p-3` padding
+- Desktop: 4-column grid with hover effects
+- Touch targets ≥44px
+
+**Portal Bottom Nav:**
+```
+Student: [Dashboard] [Homework] [Classes] [More...]
+Teacher: [Dashboard] [Classes] [Homework] [More...]
+Parent:  [Dashboard] [Children] [Progress] [More...]
+```
+
+### PWA Features (P1)
+
+**Files to Create:**
+- `public/manifest.json` - App configuration
+- `public/icons/*` - 9 icon sizes (72x72 to 512x512)
+- `public/sw.js` - Service worker (optional)
+
+**Manifest shortcuts:** Dashboard, Careers, Assessments
+
+### Premium Mobile Components (P1)
+
+**New Components:**
+- `src/components/ui/skeleton.tsx` - Loading states
+- `src/components/ui/toast.tsx` - Toast notifications
+- `src/hooks/use-pull-to-refresh.ts` - Pull-to-refresh gesture
+- `src/components/ui/full-screen-modal.tsx` - Adaptive modal
+- `src/components/ui/mobile-card.tsx` - Adaptive card
+
+**Micro-interactions:**
+- Glassmorphism headers (`backdrop-blur-xl bg-white/80`)
+- Optimistic UI (instant feedback, revert on error)
+- Haptic feedback on button press
+- Smooth page transitions
+
+### Portal Redesign - Vercel Style (P2)
+
+**Design Principles:**
+- White/gray backgrounds with `border-gray-200`
+- 1px borders everywhere
+- Subtle shadows (`shadow-sm`)
+- Compact spacing (`p-4`, `gap-4`)
+- Sharp corners (`rounded-lg`)
+- Sans-serif typography
+
+**Layout Changes:**
+```
+Before: Sidebar (256px) + gradient bg
+After:  Sidebar (200px) + white bg + top nav with breadcrumbs
+```
+
+**New Files:**
+- `src/components/shared/vercel-sidebar.tsx`
+- `src/components/shared/vercel-header.tsx`
+
+**Portal Accents:** Colored badges/buttons only (no full gradients)
+
+### TypeScript Fixes (200+ any types)
+
+**Files with most `any` usage:**
+- `src/lib/hooks/use-api-data.ts`
+- `src/lib/riasec.ts`
+- `src/components/wizard/wizard-form.tsx`
+- `src/lib/db/index.ts`
+
+**Action Plan:**
+1. Create proper interfaces for data models
+2. Use generic types instead of `any`
+3. Remove all `as any` assertions
+4. Enable strict mode
+
+### Mobile Design Specs
+
+**Safe Areas:** `env(safe-area-inset-bottom)`
+**Touch Targets:** 44px min (iOS), 48px preferred (Material)
+**Typography Scale:** text-xs (12px) to text-2xl (24px)
+**Bottom Nav:** 64px + safe area
+**Modals:** 75-85vh height
+
+### File Implementation Order
+
+**Phase 0 - Security (DO FIRST):**
+1. DELETE `import.env`
+2. Create `src/lib/env.ts`
+3. Create `src/lib/api-middleware.ts`
+4. Add auth to 16 API routes
+
+**Phase 1 - Error Handling:**
+1. `src/app/error.tsx`
+2. `src/app/not-found.tsx`
+3. `src/lib/api-error-handler.ts`
+4. `src/lib/logger.ts`
+
+**Phase 2 - TypeScript:**
+1. Create proper interfaces
+2. Replace 200+ `any` types
+3. Enable strict mode
+
+**Phase 3 - Mobile UX:**
+1. Fix back-to-top button
+2. Create full-screen modal
+3. Update mobile tab bar
+
+**Phase 4 - Cards:**
+1. Create mobile-card component
+2. Update portal cards (2-col mobile)
+3. Update dashboard grids
+
+**Phase 5 - Portal Redesign:**
+1. Create Vercel-style sidebar
+2. Create Vercel-style header
+3. Update card component
+4. Apply to all portals
+
+**Phase 6 - PWA:**
+1. Create manifest.json
+2. Generate icons (9 sizes)
+3. Update layout.tsx with links
+
+**Phase 7 - Premium Components:**
+1. Create skeleton.tsx
+2. Create toast.tsx
+3. Create pull-to-refresh hook
+4. Add glassmorphism headers
+
+**Phase 8 - Performance:**
+1. Split large components
+2. Add React.memo
+3. Add missing keys
+
+### New Components Summary
+
+| Component | Purpose | Priority | Status |
+|-----------|---------|----------|--------|
+| `full-screen-modal.tsx` | Adaptive modal (mobile full, desktop center) | P1 | ✅ Created |
+| `mobile-card.tsx` | 2-col grid on mobile with variants | P1 | ✅ Created |
+| `portal-bottom-nav.tsx` | Portal-specific bottom nav (6 portals) | P1 | ✅ Created |
+| `skeleton.tsx` | Loading skeletons (enhanced) | P1 | ✅ Enhanced |
+| `toast.tsx` | Toast notifications | P1 | ✅ Already existed |
+| `src/lib/env.ts` | Environment validation with Zod | P0 | ✅ Created |
+
+**Pending (P2 - Portal Redesign):**
+| `vercel-sidebar.tsx` | Vercel-style sidebar | P2 | Pending |
+| `vercel-header.tsx` | Vercel-style top nav | P2 | Pending |
+
+**See:** [docs/mobile-app-progress.md](docs/mobile-app-progress.md) for detailed implementation progress
+
+---
+
+## Codebase State Reference (Feb 13, 2026)
+
+### What Already Exists (DO NOT RECREATE)
+
+| File | Status | Purpose |
+|------|--------|---------|
+| `src/lib/logger.ts` | ✅ Complete | debug/info/warn/error/security with Sentry |
+| `src/lib/auth-utils.ts` | ✅ Complete | `requireAuth(allowedRoles?)` helper |
+| `src/app/error.tsx` | ✅ Complete | React error boundary |
+| `src/app/not-found.tsx` | ✅ Complete | Custom 404 page |
+| `src/app/global-error.tsx` | ✅ Complete | Root error handler |
+| `src/components/error/error-display.tsx` | ✅ Complete | Reusable error UI |
+| `src/middleware.ts` | ✅ Complete | CORS + security headers for ALL API |
+| `src/types/index.ts` | ✅ Complete | ApiSuccess<T>, ApiErrorResponse, Pagination |
+| `public/manifest.json` | ✅ Complete | PWA manifest (9 icon sizes) |
+| `src/components/layout/footer.tsx` | ✅ Fixed | Back-to-top now at `bottom-20 right-4 md:bottom-6 md:right-6` |
+| `src/components/layout/compact-nav.tsx` | ✅ Exists | Mobile tab bar (5 tabs) |
+
+### Newly Created (Feb 13, 2026)
+
+| Priority | File | Purpose |
+|----------|------|---------|
+| P0 | `src/lib/env.ts` | ✅ Environment validation with Zod |
+| P1 | `src/components/ui/full-screen-modal.tsx` | ✅ Adaptive modal (mobile full, desktop center) |
+| P1 | `src/components/ui/mobile-card.tsx` | ✅ Mobile card with grid, stats, quick action variants |
+| P1 | `src/components/ui/skeleton.tsx` | ✅ Enhanced with CardSkeleton, StatsCardSkeleton, etc. |
+| P1 | `src/components/shared/portal-bottom-nav.tsx` | ✅ Portal bottom nav for all 6 portals |
+| P1 | `public/icons/*` | ⏳ 9 icon sizes (need generation) |
+
+### Security: 25+ Unprotected Routes
+
+**Apply this pattern to all unprotected routes:**
+```typescript
+import { requireAuth } from "@/lib/auth-utils";
+
+export async function GET(req: Request) {
+  const { userId } = await requireAuth(); // or await requireAuth(['admin'])
+  // ... rest of route
+}
+```
+
+**Routes needing protection:**
+- `/api/admin/content/*` → requireAuth(['admin'])
+- `/api/teacher/*` → requireAuth(['teacher', 'school-admin', 'admin'])
+- `/api/counselor/*` → requireAuth(['counselor', 'school-admin', 'admin'])
+- `/api/library/*`, `/api/transport/*`, `/api/tuition/*`
+
+### TypeScript Config
+
+**Current:** `strict: false` - Keep OFF until 200+ `any` types fixed by other agents
+
+### Import Pattern
+
+**ALWAYS use:** `import { X } from "@/lib/..."`
+**NEVER use:** `import { X } from "../../lib/..."`
 
 ---

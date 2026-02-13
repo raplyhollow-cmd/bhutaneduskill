@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { users, examResultsEnhanced } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
@@ -13,25 +13,14 @@ import { eq, desc } from "drizzle-orm";
  * - Aggregate results (total percentage, division, rank)
  */
 export async function GET(request: NextRequest) {
+  const authResult = await requireAuth(['student', 'teacher', 'counselor', 'admin']);
+  if ('error' in authResult) {
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+  }
+
+  const { user: currentUser } = authResult;
+
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Get current student user
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    if (currentUser.type !== "student") {
-      return NextResponse.json({ error: "Forbidden - Students only" }, { status: 403 });
-    }
-
     // Get exam results
     const results = await db.query.examResultsEnhanced.findMany({
       where: eq(examResultsEnhanced.studentId, currentUser.id),
@@ -45,7 +34,7 @@ export async function GET(request: NextRequest) {
     // Calculate aggregate summary
     const totalExams = results.length;
     const latestResult = results[0];
-    const averagePercentage = results.reduce((sum, r) => sum + (r.overallPercentage || 0), 0) / results.length;
+    const averagePercentage = results.reduce((sum, r) => sum + ((r as any).overallPercentage || 0), 0) / results.length;
 
     // Find best and worst performance
     const bestResult = results.reduce((best, current) =>

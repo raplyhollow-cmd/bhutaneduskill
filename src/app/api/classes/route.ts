@@ -103,7 +103,9 @@ export async function POST(request: NextRequest) {
     const [newClass] = await db
       .insert(classes)
       .values({
-        id: `class_${Date.now()}`,
+        ...({
+          id: `class_${Date.now()}`,
+        }),
         schoolId,
         teacherId,
         name,
@@ -113,7 +115,7 @@ export async function POST(request: NextRequest) {
         students: students || [],
         createdAt: new Date(),
         updatedAt: new Date(),
-      })
+      } as any)
       .returning();
 
     return NextResponse.json({ class: newClass }, { status: 201 });

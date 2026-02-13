@@ -412,3 +412,72 @@ export function logAuthEvent(
 
   // TODO: Send to monitoring/audit service
 }
+
+// ============================================================================
+// API ROUTE HELPERS
+// ============================================================================
+
+/**
+ * API route authentication helper
+ * Use this in API routes to require authentication and optionally verify roles
+ *
+ * @example
+ * ```ts
+ * // Basic auth check
+ * const authResult = await requireAuth();
+ * if ('error' in authResult) return authResult;
+ * const { user, userId } = authResult;
+ *
+ * // With role requirement
+ * const authResult = await requireAuth(['admin', 'school-admin']);
+ * if ('error' in authResult) return authResult;
+ * const { user, userId } = authResult;
+ * ```
+ *
+ * @param allowedRoles - Array of roles that can access this route
+ * @returns Object with user and userId on success, or NextResponse error on failure
+ */
+export async function requireAuth(allowedRoles?: string[]): Promise<
+  | { user: any; userId: string }
+  | { error: string; status: number }
+> {
+  const { auth } = await import("@clerk/nextjs/server");
+  const { userId } = await auth();
+
+  if (!userId) {
+    return { error: "Unauthorized", status: 401 };
+  }
+
+  // Get user with role from database
+  const user = await db.query.users.findFirst({
+    where: eq(users.clerkUserId, userId),
+  });
+
+  if (!user) {
+    return { error: "User not found", status: 404 };
+  }
+
+  // Check role if required
+  if (allowedRoles && !allowedRoles.includes(user.type)) {
+    return { error: "Forbidden", status: 403 };
+  }
+
+  return { user, userId };
+}
+
+/**
+ * Helper to convert auth result to NextResponse
+ * Use this after requireAuth to handle errors consistently
+ */
+export async function authResponse(authResult: Awaited<ReturnType<typeof requireAuth>>) {
+  const { NextResponse } = await import("next/server");
+
+  if ('error' in authResult) {
+    return NextResponse.json(
+      { error: authResult.error },
+      { status: authResult.status }
+    );
+  }
+
+  return null; // No error, continue with request
+}

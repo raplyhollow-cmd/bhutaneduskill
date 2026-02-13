@@ -2,32 +2,34 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { careerPlans } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
-import { requireAuth } from "@/lib/db/tenant";
+import { requireAuth } from "@/lib/auth-utils";
 
 export async function GET(request: NextRequest) {
-  try {
-    const user = await requireAuth();
-
-    const plans = await db.query.careerPlans.findMany({
-      where: eq(careerPlans.userId, user.id),
-      orderBy: desc(careerPlans.createdAt),
-      limit: 10,
-    });
-
-    return NextResponse.json({ plans });
-  } catch (error: any) {
-    if (error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    console.error("Career plans fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch plans" }, { status: 500 });
+  const authResult = await requireAuth();
+  if ('error' in authResult) {
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
   }
+
+  const { user } = authResult;
+
+  const plans = await db.query.careerPlans.findMany({
+    where: eq(careerPlans.userId, user.id),
+    orderBy: desc(careerPlans.createdAt),
+    limit: 10,
+  });
+
+  return NextResponse.json({ plans });
 }
 
 export async function POST(request: NextRequest) {
-  try {
-    const user = await requireAuth();
+  const authResult = await requireAuth();
+  if ('error' in authResult) {
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+  }
 
+  const { user } = authResult;
+
+  try {
     const body = await request.json();
     const { targetCareer, currentPhase, shortTermGoals, longTermGoals, actionSteps, milestones } = body;
 
@@ -51,9 +53,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, plan });
   } catch (error: any) {
-    if (error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     console.error("Career plan creation error:", error);
     return NextResponse.json({ error: "Failed to create plan" }, { status: 500 });
   }

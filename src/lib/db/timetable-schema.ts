@@ -3,7 +3,7 @@
  * Handles class scheduling, teacher allocation, and conflict detection
  */
 
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { pgTable, text, integer, boolean, timestamp, pgEnum , json} from "drizzle-orm/pg-core";
 
 // ============================================================================
 // TIMETABLE PERIODS
@@ -13,7 +13,7 @@ import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
  * Time periods for the school day
  * e.g., Period 1: 8:00-8:45, Period 2: 8:45-9:30, etc.
  */
-export const timePeriods = sqliteTable("time_periods", {
+export const timePeriods = pgTable("time_periods", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -28,12 +28,12 @@ export const timePeriods = sqliteTable("time_periods", {
   duration: integer("duration").notNull(), // In minutes
 
   // Days applicable
-  days: text("days", { mode: "json" }).$type<Array<"Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday">>(),
+  days: json("days").$type<Array<"Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday">>(),
 
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  isActive: boolean("is_active").default(true),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -44,7 +44,7 @@ export const timePeriods = sqliteTable("time_periods", {
  * Individual timetable entries
  * Links a class, subject, teacher, room, and time period
  */
-export const timetableEntries = sqliteTable("timetable_entries", {
+export const timetableEntries = pgTable("timetable_entries", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -70,15 +70,15 @@ export const timetableEntries = sqliteTable("timetable_entries", {
   // Additional info
   academicYear: text("academic_year").notNull(), // "2024-2025"
   termId: text("term_id"), // References academic_terms
-  isElective: integer("is_elective", { mode: "boolean" }).default(false),
-  isDoublePeriod: integer("is_double_period", { mode: "boolean" }).default(false),
+  isElective: boolean("is_elective").default(false),
+  isDoublePeriod: boolean("is_double_period").default(false),
   notes: text("notes"),
 
   // Status
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  isActive: boolean("is_active").default(true),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -89,7 +89,7 @@ export const timetableEntries = sqliteTable("timetable_entries", {
  * Physical rooms in the school
  * Classrooms, labs, halls, etc.
  */
-export const rooms = sqliteTable("rooms", {
+export const rooms = pgTable("rooms", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -100,19 +100,19 @@ export const rooms = sqliteTable("rooms", {
   capacity: integer("capacity"), // Number of students
 
   // Features
-  hasProjector: integer("has_projector", { mode: "boolean" }).default(false),
-  hasComputers: integer("has_computers", { mode: "boolean" }).default(false),
-  hasLabEquipment: integer("has_lab_equipment", { mode: "boolean" }).default(false),
-  facilities: text("facilities", { mode: "json" }).$type<string[]>(), // ["projector", "smart_board", "ac"]
+  hasProjector: boolean("has_projector").default(false),
+  hasComputers: boolean("has_computers").default(false),
+  hasLabEquipment: boolean("has_lab_equipment").default(false),
+  facilities: json("facilities").$type<string[]>(), // ["projector", "smart_board", "ac"]
 
   // Location
   building: text("building"), // "Block A", "Main Building"
   floor: integer("floor"), // Floor number
 
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  isActive: boolean("is_active").default(true),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -123,7 +123,7 @@ export const rooms = sqliteTable("rooms", {
  * Recorded conflicts in timetable
  * For tracking and resolution
  */
-export const timetableConflicts = sqliteTable("timetable_conflicts", {
+export const timetableConflicts = pgTable("timetable_conflicts", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -144,11 +144,11 @@ export const timetableConflicts = sqliteTable("timetable_conflicts", {
   // Resolution
   status: text("status").notNull().default("pending"), // "pending", "resolved", "ignored"
   resolvedBy: text("resolved_by"), // User ID who resolved
-  resolvedAt: integer("resolved_at", { mode: "timestamp" }),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
   resolutionNotes: text("resolution_notes"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -159,7 +159,7 @@ export const timetableConflicts = sqliteTable("timetable_conflicts", {
  * Examination schedules
  * Separate from regular timetable
  */
-export const examSchedules = sqliteTable("exam_schedules", {
+export const examSchedules = pgTable("exam_schedules", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -176,16 +176,16 @@ export const examSchedules = sqliteTable("exam_schedules", {
   // Status
   status: text("status").notNull().default("draft"), // "draft", "published", "completed", "cancelled"
 
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  isActive: boolean("is_active").default(true),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 /**
  * Individual exam entries
  */
-export const examEntries = sqliteTable("exam_entries", {
+export const examEntries = pgTable("exam_entries", {
   id: text("id").primaryKey(),
   examScheduleId: text("exam_schedule_id").notNull().references(() => examSchedules.id),
 
@@ -213,8 +213,8 @@ export const examEntries = sqliteTable("exam_entries", {
   duration: integer("duration").notNull(), // In minutes
   instructions: text("instructions"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================

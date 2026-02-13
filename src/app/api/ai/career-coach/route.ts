@@ -91,8 +91,8 @@ export async function POST(request: NextRequest) {
       userName: userProfile?.name || "Student",
       userRole: userProfile?.role || "student",
       hollandCode: riasecResult?.hollandCode || null,
-      mbtiType: mbtiResult?.mbtiType || null,
-      topCareer: matches[0]?.career?.name || null,
+      mbtiType: (mbtiResult as any)?.personalityType || null,
+      topCareer: (matches[0] as any)?.career?.name || null,
       careerMatchScore: matches[0]?.matchScore || null,
       completedAssessments: completedAssessments.length,
     };

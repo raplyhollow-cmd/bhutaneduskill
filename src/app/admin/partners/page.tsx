@@ -320,10 +320,10 @@ export default async function AdminPartnersPage({
                         </td>
                         <td className="py-4 px-4">
                           <span className="inline-flex items-center gap-1 text-sm font-medium text-gray-900">
-                            {partner.contactPerson && (
+                            {(partner as any).contactPerson && (
                               <>
                                 <Users className="w-4 h-4 text-gray-400" />
-                                {partner.contactPerson}
+                                {(partner as any).contactPerson}
                               </>
                             )}
                           </span>

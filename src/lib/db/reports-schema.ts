@@ -3,7 +3,7 @@
  * Handles generation and submission of reports to Bhutan government agencies
  */
 
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { pgTable, text, integer, boolean, timestamp, pgEnum , json} from "drizzle-orm/pg-core";
 
 // ============================================================================
 // REPORT TEMPLATES
@@ -12,7 +12,7 @@ import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 /**
  * Pre-defined report templates for government submissions
  */
-export const reportTemplates = sqliteTable("report_templates", {
+export const reportTemplates = pgTable("report_templates", {
   id: text("id").primaryKey(),
 
   // Template details
@@ -35,7 +35,7 @@ export const reportTemplates = sqliteTable("report_templates", {
   dueDescription: text("due_description"), // e.g., "Within 30 days of academic year end"
 
   // Data requirements
-  dataFields: text("data_fields", { mode: "json" }).$type<Array<{
+  dataFields: json("data_fields").$type<Array<{
     field: string;
     label: string;
     type: string;
@@ -45,23 +45,23 @@ export const reportTemplates = sqliteTable("report_templates", {
 
   // Format
   format: text("format").notNull(), // "pdf", "excel", "xml", "json", "online_form"
-  templateStructure: text("template_structure", { mode: "json" }).$type<Record<string, any>>(),
+  templateStructure: json("template_structure").$type<Record<string, any>>(),
 
   // Validation
-  validationRules: text("validation_rules", { mode: "json" }).$type<Array<{
+  validationRules: json("validation_rules").$type<Array<{
     field: string;
     rule: string;
     message: string;
   }>>(),
 
   // Status
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  isActive: boolean("is_active").default(true),
   version: text("version").default("1.0"),
   effectiveFrom: text("effective_from"),
   effectiveUntil: text("effective_until"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -71,7 +71,7 @@ export const reportTemplates = sqliteTable("report_templates", {
 /**
  * Generated government reports
  */
-export const generatedReports = sqliteTable("generated_reports", {
+export const generatedReports = pgTable("generated_reports", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
   templateId: text("template_id").notNull(),
@@ -91,7 +91,7 @@ export const generatedReports = sqliteTable("generated_reports", {
   status: text("status").notNull().default("draft"), // "draft", "pending_review", "approved", "submitted", "accepted", "rejected", "resubmission_required"
 
   // Report data
-  reportData: text("report_data", { mode: "json" }).$type<Record<string, any>>(),
+  reportData: json("report_data").$type<Record<string, any>>(),
   summary: text("summary"), // Text summary of key figures
 
   // Approvals
@@ -112,7 +112,7 @@ export const generatedReports = sqliteTable("generated_reports", {
   agencyResponseDate: text("agency_response_date"),
   agencyResponse: text("agency_response"), // "accepted", "rejected", "clarification_required"
   agencyComments: text("agency_comments"),
-  clarificationRequired: text("clarification_required", { mode: "json" }).$type<Array<{
+  clarificationRequired: json("clarification_required").$type<Array<{
     section: string;
     issue: string;
     clarificationNeeded: string;
@@ -120,14 +120,14 @@ export const generatedReports = sqliteTable("generated_reports", {
 
   // Files
   reportFileUrl: text("report_file_url"), // Generated report file
-  supportingDocuments: text("supporting_documents", { mode: "json" }).$type<Array<{
+  supportingDocuments: json("supporting_documents").$type<Array<{
     name: string;
     url: string;
     type: string;
   }>>(),
 
   // Revisions
-  isRevision: integer("is_revision", { mode: "boolean" }).default(false),
+  isRevision: boolean("is_revision").default(false),
   parentReportId: text("parent_report_id"),
   revisionNumber: integer("revision_number").default(0),
   revisionReason: text("revision_reason"),
@@ -137,8 +137,8 @@ export const generatedReports = sqliteTable("generated_reports", {
   reportType: text("report_type").notNull(),
   frequency: text("frequency").notNull(),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -148,7 +148,7 @@ export const generatedReports = sqliteTable("generated_reports", {
 /**
  * Automated report generation schedules
  */
-export const reportSchedules = sqliteTable("report_schedules", {
+export const reportSchedules = pgTable("report_schedules", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
   templateId: text("template_id").notNull(),
@@ -161,20 +161,20 @@ export const reportSchedules = sqliteTable("report_schedules", {
   frequency: text("frequency").notNull(), // "annually", "semi_annually", "quarterly", "monthly"
   generationDay: integer("generation_day"), // Day of month/period
   generationMonth: integer("generation_month"), // For annual reports
-  autoGenerate: integer("auto_generate", { mode: "boolean" }).default(false),
-  autoSubmit: integer("auto_submit", { mode: "boolean" }).default(false),
+  autoGenerate: boolean("auto_generate").default(false),
+  autoSubmit: boolean("auto_submit").default(false),
 
   // Notification
   notifyBeforeDays: integer("notify_before_days"),
-  notifyEmails: text("notify_emails", { mode: "json" }).$type<string[]>(),
+  notifyEmails: json("notify_emails").$type<string[]>(),
 
   // Status
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  isActive: boolean("is_active").default(true),
   lastGeneratedDate: text("last_generated_date"),
   nextDueDate: text("next_due_date"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -184,7 +184,7 @@ export const reportSchedules = sqliteTable("report_schedules", {
 /**
  * Student attendance reports for government
  */
-export const studentAttendanceReports = sqliteTable("student_attendance_reports", {
+export const studentAttendanceReports = pgTable("student_attendance_reports", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
   reportId: text("report_id").notNull(), // Link to generated_reports
@@ -202,7 +202,7 @@ export const studentAttendanceReports = sqliteTable("student_attendance_reports"
   overallAttendanceRate: integer("overall_attendance_rate"), // In hundredths
 
   // Class-wise breakdown
-  classWiseData: text("class_wise_data", { mode: "json" }).$type<Array<{
+  classWiseData: json("class_wise_data").$type<Array<{
     class: number;
     section: string;
     totalStudents: number;
@@ -211,7 +211,7 @@ export const studentAttendanceReports = sqliteTable("student_attendance_reports"
   }>>(),
 
   // Chronic absentees (>30 days absent)
-  chronicAbsentees: text("chronic_absentees", { mode: "json" }).$type<Array<{
+  chronicAbsentees: json("chronic_absentees").$type<Array<{
     studentId: string;
     studentName: string;
     class: number;
@@ -221,13 +221,13 @@ export const studentAttendanceReports = sqliteTable("student_attendance_reports"
   }>>(),
 
   // Reasons for absence
-  absenceReasons: text("absence_reasons", { mode: "json" }).$type<Array<{
+  absenceReasons: json("absence_reasons").$type<Array<{
     reason: string;
     count: number;
     percentage: number;
   }>>(),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -237,7 +237,7 @@ export const studentAttendanceReports = sqliteTable("student_attendance_reports"
 /**
  * Student academic performance reports
  */
-export const studentPerformanceReports = sqliteTable("student_performance_reports", {
+export const studentPerformanceReports = pgTable("student_performance_reports", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
   reportId: text("report_id").notNull(),
@@ -259,7 +259,7 @@ export const studentPerformanceReports = sqliteTable("student_performance_report
   failedCount: integer("failed_count"),
 
   // Subject-wise performance
-  subjectPerformance: text("subject_performance", { mode: "json" }).$type<Array<{
+  subjectPerformance: json("subject_performance").$type<Array<{
     subject: string;
     totalAppeared: number;
     totalPassed: number;
@@ -270,7 +270,7 @@ export const studentPerformanceReports = sqliteTable("student_performance_report
   }>>(),
 
   // Class-wise performance
-  classPerformance: text("class_performance", { mode: "json" }).$type<Array<{
+  classPerformance: json("class_performance").$type<Array<{
     class: number;
     section: string;
     totalStudents: number;
@@ -280,7 +280,7 @@ export const studentPerformanceReports = sqliteTable("student_performance_report
   }>>(),
 
   // Top performers
-  topPerformers: text("top_performers", { mode: "json" }).$type<Array<{
+  topPerformers: json("top_performers").$type<Array<{
     studentId: string;
     studentName: string;
     class: number;
@@ -290,13 +290,13 @@ export const studentPerformanceReports = sqliteTable("student_performance_report
   }>>(),
 
   // Comparison with previous year
-  yearComparison: text("year_comparison", { mode: "json" }).$type<{
+  yearComparison: json("year_comparison").$type<{
     previousYearPassPercentage: number;
     currentYearPassPercentage: number;
     change: number;
   }>(),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -306,7 +306,7 @@ export const studentPerformanceReports = sqliteTable("student_performance_report
 /**
  * School infrastructure and facility reports
  */
-export const infrastructureReports = sqliteTable("infrastructure_reports", {
+export const infrastructureReports = pgTable("infrastructure_reports", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
   reportId: text("report_id").notNull(),
@@ -322,7 +322,7 @@ export const infrastructureReports = sqliteTable("infrastructure_reports", {
   totalOtherRooms: integer("total_other_rooms"),
 
   // Room details
-  roomBreakdown: text("room_breakdown", { mode: "json" }).$type<Array<{
+  roomBreakdown: json("room_breakdown").$type<Array<{
     roomType: string;
     count: number;
     totalArea: number;
@@ -330,21 +330,21 @@ export const infrastructureReports = sqliteTable("infrastructure_reports", {
   }>>(),
 
   // Facilities
-  hasLibrary: integer("has_library", { mode: "boolean" }),
+  hasLibrary: boolean("has_library"),
   libraryArea: integer("library_area"),
-  hasScienceLab: integer("has_science_lab", { mode: "boolean" }),
-  hasComputerLab: integer("has_computer_lab", { mode: "boolean" }),
+  hasScienceLab: boolean("has_science_lab"),
+  hasComputerLab: boolean("has_computer_lab"),
   computerCount: integer("computer_count"),
-  hasPlayground: integer("has_playground", { mode: "boolean" }),
+  hasPlayground: boolean("has_playground"),
   playgroundArea: integer("playground_area"),
 
   // Utilities
   drinkingWaterSource: text("drinking_water_source"),
-  hasElectricity: integer("has_electricity", { mode: "boolean" }),
-  hasInternet: integer("has_internet", { mode: "boolean" }),
+  hasElectricity: boolean("has_electricity"),
+  hasInternet: boolean("has_internet"),
   internetSpeed: text("internet_speed"),
-  hasToilets: integer("has_toilets", { mode: "boolean" }),
-  toiletDetails: text("toilet_details", { mode: "json" }).$type<{
+  hasToilets: boolean("has_toilets"),
+  toiletDetails: json("toilet_details").$type<{
     male: number;
     female: number;
     staff: number;
@@ -352,9 +352,9 @@ export const infrastructureReports = sqliteTable("infrastructure_reports", {
   }>(),
 
   // Safety
-  hasFireSafety: integer("has_fire_safety", { mode: "boolean" }),
-  hasFirstAid: integer("has_first_aid", { mode: "boolean" }),
-  hasBoundaryWall: integer("has_boundary_wall", { mode: "boolean" }),
+  hasFireSafety: boolean("has_fire_safety"),
+  hasFirstAid: boolean("has_first_aid"),
+  hasBoundaryWall: boolean("has_boundary_wall"),
 
   // Furniture and equipment
   studentFurnitureCount: integer("student_furniture_count"),
@@ -363,14 +363,14 @@ export const infrastructureReports = sqliteTable("infrastructure_reports", {
 
   // Condition assessment
   buildingCondition: text("building_condition"), // "excellent", "good", "fair", "poor"
-  maintenanceRequired: text("maintenance_required", { mode: "json" }).$type<Array<{
+  maintenanceRequired: json("maintenance_required").$type<Array<{
     item: string;
     issue: string;
     priority: string;
     estimatedCost: number;
   }>>(),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -380,7 +380,7 @@ export const infrastructureReports = sqliteTable("infrastructure_reports", {
 /**
  * Teacher and staff reports
  */
-export const staffReports = sqliteTable("staff_reports", {
+export const staffReports = pgTable("staff_reports", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
   reportId: text("report_id").notNull(),
@@ -395,7 +395,7 @@ export const staffReports = sqliteTable("staff_reports", {
   totalNonTeachingStaff: integer("total_non_teaching_staff"),
 
   // Teaching staff
-  teachingStaffBreakdown: text("teaching_staff_breakdown", { mode: "json" }).$type<Array<{
+  teachingStaffBreakdown: json("teaching_staff_breakdown").$type<Array<{
     level: string; // "PP", "primary", "lower_secondary", "higher_secondary"
     male: number;
     female: number;
@@ -405,21 +405,21 @@ export const staffReports = sqliteTable("staff_reports", {
   }>>(),
 
   // Qualifications
-  qualificationBreakdown: text("qualification_breakdown", { mode: "json" }).$type<Array<{
+  qualificationBreakdown: json("qualification_breakdown").$type<Array<{
     qualification: string;
     count: number;
     percentage: number;
   }>>(),
 
   // Subject-wise teachers
-  subjectTeachers: text("subject_teachers", { mode: "json" }).$type<Array<{
+  subjectTeachers: json("subject_teachers").$type<Array<{
     subject: string;
     teachersCount: number;
     qualifiedCount: number;
   }>>(),
 
   // Experience
-  experienceBreakdown: text("experience_breakdown", { mode: "json" }).$type<Array<{
+  experienceBreakdown: json("experience_breakdown").$type<Array<{
     experienceRange: string; // "0-5", "5-10", "10-15", "15+"
     count: number;
   }>>(),
@@ -432,20 +432,20 @@ export const staffReports = sqliteTable("staff_reports", {
 
   // Vacancies
   totalVacancies: integer("total_vacancies"),
-  vacancyDetails: text("vacancy_details", { mode: "json" }).$type<Array<{
+  vacancyDetails: json("vacancy_details").$type<Array<{
     subject: string;
     level: string;
     vacancies: number;
   }>>(),
 
   // Training
-  trainingConducted: text("training_conducted", { mode: "json" }).$type<Array<{
+  trainingConducted: json("training_conducted").$type<Array<{
     programName: string;
     participants: number;
     duration: string;
   }>>(),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -455,7 +455,7 @@ export const staffReports = sqliteTable("staff_reports", {
 /**
  * School financial reports for government
  */
-export const financialReports = sqliteTable("financial_reports", {
+export const financialReports = pgTable("financial_reports", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
   reportId: text("report_id").notNull(),
@@ -485,7 +485,7 @@ export const financialReports = sqliteTable("financial_reports", {
   surplusDeficit: integer("surplus_deficit"),
 
   // Grants
-  grantDetails: text("grant_details", { mode: "json" }).$type<Array<{
+  grantDetails: json("grant_details").$type<Array<{
     grantType: string;
     amountReceived: number;
     amountUtilized: number;
@@ -498,7 +498,7 @@ export const financialReports = sqliteTable("financial_reports", {
   auditorName: text("auditor_name"),
   auditObservations: text("audit_observations"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -508,7 +508,7 @@ export const financialReports = sqliteTable("financial_reports", {
 /**
  * Student demographic reports
  */
-export const demographicReports = sqliteTable("demographic_reports", {
+export const demographicReports = pgTable("demographic_reports", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
   reportId: text("report_id").notNull(),
@@ -522,7 +522,7 @@ export const demographicReports = sqliteTable("demographic_reports", {
   newEnrollment: integer("new_enrollment"),
 
   // Gender breakdown
-  genderBreakdown: text("gender_breakdown", { mode: "json" }).$type<{
+  genderBreakdown: json("gender_breakdown").$type<{
     male: number;
     female: number;
     other: number;
@@ -531,21 +531,21 @@ export const demographicReports = sqliteTable("demographic_reports", {
   }>(),
 
   // Dzongkhag breakdown
-  dzongkhagBreakdown: text("dzongkhag_breakdown", { mode: "json" }).$type<Array<{
+  dzongkhagBreakdown: json("dzongkhag_breakdown").$type<Array<{
     dzongkhag: string;
     count: number;
     percentage: number;
   }>>(),
 
   // Age distribution
-  ageDistribution: text("age_distribution", { mode: "json" }).$type<Array<{
+  ageDistribution: json("age_distribution").$type<Array<{
     ageGroup: string;
     count: number;
   }>>(),
 
   // Special needs
   specialNeedsStudents: integer("special_needs_students"),
-  specialNeedsBreakdown: text("special_needs_breakdown", { mode: "json" }).$type<Array<{
+  specialNeedsBreakdown: json("special_needs_breakdown").$type<Array<{
     disabilityType: string;
     count: number;
   }>>(),
@@ -554,13 +554,13 @@ export const demographicReports = sqliteTable("demographic_reports", {
   eccdEnrollment: integer("eccd_enrollment"),
 
   // Dropout data
-  dropoutData: text("dropout_data", { mode: "json" }).$type<Array<{
+  dropoutData: json("dropout_data").$type<Array<{
     class: number;
     dropoutCount: number;
     reasons: string[];
   }>>(),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================

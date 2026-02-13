@@ -191,7 +191,7 @@ export async function POST(request: NextRequest) {
         academicYear: new Date().getFullYear().toString(),
         createdAt: Math.floor(Date.now() / 1000),
         updatedAt: Math.floor(Date.now() / 1000),
-      }).returning();
+      } as any).returning();
 
       return NextResponse.json({
         success: true,
@@ -216,7 +216,7 @@ export async function POST(request: NextRequest) {
         status: "active",
         createdAt: Math.floor(Date.now() / 1000),
         updatedAt: Math.floor(Date.now() / 1000),
-      }).returning();
+      } as any).returning();
 
       return NextResponse.json({
         success: true,

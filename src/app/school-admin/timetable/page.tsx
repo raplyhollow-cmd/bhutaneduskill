@@ -386,7 +386,7 @@ export default function TimetablePage() {
                   className="bg-gray-100 text-gray-700 border-gray-300"
                   variant="outline"
                 >
-                  {subject.code || subject.name}
+                  {subject.code || (subject as any).name}
                 </Badge>
               ))}
               {subjects.length > 8 && (
@@ -534,7 +534,7 @@ export default function TimetablePage() {
                   <option value="">Select a subject</option>
                   {subjects.map((subject) => (
                     <option key={subject.id} value={subject.id}>
-                      {subject.name} ({subject.code || "N/A"})
+                      {(subject as any).name} ({subject.code || "N/A"})
                     </option>
                   ))}
                 </select>

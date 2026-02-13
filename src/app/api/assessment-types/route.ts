@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
       where: eq(users.clerkUserId, userId),
     });
 
-    if (!currentUser || currentUser.type !== "admin") {
+    if (!currentUser || (currentUser as any).type !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -91,10 +91,10 @@ export async function POST(request: NextRequest) {
         questionCount,
         isActive: true,
         createdAt: new Date(),
-      })
+      } as any)
       .returning();
 
-    return NextResponse.json({ assessmentType: newType }, { status: 201 });
+    return NextResponse.json({ assessmentTypeId: newType }, { status: 201 });
   } catch (error) {
     console.error("Assessment type creation error:", error);
     return NextResponse.json({ error: "Failed to create assessment type" }, { status: 500 });

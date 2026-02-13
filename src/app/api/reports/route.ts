@@ -298,15 +298,15 @@ async function generateStudentProfileReport(userId: string, currentUser: any) {
     personalityProfile: {
       riasec: riasecResult ? {
         hollandCode: riasecResult.hollandCode,
-        traits: riasecResult.traits,
+        traits: (riasecResult as any).traits,
       } : null,
       mbti: mbtiResult ? {
         type: mbtiResult.personalityType,
-        traits: mbtiResult.traits,
+        traits: (mbtiResult as any).traits,
       } : null,
       disc: discResult ? {
-        type: discResult.discType,
-        traits: discResult.traits,
+        type: (discResult as any).discType,
+        traits: (discResult as any).traits,
       } : null,
     },
     careerMatches: careerMatchesData.map((m) => ({
@@ -327,7 +327,7 @@ async function generateStudentProfileReport(userId: string, currentUser: any) {
       examType: r.examType,
       examYear: r.examYear,
       totalPercentage: r.totalPercentage,
-      division: r.division,
+      division: (r as any).division,
     })),
   };
 }
@@ -378,10 +378,10 @@ async function generateClassSummaryReport(classId: string, currentUser: any) {
   return {
     class: {
       id: classData.id,
-      name: classData.name,
+      name: (classData as any).name,
       grade: classData.grade,
       section: classData.section,
-      teacherId: classData.teacherId,
+      teacherId: (classData as any).teacherId,
     },
     summary: {
       totalStudents: studentSummaries.length,
@@ -430,7 +430,7 @@ async function generateAssessmentAnalyticsReport(parameters: any, currentUser: a
     arr.length > 0 ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : 0;
 
   return {
-    assessmentType: assessmentType || "riasec",
+    assessmentTypeId: assessmentType || "riasec",
     period: { from: dateFrom, to: dateTo },
     totalResults: results.length,
     hollandCodeDistribution: hollandCodes,
@@ -587,7 +587,7 @@ async function generateMyProgressReport(user: any) {
     })),
     careerPlan: careerPlan ? {
       targetCareer: careerPlan.targetCareer,
-      currentPhase: careerPlan.currentPhase,
+      currentPhase: (careerPlan as any).currentPhase,
       milestonesCompleted: Array.isArray(careerPlan.milestones) ? careerPlan.milestones.filter((m: any) => m.completed).length : 0,
       totalMilestones: Array.isArray(careerPlan.milestones) ? careerPlan.milestones.length : 0,
     } : null,
@@ -595,7 +595,7 @@ async function generateMyProgressReport(user: any) {
       examType: r.examType,
       year: r.examYear,
       percentage: r.totalPercentage,
-      division: r.division,
+      division: (r as any).division,
     })),
   };
 }

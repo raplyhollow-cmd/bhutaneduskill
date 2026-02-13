@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
         status: "pending",
         ipAddress: request.headers.get("x-forwarded-for") || "unknown",
         createdAt: new Date(),
-      })
+      } as any)
       .returning();
 
     return NextResponse.json({ submission }, { status: 201 });

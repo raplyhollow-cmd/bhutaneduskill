@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
-import { announcements as announcementsTable, users, classes } from "@/lib/db/schema";
+import { announcements as announcements, users, classes } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
@@ -37,10 +37,10 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const classId = searchParams.get("classId");
 
-    let fetchedAnnouncements = await db.query.announcementsTableTable.findMany({
+    let fetchedAnnouncements = await db.query.announcements.findMany({
       where: and(
-        eq(announcementsTable.schoolId, currentUser?.schoolId || ""),
-        sql`${announcementsTable.isPublished} = 1`
+        eq(announcements.schoolId, currentUser?.schoolId || ""),
+        sql`${announcements.isPublished} = 1`
       ),
       with: {
         createdBy: {
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
           columns: { id: true, name: true },
         },
       },
-      orderBy: [desc(announcementsTable.isPinned), desc(announcementsTable.createdAt)],
+      orderBy: [desc(announcements.isPinned), desc(announcements.createdAt)],
     });
 
     // Filter by class if specified
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       columns: { id: true, type: true, schoolId: true },
     });
 
-    if (!currentUser || (currentUser.type !== "teacher" && currentUser.type !== "admin")) {
+    if (!currentUser || ((currentUser as any).type !== "teacher" && (currentUser as any).type !== "admin")) {
       return NextResponse.json({ error: "Forbidden - Only teachers and admins can create announcements" }, { status: 403 });
     }
 
@@ -86,20 +86,22 @@ export async function POST(request: NextRequest) {
     const { title, content, targetAudience, classId, priority, isPinned, scheduledFor } = input;
 
     // Create announcement
-    const [newAnnouncement] = await db.insert(announcementsTable).values({
-      title,
+    const [newAnnouncement] = await db.insert(announcements).values({
+      ...({
+        title,
+        authorId: currentUser.id,
+        authorName: `${(currentUser as any).firstName} ${(currentUser as any).lastName || ""}`.trim(),
+      }),
       content,
       targetAudience,
       classId: classId || null,
       schoolId: currentUser.schoolId,
-      authorId: currentUser.id,
-      authorName: `${currentUser.firstName} ${currentUser.lastName || ""}`.trim(),
       priority: priority === "high" ? 3 : priority === "medium" ? 2 : 1,
       isPinned: isPinned ? 1 : 0,
       isPublished: isPinned ? 1 : 0,
       createdAt: Math.floor(Date.now() / 1000),
       updatedAt: Math.floor(Date.now() / 1000),
-    }).returning();
+    } as any).returning();
 
     // Revalidate cache
     revalidatePath("/dashboard");
@@ -126,8 +128,8 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Announcement ID required" }, { status: 400 });
     }
 
-    const announcement = await db.query.announcementsTableTable.findFirst({
-      where: eq(announcementsTable.id, announcementId),
+    const announcement = await db.query.announcements.findFirst({
+      where: eq(announcements.id, announcementId),
     });
 
     if (!announcement) {
@@ -140,11 +142,11 @@ export async function DELETE(request: NextRequest) {
       columns: { id: true, type: true },
     });
 
-    if (announcement.authorId !== currentUser.id && currentUser.type !== "admin") {
+    if ((announcement as any).authorId !== currentUser.id && (currentUser as any).type !== "admin") {
       return NextResponse.json({ error: "You can only delete your own announcements" }, { status: 403 });
     }
 
-    await db.delete(announcementsTable).where(eq(announcementsTable.id, announcementId));
+    await db.delete(announcements).where(eq(announcements.id, announcementId));
 
     // Revalidate cache
     revalidatePath("/dashboard");

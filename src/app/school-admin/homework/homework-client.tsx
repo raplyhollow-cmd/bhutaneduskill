@@ -267,9 +267,9 @@ export function HomeworkClient({
                               <p className="font-medium text-gray-900">{hw.title}</p>
                               <Badge
                                 variant="outline"
-                                className={`mt-1 text-xs ${getTypeBadgeVariant(hw.type)}`}
+                                className={`mt-1 text-xs ${getTypeBadgeVariant((hw as any).type)}`}
                               >
-                                {hw.type}
+                                {(hw as any).type}
                               </Badge>
                             </div>
                           </td>

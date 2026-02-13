@@ -1,27 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { users, counselorAssignments, schools, assessments, careerPlans, attendance } from "@/lib/db/schema";
 import { eq, and, desc, sql, gte } from "drizzle-orm";
 
 // GET /api/counselor/students - Get counselor's assigned students
 export async function GET(request: NextRequest) {
+  const authResult = await requireAuth(['counselor', 'admin']);
+  if ('error' in authResult) {
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+  }
+
+  const { user: currentUser } = authResult;
+
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Get current user
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-      columns: { id: true, type: true },
-    });
-
-    if (!currentUser || currentUser.type !== "counselor") {
-      return NextResponse.json({ error: "Forbidden - counselors only" }, { status: 403 });
-    }
-
     // Get school assignments for this counselor
     const assignments = await db.query.counselorAssignments.findMany({
       where: and(

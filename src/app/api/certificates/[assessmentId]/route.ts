@@ -41,7 +41,7 @@ export async function GET(
       return NextResponse.json({ error: "Assessment not completed" }, { status: 400 });
     }
 
-    const results = assessment.results as any;
+    const results = (assessment as any).results as any;
     const assessmentType = assessment.type?.toUpperCase() || "ASSESSMENT";
 
     // Generate certificate HTML

@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
       where: eq(users.clerkUserId, userId),
     });
 
-    if (!currentUser || currentUser.type !== "admin") {
+    if (!currentUser || (currentUser as any).type !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

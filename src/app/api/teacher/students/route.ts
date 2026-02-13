@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { users, classes, enrollments, homeworkSubmissions, attendance, homework } from "@/lib/db/schema";
 import { eq, and, desc, inArray } from "drizzle-orm";
@@ -12,25 +12,14 @@ import { eq, and, desc, inArray } from "drizzle-orm";
  * - With class info, attendance summary, homework status
  */
 export async function GET(request: NextRequest) {
+  const authResult = await requireAuth(['teacher', 'admin']);
+  if ('error' in authResult) {
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+  }
+
+  const { user: currentUser } = authResult;
+
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Get current teacher user
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    if (currentUser.type !== "teacher") {
-      return NextResponse.json({ error: "Forbidden - Teachers only" }, { status: 403 });
-    }
-
     // Get teacher's classes
     const teacherClasses = await db.query.classes.findMany({
       where: eq(classes.teacherId, currentUser.id),
@@ -59,14 +48,14 @@ export async function GET(request: NextRequest) {
     const enrichedStudents = await Promise.all(
       classEnrollmentsData.map(async (enrollmentItem) => {
         const studentData = enrollmentItem.student;
-        const cls = enrollmentItem.class;
+        const cls = (enrollmentItem as any).class;
         if (!studentData || !cls) return null;
 
         // Get attendance summary (last 30 days)
         const recentAttendanceData = await db.query.attendance.findMany({
           where: and(
             eq(attendance.studentId, studentData.id),
-            eq(attendance.classId, cls.id)
+            eq(attendanc(e as any).classId, cls.id)
           ),
           limit: 30,
         });
@@ -88,9 +77,9 @@ export async function GET(request: NextRequest) {
 
         return {
           id: studentData.id,
-          name: `${studentData.firstName} ${studentData.lastName || ""}`.trim(),
-          firstName: studentData.firstName,
-          lastName: studentData.lastName,
+          name: `${(studentData as any).firstName} ${(studentData as any).lastName || ""}`.trim(),
+          firstName: (studentData as any).firstName,
+          lastName: (studentData as any).lastName,
           email: studentData.email,
           profilePicture: studentData.profilePicture,
           classGrade: cls.grade,
@@ -110,7 +99,7 @@ export async function GET(request: NextRequest) {
             pending: pendingCount,
             total: hwSubmissionsData.length,
           },
-          enrolledAt: enrollmentItem.enrolledAt,
+          enrolledAt: enrollmentItem.enrollmentDate,
         };
       })
     );

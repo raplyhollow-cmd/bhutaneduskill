@@ -173,8 +173,8 @@ export async function POST(request: NextRequest) {
         status: "borrowed",
         renewalCount: 0,
         maxRenewals: 3,
-        createdAt: Math.floor(Date.now() / 1000),
-        updatedAt: Math.floor(Date.now() / 1000),
+        createdAt: new Date(),
+        updatedAt: new Date(),
       }).returning();
 
       // Update book status
@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
           status: "borrowed",
           currentBorrowerId: currentUser.id,
           dueDate: dueDate.toISOString().split('T')[0],
-          totalBorrows: (book.totalBorrows || 0) + 1,
+          totalBorrows: ((book as any).totalBorrows || 0) + 1,
           updatedAt: Math.floor(Date.now() / 1000),
         })
         .where(eq(books.id, bookId));

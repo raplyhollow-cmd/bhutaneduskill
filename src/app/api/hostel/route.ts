@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
 
     if (action === "my-allocation") {
       // Get student's hostel allocation
-      if (currentUser.type !== "student") {
+      if ((currentUser as any).type !== "student") {
         return NextResponse.json({ error: "Only students can view their allocation" }, { status: 403 });
       }
 
@@ -221,7 +221,7 @@ export async function POST(request: NextRequest) {
 
     if (action === "request-allocation") {
       // Student requests hostel allocation
-      if (currentUser.type !== "student") {
+      if ((currentUser as any).type !== "student") {
         return NextResponse.json(
           { error: "Only students can request hostel allocation" },
           { status: 403 }
@@ -251,9 +251,9 @@ export async function POST(request: NextRequest) {
         schoolId: currentUser.schoolId || "",
         studentId: currentUser.id,
         studentName: `${currentUser.firstName} ${currentUser.lastName || ""}`.trim(),
-        hostelId: hostelId || null,
-        roomId: null, // Will be assigned by admin
-        bedNumber: null,
+        hostelId: hostelId || "",
+        roomId: "", // Will be assigned by admin
+        bedNumber: "",
         allocationDate: new Date().toISOString().split('T')[0],
         academicYear: new Date().getFullYear().toString(),
         semester: ["spring", "fall", "winter", "summer"][new Date().getMonth() >= 6 ? new Date().getMonth() >= 9 ? 0 : 1 : 2],
@@ -268,7 +268,7 @@ export async function POST(request: NextRequest) {
         medicalConditions: medicalConditions?.conditions || "",
         allergies: medicalConditions?.allergies || "",
         notes: specialRequirements || "",
-        createdAt: Math.floor(Date.now() / 1000),
+        createdAt: new Date(),
         updatedAt: Math.floor(Date.now() / 1000),
       }).returning();
 
@@ -281,7 +281,7 @@ export async function POST(request: NextRequest) {
 
     if (action === "request-leave") {
       // Student requests leave from hostel
-      if (currentUser.type !== "student") {
+      if ((currentUser as any).type !== "student") {
         return NextResponse.json(
           { error: "Only students can request leave" },
           { status: 403 }
@@ -305,11 +305,11 @@ export async function POST(request: NextRequest) {
         destination,
         purpose: leaveReason,
         companionName,
-        companionRelation: companionName ? "guardian" : null,
+        companionRelation: companionName ? "guardian" : "",
         companionPhone,
         status: "pending",
-        createdAt: Math.floor(Date.now() / 1000),
-        updatedAt: Math.floor(Date.now() / 1000),
+        createdAt: new Date(),
+        updatedAt: new Date(),
       }).returning();
 
       return NextResponse.json({
@@ -348,7 +348,7 @@ export async function POST(request: NextRequest) {
             leaveType,
             leaveReason,
             markedBy: currentUser.id,
-            updatedAt: Math.floor(Date.now() / 1000),
+            updatedAt: new Date(),
           })
           .where(eq(hostelAttendance.id, existing.id));
       } else {
@@ -366,7 +366,7 @@ export async function POST(request: NextRequest) {
           markedBy: currentUser.id,
           createdAt: Math.floor(Date.now() / 1000),
           updatedAt: Math.floor(Date.now() / 1000),
-        });
+        } as any);
       }
 
       return NextResponse.json({
@@ -418,12 +418,12 @@ export async function POST(request: NextRequest) {
         // Update existing allocation
         await db.update(hostelAllocations)
           .set({
-            hostelId,
-            roomId,
-            bedNumber,
-            feeType,
-            feeAmount,
-            updatedAt: Math.floor(Date.now() / 1000),
+            hostelId: hostelId || "",
+            roomId: roomId || "",
+            bedNumber: bedNumber || "",
+            feeType: feeType || "",
+            feeAmount: feeAmount || 0,
+            updatedAt: new Date(),
           })
           .where(eq(hostelAllocations.id, existingAllocation.id));
       } else {
@@ -433,18 +433,18 @@ export async function POST(request: NextRequest) {
           schoolId: currentUser.schoolId || "",
           studentId,
           studentName: `${student.firstName} ${student.lastName || ""}`.trim(),
-          hostelId,
-          roomId,
-          bedNumber,
+          hostelId: hostelId || "",
+          roomId: roomId || "",
+          bedNumber: bedNumber || "",
           allocationDate: new Date().toISOString().split('T')[0],
           academicYear: new Date().getFullYear().toString(),
           semester: "current",
           status: "active",
-          feeType,
-          feeAmount,
+          feeType: feeType || "",
+          feeAmount: feeAmount || 0,
           feePaid: 0,
-          createdAt: Math.floor(Date.now() / 1000),
-          updatedAt: Math.floor(Date.now() / 1000),
+          createdAt: new Date(),
+          updatedAt: new Date(),
         });
       }
 

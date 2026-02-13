@@ -221,3 +221,99 @@ export interface ApiError {
     message: string;
   };
 }
+
+// ============================================================================
+// STANDARD API RESPONSE TYPES (for new API routes)
+// ============================================================================
+
+/**
+ * Standard API Success Response
+ * Use this for consistent success responses across all API routes
+ */
+export interface ApiSuccess<T> {
+  data: T;
+  status?: number;
+  message?: string;
+}
+
+/**
+ * Standard API Error Response
+ * Use this for consistent error responses across all API routes
+ */
+export interface ApiErrorResponse {
+  error: string;
+  status: number;
+  details?: unknown;
+}
+
+/**
+ * Union type for API responses
+ */
+export type ApiResponseV2<T> = ApiSuccess<T> | ApiErrorResponse;
+
+/**
+ * Pagination metadata
+ */
+export interface Pagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+/**
+ * Paginated API response
+ */
+export interface PaginatedResponse<T> extends ApiSuccess<T[]> {
+  pagination: Pagination;
+}
+
+// ============================================================================
+// COMMON ENTITY TYPES
+// ============================================================================
+
+/**
+ * Base entity with common fields
+ */
+export interface BaseEntity {
+  id: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * User entity for API responses
+ */
+export interface UserEntity extends BaseEntity {
+  clerkUserId: string;
+  type: string;
+  name?: string;
+  email?: string;
+  schoolId?: string;
+}
+
+// ============================================================================
+// API REQUEST TYPES
+// ============================================================================
+
+/**
+ * Common query parameters for list endpoints
+ */
+export interface ListQueryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sort?: string;
+  order?: 'asc' | 'desc';
+}
+
+/**
+ * Common filter parameters
+ */
+export interface FilterParams {
+  schoolId?: string;
+  classId?: string;
+  status?: string;
+  startDate?: string;
+  endDate?: string;
+}

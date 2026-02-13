@@ -21,9 +21,9 @@ export async function GET(request: NextRequest) {
     let filtered = allColleges;
 
     if (type === "bhutan") {
-      filtered = allColleges.filter(c => c.isBhutanCollege);
+      filtered = allColleges.filter(c => (c as any).isBhutanCollege);
     } else if (type === "international") {
-      filtered = allColleges.filter(c => !c.isBhutanCollege);
+      filtered = allColleges.filter(c => !(c as any).isBhutanCollege);
     }
 
     // Get programs for Bhutan colleges
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
 
       const programs = await db.query.rubPrograms.findMany();
       filtered = filtered.map(college => {
-        if (college.isBhutanCollege) {
+        if ((college as any).isBhutanCollege) {
           return {
             ...college,
             programsList: programs.filter(p => p.collegeId === college.id),

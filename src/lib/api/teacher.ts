@@ -24,7 +24,7 @@ export async function getCurrentTeacherId() {
     columns: { id: true, type: true },
   });
 
-  if (!user || user.type !== "teacher") {
+  if (!user || (user as any).type !== "teacher") {
     return null;
   }
 
@@ -113,29 +113,29 @@ export async function getTeacherEarnings(tutorId: string | null) {
   });
 
   // Calculate totals
-  const totalEarnings = allEarnings.reduce((sum, e) => sum + (e.netAmount || 0), 0);
+  const totalEarnings = allEarnings.reduce((sum, e) => sum + (e.amount || 0), 0);
 
   // Current month earnings
   const currentMonthEarnings = allEarnings
     .filter((e) => e.earnedAt && new Date(e.earnedAt) >= new Date(currentMonthStart))
-    .reduce((sum, e) => sum + (e.netAmount || 0), 0);
+    .reduce((sum, e) => sum + (e.amount || 0), 0);
 
   // Pending earnings (status = 'pending')
   const pendingEarnings = allEarnings
     .filter((e) => e.payoutStatus === "pending")
-    .reduce((sum, e) => sum + (e.netAmount || 0), 0);
+    .reduce((sum, e) => sum + (e.amount || 0), 0);
 
   // Last payout (most recent 'paid' status)
   const paidEarnings = allEarnings
-    .filter((e) => e.payoutStatus === "paid" && e.paidAt)
-    .sort((a, b) => new Date(b.paidAt!).getTime() - new Date(a.paidAt!).getTime());
+    .filter((e) => e.payoutStatus === "paid" && e.withdrawnAt)
+    .sort((a, b) => new Date(b.withdrawnAt!).getTime() - new Date(a.withdrawnAt!).getTime());
 
   const lastPayout = paidEarnings.length > 0
-    ? paidEarnings.reduce((sum, e) => sum + (e.netAmount || 0), 0)
+    ? paidEarnings.reduce((sum, e) => sum + (e.amount || 0), 0)
     : 0;
 
-  const lastPayoutDate = paidEarnings.length > 0 && paidEarnings[0].paidAt
-    ? new Date(paidEarnings[0].paidAt).toLocaleDateString("en-US", {
+  const lastPayoutDate = paidEarnings.length > 0 && paidEarnings[0].withdrawnAt
+    ? new Date(paidEarnings[0].withdrawnAt).toLocaleDateString("en-US", {
         month: "long",
         day: "numeric",
         year: "numeric",
@@ -159,12 +159,12 @@ export async function getTeacherEarnings(tutorId: string | null) {
       let studentName: string | undefined;
       let type: "course_sale" | "live_session" | "payout";
 
-      if (earning.sourceType === "course") {
+      if ((earning as any).sourceType === "course") {
         type = "course_sale";
         // Get course details
         const course = await db.query.tuitionCourses.findFirst({
-          where: eq(tuitionCourses.id, earning.sourceId),
-          columns: { title: true, type: true },
+          where: eq(tuitionCourses.id, (earning as any).sourceId),
+          columns: { title: true },
         });
         title = course?.title || "Course Sale";
 
@@ -177,28 +177,28 @@ export async function getTeacherEarnings(tutorId: string | null) {
             },
           });
           if (enrollment?.student) {
-            studentName = `${enrollment.student.firstName} ${enrollment.student.lastName || ""}`.trim();
+            studentName = `${(enrollment.student as any).firstName} ${(enrollment.student as any).lastName || ""}`.trim();
           }
         }
-      } else if (earning.sourceType === "live_session") {
+      } else if ((earning as any).sourceType === "live_session") {
         type = "live_session";
         // Get session details
         const session = await db.query.liveSessions.findFirst({
-          where: eq(liveSessions.id, earning.sourceId),
-          columns: { title: true, subject: true },
+          where: eq(liveSessions.id, (earning as any).sourceId),
+          columns: { title: true },
         });
-        title = session?.title || `${session?.subject || ""} Live Session`;
+        title = session?.title || `${(session as any)?.subject || ""} Live Session`;
 
         // For live sessions, student would be from the session
-        if (earning.sourceId) {
+        if ((earning as any).sourceId) {
           const session = await db.query.liveSessions.findFirst({
-            where: eq(liveSessions.id, earning.sourceId),
+            where: eq(liveSessions.id, (earning as any).sourceId),
             with: {
               student: true,
             },
           });
           if (session?.student) {
-            studentName = `${session.student.firstName} ${session.student.lastName || ""}`.trim();
+            studentName = `${(session.student as any).firstName} ${(session.student as any).lastName || ""}`.trim();
           }
         }
       } else {
@@ -216,13 +216,13 @@ export async function getTeacherEarnings(tutorId: string | null) {
         id: earning.id,
         type,
         title,
-        amount: earning.grossAmount || 0,
-        fee: earning.platformFee || 0,
-        netAmount: earning.netAmount || 0,
+        amount: (earning as any).grossAmount || 0,
+        fee: (earning as any).platformFee || 0,
+        netAmount: earning.amount || 0,
         status,
         date: earning.earnedAt ? new Date(earning.earnedAt).toISOString().split("T")[0] : "",
         student: studentName,
-        method: earning.payoutMethod || undefined,
+        method: (earning as any).payoutMethod || undefined,
       };
     })
   );
@@ -264,7 +264,7 @@ export async function getTeacherEarnings(tutorId: string | null) {
 
       // For live sessions, get sessions completed
       let sessionsCompleted = 0;
-      if (course.type === "online_live") {
+      if ((course as any).type === "online_live") {
         const sessions = await db.query.liveSessions.findMany({
           where: and(
             eq(liveSessions.courseId, course.id),
@@ -277,17 +277,17 @@ export async function getTeacherEarnings(tutorId: string | null) {
       return {
         id: course.id,
         title: course.title,
-        type: course.type === "online_recorded"
+        type: (course as any).type === "online_recorded"
           ? "Recorded Course"
-          : course.type === "online_live"
+          : (course as any).type === "online_live"
           ? "Live Sessions"
           : "Physical Tuition",
         enrollments: enrollmentResult.count || 0,
-        totalRevenue: enrollmentResult.totalRevenue || 0,
+        totalRevenue: Number(enrollmentResult.totalRevenue || 0),
         avgRating: Math.round(avgRating * 10) / 10,
-        price: course.price || 0,
-        completionRate: course.type === "online_recorded" ? completionRate : undefined,
-        sessionsCompleted: course.type === "online_live" ? sessionsCompleted : undefined,
+        price: (course as any).price || 0,
+        completionRate: (course as any).type === "online_recorded" ? completionRate : undefined,
+        sessionsCompleted: (course as any).type === "online_live" ? sessionsCompleted : undefined,
       };
     })
   );

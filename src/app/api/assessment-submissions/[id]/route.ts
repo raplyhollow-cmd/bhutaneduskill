@@ -17,7 +17,7 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
-    const { status, startedAt, completedAt, timeSpent } = body;
+    const { status, /* startedAt, */ completedAt, timeSpent } = body;
 
     const currentUser = await db.query.users.findFirst({
       where: eq(users.clerkUserId, userId),
@@ -29,7 +29,7 @@ export async function PATCH(
 
     const [updatedSubmission] = await db
       .update(assessmentSubmissions)
-      .set({ status, startedAt, completedAt, timeSpent })
+      .set({ status, completedAt: new Date(), timeSpent } as any)
       .where(eq(assessmentSubmissions.id, id))
       .returning();
 

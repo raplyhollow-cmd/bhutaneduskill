@@ -59,9 +59,9 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch attendance records
-    const records = await db.query.attendanceTable.findMany({
+    const records = await db.query.attendance.findMany({
       where: and(...conditions),
-      orderBy: [desc(attendanceTable.date)],
+      orderBy: [desc(attendance.date)],
       limit,
     });
 
@@ -98,10 +98,10 @@ export async function GET(request: NextRequest) {
       checkOutTime: r.checkOutTime,
       notes: r.notes,
       class: childClass ? {
-        id: childClass.id,
-        name: childClass.name,
-        grade: childClass.grade,
-        section: childClass.section,
+        id: (childClass as any).id,
+        name: (childClass as any).name,
+        grade: (childClass as any).grade,
+        section: (childClass as any).section,
       } : null,
     }));
 

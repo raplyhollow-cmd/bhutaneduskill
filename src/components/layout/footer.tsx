@@ -253,12 +253,12 @@ function BackToTop() {
       viewport={{ once: true }}
       transition={{ delay: 0.4, duration: 0.3 }}
       onClick={scrollToTop}
-      className="fixed bottom-6 right-6 z-50 p-3 rounded-full bg-gradient-to-r from-orange-600 to-red-600 text-white shadow-lg hover:from-orange-700 hover:to-red-700 hover:shadow-xl transition-all group"
+      className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-50 p-3 rounded-full bg-gradient-to-r from-orange-600 to-red-600 text-white shadow-lg hover:from-orange-700 hover:to-red-700 hover:shadow-xl transition-all group"
       aria-label="Back to top"
     >
       <motion.div
         animate={{ y: [0, -4, 0] }}
-        transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+        transition={{ duration: 2, repeat: Infinity, repeatType: "loop", ease: "easeInOut" }}
       >
         <ArrowUp className="w-5 h-5" strokeWidth={2} />
       </motion.div>

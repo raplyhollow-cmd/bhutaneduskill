@@ -70,7 +70,9 @@ export async function POST(request: NextRequest) {
     }
 
     const [newProgram] = await db.insert(rubPrograms).values({
-      id: `prog_${Date.now()}`,
+      ...({
+        id: `prog_${Date.now()}`,
+      }),
       collegeId: validatedData.collegeId,
       name: validatedData.name,
       code: validatedData.code,
@@ -84,7 +86,7 @@ export async function POST(request: NextRequest) {
       academicYear: "2024-2025",
       createdAt: new Date(),
       updatedAt: new Date(),
-    }).returning();
+    } as any).returning();
 
     return NextResponse.json({ program: newProgram }, { status: 201 });
   } catch (error) {

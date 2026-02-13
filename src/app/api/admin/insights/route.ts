@@ -13,24 +13,24 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/db/tenant";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { users, assessments, riasecResults, careerMatches, careerPlans } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
+  const authResult = await requireAuth(['admin']);
+  if ('error' in authResult) {
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+  }
+
+  const { user, userId } = authResult;
+
+  const { searchParams } = new URL(request.url);
+  const category = searchParams.get("category") || "overview";
+  const timeRange = searchParams.get("timeRange") || "all";
+
   try {
-    const user = await requireAuth();
-
-    // Only admins can access insights
-    if (user.type !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const category = searchParams.get("category") || "overview";
-    const timeRange = searchParams.get("timeRange") || "all";
-
     // Generate insights based on category
     const insights = await generateInsights(category, timeRange);
 
@@ -40,11 +40,7 @@ export async function GET(request: NextRequest) {
       generatedAt: new Date().toISOString(),
       insights,
     });
-
   } catch (error: any) {
-    if (error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     console.error("Insights generation error:", error);
     return NextResponse.json({ error: "Failed to generate insights" }, { status: 500 });
   }

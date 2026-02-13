@@ -7,7 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/db/tenant";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { users, assessments, riasecResults, careerMatches, careerPlans, examResults } from "@/lib/db/schema";
 import { eq, and, desc, gt } from "drizzle-orm";
@@ -25,9 +25,14 @@ import {
 // ============================================================================
 
 export async function GET(request: NextRequest) {
-  try {
-    const user = await requireAuth();
+  const authResult = await requireAuth();
+  if ('error' in authResult) {
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+  }
 
+  const { user } = authResult;
+
+  try {
     const { searchParams } = new URL(request.url);
     const action = searchParams.get("action");
 
@@ -79,11 +84,7 @@ export async function GET(request: NextRequest) {
       sources: Object.keys(dataSources),
       templates: reportTemplates.length,
     });
-
   } catch (error: any) {
-    if (error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     console.error("Data export GET error:", error);
     return NextResponse.json({ error: "Failed to fetch export info" }, { status: 500 });
   }
@@ -94,11 +95,17 @@ export async function GET(request: NextRequest) {
 // ============================================================================
 
 export async function POST(request: NextRequest) {
-  try {
-    const user = await requireAuth();
+  const authResult = await requireAuth();
+  if ('error' in authResult) {
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+  }
 
-    const body = await request.json();
-    const { dataSource, format = "json", fields, filters, limit, offset, anonymize } = body;
+  const { user } = authResult;
+
+  const body = await request.json();
+  const { dataSource, format = "json", fields, filters, limit, offset, anonymize } = body;
+
+  try {
 
     if (!dataSource || !dataSources[dataSource as keyof typeof dataSources]) {
       return NextResponse.json({ error: "Invalid data source" }, { status: 400 });
@@ -142,7 +149,7 @@ export async function POST(request: NextRequest) {
 
       case "riasecResults": {
         let query = db.select().from(riasecResults);
-        if (!isAdmin && user.type === "student") {
+        if (!isAdmin && user(user as any).type === "student") {
           query = query.where(eq(riasecResults.userId, user.id)) as any;
         } else if (!isAdmin && userSchoolId) {
           const schoolUsers = await db.select().from(users).where(eq(users.schoolId, userSchoolId));
@@ -166,7 +173,7 @@ export async function POST(request: NextRequest) {
           userId: assessments.userId,
         }).from(careerMatches).innerJoin(assessments, eq(careerMatches.assessmentId, assessments.id));
 
-        if (!isAdmin && user.type === "student") {
+        if (!isAdmin && user(user as any).type === "student") {
           query = query.where(eq(assessments.userId, user.id)) as any;
         }
         data = await query.limit(limit || 1000).offset(offset || 0) as any[];
@@ -175,7 +182,7 @@ export async function POST(request: NextRequest) {
 
       case "careerPlans": {
         let query = db.select().from(careerPlans);
-        if (!isAdmin && user.type === "student") {
+        if (!isAdmin && user(user as any).type === "student") {
           query = query.where(eq(careerPlans.userId, user.id)) as any;
         }
         data = await query.limit(limit || 1000).offset(offset || 0) as any[];
@@ -184,7 +191,7 @@ export async function POST(request: NextRequest) {
 
       case "examResults": {
         let query = db.select().from(examResults);
-        if (!isAdmin && user.type === "student") {
+        if (!isAdmin && user(user as any).type === "student") {
           query = query.where(eq(examResults.userId, user.id)) as any;
         }
         data = await query.limit(limit || 1000).offset(offset || 0).orderBy(desc(examResults.examYear)) as any[];
@@ -195,8 +202,8 @@ export async function POST(request: NextRequest) {
       case "journalEntries": {
         let targetUsers: any[] = [];
 
-        if (user.type === "student" || isAdmin) {
-          targetUsers = user.type === "student"
+        if (user(user as any).type === "student" || isAdmin) {
+          targetUsers = user(user as any).type === "student"
             ? [user]
             : await db.select().from(users).limit(limit || 100);
         }
@@ -305,9 +312,6 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    if (error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
     console.error("Data export POST error:", error);
     return NextResponse.json({ error: "Export failed", details: error.message }, { status: 500 });
   }

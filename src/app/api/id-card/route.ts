@@ -207,7 +207,7 @@ function generateIdCardSVG(user: any): string {
     ` : ''}
 
     <!-- Parent/Guardian (for students) -->
-    ${user.parent && user.type === "student" ? `
+    ${user.parent && user(user as any).type === "student" ? `
       <text x="0" y="120" font-family="Arial, sans-serif" font-size="11" fill="#888">
         Parent/Guardian:
       </text>
@@ -265,7 +265,7 @@ function generateIdCardSVG(user: any): string {
   </text>
 
   <!-- Emergency Contact (if available) -->
-  ${user.parent && user.parent.phone && user.type === "student" ? `
+  ${user.parent && user.parent.phone && user(user as any).type === "student" ? `
     <text x="30" y="350" font-family="Arial, sans-serif" font-size="8" fill="#888">
       Emergency: ${user.parent.phone}
     </text>

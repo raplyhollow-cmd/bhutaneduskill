@@ -10,7 +10,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { digitalResources } from "@/lib/db/library-schema";
 import { desc, eq, and, like, or, sql } from "drizzle-orm";
@@ -18,19 +18,19 @@ import { nanoid } from "nanoid";
 
 // GET /api/counselor/resources - Fetch all resources with filtering
 export async function GET(request: NextRequest) {
+  // Allow students, teachers, counselors, school-admins to access resources
+  const authResult = await requireAuth(['student', 'teacher', 'counselor', 'school-admin', 'admin']);
+  if ('error' in authResult) {
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+  }
+
+  const searchParams = request.nextUrl.searchParams;
+  const category = searchParams.get("category") || "all";
+  const search = searchParams.get("search") || "";
+  const type = searchParams.get("type") || "all";
+  const featured = searchParams.get("featured") === "true";
+
   try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const searchParams = request.nextUrl.searchParams;
-    const category = searchParams.get("category") || "all";
-    const search = searchParams.get("search") || "";
-    const type = searchParams.get("type") || "all";
-    const featured = searchParams.get("featured") === "true";
-
     // Build query conditions
     const conditions = [];
 
@@ -158,28 +158,27 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/counselor/resources - Create new resource
+// POST /api/counselor/resources - Create new resource (admin/counselor only)
 export async function POST(request: NextRequest) {
+  const authResult = await requireAuth(['admin', 'counselor']);
+  if ('error' in authResult) {
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+  }
+
+  const body = await request.json();
+  const {
+    title,
+    description,
+    resourceType,
+    format,
+    category,
+    tags = [],
+    accessUrl,
+    thumbnailUrl,
+    isFeatured = false,
+  } = body;
+
   try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const body = await request.json();
-    const {
-      title,
-      description,
-      resourceType,
-      format,
-      category,
-      tags = [],
-      accessUrl,
-      thumbnailUrl,
-      isFeatured = false,
-    } = body;
-
     // Validate required fields
     if (!title || !description || !resourceType) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -217,18 +216,17 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PATCH /api/counselor/resources - Update resource
+// PATCH /api/counselor/resources - Update resource (admin/counselor only)
 export async function PATCH(request: NextRequest) {
+  const authResult = await requireAuth(['admin', 'counselor']);
+  if ('error' in authResult) {
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+  }
+
+  const body = await request.json();
+  const { id, ...updates } = body;
+
   try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const body = await request.json();
-    const { id, ...updates } = body;
-
     if (!id) {
       return NextResponse.json({ error: "Resource ID required" }, { status: 400 });
     }
@@ -257,18 +255,17 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
-// DELETE /api/counselor/resources - Delete resource
+// DELETE /api/counselor/resources - Delete resource (admin only)
 export async function DELETE(request: NextRequest) {
+  const authResult = await requireAuth(['admin']);
+  if ('error' in authResult) {
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+  }
+
+  const searchParams = request.nextUrl.searchParams;
+  const id = searchParams.get("id");
+
   try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const searchParams = request.nextUrl.searchParams;
-    const id = searchParams.get("id");
-
     if (!id) {
       return NextResponse.json({ error: "Resource ID required" }, { status: 400 });
     }

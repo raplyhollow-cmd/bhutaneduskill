@@ -3,7 +3,7 @@
  * Handles books, circulation, digital resources, and library operations
  */
 
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { pgTable, text, integer, boolean, timestamp, pgEnum , json} from "drizzle-orm/pg-core";
 
 // ============================================================================
 // BOOKS CATALOG
@@ -12,7 +12,7 @@ import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 /**
  * Library books catalog
  */
-export const books = sqliteTable("books", {
+export const books = pgTable("books", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -20,8 +20,8 @@ export const books = sqliteTable("books", {
   isbn: text("isbn").unique(),
   title: text("title").notNull(),
   subtitle: text("subtitle"),
-  authors: text("authors", { mode: "json" }).$type<string[]>(),
-  contributors: text("contributors", { mode: "json" }).$type<Array<{
+  authors: json("authors").$type<string[]>(),
+  contributors: json("contributors").$type<Array<{
     name: string;
     role: string; // "editor", "translator", "illustrator", etc.
   }>>(),
@@ -39,26 +39,26 @@ export const books = sqliteTable("books", {
 
   // Subject classification
   genre: text("genre"),
-  subjects: text("subjects", { mode: "json" }).$type<string[]>(),
+  subjects: json("subjects").$type<string[]>(),
   deweyDecimal: text("dewey_decimal"), // DDC classification
   lcClassification: text("lc_classification"), // Library of Congress
 
   // Reading level (for educational context)
   readingLevel: text("reading_level"), // "beginner", "intermediate", "advanced"
   ageGroup: text("age_group"), // "5-8", "9-12", "13-15", "16-18", "adult"
-  curriculumAligned: integer("curriculum_aligned", { mode: "boolean" }).default(false),
-  classes: text("classes", { mode: "json" }).$type<number[]>(), // Relevant classes
+  curriculumAligned: boolean("curriculum_aligned").default(false),
+  classes: json("classes").$type<number[]>(), // Relevant classes
 
   // Description
   synopsis: text("synopsis"),
-  tableOfContents: text("table_of_contents", { mode: "json" }).$type<string[]>(),
+  tableOfContents: json("table_of_contents").$type<string[]>(),
 
   // Cover image
   coverImageUrl: text("cover_image_url"),
   coverImageId: text("cover_image_id"), // Reference to uploaded file
 
   // Tags for discovery
-  tags: text("tags", { mode: "json" }).$type<string[]>(),
+  tags: json("tags").$type<string[]>(),
 
   // Acquisition info
   acquisitionDate: text("acquisition_date"), // ISO date
@@ -85,8 +85,8 @@ export const books = sqliteTable("books", {
   averageRating: integer("average_rating"), // 1-5 scale
   reviewCount: integer("review_count").default(0),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -96,7 +96,7 @@ export const books = sqliteTable("books", {
 /**
  * Individual copies of books (for multi-copy holdings)
  */
-export const bookCopies = sqliteTable("book_copies", {
+export const bookCopies = pgTable("book_copies", {
   id: text("id").primaryKey(),
   bookId: text("book_id").notNull(),
   schoolId: text("school_id").notNull(),
@@ -116,8 +116,8 @@ export const bookCopies = sqliteTable("book_copies", {
   // Notes
   notes: text("notes"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -127,7 +127,7 @@ export const bookCopies = sqliteTable("book_copies", {
 /**
  * Book borrowing/circulation records
  */
-export const circulation = sqliteTable("circulation", {
+export const circulation = pgTable("circulation", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -166,8 +166,8 @@ export const circulation = sqliteTable("circulation", {
   returnNotes: text("return_notes"),
   returnCondition: text("return_condition"), // Condition when returned
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -177,7 +177,7 @@ export const circulation = sqliteTable("circulation", {
 /**
  * Book reservation/hold requests
  */
-export const reservations = sqliteTable("reservations", {
+export const reservations = pgTable("reservations", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -204,8 +204,8 @@ export const reservations = sqliteTable("reservations", {
   notes: text("notes"),
   cancellationReason: text("cancellation_reason"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -215,7 +215,7 @@ export const reservations = sqliteTable("reservations", {
 /**
  * E-books, audiobooks, and digital media
  */
-export const digitalResources = sqliteTable("digital_resources", {
+export const digitalResources = pgTable("digital_resources", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -231,19 +231,19 @@ export const digitalResources = sqliteTable("digital_resources", {
   // Access
   accessUrl: text("access_url"),
   fileId: text("file_id"), // Reference to file storage
-  downloadAllowed: integer("download_allowed", { mode: "boolean" }).default(true),
+  downloadAllowed: boolean("download_allowed").default(true),
   concurrentAccessLimit: integer("concurrent_access_limit").default(0), // 0 = unlimited
 
   // Metadata
-  authors: text("authors", { mode: "json" }).$type<string[]>(),
+  authors: json("authors").$type<string[]>(),
   publisher: text("publisher"),
   publicationYear: integer("publication_year"),
   isbn: text("isbn"),
   doi: text("doi"), // Digital Object Identifier
 
   // Subjects and classification
-  subjects: text("subjects", { mode: "json" }).$type<string[]>(),
-  tags: text("tags", { mode: "json" }).$type<string[]>(),
+  subjects: json("subjects").$type<string[]>(),
+  tags: json("tags").$type<string[]>(),
 
   // License and rights
   licenseType: text("license_type"), // "purchased", "subscription", "open_access", "creative_commons"
@@ -261,10 +261,10 @@ export const digitalResources = sqliteTable("digital_resources", {
   reviewCount: integer("review_count").default(0),
 
   // Status
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  isActive: boolean("is_active").default(true),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -274,7 +274,7 @@ export const digitalResources = sqliteTable("digital_resources", {
 /**
  * Track access to digital resources
  */
-export const digitalAccessLog = sqliteTable("digital_access_log", {
+export const digitalAccessLog = pgTable("digital_access_log", {
   id: text("id").primaryKey(),
   resourceId: text("resource_id").notNull(),
 
@@ -291,7 +291,7 @@ export const digitalAccessLog = sqliteTable("digital_access_log", {
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
 
-  timestamp: integer("timestamp", { mode: "timestamp" }).notNull(),
+  timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -301,7 +301,7 @@ export const digitalAccessLog = sqliteTable("digital_access_log", {
 /**
  * Library membership (can differ from school enrollment)
  */
-export const libraryMembers = sqliteTable("library_members", {
+export const libraryMembers = pgTable("library_members", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -330,11 +330,11 @@ export const libraryMembers = sqliteTable("library_members", {
   currentFines: integer("current_fines").default(0),
 
   // Preferences
-  favoriteGenres: text("favorite_genres", { mode: "json" }).$type<string[]>(),
-  readingInterests: text("reading_interests", { mode: "json" }).$type<string[]>(),
+  favoriteGenres: json("favorite_genres").$type<string[]>(),
+  readingInterests: json("reading_interests").$type<string[]>(),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -344,7 +344,7 @@ export const libraryMembers = sqliteTable("library_members", {
 /**
  * User reviews and ratings for books
  */
-export const bookReviews = sqliteTable("book_reviews", {
+export const bookReviews = pgTable("book_reviews", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -361,7 +361,7 @@ export const bookReviews = sqliteTable("book_reviews", {
 
   // Reading experience
   dateRead: text("date_read"), // When reviewer read the book
-  wouldRecommend: integer("would_recommend", { mode: "boolean" }),
+  wouldRecommend: boolean("would_recommend"),
 
   // Moderation
   status: text("status").notNull().default("pending"), // "pending", "approved", "rejected", "flagged"
@@ -371,8 +371,8 @@ export const bookReviews = sqliteTable("book_reviews", {
   // Engagement
   helpfulCount: integer("helpful_count").default(0),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -382,7 +382,7 @@ export const bookReviews = sqliteTable("book_reviews", {
 /**
  * Library fine payment records
  */
-export const finePayments = sqliteTable("fine_payments", {
+export const finePayments = pgTable("fine_payments", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -407,7 +407,7 @@ export const finePayments = sqliteTable("fine_payments", {
   receiptNumber: text("receipt_number"),
   receiptUrl: text("receipt_url"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -417,7 +417,7 @@ export const finePayments = sqliteTable("fine_payments", {
 /**
  * Per-school library configuration
  */
-export const librarySettings = sqliteTable("library_settings", {
+export const librarySettings = pgTable("library_settings", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -448,7 +448,7 @@ export const librarySettings = sqliteTable("library_settings", {
   dailyDownloadLimit: integer("daily_download_limit").default(5),
 
   // Notification settings
-  overdueReminderEnabled: integer("overdue_reminder_enabled", { mode: "boolean" }).default(true),
+  overdueReminderEnabled: boolean("overdue_reminder_enabled").default(true),
   overdueReminderDays: integer("overdue_reminder_days").default(1),
   dueDateReminderDays: integer("due_date_reminder_days").default(2),
 
@@ -473,8 +473,8 @@ export const librarySettings = sqliteTable("library_settings", {
   librarianEmail: text("librarian_email"),
   librarianPhone: text("librarian_phone"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -484,7 +484,7 @@ export const librarySettings = sqliteTable("library_settings", {
 /**
  * Book suppliers and vendors
  */
-export const libraryVendors = sqliteTable("library_vendors", {
+export const libraryVendors = pgTable("library_vendors", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -511,17 +511,17 @@ export const libraryVendors = sqliteTable("library_vendors", {
   discountPercentage: integer("discount_percentage").default(0),
 
   // Categories they supply
-  categories: text("categories", { mode: "json" }).$type<string[]>(), // ["fiction", "science", "textbooks"]
+  categories: json("categories").$type<string[]>(), // ["fiction", "science", "textbooks"]
 
   // Notes
   notes: text("notes"),
   rating: integer("rating"), // 1-5 vendor rating
 
   // Status
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  isActive: boolean("is_active").default(true),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================

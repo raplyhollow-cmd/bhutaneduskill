@@ -3,7 +3,7 @@
  * Handles BCSE exam registrations, results, and compliance
  */
 
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { pgTable, text, integer, boolean, timestamp, pgEnum , json} from "drizzle-orm/pg-core";
 
 // ============================================================================
 // BCSE STUDENT REGISTRATIONS
@@ -12,7 +12,7 @@ import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 /**
  * Student registrations for BCSE examinations
  */
-export const bcseRegistrations = sqliteTable("bcse_registrations", {
+export const bcseRegistrations = pgTable("bcse_registrations", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
   studentId: text("student_id").notNull(),
@@ -33,7 +33,7 @@ export const bcseRegistrations = sqliteTable("bcse_registrations", {
   confirmedDate: text("confirmed_date"),
 
   // Subjects registered
-  subjects: text("subjects", { mode: "json" }).$type<Array<{
+  subjects: json("subjects").$type<Array<{
     subjectCode: string;
     subjectName: string;
     isCompulsory: boolean;
@@ -69,10 +69,10 @@ export const bcseRegistrations = sqliteTable("bcse_registrations", {
   village: text("village"),
 
   // Special needs
-  hasSpecialNeeds: integer("has_special_needs", { mode: "boolean" }).default(false),
+  hasSpecialNeeds: boolean("has_special_needs").default(false),
   specialNeedsType: text("special_needs_type"), // "visual", "hearing", "physical", "learning", "other"
   specialNeedsDetails: text("special_needs_details"),
-  requiresSpecialArrangements: integer("requires_special_arrangements", { mode: "boolean" }).default(false),
+  requiresSpecialArrangements: boolean("requires_special_arrangements").default(false),
   specialArrangements: text("special_arrangements"),
 
   // Fees
@@ -83,7 +83,7 @@ export const bcseRegistrations = sqliteTable("bcse_registrations", {
   feeWaiverReason: text("fee_waiver_reason"),
 
   // Documents
-  documents: text("documents", { mode: "json" }).$type<Array<{
+  documents: json("documents").$type<Array<{
     documentType: string;
     documentUrl: string;
     uploadDate: string;
@@ -98,8 +98,8 @@ export const bcseRegistrations = sqliteTable("bcse_registrations", {
   // Rejection
   rejectionReason: text("rejection_reason"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -109,7 +109,7 @@ export const bcseRegistrations = sqliteTable("bcse_registrations", {
 /**
  * BCSE examination results
  */
-export const bcseResults = sqliteTable("bcse_results", {
+export const bcseResults = pgTable("bcse_results", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
   studentId: text("student_id").notNull(),
@@ -134,7 +134,7 @@ export const bcseResults = sqliteTable("bcse_results", {
   percentage: integer("percentage"), // In hundredths (e.g., 7850 = 78.50%)
 
   // Subject results
-  subjectResults: text("subject_results", { mode: "json" }).$type<Array<{
+  subjectResults: json("subject_results").$type<Array<{
     subjectCode: string;
     subjectName: string;
     marksObtained: number;
@@ -144,7 +144,7 @@ export const bcseResults = sqliteTable("bcse_results", {
   }>>(),
 
   // Pass/Fail
-  passed: integer("passed", { mode: "boolean" }).notNull(),
+  passed: boolean("passed").notNull(),
   passedSubjects: integer("passed_subjects").default(0),
   failedSubjects: integer("failed_subjects").default(0),
 
@@ -156,8 +156,8 @@ export const bcseResults = sqliteTable("bcse_results", {
   // GPA (if applicable)
   gpa: text("gpa"), // String to handle decimal precision
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -167,7 +167,7 @@ export const bcseResults = sqliteTable("bcse_results", {
 /**
  * Mapping between school subjects and BCSE subject codes
  */
-export const bcseSubjectMapping = sqliteTable("bcse_subject_mapping", {
+export const bcseSubjectMapping = pgTable("bcse_subject_mapping", {
   id: text("id").primaryKey(),
 
   // BCSE subject details
@@ -180,7 +180,7 @@ export const bcseSubjectMapping = sqliteTable("bcse_subject_mapping", {
   schoolSubjectName: text("school_subject_name"),
 
   // Subject type
-  isCompulsory: integer("is_compulsory", { mode: "boolean" }).default(false),
+  isCompulsory: boolean("is_compulsory").default(false),
   subjectGroup: text("subject_group"), // "core", "elective", "optional"
 
   // Max marks
@@ -193,8 +193,8 @@ export const bcseSubjectMapping = sqliteTable("bcse_subject_mapping", {
   passPractical: integer("pass_practical"),
   passTotal: integer("pass_total"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -204,7 +204,7 @@ export const bcseSubjectMapping = sqliteTable("bcse_subject_mapping", {
 /**
  * BCSE certificates and documents
  */
-export const bcseCertificates = sqliteTable("bcse_certificates", {
+export const bcseCertificates = pgTable("bcse_certificates", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
   studentId: text("student_id").notNull(),
@@ -217,13 +217,13 @@ export const bcseCertificates = sqliteTable("bcse_certificates", {
 
   // Documents
   documentUrl: text("document_url").notNull(),
-  documentVerified: integer("document_verified", { mode: "boolean" }).default(false),
+  documentVerified: boolean("document_verified").default(false),
 
   // Verification
   verificationHash: text("verification_hash"), // For blockchain/digital verification
   qrCodeData: text("qr_code_data"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -233,7 +233,7 @@ export const bcseCertificates = sqliteTable("bcse_certificates", {
 /**
  * BCSE API configuration and credentials
  */
-export const bcseApiConfig = sqliteTable("bcse_api_config", {
+export const bcseApiConfig = pgTable("bcse_api_config", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -244,9 +244,9 @@ export const bcseApiConfig = sqliteTable("bcse_api_config", {
   schoolCode: text("school_code").notNull(),
 
   // Configuration
-  isEnabled: integer("is_enabled", { mode: "boolean" }).default(true),
-  autoSyncResults: integer("auto_sync_results", { mode: "boolean" }).default(true),
-  autoSubmitRegistrations: integer("auto_submit_registrations", { mode: "boolean" }).default(false),
+  isEnabled: boolean("is_enabled").default(true),
+  autoSyncResults: boolean("auto_sync_results").default(true),
+  autoSubmitRegistrations: boolean("auto_submit_registrations").default(false),
 
   // Last sync
   lastSyncDate: text("last_sync_date"),
@@ -256,8 +256,8 @@ export const bcseApiConfig = sqliteTable("bcse_api_config", {
   webhookUrl: text("webhook_url"),
   webhookSecret: text("webhook_secret"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -267,7 +267,7 @@ export const bcseApiConfig = sqliteTable("bcse_api_config", {
 /**
  * BCSE API synchronization logs
  */
-export const bcseSyncLogs = sqliteTable("bcse_sync_logs", {
+export const bcseSyncLogs = pgTable("bcse_sync_logs", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -286,18 +286,18 @@ export const bcseSyncLogs = sqliteTable("bcse_sync_logs", {
   // Error details
   errorCode: text("error_code"),
   errorMessage: text("error_message"),
-  errorDetails: text("error_details", { mode: "json" }).$type<Record<string, any>>(),
+  errorDetails: json("error_details").$type<Record<string, any>>(),
 
   // Request/Response
-  requestData: text("request_data", { mode: "json" }).$type<Record<string, any>>(),
-  responseData: text("response_data", { mode: "json" }).$type<Record<string, any>>(),
+  requestData: json("request_data").$type<Record<string, any>>(),
+  responseData: json("response_data").$type<Record<string, any>>(),
 
   // Timing
   startedAt: text("started_at").notNull(),
   completedAt: text("completed_at"),
   duration: integer("duration"), // Seconds
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -307,7 +307,7 @@ export const bcseSyncLogs = sqliteTable("bcse_sync_logs", {
 /**
  * Track BCSE performance trends for school improvement
  */
-export const bcsePerformanceTracking = sqliteTable("bcse_performance_tracking", {
+export const bcsePerformanceTracking = pgTable("bcse_performance_tracking", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -331,7 +331,7 @@ export const bcsePerformanceTracking = sqliteTable("bcse_performance_tracking", 
   failed: integer("failed").default(0),
 
   // Top performers
-  topScorers: text("top_scorers", { mode: "json" }).$type<Array<{
+  topScorers: json("top_scorers").$type<Array<{
     studentId: string;
     studentName: string;
     percentage: number;
@@ -339,7 +339,7 @@ export const bcsePerformanceTracking = sqliteTable("bcse_performance_tracking", 
   }>>(),
 
   // Subject-wise performance
-  subjectPerformance: text("subject_performance", { mode: "json" }).$type<Array<{
+  subjectPerformance: json("subject_performance").$type<Array<{
     subjectCode: string;
     subjectName: string;
     averageMarks: number;
@@ -348,7 +348,7 @@ export const bcsePerformanceTracking = sqliteTable("bcse_performance_tracking", 
   }>>(),
 
   // Comparison
-  comparedToPreviousYear: text("compared_to_previous_year", { mode: "json" }).$type<{
+  comparedToPreviousYear: json("compared_to_previous_year").$type<{
     passRateChange: number; // In hundredths
     totalPassedChange: number;
     ranking?: number;
@@ -360,8 +360,8 @@ export const bcsePerformanceTracking = sqliteTable("bcse_performance_tracking", 
   dzongkhagRanking: integer("dzongkhag_ranking"),
   totalSchoolsInDzongkhag: integer("total_schools_in_dzongkhag"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -371,7 +371,7 @@ export const bcsePerformanceTracking = sqliteTable("bcse_performance_tracking", 
 /**
  * Valid subject combinations for BCSE exams
  */
-export const bcseSubjectCombinations = sqliteTable("bcse_subject_combinations", {
+export const bcseSubjectCombinations = pgTable("bcse_subject_combinations", {
   id: text("id").primaryKey(),
 
   // Combination details
@@ -381,22 +381,22 @@ export const bcseSubjectCombinations = sqliteTable("bcse_subject_combinations", 
   stream: text("stream"), // "science", "commerce", "arts", "technical"
 
   // Subjects
-  compulsorySubjects: text("compulsory_subjects", { mode: "json" }).$type<string[]>(), // Subject codes
-  electiveSubjects: text("elective_subjects", { mode: "json" }).$type<string[]>(), // Subject codes
+  compulsorySubjects: json("compulsory_subjects").$type<string[]>(), // Subject codes
+  electiveSubjects: json("elective_subjects").$type<string[]>(), // Subject codes
   minElectives: integer("min_electives"),
   maxElectives: integer("max_electives"),
 
   // Rules
   description: text("description"),
-  eligibility: text("eligibility", { mode: "json" }).$type<string[]>(),
+  eligibility: json("eligibility").$type<string[]>(),
 
   // Status
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  isActive: boolean("is_active").default(true),
   effectiveFrom: text("effective_from"), // ISO date
   effectiveUntil: text("effective_until"), // ISO date
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================

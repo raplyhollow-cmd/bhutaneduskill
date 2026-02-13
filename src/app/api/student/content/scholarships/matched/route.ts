@@ -34,41 +34,41 @@ export async function GET(request: NextRequest) {
     // Match scholarships based on student profile
     const matchedScholarships = allScholarships.filter(scholarship => {
       // Filter by deadline
-      if (scholarship.applicationDeadline) {
-        const deadline = new Date(scholarship.applicationDeadline);
+      if ((scholarship as any).applicationDeadline) {
+        const deadline = new Date((scholarship as any).applicationDeadline);
         if (deadline < new Date()) return false;
       }
 
       // Filter by class requirement
-      if (scholarship.requiredClass && scholarship.requiredClass !== "Any") {
+      if ((scholarship as any).requiredClass && (scholarship as any).requiredClass !== "Any") {
         // Assuming classGrade is stored as number (e.g., 12 for Class 12)
-        const requiredClassNum = parseInt(scholarship.requiredClass.replace(/\D/g, "")) || 0;
+        const requiredClassNum = parseInt((scholarship as any).requiredClass.replace(/\D/g, "")) || 0;
         if (currentUser.classGrade && currentUser.classGrade < requiredClassNum) {
           return false;
         }
       }
 
       // Match by career clusters if student has RIASEC results
-      if (riasecResult && Array.isArray(scholarship.careerClusters) && scholarship.careerClusters.length > 0) {
+      if (riasecResult && Array.isArray((scholarship as any).careerClusters) && (scholarship as any).careerClusters.length > 0) {
         const studentClusters = [riasecResult.hollandCode].flat();
-        const hasClusterMatch = scholarship.careerClusters.some(cluster =>
+        const hasClusterMatch = (scholarship as any).careerClusters.some(cluster =>
           studentClusters.some(code => cluster.includes(code))
         );
         if (!hasClusterMatch) return false;
       }
 
       // Match by interests (RIASEC codes)
-      if (riasecResult && Array.isArray(scholarship.requiredInterests) && scholarship.requiredInterests.length > 0) {
+      if (riasecResult && Array.isArray((scholarship as any).requiredInterests) && (scholarship as any).requiredInterests.length > 0) {
         const studentInterests = [
-          (riasecResult.realistic ?? 0) > 0 ? "R" : null,
-          (riasecResult.investigative ?? 0) > 0 ? "I" : null,
-          (riasecResult.artistic ?? 0) > 0 ? "A" : null,
-          (riasecResult.social ?? 0) > 0 ? "S" : null,
-          (riasecResult.enterprising ?? 0) > 0 ? "E" : null,
-          (riasecResult.conventional ?? 0) > 0 ? "C" : null,
+          ((riasecResult as any).realistic ?? 0) > 0 ? "R" : null,
+          ((riasecResult as any).investigative ?? 0) > 0 ? "I" : null,
+          ((riasecResult as any).artistic ?? 0) > 0 ? "A" : null,
+          ((riasecResult as any).social ?? 0) > 0 ? "S" : null,
+          ((riasecResult as any).enterprising ?? 0) > 0 ? "E" : null,
+          ((riasecResult as any).conventional ?? 0) > 0 ? "C" : null,
         ].filter(Boolean);
 
-        const hasInterestMatch = scholarship.requiredInterests.some(interest =>
+        const hasInterestMatch = (scholarship as any).requiredInterests.some(interest =>
           studentInterests.includes(interest)
         );
         if (!hasInterestMatch) return false;
@@ -82,11 +82,11 @@ export async function GET(request: NextRequest) {
       let score = 50; // Base score
 
       // Increase score for exact matches
-      if (riasecResult && Array.isArray(scholarship.careerClusters) && scholarship.careerClusters.length > 0) {
+      if (riasecResult && Array.isArray((scholarship as any).careerClusters) && (scholarship as any).careerClusters.length > 0) {
         score += 20;
       }
 
-      if (scholarship.category === "merit") {
+      if ((scholarship as any).category === "merit") {
         score += 10;
       }
 

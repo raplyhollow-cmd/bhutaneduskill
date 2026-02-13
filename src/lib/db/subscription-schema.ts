@@ -3,7 +3,7 @@
  * Handles B2B school subscriptions, B2C premium plans, and marketplace fees
  */
 
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { pgTable, text, integer, boolean, timestamp, pgEnum , json} from "drizzle-orm/pg-core";
 
 // ============================================================================
 // SUBSCRIPTION PLANS
@@ -12,7 +12,7 @@ import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 /**
  * Available subscription plans for schools
  */
-export const subscriptionPlans = sqliteTable("subscription_plans", {
+export const subscriptionPlans = pgTable("subscription_plans", {
   id: text("id").primaryKey(),
   name: text("name").notNull(), // "Starter", "Standard", "Premium", "Enterprise"
   slug: text("slug").notNull().unique(),
@@ -30,26 +30,26 @@ export const subscriptionPlans = sqliteTable("subscription_plans", {
   apiCallsLimit: integer("api_calls_limit"), // Per month
 
   // Features (JSON array of feature slugs)
-  features: text("features", { mode: "json" }).$type<string[]>(),
+  features: json("features").$type<string[]>(),
 
   // Feature flags
-  hasCareerGuidance: integer("has_career_guidance", { mode: "boolean" }).default(false),
-  hasLearningModules: integer("has_learning_modules", { mode: "boolean" }).default(false),
-  hasParentPortal: integer("has_parent_portal", { mode: "boolean" }).default(false),
-  hasTuitionMarketplace: integer("has_tuition_marketplace", { mode: "boolean" }).default(false),
-  hasAIFeatures: integer("has_ai_features", { mode: "boolean" }).default(false),
-  hasCustomBranding: integer("has_custom_branding", { mode: "boolean" }).default(false),
-  hasPrioritySupport: integer("has_priority_support", { mode: "boolean" }).default(false),
-  hasApiAccess: integer("has_api_access", { mode: "boolean" }).default(false),
+  hasCareerGuidance: boolean("has_career_guidance").default(false),
+  hasLearningModules: boolean("has_learning_modules").default(false),
+  hasParentPortal: boolean("has_parent_portal").default(false),
+  hasTuitionMarketplace: boolean("has_tuition_marketplace").default(false),
+  hasAIFeatures: boolean("has_ai_features").default(false),
+  hasCustomBranding: boolean("has_custom_branding").default(false),
+  hasPrioritySupport: boolean("has_priority_support").default(false),
+  hasApiAccess: boolean("has_api_access").default(false),
 
   // Display
-  isPopular: integer("is_popular", { mode: "boolean" }).default(false),
+  isPopular: boolean("is_popular").default(false),
   sortOrder: integer("sort_order").notNull().default(0),
 
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  isActive: boolean("is_active").default(true),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -59,17 +59,17 @@ export const subscriptionPlans = sqliteTable("subscription_plans", {
 /**
  * Active school subscriptions
  */
-export const schoolSubscriptions = sqliteTable("school_subscriptions", {
+export const schoolSubscriptions = pgTable("school_subscriptions", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
   planId: text("plan_id").notNull().references(() => subscriptionPlans.id),
 
   // Status
   status: text("status").notNull().default("trialing"), // "trialing", "active", "past_due", "cancelled", "expired"
-  trialEndsAt: integer("trial_ends_at", { mode: "timestamp" }),
-  currentPeriodStart: integer("current_period_start", { mode: "timestamp" }),
-  currentPeriodEnd: integer("current_period_end", { mode: "timestamp" }),
-  cancelledAt: integer("cancelled_at", { mode: "timestamp" }),
+  trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
+  currentPeriodStart: timestamp("current_period_start", { withTimezone: true }),
+  currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
+  cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
 
   // Limits tracking
   currentStudentCount: integer("current_student_count").default(0),
@@ -80,10 +80,10 @@ export const schoolSubscriptions = sqliteTable("school_subscriptions", {
   customDomain: text("custom_domain"),
   customLogo: text("custom_logo"),
   primaryColor: text("primary_color"),
-  customTheme: text("custom_theme", { mode: "json" }),
+  customTheme: json("custom_theme"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -93,7 +93,7 @@ export const schoolSubscriptions = sqliteTable("school_subscriptions", {
 /**
  * Payment records for school subscriptions
  */
-export const subscriptionPayments = sqliteTable("subscription_payments", {
+export const subscriptionPayments = pgTable("subscription_payments", {
   id: text("id").primaryKey(),
   subscriptionId: text("subscription_id").notNull().references(() => schoolSubscriptions.id),
 
@@ -109,18 +109,18 @@ export const subscriptionPayments = sqliteTable("subscription_payments", {
 
   // Payment gateway info
   gateway: text("gateway"), // "rma", "manual"
-  gatewayResponse: text("gateway_response", { mode: "json" }),
+  gatewayResponse: json("gateway_response"),
 
   // Billing period
-  periodStart: integer("period_start", { mode: "timestamp" }),
-  periodEnd: integer("period_end", { mode: "timestamp" }),
+  periodStart: timestamp("period_start", { withTimezone: true }),
+  periodEnd: timestamp("period_end", { withTimezone: true }),
 
   // Collected by
   collectedBy: text("collected_by"), // Platform admin user ID
-  collectedAt: integer("collected_at", { mode: "timestamp" }),
+  collectedAt: timestamp("collected_at", { withTimezone: true }),
   notes: text("notes"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -130,7 +130,7 @@ export const subscriptionPayments = sqliteTable("subscription_payments", {
 /**
  * Individual premium plans for students/parents
  */
-export const premiumPlans = sqliteTable("premium_plans", {
+export const premiumPlans = pgTable("premium_plans", {
   id: text("id").primaryKey(),
   name: text("name").notNull(), // "Plus", "Pro", "Lifetime"
   slug: text("slug").notNull().unique(),
@@ -143,7 +143,7 @@ export const premiumPlans = sqliteTable("premium_plans", {
   currency: text("currency").notNull().default("BTN"),
 
   // Features
-  features: text("features", { mode: "json" }).$type<string[]>(),
+  features: json("features").$type<string[]>(),
 
   // Limits
   aiCoachConsultations: integer("ai_coach_consultations"), // Per month
@@ -151,29 +151,29 @@ export const premiumPlans = sqliteTable("premium_plans", {
   careerReports: integer("career_reports"), // Detailed career reports
 
   // Display
-  isPopular: integer("is_popular", { mode: "boolean" }).default(false),
+  isPopular: boolean("is_popular").default(false),
   sortOrder: integer("sort_order").notNull().default(0),
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  isActive: boolean("is_active").default(true),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 /**
  * User premium subscriptions
  */
-export const userSubscriptions = sqliteTable("user_subscriptions", {
+export const userSubscriptions = pgTable("user_subscriptions", {
   id: text("id").primaryKey(),
   userId: text("user_id").notNull(),
   planId: text("plan_id").notNull().references(() => premiumPlans.id),
 
   // Status
   status: text("status").notNull().default("active"), // "active", "cancelled", "expired"
-  autoRenew: integer("auto_renew", { mode: "boolean" }).default(true),
+  autoRenew: boolean("auto_renew").default(true),
 
   // Period
-  currentPeriodStart: integer("current_period_start", { mode: "timestamp" }),
-  currentPeriodEnd: integer("current_period_end", { mode: "timestamp" }),
+  currentPeriodStart: timestamp("current_period_start", { withTimezone: true }),
+  currentPeriodEnd: timestamp("current_period_end", { withTimezone: true }),
 
   // Usage tracking
   aiConsultationsUsed: integer("ai_consultations_used").default(0),
@@ -182,11 +182,11 @@ export const userSubscriptions = sqliteTable("user_subscriptions", {
   // Payment
   lastPaymentId: text("last_payment_id"),
 
-  cancelledAt: integer("cancelled_at", { mode: "timestamp" }),
-  expiresAt: integer("expires_at", { mode: "timestamp" }),
+  cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -196,7 +196,7 @@ export const userSubscriptions = sqliteTable("user_subscriptions", {
 /**
  * Commission structure for tuition marketplace
  */
-export const marketplaceCommission = sqliteTable("marketplace_commission", {
+export const marketplaceCommission = pgTable("marketplace_commission", {
   id: text("id").primaryKey(),
   schoolId: text("school_id"), // Optional school-specific commission
 
@@ -208,16 +208,16 @@ export const marketplaceCommission = sqliteTable("marketplace_commission", {
   // Platform fee for tutors
   tutorListingFee: integer("tutor_listing_fee").notNull().default(100), // Nu. 100
 
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  isActive: boolean("is_active").default(true),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 /**
  * Commission earnings from marketplace
  */
-export const commissionEarnings = sqliteTable("commission_earnings", {
+export const commissionEarnings = pgTable("commission_earnings", {
   id: text("id").primaryKey(),
 
   // Source
@@ -235,9 +235,9 @@ export const commissionEarnings = sqliteTable("commission_earnings", {
 
   // Payout
   payoutId: text("payout_id"),
-  paidOutAt: integer("paid_out_at", { mode: "timestamp" }),
+  paidOutAt: timestamp("paid_out_at", { withTimezone: true }),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -247,7 +247,7 @@ export const commissionEarnings = sqliteTable("commission_earnings", {
 /**
  * Track feature usage for billing/limits
  */
-export const featureUsage = sqliteTable("feature_usage", {
+export const featureUsage = pgTable("feature_usage", {
   id: text("id").primaryKey(),
   schoolId: text("school_id"),
   userId: text("user_id"), // For B2C tracking
@@ -258,13 +258,13 @@ export const featureUsage = sqliteTable("feature_usage", {
 
   // Period
   period: text("period").notNull(), // "2024-01" for monthly tracking
-  periodStart: integer("period_start", { mode: "timestamp" }),
-  periodEnd: integer("period_end", { mode: "timestamp" }),
+  periodStart: timestamp("period_start", { withTimezone: true }),
+  periodEnd: timestamp("period_end", { withTimezone: true }),
 
   // Metadata
-  metadata: text("metadata", { mode: "json" }),
+  metadata: json("metadata"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -274,7 +274,7 @@ export const featureUsage = sqliteTable("feature_usage", {
 /**
  * Promotional discount codes
  */
-export const discountCodes = sqliteTable("discount_codes", {
+export const discountCodes = pgTable("discount_codes", {
   id: text("id").primaryKey(),
   code: text("code").notNull().unique(),
 
@@ -284,7 +284,7 @@ export const discountCodes = sqliteTable("discount_codes", {
 
   // Applicability
   appliesTo: text("applies_to").notNull(), // "school_subscription", "user_premium", "all"
-  planIds: text("plan_ids", { mode: "json" }).$type<string[]>(), // Specific plans if applicable
+  planIds: json("plan_ids").$type<string[]>(), // Specific plans if applicable
 
   // Limits
   maxUses: integer("max_uses"), // Total uses allowed
@@ -292,13 +292,13 @@ export const discountCodes = sqliteTable("discount_codes", {
   maxUsesPerUser: integer("max_uses_per_user").default(1),
 
   // Validity
-  validFrom: integer("valid_from", { mode: "timestamp" }),
-  validUntil: integer("valid_until", { mode: "timestamp" }),
+  validFrom: timestamp("valid_from", { withTimezone: true }),
+  validUntil: timestamp("valid_until", { withTimezone: true }),
 
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  isActive: boolean("is_active").default(true),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -308,7 +308,7 @@ export const discountCodes = sqliteTable("discount_codes", {
 /**
  * Invoices for subscriptions
  */
-export const invoices = sqliteTable("invoices", {
+export const invoices = pgTable("invoices", {
   id: text("id").primaryKey(),
   invoiceNumber: text("invoice_number").notNull().unique(),
 
@@ -321,8 +321,8 @@ export const invoices = sqliteTable("invoices", {
   subscriptionType: text("subscription_type").notNull(), // "school", "user"
 
   // Billing period
-  periodStart: integer("period_start", { mode: "timestamp" }).notNull(),
-  periodEnd: integer("period_end", { mode: "timestamp" }).notNull(),
+  periodStart: timestamp("period_start", { withTimezone: true }).notNull(),
+  periodEnd: timestamp("period_end", { withTimezone: true }).notNull(),
 
   // Amounts
   subtotal: integer("subtotal").notNull(),
@@ -335,8 +335,8 @@ export const invoices = sqliteTable("invoices", {
 
   // Status
   status: text("status").notNull().default("draft"), // "draft", "sent", "paid", "overdue", "cancelled"
-  dueDate: integer("due_date", { mode: "timestamp" }),
-  paidAt: integer("paid_at", { mode: "timestamp" }),
+  dueDate: timestamp("due_date", { withTimezone: true }),
+  paidAt: timestamp("paid_at", { withTimezone: true }),
 
   // Payment
   paymentId: text("payment_id"),
@@ -347,8 +347,8 @@ export const invoices = sqliteTable("invoices", {
   // Notes
   notes: text("notes"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================

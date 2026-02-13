@@ -3,7 +3,7 @@
  * Handles school assets, supplies, equipment, and inventory tracking
  */
 
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { pgTable, text, integer, boolean, timestamp, pgEnum , json} from "drizzle-orm/pg-core";
 
 // ============================================================================
 // INVENTORY CATEGORIES
@@ -12,7 +12,7 @@ import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 /**
  * Inventory item categories
  */
-export const inventoryCategories = sqliteTable("inventory_categories", {
+export const inventoryCategories = pgTable("inventory_categories", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -33,15 +33,15 @@ export const inventoryCategories = sqliteTable("inventory_categories", {
   alertThreshold: integer("alert_threshold"), // Minimum quantity before alert
 
   // Status
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  isActive: boolean("is_active").default(true),
 
   // Display
   displayOrder: integer("display_order"),
   icon: text("icon"),
   color: text("color"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -51,7 +51,7 @@ export const inventoryCategories = sqliteTable("inventory_categories", {
 /**
  * Individual inventory items
  */
-export const inventoryItems = sqliteTable("inventory_items", {
+export const inventoryItems = pgTable("inventory_items", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -67,7 +67,7 @@ export const inventoryItems = sqliteTable("inventory_items", {
   itemType: text("item_type").notNull(), // "asset", "consumable", "equipment", "furniture", "stationery", "book"
 
   // Asset details (for fixed assets)
-  isFixedAsset: integer("is_fixed_asset", { mode: "boolean" }).default(false),
+  isFixedAsset: boolean("is_fixed_asset").default(false),
   assetTag: text("asset_tag").unique(),
   serialNumber: text("serial_number"),
   purchaseDate: text("purchase_date"), // ISO date
@@ -79,7 +79,7 @@ export const inventoryItems = sqliteTable("inventory_items", {
   manufacturer: text("manufacturer"),
   model: text("model"),
   year: integer("year"),
-  specifications: text("specifications", { mode: "json" }).$type<Record<string, any>>(),
+  specifications: json("specifications").$type<Record<string, any>>(),
 
   // Location
   location: text("location"), // Building, room, shelf
@@ -114,13 +114,13 @@ export const inventoryItems = sqliteTable("inventory_items", {
   warrantyExpiry: text("warranty_expiry"), // ISO date
 
   // Photos
-  photoUrls: text("photo_urls", { mode: "json" }).$type<string[]>(),
+  photoUrls: json("photo_urls").$type<string[]>(),
 
   // Notes
   notes: text("notes"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -130,7 +130,7 @@ export const inventoryItems = sqliteTable("inventory_items", {
 /**
  * Stock movement transactions
  */
-export const inventoryTransactions = sqliteTable("inventory_transactions", {
+export const inventoryTransactions = pgTable("inventory_transactions", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -165,9 +165,9 @@ export const inventoryTransactions = sqliteTable("inventory_transactions", {
   reason: text("reason"),
 
   // Supporting documents
-  documentUrls: text("document_urls", { mode: "json" }).$type<string[]>(),
+  documentUrls: json("document_urls").$type<string[]>(),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -177,7 +177,7 @@ export const inventoryTransactions = sqliteTable("inventory_transactions", {
 /**
  * Purchase orders for inventory items
  */
-export const purchaseOrders = sqliteTable("purchase_orders", {
+export const purchaseOrders = pgTable("purchase_orders", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -196,7 +196,7 @@ export const purchaseOrders = sqliteTable("purchase_orders", {
   vendorEmail: text("vendor_email"),
 
   // Items
-  items: text("items", { mode: "json" }).$type<Array<{
+  items: json("items").$type<Array<{
     itemId?: string;
     itemName: string;
     description?: string;
@@ -238,10 +238,10 @@ export const purchaseOrders = sqliteTable("purchase_orders", {
   termsAndConditions: text("terms_and_conditions"),
 
   // Documents
-  documentUrls: text("document_urls", { mode: "json" }).$type<string[]>(),
+  documentUrls: json("document_urls").$type<string[]>(),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -251,7 +251,7 @@ export const purchaseOrders = sqliteTable("purchase_orders", {
 /**
  * Inventory vendors and suppliers
  */
-export const inventoryVendors = sqliteTable("inventory_vendors", {
+export const inventoryVendors = pgTable("inventory_vendors", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -288,7 +288,7 @@ export const inventoryVendors = sqliteTable("inventory_vendors", {
   discountPercentage: integer("discount_percentage").default(0),
 
   // Categories supplied
-  categoryIds: text("category_ids", { mode: "json" }).$type<string[]>(),
+  categoryIds: json("category_ids").$type<string[]>(),
 
   // Performance
   rating: integer("rating"), // 1-5
@@ -299,10 +299,10 @@ export const inventoryVendors = sqliteTable("inventory_vendors", {
   notes: text("notes"),
 
   // Status
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  isActive: boolean("is_active").default(true),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -312,7 +312,7 @@ export const inventoryVendors = sqliteTable("inventory_vendors", {
 /**
  * Asset assignment to users/departments
  */
-export const assetAssignments = sqliteTable("asset_assignments", {
+export const assetAssignments = pgTable("asset_assignments", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -346,8 +346,8 @@ export const assetAssignments = sqliteTable("asset_assignments", {
   assignmentNotes: text("assignment_notes"),
   returnNotes: text("return_notes"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -357,7 +357,7 @@ export const assetAssignments = sqliteTable("asset_assignments", {
 /**
  * Asset maintenance schedules and records
  */
-export const assetMaintenance = sqliteTable("asset_maintenance", {
+export const assetMaintenance = pgTable("asset_maintenance", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -388,7 +388,7 @@ export const assetMaintenance = sqliteTable("asset_maintenance", {
 
   // Work details
   workPerformed: text("work_performed"),
-  partsReplaced: text("parts_replaced", { mode: "json" }).$type<Array<{
+  partsReplaced: json("parts_replaced").$type<Array<{
     partName: string;
     partNumber: string;
     quantity: number;
@@ -396,16 +396,16 @@ export const assetMaintenance = sqliteTable("asset_maintenance", {
   }>>(),
 
   // Documents
-  reportUrls: text("report_urls", { mode: "json" }).$type<string[]>(),
-  invoiceUrls: text("invoice_urls", { mode: "json" }).$type<string[]>(),
+  reportUrls: json("report_urls").$type<string[]>(),
+  invoiceUrls: json("invoice_urls").$type<string[]>(),
 
   // Downtime
   downtimeStart: text("downtime_start"), // ISO datetime
   downtimeEnd: text("downtime_end"), // ISO datetime
   downtimeReason: text("downtime_reason"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -415,7 +415,7 @@ export const assetMaintenance = sqliteTable("asset_maintenance", {
 /**
  * Asset disposal and write-off records
  */
-export const assetDisposal = sqliteTable("asset_disposal", {
+export const assetDisposal = pgTable("asset_disposal", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -444,9 +444,9 @@ export const assetDisposal = sqliteTable("asset_disposal", {
   approvalNotes: text("approval_notes"),
 
   // Documents
-  documentUrls: text("document_urls", { mode: "json" }).$type<string[]>(),
+  documentUrls: json("document_urls").$type<string[]>(),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -456,7 +456,7 @@ export const assetDisposal = sqliteTable("asset_disposal", {
 /**
  * Stock adjustment records for discrepancies
  */
-export const stockAdjustments = sqliteTable("stock_adjustments", {
+export const stockAdjustments = pgTable("stock_adjustments", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -465,7 +465,7 @@ export const stockAdjustments = sqliteTable("stock_adjustments", {
   adjustmentType: text("adjustment_type").notNull(), // "damage", "loss", "theft", "expired", "correction", "physical_count"
 
   // Items affected
-  items: text("items", { mode: "json" }).$type<Array<{
+  items: json("items").$type<Array<{
     itemId: string;
     itemName: string;
     expectedQuantity: number;
@@ -489,9 +489,9 @@ export const stockAdjustments = sqliteTable("stock_adjustments", {
 
   // Supporting documents
   notes: text("notes"),
-  documentUrls: text("document_urls", { mode: "json" }).$type<string[]>(),
+  documentUrls: json("document_urls").$type<string[]>(),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -501,7 +501,7 @@ export const stockAdjustments = sqliteTable("stock_adjustments", {
 /**
  * Low stock and other inventory alerts
  */
-export const inventoryAlerts = sqliteTable("inventory_alerts", {
+export const inventoryAlerts = pgTable("inventory_alerts", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -526,12 +526,12 @@ export const inventoryAlerts = sqliteTable("inventory_alerts", {
   resolutionNotes: text("resolution_notes"),
 
   // Notifications sent
-  notificationSent: integer("notification_sent", { mode: "boolean" }).default(false),
+  notificationSent: boolean("notification_sent").default(false),
   notificationSentAt: text("notification_sent_at"),
-  notifiedUsers: text("notified_users", { mode: "json" }).$type<string[]>(),
+  notifiedUsers: json("notified_users").$type<string[]>(),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -541,7 +541,7 @@ export const inventoryAlerts = sqliteTable("inventory_alerts", {
 /**
  * Generated inventory reports
  */
-export const inventoryReports = sqliteTable("inventory_reports", {
+export const inventoryReports = pgTable("inventory_reports", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -555,8 +555,8 @@ export const inventoryReports = sqliteTable("inventory_reports", {
   generatedDate: text("generated_date").notNull(), // ISO date
 
   // Report data
-  summary: text("summary", { mode: "json" }).$type<Record<string, any>>(),
-  details: text("details", { mode: "json" }).$type<Record<string, any>>(),
+  summary: json("summary").$type<Record<string, any>>(),
+  details: json("details").$type<Record<string, any>>(),
 
   // Generated by
   generatedBy: text("generated_by"), // User ID
@@ -565,7 +565,7 @@ export const inventoryReports = sqliteTable("inventory_reports", {
   fileUrl: text("file_url"),
   fileType: text("file_type"), // "pdf", "excel", "csv"
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -575,21 +575,21 @@ export const inventoryReports = sqliteTable("inventory_reports", {
 /**
  * Per-school inventory settings
  */
-export const inventorySettings = sqliteTable("inventory_settings", {
+export const inventorySettings = pgTable("inventory_settings", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
   // General settings
   defaultReorderLevel: integer("default_reorder_level").default(10),
   defaultMinimumStock: integer("default_minimum_stock").default(5),
-  lowStockAlertEnabled: integer("low_stock_alert_enabled", { mode: "boolean" }).default(true),
-  expiryAlertEnabled: integer("expiry_alert_enabled", { mode: "boolean" }).default(true),
+  lowStockAlertEnabled: boolean("low_stock_alert_enabled").default(true),
+  expiryAlertEnabled: boolean("expiry_alert_enabled").default(true),
   expiryAlertDays: integer("expiry_alert_days").default(30),
 
   // Approval settings
-  purchaseOrderApprovalRequired: integer("purchase_order_approval_required", { mode: "boolean" }).default(true),
+  purchaseOrderApprovalRequired: boolean("purchase_order_approval_required").default(true),
   purchaseOrderApprovalThreshold: integer("purchase_order_approval_threshold"), // Amount above which approval is needed
-  disposalApprovalRequired: integer("disposal_approval_required", { mode: "boolean" }).default(true),
+  disposalApprovalRequired: boolean("disposal_approval_required").default(true),
 
   // Depreciation settings
   depreciationMethod: text("depreciation_method").default("straight_line"), // "straight_line", "declining_balance"
@@ -601,10 +601,10 @@ export const inventorySettings = sqliteTable("inventory_settings", {
   purchaseOrderNextNumber: integer("purchase_order_next_number").default(1),
 
   // Notifications
-  alertEmails: text("alert_emails", { mode: "json" }).$type<string[]>(),
+  alertEmails: json("alert_emails").$type<string[]>(),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================

@@ -389,8 +389,9 @@ export async function getClasses(schoolId: string | null, options: {
     .where(and(...conditions));
 
   const transformed: ClassData[] = classesList.map((cls) => {
-    const classTeacher = cls.teacher
-      ? `${cls.teacher.firstName} ${cls.teacher.lastName || ""}`.trim()
+    const teacher = cls.teacher as any;
+    const classTeacher = teacher
+      ? `${teacher.firstName || ""} ${teacher.lastName || ""}`.trim()
       : "Not Assigned";
 
     return {
@@ -404,7 +405,7 @@ export async function getClasses(schoolId: string | null, options: {
       room: "TBD",
       floor: "TBD",
       capacity: 40,
-      enrolled: cls.students?.length || 0,
+      enrolled: (cls as any).students?.length || 0,
       academicYear: cls.academicYear,
       status: "active",
       schedule: [],
@@ -462,10 +463,10 @@ export async function getSubjects(schoolId: string | null, options: {
     id: subject.id,
     code: subject.code,
     name: subject.name,
-    nameDz: subject.nameDzongkha,
+    nameDz: (subject as any).nameDzongkha || null,
     grade: subject.grade,
-    icon: subject.icon,
-    color: subject.color,
+    icon: (subject as any).icon || null,
+    color: (subject as any).color || null,
     isActive: true, // Default to active
   }));
 
@@ -548,9 +549,9 @@ export async function getAttendanceRecords(schoolId: string | null, options: {
         present,
         absent,
         late,
-        markedBy: firstRecord?.enteredBy || null,
-        markedAt: firstRecord?.checkInTime || null,
-        entryMethod: firstRecord?.entryMethod || null,
+        markedBy: (firstRecord as any)?.enteredBy || null,
+        markedAt: (firstRecord as any)?.checkInTime || null,
+        entryMethod: (firstRecord as any)?.entryMethod || null,
         status: isCompleted ? "completed" : "pending",
       };
     })
@@ -637,12 +638,12 @@ export async function getHomeworkList(schoolId: string | null, options: {
       return {
         id: hw.id,
         title: hw.title,
-        class: hw.class?.name || "Unknown",
-        subject: hw.subject?.name || "Unknown",
-        type: hw.type,
-        dueDate: hw.dueDate,
+        class: (hw.class as any)?.name || "Unknown",
+        subject: (hw.subject as any)?.type || "Unknown",
+        type: (hw as any).type || "assignment",
+        dueDate: (hw as any).dueDate || "",
         submitted: submissionCount?.count || 0,
-        total: hw.class?.students?.length || 0,
+        total: (hw.class as any)?.students?.length || 0,
         graded: gradedCount?.count || 0,
       };
     })
@@ -700,13 +701,13 @@ export async function getExamResults(schoolId: string | null, options: {
 
   const transformed: ExamResultData[] = resultsList.map((result) => ({
     id: result.id,
-    examName: result.examName,
+    examName: (result as any).examName || "Exam",
     examType: result.examType,
     class: "All Classes", // Would need to aggregate
     date: result.createdAt ? new Date(result.createdAt).toISOString().split('T')[0] : "",
     students: 0, // Would need to count
-    published: !!result.isVerified,
-    avgPercentage: result.overallPercentage || 0,
+    published: !!(result as any).isVerified,
+    avgPercentage: (result as any)(r as any).overallPercentage || result.percentage || 0,
   }));
 
   return { results: transformed, total: countResult?.count || 0 };
@@ -791,7 +792,7 @@ export async function getFeeData(schoolId: string | null) {
     id: s.id,
     name: s.name,
     category: "tuition",
-    amount: s.totalAnnualAmount || 0,
+    amount: (s as any).totalAnnualAmount || s.totalFees || 0,
     frequency: "annual",
     dueDay: 31,
     classId: s.grade.toString(),
@@ -810,17 +811,19 @@ export async function getFeeData(schoolId: string | null) {
 
   const studentFeesData: StudentFeeData[] = await Promise.all(
     studentFeesList.map(async (sf) => {
-      const studentName = sf.student
-        ? `${sf.student.firstName} ${sf.student.lastName || ""}`.trim()
+      const student = sf.student as any;
+      const studentName = student
+        ? `${student.firstName || ""} ${student.lastName || ""}`.trim() || student.name || "Unknown"
         : "Unknown";
 
       // Get class name
-      const className = sf.student?.classGrade && sf.student?.section
-        ? `Class ${sf.student.classGrade} ${sf.student.section}`
+      const className = student?.classGrade && student?.section
+        ? `Class ${student.classGrade} ${student.section}`
         : "Unknown";
 
       let status: "paid" | "partial" | "overdue" = "partial";
-      if ((sf.amountPaid || 0) >= (sf.totalAmount || 0)) {
+      const sfData = sf as any;
+      if ((sfData.amountPaid || 0) >= (sfData.totalAmount || 0)) {
         status = "paid";
       } else if (sf.dueDate && new Date(sf.dueDate) < new Date()) {
         status = "overdue";
@@ -833,11 +836,11 @@ export async function getFeeData(schoolId: string | null) {
         studentRoll: "N/A",
         classId: sf.studentId,
         className,
-        structureId: sf.structureId || "",
+        structureId: sfData.structureId || "",
         structureName: "School Fee",
-        amount: sf.totalAmount || 0,
-        paidAmount: sf.amountPaid || 0,
-        waivedAmount: sf.amountWaived || 0,
+        amount: sfData.totalAmount || sf.amount || 0,
+        paidAmount: sfData.amountPaid || 0,
+        waivedAmount: sfData.amountWaived || 0,
         dueDate: sf.dueDate,
         status,
       };
@@ -904,23 +907,23 @@ export async function getCounselors(schoolId: string | null, options: {
 
   // Get unique counselors
   const uniqueCounselors = Array.from(
-    new Map(assignments.map(a => [a.counselor.id, a])).values()
+    new Map(assignments.map((a: any) => [a.counselor?.id, a])).values()
   );
 
   const transformed: CounselorData[] = await Promise.all(
-    uniqueCounselors.map(async (assignment) => {
-      const counselor = (assignment as any).counselor;
-      const name = `${counselor.firstName} ${counselor.lastName || ""}`.trim();
+    uniqueCounselors.map(async (assignment: any) => {
+      const counselor = assignment.counselor;
+      const name = counselor?.name || `${counselor?.firstName || ""} ${counselor?.lastName || ""}`.trim() || "Unknown";
 
       // Get all schools assigned to this counselor
       const allAssignments = await db.query.counselorAssignments.findMany({
-        where: eq(counselorAssignments.counselorId, counselor.id),
+        where: eq(counselorAssignments.counselorId, counselor?.id),
         with: {
           school: true,
         },
       });
 
-      const assignedSchools = allAssignments.map(a => a.school?.name || "Unknown");
+      const assignedSchools = allAssignments.map((a: any) => a.school?.name || "Unknown");
 
       // Count students for this counselor's assigned schools
       let totalStudents = 0;
@@ -994,10 +997,9 @@ export async function getTuitionCourses(schoolId: string | null, options: {
     .where(eq(tuitionCourses.status, "published"));
 
   const transformed: TuitionCourseData[] = await Promise.all(
-    coursesList.map(async (course) => {
-      const tutorName = course.tutor?.user
-        ? `${course.tutor.user.firstName} ${course.tutor.user.lastName || ""}`.trim()
-        : "Unknown";
+    coursesList.map(async (course: any) => {
+      const user = course.tutor?.user;
+      const tutorName = user?.name || `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Unknown";
 
       // Get enrollment count
       const [enrollmentCount] = await db
@@ -1006,18 +1008,18 @@ export async function getTuitionCourses(schoolId: string | null, options: {
         .where(eq(tuitionEnrollments.courseId, course.id));
 
       // Get average rating
-      const rating = course.tutor?.averageRating
-        ? (course.tutor.averageRating / 10)
+      const rating = (course as any).tutor?.averageRating
+        ? ((course as any).tutor.averageRating / 10)
         : 4.0;
 
       return {
         id: course.id,
         title: course.title,
         tutor: tutorName,
-        type: course.type,
+        type: (course as any).type || "course",
         students: enrollmentCount?.count || 0,
         rating,
-        price: course.price || 0,
+        price: (course as any).price || 0,
         status: "active",
       };
     })
@@ -1139,7 +1141,7 @@ export async function getAnalytics(schoolId: string | null): Promise<AnalyticsDa
 
   let averageScore = 0;
   if (examResults.length > 0) {
-    const totalPercentage = examResults.reduce((sum, r) => sum + (r.overallPercentage || 0), 0);
+    const totalPercentage = examResults.reduce((sum, r) => sum + ((r as any)(r as any).overallPercentage || r.percentage || 0), 0);
     averageScore = Math.round(totalPercentage / examResults.length);
   }
 
@@ -1164,7 +1166,7 @@ export async function getAnalytics(schoolId: string | null): Promise<AnalyticsDa
   const pendingFees = allStudentFees.filter((f) => (f.amountPending || 0) > 0).length;
 
   // Calculate total revenue from paid fees
-  const totalRevenue = allStudentFees.reduce((sum, f) => sum + (f.amountPaid || 0), 0);
+  const totalRevenue = allStudentFees.reduce((sum, f) => sum + ((f as any).amountPaid || 0), 0);
 
   // 5. Top Performers (students with highest scores)
   const topPerformers: TopPerformer[] = [];
@@ -1172,7 +1174,7 @@ export async function getAnalytics(schoolId: string | null): Promise<AnalyticsDa
 
   examResults.forEach((result) => {
     const existing = studentScores.get(result.studentId);
-    const score = result.overallPercentage || 0;
+    const score = (result as any)(r as any).overallPercentage || result.percentage || 0;
     if (existing) {
       existing.score = Math.max(existing.score, score);
       existing.count++;
@@ -1286,11 +1288,12 @@ export async function getAnalytics(schoolId: string | null): Promise<AnalyticsDa
 
   for (const fee of pendingFeeStudents) {
     if (!studentsNeedingAttention.find((s) => s.id === fee.studentId)) {
-      const name = fee.student
-        ? `${fee.student.firstName} ${fee.student.lastName || ""}`.trim()
+      const student = (fee as any).student;
+      const name = student
+        ? `${student.firstName || ""} ${student.lastName || ""}`.trim() || student.name || "Unknown"
         : "Unknown";
-      const classStr = fee.student?.classGrade && fee.student?.section
-        ? `Class ${fee.student.classGrade} ${fee.student.section}`
+      const classStr = student?.classGrade && student?.section
+        ? `Class ${student.classGrade} ${student.section}`
         : "Not Assigned";
 
       studentsNeedingAttention.push({
@@ -1306,7 +1309,7 @@ export async function getAnalytics(schoolId: string | null): Promise<AnalyticsDa
   // Declining scores (comparing recent vs older results would require more complex logic)
   // For now, we'll add students with very low scores (<40%)
   const lowScoreStudents = examResults
-    .filter((r) => (r.overallPercentage || 0) < 40)
+    .filter((r) => ((r as any)(r as any).overallPercentage || r.percentage || 0) < 40)
     .slice(0, 5);
 
   for (const result of lowScoreStudents) {
@@ -1372,7 +1375,7 @@ export async function getAnalytics(schoolId: string | null): Promise<AnalyticsDa
       if (!gradeGroups.has(grade)) {
         gradeGroups.set(grade, []);
       }
-      gradeGroups.get(grade)!.push(result.overallPercentage || 0);
+      gradeGroups.get(grade)!.push((result as any)(r as any).overallPercentage || result.percentage || 0);
     }
   }
 

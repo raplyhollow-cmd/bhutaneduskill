@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     // Get user's assessment results
     const userAssessments = await db.query.assessments.findMany({
       where: eq(assessments.userId, currentUser.id),
-      columns: { id: true, assessmentType: true, results: true, completedAt: true },
+      columns: { id: true, assessmentTypeId: true, completedAt: true },
     });
 
     // Get assessment IDs
@@ -55,8 +55,8 @@ export async function POST(request: NextRequest) {
     };
 
     // Parse assessment results for context
-    const riasecResult = userAssessments.find((a) => a.assessmentType === "riasec")?.results;
-    const mbtiResult = userAssessments.find((a) => a.assessmentType === "mbti")?.results;
+    const riasecResult = (userAssessments.find((a) => a.assessmentTypeId === "riasec") as any)?.results;
+    const mbtiResult = (userAssessments.find((a) => a.assessmentTypeId === "mbti") as any)?.results;
 
     if (riasecResult) {
       try {
@@ -123,13 +123,13 @@ Format as JSON with this structure:
     // Return formatted response
     return NextResponse.json({
       predictions: userCareers.slice(0, 3).map((c, index) => ({
-        career: c.career?.title ?? "Career",
+        career: (c.career as any)?.title ?? "Career",
         probability: c.matchScore ?? 70 - index * 10,
         reason: `Based on your assessment results, this career aligns well with your personality traits.`,
         skills: ["Communication", "Problem Solving", "Analytical Thinking"],
       })),
       aiInsight: data.message ?? "",
-      summary: `${currentUser.firstName}, based on your assessments, you have strong potential in ${userCareers[0]?.career?.title ?? "your chosen field"}.`,
+      summary: `${currentUser.firstName}, based on your assessments, you have strong potential in ${(userCareers[0]?.career as any)?.title ?? "your chosen field"}.`,
     });
 
   } catch (error) {

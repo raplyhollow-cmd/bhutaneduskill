@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Only students and teachers can create leave requests
-    if (currentUser.type !== "student" && currentUser.type !== "teacher") {
+    if ((currentUser as any).type !== "student" && (currentUser as any).type !== "teacher") {
       return NextResponse.json(
         { error: "Only students and teachers can create leave requests" },
         { status: 403 }
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
       substituteTeacherId: currentUser.type === "teacher" ? substituteTeacherId : null,
       createdAt: Math.floor(Date.now() / 1000),
       updatedAt: Math.floor(Date.now() / 1000),
-    }).returning();
+    } as any).returning();
 
     return NextResponse.json({
       success: true,

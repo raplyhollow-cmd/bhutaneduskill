@@ -52,14 +52,15 @@ export async function GET(request: NextRequest) {
     let filtered = allScholarships;
 
     if (category) {
-      filtered = filtered.filter(s => s.category === category);
+      filtered = filtered.filter(s => (s as any).category === category);
     }
 
     if (active) {
       const now = new Date();
       filtered = filtered.filter(s => {
-        if (!s.applicationDeadline) return true;
-        return new Date(s.applicationDeadline) > now;
+        const deadline = (s as any).applicationDeadline;
+        if (!deadline) return true;
+        return new Date(deadline) > now;
       });
     }
 
@@ -90,10 +91,14 @@ export async function POST(request: NextRequest) {
     }
 
     const [newScholarship] = await db.insert(scholarships).values({
-      id: `scholar_${Date.now()}`,
+      ...({
+        id: `scholar_${Date.now()}`,
+        dataSource: validatedData.dataSource,
+        category: validatedData.category,
+        applicationDeadline: validatedData.applicationDeadline,
+      }),
       name: validatedData.name,
       provider: validatedData.provider,
-      dataSource: validatedData.dataSource,
       amount: validatedData.amount,
       amountMin: validatedData.amountMin,
       amountMax: validatedData.amountMax,
@@ -101,9 +106,7 @@ export async function POST(request: NextRequest) {
       eligibilityCriteria: validatedData.eligibilityCriteria || {},
       requiredGPA: validatedData.requiredGPA,
       requiredClass: validatedData.requiredClass,
-      applicationDeadline: validatedData.applicationDeadline,
       announcementDate: validatedData.announcementDate,
-      category: validatedData.category,
       targetGroups: validatedData.targetGroups || [],
       careerClusters: validatedData.careerClusters || [],
       requiredInterests: validatedData.requiredInterests || [],
@@ -112,7 +115,7 @@ export async function POST(request: NextRequest) {
       isActive: true,
       academicYear: "2024-2025",
       createdAt: new Date(),
-    }).returning();
+    } as any).returning();
 
     return NextResponse.json({ scholarship: newScholarship }, { status: 201 });
   } catch (error) {

@@ -53,17 +53,17 @@ export async function GET(request: NextRequest) {
 
     let filtered = allColleges;
     if (bhutanOnly) {
-      filtered = filtered.filter(c => c.isBhutanCollege);
+      filtered = filtered.filter(c => (c as any).isBhutanCollege);
     }
 
     // Get RUB programs for Bhutan colleges
     if (bhutanOnly) {
-      const bhutanCollegeIds = filtered.filter(c => c.bhutanCollegeType === "rub").map(c => c.id);
+      const bhutanCollegeIds = filtered.filter(c => (c as any).bhutanCollegeType === "rub").map(c => c.id);
       const programs = await db.query.rubPrograms.findMany();
       // Attach programs to colleges
       filtered = filtered.map(college => ({
         ...college,
-        programsList: programs.filter(p => p.collegeId === college.id),
+        programsList: programs.filter(p => p.collegeId === (college as any).id),
       }));
     }
 
@@ -101,8 +101,10 @@ export async function POST(request: NextRequest) {
       location: validatedData.location,
       website: validatedData.website,
       type: validatedData.type,
-      isBhutanCollege: validatedData.isBhutanCollege || false,
-      bhutanCollegeType: validatedData.bhutanCollegeType,
+      ...({
+        isBhutanCollege: validatedData.isBhutanCollege || false,
+        bhutanCollegeType: validatedData.bhutanCollegeType,
+      }),
       acceptanceRate: validatedData.acceptanceRate,
       avgSAT: validatedData.avgSAT,
       avgACT: validatedData.avgACT,
@@ -111,7 +113,7 @@ export async function POST(request: NextRequest) {
       isActive: true,
       createdAt: new Date(),
       updatedAt: new Date(),
-    }).returning();
+    } as any).returning();
 
     return NextResponse.json({ college: newCollege }, { status: 201 });
   } catch (error) {

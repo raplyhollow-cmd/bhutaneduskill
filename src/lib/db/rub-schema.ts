@@ -3,7 +3,7 @@
  * Handles college applications, admissions, and scholarship tracking
  */
 
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { pgTable, text, integer, boolean, timestamp, pgEnum , json} from "drizzle-orm/pg-core";
 
 // ============================================================================
 // RUB COLLEGES
@@ -12,7 +12,7 @@ import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
 /**
  * RUB constituent colleges
  */
-export const rubColleges = sqliteTable("rub_colleges", {
+export const rubColleges = pgTable("rub_colleges", {
   id: text("id").primaryKey(),
 
   // College details
@@ -32,7 +32,7 @@ export const rubColleges = sqliteTable("rub_colleges", {
   phone: text("phone"),
 
   // Programs offered
-  programs: text("programs", { mode: "json" }).$type<Array<{
+  programs: json("programs").$type<Array<{
     code: string;
     name: string;
     level: "certificate" | "diploma" | "bachelor" | "master" | "phd";
@@ -41,19 +41,19 @@ export const rubColleges = sqliteTable("rub_colleges", {
   }>>(),
 
   // Facilities
-  hasHostel: integer("has_hostel", { mode: "boolean" }).default(false),
-  hasLibrary: integer("has_library", { mode: "boolean" }).default(true),
-  hasLab: integer("has_lab", { mode: "boolean" }).default(false),
-  hasSports: integer("has_sports", { mode: "boolean" }).default(false),
+  hasHostel: boolean("has_hostel").default(false),
+  hasLibrary: boolean("has_library").default(true),
+  hasLab: boolean("has_lab").default(false),
+  hasSports: boolean("has_sports").default(false),
 
   // Description
   description: text("description"),
 
   // Status
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  isActive: boolean("is_active").default(true),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -63,7 +63,7 @@ export const rubColleges = sqliteTable("rub_colleges", {
 /**
  * Programs offered by RUB colleges
  */
-export const rubPrograms = sqliteTable("rub_programs", {
+export const rubPrograms = pgTable("rub_programs", {
   id: text("id").primaryKey(),
 
   // Program details
@@ -82,15 +82,15 @@ export const rubPrograms = sqliteTable("rub_programs", {
 
   // Capacity and intake
   totalSeats: integer("total_seats"),
-  reservedSeats: text("reserved_seats", { mode: "json" }).$type<Array<{
+  reservedSeats: json("reserved_seats").$type<Array<{
     category: string;
     seats: number;
   }>>(),
 
   // Eligibility
   minPercentage: integer("min_percentage"), // Minimum percentage required
-  requiredSubjects: text("required_subjects", { mode: "json" }).$type<string[]>(),
-  eligibilityCriteria: text("eligibility_criteria", { mode: "json" }).$type<Record<string, any>>(),
+  requiredSubjects: json("required_subjects").$type<string[]>(),
+  eligibilityCriteria: json("eligibility_criteria").$type<Record<string, any>>(),
 
   // Fees
   tuitionFee: integer("tuition_fee"), // Per semester
@@ -100,15 +100,15 @@ export const rubPrograms = sqliteTable("rub_programs", {
 
   // Description
   description: text("description"),
-  careerProspects: text("career_prospects", { mode: "json" }).$type<string[]>(),
+  careerProspects: json("career_prospects").$type<string[]>(),
 
   // Status
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
-  admissionOpen: integer("admission_open", { mode: "boolean" }).default(false),
+  isActive: boolean("is_active").default(true),
+  admissionOpen: boolean("admission_open").default(false),
   academicYear: text("academic_year"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -118,7 +118,7 @@ export const rubPrograms = sqliteTable("rub_programs", {
 /**
  * Student applications to RUB colleges
  */
-export const rubApplications = sqliteTable("rub_applications", {
+export const rubApplications = pgTable("rub_applications", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
   studentId: text("student_id").notNull(),
@@ -129,7 +129,7 @@ export const rubApplications = sqliteTable("rub_applications", {
   academicYear: text("academic_year").notNull(),
 
   // Program preferences
-  preferences: text("preferences", { mode: "json" }).$type<Array<{
+  preferences: json("preferences").$type<Array<{
     collegeId: string;
     collegeName: string;
     programId: string;
@@ -176,7 +176,7 @@ export const rubApplications = sqliteTable("rub_applications", {
   division: text("division"),
 
   // Subject marks
-  subjectMarks: text("subject_marks", { mode: "json" }).$type<Array<{
+  subjectMarks: json("subject_marks").$type<Array<{
     subject: string;
     marks: number;
     total: number;
@@ -184,7 +184,7 @@ export const rubApplications = sqliteTable("rub_applications", {
   }>>(),
 
   // Documents
-  documents: text("documents", { mode: "json" }).$type<Array<{
+  documents: json("documents").$type<Array<{
     documentType: string;
     documentUrl: string;
     verified: boolean;
@@ -192,14 +192,14 @@ export const rubApplications = sqliteTable("rub_applications", {
 
   // Special categories
   category: text("category"), // "general", "sc", "st", "ewh"
-  hasDisability: integer("has_disability", { mode: "boolean" }).default(false),
+  hasDisability: boolean("has_disability").default(false),
   disabilityType: text("disability_type"),
   disabilityCertificate: text("disability_certificate"),
 
   // Scholarship
-  scholarshipApplied: integer("scholarship_applied", { mode: "boolean" }).default(false),
+  scholarshipApplied: boolean("scholarship_applied").default(false),
   scholarshipType: text("scholarship_type"),
-  scholarshipDocuments: text("scholarship_documents", { mode: "json" }).$type<string[]>(),
+  scholarshipDocuments: json("scholarship_documents").$type<string[]>(),
 
   // Application status
   status: text("status").notNull().default("draft"), // "draft", "submitted", "under_review", "document_verified", "interview_scheduled", "selected", "rejected", "waitlisted", "admitted", "declined"
@@ -221,7 +221,7 @@ export const rubApplications = sqliteTable("rub_applications", {
   verificationNotes: text("verification_notes"),
 
   // Interview
-  interviewScheduled: integer("interview_scheduled", { mode: "boolean" }).default(false),
+  interviewScheduled: boolean("interview_scheduled").default(false),
   interviewDate: text("interview_date"),
   interviewTime: text("interview_time"),
   interviewVenue: text("interview_venue"),
@@ -232,8 +232,8 @@ export const rubApplications = sqliteTable("rub_applications", {
   // Rejection
   rejectionReason: text("rejection_reason"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -243,7 +243,7 @@ export const rubApplications = sqliteTable("rub_applications", {
 /**
  * Available scholarships for RUB programs
  */
-export const rubScholarships = sqliteTable("rub_scholarships", {
+export const rubScholarships = pgTable("rub_scholarships", {
   id: text("id").primaryKey(),
 
   // Scholarship details
@@ -256,16 +256,16 @@ export const rubScholarships = sqliteTable("rub_scholarships", {
   providerName: text("provider_name"),
 
   // Coverage
-  coversTuition: integer("covers_tuition", { mode: "boolean" }).default(false),
-  coversHostel: integer("covers_hostel", { mode: "boolean" }).default(false),
-  coversBooks: integer("covers_books", { mode: "boolean" }).default(false),
-  coversLiving: integer("covers_living", { mode: "boolean" }).default(false),
+  coversTuition: boolean("covers_tuition").default(false),
+  coversHostel: boolean("covers_hostel").default(false),
+  coversBooks: boolean("covers_books").default(false),
+  coversLiving: boolean("covers_living").default(false),
   coveragePercentage: integer("coverage_percentage"), // 0-100
 
   // Eligibility
   minPercentage: integer("min_percentage"),
   annualIncomeLimit: integer("annual_income_limit"), // For need-based
-  categories: text("categories", { mode: "json" }).$type<string[]>(),
+  categories: json("categories").$type<string[]>(),
 
   // Duration
   duration: text("duration"), // "program_duration", "1_year", "renewable"
@@ -273,18 +273,18 @@ export const rubScholarships = sqliteTable("rub_scholarships", {
   // Application
   applicationOpenDate: text("application_open_date"),
   applicationCloseDate: text("application_close_date"),
-  requiredDocuments: text("required_documents", { mode: "json" }).$type<string[]>(),
+  requiredDocuments: json("required_documents").$type<string[]>(),
 
   // Description
   description: text("description"),
   termsAndConditions: text("terms_and_conditions"),
 
   // Status
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  isActive: boolean("is_active").default(true),
   academicYear: text("academic_year"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -294,7 +294,7 @@ export const rubScholarships = sqliteTable("rub_scholarships", {
 /**
  * Student scholarship applications
  */
-export const rubScholarshipApplications = sqliteTable("rub_scholarship_applications", {
+export const rubScholarshipApplications = pgTable("rub_scholarship_applications", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
   studentId: text("student_id").notNull(),
@@ -318,7 +318,7 @@ export const rubScholarshipApplications = sqliteTable("rub_scholarship_applicati
   financialHardship: text("financial_hardship"),
 
   // Supporting documents
-  documents: text("documents", { mode: "json" }).$type<Array<{
+  documents: json("documents").$type<Array<{
     documentType: string;
     documentUrl: string;
   }>>(),
@@ -335,7 +335,7 @@ export const rubScholarshipApplications = sqliteTable("rub_scholarship_applicati
   approvedAmount: integer("approved_amount"),
 
   // Disbursement
-  disbursementSchedule: text("disbursement_schedule", { mode: "json" }).$type<Array<{
+  disbursementSchedule: json("disbursement_schedule").$type<Array<{
     installment: number;
     dueDate: string;
     amount: number;
@@ -346,8 +346,8 @@ export const rubScholarshipApplications = sqliteTable("rub_scholarship_applicati
   // Rejection
   rejectionReason: text("rejection_reason"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -357,7 +357,7 @@ export const rubScholarshipApplications = sqliteTable("rub_scholarship_applicati
 /**
  * RUB API configuration
  */
-export const rubApiConfig = sqliteTable("rub_api_config", {
+export const rubApiConfig = pgTable("rub_api_config", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -368,9 +368,9 @@ export const rubApiConfig = sqliteTable("rub_api_config", {
   schoolCode: text("school_code").notNull(),
 
   // Configuration
-  isEnabled: integer("is_enabled", { mode: "boolean" }).default(true),
-  autoSubmitApplications: integer("auto_submit_applications", { mode: "boolean" }).default(false),
-  autoFetchResults: integer("auto_fetch_results", { mode: "boolean" }).default(true),
+  isEnabled: boolean("is_enabled").default(true),
+  autoSubmitApplications: boolean("auto_submit_applications").default(false),
+  autoFetchResults: boolean("auto_fetch_results").default(true),
 
   // Last sync
   lastSyncDate: text("last_sync_date"),
@@ -380,8 +380,8 @@ export const rubApiConfig = sqliteTable("rub_api_config", {
   webhookUrl: text("webhook_url"),
   webhookSecret: text("webhook_secret"),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -391,7 +391,7 @@ export const rubApiConfig = sqliteTable("rub_api_config", {
 /**
  * RUB API synchronization logs
  */
-export const rubSyncLogs = sqliteTable("rub_sync_logs", {
+export const rubSyncLogs = pgTable("rub_sync_logs", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
 
@@ -410,18 +410,18 @@ export const rubSyncLogs = sqliteTable("rub_sync_logs", {
   // Error details
   errorCode: text("error_code"),
   errorMessage: text("error_message"),
-  errorDetails: text("error_details", { mode: "json" }).$type<Record<string, any>>(),
+  errorDetails: json("error_details").$type<Record<string, any>>(),
 
   // Request/Response
-  requestData: text("request_data", { mode: "json" }).$type<Record<string, any>>(),
-  responseData: text("response_data", { mode: "json" }).$type<Record<string, any>>(),
+  requestData: json("request_data").$type<Record<string, any>>(),
+  responseData: json("response_data").$type<Record<string, any>>(),
 
   // Timing
   startedAt: text("started_at").notNull(),
   completedAt: text("completed_at"),
   duration: integer("duration"), // Seconds
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -431,7 +431,7 @@ export const rubSyncLogs = sqliteTable("rub_sync_logs", {
 /**
  * Career counseling records for RUB applications
  */
-export const rubCounselingRecords = sqliteTable("rub_counseling_records", {
+export const rubCounselingRecords = pgTable("rub_counseling_records", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
   studentId: text("student_id").notNull(),
@@ -446,7 +446,7 @@ export const rubCounselingRecords = sqliteTable("rub_counseling_records", {
   sessionNotes: text("session_notes"),
 
   // Discussed programs
-  discussedPrograms: text("discussed_programs", { mode: "json" }).$type<Array<{
+  discussedPrograms: json("discussed_programs").$type<Array<{
     collegeId: string;
     collegeName: string;
     programId: string;
@@ -455,20 +455,20 @@ export const rubCounselingRecords = sqliteTable("rub_counseling_records", {
   }>>(),
 
   // Career assessment
-  interests: text("interests", { mode: "json" }).$type<string[]>(),
-  strengths: text("strengths", { mode: "json" }).$type<string[]>(),
-  recommendedFields: text("recommended_fields", { mode: "json" }).$type<string[]>(),
-  recommendedColleges: text("recommended_colleges", { mode: "json" }).$type<string[]>(),
+  interests: json("interests").$type<string[]>(),
+  strengths: json("strengths").$type<string[]>(),
+  recommendedFields: json("recommended_fields").$type<string[]>(),
+  recommendedColleges: json("recommended_colleges").$type<string[]>(),
 
   // Follow-up
-  followUpRequired: integer("follow_up_required", { mode: "boolean" }).default(false),
+  followUpRequired: boolean("follow_up_required").default(false),
   followUpDate: text("follow_up_date"),
   followUpAction: text("follow_up_action"),
 
   // Documents shared
-  documentsShared: text("documents_shared", { mode: "json" }).$type<string[]>(),
+  documentsShared: json("documents_shared").$type<string[]>(),
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================
@@ -478,7 +478,7 @@ export const rubCounselingRecords = sqliteTable("rub_counseling_records", {
 /**
  * Track admission statistics for school
  */
-export const rubAdmissionStats = sqliteTable("rub_admission_stats", {
+export const rubAdmissionStats = pgTable("rub_admission_stats", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").notNull(),
   academicYear: text("academic_year").notNull(),
@@ -494,7 +494,7 @@ export const rubAdmissionStats = sqliteTable("rub_admission_stats", {
   totalAdmitted: integer("total_admitted").default(0),
 
   // College-wise selection
-  collegeSelections: text("college_selections", { mode: "json" }).$type<Array<{
+  collegeSelections: json("college_selections").$type<Array<{
     collegeId: string;
     collegeName: string;
     selected: number;
@@ -502,7 +502,7 @@ export const rubAdmissionStats = sqliteTable("rub_admission_stats", {
   }>>(),
 
   // Program-wise selection
-  programSelections: text("program_selections", { mode: "json" }).$type<Array<{
+  programSelections: json("program_selections").$type<Array<{
     programId: string;
     programName: string;
     field: string;
@@ -519,8 +519,8 @@ export const rubAdmissionStats = sqliteTable("rub_admission_stats", {
   selectionRate: integer("selection_rate"), // In hundredths
   admissionRate: integer("admission_rate"), // In hundredths
 
-  createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
-  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
 // ============================================================================

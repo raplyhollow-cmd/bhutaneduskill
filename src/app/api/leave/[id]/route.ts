@@ -69,10 +69,10 @@ export async function PATCH(
           .set({
             status: "approved",
             approvedBy: currentUser.id,
-            approvedAt: new Date().toISOString(),
+            approvedAt: new Date(),
             substituteTeacherId: substituteTeacherId || leaveRequest.substituteTeacherId,
             leaveHandoverNotes: leaveHandoverNotes || leaveRequest.leaveHandoverNotes,
-            updatedAt: Math.floor(Date.now() / 1000),
+            updatedAt: new Date(),
           })
           .where(eq(leaveRequests.id, id));
 
@@ -100,9 +100,9 @@ export async function PATCH(
           .set({
             status: "rejected",
             approvedBy: currentUser.id,
-            approvedAt: new Date().toISOString(),
+            approvedAt: new Date(),
             rejectionReason,
-            updatedAt: Math.floor(Date.now() / 1000),
+            updatedAt: new Date(),
           })
           .where(eq(leaveRequests.id, id));
 
@@ -130,7 +130,7 @@ export async function PATCH(
         await db.update(leaveRequests)
           .set({
             status: "cancelled",
-            updatedAt: Math.floor(Date.now() / 1000),
+            updatedAt: new Date(),
           })
           .where(eq(leaveRequests.id, id));
 

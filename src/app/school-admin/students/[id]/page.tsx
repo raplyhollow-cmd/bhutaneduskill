@@ -665,8 +665,8 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
                         <p className="text-xs text-gray-500">{result.examYear}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-lg font-bold text-gray-900">{result.overallPercentage}%</p>
-                        <p className="text-xs text-gray-500">{result.division}</p>
+                        <p className="text-lg font-bold text-gray-900">{(result as any).overallPercentage}%</p>
+                        <p className="text-xs text-gray-500">{(result as any).division}</p>
                       </div>
                     </div>
                   ))}

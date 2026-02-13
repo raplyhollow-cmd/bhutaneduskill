@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
         startedAt: new Date(),
         completedAt: new Date(),
         createdAt: new Date(),
-      })
+      } as any)
       .returning();
 
     // Create MBTI result record
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       personalityType: results.type,
       traits: results.traits,
       createdAt: new Date(),
-    });
+    } as any);
 
     return NextResponse.json({ success: true, assessmentId: assessment.id });
   } catch (error) {

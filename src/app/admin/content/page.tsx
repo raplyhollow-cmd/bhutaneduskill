@@ -166,6 +166,7 @@ async function getUpcomingScholarships() {
       provider: scholarships.provider,
       applicationCloseDate: scholarships.applicationCloseDate,
       type: scholarships.type,
+      coveragePercentage: scholarships.coveragePercentage,
     })
     .from(scholarships)
     .where(eq(scholarships.isActive, true))
@@ -538,19 +539,19 @@ export default async function AdminContentPage({
                           </p>
                           <p className="text-xs text-gray-500">{scholarship.provider}</p>
                         </div>
-                        {scholarship.amount && (
+                        {scholarship.coveragePercentage && (
                           <div className="flex items-center gap-1 text-green-600">
                             <DollarSign className="w-3 h-3" />
                             <span className="text-xs font-medium">
-                              {scholarship.amount}
+                              {scholarship.coveragePercentage}%
                             </span>
                           </div>
                         )}
                       </div>
-                      {scholarship.applicationDeadline && (
+                      {scholarship.applicationCloseDate && (
                         <div className="mt-2 flex items-center gap-1 text-xs text-red-600">
                           <Calendar className="w-3 h-3" />
-                          Due: {new Date(scholarship.applicationDeadline).toLocaleDateString()}
+                          Due: {scholarship.applicationCloseDate}
                         </div>
                       )}
                     </div>

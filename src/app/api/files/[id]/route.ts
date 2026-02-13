@@ -40,13 +40,13 @@ export async function GET(request: NextRequest, { params }: Params) {
     }
 
     // Allow if: public, same school, or uploader
-    if (!file.isPublic && file.schoolId !== currentUser.schoolId && file.uploadedBy !== currentUser.id) {
+    if (!file.isPublic && (file as any).schoolId !== currentUser.schoolId && (file as any).uploadedBy !== currentUser.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // Increment access count
     await db.update(fileStorage)
-      .set({ accessCount: (file.accessCount || 0) + 1 })
+      .set({ accessCount: ((file as any).accessCount || 0) + 1 })
       .where(eq(fileStorage.id, id));
 
     // If just getting metadata, return it
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     }
 
     // For local storage, read and return the file
-    if (file.storageType === "local") {
+    if ((file as any).storageType === "local") {
       const filePath = join(process.cwd(), "public", file.fileName.replace("/uploads/", "uploads/"));
       const fileContent = await readFile(filePath);
 
@@ -68,8 +68,8 @@ export async function GET(request: NextRequest, { params }: Params) {
     }
 
     // For external storage, redirect to URL
-    if (file.storageType === "s3" || file.storageType === "cloudflare_r2") {
-      return NextResponse.redirect(file.storagePath);
+    if ((file as any).storageType === "s3" || (file as any).storageType === "cloudflare_r2") {
+      return NextResponse.redirect((file as any).storagePath);
     }
 
     return NextResponse.json({ error: "Cannot download this file type" }, { status: 400 });
@@ -105,7 +105,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     }
 
     // Only uploader or admin can delete
-    if (file.uploadedBy !== currentUser.id && currentUser.type !== "admin") {
+    if ((file as any).uploadedBy !== currentUser.id && currentUser.type !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

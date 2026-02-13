@@ -214,7 +214,7 @@ export async function POST(request: NextRequest) {
         createdAt: now,
         updatedAt: now,
         publishedAt: body.isPublished ? now : null,
-      })
+      } as any)
       .returning();
 
     return NextResponse.json({ success: true, announcement }, { status: 201 });

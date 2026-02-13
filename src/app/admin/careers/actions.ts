@@ -85,7 +85,7 @@ export async function createCareer(data: {
   subjects?: string[];
   workEnvironment?: string;
   salaryRange?: string;
-  demandOutlook?: "high" | "medium" | "low";
+  bhutanDemand?: "high" | "medium" | "low";
   bhutanSpecific?: boolean;
   tenantId?: string;
 }) {
@@ -103,18 +103,24 @@ export async function createCareer(data: {
     const [newCareer] = await db
       .insert(careers)
       .values({
-        tenantId: data.tenantId || "default",
+        // Required fields
+        title: data.name, // title is required
         name: data.name,
         slug: data.slug,
-        description: data.description || null,
+        category: "general", // Default category
+        industry: "general", // Default industry
+        educationLevel: "high_school", // Default education level
+        icon: "briefcase", // Default icon
+        color: "#3b82f6", // Default color
+        // Optional fields
+        description: data.description || "",
         riasecCode: data.riasecCode || null,
-        riasecScores: data.riasecScores || null,
+        hollandCodes: data.riasecScores || null,
         skills: data.skills || null,
-        educationPath: data.educationPath || null,
         subjects: data.subjects || null,
-        workEnvironment: data.workEnvironment || null,
-        salaryRange: data.salaryRange || null,
-        demandOutlook: data.demandOutlook || "medium",
+        workEnvironment: data.workEnvironment || "office",
+        typicalSalary: data.salaryRange || null,
+        bhutanDemand: data.bhutanDemand || "medium",
         bhutanSpecific: !!data.bhutanSpecific,
         isActive: true,
         createdAt: now,
@@ -153,7 +159,7 @@ export async function updateCareer(
     subjects?: string[];
     workEnvironment?: string;
     salaryRange?: string;
-    demandOutlook?: "high" | "medium" | "low";
+    bhutanDemand?: "high" | "medium" | "low";
     bhutanSpecific?: boolean;
     isActive?: boolean;
   }
@@ -173,13 +179,13 @@ export async function updateCareer(
     if (data.slug) updateData.slug = data.slug;
     if (data.description !== undefined) updateData.description = data.description;
     if (data.riasecCode !== undefined) updateData.riasecCode = data.riasecCode;
-    if (data.riasecScores !== undefined) updateData.riasecScores = data.riasecScores;
+    if (data.riasecScores !== undefined) updateData.hollandCodes = data.riasecScores;
     if (data.skills !== undefined) updateData.skills = data.skills;
-    if (data.educationPath !== undefined) updateData.educationPath = data.educationPath;
+    if (data.educationPath !== undefined) updateData.educationLevel = data.educationPath;
     if (data.subjects !== undefined) updateData.subjects = data.subjects;
     if (data.workEnvironment !== undefined) updateData.workEnvironment = data.workEnvironment;
-    if (data.salaryRange !== undefined) updateData.salaryRange = data.salaryRange;
-    if (data.demandOutlook !== undefined) updateData.demandOutlook = data.demandOutlook;
+    if (data.salaryRange !== undefined) updateData.typicalSalary = data.salaryRange;
+    if (data.bhutanDemand !== undefined) updateData.bhutanDemand = data.bhutanDemand;
     if (data.bhutanSpecific !== undefined) updateData.bhutanSpecific = !!data.bhutanSpecific;
     if (data.isActive !== undefined) updateData.isActive = !!data.isActive;
 
@@ -243,7 +249,7 @@ export async function deleteCareer(id: string) {
  */
 export async function bulkUpdateDemand(
   ids: string[],
-  demandOutlook: "high" | "medium" | "low"
+  bhutanDemand: "high" | "medium" | "low"
 ) {
   const { userId } = await auth();
 
@@ -255,7 +261,7 @@ export async function bulkUpdateDemand(
     await db
       .update(careers)
       .set({
-        demandOutlook,
+        bhutanDemand,
         updatedAt: new Date(),
       })
       .where(and(...ids.map((id) => eq(careers.id, id))));
@@ -398,7 +404,7 @@ export async function importCareers(
     skills?: string[];
     educationPath?: string[];
     salaryRange?: string;
-    demandOutlook?: "high" | "medium" | "low";
+    bhutanDemand?: "high" | "medium" | "low";
     bhutanSpecific?: boolean;
   }>
 ) {
@@ -414,14 +420,23 @@ export async function importCareers(
       .values(
         data.map((career) => ({
           id: `career_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          // Required fields
+          title: career.name,
           name: career.name,
           slug: career.slug,
-          description: career.description,
+          category: "general",
+          industry: "general",
+          educationLevel: "high_school",
+          icon: "briefcase",
+          color: "#3b82f6",
+          // Optional fields
+          description: career.description || "",
           riasecCode: career.riasecCode,
           skills: career.skills || [],
-          educationPath: career.educationPath || [],
-          salaryRange: career.salaryRange,
-          demandOutlook: career.demandOutlook || "medium",
+          subjects: [],
+          workEnvironment: "office",
+          typicalSalary: career.salaryRange,
+          bhutanDemand: career.bhutanDemand || "medium",
           bhutanSpecific: !!career.bhutanSpecific,
           isActive: true,
           createdAt: new Date(),

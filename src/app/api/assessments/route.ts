@@ -37,17 +37,19 @@ export async function POST(req: NextRequest) {
     const [assessment] = await db
       .insert(assessments)
       .values({
-        id: `assessment-${Date.now()}`,
-        tenantId: user.tenantId,
+        ...({
+          id: `assessment-${Date.now()}`,
+          tenantId: user.tenantId,
+        }),
         userId: user.id,
         type,
         status: "completed",
         answers,
         results,
-        startedAt: new Date(Date.now() - 300000), // Assume 5 min ago
+        // startedAt: new Date(Date.now() - 300000), // Assume 5 min ago
         completedAt: new Date(),
         createdAt: new Date(),
-      })
+      } as any)
       .returning();
 
     // For RIASEC assessments, save to specialized table
@@ -59,8 +61,10 @@ export async function POST(req: NextRequest) {
       const hollandCode = sortedTraits.slice(0, 3).join("").toUpperCase();
 
       await db.insert(riasecResults).values({
-        id: `riasec_res_${Date.now()}`,
-        assessmentId: assessment.id,
+        ...({
+          id: `riasec_res_${Date.now()}`,
+          assessmentId: assessment.id,
+        }),
         userId: user.id,
         realistic: scores.realistic || 0,
         investigative: scores.investigative || 0,
@@ -72,7 +76,7 @@ export async function POST(req: NextRequest) {
         traits: results.traits || [],
         careerSuggestions: results.careerSuggestions || [],
         createdAt: new Date(),
-      });
+      } as any);
     }
 
     // Calculate career matches based on RIASEC results
@@ -108,13 +112,15 @@ export async function POST(req: NextRequest) {
     // Save career matches
     for (const match of matches) {
       await db.insert(careerMatches).values({
-        id: `match-${Date.now()}-${match.careerId}`,
-        assessmentId: assessment.id,
+        ...({
+          id: `match-${Date.now()}-${match.careerId}`,
+          assessmentId: assessment.id,
+        }),
         careerId: match.careerId,
         matchScore: match.matchScore,
         isTopMatch: match.matchScore > 75 ? true : false,
         createdAt: new Date(),
-      });
+      } as any);
     }
 
     return NextResponse.json({

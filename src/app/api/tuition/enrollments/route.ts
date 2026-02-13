@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
           student: true,
           course: true,
         },
-        orderBy: [desc(tuitionEnrollments.enrolledAt)],
+        orderBy: [desc(tuitionEnrollments.enrollmentDate)],
       });
     } else {
       // Get student's enrollments
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
           },
           course: true,
         },
-        orderBy: [desc(tuitionEnrollments.enrolledAt)],
+        orderBy: [desc(tuitionEnrollments.enrollmentDate)],
       });
     }
 

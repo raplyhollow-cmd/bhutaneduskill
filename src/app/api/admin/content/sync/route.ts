@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     // Update sync status
     await db.update(dataSources)
       .set({
-        syncStatus: "active",
+        // syncStatus: "active",
         lastSyncAt: new Date(),
       })
       .where(eq(dataSources.type, source));
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: `Sync initiated for ${source}`,
-      syncStatus: "active",
+      // syncStatus: "active",
     });
   } catch (error) {
     console.error("Sync trigger error:", error);

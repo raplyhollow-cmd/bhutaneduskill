@@ -1,0 +1,229 @@
+/**
+ * API Route Template
+ *
+ * Copy this template when creating new API routes.
+ * Replace placeholders with your actual implementation.
+ *
+ * TEMPLATE SECTIONS:
+ * 1. Auth check - Use requireAuth() helper
+ * 2. Parse query params - Extract and validate request parameters
+ * 3. Business logic - Your main logic here
+ * 4. Success response - Return data with ApiSuccess type
+ * 5. Error handling - Catch and log errors
+ */
+
+import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
+import type { ApiSuccess, ApiErrorResponse } from "@/types";
+
+// ============================================================================
+// GET /api/your-route - Get resource
+// ============================================================================
+
+export async function GET(request: NextRequest) {
+  try {
+    // 1. Auth check - uncomment if authentication is required
+    // const { user, userId } = await requireAuth(['admin', 'teacher']);
+    // Or without role check:
+    // const { userId } = await auth();
+
+    // 2. Parse query parameters
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "20");
+    const search = searchParams.get("search") || "";
+
+    // 3. Validate required parameters
+    // if (!requiredParam) {
+    //   return NextResponse.json(
+    //     { error: "Missing required parameter", status: 400 },
+    //     { status: 400 }
+    //   );
+    // }
+
+    // 4. Business logic here - query database, process data, etc.
+    // const data = await db.select().from(table).where(...);
+
+    // 5. Return success response
+    const response: ApiSuccess<{ items: unknown[]; total: number }> = {
+      data: {
+        items: [],
+        total: 0,
+      },
+      status: 200,
+    };
+    return NextResponse.json(response);
+
+  } catch (error) {
+    // 6. Log error with context
+    logger.apiError(error, {
+      route: '/api/your-route',
+      method: 'GET',
+    });
+
+    // 7. Return error response
+    const errorResponse: ApiErrorResponse = {
+      error: "Internal server error",
+      status: 500,
+    };
+    return NextResponse.json(errorResponse, { status: 500 });
+  }
+}
+
+// ============================================================================
+// POST /api/your-route - Create resource
+// ============================================================================
+
+export async function POST(request: NextRequest) {
+  try {
+    // 1. Auth check
+    // const { user, userId } = await requireAuth(['admin']);
+
+    // 2. Parse request body
+    const body = await request.json();
+    // const { field1, field2 } = body;
+
+    // 3. Validate body
+    // if (!field1) {
+    //   return NextResponse.json(
+    //     { error: "Missing field1", status: 400 },
+    //     { status: 400 }
+    //   );
+    // }
+
+    // 4. Business logic - create resource in database
+    // const result = await db.insert(table).values({ ... }).returning();
+
+    // 5. Return success response
+    const response: ApiSuccess<{ id: string }> = {
+      data: { id: "new-id" },
+      status: 201,
+    };
+    return NextResponse.json(response, { status: 201 });
+
+  } catch (error) {
+    logger.apiError(error, {
+      route: '/api/your-route',
+      method: 'POST',
+    });
+
+    const errorResponse: ApiErrorResponse = {
+      error: "Failed to create resource",
+      status: 500,
+    };
+    return NextResponse.json(errorResponse, { status: 500 });
+  }
+}
+
+// ============================================================================
+// PATCH /api/your-route - Update resource
+// ============================================================================
+
+export async function PATCH(request: NextRequest) {
+  try {
+    // const { user, userId } = await requireAuth(['admin']);
+
+    const body = await request.json();
+    // const { id, updates } = body;
+
+    // Validate
+    // if (!id) {
+    //   return NextResponse.json(
+    //     { error: "Missing resource ID", status: 400 },
+    //     { status: 400 }
+    //   );
+    // }
+
+    // Update logic
+    // const result = await db.update(table).set({ ... }).where(...).returning();
+
+    const response: ApiSuccess<unknown> = {
+      data: { updated: true },
+      status: 200,
+    };
+    return NextResponse.json(response);
+
+  } catch (error) {
+    logger.apiError(error, {
+      route: '/api/your-route',
+      method: 'PATCH',
+    });
+
+    const errorResponse: ApiErrorResponse = {
+      error: "Failed to update resource",
+      status: 500,
+    };
+    return NextResponse.json(errorResponse, { status: 500 });
+  }
+}
+
+// ============================================================================
+// DELETE /api/your-route - Delete resource
+// ============================================================================
+
+export async function DELETE(request: NextRequest) {
+  try {
+    // const { user, userId } = await requireAuth(['admin']);
+
+    const { searchParams } = new URL(request.url);
+    // const id = searchParams.get("id");
+
+    // Validate
+    // if (!id) {
+    //   return NextResponse.json(
+    //     { error: "Missing resource ID", status: 400 },
+    //     { status: 400 }
+    //   );
+    // }
+
+    // Delete logic
+    // await db.delete(table).where(...);
+
+    const response: ApiSuccess<{ deleted: boolean }> = {
+      data: { deleted: true },
+      status: 200,
+    };
+    return NextResponse.json(response);
+
+  } catch (error) {
+    logger.apiError(error, {
+      route: '/api/your-route',
+      method: 'DELETE',
+    });
+
+    const errorResponse: ApiErrorResponse = {
+      error: "Failed to delete resource",
+      status: 500,
+    };
+    return NextResponse.json(errorResponse, { status: 500 });
+  }
+}
+
+// ============================================================================
+// USAGE NOTES
+// ============================================================================
+/*
+1. Copy this file to your new route directory: src/app/api/your-route/route.ts
+
+2. Remove unused HTTP methods (GET, POST, PATCH, DELETE)
+
+3. Uncomment and configure auth checks as needed:
+   - No auth: Don't call requireAuth()
+   - Any authenticated user: const { userId } = await auth();
+   - Specific roles: const { user, userId } = await requireAuth(['admin']);
+
+4. Replace placeholder comments with actual business logic
+
+5. Import required database tables and types
+
+6. Test your API route with tools like:
+   - Thunder Client (VS Code extension)
+   - Postman
+   - curl
+
+EXAMPLE REQUESTS:
+  GET /api/your-route?page=1&limit=20
+  POST /api/your-route
+  {"field1": "value1", "field2": "value2"}
+*/

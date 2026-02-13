@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, json, jsonb } from "drizzle-orm/sqlite-core";
 
 // ============================================================================
 // COLLEGES & PROGRAMS DATABASE
@@ -27,7 +27,7 @@ export const colleges = sqliteTable("colleges", {
   requiredGPA: text("required_gpa"),
 
   // Programs (JSON or separate table)
-  programs: text("programs", { mode: "json" }),
+  programs: json("programs"),
 
   // Metadata
   isActive: integer("is_active", { mode: "boolean" }).default(true),
@@ -48,11 +48,11 @@ export const rubPrograms = sqliteTable("rub_programs", {
   minMarks: integer("min_marks"), // Minimum percentage required
 
   // Eligibility
-  requiredSubjects: text("required_subjects", { mode: "json" }),
+  requiredSubjects: json("required_subjects"),
   eligibilityCriteria: text("eligibility_criteria"),
 
   // Career connections
-  relatedCareerClusters: text("related_career_clusters", { mode: "json" }),
+  relatedCareerClusters: json("related_career_clusters"),
 
   // Metadata
   isActive: integer("is_active", { mode: "boolean" }).default(true),
@@ -75,7 +75,7 @@ export const scholarships = sqliteTable("scholarships", {
   currency: text("currency").default("BTN"),
 
   // Eligibility
-  eligibilityCriteria: text("eligibility_criteria", { mode: "json" }),
+  eligibilityCriteria: json("eligibility_criteria"),
   requiredGPA: text("required_gpa"),
   requiredClass: text("required_class"), // "Class 12", "Any"
 
@@ -85,11 +85,11 @@ export const scholarships = sqliteTable("scholarships", {
 
   // Category
   category: text("category"), // "merit", "need-based", "sports", "specific_college"
-  targetGroups: text("target_groups", { mode: "json" }), // ["female", "stem", "rural"]
+  targetGroups: json("target_groups"), // ["female", "stem", "rural"]
 
   // Matching
-  careerClusters: text("career_clusters", { mode: "json" }),
-  requiredInterests: text("required_interests", { mode: "json" }), // RIASEC codes
+  careerClusters: json("career_clusters"),
+  requiredInterests: json("required_interests"), // RIASEC codes
 
   // Links
   applicationUrl: text("application_url"),
@@ -108,7 +108,7 @@ export const dataSources = sqliteTable("data_sources", {
   apiUrl: text("api_url"),
   lastSyncAt: integer("last_sync_at", { mode: "timestamp" }),
   syncStatus: text("sync_status"), // "active", "error", "disabled"
-  config: text("config", { mode: "json" }),
+  config: json("config"),
   createdAt: integer("created_at", { mode: "timestamp" }),
 });
 
@@ -119,7 +119,7 @@ export const contentAudit = sqliteTable("content_audit", {
   entityId: text("entity_id").notNull(),
   action: text("action").notNull(), // "created", "updated", "deleted"
   userId: text("user_id"),
-  changes: text("changes", { mode: "json" }), // What changed
+  changes: json("changes"), // What changed
   ipAddress: text("ip_address"),
   createdAt: integer("created_at", { mode: "timestamp" }),
 });

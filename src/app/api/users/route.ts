@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
         conditions.push(eq(users.type, role as any));
       }
     }
-    if (schoolId && currentUser.type !== "teacher") {
+    if (schoolId && (currentUser as any).type !== "teacher") {
       conditions.push(eq(users.schoolId, schoolId));
     }
     if (search) {
@@ -107,7 +107,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Only admin, or user updating themselves
-    if (currentUser.type !== "admin" && currentUser.id !== id) {
+    if ((currentUser as any).type !== "admin" && currentUser.id !== id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
       where: eq(users.clerkUserId, userId),
     });
 
-    if (!currentUser || currentUser.type !== "admin") {
+    if (!currentUser || (currentUser as any).type !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
