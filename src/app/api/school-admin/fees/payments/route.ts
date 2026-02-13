@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     }
 
     const payments = await db.query.feePayments.findMany({
-      where: studentId ? eq(feePayments.studentId, studentId) : undefined,
+      where: studentId ? eq(feePayments.studentFeeId, studentId) : undefined,
       with: {
         student: true,
       },

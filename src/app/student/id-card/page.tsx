@@ -21,6 +21,7 @@ import {
   User,
   Calendar,
   Shield,
+  Info,
 } from "lucide-react";
 
 interface StudentData {

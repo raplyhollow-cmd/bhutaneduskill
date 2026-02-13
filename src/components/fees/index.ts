@@ -5,6 +5,7 @@ export { ReceiptGenerator } from "./receipt-generator";
 export type {
   FeeStructure,
   StudentFee,
-  Payment,
-  FeeSummary,
 } from "@/lib/db/schema";
+
+// Payment and FeeSummary types are from fee-manager component
+export type { Payment, FeeSummary } from "./fee-manager";

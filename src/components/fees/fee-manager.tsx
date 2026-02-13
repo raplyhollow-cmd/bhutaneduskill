@@ -74,6 +74,7 @@ export interface Payment {
   studentId: string;
   studentName: string;
   amount: number;
+  feeName: string;
   method: "cash" | "online" | "bank" | "waived";
   transactionId?: string;
   receivedBy: string;

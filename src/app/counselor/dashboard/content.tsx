@@ -27,19 +27,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { AIInsightCard } from "@/components/ai/ai-insight-card";
-import { fetchCounselorStats } from "../_actions";
+import { fetchCounselorStats, type StudentInsight } from "../_actions";
 
-// Extend the existing _actions to return AI insights
-export interface CounselorStats {
-  totalStudents: number;
-  activeSchools: number;
-  pendingReports: number;
-  assessmentsThisWeek: number;
-  aiCoachUsage: number;
-}
-
-// Server component to fetch stats with AI insights
-async function counselorDashboardContent() {
+// Server wrapper component
+export default async function CounselorDashboardPage() {
   const stats = await fetchCounselorStats();
 
   // Mock recent students data (would come from database)
@@ -101,14 +92,6 @@ async function counselorDashboardContent() {
     },
   ];
 
-  return {
-    stats,
-    recentStudents,
-  };
-}
-
-// Server wrapper component
-export default async function CounselorDashboardPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -119,21 +102,163 @@ export default async function CounselorDashboardPage() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" asChild>
-            <Download className="w-4 h-4 mr-2" />
-            Export Data
+            <Link href="/counselor/reports">
+              <Download className="w-4 h-4 mr-2" />
+              Export Data
+            </Link>
           </Button>
           <Button className="bg-purple-600 hover:bg-purple-700" asChild>
-            <Sparkles className="w-4 h-4 mr-2" />
-            AI Coach
+            <Link href="/counselor/sessions">
+              <Sparkles className="w-4 h-4 mr-2" />
+              AI Coach
+            </Link>
           </Button>
         </div>
       </div>
 
-      {/* Server Component - Data Fetching */}
-      <counselorDashboardContent />
+      {/* AI Insights */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <AIInsightCard
+          title="Students Needing Attention"
+          message={`${recentStudents.filter(s => s.needsAttention).length} students require intervention based on low attendance or incomplete assessments.`}
+          actions={[
+            {
+              label: "View Students",
+              href: "/counselor/students?filter=needs-attention"
+            }
+          ]}
+          type="warning"
+        />
+        <AIInsightCard
+          title="Assessment Trends"
+          message={`${Math.round(stats.assessmentsThisWeek / stats.totalStudents * 100)}% assessment completion rate this week. Students are responding well to career guidance.`}
+          actions={[
+            {
+              label: "View Analytics",
+              href: "/counselor/assessments"
+            }
+          ]}
+          type="success"
+        />
+        <AIInsightCard
+          title="AI Coaching Suggestions"
+          message="Consider scheduling group sessions for students interested in similar career paths. Top interest: Technology (35%)"
+          actions={[
+            {
+              label: "Schedule Session",
+              href: "/counselor/schedule"
+            }
+          ]}
+          type="info"
+        />
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">Total Students</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="text-3xl font-bold text-gray-900">{stats.totalStudents}</div>
+              <Users className="w-8 h-8 text-purple-600 opacity-20" />
+            </div>
+            <p className="text-xs text-gray-500 mt-2">Across {stats.activeSchools} schools</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">Pending Reports</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="text-3xl font-bold text-gray-900">{stats.pendingReports}</div>
+              <FileText className="w-8 h-8 text-purple-600 opacity-20" />
+            </div>
+            <p className="text-xs text-gray-500 mt-2">Require attention</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">Assessments This Week</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="text-3xl font-bold text-gray-900">{stats.assessmentsThisWeek}</div>
+              <TrendingUp className="w-8 h-8 text-purple-600 opacity-20" />
+            </div>
+            <p className="text-xs text-green-600 mt-2">+12% from last week</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">AI Coach Usage</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="text-3xl font-bold text-gray-900">{stats.aiCoachUsage}%</div>
+              <Sparkles className="w-8 h-8 text-purple-600 opacity-20" />
+            </div>
+            <p className="text-xs text-gray-500 mt-2">Student engagement rate</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Students */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Students</CardTitle>
+          <CardDescription>Students who need your attention</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {recentStudents.map((student) => (
+              <div key={student.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
+                    <span className="text-sm font-medium text-purple-700">
+                      {student.name.split(" ").map(n => n[0]).join("")}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">{student.name}</p>
+                    <p className="text-sm text-gray-500">{student.school} • Class {student.grade}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className={`text-sm font-medium ${student.attendance >= 75 ? 'text-green-600' : 'text-red-600'}`}>
+                      {student.attendance}% Attendance
+                    </p>
+                    <p className="text-xs text-gray-500">{student.lastActivity}</p>
+                  </div>
+                  {student.needsAttention && (
+                    <Badge variant="destructive" className="flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      Needs Attention
+                    </Badge>
+                  )}
+                  {student.assessmentStatus === "completed" && !student.needsAttention && (
+                    <Badge variant="outline" className="flex items-center gap-1 text-green-600 border-green-600">
+                      <CheckCircle2 className="w-3 h-3" />
+                      On Track
+                    </Badge>
+                  )}
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link href={`/counselor/students/${student.id}`}>
+                      <ArrowRight className="w-4 h-4" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
-
-export { counselorDashboardContent };
-import { fetchCounselorStats } from "../_actions.ts";

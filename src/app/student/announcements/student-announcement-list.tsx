@@ -49,7 +49,6 @@ export function StudentAnnouncementList({ announcements }: StudentAnnouncementLi
             key={announcement.id}
             announcement={announcement}
             onView={handleView}
-            showActions={false}
           />
         ))}
       </div>

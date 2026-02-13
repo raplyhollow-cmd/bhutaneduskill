@@ -24,7 +24,17 @@
       "Bash(npm run db:setup:*)",
       "Bash(more:*)",
       "Bash(npm install:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(pkill:*)",
+      "Bash(timeout:*)",
+      "Bash(tasklist:*)",
+      "Bash(\"d:\\\\VS STUDIO PROJECT\\\\bhutaneduskill\")",
+      "Bash(cmd /c \"d:\\\\VS STUDIO PROJECT\\\\bhutaneduskill\")",
+      "Bash(\"C:\\\\Program Files\\\\nodejs\\\\npx.cmd\")",
+      "Bash(npx run build:*)",
+      "Bash(find:*)",
+      "Bash(tee:*)",
+      "Bash(if exist \".next\\\\lock\" del \".next\\\\lock\")"
     ]
   }
 }

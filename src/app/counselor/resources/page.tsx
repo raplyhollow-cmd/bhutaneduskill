@@ -53,6 +53,14 @@ interface ResourceData {
   thumbnail: string;
   downloadCount: number;
   createdAt: Date;
+  addedDate: Date;
+  tags: string[];
+  isFeatured: boolean;
+  downloads?: number;
+  views?: number;
+  fileSize?: string;
+  pages?: number;
+  duration?: string;
 }
 
 interface ResourceCategory {
@@ -60,6 +68,7 @@ interface ResourceCategory {
   name: string;
   icon: string;
   count: number;
+  color: string;
 }
 
 interface ResourceStats {

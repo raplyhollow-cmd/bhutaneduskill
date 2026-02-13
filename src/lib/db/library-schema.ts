@@ -533,6 +533,7 @@ export type BookCopy = typeof bookCopies.$inferSelect;
 export type Circulation = typeof circulation.$inferSelect;
 export type Reservation = typeof reservations.$inferSelect;
 export type DigitalResource = typeof digitalResources.$inferSelect;
+export type CounselorResource = typeof digitalResources.$inferSelect;
 export type DigitalAccessLog = typeof digitalAccessLog.$inferSelect;
 export type LibraryMember = typeof libraryMembers.$inferSelect;
 export type BookReview = typeof bookReviews.$inferSelect;

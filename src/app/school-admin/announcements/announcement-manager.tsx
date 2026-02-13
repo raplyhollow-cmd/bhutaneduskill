@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AnnouncementList } from "@/components/announcements";
+import { AnnouncementList, AnnouncementForm, type AnnouncementFormData } from "@/components/announcements";
 import type { AnnouncementData } from "@/app/school-admin/_actions";
 import {
   Dialog,

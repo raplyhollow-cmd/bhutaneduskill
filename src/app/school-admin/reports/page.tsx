@@ -47,13 +47,18 @@ interface ReportCategory {
   icon: string;
   description: string;
   count: number;
+  color: string;
+  reportCount: number;
 }
 
 interface GeneratedReport {
   id: string;
+  name: string;
   title: string;
   category: string;
   type: string;
+  format?: string;
+  size: string;
   generatedAt: Date;
   generatedBy: string;
   fileUrl: string;
@@ -62,12 +67,15 @@ interface GeneratedReport {
 
 interface ScheduledReport {
   id: string;
+  name: string;
   title: string;
   category: string;
   schedule: string;
+  frequency: string;
   lastRun: Date;
   nextRun: Date;
   status: string;
+  active: boolean;
 }
 
 interface ReportStats {
@@ -406,7 +414,7 @@ export default function ReportsPage() {
                           {report.type}
                         </Badge>
                       </td>
-                      <td className="py-3 px-4 text-sm text-gray-600">{report.generatedAt}</td>
+                      <td className="py-3 px-4 text-sm text-gray-600">{report.generatedAt.toLocaleDateString()}</td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-1">
                           {report.format === "PDF" ? (
@@ -477,7 +485,7 @@ export default function ReportsPage() {
                     <div>
                       <p className="font-medium text-gray-900">{report.name}</p>
                       <p className="text-sm text-gray-500">
-                        {report.frequency} • Next: {report.nextRun}
+                        {report.frequency} • Next: {report.nextRun.toLocaleDateString()}
                       </p>
                     </div>
                   </div>

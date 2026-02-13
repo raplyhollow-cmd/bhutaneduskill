@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(assessmentTypes.targetAudience, targetAudience));
     }
     if (targetGrade) {
-      conditions.push(eq(assessmentTypes.targetGrade, targetGrade));
+      conditions.push(eq(assessmentTypes.targetGrade, parseInt(targetGrade)));
     }
 
     let types: any[];

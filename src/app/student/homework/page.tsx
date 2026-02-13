@@ -51,9 +51,9 @@ const mockHomework = [
 export default function StudentHomeworkPage() {
   const [selectedHomework, setSelectedHomework] = useState<any>(null);
 
-  const handleSubmit = async (answers: any, metadata: any) => {
-    console.log("Submitting homework:", answers, metadata);
-    // In production: await fetch('/api/student/homework/[id]', { method: 'POST', body: JSON.stringify({ answers, metadata }) })
+  const handleSubmit = async (answers: any) => {
+    console.log("Submitting homework:", answers);
+    // In production: await fetch('/api/student/homework/[id]', { method: 'POST', body: JSON.stringify({ answers }) })
     setSelectedHomework(null);
   };
 

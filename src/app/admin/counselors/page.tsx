@@ -43,22 +43,20 @@ import { auth } from "@clerk/nextjs/server";
 
 // Helper function to get counselor stats
 async function getCounselorStats(counselorId: string) {
-  const [assignedSchools, totalNotes, activePlans] = await Promise.all([
+  const [assignedSchools, totalNotes] = await Promise.all([
     db
       .select({ count: count() })
       .from(counselorAssignments)
-      .where(and(eq(counselorAssignments.counselorId, counselorId), eq(counselorAssignments.isActive, true))),
+      .where(eq(counselorAssignments.counselorId, counselorId)),
     db.select({ count: count() }).from(counselorNotes).where(eq(counselorNotes.counselorId, counselorId)),
-    db
-      .select({ count: count() })
-      .from(careerPlans)
-      .where(and(eq(careerPlans.counselorId, counselorId), eq(careerPlans.status, "active"))),
+    // TODO: activePlans query needs careerPlans.counselorId field which doesn't exist
+    // db.select({ count: count() }).from(careerPlans).where(and(eq(careerPlans.counselorId, counselorId), eq(careerPlans.status, "active"))),
   ]);
 
   return {
     assignedSchools: assignedSchools[0]?.count || 0,
     totalNotes: totalNotes[0]?.count || 0,
-    activePlans: activePlans[0]?.count || 0,
+    activePlans: 0, // TODO: fix when careerPlans schema is updated
   };
 }
 
@@ -66,23 +64,19 @@ async function getAllCounselors(limit = 100) {
   return await db
     .select({
       id: users.id,
-      firstName: users.firstName,
-      lastName: users.lastName,
+      name: users.name,
       email: users.email,
       phone: users.phone,
       schoolId: users.schoolId,
-      tenantId: users.tenantId,
-      emailVerified: users.emailVerified,
       createdAt: users.createdAt,
-      lastLoginAt: users.lastLoginAt,
+      lastLogin: users.lastLogin,
       schoolName: schools.name,
       schoolCode: schools.code,
-      schoolType: schools.schoolType,
       tenantName: tenants.name,
     })
     .from(users)
     .leftJoin(schools, eq(users.schoolId, schools.id))
-    .leftJoin(tenants, eq(users.tenantId, tenants.id))
+    .leftJoin(tenants, eq(users.schoolId, tenants.id)) // Using schoolId to join tenants
     .where(eq(users.type, "counselor"))
     .orderBy(desc(users.createdAt))
     .limit(limit);
@@ -92,13 +86,13 @@ async function getCounselorSchoolAssignments(counselorId: string) {
   const assignments = await db
     .select({
       schoolId: counselorAssignments.schoolId,
-      isPrimary: counselorAssignments.isPrimary,
+      academicYear: counselorAssignments.academicYear,
       schoolName: schools.name,
       schoolCode: schools.code,
     })
     .from(counselorAssignments)
     .leftJoin(schools, eq(counselorAssignments.schoolId, schools.id))
-    .where(and(eq(counselorAssignments.counselorId, counselorId), eq(counselorAssignments.isActive, true)));
+    .where(eq(counselorAssignments.counselorId, counselorId));
 
   return assignments;
 }

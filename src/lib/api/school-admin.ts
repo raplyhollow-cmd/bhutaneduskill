@@ -589,7 +589,13 @@ export async function getHomeworkList(schoolId: string | null, options: {
 
   const { search, limit = 50, offset = 0 } = options;
 
-  const conditions = [eq(homework.schoolId, schoolId)];
+  // Get classes for this school first
+  const schoolClasses = await db.query.classes.findMany({
+    where: eq(classes.schoolId, schoolId),
+  });
+  const classIds = schoolClasses.map(c => c.id);
+
+  const conditions = classIds.length > 0 ? [sql`${homework.classId} IN ${sql.raw(`('${classIds.join("','")}')`)}`] : [];
 
   if (search) {
     conditions.push(sql`${homework.title} LIKE ${`%${search}%`}`);
@@ -668,7 +674,13 @@ export async function getExamResults(schoolId: string | null, options: {
 
   const { search, limit = 50, offset = 0 } = options;
 
-  const conditions = [eq(examResultsEnhanced.schoolId, schoolId)];
+  // Get students for this school first
+  const schoolStudents = await db.query.users.findMany({
+    where: eq(users.schoolId, schoolId),
+  });
+  const studentIds = schoolStudents.map(s => s.id);
+
+  const conditions = studentIds.length > 0 ? [sql`${examResultsEnhanced.studentId} IN ${sql.raw(`('${studentIds.join("','")}')`)}`] : [];
 
   if (search) {
     conditions.push(sql`${examResultsEnhanced.examName} LIKE ${`%${search}%`}`);
@@ -1100,12 +1112,18 @@ export async function getAnalytics(schoolId: string | null): Promise<AnalyticsDa
   const totalStudents = studentCount?.count || 0;
 
   // 2. Average Attendance (last 7 days)
-  const recentAttendance = await db.query.attendance.findMany({
+  // Get students for this school
+  const schoolStudents = await db.query.users.findMany({
+    where: eq(users.schoolId, schoolId),
+  });
+  const studentIds = schoolStudents.map(s => s.id);
+
+  const recentAttendance = studentIds.length > 0 ? await db.query.attendance.findMany({
     where: and(
-      eq(attendance.schoolId, schoolId),
+      sql`${attendance.studentId} IN ${sql.raw(`('${studentIds.join("','")}')`)}`,
       gte(attendance.date, weekAgo.toISOString().split("T")[0])
     ),
-  });
+  }) : [];
 
   let averageAttendance = 0;
   if (recentAttendance.length > 0) {
@@ -1114,10 +1132,10 @@ export async function getAnalytics(schoolId: string | null): Promise<AnalyticsDa
   }
 
   // 3. Average Score (from exam results)
-  const examResults = await db.query.examResultsEnhanced.findMany({
-    where: eq(examResultsEnhanced.schoolId, schoolId),
+  const examResults = studentIds.length > 0 ? await db.query.examResultsEnhanced.findMany({
+    where: sql`${examResultsEnhanced.studentId} IN ${sql.raw(`('${studentIds.join("','")}')`)}`,
     limit: 1000,
-  });
+  }) : [];
 
   let averageScore = 0;
   if (examResults.length > 0) {

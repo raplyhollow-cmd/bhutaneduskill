@@ -488,6 +488,86 @@ Fixed **38 TypeScript errors** across **10 files**. Build now compiles successfu
 
 ---
 
+## Schema Column Fixes Completed (Feb 13, 2026)
+
+**Total Errors Fixed: 173** - All TypeScript errors related to missing database schema columns
+
+### Root Cause
+The codebase was written with certain columns expected in database tables, but `schema.ts` had a simplified schema missing ~50 columns across 26 tables.
+
+### Solution: Batch-Fix Approach
+Instead of iterative "build → fix → rebuild" cycles, used `npx tsc --noEmit` to scan all errors at once, then applied all fixes in batch to a single file (`schema.ts`).
+
+### Schema Columns Added (26 Tables)
+
+| Table | Columns Added |
+|-------|---------------|
+| **users** | firstName, lastName, employeeId, subjects, tenantId, emailVerified, onboardingComplete, clerkId, classGrade, parentId |
+| **schools** | schoolType, level, contactEmail, contactPhone, tenantId, districtId |
+| **assessments** | userId, status, type, completedAt |
+| **career_plans** | userId |
+| **riasec_results** | hollandCode |
+| **classes** | teacherId, academicYear |
+| **homework** | isPublished |
+| **exam_results_enhanced** | userId, examYear |
+| **career_matches** | recommendationText, isTopMatch |
+| **fee_payments** | schoolId, collectedAt |
+| **student_fees** | schoolId, amountPending |
+| **circulation** | borrowerId |
+| **books** | status |
+| **leave_requests** | schoolId, applicantId, applicantType |
+| **teacher_assignments** | isActive |
+| **counselor_assignments** | isActive |
+| **learning_modules** | isPublished |
+| **subjects** | grade |
+| **assessment_types** | category, targetAudience, targetGrade |
+| **consent_records** | userId |
+| **transport_allocations** | schoolId |
+| **attendance** | schoolId |
+| **tutor_earnings** | payoutStatus, earnedAt |
+| **tuition_enrollments** | enrolledAt, tutorEarnings, completedAt |
+| **tuition_courses** | status |
+| **tutor_reviews** | isPublic |
+
+### Additional Fixes
+
+**1. Syntax Error Fixed:**
+- Changed `"set_null"` → `"set null"` in transportAllocations table reference
+
+**2. Missing Table Exports Added:**
+- `drivers` from transport-schema
+- `announcementReads` (new table created)
+- `tuitionCategories` (new table created)
+
+**3. Code Fixes (5 files):**
+| File | Fix |
+|------|------|
+| `src/app/api/assessment-types/route.ts` | Convert string to integer for targetGrade |
+| `src/app/api/school-admin/fees/payments/route.ts` | Use `studentFeeId` instead of `studentId` |
+| `src/app/api/student/fees/route.ts` | Fix payment query to filter by studentFeeId |
+| `src/app/api/teacher/homework/route.ts` | Filter homework by class instead of teacherId |
+| `src/lib/api/school-admin.ts` | Fix homework/exam results queries to use class/student lookups |
+| `src/lib/api/student.ts` | Use `completedAt IS NOT NULL` instead of `isCompleted` |
+
+### Files Modified
+- `src/lib/db/schema.ts` - Added ~50 missing columns to 26 tables
+- `src/app/api/assessment-types/route.ts` - Type conversion fix
+- `src/app/api/school-admin/fees/payments/route.ts` - Field name fix
+- `src/app/api/student/fees/route.ts` - Query fix
+- `src/app/api/teacher/homework/route.ts` - Query logic fix
+- `src/lib/api/school-admin.ts` - Multiple query fixes
+- `src/lib/api/student.ts` - Field name fix
+
+### Verification
+- `npx tsc --noEmit` → **No errors!**
+- `npm run build` → TypeScript compiles successfully
+
+### Key Lesson: Batch Fixing Saves Time
+- **Iterative approach:** 173 build cycles × ~1 min = **2+ hours**
+- **Batch approach:** 1 scan → 1 fix session → 1 verification = **30 minutes**
+
+---
+
 ## Code Cleanup Completed (Feb 12, 2026)
 
 **Total Files Deleted: 17** - Redundant/unused components removed

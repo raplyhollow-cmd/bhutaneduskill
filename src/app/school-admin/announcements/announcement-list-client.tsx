@@ -196,7 +196,7 @@ export function ClientAnnouncementList({
           </DialogHeader>
           {selectedAnnouncement && (
             <div className="space-y-4">
-              <AnnouncementCard announcement={selectedAnnouncement} showActions={false} />
+              <AnnouncementCard announcement={selectedAnnouncement} />
               <div className="prose max-w-none">
                 <h3 className="text-lg font-semibold mb-2">Content</h3>
                 <div className="whitespace-pre-wrap text-gray-700">

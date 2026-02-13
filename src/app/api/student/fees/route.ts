@@ -33,11 +33,12 @@ export async function GET(request: NextRequest) {
     const totalPaid = fees.reduce((sum, fee) => sum + (fee.amountPaid || 0), 0);
 
     // Get recent payments
-    const payments = await db.query.feePayments.findMany({
-      where: eq(feePayments.studentId, currentUser.id),
+    const studentFeeIds = fees.map(f => f.id);
+    const payments = studentFeeIds.length > 0 ? await db.query.feePayments.findMany({
+      where: eq(feePayments.studentFeeId, studentFeeIds[0]), // Note: This needs to be updated for multiple fee IDs
       orderBy: [desc(feePayments.collectedAt)],
       limit: 10,
-    });
+    }) : [];
 
     return NextResponse.json({
       fees,

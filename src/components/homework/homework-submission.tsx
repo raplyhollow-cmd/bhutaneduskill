@@ -34,7 +34,8 @@ interface Homework {
 interface HomeworkSubmissionProps {
   homework: Homework;
   onSaveDraft?: (answers: Record<string, any>) => void;
-  onSubmit?: (answers: Record<string, any>) => void;
+  onSubmit?: (answers: Record<string, any>, metadata: any) => void;
+  onSaveLater?: () => void;
 }
 
 export function HomeworkSubmission({ homework, onSaveDraft, onSubmit }: HomeworkSubmissionProps) {
@@ -52,7 +53,7 @@ export function HomeworkSubmission({ homework, onSaveDraft, onSubmit }: Homework
   };
 
   const handleSubmit = async () => {
-    await onSubmit?.(answers);
+    await onSubmit?.(answers, null);
   };
 
   const isAllAnswered = homework.questions.every((q) => answers[q.id]);

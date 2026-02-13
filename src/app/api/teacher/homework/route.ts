@@ -65,8 +65,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden - Teachers only" }, { status: 403 });
     }
 
-    // Build conditions
-    const conditions = [eq(homework.teacherId, currentUser.id)];
+    // Build conditions - get classes taught by this teacher
+    const teacherClasses = await db.query.classes.findMany({
+      where: eq(classes.teacherId, currentUser.id),
+    });
+
+    const classIds = teacherClasses.map(c => c.id);
+    const conditions = classIds.length > 0 ? [sql`${homework.classId} IN ${sql.raw(`('${classIds.join("','")}')`)}`] : [];
 
     if (classId) {
       conditions.push(eq(homework.classId, classId));

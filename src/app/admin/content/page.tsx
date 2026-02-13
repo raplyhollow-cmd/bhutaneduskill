@@ -100,8 +100,7 @@ async function getRecentContent() {
         id: colleges.id,
         name: colleges.name,
         type: colleges.type,
-        isBhutanCollege: colleges.isBhutanCollege,
-        bhutanCollegeType: colleges.bhutanCollegeType,
+        dzongkhag: colleges.dzongkhag,
         updatedAt: colleges.updatedAt,
         location: colleges.location,
         careerType: sql<string>`'college'`,
@@ -114,8 +113,8 @@ async function getRecentContent() {
         id: scholarships.id,
         name: scholarships.name,
         provider: scholarships.provider,
-        category: scholarships.category,
-        applicationDeadline: scholarships.applicationDeadline,
+        type: scholarships.type,
+        applicationCloseDate: scholarships.applicationCloseDate,
         academicYear: scholarships.academicYear,
         scholarshipType: sql<string>`'scholarship'`,
       })
@@ -149,12 +148,12 @@ async function getTopCareers() {
       id: careers.id,
       name: careers.name,
       riasecCode: careers.riasecCode,
-      demandOutlook: careers.demandOutlook,
+      growthOutlook: careers.growthOutlook,
       bhutanSpecific: careers.bhutanSpecific,
     })
     .from(careers)
     .where(eq(careers.isActive, true))
-    .orderBy(desc(careers.demandOutlook))
+    .orderBy(desc(careers.createdAt))
     .limit(10);
 }
 
@@ -165,13 +164,12 @@ async function getUpcomingScholarships() {
       id: scholarships.id,
       name: scholarships.name,
       provider: scholarships.provider,
-      applicationDeadline: scholarships.applicationDeadline,
-      amount: scholarships.amount,
-      category: scholarships.category,
+      applicationCloseDate: scholarships.applicationCloseDate,
+      type: scholarships.type,
     })
     .from(scholarships)
     .where(eq(scholarships.isActive, true))
-    .orderBy(scholarships.applicationDeadline)
+    .orderBy(desc(scholarships.applicationCloseDate))
     .limit(5);
 }
 

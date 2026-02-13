@@ -331,7 +331,7 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
   const completedModules = await db.query.moduleProgress.findMany({
     where: and(
       eq(moduleProgress.studentId, studentId),
-eq(moduleProgress.isCompleted, true)
+      sql`${moduleProgress.completedAt} IS NOT NULL`
     ),
     with: {
       module: true,

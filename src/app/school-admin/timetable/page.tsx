@@ -51,12 +51,14 @@ interface SubjectData {
 interface TeacherData {
   id: string;
   name: string;
-  subject: string;
+  subjects: string[];
 }
 
 interface TimeSlotData {
   id: string;
   label: string;
+  period: string;
+  isBreak: boolean;
   startTime: string;
   endTime: string;
 }
@@ -65,6 +67,21 @@ interface TimetableData {
   classId: string;
   className: string;
   timetable: Record<string, Record<string, string>>;
+  entries: Array<{
+    id: string;
+    classId: string;
+    subjectId: string;
+    subjectName: string;
+    teacherId: string;
+    teacherName: string;
+    roomId: string;
+    roomName: string;
+    dayOfWeek: string;
+    periodId: string;
+    periodName: string;
+    startTime: string;
+    endTime: string;
+  }>;
 }
 
 // Week days for timetable
@@ -138,7 +155,7 @@ export default function TimetablePage() {
     if (!timetable) return null;
 
     const entry = timetable.entries.find(
-      (e) => e.periodId === periodId && e.day === day
+      (e) => e.periodId === periodId && e.dayOfWeek === day
     );
 
     if (!entry) return null;
@@ -429,8 +446,8 @@ export default function TimetablePage() {
                                   {cellContent.teacher && (
                                     <p className="text-xs text-gray-500">{cellContent.teacher.name}</p>
                                   )}
-                                  {cellContent.entry?.room && (
-                                    <p className="text-xs text-gray-400">{cellContent.entry.room}</p>
+                                  {cellContent.entry?.roomId && (
+                                    <p className="text-xs text-gray-400">{cellContent.entry.roomName}</p>
                                   )}
                                 </button>
                               ) : (
