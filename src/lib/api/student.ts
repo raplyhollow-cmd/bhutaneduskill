@@ -640,14 +640,14 @@ export async function getStudentProgressData(): Promise<StudentProgressData> {
     examName: result.examName,
     examType: result.examType,
     examYear: result.examYear,
-    overallPercentage: (result as any).overallPercentage || result.percentage?.overallPercentage || 0,
+    overallPercentage: (result as any).overallPercentage ?? (result as any).percentage ?? (result as any).totalPercentage ?? 0,
     division: (result as any).division || null,
     subjectResults: (result as any).subjectResults || [],
   }));
 
   // Calculate grade average
   const gradeAverage = examResultsData.length > 0
-    ? Math.round(examResultsData.reduce((sum, r) => sum + ((r as any)(r as any).overallPercentage || 0), 0) / examResultsData.length)
+    ? Math.round(examResultsData.reduce((sum, r: any) => sum + (r.overallPercentage ?? r.percentage ?? r.totalPercentage ?? 0), 0) / examResultsData.length)
     : 0;
 
   // Get homework performance by subject

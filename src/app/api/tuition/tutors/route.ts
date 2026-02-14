@@ -165,10 +165,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Already registered as a tutor" }, { status: 400 });
     }
 
+    // Build availability array from form data
+    const availabilityArray = (validatedData.availableDays || []).map((day: string) => ({
+      day,
+      slots: (validatedData.availableSlots || [])
+        .filter((s: any) => s.day === day)
+        .map((s: any) => ({
+          start: s.startTime,
+          end: s.endTime,
+        })),
+    })).filter((a: any) => a.slots.length > 0);
+
+    // Determine teaching mode based on rates
+    const hasOnlineRate = validatedData.hourlyRateOnline && validatedData.hourlyRateOnline > 0;
+    const hasPhysicalRate = validatedData.hourlyRatePhysical && validatedData.hourlyRatePhysical > 0;
+    let teachingMode = "online";
+    if (hasOnlineRate && hasPhysicalRate) {
+      teachingMode = "both";
+    } else if (hasPhysicalRate && !hasOnlineRate) {
+      teachingMode = "in_person";
+    }
+
     const [newTutor] = await db.insert(tutors).values({
       id: `tutor_${Date.now()}`,
       userId: currentUser.id,
-      bio: validatedData.bio,
+      bio: validatedData.bio || "",
       subjects: (validatedData.subjects || []).map((s: any) => ({
         subjectId: s.id || s,
         subjectName: s.name || s,
@@ -176,23 +197,20 @@ export async function POST(request: NextRequest) {
       })),
       qualifications: validatedData.qualifications || [],
       experience: validatedData.experience || 0,
-      hourlyRate: validatedData.hourlyRateOnline || 500,
-      hourlyRateOnline: validatedData.hourlyRateOnline || 500,
+      hourlyRate: validatedData.hourlyRatePhysical || validatedData.hourlyRateOnline || 500,
+      hourlyRateOnline: validatedData.hourlyRateOnline,
       currency: "BTN",
-      availability: validatedData.availableSlots ? JSON.stringify({
-        days: (validatedData as any).availableDays || [],
-        slots: validatedData.availableSlots || [],
-      }) : "[]",
-      teachingMode: validatedData.teaching_mode || "online",
-      location: validatedData.location ? JSON.stringify(validatedData.location) : null,
-      district: (validatedData.location as any)?.district || "",
-      department: (validatedData as any).department || "",
+      availability: availabilityArray,
+      teachingMode,
+      location: (validatedData.location as any)?.city || null,
+      district: (validatedData.location as any)?.district || null,
+      department: "",
       gradeLevels: validatedData.gradeLevels || [],
       averageRating: 0,
       totalReviews: 0,
       totalStudents: 0,
       isVerified: false,
-      verificationDocument: (validatedData as any).bankAccount || "",
+      verificationDocument: (validatedData.bankAccount as any)?.accountNumber || "",
       isActive: true,
       createdAt: new Date(),
       updatedAt: new Date(),

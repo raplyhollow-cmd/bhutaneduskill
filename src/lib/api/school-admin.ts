@@ -699,15 +699,15 @@ export async function getExamResults(schoolId: string | null, options: {
     .from(examResultsEnhanced)
     .where(and(...conditions));
 
-  const transformed: ExamResultData[] = resultsList.map((result) => ({
+  const transformed: ExamResultData[] = resultsList.map((result: any) => ({
     id: result.id,
-    examName: (result as any).examName || "Exam",
+    examName: result.examName || "Exam",
     examType: result.examType,
     class: "All Classes", // Would need to aggregate
     date: result.createdAt ? new Date(result.createdAt).toISOString().split('T')[0] : "",
     students: 0, // Would need to count
-    published: !!(result as any).isVerified,
-    avgPercentage: (result as any).overallPercentage || result.percentage?.overallPercentage || (result as any).percentage || 0,
+    published: !!result.isVerified,
+    avgPercentage: result.overallPercentage ?? result.percentage ?? result.totalPercentage ?? 0,
   }));
 
   return { results: transformed, total: countResult?.count || 0 };
@@ -1141,7 +1141,7 @@ export async function getAnalytics(schoolId: string | null): Promise<AnalyticsDa
 
   let averageScore = 0;
   if (examResults.length > 0) {
-    const totalPercentage = examResults.reduce((sum, r) => sum + ((r as any)(r as any).overallPercentage || r.percentage || 0), 0);
+    const totalPercentage = examResults.reduce((sum, r: any) => sum + (r.overallPercentage ?? r.percentage ?? r.totalPercentage ?? 0), 0);
     averageScore = Math.round(totalPercentage / examResults.length);
   }
 
@@ -1172,9 +1172,9 @@ export async function getAnalytics(schoolId: string | null): Promise<AnalyticsDa
   const topPerformers: TopPerformer[] = [];
   const studentScores = new Map<string, { score: number; count: number; name: string; grade: number | null; section: string | null }>();
 
-  examResults.forEach((result) => {
+  examResults.forEach((result: any) => {
     const existing = studentScores.get(result.studentId);
-    const score = (result as any).overallPercentage || result.percentage?.overallPercentage || (result as any).percentage || 0;
+    const score = result.overallPercentage ?? result.percentage ?? result.totalPercentage ?? 0;
     if (existing) {
       existing.score = Math.max(existing.score, score);
       existing.count++;
@@ -1309,7 +1309,7 @@ export async function getAnalytics(schoolId: string | null): Promise<AnalyticsDa
   // Declining scores (comparing recent vs older results would require more complex logic)
   // For now, we'll add students with very low scores (<40%)
   const lowScoreStudents = examResults
-    .filter((r) => ((r as any)(r as any).overallPercentage || r.percentage || 0) < 40)
+    .filter((r: any) => (r.overallPercentage ?? r.percentage ?? r.totalPercentage ?? 0) < 40)
     .slice(0, 5);
 
   for (const result of lowScoreStudents) {
@@ -1375,7 +1375,7 @@ export async function getAnalytics(schoolId: string | null): Promise<AnalyticsDa
       if (!gradeGroups.has(grade)) {
         gradeGroups.set(grade, []);
       }
-      gradeGroups.get(grade)!.push((result as any).overallPercentage || result.percentage?.overallPercentage || (result as any).percentage || 0);
+      gradeGroups.get(grade)!.push((result as any).overallPercentage ?? (result as any).percentage ?? (result as any).totalPercentage ?? 0);
     }
   }
 

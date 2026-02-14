@@ -17,6 +17,9 @@ import { getAttendanceRecords } from "@/lib/api/school-admin";
 import { eq, sql } from "drizzle-orm";
 import { users, classes } from "@/lib/db/schema";
 import { db } from "@/lib/db";
+import { unstable_noStore as noStore } from "next/cache";
+
+noStore();
 
 export default async function SchoolAdminAttendancePage({
   searchParams,

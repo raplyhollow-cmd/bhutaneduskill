@@ -1,6 +1,7 @@
 import { db } from "./index";
 import { users, schools, tenants, districts, classes, enrollments, subjects, homework, attendance, examResultsEnhanced, academicTerms } from "./schema";
 import { nanoid } from "nanoid";
+import { eq } from "drizzle-orm";
 
 // ============================================================================
 // DEMO TENANT
@@ -8,7 +9,15 @@ import { nanoid } from "nanoid";
 const DEMO_TENANT = {
   id: "tenant_demo",
   name: "Demo School District",
-  code: "DEMO",
+  slug: "demo-school-district",
+  domain: "demo.bhutaneduskill.bt",
+  logo: "/logo.png",
+  primaryColor: "rgb(249 115 22)",
+  secondaryColor: "rgb(194 65 12)",
+  settings: {},
+  isActive: true,
+  createdAt: new Date(),
+  updatedAt: new Date(),
 };
 
 // ============================================================================
@@ -18,10 +27,15 @@ const DEMO_SCHOOL = {
   id: nanoid(),
   name: "Thimphu Middle Secondary School",
   code: "TMSS001",
-  type: "MSS",
-  level: "VII-X",
-  contactEmail: "info@tmss.edu.bt",
-  contactPhone: "+975-2-322",
+  type: "public",
+  address: "Thimphu, Bhutan",
+  city: "Thimphu",
+  state: "Thimphu",
+  country: "Bhutan",
+  postalCode: "11001",
+  phone: "+975-2-322",
+  email: "info@tmss.edu.bt",
+  website: "https://tmss.edu.bt",
   logo: "/logo.png",
   establishedYear: 2000,
   accreditationStatus: "registered",
@@ -35,7 +49,16 @@ const DEMO_SCHOOL = {
   counselorName: "Dorji Wangchuk",
   counselorEmail: "dorji.wangchuk@tmss.edu.bt",
   counselorPhone: "+975-2-322",
+  vicePrincipalName: "Dorji Wangmo",
+  schoolType: "middle",
+  level: "secondary",
+  contactEmail: "info@tmss.edu.bt",
+  contactPhone: "+975-2-322",
   districtId: null,
+  domain: "tmss.edu.bt",
+  isActive: true,
+  createdAt: new Date(),
+  updatedAt: new Date(),
 };
 
 // ============================================================================
@@ -46,8 +69,8 @@ const DEMO_USERS = {
     firstName: "Tashi",
     lastName: "Dorji",
     email: "tashi.dorji@tmss.edu.bt",
-    // type: "student",
     role: "student",
+    type: "student",
     classGrade: 10,
     section: "A",
     dateOfBirth: "2008-05-15",
@@ -56,15 +79,17 @@ const DEMO_USERS = {
     firstName: "Karma",
     lastName: "Dorji",
     email: "karma.dorji@tmss.edu.bt",
-    // type: "teacher",
     role: "teacher",
+    type: "teacher",
     employeeId: "TMSS-TEA-001",
     subjects: ["Mathematics", "Physics"],
   },
   parent: {
     firstName: "Dorji",
-    lastName: "",
-    email: "dorji@tmss.edu.bt",
+    lastName: "Wangchuk",
+    email: "dorji.wangchuk@tmss.edu.bt",
+    role: "parent",
+    type: "parent",
   },
 };
 
@@ -100,7 +125,6 @@ const DEMO_HOMEWORK = [
   {
     title: "Quadratic Equations Practice",
     description: "Solve quadratic equations using factoring and quadratic formula",
-    // type: "assignment",
     dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
     maxPoints: 100,
     isPublished: true,
@@ -108,7 +132,6 @@ const DEMO_HOMEWORK = [
   {
     title: "English Essay: My Culture",
     description: "Write a 500-word essay about Bhutanese culture and traditions",
-    // type: "assignment",
     dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
     maxPoints: 50,
     isPublished: true,
@@ -124,101 +147,151 @@ async function seedDatabase() {
   console.log("🌱 Seeding database...");
 
   // Create Tenant
-  const [tenant] = await db
-    .insert(tenants)
-    .values({
-      id: "tenant_demo",
-      name: "Demo School District",
-      code: "DEMO",
-    })
-    .returning();
-
-  // Create School
-  const [school] = await db
-    .insert(schools)
-    .values(DEMO_SCHOOL)
-    .returning();
+  await db.insert(tenants).values(DEMO_TENANT);
 
   // Create District
-  const [district] = await db
-    .insert(districts)
-    .values({
-      id: nanoid(),
-      name: "Thimphu District",
-      code: "THIM",
-    })
-    .returning();
+  const districtId = nanoid();
+  await db.insert(districts).values({
+    id: districtId,
+    name: "Thimphu District",
+    code: "THIM",
+    dzongkhag: "Thimphu Thromde",
+    country: "Bhutan",
+    isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+
+  // Update school with districtId
+  DEMO_SCHOOL.districtId = districtId;
+
+  // Create School
+  await db.insert(schools).values(DEMO_SCHOOL);
+
+  // Helper function to create user data matching schema
+  const createUserData = (baseData: any, tenantId: string, schoolId: string) => ({
+    id: nanoid(),
+    clerkUserId: `clerk_${nanoid()}`,
+    type: baseData.type,
+    role: baseData.role,
+    name: `${baseData.firstName} ${baseData.lastName}`,
+    firstName: baseData.firstName,
+    lastName: baseData.lastName,
+    email: baseData.email,
+    phone: "+975-2-322",
+    schoolId,
+    profileImage: "/placeholder-avatar.png",
+    dateOfBirth: baseData.dateOfBirth || "1980-01-01",
+    gender: "other",
+    grade: baseData.classGrade || 0,
+    section: baseData.section || "",
+    rollNumber: "1",
+    address: "Thimphu, Bhutan",
+    city: "Thimphu",
+    state: "Thimphu",
+    postalCode: "11001",
+    country: "Bhutan",
+    parentContact: "Parent Name",
+    parentPhone: "+975-2-322",
+    emergencyContact: "Emergency Contact",
+    bloodGroup: "O+",
+    tenantId,
+    onboardingComplete: true,
+    isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
 
   // Create Users
-  await db.insert(users).values({
-    id: nanoid(),
-    tenantId: tenant.id,
-    schoolId: school.id,
-    ...DEMO_USERS.student,
-  });
+  const studentId = nanoid();
+  await db.insert(users).values(createUserData(DEMO_USERS.student, DEMO_TENANT.id, DEMO_SCHOOL.id));
+  // Override the ID for student to use later
+  await db.update(users).set({ id: studentId }).where(eq(users.email, DEMO_USERS.student.email));
 
-  const [parentUser] = await db.insert(users).values({
-    id: nanoid(),
-    tenantId: tenant.id,
-    schoolId: school.id,
-    ...DEMO_USERS.parent,
-  });
+  const parentUserId = nanoid();
+  await db.insert(users).values(createUserData(DEMO_USERS.parent, DEMO_TENANT.id, DEMO_SCHOOL.id));
+  await db.update(users).set({ id: parentUserId }).where(eq(users.email, DEMO_USERS.parent.email));
 
-  const [teacherUser] = await db.insert(users).values({
-    id: nanoid(),
-    tenantId: tenant.id,
-    schoolId: school.id,
-    ...DEMO_USERS.teacher,
-  });
+  const teacherUserId = nanoid();
+  await db.insert(users).values(createUserData(DEMO_USERS.teacher, DEMO_TENANT.id, DEMO_SCHOOL.id));
+  await db.update(users).set({ id: teacherUserId }).where(eq(users.email, DEMO_USERS.teacher.email));
 
-  // Create Classes
-  const classData = {
+  // Create Class
+  const classId = nanoid();
+  await db.insert(classes).values({
+    id: classId,
+    schoolId: DEMO_SCHOOL.id,
     name: "Class 10-A",
     grade: 10,
     section: "A",
+    roomNumber: "101",
+    capacity: 40,
+    homeroomTeacherName: DEMO_USERS.teacher.firstName + " " + DEMO_USERS.teacher.lastName,
+    classTeacherName: DEMO_USERS.teacher.firstName + " " + DEMO_USERS.teacher.lastName,
+    teacherId: teacherUserId,
     academicYear: "2024-2025",
-    subjectId: "sub_math_001",
-  };
+    students: [],
+    isActive: true,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
 
-  await db.insert(classes).values(classData);
-
-  // Create Enrollments (Student in Class)
+  // Create Enrollment (Student in Class)
   await db.insert(enrollments).values({
     id: nanoid(),
-    tenantId: tenant.id,
-    schoolId: school.id,
-    userId: (parentUser as any)[0].id,
-    classId: classData.id,
-    role: "student",
+    studentId: studentId,
+    classId: classId,
     academicYear: "2024-2025",
+    enrollmentDate: new Date().toISOString().split("T")[0],
+    status: "active",
+    rollNumber: "1",
+    section: "A",
+    createdAt: new Date(),
+    updatedAt: new Date(),
   });
 
   // Create Subjects
   for (const sub of DEMO_SUBJECTS) {
     await db.insert(subjects).values({
       id: sub.id,
-      schoolId: school.id,
+      schoolId: DEMO_SCHOOL.id,
       name: sub.name,
       code: sub.code,
       grade: sub.grade,
+      nameDzongkha: "",
+      type: "core" as any,
+      description: `${sub.name} - core subject`,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
   }
 
   // Create Homework
   for (const hw of DEMO_HOMEWORK) {
-    const [studentUser] = await db.query.users.findFirst({
-      where: eq(users.email, "tashi.dorji@tmss.edu.bt"),
-    });
-
     await db.insert(homework).values({
-      id: `hw_${Date.now()}`,
-      teacherId: (teacherUser as any)[0].id,
+      id: `hw_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      classId: classId,
+      subjectId: "sub_math_001",
       title: hw.title,
       description: hw.description,
       dueDate: hw.dueDate,
+      assignedDate: new Date().toISOString().split("T")[0],
+      totalPoints: hw.maxPoints || 100,
+      passingScore: 40,
+      questions: [],
+      attachments: [],
+      authorId: teacherUserId,
+      authorName: `${DEMO_USERS.teacher.firstName} ${DEMO_USERS.teacher.lastName}`,
+      authorRole: "teacher",
       isPublished: hw.isPublished,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
   }
 
   console.log("✅ Database seeded successfully!");
 }
+
+// Export the seed function
+export { seedDatabase };

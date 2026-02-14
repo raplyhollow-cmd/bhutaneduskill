@@ -14,6 +14,9 @@
 import { ResultsClient } from "./results-client";
 import { getExamResults } from "@/lib/api/school-admin";
 import { getCurrentSchoolId } from "@/lib/api/school-admin";
+import { unstable_noStore as noStore } from "next/cache";
+
+noStore();
 
 export default async function SchoolAdminResultsPage({
   searchParams,

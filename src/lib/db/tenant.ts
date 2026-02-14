@@ -128,7 +128,7 @@ export async function getAccessibleTenantIds(userId: string): Promise<string[]> 
   // Admins can see all tenants
   if (user.type === "admin") {
     const allTenants = await db.query.tenants.findMany();
-    return allTenants.map((t) => t.id);
+    return allTenants.map((t: any) => t.id);
   }
 
   // Others can only see their own tenant

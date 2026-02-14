@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "scan:errors": "tsx scripts/scan-build-errors.ts",
     "fix:types": "tsx scripts/auto-fix-typescript.ts",
     "db:migrate": "tsx scripts/migrate-db.ts",
     "db:setup": "tsx scripts/setup-db.ts",
