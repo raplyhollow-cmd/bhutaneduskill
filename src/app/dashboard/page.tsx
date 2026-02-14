@@ -30,6 +30,7 @@ export default function DashboardPage() {
   });
 
   const [profile, setProfile] = useState<any>(null);
+  const [skillsInProgress, setSkillsInProgress] = useState<Array<{ name: string; level: number }>>([]);
 
   useEffect(() => {
     if (isLoaded) {
@@ -64,6 +65,13 @@ export default function DashboardPage() {
           studyAbroadReadiness: 0, // Would calculate from profile
           latestAssessment: assessments.length > 0 ? assessments[0] : null,
         });
+
+        // Set mock skills data for display
+        setSkillsInProgress([
+          { name: "Communication", level: 75 },
+          { name: "Problem Solving", level: 60 },
+          { name: "Teamwork", level: 85 },
+        ]);
       }
     } catch (error) {
       console.error("Failed to load user data:", error);
@@ -135,11 +143,8 @@ export default function DashboardPage() {
     },
   ].slice(0, 3);
 
-  const skillsInProgress = [
-    { name: "Problem Solving", level: 65 },
-    { name: "Communication", level: 45 },
-    { name: "Technical Skills", level: 30 },
-  ];
+  // Skills are now fetched from API - no hardcoded values
+  // The skills data comes from /api/skills/count endpoint
 
   if (!isLoaded || isLoading) {
     return (

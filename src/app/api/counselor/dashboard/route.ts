@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
-import { users, counselorAssignments, assessments, careerMatches, attendance } from "@/lib/db/schema";
+import { users, counselorAssignments, assessments, careerMatches, attendance, schools } from "@/lib/db/schema";
 import { eq, and, desc, gte, count, sql } from "drizzle-orm";
 
 /**
@@ -76,6 +76,9 @@ export async function GET(request: NextRequest) {
     let studentsNeedingAttention = 0;
     let pendingReports = 0;
 
+    // Group attendance by student - declare outside the if block
+    const attendanceByStudent = new Map<string, { present: number; total: number }>();
+
     if (studentIds.length > 0) {
       // Get attendance data
       const attendanceData = await db.query.attendance.findMany({
@@ -85,8 +88,6 @@ export async function GET(request: NextRequest) {
         ),
       });
 
-      // Group attendance by student
-      const attendanceByStudent = new Map<string, { present: number; total: number }>();
       for (const record of attendanceData) {
         if (!attendanceByStudent.has(record.studentId)) {
           attendanceByStudent.set(record.studentId, { present: 0, total: 0 });
@@ -118,31 +119,133 @@ export async function GET(request: NextRequest) {
     // In production, would query from a counseling_sessions table
     const aiCoachUsage = assessmentsCount;
 
-    // Get recent students needing attention for dashboard display
-    const recentStudents = allStudents
-      .filter((s) => {
-        // Simple filter - in production would check actual attendance
-        return Math.random() > 0.7; // Random sample for now
-      })
-      .slice(0, 5)
-      .map((student) => ({
+    // Get REAL recent students needing attention for dashboard display
+    // Use actual attendance data to identify students who need attention
+    const studentsNeedingAttentionList: typeof allStudents = [];
+    for (const student of allStudents) {
+      const attStats = attendanceByStudent.get(student.id);
+      const attendanceRate = attStats && attStats.total > 0
+        ? (attStats.present / attStats.total) * 100
+        : 0;
+
+      // Include students who need attention (low attendance OR no assessments)
+      if (attendanceRate < 75 || attStats === undefined) {
+        studentsNeedingAttentionList.push(student);
+      }
+    }
+
+    // Take top 5 students needing attention
+    // Fetch all their assessments and career matches in batch first
+    const studentsToProcess = studentsNeedingAttentionList.slice(0, 5);
+    const studentIdsToProcess = studentsToProcess.map(s => s.id);
+
+    // Build the IN clause string
+    const studentIdsList = `('${studentIdsToProcess.join("','")}')`;
+
+    // Batch fetch assessments for these students
+    const allStudentAssessments = studentIdsToProcess.length > 0
+      ? await db.query.assessments.findMany({
+          where: sql`${assessments.userId} IN ${sql.raw(studentIdsList)}`,
+          columns: {
+            userId: true,
+            status: true
+          },
+          orderBy: [desc(assessments.completedAt)]
+        })
+      : [];
+
+    // Batch fetch career matches for these students
+    const allCareerMatches = studentIdsToProcess.length > 0
+      ? await db.query.careerMatches.findMany({
+          where: sql`${careerMatches.studentId} IN ${sql.raw(studentIdsList)}`,
+          columns: {
+            studentId: true,
+            careerTitle: true,
+            matchScore: true
+          },
+        })
+      : [];
+
+    // Group by student ID for quick lookup
+    type AssessmentRow = { userId: string; status: string };
+    const assessmentsByStudent = new Map<string, AssessmentRow[]>();
+    for (const a of allStudentAssessments) {
+      if (!assessmentsByStudent.has(a.userId)) {
+        assessmentsByStudent.set(a.userId, []);
+      }
+      assessmentsByStudent.get(a.userId)!.push(a);
+    }
+
+    type CareerMatchRow = { studentId: string; careerTitle: string; matchScore: number };
+    const careersByStudent = new Map<string, CareerMatchRow>();
+    for (const c of allCareerMatches) {
+      if (!careersByStudent.has(c.studentId) || c.matchScore > careersByStudent.get(c.studentId)!.matchScore) {
+        careersByStudent.set(c.studentId, { studentId: c.studentId, careerTitle: c.careerTitle!, matchScore: c.matchScore! });
+      }
+    }
+
+    const recentStudents = studentsToProcess.map((student) => {
+      // Get real attendance rate
+      const attStats = attendanceByStudent.get(student.id);
+      const attendanceRate = attStats && attStats.total > 0
+        ? Math.round((attStats.present / attStats.total) * 100)
+        : 0;
+
+      // Get assessment status from pre-fetched data
+      const studentAssessments = assessmentsByStudent.get(student.id) || [];
+      const hasCompleted = studentAssessments.some(a => a.status === "completed");
+      const hasInProgress = studentAssessments.some(a => a.status === "in_progress");
+
+      // Get top career from pre-fetched data
+      const topCareerMatch = careersByStudent.get(student.id);
+
+      return {
         id: student.id,
         name: `${student.firstName || ""} ${student.lastName || ""}`.trim() || "Student",
         school: student.schoolId || "Unknown",
         grade: student.classGrade || "N/A",
-        attendance: Math.floor(Math.random() * 40) + 60, // Would be real attendance
+        attendance: attendanceRate,
         lastActivity: "Recently",
-        assessmentStatus: Math.random() > 0.5 ? "completed" : "in_progress" as const,
-        topCareer: Math.random() > 0.5 ? "Engineer" : null,
-        needsAttention: Math.random() > 0.5,
-      }));
+        assessmentStatus: hasCompleted
+          ? "completed"
+          : hasInProgress
+          ? "in_progress"
+          : "pending" as const,
+        topCareer: topCareerMatch?.careerTitle || null,
+        needsAttention: true,
+      };
+    });
 
-    // School performance data
-    const schoolPerformance = schoolIds.map((schoolId, index) => ({
-      name: `School ${index + 1}`,
-      students: Math.floor(Math.random() * 100) + 50,
-      completion: Math.floor(Math.random() * 40) + 60,
-    }));
+    // Get REAL school performance data
+    const schoolPerformance = [];
+    for (const schoolId of schoolIds) {
+      // Get students for this school
+      const schoolStudents = allStudents.filter(s => s.schoolId === schoolId);
+      const schoolStudentIds = schoolStudents.map(s => s.id);
+
+      // Calculate completion rate for this school
+      let completionRate = 0;
+      if (schoolStudentIds.length > 0) {
+        const schoolAssessments = await db.query.assessments.findMany({
+          where: sql`${assessments.userId} IN ${sql.raw(`('${schoolStudentIds.join("','")}')`)}`,
+        });
+
+        const studentsWithAssessments = new Set(schoolAssessments.map(a => a.userId)).size;
+        completionRate = Math.round((studentsWithAssessments / schoolStudentIds.length) * 100);
+      }
+
+      // Get school name
+      const schoolData = await db.query.schools.findFirst({
+        where: eq(schools.id, schoolId),
+        columns: { name: true }
+      });
+
+      schoolPerformance.push({
+        name: schoolData?.name || `School ${schoolId}`,
+        students: schoolStudents.length,
+        completion: completionRate || 0,
+      });
+    }
 
     return NextResponse.json({
       stats: {

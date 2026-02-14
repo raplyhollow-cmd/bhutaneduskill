@@ -81,9 +81,9 @@ export default function ParentDashboardPage() {
         setLoading(true);
         setError(null);
 
-        const [profileRes, childrenRes] = await Promise.all([
+        const [profileRes, dashboardRes] = await Promise.all([
           fetch("/api/user/profile"),
-          fetch("/api/parent/children"),
+          fetch("/api/parent/dashboard"),
         ]);
 
         if (!profileRes.ok) {
@@ -91,25 +91,26 @@ export default function ParentDashboardPage() {
         }
 
         const profileData = await profileRes.json();
-        const childrenData = await childrenRes.json();
+        const dashboardData = await dashboardRes.json();
 
-        // Set children
-        if (childrenData.children && Array.isArray(childrenData.children)) {
-          setChildren(childrenData.children);
+        // Set children from dashboard API
+        if (dashboardData.children && Array.isArray(dashboardData.children)) {
+          setChildren(dashboardData.children);
           // Auto-select first child if none selected
-          if (!selectedChildId && childrenData.children.length > 0) {
-            setSelectedChildId(childrenData.children[0].id);
+          if (!selectedChildId && dashboardData.children.length > 0) {
+            setSelectedChildId(dashboardData.children[0].id);
           }
         } else {
           setChildren([]);
         }
 
-        // Set mock stats (would come from API)
+        // Use real stats from dashboard API response
+        // The API now returns actual data instead of hardcoded values
         setStats({
-          totalChildren: childrenData.children?.length || 0,
-          totalMessages: 3,
-          pendingFees: childrenData.children?.filter((c: Child) => c.feeStatus?.amountPending > 0).length || 0,
-          upcomingMeetings: 1,
+          totalChildren: dashboardData.children?.length || 0,
+          totalMessages: dashboardData.stats?.totalMessages || 0,
+          pendingFees: dashboardData.children?.filter((c: Child) => c.feeStatus?.amountPending > 0).length || 0,
+          upcomingMeetings: dashboardData.stats?.upcomingMeetings || 0,
         });
 
       } catch (err) {

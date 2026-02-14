@@ -1,3 +1,5 @@
+"use client";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,49 +14,97 @@ import {
   ArrowDown,
   Globe,
   FileText,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import { AIInsightCard } from "@/components/ai/ai-insight-card";
+import { useState, useEffect } from "react";
+
+interface AdminStats {
+  totalSchools: number;
+  totalStudents: number;
+  totalTeachers: number;
+  totalAssessments: number;
+  completionRate: number;
+  activeNow: number;
+}
+
+interface TopSchool {
+  id: string;
+  name: string;
+  students: number;
+  completion: number;
+  change: number;
+}
+
+interface CareerInterest {
+  career: string;
+  percentage: number;
+  trend: "up" | "down" | "stable";
+}
+
+interface Alert {
+  type: "warning" | "info" | "success";
+  message: string;
+}
 
 export default function AdminDashboardPage() {
-  // Mock data - will be replaced with real data from database
-  const adminStats = {
-    totalSchools: 12,
-    totalStudents: 2456,
-    totalTeachers: 89,
-    totalAssessments: 1890,
-    completionRate: 77,
-    activeNow: 142,
+  const [stats, setStats] = useState<AdminStats>({
+    totalSchools: 0,
+    totalStudents: 0,
+    totalTeachers: 0,
+    totalAssessments: 0,
+    completionRate: 0,
+    activeNow: 0,
+  });
+  const [topSchools, setTopSchools] = useState<TopSchool[]>([]);
+  const [careerInterests, setCareerInterests] = useState<CareerInterest[]>([]);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      const response = await fetch("/api/admin/dashboard");
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data.stats || stats);
+        setTopSchools(data.topSchools || []);
+        setCareerInterests(data.careerInterests || []);
+
+        // Generate alerts from data
+        const newAlerts: Alert[] = [];
+        if (data.topSchools && data.topSchools.some((s: TopSchool) => s.completion < 80)) {
+          const lowCount = data.topSchools.filter((s: TopSchool) => s.completion < 80).length;
+          newAlerts.push({ type: "warning", message: `${lowCount} schools have low assessment completion rates` });
+        }
+        if (data.stats && data.stats.totalSchools > 10) {
+          newAlerts.push({ type: "info", message: `Platform now serving ${data.stats.totalSchools} schools across Bhutan` });
+        }
+        setAlerts(newAlerts);
+      }
+    } catch (error) {
+      console.error("Failed to load admin dashboard:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const recentActivity = [
-    { id: 1, type: "school", action: "Pelkhil School joined", time: "2 hours ago" },
-    { id: 2, type: "user", action: "45 new students registered", time: "Today" },
-    { id: 3, type: "assessment", action: "120 assessments completed", time: "Yesterday" },
-    { id: 4, type: "system", action: "Database backup completed", time: "Yesterday" },
-  ];
-
-  const topSchools = [
-    { name: "Pelkhil School", students: 342, completion: 92, change: 5 },
-    { name: "Druk School", students: 298, completion: 88, change: 3 },
-    { name: "Yangchenphug HSS", students: 456, completion: 85, change: -2 },
-    { name: "Motithang HSS", students: 389, completion: 81, change: 4 },
-    { name: "Rinchen HSS", students: 267, completion: 78, change: 1 },
-  ];
-
-  const careerInterests = [
-    { career: "Software Developer", percentage: 18, trend: "up" },
-    { career: "Doctor/Nurse", percentage: 15, trend: "down" },
-    { career: "Engineer", percentage: 12, trend: "up" },
-    { career: "Teacher", percentage: 10, trend: "stable" },
-    { career: "Data Analyst", percentage: 8, trend: "up" },
-  ];
-
-  const alerts = [
-    { type: "warning", message: "3 schools have low assessment completion rates" },
-    { type: "info", message: "New RUB college programs added to database" },
-    { type: "success", message: "Weekly backup completed successfully" },
-  ];
+  if (isLoading) {
+    return (
+      <div className="space-y-8">
+        <Card>
+          <CardContent className="flex items-center justify-center py-16">
+            <Loader2 className="w-8 h-8 animate-spin text-gray-600" />
+            <p className="ml-3 text-gray-600">Loading dashboard...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">
@@ -95,7 +145,7 @@ export default function AdminDashboardPage() {
         <AIInsightCard
           type="success"
           title="Platform Growth Positive"
-          message={`${adminStats.totalStudents} students across ${adminStats.totalSchools} schools. 15% increase in new registrations this month. Career guidance adoption trending upward.`}
+          message={`${stats.totalStudents} students across ${stats.totalSchools} schools. 15% increase in new registrations this month. Career guidance adoption trending upward.`}
           actions={[
             { label: "View Analytics", href: "/admin/analytics" },
           ]}
@@ -144,7 +194,7 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">
-              {adminStats.totalSchools}
+              {stats.totalSchools}
             </div>
             <p className="text-xs text-green-600 mt-1">
               <ArrowUp className="w-3 h-3 inline" /> +2 this month
@@ -161,7 +211,7 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">
-              {adminStats.totalStudents}
+              {stats.totalStudents}
             </div>
             <p className="text-xs text-green-600 mt-1">
               <ArrowUp className="w-3 h-3 inline" /> +156 this month
@@ -178,7 +228,7 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">
-              {adminStats.totalTeachers}
+              {stats.totalTeachers}
             </div>
             <p className="text-xs text-green-600 mt-1">
               <ArrowUp className="w-3 h-3 inline" /> +8 this month
@@ -195,7 +245,7 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">
-              {adminStats.totalAssessments}
+              {stats.totalAssessments}
             </div>
             <p className="text-xs text-gray-500 mt-1">Total completed</p>
           </CardContent>
@@ -210,7 +260,7 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">
-              {adminStats.completionRate}%
+              {stats.completionRate}%
             </div>
             <p className="text-xs text-green-600 mt-1">
               <ArrowUp className="w-3 h-3 inline" /> +5% from last month
@@ -227,7 +277,7 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {adminStats.activeNow}
+              {stats.activeNow}
             </div>
             <p className="text-xs text-gray-500 mt-1">Currently online</p>
           </CardContent>
@@ -354,33 +404,47 @@ export default function AdminDashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Recent Activity */}
+      {/* Platform Status */}
+      {alerts.length > 0 && (
+        <div className="space-y-2">
+          {alerts.map((alert, index) => (
+            <div
+              key={index}
+              className={`p-4 rounded-lg flex items-center gap-3 ${
+                alert.type === "warning"
+                  ? "bg-yellow-50 text-yellow-900 border border-yellow-200"
+                  : alert.type === "success"
+                  ? "bg-green-50 text-green-900 border border-green-200"
+                  : "bg-blue-50 text-blue-900 border border-blue-200"
+              }`}
+            >
+              <AlertCircle className="w-5 h-5" />
+              <span className="flex-1">{alert.message}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Recent Activity Summary */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Platform Activity</CardTitle>
-          <CardDescription>Latest updates across the platform</CardDescription>
+          <CardTitle>Platform Overview</CardTitle>
+          <CardDescription>Real-time platform statistics</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {recentActivity.map((activity) => (
-              <div key={activity.id} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                  activity.type === "school" ? "bg-purple-100" :
-                  activity.type === "user" ? "bg-blue-100" :
-                  activity.type === "assessment" ? "bg-green-100" :
-                  "bg-gray-100"
-                }`}>
-                  {activity.type === "school" && <Building2 className="w-5 h-5 text-purple-600" />}
-                  {activity.type === "user" && <Users className="w-5 h-5 text-blue-600" />}
-                  {activity.type === "assessment" && <FileText className="w-5 h-5 text-green-600" />}
-                  {activity.type === "system" && <Activity className="w-5 h-5 text-gray-600" />}
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900">{activity.action}</p>
-                </div>
-                <span className="text-sm text-gray-500">{activity.time}</span>
-              </div>
-            ))}
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-600 font-medium">Total Schools</p>
+              <p className="text-2xl font-bold text-blue-900">{stats.totalSchools}</p>
+            </div>
+            <div className="p-4 bg-green-50 rounded-lg">
+              <p className="text-sm text-green-600 font-medium">Active Students</p>
+              <p className="text-2xl font-bold text-green-900">{stats.totalStudents}</p>
+            </div>
+            <div className="p-4 bg-purple-50 rounded-lg">
+              <p className="text-sm text-purple-600 font-medium">Assessments Completed</p>
+              <p className="text-2xl font-bold text-purple-900">{stats.totalAssessments}</p>
+            </div>
           </div>
         </CardContent>
       </Card>
