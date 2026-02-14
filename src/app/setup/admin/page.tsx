@@ -105,10 +105,17 @@ export default function PlatformAdminWizard() {
       });
 
       if (response.ok) {
+        const result = await response.json();
+        console.log("Setup complete, moving to step 4");
         setCurrentStep(4);
+      } else {
+        const error = await response.json();
+        console.error("Setup API error:", error);
+        alert(error.error || "Failed to complete setup. Please try again.");
       }
     } catch (error) {
       console.error("Error submitting wizard data:", error);
+      alert("Network error. Please check your connection and try again.");
     } finally {
       setIsLoading(false);
     }

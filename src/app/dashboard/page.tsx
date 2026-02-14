@@ -24,7 +24,7 @@ export default function DashboardPage() {
   const [userStats, setUserStats] = useState({
     assessmentCompleted: false,
     careerMatches: 0,
-    skillsInProgress: 3,
+    skillsInProgress: 0,
     studyAbroadReadiness: 0,
     latestAssessment: null as any,
   });
@@ -52,21 +52,51 @@ export default function DashboardPage() {
         const assessmentsData = await assessmentsRes.json();
         const assessments = assessmentsData.assessments || [];
 
-        if (assessments.length > 0) {
-          const latest = assessments[0];
-          setUserStats({
-            assessmentCompleted: latest.status === "completed",
-            careerMatches: 10, // Would come from DB
-            skillsInProgress: 3,
-            studyAbroadReadiness: 55, // Would calculate from profile
-            latestAssessment: latest,
-          });
-        }
+        // Calculate real stats from data
+        const completedAssessments = assessments.filter(a => a.status === "completed");
+        const careerMatchesCount = await getCareerMatchesCount();
+        const skillsInProgressCount = await getSkillsInProgressCount();
+
+        setUserStats({
+          assessmentCompleted: completedAssessments.length > 0,
+          careerMatches: careerMatchesCount,
+          skillsInProgress: skillsInProgressCount,
+          studyAbroadReadiness: 0, // Would calculate from profile
+          latestAssessment: assessments.length > 0 ? assessments[0] : null,
+        });
       }
     } catch (error) {
       console.error("Failed to load user data:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Helper function to get career matches count
+  const getCareerMatchesCount = async (): Promise<number> => {
+    try {
+      const res = await fetch("/api/career-matches");
+      if (res.ok) {
+        const data = await res.json();
+        return data.count || 0;
+      }
+      return 0;
+    } catch {
+      return 0;
+    }
+  };
+
+  // Helper function to get skills in progress count
+  const getSkillsInProgressCount = async (): Promise<number> => {
+    try {
+      const res = await fetch("/api/skills/count");
+      if (res.ok) {
+        const data = await res.json();
+        return data.count || 0;
+      }
+      return 0;
+    } catch {
+      return 0;
     }
   };
 

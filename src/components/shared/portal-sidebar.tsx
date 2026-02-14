@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -178,7 +178,18 @@ const portalNames = {
 
 export function PortalSidebar({ userType, userName, userImage }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  // Handle sign out - navigate to sign-out page which uses Clerk's SignedOut component
+  const handleSignOut = () => {
+    if (isSigningOut) return;
+    setIsSigningOut(true);
+    setIsMobileMenuOpen(false);
+    // Navigate to sign-out page which properly signs out with Clerk
+    router.push('/sign-out');
+  };
 
   // Close mobile menu when screen size changes to desktop
   useEffect(() => {
@@ -421,10 +432,9 @@ export function PortalSidebar({ userType, userName, userImage }: SidebarProps) {
               <span className="font-medium text-white">Settings</span>
             </Link>
             <motion.button
-              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-white hover:bg-white/10 transition-all duration-200 mt-1 group focus:outline-none focus:ring-2 focus:ring-white focus:ring-inset min-h-[44px]"
-              onClick={() => {
-                window.location.href = "/sign-out";
-              }}
+              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-white hover:bg-white/10 transition-all duration-200 mt-1 group focus:outline-none focus:ring-2 focus:ring-white focus:ring-inset min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleSignOut}
+              disabled={isSigningOut}
               whileHover={{ x: 4 }}
               whileTap={{ scale: 0.98 }}
               aria-label="Sign out of your account"
@@ -434,10 +444,13 @@ export function PortalSidebar({ userType, userName, userImage }: SidebarProps) {
                 whileHover={{ scale: 1.1, rotate: -5 }}
                 transition={{ type: "spring", stiffness: 300 }}
                 aria-hidden="true"
+                animate={isSigningOut ? { rotate: 360, opacity: 0.5 } : {}}
               >
                 <LogOut className="w-5 h-5 text-white" />
               </motion.div>
-              <span className="font-medium text-white">Sign Out</span>
+              <span className="font-medium text-white">
+                {isSigningOut ? "Signing out..." : "Sign Out"}
+              </span>
             </motion.button>
           </motion.div>
         </div>

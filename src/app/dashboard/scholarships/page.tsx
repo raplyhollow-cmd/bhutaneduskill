@@ -13,13 +13,44 @@ import {
   ExternalLink,
   Award,
   Filter,
+  Info,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { SCHOLARSHIPS } from "@/lib/scholarship-database";
 
 export default function ScholarshipsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedType, setSelectedType] = useState<string>("all");
   const [selectedCountry, setSelectedCountry] = useState<string>("all");
+  const [selectedScholarship, setSelectedScholarship] = useState<typeof SCHOLARSHIPS[0] | null>(null);
+
+  // Check if link is valid (not # or internal URL)
+  const isValidLink = (link: string) => {
+    return link && link !== "#" && !link.startsWith("/dashboard");
+  };
+
+  const getApplicationSteps = (scholarship: typeof SCHOLARSHIPS[0]) => {
+    return [
+      "Check the official scholarship website for the latest application dates",
+      `Ensure you meet the eligibility: ${scholarship.eligibility}`,
+      "Prepare required documents: academic transcripts, certificates, ID proof",
+      "Write a strong personal statement explaining why you deserve this scholarship",
+      "Get recommendation letters from teachers or employers",
+      `Submit before deadline: ${scholarship.deadline}`,
+      scholarship.provider.includes("Australia")
+        ? "Apply through Australia Awards Bhutan portal"
+      : scholarship.provider.includes("Government")
+        ? "Apply through the official government scholarship portal"
+        : "Apply directly through the scholarship website",
+    ];
+  };
 
   const filteredScholarships = SCHOLARSHIPS.filter((s) => {
     const matchesSearch =
@@ -259,16 +290,77 @@ export default function ScholarshipsPage() {
 
               {/* Actions */}
               <div className="flex gap-3 mt-4 pt-4 border-t">
-                <Button size="sm" asChild>
-                  <a
-                    href={scholarship.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Apply Now
-                  </a>
-                </Button>
+                {isValidLink(scholarship.link) ? (
+                  <Button size="sm" asChild>
+                    <a
+                      href={scholarship.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      Apply Now
+                    </a>
+                  </Button>
+                ) : (
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button
+                        size="sm"
+                        onClick={() => setSelectedScholarship(scholarship)}
+                      >
+                        <Info className="w-4 h-4 mr-2" />
+                        Application Info
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>Application Instructions</DialogTitle>
+                        <DialogDescription>
+                          How to apply for {scholarship.name}
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <h4 className="font-semibold text-sm mb-2">Official Source:</h4>
+                          <p className="text-sm text-gray-600">{scholarship.provider}</p>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-sm mb-2">Deadline:</h4>
+                          <p className="text-sm text-gray-600">{scholarship.deadline}</p>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-sm mb-2">Eligibility:</h4>
+                          <p className="text-sm text-gray-600">{scholarship.eligibility}</p>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-sm mb-2">Required Documents:</h4>
+                          <ul className="text-sm text-gray-600 space-y-1">
+                            <li>• Academic transcripts and certificates</li>
+                            <li>• Citizenship ID (Bhutanese)</li>
+                            <li>• Recommendation letters (2-3)</li>
+                            <li>• Personal statement/essay</li>
+                            <li>• English proficiency test (IELTS/TOEFL)</li>
+                          </ul>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-sm mb-2">How to Apply:</h4>
+                          <ol className="text-sm text-gray-600 space-y-2 list-decimal list-inside">
+                            {getApplicationSteps(scholarship).map((step, i) => (
+                              <li key={i}>{step}</li>
+                            ))}
+                          </ol>
+                        </div>
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <p className="text-sm text-blue-800">
+                            <strong>Important:</strong> Always verify the latest application
+                            details on the official {scholarship.provider} website.
+                            Deadlines and requirements may change.
+                          </p>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                )}
                 <Button size="sm" variant="outline" asChild>
                   <a
                     href="/dashboard/study-abroad"

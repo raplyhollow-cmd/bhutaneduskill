@@ -1,16 +1,60 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CAREERS_DATABASE, STUDY_ABROAD_REQUIREMENTS } from "@/lib/tenant";
-import { Search, TrendingUp, GraduationCap, Globe, DollarSign, Building, ArrowRight } from "lucide-react";
+import { Search, TrendingUp, GraduationCap, Globe, DollarSign, Building, ArrowRight, Bookmark } from "lucide-react";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 export default function CareersPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [savedCareers, setSavedCareers] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadSavedCareers();
+  }, []);
+
+  const loadSavedCareers = async () => {
+    try {
+      const response = await fetch("/api/saved-careers");
+      if (response.ok) {
+        const data = await response.json();
+        setSavedCareers(data.savedCareers || []);
+      }
+    } catch (error) {
+      console.error("Failed to load saved careers:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleSaveCareer = async (careerId: string) => {
+    const isSaved = savedCareers.includes(careerId);
+    const action = isSaved ? "unsave" : "save";
+
+    try {
+      const response = await fetch("/api/saved-careers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ careerId, action }),
+      });
+
+      if (response.ok) {
+        setSavedCareers(prev =>
+          isSaved
+            ? prev.filter(id => id !== careerId)
+            : [...prev, careerId]
+        );
+      }
+    } catch (error) {
+      console.error("Failed to update saved careers:", error);
+    }
+  };
 
   // Filter careers based on search and category
   const filteredCareers = CAREERS_DATABASE.filter((career) => {
@@ -211,6 +255,16 @@ export default function CareersPage() {
 
               {/* Actions */}
               <div className="flex gap-2 pt-3">
+                <Button
+                  size="sm"
+                  variant={savedCareers.includes(career.id) ? "default" : "outline"}
+                  onClick={() => toggleSaveCareer(career.id)}
+                  disabled={loading}
+                  className="min-w-[100px]"
+                >
+                  <Bookmark className={cn("w-4 h-4 mr-2", savedCareers.includes(career.id) && "fill-current")} />
+                  {savedCareers.includes(career.id) ? "Saved" : "Save"}
+                </Button>
                 <Button size="sm" variant="outline" className="flex-1" asChild>
                   <Link href="/dashboard/skills">
                     <GraduationCap className="w-4 h-4 mr-2" />

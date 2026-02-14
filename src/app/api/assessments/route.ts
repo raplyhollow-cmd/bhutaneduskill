@@ -81,6 +81,12 @@ export async function POST(req: NextRequest) {
 
     // Calculate career matches based on RIASEC results
     const userScores = results.scores || {};
+    const hollandCode = results.scores ? Object.entries(results.scores as Record<string, number>)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 3)
+      .map(([trait]) => trait.charAt(0).toUpperCase())
+      .join("") : "";
+
     const matches = CAREERS_DATABASE.map((career) => {
       const careerScores = career.riasecScores || {};
       let totalMatch = 0;
@@ -103,21 +109,26 @@ export async function POST(req: NextRequest) {
       const avgMatch = count > 0 ? totalMatch / count : 50;
       return {
         careerId: career.id,
+        careerTitle: career.name,
         matchScore: Math.round(avgMatch),
       };
     })
     .sort((a, b) => b.matchScore - a.matchScore)
     .slice(0, 10);
 
-    // Save career matches
+    // Save career matches with all required fields
     for (const match of matches) {
       await db.insert(careerMatches).values({
         ...({
           id: `match-${Date.now()}-${match.careerId}`,
           assessmentId: assessment.id,
         }),
+        studentId: user.id,
         careerId: match.careerId,
+        careerTitle: match.careerTitle,
         matchScore: match.matchScore,
+        matchReason: `Based on your RIASEC code: ${hollandCode}`,
+        assessmentType: type,
         isTopMatch: match.matchScore > 75 ? true : false,
         createdAt: new Date(),
       } as any);
