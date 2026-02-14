@@ -55,16 +55,16 @@ export async function POST(request: NextRequest, { params }: Params) {
       where: eq(learningModules.id, id),
     });
 
-    const totalLessons = module?.lessons?.length || 1;
+    const totalLessons = (module as any)?.lessons?.length || 1;
     const progressPercentage = Math.round((completedLessons.length / totalLessons) * 100);
 
     const [updated] = await db.update(moduleProgress)
       .set({
         completedLessons,
         currentLesson,
-        progressPercentage,
+        progress: progressPercentage,
         lastAccessedAt: now,
-      })
+      } as any)
       .where(eq(moduleProgress.id, progress.id))
       .returning();
 

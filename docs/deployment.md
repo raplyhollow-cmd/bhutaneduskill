@@ -3,7 +3,7 @@
 ## Current Status
 
 - **Local Development:** ✅ Running on http://localhost:3003
-- **Database:** SQLite (local), needs migration to Neon (production)
+- **Database:** Neon PostgreSQL (configured for local and production)
 - **Authentication:** ✅ Clerk integrated
 - **Payment:** ✅ RMA code ready (needs testing)
 
@@ -11,34 +11,9 @@
 
 ## Before Production Deployment
 
-### 1. Database Migration (SQLite → Neon) ✅ COMPLETE
+### 1. Database Setup (Neon PostgreSQL) ✅ COMPLETE
 
-**Migration completed:** 14 rows migrated to Neon PostgreSQL
-
-### 2. Environment Variables Setup
-```bash
-# 1. Create Neon project at neon.tech
-# 2. Get your DATABASE_URL
-# 3. Push schema to Neon
-npx drizzle-kit push:pg --config=drizzle.config.prod.ts
-```
-
-#### Option B: Migrate Existing SQLite Data
-```bash
-# 1. Create Neon project at neon.tech
-# 2. Get your DATABASE_URL
-# 3. Set environment variable
-export DATABASE_URL="postgresql://user:password@ep-xxx.aws.neon.tech/neondb"
-
-# 4. Run migration script
-npm run migrate:neon
-```
-
-The migration script ([`scripts/migrate-sqlite-to-neon.ts`](../scripts/migrate-sqlite-to-neon.ts)):
-- Exports all data from `local.db`
-- Converts SQLite formats to PostgreSQL
-- Imports to Neon in correct dependency order
-- Shows progress and error summary
+**Current status:** Using Neon PostgreSQL for both local and production environments.
 
 ### 2. Environment Variables Setup
 
@@ -79,7 +54,7 @@ RMA_API_URL=
 | Service | Purpose | Free Tier | Status |
 |---------|---------|-----------|--------|
 | **Vercel** | Hosting | 100 GB bandwidth | ✅ Ready |
-| **Neon** | PostgreSQL | 500 MB storage | ⏳ Pending |
+| **Neon** | PostgreSQL | 500 MB storage | ✅ Configured |
 | **Clerk** | Authentication | 5,000 MAU | ✅ Integrated |
 | **Resend** | Emails | 3,000/month | ⏳ Pending |
 | **PostHog** | Analytics | 1M events/month | ⏳ Pending |

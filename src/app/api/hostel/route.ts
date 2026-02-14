@@ -269,7 +269,7 @@ export async function POST(request: NextRequest) {
         allergies: medicalConditions?.allergies || "",
         notes: specialRequirements || "",
         createdAt: new Date(),
-        updatedAt: Math.floor(Date.now() / 1000),
+        updatedAt: new Date(),
       }).returning();
 
       return NextResponse.json({

@@ -75,9 +75,9 @@ export async function POST(request: NextRequest) {
       // Already checked in, update check-out time instead
       const [updated] = await db.update(attendance)
         .set({
-          checkOutTime: currentTime,
+          checkOutTime: currentTime as any,
           updatedAt: now,
-        })
+        } as any)
         .where(eq(attendance.id, existing.id))
         .returning();
 
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
         entryMethod: "app_check_in",
         createdAt: now,
         updatedAt: now,
-      })
+      } as any)
       .returning();
 
     return NextResponse.json({ attendance: newAttendance, action: "checked-in" }, { status: 201 });

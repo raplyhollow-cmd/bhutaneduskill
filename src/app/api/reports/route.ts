@@ -317,7 +317,7 @@ async function generateStudentProfileReport(userId: string, currentUser: any) {
     })),
     careerPlan: careerPlanData ? {
       targetCareer: careerPlanData.targetCareer,
-      currentPhase: careerPlanData.currentPhase,
+      currentPhase: (careerPlanData as any).currentPhase,
       shortTermGoals: careerPlanData.shortTermGoals,
       longTermGoals: careerPlanData.longTermGoals,
       milestones: careerPlanData.milestones,
@@ -326,7 +326,7 @@ async function generateStudentProfileReport(userId: string, currentUser: any) {
     academicPerformance: examResultsData.map((r) => ({
       examType: r.examType,
       examYear: r.examYear,
-      totalPercentage: r.totalPercentage,
+      totalPercentage: (r as any).totalPercentage || r.percentage,
       division: (r as any).division,
     })),
   };
@@ -579,7 +579,7 @@ async function generateMyProgressReport(user: any) {
     },
     personalityProfile: {
       hollandCode: riasecResult?.hollandCode,
-      traits: riasecResult?.traits,
+      traits: (riasecResult as any)?.traits,
     },
     topCareerMatches: careerMatchesData.map((m) => ({
       career: m.career?.name,
@@ -594,7 +594,7 @@ async function generateMyProgressReport(user: any) {
     academicResults: examResultsData.map((r) => ({
       examType: r.examType,
       year: r.examYear,
-      percentage: r.totalPercentage,
+      percentage: (r as any).totalPercentage || r.percentage,
       division: (r as any).division,
     })),
   };

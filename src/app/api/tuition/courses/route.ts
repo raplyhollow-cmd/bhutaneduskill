@@ -91,7 +91,15 @@ export async function GET(request: NextRequest) {
     }
 
     if (district && type === "physical") {
-      filtered = filtered.filter(c => c.location?.district === district);
+      filtered = filtered.filter(c => {
+        // location is a string, need to parse it as JSON to access district
+        try {
+          const locationData = c.location ? JSON.parse(c.location as string) : {};
+          return locationData.district === district;
+        } catch {
+          return false;
+        }
+      });
     }
 
     // Only show published courses to non-authenticated or regular users
@@ -137,22 +145,31 @@ export async function POST(request: NextRequest) {
     const [newCourse] = await db.insert(tuitionCourses).values({
       id: `course_${Date.now()}`,
       tutorId: validatedData.tutorId,
-      categoryId: validatedData.categoryId,
       title: validatedData.title,
       description: validatedData.description,
-      thumbnail: validatedData.thumbnail,
-      type: validatedData.type,
-      location: validatedData.location,
-      gradeLevel: validatedData.gradeLevel,
-      maxStudents: validatedData.maxStudents,
-      schedule: validatedData.schedule || [],
-      lessons: validatedData.lessons || [],
-      price: validatedData.price,
+      category: validatedData.categoryId || "subject",
+      level: validatedData.type || "class10",
+      grade: validatedData.gradeLevel || 10,
+      gradeLevel: validatedData.gradeLevel || 10,
+      duration: validatedData.duration || 60,
+      pricePerSession: validatedData.price || 500,
+      price: validatedData.price || 500,
       discountPrice: validatedData.discountPrice,
-      discountValidUntil: validatedData.discountValidUntil,
       currency: "BTN",
-      status: "draft",
+      maxStudents: validatedData.maxStudents || 30,
+      currentStudents: 0,
       currentEnrollments: 0,
+      schedule: validatedData.schedule ? JSON.stringify(validatedData.schedule) : "[]",
+      mode: validatedData.type === "online" ? "online" : "in_person",
+      location: validatedData.location ? JSON.stringify(validatedData.location) : null,
+      meetingLink: (validatedData as any).meetingLink || null,
+      thumbnail: validatedData.thumbnail || "/placeholder.png",
+      tags: (validatedData as any).tags || [],
+      requirements: (validatedData as any).requirements || [],
+      prerequisites: (validatedData as any).prerequisites || [],
+      type: validatedData.type,
+      status: "draft",
+      isActive: true,
       createdAt: new Date(),
       updatedAt: new Date(),
     }).returning();

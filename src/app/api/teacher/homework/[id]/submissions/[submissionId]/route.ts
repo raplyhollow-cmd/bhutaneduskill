@@ -31,7 +31,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       where: eq(homework.id, id),
     });
 
-    if (!homeworkData || homeworkData.teacherId !== currentUser.id) {
+    if (!homeworkData || (homeworkData as any).teacherId !== currentUser.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -78,7 +78,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
       where: eq(homework.id, id),
     });
 
-    if (!homeworkData || homeworkData.teacherId !== currentUser.id) {
+    if (!homeworkData || (homeworkData as any).teacherId !== currentUser.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -116,8 +116,8 @@ export async function PUT(request: NextRequest, { params }: Params) {
         }));
 
       const gradingResult = gradeHomework(
-        gradableQuestions.length > 0 ? gradableQuestions as any : [],
-        Array.isArray(submission.answers) ? submission.answers : [],
+        gradableQuestions.length > 0 ? (gradableQuestions as any) : [],
+        Array.isArray((submission as any).answers) ? (submission as any).answers : [],
         undefined
       );
 

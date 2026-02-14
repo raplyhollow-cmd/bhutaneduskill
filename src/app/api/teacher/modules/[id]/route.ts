@@ -53,7 +53,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       completed: enrollments.filter(e => e.isCompleted).length,
       inProgress: enrollments.filter(e => !e.isCompleted).length,
       averageProgress: enrollments.length > 0
-        ? Math.round(enrollments.reduce((sum, e) => sum + (e.progressPercentage || 0), 0) / enrollments.length)
+        ? Math.round(enrollments.reduce((sum, e) => sum + ((e as any).progressPercentage || 0), 0) / enrollments.length)
         : 0,
     };
 

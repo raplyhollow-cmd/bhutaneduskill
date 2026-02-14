@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       conditions.push(lte(attendanceTable.date, endDate));
     }
 
-    const records = await db.query.attendanceTable.findMany({
+    const records = await db.query.attendance.findMany({
       where: and(...conditions),
       orderBy: [desc(attendanceTable.date)],
       limit,
@@ -59,12 +59,12 @@ export async function GET(request: NextRequest) {
     };
 
     // Transform records for frontend
-    const attendance = records.map(r => ({
+    const attendance = records.map((r: any) => ({
       id: r.id,
       date: r.date,
       status: r.status,
       checkInTime: r.checkInTime,
-      checkOutTime: r.checkOutTime,
+      checkOutTime: r.checkOutTime || null,
       notes: r.notes,
       className: r.classId, // Will be enriched with join if needed
     }));

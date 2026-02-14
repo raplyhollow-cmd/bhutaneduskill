@@ -95,13 +95,13 @@ export async function POST(request: NextRequest) {
       schoolId: currentUser.schoolId,
       code: validatedData.code,
       name: validatedData.name,
-      nameDzongkha: validatedData.nameDzongkha,
+      nameDzongkha: (validatedData as any).nameDzongkha,
+      type: (validatedData as any).type || "core",
       grade: validatedData.grade,
-      description: validatedData.description,
-      icon: validatedData.icon,
-      color: validatedData.color,
+      description: validatedData.description || "",
       isActive: true,
       createdAt: new Date(),
+      updatedAt: new Date(),
     }).returning();
 
     return NextResponse.json({ subject: newSubject }, { status: 201 });

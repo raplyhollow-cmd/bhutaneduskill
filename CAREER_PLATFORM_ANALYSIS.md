@@ -72,7 +72,7 @@ This document provides a complete analysis of the Career Guidance Platform's cur
 ### A. Infrastructure & Scalability
 
 ```
-CURRENT: Single SQLite database, no caching, no CDN
+CURRENT: Single Neon PostgreSQL database, no caching, no CDN
 REQUIRED FOR NATIONAL:
 ├── Load Balancer (Vercel/AWS ALB)
 ├── Read Replicas (PostgreSQL with read replicas)
@@ -513,12 +513,11 @@ Week 15-16: Native Apps (React Native)
 ### Phase 4: Scalability & Infrastructure (Weeks 17-20)
 
 ```
-Week 17-18: Database Migration
-├── SQLite → PostgreSQL migration
-├── Database indexing optimization
+Week 17-18: Database Optimization
+├── PostgreSQL indexing optimization
 ├── Read replica setup
 ├── Backup automation
-└── Migration scripts
+└── Performance tuning
 
 Week 19-20: Performance
 ├── Redis caching implementation
@@ -617,7 +616,7 @@ Week 23-24: Third-Party Integrations
 ### Current Architecture (Simple)
 
 ```
-User → Clerk Auth → Next.js API → SQLite Database
+User → Clerk Auth → Next.js API → Neon PostgreSQL Database
 ```
 
 ### Required Architecture (Production)

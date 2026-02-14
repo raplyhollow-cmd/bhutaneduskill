@@ -40,10 +40,10 @@ npm run db:seed
 
 ## Smart Strategy Applied
 
-1. **No Schema Migration**: Kept existing `sqliteTable` definitions
-   - Drizzle ORM supports cross-database queries
-   - Current setup works with Neon PostgreSQL
-   - Avoided risk of breaking production database
+1. **Using Neon PostgreSQL**: The project uses Neon PostgreSQL for both local and production
+   - Drizzle ORM with pgTable definitions
+   - Works seamlessly with Neon's serverless PostgreSQL
+   - Using Neon PostgreSQL (no migration needed)
 
 2. **Safe API Routes**:
    - All routes use proper TypeScript types
@@ -103,7 +103,7 @@ Make sure these are set in Vercel:
 Before deploying to production:
 
 - [ ] Run `npm run db:seed` locally first
-- [ ] Verify data is created in local SQLite database
+- [ ] Verify data is created in Neon PostgreSQL database
 - [ ] Test new API routes locally
 - [ ] Check browser console for errors
 - [ ] Deploy to Vercel preview branch first

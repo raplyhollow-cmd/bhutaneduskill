@@ -52,16 +52,16 @@ export async function GET(
     });
 
     // Get route info if available
-    const route = vehicle.assignedRouteId
+    const route = (vehicle as any).assignedRouteId || vehicle.routeId
       ? await db.query.transportRoutes.findFirst({
-          where: eq(transportRoutes.id, vehicle.assignedRouteId),
+          where: eq(transportRoutes.id, (vehicle as any).assignedRouteId || vehicle.routeId),
         })
       : null;
 
     return NextResponse.json({
       vehicle: {
         id: vehicle.id,
-        vehicleNumber: vehicle.vehicleNumber,
+        vehicleNumber: (vehicle as any).vehicleNumber || vehicle.registrationNumber,
         vehicleType: vehicle.vehicleType,
         capacity: vehicle.capacity,
         status: vehicle.status,
@@ -70,9 +70,9 @@ export async function GET(
         ? {
             id: route.id,
             routeNumber: route.routeNumber,
-            routeName: route.routeName,
-            morningStartTime: route.morningStartTime,
-            afternoonEndTime: route.afternoonEndTime,
+            routeName: (route as any).routeName || route.name,
+            morningStartTime: (route as any).morningStartTime,
+            afternoonEndTime: (route as any).afternoonEndTime,
           }
         : null,
       tracking: tracking

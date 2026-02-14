@@ -10,6 +10,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { PortalSidebar, PortalHeader } from "@/components/shared/portal-sidebar";
+import { CounselorBottomNav, MainContentWithBottomNav } from "@/components/shared/portal-bottom-nav";
 
 export default function CounselorLayout({
   children,
@@ -95,37 +96,40 @@ export default function CounselorLayout({
       <PortalSidebar userType="counselor" userName={userName} />
       <div className="lg:pl-64">
         <PortalHeader userType="counselor" userName={userName} />
-        <main className="p-6">
-          {/* Portal Banner */}
-          <div className="mb-6 text-white rounded-xl p-6 shadow-lg premium-card" style={bannerStyle}>
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold mb-1">Welcome to Counselor Portal</h1>
-                <p className="text-white/90">
-                  Manage students, generate reports, and provide career guidance.
-                </p>
-              </div>
-              <div className="hidden md:block">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="w-16 h-16 text-white/80"
-                >
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M12 6v6l4 2" />
-                </svg>
+        <MainContentWithBottomNav>
+          <main className="p-6">
+            {/* Portal Banner */}
+            <div className="mb-6 text-white rounded-xl p-6 shadow-lg premium-card" style={bannerStyle}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-bold mb-1">Welcome to Counselor Portal</h1>
+                  <p className="text-white/90">
+                    Manage students, generate reports, and provide career guidance.
+                  </p>
+                </div>
+                <div className="hidden md:block">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="w-16 h-16 text-white/80"
+                  >
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 6v6l4 2" />
+                  </svg>
+                </div>
               </div>
             </div>
-          </div>
 
-          {children}
-        </main>
+            {children}
+          </main>
+        </MainContentWithBottomNav>
       </div>
+      <CounselorBottomNav />
     </div>
   );
 }

@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       await db
         .update(wizardProgress)
         .set({
-          currentStep: step === "complete" ? 4 : existingProgress[0].currentStep + 1,
+          currentStep: step === "complete" ? "4" : String((parseInt(existingProgress[0].currentStep as string) || 0) + 1),
           data: { ...(existingProgress[0].data as any), ...data },
           updatedAt: new Date(),
         })
@@ -49,13 +49,11 @@ export async function POST(request: NextRequest) {
       await db.insert(wizardProgress).values({
         id: nanoid(),
         userId: dbUser.id,
-        userType: "admin",
-        currentStep: 1,
-        totalSteps: 4,
-        completed: false,
+        currentStep: "1",
+        completedSteps: [],
         data,
-        skippedSteps: [],
-        startedAt: new Date(),
+        isCompleted: false,
+        lastUpdated: new Date(),
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -68,11 +66,17 @@ export async function POST(request: NextRequest) {
         id: tenantId,
         name: data.organization.orgName,
         slug: data.organization.orgSlug,
+        domain: `${data.organization.orgSlug}.bhutaneduskill.com`,
+        logo: "/logo.png",
+        primaryColor: data.organization.themeColor || "#f97316",
+        secondaryColor: "#c2410c",
         settings: {
           theme: data.organization.themeColor,
           primaryColor: data.organization.themeColor,
         },
+        isActive: true,
         createdAt: new Date(),
+        updatedAt: new Date(),
       });
 
       await db
@@ -106,9 +110,31 @@ export async function POST(request: NextRequest) {
           tenantId: tenantRecord[0].id,
           name: data.school.schoolName,
           code: data.school.schoolCode,
-          address: data.school.schoolAddress,
+          type: "private",
+          address: data.school.schoolAddress || "",
+          city: (data.school as any).city || "Thimphu",
+          state: (data.school as any).state || "Thimphu",
+          country: "Bhutan",
+          postalCode: (data.school as any).postalCode || "12345",
+          phone: (data.school as any).phone || "123456",
+          email: data.admin?.adminEmail || "admin@school.bt",
+          website: "https://school.bt",
+          logo: "/logo.png",
+          establishedYear: 2000,
+          accreditationStatus: "registered",
+          maxStudents: 1000,
+          campusSize: "10 acres",
+          facilities: [],
+          board: "BCSE",
+          principalName: (data.admin as any)?.adminName || "Principal",
+          principalEmail: data.admin?.adminEmail || "principal@school.bt",
+          principalPhone: (data.school as any).phone || "123456",
+          counselorName: "Counselor",
+          counselorEmail: "counselor@school.bt",
+          counselorPhone: "123456",
+          vicePrincipalName: "Vice Principal",
           contactEmail: data.admin?.adminEmail,
-          contactPhone: data.school.contactPerson,
+          contactPhone: (data.school as any).phone || "123456",
           createdAt: new Date(),
         });
       }

@@ -131,7 +131,7 @@ C:\Users\pc\AI Career\career-guidance\
 - ✅ Recent platform activity
 
 ### Database & API
-- ✅ SQLite database schema (9 tables)
+- ✅ Neon PostgreSQL database schema (40+ tables)
 - ✅ Drizzle migrations generated
 - ✅ Seed script created
 - ✅ API route for saving assessments (`/api/assessments`)

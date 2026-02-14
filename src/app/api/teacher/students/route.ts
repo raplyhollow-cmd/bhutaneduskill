@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
         student: true,
         class: true,
       },
-    });
+    }) as any[];
 
     // Enrich with attendance, homework data
     const enrichedStudents = await Promise.all(
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
         const recentAttendanceData = await db.query.attendance.findMany({
           where: and(
             eq(attendance.studentId, studentData.id),
-            eq(attendanc(e as any).classId, cls.id)
+            eq(attendance.classId, cls.id)
           ),
           limit: 30,
         });
@@ -77,11 +77,11 @@ export async function GET(request: NextRequest) {
 
         return {
           id: studentData.id,
-          name: `${(studentData as any).firstName} ${(studentData as any).lastName || ""}`.trim(),
-          firstName: (studentData as any).firstName,
-          lastName: (studentData as any).lastName,
+          name: `${(studentData as any).firstName || ""} ${(studentData as any).lastName || ""}`.trim(),
+          firstName: (studentData as any).firstName || "",
+          lastName: (studentData as any).lastName || "",
           email: studentData.email,
-          profilePicture: studentData.profilePicture,
+          profilePicture: (studentData as any).profilePicture || null,
           classGrade: cls.grade,
           section: cls.section,
           className: cls.name,

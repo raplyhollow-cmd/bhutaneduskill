@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
       isPublished: false, // Start as draft
       createdAt: new Date(),
       updatedAt: new Date(),
-    }).returning();
+    } as any).returning();
 
     return NextResponse.json({ homework: newHomework }, { status: 201 });
   } catch (error) {

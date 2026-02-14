@@ -280,11 +280,11 @@ export default function PageName() {
 }
 ```
 
-### Boolean for SQLite
+### Boolean for PostgreSQL
 ```typescript
-// ✅ Convert to boolean (SQLite uses 0/1)
-isPublished: !!value,
-isActive: !!value,
+// ✅ PostgreSQL handles boolean natively
+isPublished: value === true,
+isActive: value === true,
 ```
 
 ---

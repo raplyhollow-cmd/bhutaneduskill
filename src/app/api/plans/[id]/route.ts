@@ -84,14 +84,12 @@ export async function PUT(
       .update(careerPlans)
       .set({
         targetCareer: targetCareer ?? existingPlan.targetCareer,
-        currentPhase: currentPhase ?? existingPlan.currentPhase,
         shortTermGoals: shortTermGoals ?? existingPlan.shortTermGoals,
         longTermGoals: longTermGoals ?? existingPlan.longTermGoals,
         actionSteps: actionSteps ?? existingPlan.actionSteps,
         milestones: milestones ?? existingPlan.milestones,
         status: status ?? existingPlan.status,
         updatedAt: new Date(),
-        completedAt: status === "completed" ? new Date() : existingPlan.completedAt,
       })
       .where(eq(careerPlans.id, id))
       .returning();

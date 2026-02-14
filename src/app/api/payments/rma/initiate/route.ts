@@ -77,16 +77,23 @@ export async function POST(request: NextRequest) {
     const [paymentRecord] = await db.insert(feePayments).values({
       id: paymentId,
       studentFeeId: data.studentFeeId,
-      studentId: studentFee.studentId,
-      schoolId: studentFee.schoolId,
       amount: paymentAmount,
+      paidDate: new Date().toISOString().split('T')[0],
+      method: "online",
       paymentMethod: "online",
-      transactionId: paymentId, // Will be updated with RMA transaction ID
+      transactionId: paymentId,
       receiptNumber,
-      collectedBy: currentUser.id,
+      status: "pending",
+      isRecurring: false,
+      dueDate: studentFee.dueDate,
+      paidAt: new Date(),
+      schoolId: studentFee.schoolId,
       collectedAt: new Date(),
+      lastPaymentDate: new Date().toISOString().split('T')[0],
+      amountPending: (studentFee.totalAmount || 0) - (studentFee.amountPaid || 0),
       notes: `RMA payment initiated via ${data.paymentMethod}`,
       createdAt: new Date(),
+      updatedAt: new Date(),
     }).returning();
 
     // Initialize RMA gateway

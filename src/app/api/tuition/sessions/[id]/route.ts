@@ -75,11 +75,11 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({
       meetingLink: session.meetingLink,
-      meetingPassword: session.meetingPassword,
-      platform: session.platform,
-      scheduledDate: session.scheduledDate,
+      meetingPassword: (session as any).meetingPassword,
+      platform: (session as any).platform,
+      scheduledDate: (session as any).scheduledDate,
       startTime: session.startTime,
-      endTime: session.endTime,
+      endTime: (session as any).endTime,
     });
   } catch (error) {
     console.error("Session join error:", error);
@@ -124,6 +124,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
     const [updated] = await db.update(liveSessions)
       .set({
         status: "in_progress",
+        actualStart: new Date(),
         actualStartTime: new Date(),
       })
       .where(eq(liveSessions.id, id))
@@ -173,6 +174,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     const [updated] = await db.update(liveSessions)
       .set({
         status: "completed",
+        actualEnd: new Date(),
         actualEndTime: new Date(),
       })
       .where(eq(liveSessions.id, id))

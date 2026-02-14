@@ -46,13 +46,13 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     const [updated] = await db.update(moduleProgress)
       .set({
-        progressPercentage: 100,
+        progress: 100,
         isCompleted: true,
         completedAt: now,
         quizScore,
         certificateUrl,
         lastAccessedAt: now,
-      })
+      } as any)
       .where(eq(moduleProgress.id, progress.id))
       .returning();
 

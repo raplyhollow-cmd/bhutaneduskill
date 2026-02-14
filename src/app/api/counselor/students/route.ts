@@ -43,10 +43,17 @@ export async function GET(request: NextRequest) {
         eq(users.type, "student"),
         sql`${users.schoolId} IN ${sql.raw(`('${schoolIds.join("','")}')`)}`
       ),
-      with: {
-        school: true,
-      },
     });
+
+    // Get schools data for all students
+    const uniqueSchoolIds = [...new Set(allStudents.map((s) => s.schoolId).filter(Boolean))] as string[];
+    const schoolsData = uniqueSchoolIds.length > 0
+      ? await db.query.schools.findMany({
+          where: sql`${schools.id} IN ${sql.raw(`('${uniqueSchoolIds.join("','")}')`)}`,
+        })
+      : [];
+
+    const schoolMap = new Map(schoolsData.map((s) => [s.id, s]));
 
     // Get attendance data for last 30 days
     const thirtyDaysAgo = new Date();
@@ -99,7 +106,7 @@ export async function GET(request: NextRequest) {
           phone: student.phone || null,
           grade: student.classGrade || null,
           section: student.section || null,
-          school: student.school?.name || null,
+          school: schoolMap.get(student.schoolId)?.name || null,
           counselorId: currentUser.id,
           assessmentStatus:
             completedAssessments > 0

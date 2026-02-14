@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       await db
         .update(wizardProgress)
         .set({
-          currentStep: step === "complete" ? 5 : existingProgress[0].currentStep + 1,
+          currentStep: step === "complete" ? "5" : String((parseInt(existingProgress[0].currentStep) || 0) + 1),
           data: { ...(existingProgress[0].data as any), ...data },
           updatedAt: new Date(),
         })
@@ -49,13 +49,11 @@ export async function POST(request: NextRequest) {
       await db.insert(wizardProgress).values({
         id: nanoid(),
         userId: dbUser.id,
-        userType: "teacher",
-        currentStep: 1,
-        totalSteps: 5,
-        completed: false,
+        currentStep: "1",
+        completedSteps: [],
         data,
-        skippedSteps: [],
-        startedAt: new Date(),
+        isCompleted: false,
+        lastUpdated: new Date(),
         createdAt: new Date(),
         updatedAt: new Date(),
       });

@@ -3,7 +3,7 @@
 **Project Name:** Career Compass + School Management System
 **Version:** 1.2
 **Target:** Bhutan Middle Schools (Class 6-12) + General SaaS
-**Tech Stack:** Next.js 16 + TypeScript + SQLite (local) / Neon PostgreSQL (production) + Clerk + Vercel
+**Tech Stack:** Next.js 16 + TypeScript + Neon PostgreSQL + Clerk + Vercel
 **Developer:** Built with Claude (AI-assisted development)
 **Last Updated:** February 13, 2026 (API Integration Complete!)
 **Project Status:** ~100% UI Complete, ~90% Functional - APIs implemented
@@ -239,6 +239,7 @@ className="transition-all duration-300 group-hover:scale-110"
 |-------|------|-------------|
 | **API Routes** | [docs/api-routes.md](docs/api-routes.md) | All API endpoints + advanced techniques |
 | **Database** | [docs/database-schema.md](docs/database-schema.md) | 40+ tables, schema reference |
+| **Database Fixes** | [docs/database-schema.md](docs/database-schema.md) | TypeScript fixes (Feb 13): 400+ errors resolved |
 | **File Structure** | [docs/file-structure.md](docs/file-structure.md) | Project organization |
 | **Portal Colors** | [docs/portal-colors.md](docs/portal-colors.md) | RGB gradients for each portal |
 | **UX Design** | [docs/ux-design-system.md](docs/ux-design-system.md) | Clerk-inspired patterns, components |
@@ -259,7 +260,7 @@ className="transition-all duration-300 group-hover:scale-110"
 |----------|------------|
 | **Framework** | Next.js 16 (App Router) |
 | **Language** | TypeScript |
-| **Database** | SQLite (local), Neon (production) |
+| **Database** | Neon PostgreSQL |
 | **ORM** | Drizzle ORM |
 | **Auth** | Clerk |
 | **Styling** | Tailwind CSS 4 |
@@ -269,8 +270,7 @@ className="transition-all duration-300 group-hover:scale-110"
 ### Database Scripts
 ```bash
 npm run db:generate     # Generate migrations
-npm run db:push         # Push schema to SQLite
-npm run db:push:prod    # Push schema to Neon (PostgreSQL)
+npm run db:push         # Push schema to Neon PostgreSQL
 npm run db:studio       # Open Drizzle Studio
 ```
 
@@ -424,7 +424,7 @@ admin:       rgb(236 72 153) → rgb(219 39 119)    // Pink
 school-admin: rgb(139 92 246) → rgb(124 58 237)   // Violet
 ```
 
-### 4. Boolean Types (SQLite)
+### 4. Boolean Types (PostgreSQL)
 ```tsx
 isPrivate: !!value  // NOT value ? 1 : 0
 isActive: !!value   // NOT value ? 1 : 0
@@ -886,6 +886,34 @@ The greedy algorithm implementation:
 | [DATABASE_SPRINT_SUMMARY.md](DATABASE_SPRINT_SUMMARY.md) | Database refactoring progress |
 | [UX_IMPROVEMENTS.md](UX_IMPROVEMENTS.md) | UI/UX enhancement log |
 | [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md) | Implementation notes |
+| [docs/mobile-app-progress.md](docs/mobile-app-progress.md) | **NEW:** Mobile app implementation + menu navigation upgrade |
+| [docs/mobile-app-plan.md](docs/mobile-app-plan.md) | Original mobile app plan |
+
+---
+
+## Mobile Navigation (NEW - Feb 13, 2026)
+
+All 6 portal layouts now feature mobile bottom navigation:
+
+| Portal | Bottom Nav Items | Component |
+|--------|------------------|-----------|
+| **Student** | Home, Homework, Classes, Results | `StudentBottomNav` |
+| **Teacher** | Home, Classes, Homework, Students | `TeacherBottomNav` |
+| **Parent** | Home, Children, Progress, Fees | `ParentBottomNav` |
+| **Counselor** | Home, Students, Sessions, Notes | `CounselorBottomNav` |
+| **School Admin** | Home, Students, Teachers, Reports | `SchoolAdminBottomNav` |
+| **Admin** | Home, Schools, Users, Analytics | `AdminBottomNav` |
+
+**Files:**
+- [portal-bottom-nav.tsx](src/components/shared/portal-bottom-nav.tsx) - Bottom navigation component
+- [vercel-sidebar.tsx](src/components/shared/vercel-sidebar.tsx) - Clean sidebar alternative
+- [vercel-header.tsx](src/components/shared/vercel-header.tsx) - Clean header alternative
+
+**Features:**
+- 64px height + safe-area-inset for notched devices
+- Active state with orange accent
+- Hidden on desktop (uses sidebar)
+- Touch-friendly (48px targets)
 
 ---
 

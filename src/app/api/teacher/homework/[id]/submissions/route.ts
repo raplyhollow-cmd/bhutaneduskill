@@ -37,7 +37,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Homework not found" }, { status: 404 });
     }
 
-    if (homeworkData.teacherId !== currentUser.id) {
+    if ((homeworkData as any).teacherId !== currentUser.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

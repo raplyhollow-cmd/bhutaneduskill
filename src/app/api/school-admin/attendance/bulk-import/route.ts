@@ -63,7 +63,6 @@ export async function POST(request: NextRequest) {
               notes,
               reason,
               entryMethod: "csv_import",
-              enteredBy: currentUser.id,
               updatedAt: now,
             })
             .where(eq(attendance.id, existing.id));
@@ -80,7 +79,7 @@ export async function POST(request: NextRequest) {
               notes,
               reason,
               entryMethod: "csv_import",
-              enteredBy: currentUser.id,
+              recordedBy: currentUser.id,
               createdAt: now,
               updatedAt: now,
             });

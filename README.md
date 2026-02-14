@@ -61,7 +61,7 @@ A comprehensive, AI-powered career guidance platform designed specifically for B
 ### Backend & Services
 - **Next.js API Routes** - Server-side endpoints
 - **Clerk Authentication** - User management and auth
-- **PostgreSQL** - Database (prepared for integration)
+- **Neon PostgreSQL** - Database (fully integrated)
 
 ### Development Tools
 - **Turbopack** - Fast bundler
@@ -140,8 +140,8 @@ NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
 NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard
 NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/dashboard
 
-# Database (optional - for future use)
-DATABASE_URL=your_database_url_here
+# Database (Neon PostgreSQL - required)
+DATABASE_URL=postgresql://user:password@ep-xxx.aws.neon.tech/neondb?sslmode=require
 
 # AI Services (optional - for enhanced recommendations)
 OPENAI_API_KEY=your_openai_key_here
@@ -312,7 +312,7 @@ For support, questions, or suggestions:
 
 ## Roadmap
 
-- [ ] Full PostgreSQL database integration
+- [x] Full PostgreSQL database integration (Neon)
 - [ ] Enhanced AI recommendations with GPT-4
 - [ ] Mobile app (React Native)
 - [ ] SMS/email notifications

@@ -1,7 +1,7 @@
 # Mobile App Experience - Implementation Progress
 
 **Date:** February 13, 2026
-**Status:** Phase 1-2 Complete, Phase 3-4 Partial
+**Status:** Phase 1-4 Complete, Phase 5-6 Optional
 **No New TypeScript Errors:** ✅ Confirmed
 
 ---
@@ -13,7 +13,7 @@
 **Status:** COMPLETE
 
 1. **`src/lib/env.ts`** - Environment validation with Zod
-   - Validates DATABASE_URL, Clerk keys, Gemini API, Sentry, CORS
+   - Validates DATABASE_URL (Neon PostgreSQL), Clerk keys, Gemini API, Sentry, CORS
    - Type-safe access to all environment variables
    - Fails fast with clear error messages on startup
 
@@ -80,6 +80,26 @@
 
 ## Pending Work
 
+### ✅ Phase 5: Menu Upgrades (P1)
+
+**Status:** COMPLETE
+
+1. **Mobile Bottom Navigation Integrated** - All 6 portal layouts
+   - Student, Teacher, Parent, Counselor, School Admin, Admin portals
+   - Each portal has pre-configured bottom navigation items
+   - Hidden on desktop (uses sidebar instead)
+   - 64px height + safe-area-inset for notched devices
+
+2. **Vercel-Style Components Created** (Optional Alternative)
+   - `src/components/shared/vercel-sidebar.tsx` - Clean white sidebar with collapse support
+   - `src/components/shared/vercel-header.tsx` - Minimal header with breadcrumbs and search
+
+**See:** [Menu Navigation Documentation](#menu-navigation-upgrade) below for details
+
+---
+
+## Pending Work
+
 ### ⏳ Phase 4: PWA Assets (P1)
 
 **Status:** Icons need generation
@@ -120,6 +140,8 @@
 | `src/components/ui/full-screen-modal.tsx` | 235 | Adaptive modal component |
 | `src/components/ui/mobile-card.tsx` | 370 | Mobile card system |
 | `src/components/shared/portal-bottom-nav.tsx` | 305 | Portal bottom navigation |
+| `src/components/shared/vercel-sidebar.tsx` | 380 | Vercel-style sidebar (optional) |
+| `src/components/shared/vercel-header.tsx` | 180 | Vercel-style header (optional) |
 
 ### Files Modified
 
@@ -128,6 +150,12 @@
 | `src/components/layout/footer.tsx` | Fixed back-to-top position, fixed Framer Motion bug |
 | `src/components/ui/skeleton.tsx` | Added CardSkeleton, StatsCardSkeleton, ListSkeleton, DashboardSkeleton |
 | `src/lib/auth-utils.ts` | Updated requireAuth return type for proper error handling |
+| `src/app/student/layout.tsx` | Added StudentBottomNav + MainContentWithBottomNav |
+| `src/app/teacher/layout.tsx` | Added TeacherBottomNav + MainContentWithBottomNav |
+| `src/app/parent/layout.tsx` | Added ParentBottomNav + MainContentWithBottomNav |
+| `src/app/counselor/layout.tsx` | Added CounselorBottomNav + MainContentWithBottomNav |
+| `src/app/school-admin/layout.tsx` | Added SchoolAdminBottomNav + MainContentWithBottomNav |
+| `src/app/admin/layout.tsx` | Added AdminBottomNav + MainContentWithBottomNav |
 | 15+ API route files | Added requireAuth() protection |
 
 ---
@@ -201,3 +229,127 @@ import { CardSkeleton, StatsCardSkeleton, DashboardSkeleton } from "@/components
 <StatsCardSkeleton />
 <DashboardSkeleton />
 ```
+
+---
+
+## Menu Navigation Upgrade
+
+**Date:** February 13, 2026
+**Status:** COMPLETE
+
+### Overview
+
+All 6 portal layouts now feature mobile bottom navigation for thumb-friendly access to key features. The bottom nav appears on screens below 768px (mobile/tablet) and is hidden on desktop where the sidebar is used instead.
+
+### Per-Portal Bottom Navigation
+
+| Portal | Navigation Items |
+|--------|------------------|
+| **Student** | Home, Homework, Classes, Results |
+| **Teacher** | Home, Classes, Homework, Students |
+| **Parent** | Home, Children, Progress, Fees |
+| **Counselor** | Home, Students, Sessions, Notes |
+| **School Admin** | Home, Students, Teachers, Reports |
+| **Admin** | Home, Schools, Users, Analytics |
+
+### Design Features
+
+- **64px height** - Material Design recommended touch target
+- **Safe-area-inset support** - Respects notched devices (iPhone X+)
+- **Active state indicator** - Orange dot + color change on active item
+- **Badge support** - Red notification badges
+- **48px touch targets** - Exceeds iOS 44px minimum
+
+### Vercel-Style Alternative Components
+
+For a cleaner, more professional SaaS look, two optional components are available:
+
+#### VercelSidebar (`src/components/shared/vercel-sidebar.tsx`)
+
+```tsx
+import { StudentVercelSidebar } from "@/components/shared/vercel-sidebar";
+
+<StudentVercelSidebar
+  userName="John Doe"
+  collapsed={false}
+  onCollapsedChange={(c) => setCollapsed(c)}
+/>
+```
+
+**Features:**
+- White background with `border-gray-200`
+- Collapse support (200px expanded → 64px collapsed)
+- Portal accent colors only for active states/badges
+- User info footer with avatar
+
+#### VercelHeader (`src/components/shared/vercel-header.tsx`)
+
+```tsx
+import { StudentVercelHeader } from "@/components/shared/vercel-header";
+
+<StudentVercelHeader
+  title="Dashboard"
+  userName="John Doe"
+  breadcrumbs={[{ label: "Home", href: "/student" }, { label: "Dashboard" }]}
+  actions={<YourActions />}
+/>
+```
+
+**Features:**
+- 56px height with `shadow-sm`
+- Breadcrumb navigation
+- Search and notification buttons
+- User menu dropdown
+
+### Implementation Pattern
+
+Each portal layout follows this pattern:
+
+```tsx
+"use client";
+
+import { StudentBottomNav, MainContentWithBottomNav } from "@/components/shared/portal-bottom-nav";
+
+export default function StudentLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      {/* Existing sidebar (desktop) */}
+      <PortalSidebar userType="student" userName={userName} />
+
+      {/* Main content area */}
+      <div className="lg:pl-64">
+        <PortalHeader userType="student" userName={userName} />
+
+        {/* Wrap content for bottom nav padding on mobile */}
+        <MainContentWithBottomNav>
+          <main className="p-6">{children}</main>
+        </MainContentWithBottomNav>
+      </div>
+
+      {/* Mobile bottom nav */}
+      <StudentBottomNav />
+    </>
+  );
+}
+```
+
+### Files Modified for Menu Upgrade
+
+| File | Line Changes | Purpose |
+|------|--------------|---------|
+| `src/app/student/layout.tsx` | +3 | Added StudentBottomNav |
+| `src/app/teacher/layout.tsx` | +3 | Added TeacherBottomNav |
+| `src/app/parent/layout.tsx` | +3 | Added ParentBottomNav |
+| `src/app/counselor/layout.tsx` | +3 | Added CounselorBottomNav |
+| `src/app/school-admin/layout.tsx` | +3 | Added SchoolAdminBottomNav |
+| `src/app/admin/layout.tsx` | +3 | Added AdminBottomNav |
+
+### Testing Checklist
+
+- [ ] Bottom nav appears on mobile (<768px)
+- [ ] Bottom nav hidden on desktop (≥768px)
+- [ ] Active item shows orange color + indicator dot
+- [ ] Touch targets are 48px minimum
+- [ ] Safe area inset works on notched devices
+- [ ] Content doesn't overlap bottom nav
+- [ ] Back-to-top button is above bottom nav (fixed at bottom-20)

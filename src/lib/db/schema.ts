@@ -77,6 +77,7 @@ export const users = pgTable("users", {
   classGrade: integer("class_grade"),
   parentId: text("parent_id").references(() => users.id),
   isActive: boolean("is_active").default(true),
+  department: text("department"), // For teachers
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
@@ -120,6 +121,7 @@ export const schools = pgTable("schools", {
   contactPhone: text("contact_phone"),
   tenantId: text("tenant_id").references(() => tenants.id),
   districtId: text("district_id").references(() => districts.id),
+  domain: text("domain"), // Custom domain for school
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
@@ -190,6 +192,7 @@ export const subjects = pgTable("subjects", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
+  nameDzongkha: text("name_dzongkha"), // Dzongkha translation
   code: text("code").unique().notNull(),
   type: text("type").notNull(), // "core" | "elective" | "language" | "additional"
   description: text("description").notNull(),
@@ -348,6 +351,15 @@ export const announcements = pgTable("announcements", {
   viewCount: integer("view_count").default(0),
   isArchived: boolean("is_archived").default(false),
   publishedAt: timestamp("published_at", { withTimezone: true }).notNull(),
+  authorId: text("author_id"), // ID of the user who created the announcement
+  authorName: text("author_name"), // Name of the author
+  authorRole: text("author_role"), // Role of the author (teacher, admin, etc.)
+  attachments: json("attachments").$type<Array<{
+    id: string;
+    name: string;
+    url: string;
+    type: string;
+  }>>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
@@ -427,6 +439,7 @@ export const feePayments = pgTable("fee_payments", {
   collectedAt: timestamp("collected_at", { withTimezone: true }),
   lastPaymentDate: text("last_payment_date"),
   amountPending: integer("amount_pending"),
+  notes: text("notes"), // Payment notes
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }),
 });
@@ -455,6 +468,8 @@ export const studentFees = pgTable("student_fees", {
   description: text("description").notNull(),
   schoolId: text("school_id").references(() => schools.id),
   amountPending: integer("amount_pending"),
+  notes: text("notes"), // Fee notes
+  lastPaymentDate: text("last_payment_date"), // Date of last payment
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
@@ -734,6 +749,11 @@ export const feeStructures = pgTable("fee_structures", {
     amount: number;
     frequency: string;
   }>>(),
+  fees: json("fees").$type<Array<{
+    feeType: string;
+    amount: number;
+    frequency: string;
+  }>>(), // Alias for breakdown
   isRecurring: boolean("is_recurring").default(false),
   currency: text("currency").notNull().default("BTN"),
   isActive: boolean("is_active").default(true),
@@ -816,12 +836,14 @@ export const examResultsEnhanced = pgTable("exam_results_enhanced", {
   totalMaxMarks: integer("total_max_marks"),
   totalMarksObtained: integer("total_marks_obtained"),
   percentage: integer("percentage").notNull(),
+  totalPercentage: integer("total_percentage"), // Alias for percentage
   grade: text("grade").notNull(),
   rank: integer("rank"),
   classRank: integer("class_rank"),
   remarks: text("remarks"),
   division: text("division"),
   traits: json("traits").$type<string[]>(),
+  isVerified: boolean("is_verified").default(false), // Whether results are verified
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
@@ -861,6 +883,8 @@ export const attendance = pgTable("attendance", {
   status: text("status").notNull(), // "present" | "absent" | "late" | "excused"
   recordedBy: text("recorded_by").references(() => users.id),
   notes: text("notes"),
+  reason: text("reason"), // Reason for absence/late
+  entryMethod: text("entry_method"), // How attendance was recorded (manual, biometric, etc.)
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
@@ -910,6 +934,14 @@ export const careerPlans = pgTable("career_plans", {
   }>>(),
   notes: text("notes"),
   counselorNotes: text("counselor_notes"),
+  counselorId: text("counselor_id").references(() => users.id), // Assigned counselor
+  currentPhase: text("current_phase"), // Current phase of the career plan
+  actionSteps: json("action_steps").$type<Array<{
+    step: string;
+    deadline: string;
+    completed: boolean;
+    completedAt: string;
+  }>>(),
   status: text("status").notNull().default("active"), // "active" | "achieved" | "changed"
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
@@ -936,6 +968,7 @@ export const riasecResults = pgTable("riasec_results", {
   secondaryHollandCode: text("secondary_holland_code").notNull(),
   hollandCode: text("holland_code"), // The 3-letter RIASEC code
   recommendedCareers: json("recommended_careers").$type<string[]>().notNull(),
+  traits: json("traits").$type<string[]>(), // Personality traits based on results
   completedAt: timestamp("completed_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });
@@ -1099,9 +1132,12 @@ export const tuitionCourses = pgTable("tuition_courses", {
   grade: integer("grade").notNull(),
   duration: integer("duration").notNull(), // in minutes
   pricePerSession: integer("price_per_session").notNull(),
+  price: integer("price"), // Total price for the course
+  discountPrice: integer("discount_price"), // Discounted price
   currency: text("currency").notNull().default("BTN"),
   maxStudents: integer("max_students").notNull(),
   currentStudents: integer("current_students").default(0),
+  currentEnrollments: integer("current_enrollments").default(0), // Virtual field, computed
   maxEnrollments: integer("max_enrollments"),
   schedule: json("schedule").$type<Array<{
     day: string;
@@ -1109,13 +1145,15 @@ export const tuitionCourses = pgTable("tuition_courses", {
     endTime: string;
   }>>(),
   mode: text("mode").notNull(), // "online" | "in_person" | "hybrid"
-  location: text("location"),
+  location: text("location"), // Can be JSON string with district, area, fullAddress, coordinates
   schoolId: text("school_id"),
   meetingLink: text("meeting_link"),
   thumbnail: text("thumbnail").notNull(),
   tags: json("tags").$type<string[]>(),
   requirements: json("requirements").$type<string[]>(),
   prerequisites: json("prerequisites").$type<string[]>(),
+  type: text("type"), // Course type (e.g., "regular", "crash_course")
+  gradeLevel: integer("grade_level"), // Target grade level
   status: text("status"), // "draft" | "published" | "archived"
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
@@ -1140,10 +1178,12 @@ export const tuitionEnrollments = pgTable("tuition_enrollments", {
   completedAt: timestamp("completed_at", { withTimezone: true }),
   sessionsCompleted: integer("sessions_completed").default(0),
   totalPaid: integer("total_paid").default(0),
+  amountPaid: integer("amount_paid"), // Alias for totalPaid
   tutorEarnings: integer("tutor_earnings"),
   notes: text("notes"),
   rating: integer("rating"), // 1-5
   review: text("review"),
+  currentEnrollments: integer("current_enrollments"), // Virtual field, computed
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
@@ -1183,6 +1223,7 @@ export const tutors = pgTable("tutors", {
   location: text("location"),
   district: text("district"),
   department: text("department"),
+  gradeLevels: json("grade_levels").$type<number[]>(), // Grade levels tutor can teach
   averageRating: integer("average_rating"), // 0-500 (5.00 * 100)
   totalReviews: integer("total_reviews").default(0),
   totalStudents: integer("total_students").default(0),
@@ -1230,12 +1271,19 @@ export const liveSessions = pgTable("live_sessions", {
   description: text("description").notNull(),
   scheduledStart: text("scheduled_start").notNull(),
   startTime: text("start_time"), // Alias for scheduledStart
+  scheduledDate: text("scheduled_date"), // Alias for scheduledStart (date only)
   scheduledEnd: text("scheduled_end").notNull(),
+  endTime: text("end_time"), // Session end time
   actualStart: timestamp("actual_start", { withTimezone: true }),
+  actualStartTime: timestamp("actual_start_time", { withTimezone: true }), // Alias for actualStart
   actualEnd: timestamp("actual_end", { withTimezone: true }),
+  actualEndTime: timestamp("actual_end_time", { withTimezone: true }), // Alias for actualEnd
   meetingLink: text("meeting_link"),
   meetingId: text("meeting_id"),
+  meetingPassword: text("meeting_password"), // Meeting password for secure access
+  platform: text("platform"), // Meeting platform (zoom, google meet, etc.)
   recordingUrl: text("recording_url"),
+  subject: text("subject"), // Session subject
   status: text("status").notNull(), // "scheduled" | "live" | "completed" | "cancelled"
   participants: integer("participants").default(0),
   maxParticipants: integer("maxparticipants"),
@@ -1302,7 +1350,9 @@ export const vehicles = pgTable("vehicles", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }),
   routeId: text("route_id").notNull(),
+  assignedRouteId: text("assigned_route_id"), // Currently assigned route (can change)
   registrationNumber: text("registration_number").unique().notNull(),
+  vehicleNumber: text("vehicle_number"), // Alias for registrationNumber
   vehicleType: text("vehicle_type").notNull(), // "bus" | "van" | "mini_bus"
   capacity: integer("capacity").notNull(),
   driverName: text("driver_name").notNull(),
@@ -1330,6 +1380,7 @@ export const transportRoutes = pgTable("transport_routes", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
+  routeName: text("route_name"), // Alias for name
   routeNumber: text("route_number").unique().notNull(),
   startLocation: text("start_location").notNull(),
   endLocation: text("end_location").notNull(),
@@ -1341,6 +1392,8 @@ export const transportRoutes = pgTable("transport_routes", {
   distance: integer("distance").notNull(), // in km
   estimatedTime: integer("estimated_time").notNull(), // in minutes
   fee: integer("fee").notNull(),
+  morningStartTime: text("morning_start_time"), // Morning pickup start time
+  afternoonEndTime: text("afternoon_end_time"), // Afternoon drop end time
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
@@ -1459,6 +1512,7 @@ export const wizardProgress = pgTable("wizard_progress", {
   completedSteps: json("completed_steps").$type<string[]>(),
   data: json("data").$type<Record<string, any>>(),
   isCompleted: boolean("is_completed").default(false),
+  completed: boolean("completed").default(false), // Alias for isCompleted
   lastUpdated: timestamp("last_updated", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),

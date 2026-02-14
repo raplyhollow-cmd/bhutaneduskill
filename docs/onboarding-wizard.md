@@ -304,7 +304,7 @@ interface WizardState {
 }
 ```
 
-### Database Tables
+### Database Tables (PostgreSQL)
 ```typescript
 // Track setup status
 wizard_progress {

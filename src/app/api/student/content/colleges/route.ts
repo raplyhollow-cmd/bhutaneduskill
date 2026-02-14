@@ -29,15 +29,15 @@ export async function GET(request: NextRequest) {
     // Get programs for Bhutan colleges
     if (type === "bhutan" || !type) {
       const bhutanCollegeIds = filtered
-        .filter(c => c.bhutanCollegeType === "rub")
+        .filter(c => (c as any).bhutanCollegeType === "rub")
         .map(c => c.id);
 
       const programs = await db.query.rubPrograms.findMany();
-      filtered = filtered.map(college => {
-        if ((college as any).isBhutanCollege) {
+      filtered = filtered.map((college: any) => {
+        if (college.isBhutanCollege) {
           return {
             ...college,
-            programsList: programs.filter(p => p.collegeId === college.id),
+            programsList: programs.filter((p: any) => p.collegeId === college.id),
           };
         }
         return college;

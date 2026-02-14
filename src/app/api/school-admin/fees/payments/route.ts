@@ -87,16 +87,23 @@ export async function POST(request: NextRequest) {
     const [payment] = await db.insert(feePayments).values({
       id: `pay_${Date.now()}`,
       studentFeeId: validatedData.studentFeeId,
-      studentId: studentFee.studentId,
-      schoolId: currentUser.schoolId,
       amount: validatedData.amount,
+      paidDate: new Date().toISOString().split('T')[0],
+      method: validatedData.paymentMethod,
       paymentMethod: validatedData.paymentMethod,
       transactionId: validatedData.transactionId,
       receiptNumber,
-      collectedBy: currentUser.id,
+      status: "paid",
+      isRecurring: false,
+      dueDate: studentFee.dueDate,
+      paidAt: new Date(),
+      schoolId: currentUser.schoolId,
       collectedAt: new Date(),
+      lastPaymentDate: new Date().toISOString().split('T')[0],
+      amountPending: Math.max(0, studentFee.totalAmount - (studentFee.amountPaid || 0) - validatedData.amount),
       notes: validatedData.notes,
       createdAt: new Date(),
+      updatedAt: new Date(),
     }).returning();
 
     // Update student fee record

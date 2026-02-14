@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
           ? await db.query.attendance.findMany({
               where: and(
                 eq(attendance.studentId, childData.id),
-                eq(attendance.classId, currentClassData.id)
+                eq(attendance.classId, (currentClassData as any).id)
               ),
               limit: 30,
             })

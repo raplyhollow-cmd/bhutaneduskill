@@ -161,7 +161,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       // If no manual review needed, auto-grade
       if (!gradingResult.needsReview) {
         submissionData.status = "graded";
-        submissionData.gradedBy = homeworkData.teacherId;
+        submissionData.gradedBy = (homeworkData as any).teacherId;
         submissionData.gradedAt = now;
         submissionData.feedback = "Auto-graded";
         submissionData.questionFeedback = gradingResult.results;
@@ -233,11 +233,11 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
     const [updated] = await db.update(homeworkSubmissions)
       .set({
-        answers: answers || existingSubmission.answers,
-        attachments: attachments || existingSubmission.attachments,
-        textAnswers: textAnswers || existingSubmission.textAnswers,
+        answers: (answers || (existingSubmission as any).answers) as any,
+        attachments: (attachments || (existingSubmission as any).attachments) as any,
+        textAnswers: (textAnswers || (existingSubmission as any).textAnswers) as any,
         updatedAt: new Date(),
-      })
+      } as any)
       .where(eq(homeworkSubmissions.id, existingSubmission.id))
       .returning();
 

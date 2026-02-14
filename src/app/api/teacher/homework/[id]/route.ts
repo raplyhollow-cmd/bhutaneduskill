@@ -38,7 +38,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     }
 
     // Verify ownership
-    if (homeworkData.teacherId !== currentUser.id) {
+    if ((homeworkData as any).teacherId !== currentUser.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -90,7 +90,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Homework not found" }, { status: 404 });
     }
 
-    if (existingHomework.teacherId !== currentUser.id) {
+    if ((existingHomework as any).teacherId !== currentUser.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -147,7 +147,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Homework not found" }, { status: 404 });
     }
 
-    if (existingHomework.teacherId !== currentUser.id) {
+    if ((existingHomework as any).teacherId !== currentUser.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -198,7 +198,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Homework not found" }, { status: 404 });
     }
 
-    if (existingHomework.teacherId !== currentUser.id) {
+    if ((existingHomework as any).teacherId !== currentUser.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

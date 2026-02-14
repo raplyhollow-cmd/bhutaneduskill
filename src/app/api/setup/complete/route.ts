@@ -43,8 +43,8 @@ export async function POST(request: NextRequest) {
       await db
         .update(wizardProgress)
         .set({
+          isCompleted: true,
           completed: true,
-          completedAt: new Date(),
           updatedAt: new Date(),
         })
         .where(eq(wizardProgress.id, existingProgress[0].id));

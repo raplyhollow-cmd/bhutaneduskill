@@ -110,7 +110,7 @@ The following tables are available in the schema:
 
 ## Known Issues & TODOs
 
-1. **Boolean Field Handling**: SQLite uses integer 0/1 for boolean - `!!value` for conversion
+1. **Boolean Field Handling**: PostgreSQL handles boolean natively - use `value === true` for conversion
 2. **Missing Fields**: Some UI fields may not exist in DB yet - add as needed
 3. **Performance**: Consider adding indexes for frequently queried fields
 4. **Error Handling**: Add try-catch and user-friendly error messages

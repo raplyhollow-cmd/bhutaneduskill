@@ -139,7 +139,7 @@ export default async function SchoolAdminTeachersPage() {
                           )}
                         </div>
                       </td>
-                      <td className="py-3 px-4 text-sm text-gray-700">{teacher.department || '-'}</td>
+                      <td className="py-3 px-4 text-sm text-gray-700">{(teacher as any).department || '-'}</td>
                       <td className="py-3 px-4">
                         <div className="flex flex-wrap gap-1">
                           {teacher.subjects ? (JSON.parse(teacher.subjects as string) as string[]).map((subj, i) => (
@@ -151,10 +151,10 @@ export default async function SchoolAdminTeachersPage() {
                       </td>
                       <td className="py-3 px-4">
                         <Badge
-                          variant={teacher.isActive ? "default" : "secondary"}
-                          className={teacher.isActive ? "bg-green-100 text-green-700 hover:bg-green-100" : ""}
+                          variant={(teacher as any).isActive ? "default" : "secondary"}
+                          className={(teacher as any).isActive ? "bg-green-100 text-green-700 hover:bg-green-100" : ""}
                         >
-                          {teacher.isActive ? "Active" : "Inactive"}
+                          {(teacher as any).isActive ? "Active" : "Inactive"}
                         </Badge>
                       </td>
                       <td className="py-3 px-4">

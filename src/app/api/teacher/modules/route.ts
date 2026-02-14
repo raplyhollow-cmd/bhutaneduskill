@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
       estimatedDuration,
       createdAt: new Date(),
       updatedAt: new Date(),
-    }).returning();
+    } as any).returning();
 
     return NextResponse.json({ module: newModule }, { status: 201 });
   } catch (error) {

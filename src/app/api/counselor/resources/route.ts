@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
     const allResources = await db
       .select({ tags: digitalResources.tags })
       .from(digitalResources)
-      .where(sql`${digitalResources.isActive} = 1`);
+      .where(eq(digitalResources.isActive, true));
 
     // Extract unique categories from tags
     const categoryMap = new Map<string, number>();
@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
         ...r,
         category: (r.tags as string[] || [])[0] || "tools", // Use first tag as category
         type: r.format || "document",
-        addedDate: new Date(r.createdAt as number).toISOString(),
+        addedDate: new Date(r.createdAt as any).toISOString(),
         isFeatured: (r.tags as string[] || []).includes("featured"),
         downloads: r.totalDownloads || 0,
         views: r.totalViews || 0,
@@ -184,6 +184,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    const now = new Date();
+
     // Create new resource
     const newResource = await db
       .insert(digitalResources)
@@ -196,13 +198,13 @@ export async function POST(request: NextRequest) {
         format: format || "pdf",
         accessUrl: accessUrl || "",
         thumbnailUrl,
-        subjects: [category],
+        subjects: category ? [category] : [],
         tags: isFeatured ? [...tags, "featured"] : tags,
         totalDownloads: 0,
         totalViews: 0,
-        isActive: 1,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
       })
       .returning();
 

@@ -147,36 +147,26 @@ export async function POST(request: NextRequest) {
     }
 
     // Create event
+    const now = new Date();
     const [event] = await db.insert(schoolEvents).values({
       id: nanoid(),
       schoolId: currentUser.schoolId || "",
-      tenantId: "",
       title,
-      description,
+      description: description || "",
       eventType,
-      category,
       startDate,
       endDate,
-      startTime,
-      endTime,
-      isAllDay: fromBoolean(isAllDay),
-      location,
-      venue,
+      location: location || "",
+      isAllDay: isAllDay ?? false,
       targetAudience: targetAudience || [],
-      targetGradeLevels: targetGradeLevels || [],
-      targetClassIds: targetClassIds || [],
-      isRecurring: fromBoolean(isRecurring),
+      isRecurring: isRecurring ?? false,
       recurrencePattern,
-      recurrenceEndDate,
-      organizedBy: currentUser.id,
-      organizerName: `${currentUser.firstName} ${currentUser.lastName}`.trim(),
-      status: "published",
-      requiresRSVP: fromBoolean(requiresRSVP),
-      rsvpDeadline,
-      color,
+      status: "upcoming",
+      reminders: [],
       attachments: attachments || [],
-      createdAt: Math.floor(Date.now() / 1000),
-      updatedAt: Math.floor(Date.now() / 1000),
+      createdBy: currentUser.id,
+      createdAt: now,
+      updatedAt: now,
     }).returning();
 
     return NextResponse.json({
@@ -190,9 +180,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-// Helper function for boolean storage
-function fromBoolean(value: boolean | null | undefined): number {
-  return value ? 1 : 0;
 }

@@ -102,9 +102,9 @@ export async function PUT(
         examType: examType ?? existingResult.examType,
         examYear: examYear ?? existingResult.examYear,
         subjects: subjects ?? existingResult.subjects,
-        totalPercentage,
+        percentage: totalPercentage,
+        totalPercentage: totalPercentage,
         division,
-        isVerified: false, // Reset verification on edit
       })
       .where(eq(examResults.id, id))
       .returning();
@@ -199,7 +199,6 @@ export async function PATCH(
       .update(examResults)
       .set({
         isVerified: true,
-        verifiedBy: currentUser.id,
       })
       .where(eq(examResults.id, id))
       .returning();

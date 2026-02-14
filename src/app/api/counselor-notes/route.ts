@@ -51,7 +51,14 @@ export async function POST(request: NextRequest) {
 
   const { user: currentUser } = authResult;
   const body = await request.json();
-  const { studentId, note, isPrivate } = body;
+  const { studentId, note, isPrivate, title, noteType = "session" } = body;
+
+  // Validate required fields
+  if (!studentId || !note) {
+    return NextResponse.json({ error: "Missing required fields: studentId and note are required" }, { status: 400 });
+  }
+
+  const now = new Date().toISOString();
 
   const [newNote] = await db
     .insert(counselorNotes)
@@ -59,8 +66,13 @@ export async function POST(request: NextRequest) {
       id: `note_${Date.now()}`,
       counselorId: currentUser.id,
       studentId,
+      noteType, // "session" | "observation" | "intervention" | "follow_up"
+      title: title || `Counseling Note - ${new Date().toLocaleDateString()}`,
       note,
+      content: note, // Both note and content are stored
       isPrivate: !!isPrivate,
+      isConfidential: false,
+      sessionDate: now.split('T')[0], // YYYY-MM-DD format
       createdAt: new Date(),
       updatedAt: new Date(),
     })

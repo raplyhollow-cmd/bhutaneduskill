@@ -28,7 +28,7 @@ console.log("✅ Build completed!\n");
 console.log("\n📋 Step 2: Add these environment variables in Vercel:\n");
 
 const envVars = [
-  { name: "DATABASE_URL", value: "postgresql://neondb_owner:npg_zEGrNB2cl7wk@ep-soft-rain-aigc3qom-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require" },
+  { name: "DATABASE_URL", value: "postgresql://user:password@ep-xxx.aws.neon.tech/neondb?sslmode=require (get from Neon Dashboard)" },
   { name: "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", value: "pk_live_... (get from Clerk Dashboard)" },
   { name: "CLERK_SECRET_KEY", value: "sk_live_... (get from Clerk Dashboard)" },
   { name: "NEXT_PUBLIC_APP_URL", value: "https://your-project.vercel.app" }

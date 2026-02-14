@@ -111,12 +111,11 @@ export async function POST(request: NextRequest, { params }: Params) {
             .set({
               status,
               notes,
-              reason,
+              reason: reason as any,
               checkInTime,
-              checkOutTime,
-              enteredBy: currentUser.id,
+              recordedBy: currentUser.id,
               updatedAt: now,
-            })
+            } as any)
             .where(eq(attendance.id, existing.id))
             .returning();
 
@@ -132,14 +131,13 @@ export async function POST(request: NextRequest, { params }: Params) {
               date: date,
               status,
               notes,
-              reason,
+              reason: reason as any,
               checkInTime,
-              checkOutTime,
+              recordedBy: currentUser.id,
               entryMethod: "manual",
-              enteredBy: currentUser.id,
               createdAt: now,
               updatedAt: now,
-            })
+            } as any)
             .returning();
 
           return created;

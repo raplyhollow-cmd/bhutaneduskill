@@ -117,13 +117,22 @@ export async function POST(request: NextRequest) {
       .values({
         id: `exam_${Date.now()}`,
         userId: targetUserId,
+        examName: "Exam",
         examType,
         examYear,
+        academicYear: new Date().getFullYear().toString(),
+        term: "1",
+        examDate: new Date().toISOString().split('T')[0],
         subjects,
-        totalPercentage,
+        totalMarks: subjects.reduce((sum: number, s: any) => sum + s.totalMarks, 0),
+        maxTotalMarks: subjects.reduce((sum: number, s: any) => sum + s.totalMarks, 0),
+        totalMarksObtained: subjects.reduce((sum: number, s: any) => sum + s.marks, 0),
+        percentage: totalPercentage,
+        totalPercentage: totalPercentage,
+        grade: division,
         division,
-        enteredBy,
         createdAt: new Date(),
+        updatedAt: new Date(),
       })
       .returning();
 

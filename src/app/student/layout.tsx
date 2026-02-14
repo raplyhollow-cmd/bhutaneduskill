@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { PortalSidebar, PortalHeader } from "@/components/shared/portal-sidebar";
+import { StudentBottomNav, MainContentWithBottomNav } from "@/components/shared/portal-bottom-nav";
 
 export default function StudentLayout({
   children,
@@ -83,8 +84,11 @@ export default function StudentLayout({
       <PortalSidebar userType={userType} userName={userName} />
       <div className="lg:pl-64">
         <PortalHeader userType={userType} userName={userName} />
-        <main className="p-6">{children}</main>
+        <MainContentWithBottomNav>
+          <main className="p-6">{children}</main>
+        </MainContentWithBottomNav>
       </div>
+      <StudentBottomNav />
     </div>
   );
 }

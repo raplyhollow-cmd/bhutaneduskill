@@ -92,13 +92,13 @@ Fix any remaining errors.
 
 ### 4.1 Database Migration (Day 13)
 ```bash
-# Migrate SQLite → Neon PostgreSQL
-# Update .env with DATABASE_URL
+# Using Neon PostgreSQL (already configured)
+# DATABASE_URL should be set in .env
 ```
 
 ### 4.2 Environment Setup (Day 14)
 Set up free-tier services:
-- [ ] Neon (database)
+- [x] Neon (database)
 - [ ] Resend (emails)
 - [ ] PostHog (analytics)
 - [ ] Sentry (error tracking)
@@ -185,6 +185,6 @@ Change 'isPrivate ? 1 : 0' to '!!isPrivate' and 'isActive ? 1 : 0' to '!!isActiv
 - [ ] All MVP criteria met
 - [ ] Mobile responsive
 - [ ] Error handling complete
-- [ ] Database migrated to Neon
+- [x] Database migrated to Neon
 - [ ] Monitoring services connected
 - [ ] Payment gateway tested

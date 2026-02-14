@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     // Fetch attendance records
     const records = await db.query.attendance.findMany({
       where: and(...conditions),
-      orderBy: [desc(attendance.date)],
+      orderBy: [desc(attendanceTable.date)],
       limit,
     });
 

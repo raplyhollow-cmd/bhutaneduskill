@@ -163,15 +163,14 @@ export async function POST(request: NextRequest) {
       // Create circulation record
       const [circulationRecord] = await db.insert(circulation).values({
         id: nanoid(),
-        schoolId: currentUser.schoolId || "",
         bookId: bookId,
-        borrowerId: currentUser.id,
-        borrowerType: currentUser.type,
-        borrowerName: `${currentUser.firstName} ${currentUser.lastName}`.trim(),
+        studentId: currentUser.id,
         borrowDate: borrowDate.toISOString().split('T')[0],
         dueDate: dueDate.toISOString().split('T')[0],
         status: "borrowed",
-        renewalCount: 0,
+        fine: 0,
+        finePaid: false,
+        renewals: 0,
         maxRenewals: 3,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -181,10 +180,7 @@ export async function POST(request: NextRequest) {
       await db.update(books)
         .set({
           status: "borrowed",
-          currentBorrowerId: currentUser.id,
-          dueDate: dueDate.toISOString().split('T')[0],
-          totalBorrows: ((book as any).totalBorrows || 0) + 1,
-          updatedAt: Math.floor(Date.now() / 1000),
+          updatedAt: new Date(),
         })
         .where(eq(books.id, bookId));
 
@@ -209,8 +205,8 @@ export async function POST(request: NextRequest) {
       await db.update(circulation)
         .set({
           status: "returned",
-          actualReturnDate: new Date().toISOString().split('T')[0],
-          updatedAt: Math.floor(Date.now() / 1000),
+          returnDate: new Date().toISOString().split('T')[0],
+          updatedAt: new Date(),
         })
         .where(eq(circulation.id, circulationId));
 
@@ -218,9 +214,7 @@ export async function POST(request: NextRequest) {
       await db.update(books)
         .set({
           status: "available",
-          currentBorrowerId: null,
-          dueDate: null,
-          updatedAt: Math.floor(Date.now() / 1000),
+          updatedAt: new Date(),
         })
         .where(eq(books.id, circulationRecord.bookId));
 

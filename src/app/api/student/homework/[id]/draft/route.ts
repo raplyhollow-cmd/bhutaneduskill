@@ -46,11 +46,11 @@ export async function POST(request: NextRequest, { params }: Params) {
 
       const [updated] = await db.update(homeworkSubmissions)
         .set({
-          answers: answers || {},
-          attachments: attachments || [],
-          textAnswers,
+          answers: (answers || {}) as any,
+          attachments: (attachments || []) as any,
+          textAnswers: textAnswers as any,
           updatedAt: now,
-        })
+        } as any)
         .where(eq(homeworkSubmissions.id, existingSubmission.id))
         .returning();
 
@@ -62,13 +62,13 @@ export async function POST(request: NextRequest, { params }: Params) {
           id: `sub_${Date.now()}`,
           homeworkId: id,
           studentId: currentUser.id,
-          answers: answers || {},
-          attachments: attachments || [],
-          textAnswers,
+          answers: (answers || {}) as any,
+          attachments: (attachments || []) as any,
+          textAnswers: textAnswers as any,
           status: "draft",
           createdAt: now,
           updatedAt: now,
-        })
+        } as any)
         .returning();
 
       return NextResponse.json({ submission: created }, { status: 201 });

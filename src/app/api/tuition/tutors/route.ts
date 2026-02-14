@@ -75,15 +75,45 @@ export async function GET(request: NextRequest) {
     let filtered = allTutors;
 
     if (subject) {
-      filtered = filtered.filter(t => t.subjects?.includes(subject));
+      filtered = filtered.filter(t => {
+        if (typeof t.subjects === 'string') {
+          try {
+            const subjects = JSON.parse(t.subjects as string);
+            return subjects.some((s: any) => s.subjectName === subject || s.proficiency === subject);
+          } catch {
+            return false;
+          }
+        }
+        return false;
+      });
     }
 
     if (gradeLevel) {
-      filtered = filtered.filter(t => t.gradeLevels?.includes(parseInt(gradeLevel)));
+      filtered = filtered.filter(t => {
+        if (typeof t.gradeLevels === 'string') {
+          try {
+            const grades = JSON.parse(t.gradeLevels as string);
+            return grades.includes(parseInt(gradeLevel));
+          } catch {
+            return false;
+          }
+        }
+        return (t.gradeLevels as any)?.includes?.(parseInt(gradeLevel));
+      });
     }
 
     if (district) {
-      filtered = filtered.filter(t => t.location?.district === district);
+      filtered = filtered.filter(t => {
+        if (typeof t.location === 'string') {
+          try {
+            const loc = JSON.parse(t.location as string);
+            return loc.district === district;
+          } catch {
+            return false;
+          }
+        }
+        return false;
+      });
     }
 
     if (onlineOnly) {
@@ -139,23 +169,29 @@ export async function POST(request: NextRequest) {
       id: `tutor_${Date.now()}`,
       userId: currentUser.id,
       bio: validatedData.bio,
+      subjects: validatedData.subjects || [],
       qualifications: validatedData.qualifications || [],
       experience: validatedData.experience || 0,
-      subjects: validatedData.subjects,
-      gradeLevels: validatedData.gradeLevels,
-      location: validatedData.location,
-      travelRadius: validatedData.travelRadius,
-      hourlyRateOnline: validatedData.hourlyRateOnline,
-      hourlyRatePhysical: validatedData.hourlyRatePhysical,
+      hourlyRate: validatedData.hourlyRateOnline || 500,
+      hourlyRateOnline: validatedData.hourlyRateOnline || 500,
       currency: "BTN",
-      availableDays: validatedData.availableDays || [],
-      availableSlots: validatedData.availableSlots || [],
-      bankAccount: validatedData.bankAccount,
+      availability: validatedData.availableSlots ? JSON.stringify({
+        days: (validatedData as any).availableDays || [],
+        slots: validatedData.availableSlots || [],
+      }) : "[]",
+      teachingMode: validatedData.teachingMode || "online",
+      location: validatedData.location ? JSON.stringify(validatedData.location) : null,
+      district: (validatedData.location as any)?.district || "",
+      department: (validatedData as any).department || "",
+      gradeLevels: validatedData.gradeLevels || [],
       averageRating: 0,
       totalReviews: 0,
       totalStudents: 0,
+      isVerified: false,
+      verificationDocument: (validatedData as any).bankAccount || "",
       isActive: true,
       createdAt: new Date(),
+      updatedAt: new Date(),
     }).returning();
 
     return NextResponse.json({ tutor: newTutor }, { status: 201 });

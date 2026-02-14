@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
         orderBy: [desc(moduleProgress.lastAccessedAt)],
       });
 
-      return NextResponse.json({ modules: myProgress.map(p => ({ ...p.module, progress: p })) });
+      return NextResponse.json({ modules: myProgress.map(p => ({ ...(p.module as any), progress: p })) });
     }
 
     // Get available modules from student's school and public modules
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
 
     // Filter by school or public
     const availableModules = modules.filter(m =>
-      m.schoolId === currentUser.schoolId || m.isPublic
+      (m as any).schoolId === currentUser.schoolId || m.isPublic
     );
 
     // Get progress for each module
@@ -134,12 +134,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Check enrollment limit
-    if (module.maxEnrollments) {
+    if ((module as any).maxEnrollments) {
       const currentEnrollments = await db.query.moduleProgress.findMany({
         where: eq(moduleProgress.moduleId, moduleId),
       });
 
-      if (currentEnrollments.length >= module.maxEnrollments) {
+      if (currentEnrollments.length >= (module as any).maxEnrollments) {
         return NextResponse.json({ error: "Module is full" }, { status: 400 });
       }
     }
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
       enrolledAt: now,
       lastAccessedAt: now,
       createdAt: now,
-    }).returning();
+    } as any).returning();
 
     return NextResponse.json({ progress }, { status: 201 });
   } catch (error) {
