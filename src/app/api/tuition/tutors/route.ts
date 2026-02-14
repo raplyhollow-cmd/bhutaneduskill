@@ -179,14 +179,11 @@ export async function POST(request: NextRequest) {
       hourlyRate: validatedData.hourlyRateOnline || 500,
       hourlyRateOnline: validatedData.hourlyRateOnline || 500,
       currency: "BTN",
-      availability: validatedData.availableSlots ? [{
-        day: (validatedData as any).availableDays?.[0] || "Monday",
-        slots: (validatedData.availableSlots || []).map((slot: any) => ({
-          start: slot.start || "09:00",
-          end: slot.end || "10:00",
-        })),
-      }] : [],
-      teachingMode: "online",
+      availability: validatedData.availableSlots ? JSON.stringify({
+        days: (validatedData as any).availableDays || [],
+        slots: validatedData.availableSlots || [],
+      }) : "[]",
+      teachingMode: validatedData.teaching_mode || "online",
       location: validatedData.location ? JSON.stringify(validatedData.location) : null,
       district: (validatedData.location as any)?.district || "",
       department: (validatedData as any).department || "",

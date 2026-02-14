@@ -217,8 +217,8 @@ export const busAttendance = pgTable("bus_attendance", {
   tripType: text("trip_type").notNull(), // "morning_pickup", "afternoon_drop", "both"
 
   // Attendance
-  morningPresent: integer("morning_present", { mode: "boolean" }),
-  afternoonPresent: integer("afternoon_present", { mode: "boolean" }),
+  morningPresent: boolean("morning_present"),
+  afternoonPresent: boolean("afternoon_present"),
 
   // Check-in details
   pickupTime: text("pickup_time"), // Actual time

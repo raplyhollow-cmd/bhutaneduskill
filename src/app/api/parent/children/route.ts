@@ -34,6 +34,16 @@ export async function GET(request: NextRequest) {
     // Get all children where parentId = current user
     const childrenData = await db.query.users.findMany({
       where: eq(users.parentId, currentUser.id),
+      columns: {
+        id: true,
+        parentId: true,
+        firstName: true,
+        lastName: true,
+        profilePicture: true,
+        classGrade: true,
+        section: true,
+        dateOfBirth: true,
+      },
       orderBy: [desc(users.createdAt)],
     });
 

@@ -707,7 +707,7 @@ export async function getExamResults(schoolId: string | null, options: {
     date: result.createdAt ? new Date(result.createdAt).toISOString().split('T')[0] : "",
     students: 0, // Would need to count
     published: !!(result as any).isVerified,
-    avgPercentage: (result as any).overallPercentage || (result as any).percentage || 0,
+    avgPercentage: (result as any).overallPercentage || result.percentage?.overallPercentage || (result as any).percentage || 0,
   }));
 
   return { results: transformed, total: countResult?.count || 0 };
@@ -1174,7 +1174,7 @@ export async function getAnalytics(schoolId: string | null): Promise<AnalyticsDa
 
   examResults.forEach((result) => {
     const existing = studentScores.get(result.studentId);
-    const score = (result as any).overallPercentage || result.percentage || 0;
+    const score = (result as any).overallPercentage || result.percentage?.overallPercentage || (result as any).percentage || 0;
     if (existing) {
       existing.score = Math.max(existing.score, score);
       existing.count++;
@@ -1375,7 +1375,7 @@ export async function getAnalytics(schoolId: string | null): Promise<AnalyticsDa
       if (!gradeGroups.has(grade)) {
         gradeGroups.set(grade, []);
       }
-      gradeGroups.get(grade)!.push((result as any).overallPercentage || result.percentage || 0);
+      gradeGroups.get(grade)!.push((result as any).overallPercentage || result.percentage?.overallPercentage || (result as any).percentage || 0);
     }
   }
 

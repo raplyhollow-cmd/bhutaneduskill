@@ -66,7 +66,7 @@ function validateEnv(): EnvSchema {
     return envSchema.parse(process.env);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const missingVars = error.errors.map((e) => e.path.join(".")).join(", ");
+      const missingVars = error.issues.map((e) => e.path.join(".")).join(", ");
       throw new Error(
         `❌ Invalid environment variables:\n${missingVars}\n\n` +
           `Please check your .env file against .env.example`
