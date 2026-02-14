@@ -364,8 +364,8 @@ export async function POST(request: NextRequest) {
           leaveType,
           leaveReason,
           markedBy: currentUser.id,
-          createdAt: Math.floor(Date.now() / 1000),
-          updatedAt: Math.floor(Date.now() / 1000),
+          createdAt: new Date(),
+          updatedAt: new Date(),
         } as any);
       }
 
@@ -452,7 +452,7 @@ export async function POST(request: NextRequest) {
       await db.update(hostelRooms)
         .set({
           occupiedBeds: (room.occupiedBeds || 0) + 1,
-          updatedAt: Math.floor(Date.now() / 1000),
+          updatedAt: new Date(),
         })
         .where(eq(hostelRooms.id, roomId));
 

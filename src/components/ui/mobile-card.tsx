@@ -59,7 +59,7 @@ const MobileCard = React.forwardRef<HTMLDivElement, MobileCardProps>(
 
     return (
       <Component
-        ref={ref}
+        ref={ref as any}
         className={cn(
           // Base styles
           "group relative flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4",
@@ -73,7 +73,7 @@ const MobileCard = React.forwardRef<HTMLDivElement, MobileCardProps>(
           className
         )}
         {...baseProps}
-        {...props}
+        {...(props as any)}
       >
         {/* Badge */}
         {badge && (

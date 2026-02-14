@@ -207,7 +207,7 @@ export async function getCounselorStudents(counselorId: string | null): Promise<
           phone: student.phone,
           grade: student.classGrade || null,
           section: student.section || null,
-          school: student.school?.name || null,
+          school: (student.school as any)?.[0]?.name || null,
           counselorId,
           assessmentStatus:
             completedAssessments > 0
@@ -227,7 +227,7 @@ export async function getCounselorStudents(counselorId: string | null): Promise<
       })
     );
 
-    return studentsWithData;
+    return studentsWithData as CounselorStudentData[];
   } catch (error) {
     console.error("Error fetching counselor students:", error);
     return [];
@@ -312,7 +312,7 @@ export async function getCounselorNotes(
           studentId: note.studentId,
           studentName: student ? `${student.firstName} ${student.lastName || ""}`.trim() : "Unknown",
           grade: student?.classGrade || null,
-          school: student?.school?.name || null,
+          school: (student?.school as any)?.[0]?.name || null,
           category,
           note: note.note.replace(/\[category:[^\]]+\]|\[sensitive\]|\[tags:[^\]]+\]/g, "").trim(),
           isPrivate: !!note.isPrivate,
@@ -350,7 +350,12 @@ export async function createCounselorNote(data: {
       counselorId: data.counselorId,
       studentId: data.studentId,
       note: metadata,
-      isPrivate: data.isPrivate ? 1 : 0,
+      title: data.category || "Note",
+      content: data.note,
+      noteType: "observation",
+      isConfidential: !!data.isSensitive,
+      isPrivate: !!data.isPrivate,
+      sessionDate: new Date().toISOString().split("T")[0],
       createdAt: new Date(),
       updatedAt: new Date(),
     })

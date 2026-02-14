@@ -2,10 +2,11 @@
 
 **Project Name:** Career Compass + School Management System
 **Version:** 1.2
+**Type:** B2B SaaS (Multi-tenant School Management Platform)
 **Target:** Bhutan Middle Schools (Class 6-12) + General SaaS
 **Tech Stack:** Next.js 16 + TypeScript + Neon PostgreSQL + Clerk + Vercel
 **Developer:** Built with Claude (AI-assisted development)
-**Last Updated:** February 13, 2026 (API Integration Complete!)
+**Last Updated:** February 14, 2026
 **Project Status:** ~100% UI Complete, ~90% Functional - APIs implemented
 **Local URL:** http://localhost:3003
 
@@ -237,6 +238,8 @@ className="transition-all duration-300 group-hover:scale-110"
 
 | Topic | File | Description |
 |-------|------|-------------|
+| **Technology Stack** | [docs/technology-stack.md](docs/technology-stack.md) | **NEW:** B2B SaaS classification, architecture patterns |
+| **Components Guide** | [docs/components-guide.md](docs/components-guide.md) | **NEW:** Component usage, props, examples for all components |
 | **API Routes** | [docs/api-routes.md](docs/api-routes.md) | All API endpoints + advanced techniques |
 | **Database** | [docs/database-schema.md](docs/database-schema.md) | 40+ tables, schema reference |
 | **Database Fixes** | [docs/database-schema.md](docs/database-schema.md) | TypeScript fixes (Feb 13): 400+ errors resolved |

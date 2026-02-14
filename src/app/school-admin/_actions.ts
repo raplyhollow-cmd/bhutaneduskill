@@ -458,7 +458,6 @@ export async function createAnnouncement(data: {
       .values({
         id: `ann_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         schoolId,
-        tenantId: "", // Will be set by trigger or default
         authorId: userId,
         authorName,
         authorRole,
@@ -474,7 +473,12 @@ export async function createAnnouncement(data: {
         isPublished: !!data.isPublished,
         isPinned: !!data.isPinned,
         isArchived: false,
-        attachments: data.attachments || null,
+        attachments: data.attachments?.map(att => ({
+          id: `att_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          name: att.name,
+          url: att.url,
+          type: att.type,
+        })) || null,
         publishDate: data.publishDate || null,
         expiryDate: data.expiryDate || null,
         viewCount: 0,

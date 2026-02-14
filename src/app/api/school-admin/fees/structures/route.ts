@@ -74,6 +74,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    // Transform fees data to match schema
+    const transformedFees = validatedData.fees.map(fee => ({
+      feeType: fee.name,
+      amount: fee.amount,
+      frequency: fee.frequency,
+    }));
+
     const [newStructure] = await db.insert(feeStructures).values({
       id: `fee_struct_${Date.now()}`,
       schoolId: currentUser.schoolId,
@@ -82,8 +89,8 @@ export async function POST(request: NextRequest) {
       academicYear: validatedData.academicYear,
       grade: validatedData.grade,
       totalFees: validatedData.totalAnnualAmount || 0,
-      breakdown: validatedData.fees,
-      fees: validatedData.fees,
+      breakdown: transformedFees,
+      fees: transformedFees,
       isRecurring: false,
       currency: "BTN",
       isActive: true,

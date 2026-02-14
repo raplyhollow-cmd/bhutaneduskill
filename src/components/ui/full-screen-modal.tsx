@@ -89,10 +89,11 @@ const FullScreenModalContent = React.forwardRef<
   const setRefs = React.useCallback(
     (node: HTMLDivElement) => {
       (contentRef as React.MutableRefObject<HTMLDivElement>).current = node;
+      if (!dialogRef) return;
       if (typeof dialogRef === 'function') {
-        dialogRef(node);
-      } else if (dialogRef) {
-        dialogRef.current = node;
+        (dialogRef as (node: HTMLDivElement) => void)(node);
+      } else {
+        (dialogRef as React.MutableRefObject<HTMLDivElement>).current = node;
       }
     },
     [dialogRef]

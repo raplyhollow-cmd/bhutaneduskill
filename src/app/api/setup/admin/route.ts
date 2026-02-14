@@ -136,6 +136,7 @@ export async function POST(request: NextRequest) {
           contactEmail: data.admin?.adminEmail,
           contactPhone: (data.school as any).phone || "123456",
           createdAt: new Date(),
+          updatedAt: new Date(),
         });
       }
     }

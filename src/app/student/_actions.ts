@@ -325,9 +325,10 @@ export async function selfCheckIn(data: {
       status: "present",
       entryMethod: "app_check_in",
       checkInTime,
-      checkInLocation: data.location as any,
-      enteredBy: studentId,
-      });
+      recordedBy: studentId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
 
     return { success: true, checkInTime };
   } catch (error) {
@@ -578,7 +579,6 @@ export async function markAnnouncementAsRead(announcementId: string) {
         announcementId,
         userId: studentId,
         readAt: new Date(),
-        createdAt: new Date(),
       });
 
       // Increment view count

@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
         });
 
         const currentEnrollmentItem = childEnrollmentsData[0];
-        const currentClassData = currentEnrollmentItem?.class;
+        const currentClassData = currentEnrollmentItem?.class?.[0];
 
         // Get attendance summary (last 30 days)
         const recentAttendanceData = currentClassData
