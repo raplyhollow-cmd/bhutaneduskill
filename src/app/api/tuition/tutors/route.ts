@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
         days: (validatedData as any).availableDays || [],
         slots: validatedData.availableSlots || [],
       }) : "[]",
-      teachingMode: validatedData.teachingMode || "online",
+      teachingMode: validatedData.teaching_mode || "online",
       location: validatedData.location ? JSON.stringify(validatedData.location) : null,
       district: (validatedData.location as any)?.district || "",
       department: (validatedData as any).department || "",

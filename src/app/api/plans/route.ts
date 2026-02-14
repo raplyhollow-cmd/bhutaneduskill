@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
         id: `plan_${Date.now()}`,
         userId: user.id,
         studentId: user.id,
-        targetCareerId: "career_" + Date.now(),
+        targetCareer: "career_" + Date.now(),
         shortTermGoals: shortTermGoals || [],
         longTermGoals: longTermGoals || [],
         subjects: [],

@@ -110,6 +110,7 @@ export async function POST(request: NextRequest) {
       status: "scheduled",
       notes: (validatedData as any).notes,
       createdAt: new Date(),
+      updatedAt: new Date(),
     }).returning();
 
     return NextResponse.json({ session }, { status: 201 });

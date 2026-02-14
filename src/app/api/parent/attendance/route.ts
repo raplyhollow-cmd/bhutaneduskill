@@ -95,7 +95,6 @@ export async function GET(request: NextRequest) {
       date: r.date,
       status: r.status,
       checkInTime: r.checkInTime,
-      checkOutTime: r.checkOutTime,
       notes: r.notes,
       class: childClass ? {
         id: (childClass as any).id,

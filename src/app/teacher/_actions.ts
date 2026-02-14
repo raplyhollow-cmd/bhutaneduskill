@@ -83,7 +83,6 @@ export async function requestPayout() {
         .update(tutorEarnings)
         .set({
           payoutStatus: "processing",
-          payoutMethod: "bank_transfer",
         })
         .where(eq(tutorEarnings.id, earning.id));
     }

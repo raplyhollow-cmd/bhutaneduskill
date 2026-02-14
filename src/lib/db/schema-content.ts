@@ -1,11 +1,11 @@
-import { sqliteTable, text, integer, json, jsonb } from "drizzle-orm/sqlite-core";
+import { pgTable, text, integer, json, jsonb } from "drizzle-orm/pg-core";
 
 // ============================================================================
 // COLLEGES & PROGRAMS DATABASE
 // ============================================================================
 
 // Colleges (imported from external or manual)
-export const colleges = sqliteTable("colleges", {
+export const colleges = pgTable("colleges", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   dataSource: text("data_source"), // "ipedx", "rub_manual", "common_app"
@@ -17,7 +17,7 @@ export const colleges = sqliteTable("colleges", {
   type: text("type"), // "public", "private", "community"
 
   // Bhutan-specific
-  isBhutanCollege: integer("is_bhutan_college", { mode: "boolean" }).default(false),
+  isBhutanCollege: boolean("is_bhutan_college").default(false),
   bhutanCollegeType: text("bhutan_college_type"), // "rub", "private", "rtc"
 
   // Admissions data
@@ -30,13 +30,13 @@ export const colleges = sqliteTable("colleges", {
   programs: json("programs"),
 
   // Metadata
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  isActive: boolean("is_active").default(true),
   updatedAt: integer("updated_at", { mode: "timestamp" }),
   createdAt: integer("created_at", { mode: "timestamp" }),
 });
 
 // RUB Programs (local manual entry)
-export const rubPrograms = sqliteTable("rub_programs", {
+export const rubPrograms = pgTable("rub_programs", {
   id: text("id").primaryKey(),
   collegeId: text("college_id"),
   name: text("name").notNull(),
@@ -55,14 +55,14 @@ export const rubPrograms = sqliteTable("rub_programs", {
   relatedCareerClusters: json("related_career_clusters"),
 
   // Metadata
-  isActive: integer("is_active", { mode: "boolean" }).default(true),
+  isActive: boolean("is_active").default(true),
   academicYear: text("academic_year"), // "2024-2025"
-  updatedAt: integer("updated_at", { mode: "timestamp" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }),
   createdAt: integer("created_at", { mode: "timestamp" }),
 });
 
 // Scholarships
-export const scholarships = sqliteTable("scholarships", {
+export const scholarships = pgTable("scholarships", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   provider: text("provider").notNull(), // Organization offering
@@ -101,7 +101,7 @@ export const scholarships = sqliteTable("scholarships", {
 });
 
 // Data Sources for external integrations
-export const dataSources = sqliteTable("data_sources", {
+export const dataSources = pgTable("data_sources", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   type: text("type").notNull(), // "ipedx", "onet", "rub_local", "manual"
@@ -113,7 +113,7 @@ export const dataSources = sqliteTable("data_sources", {
 });
 
 // Content audit trail
-export const contentAudit = sqliteTable("content_audit", {
+export const contentAudit = pgTable("content_audit", {
   id: text("id").primaryKey(),
   entityType: text("entity_type").notNull(), // "college", "rub_program", "scholarship"
   entityId: text("entity_id").notNull(),

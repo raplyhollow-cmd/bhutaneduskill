@@ -638,7 +638,7 @@ export async function getStudentProgressData(): Promise<StudentProgressData> {
     examName: result.examName,
     examType: result.examType,
     examYear: result.examYear,
-    overallPercentage: (result as any)(r as any).overallPercentage || 0,
+    overallPercentage: (result as any).overallPercentage || result.percentage.overallPercentage || 0,
     division: (result as any).division || null,
     subjectResults: (result as any).subjectResults || [],
   }));

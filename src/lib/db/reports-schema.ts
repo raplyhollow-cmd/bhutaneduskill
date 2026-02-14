@@ -493,7 +493,7 @@ export const financialReports = pgTable("financial_reports", {
   }>>(),
 
   // Audit
-  audited: integer("audited", { mode: "boolean" }),
+  audited: boolean("audited"),
   auditDate: text("audit_date"),
   auditorName: text("auditor_name"),
   auditObservations: text("audit_observations"),

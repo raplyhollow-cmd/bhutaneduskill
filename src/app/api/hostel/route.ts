@@ -452,7 +452,7 @@ export async function POST(request: NextRequest) {
       await db.update(hostelRooms)
         .set({
           occupiedBeds: (room.occupiedBeds || 0) + 1,
-          updatedAt: Math.floor(Date.now() / 1000),
+          updatedAt: new Date(),
         })
         .where(eq(hostelRooms.id, roomId));
 
