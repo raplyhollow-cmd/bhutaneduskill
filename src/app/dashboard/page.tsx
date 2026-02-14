@@ -56,22 +56,20 @@ export default function DashboardPage() {
         // Calculate real stats from data
         const completedAssessments = assessments.filter(a => a.status === "completed");
         const careerMatchesCount = await getCareerMatchesCount();
-        const skillsInProgressCount = await getSkillsInProgressCount();
 
         setUserStats({
           assessmentCompleted: completedAssessments.length > 0,
           careerMatches: careerMatchesCount,
-          skillsInProgress: skillsInProgressCount,
+          skillsInProgress: 0, // Will be updated below
           studyAbroadReadiness: 0, // Would calculate from profile
           latestAssessment: assessments.length > 0 ? assessments[0] : null,
         });
 
-        // Set mock skills data for display
-        setSkillsInProgress([
-          { name: "Communication", level: 75 },
-          { name: "Problem Solving", level: 60 },
-          { name: "Teamwork", level: 85 },
-        ]);
+        // Load real skills data from API
+        await loadSkillsData();
+      } else {
+        // If assessments API fails, still load skills
+        await loadSkillsData();
       }
     } catch (error) {
       console.error("Failed to load user data:", error);
@@ -105,6 +103,29 @@ export default function DashboardPage() {
       return 0;
     } catch {
       return 0;
+    }
+  };
+
+  // Load real skills data from API
+  const loadSkillsData = async () => {
+    try {
+      const res = await fetch("/api/skills");
+      if (res.ok) {
+        const data = await res.json();
+        const userProgress = data.userProgress || {};
+
+        // Convert userProgress to array format for display
+        const skillsArray = Object.entries(userProgress)
+          .filter(([_, level]) => (level as number) > 0)
+          .map(([name, level]) => ({ name, level: level as number }))
+          .sort((a, b) => b.level - a.level)
+          .slice(0, 3); // Show top 3
+
+        setSkillsInProgress(skillsArray);
+        setUserStats(prev => ({ ...prev, skillsInProgress: skillsArray.length }));
+      }
+    } catch (error) {
+      console.error("Failed to load skills data:", error);
     }
   };
 
@@ -159,15 +180,15 @@ export default function DashboardPage() {
       {/* Welcome Section */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Welcome{profile?.firstName ? `, ${profile.firstName}` : ""}!
+          Welcome, {profile?.firstName || profile?.name || user?.firstName || user?.lastName || "Student"}!
         </h1>
         <p className="text-gray-600">
           Your journey to discovering the perfect career path starts here.
         </p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid md:grid-cols-4 gap-6">
+      {/* Stats Grid - Mobile responsive */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-500">
@@ -233,8 +254,8 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid lg:grid-cols-2 gap-8">
+      {/* Main Content Grid - Mobile responsive */}
+      <div className="grid lg:grid-cols-2 gap-6 sm:gap-8">
         {/* Recommended Next Steps */}
         <Card>
           <CardHeader>
@@ -283,26 +304,42 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {skillsInProgress.map((skill) => (
-              <div key={skill.name}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium text-gray-900">{skill.name}</span>
-                  <span className="text-sm text-gray-500">{skill.level}%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all"
-                    style={{ width: `${skill.level}%` }}
-                  />
-                </div>
+            {skillsInProgress.length === 0 ? (
+              <div className="text-center py-8">
+                <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500">No skills in progress yet</p>
+                <p className="text-sm text-gray-400 mb-4">Start learning to track your progress</p>
+                <Button variant="outline" className="w-full" asChild>
+                  <Link href="/dashboard/skills">
+                    <BookOpen className="w-4 h-4 mr-2" />
+                    Browse Learning Resources
+                  </Link>
+                </Button>
               </div>
-            ))}
-            <Button variant="outline" className="w-full" asChild>
-              <Link href="/dashboard/skills">
-                <BookOpen className="w-4 h-4 mr-2" />
-                Browse Learning Resources
-              </Link>
-            </Button>
+            ) : (
+              <>
+                {skillsInProgress.map((skill) => (
+                  <div key={skill.name}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium text-gray-900">{skill.name}</span>
+                      <span className="text-sm text-gray-500">{skill.level}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full transition-all"
+                        style={{ width: `${skill.level}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+                <Button variant="outline" className="w-full" asChild>
+                  <Link href="/dashboard/skills">
+                    <BookOpen className="w-4 h-4 mr-2" />
+                    Browse Learning Resources
+                  </Link>
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>

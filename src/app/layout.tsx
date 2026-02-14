@@ -16,8 +16,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Career Compass - AI Career Guidance for Bhutan",
-  description: "Discover skills, find your path, and achieve your dreams with AI-powered career guidance",
+  title: "Bhutan EduSkill - Career Guidance & School Management",
+  description: "Comprehensive career guidance and school management platform for Bhutan schools",
 };
 
 export default function RootLayout({

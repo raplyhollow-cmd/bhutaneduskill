@@ -1,7 +1,7 @@
 {
-  "name": "Career Guidance Bhutan",
-  "short_name": "CareerGuide",
-  "description": "Comprehensive career guidance and school management platform for Bhutan",
+  "name": "Bhutan EduSkill",
+  "short_name": "EduSkill",
+  "description": "Comprehensive career guidance and school management platform for Bhutan schools",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

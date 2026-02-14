@@ -57,13 +57,22 @@ export default function PlatformAdminWizard() {
       case 2:
         return !!(adminName && adminEmail && adminPhone);
       case 3:
-        return !!(schoolName && district);
+        // Require school name, district, and school code (or auto-generate it)
+        if (!schoolName || !district) return false;
+        // Auto-generate school code if not set
+        if (!schoolCode) {
+          generateSchoolCode();
+        }
+        return true;
       default:
         return true;
     }
   };
 
   const handleNext = async () => {
+    // Prevent double-clicks
+    if (isLoading) return;
+
     if (currentStep === ADMIN_STEPS.length) {
       await completeWizard();
     } else if (currentStep === 3) {
@@ -144,7 +153,7 @@ export default function PlatformAdminWizard() {
       currentStep={currentStep}
       totalSteps={ADMIN_STEPS.length}
       title="Platform Setup"
-      subtitle="Initialize your Career Compass platform"
+      subtitle="Initialize your Bhutan EduSkill platform"
       onExit={() => router.push("/dashboard")}
     >
       {/* Step 1: Organization Setup */}
@@ -373,7 +382,7 @@ export default function PlatformAdminWizard() {
               Platform Ready!
             </h2>
             <p className="text-gray-600">
-              Your Career Compass platform has been initialized successfully.
+              Your Bhutan EduSkill platform has been initialized successfully.
             </p>
           </div>
 

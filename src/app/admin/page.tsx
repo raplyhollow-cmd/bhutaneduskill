@@ -48,6 +48,13 @@ interface Alert {
   message: string;
 }
 
+interface AIInsight {
+  type: "warning" | "success" | "info" | "tip";
+  title: string;
+  message: string;
+  actions?: Array<{ label: string; href: string }>;
+}
+
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<AdminStats>({
     totalSchools: 0,
@@ -60,11 +67,20 @@ export default function AdminDashboardPage() {
   const [topSchools, setTopSchools] = useState<TopSchool[]>([]);
   const [careerInterests, setCareerInterests] = useState<CareerInterest[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingInsights, setIsLoadingInsights] = useState(true);
 
   useEffect(() => {
     loadDashboardData();
   }, []);
+
+  // Load AI insights after dashboard data is available
+  useEffect(() => {
+    if (!isLoading && stats.totalSchools > 0) {
+      loadAIInsights();
+    }
+  }, [isLoading, stats, topSchools, careerInterests]);
 
   const loadDashboardData = async () => {
     try {
@@ -90,6 +106,31 @@ export default function AdminDashboardPage() {
       console.error("Failed to load admin dashboard:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadAIInsights = async () => {
+    try {
+      const response = await fetch("/api/ai/insights", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userRole: "admin",
+          contextData: {
+            stats,
+            schools: topSchools,
+            careerInterests,
+          },
+        }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAiInsights(data.insights || []);
+      }
+    } catch (error) {
+      console.error("Failed to load AI insights:", error);
+    } finally {
+      setIsLoadingInsights(false);
     }
   };
 
@@ -130,36 +171,69 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* AI Insights Section */}
+      {/* AI Insights Section - Dynamic from API */}
       <div className="grid md:grid-cols-3 gap-4">
-        <AIInsightCard
-          type="warning"
-          title="School Engagement Alert"
-          message={`${alerts.filter(a => a.type === "warning").length > 0 ? "Some schools have low assessment completion rates. " : ""}${topSchools.filter(s => s.completion < 80).length} schools below 80% completion threshold.`}
-          actions={[
-            { label: "View Schools", href: "/admin/schools" },
-            { label: "Send Alert", href: "/admin/notifications" },
-          ]}
-        />
+        {isLoadingInsights ? (
+          <>
+            <Card>
+              <CardContent className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+              </CardContent>
+            </Card>
+          </>
+        ) : aiInsights.length > 0 ? (
+          aiInsights.map((insight, index) => (
+            <AIInsightCard
+              key={index}
+              type={insight.type}
+              title={insight.title}
+              message={insight.message}
+              actions={insight.actions}
+            />
+          ))
+        ) : (
+          // Fallback to data-driven insights if API returns empty
+          <>
+            <AIInsightCard
+              type="warning"
+              title="School Engagement Alert"
+              message={`${alerts.filter(a => a.type === "warning").length > 0 ? "Some schools have low assessment completion rates. " : ""}${topSchools.filter(s => s.completion < 80).length} schools below 80% completion threshold.`}
+              actions={[
+                { label: "View Schools", href: "/admin/schools" },
+                { label: "Send Alert", href: "/admin/notifications" },
+              ]}
+            />
 
-        <AIInsightCard
-          type="success"
-          title="Platform Growth Positive"
-          message={`${stats.totalStudents} students across ${stats.totalSchools} schools. 15% increase in new registrations this month. Career guidance adoption trending upward.`}
-          actions={[
-            { label: "View Analytics", href: "/admin/analytics" },
-          ]}
-        />
+            <AIInsightCard
+              type="success"
+              title="Platform Growth Positive"
+              message={`${stats.totalStudents} students across ${stats.totalSchools} schools. 15% increase in new registrations this month. Career guidance adoption trending upward.`}
+              actions={[
+                { label: "View Analytics", href: "/admin/analytics" },
+              ]}
+            />
 
-        <AIInsightCard
-          type="tip"
-          title="Popular Career Interests"
-          message={`AI analysis shows ${careerInterests[0]?.career || "Technology"} and ${careerInterests[1]?.career || "Healthcare"} as top career interests. Consider partnering with relevant RUB colleges for workshops.`}
-          actions={[
-            { label: "View Content", href: "/admin/content" },
-            { label: "Manage Partners", href: "/admin/partners" },
-          ]}
-        />
+            <AIInsightCard
+              type="tip"
+              title="Popular Career Interests"
+              message={`AI analysis shows ${careerInterests[0]?.career || "Technology"} and ${careerInterests[1]?.career || "Healthcare"} as top career interests. Consider partnering with relevant RUB colleges for workshops.`}
+              actions={[
+                { label: "View Content", href: "/admin/content" },
+                { label: "Manage Partners", href: "/admin/partners" },
+              ]}
+            />
+          </>
+        )}
       </div>
 
       {/* Alerts */}

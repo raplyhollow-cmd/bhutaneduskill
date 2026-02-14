@@ -157,8 +157,17 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Get user from database first (userId from Clerk is clerkUserId, not internal userId)
+    const user = await db.query.users.findFirst({
+      where: eq(users.clerkUserId, userId),
+    });
+
+    if (!user) {
+      return NextResponse.json({ assessments: [] });
+    }
+
     const userAssessments = await db.query.assessments.findMany({
-      where: (assessments, { eq }) => eq(assessments.userId, userId),
+      where: (assessments, { eq }) => eq(assessments.userId, user.id),
       orderBy: (assessments, { desc }) => [
         desc(assessments.createdAt),
       ],

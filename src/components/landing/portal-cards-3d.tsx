@@ -7,7 +7,7 @@ import { ArrowRight, GraduationCap, School, Users, Shield, Building, TrendingUp 
 const portals = [
   {
     title: "Students",
-    href: "/student",
+    href: "/sign-in?redirect=/student",
     icon: GraduationCap,
     description: "Assessments, careers, and planning.",
     color: "rgb(249 115 22)",
@@ -16,7 +16,7 @@ const portals = [
   },
   {
     title: "Teachers",
-    href: "/teacher",
+    href: "/sign-in?redirect=/teacher",
     icon: School,
     description: "Classes, homework, and grading.",
     color: "rgb(59 130 246)",
@@ -25,7 +25,7 @@ const portals = [
   },
   {
     title: "Parents",
-    href: "/parent",
+    href: "/sign-in?redirect=/parent",
     icon: Users,
     description: "Track your child's progress.",
     color: "rgb(107 114 128)",
@@ -34,7 +34,7 @@ const portals = [
   },
   {
     title: "Counselors",
-    href: "/counselor",
+    href: "/sign-in?redirect=/counselor",
     icon: Shield,
     description: "Student guidance & interventions.",
     color: "rgb(168 85 247)",
@@ -43,7 +43,7 @@ const portals = [
   },
   {
     title: "School Admin",
-    href: "/school-admin",
+    href: "/sign-in?redirect=/school-admin",
     icon: Building,
     description: "Manage operations & data.",
     color: "rgb(139 92 246)",
@@ -52,7 +52,7 @@ const portals = [
   },
   {
     title: "Platform Admin",
-    href: "/admin",
+    href: "/sign-in?redirect=/admin",
     icon: TrendingUp,
     description: "Manage schools & billing.",
     color: "rgb(236 72 153)",

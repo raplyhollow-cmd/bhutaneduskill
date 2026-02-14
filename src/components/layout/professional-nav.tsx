@@ -41,7 +41,7 @@ export function ProfessionalNav() {
               <Mountain className="w-5 h-5 text-white" />
             </div>
             <span className="font-bold text-lg text-gray-900 dark:text-white">
-              Career Compass
+              Bhutan EduSkill
             </span>
           </Link>
 

@@ -176,7 +176,7 @@ The environment variable is already set in `.env.vercel`. Just need to add it in
 1. Go to: https://vercel.com/dashboard
 2. Select your project
 3. Settings → Environment Variables
-4. Add `GEMINI_API_KEY` = `AIzaSyBgkpUPLABK0HphiXXhwR7mPfgOjs0cB6A`
+4. Add `GEMINI_API_KEY` = `YOUR_GEMINI_API_KEY` (Get from https://aistudio.google.com/app/apikey)
 5. Redeploy
 
 ## Usage Monitoring
