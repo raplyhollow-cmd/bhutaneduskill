@@ -17,9 +17,10 @@ import { getAttendanceRecords } from "@/lib/api/school-admin";
 import { eq, sql } from "drizzle-orm";
 import { users, classes } from "@/lib/db/schema";
 import { db } from "@/lib/db";
-import { unstable_noStore as noStore } from "next/cache";
 
-noStore();
+// Force dynamic rendering - this page requires database access
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function SchoolAdminAttendancePage({
   searchParams,

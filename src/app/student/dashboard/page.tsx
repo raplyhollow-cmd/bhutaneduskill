@@ -34,6 +34,10 @@ import { fetchStudentDashboard } from "../_actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AIInsightCard } from "@/components/ai/ai-insight-card";
 
+// Force dynamic rendering - this page uses server actions that require headers
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // Loading component
 function DashboardSkeleton() {
   return (

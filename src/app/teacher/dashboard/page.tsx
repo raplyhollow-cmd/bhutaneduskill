@@ -26,6 +26,10 @@ import {
 import Link from "next/link";
 import { AIInsightCard } from "@/components/ai/ai-insight-card";
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // Simulated data - replace with real API calls
 const mockStats = {
   totalStudents: 156,
