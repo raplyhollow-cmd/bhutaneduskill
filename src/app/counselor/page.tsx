@@ -2,12 +2,15 @@
  * COUNSELOR DASHBOARD PAGE
  *
  * Key features:
- * - Student overview
+ * - Real data from API - no more mock values
+ * - Student overview with actual database data
  * - Assessment analytics
  * - Quick actions
  * - Data insights access
  */
+"use client";
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,56 +29,57 @@ import {
 import Link from "next/link";
 import { AIInsightCard } from "@/components/ai/ai-insight-card";
 
+// Client component - dynamic rendering is automatic
 export default function CounselorDashboardPage() {
-  // Mock data
-  const counselorStats = {
-    totalStudents: 342,
-    activeSchools: 5,
-    pendingReports: 12,
-    assessmentsThisWeek: 87,
-    aiCoachUsage: 234, // Number of AI interactions
+  const [stats, setStats] = useState({
+    totalStudents: 0,
+    activeSchools: 0,
+    pendingReports: 0,
+    assessmentsThisWeek: 0,
+    aiCoachUsage: 0,
+  });
+  const [recentStudents, setRecentStudents] = useState<any[]>([]);
+  const [schoolPerformance, setSchoolPerformance] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadDashboardData();
+  }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      const response = await fetch("/api/counselor/dashboard");
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data.stats || stats);
+        setRecentStudents(data.recentStudents || []);
+        setSchoolPerformance(data.schoolPerformance || []);
+      }
+    } catch (error) {
+      console.error("Failed to load counselor dashboard:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const recentStudents = [
-    {
-      id: "1",
-      name: "Tashi Dorji",
-      school: "Thimphu Higher Secondary School",
-      grade: "12",
-      lastActivity: "2 hours ago",
-      assessmentStatus: "completed",
-      topCareer: "Software Engineer",
-      needsAttention: false,
-    },
-    {
-      id: "2",
-      name: "Karma Wangmo",
-      school: "Yangchenphug Higher Secondary School",
-      grade: "10",
-      lastActivity: "1 day ago",
-      assessmentStatus: "in_progress",
-      topCareer: "Nurse",
-      needsAttention: true,
-    },
-    {
-      id: "3",
-      name: "Pema Lhamo",
-      school: "Moiyul Goenpa HSS",
-      grade: "11",
-      lastActivity: "3 days ago",
-      assessmentStatus: "pending",
-      topCareer: null,
-      needsAttention: true,
-    },
-  ];
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Counselor Dashboard</h1>
+            <p className="text-gray-600 mt-1">Overview of your students and activities</p>
+          </div>
+        </div>
 
-  const schoolPerformance = [
-    { name: "Thimphu HSS", students: 89, completion: 78 },
-    { name: "Yangchenphug HSS", students: 76, completion: 65 },
-    { name: "Moiyul Goenpa HSS", students: 54, completion: 82 },
-    { name: "Pelkhil HSS", students: 67, completion: 71 },
-    { name: "Rigsum HSS", students: 56, completion: 58 },
-  ];
+        {/* Loading State */}
+        <div className="flex items-center justify-center min-h-[50vh]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-900 border-t-transparent"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -116,7 +120,7 @@ export default function CounselorDashboardPage() {
         <AIInsightCard
           type="success"
           title="Assessment Trends Positive"
-          message={`${counselorStats.assessmentsThisWeek} assessments completed this week. Student engagement is up 15% from last week.`}
+          message={`${stats.assessmentsThisWeek} assessments completed this week. Student engagement is up from baseline.`}
           actions={[
             { label: "View Reports", href: "/counselor/reports" },
           ]}
@@ -142,7 +146,7 @@ export default function CounselorDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-600">{counselorStats.totalStudents}</div>
+            <div className="text-2xl font-bold text-purple-600">{stats.totalStudents}</div>
             <p className="text-xs text-gray-500">Across all schools</p>
           </CardContent>
         </Card>
@@ -155,7 +159,7 @@ export default function CounselorDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{counselorStats.activeSchools}</div>
+            <div className="text-2xl font-bold text-blue-600">{stats.activeSchools}</div>
             <p className="text-xs text-gray-500">Partner schools</p>
           </CardContent>
         </Card>
@@ -168,7 +172,7 @@ export default function CounselorDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-amber-600">{counselorStats.pendingReports}</div>
+            <div className="text-2xl font-bold text-amber-600">{stats.pendingReports}</div>
             <p className="text-xs text-gray-500">Awaiting action</p>
           </CardContent>
         </Card>
@@ -181,8 +185,8 @@ export default function CounselorDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-600">{counselorStats.assessmentsThisWeek}</div>
-            <p className="text-xs text-purple-600">+15% this week</p>
+            <div className="text-2xl font-bold text-gray-600">{stats.assessmentsThisWeek}</div>
+            <p className="text-xs text-purple-600">This week</p>
           </CardContent>
         </Card>
 
@@ -195,7 +199,7 @@ export default function CounselorDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-600">{counselorStats.aiCoachUsage}</div>
+            <div className="text-2xl font-bold text-purple-600">{stats.aiCoachUsage}</div>
             <p className="text-xs text-gray-500">Student interactions</p>
           </CardContent>
         </Card>
@@ -218,7 +222,7 @@ export default function CounselorDashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {recentStudents.map((student) => (
+                {recentStudents.length > 0 ? recentStudents.map((student) => (
                   <div
                     key={student.id}
                     className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
@@ -227,7 +231,7 @@ export default function CounselorDashboardPage() {
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
                           <span className="text-purple-700 font-medium">
-                            {student.name.split(" ").map((n) => n[0]).join("")}
+                            {student.name.split(" ").map((n: string) => n[0]).join("")}
                           </span>
                         </div>
                         <div>
@@ -259,10 +263,11 @@ export default function CounselorDashboardPage() {
                       {student.topCareer && (
                         <p className="text-xs text-gray-500 mt-1">{student.topCareer}</p>
                       )}
-                      <p className="text-xs text-gray-400 mt-1">{student.lastActivity}</p>
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <p className="text-gray-500 text-center py-8">No recent student activity</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -276,8 +281,8 @@ export default function CounselorDashboardPage() {
               <CardDescription>Assessment completion by school</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {schoolPerformance.map((school) => (
-                <div key={school.name} className="space-y-2">
+              {schoolPerformance.length > 0 ? schoolPerformance.map((school, index) => (
+                <div key={index} className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
                     <span className="font-medium truncate">{school.name}</span>
                     <span className="text-gray-500">{school.students} students</span>
@@ -295,7 +300,9 @@ export default function CounselorDashboardPage() {
                     <span>{school.completion}% completion</span>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <p className="text-gray-500 text-center py-8">No school data available</p>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -360,7 +367,7 @@ export default function CounselorDashboardPage() {
         </Card>
       </div>
 
-      {/* Data Value Banner - Shows company the value of data */}
+      {/* Data Value Banner - Shows company value of data */}
       <Card className="border-purple-200" style={{ background: 'linear-gradient(to right, rgb(168 85 247 / 0.1), rgb(59 130 246 / 0.1))' }}>
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
@@ -371,7 +378,7 @@ export default function CounselorDashboardPage() {
               <div>
                 <h3 className="font-semibold text-gray-900">Your Students' Data is Valuable</h3>
                 <p className="text-sm text-gray-600">
-                  {counselorStats.totalStudents} students • {counselorStats.assessmentsThisWeek} assessments this week •
+                  {stats.totalStudents} students • {stats.assessmentsThisWeek} assessments this week •
                   Multiple data points per student
                 </p>
               </div>

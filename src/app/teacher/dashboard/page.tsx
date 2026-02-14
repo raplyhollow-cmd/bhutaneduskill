@@ -29,10 +29,7 @@ import { AIInsightCard } from "@/components/ai/ai-insight-card";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
 
-// Force dynamic rendering
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-
+// Client component - dynamic rendering is automatic
 export default function TeacherDashboard() {
   const { user } = useUser();
 

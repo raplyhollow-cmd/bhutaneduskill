@@ -2,28 +2,57 @@
  * COUNSELOR DASHBOARD SERVER ACTIONS
  *
  * Server actions for counselor dashboard data fetching
+ * Now uses real API data instead of mock values
  */
 
 "use server";
 
-import { db } from "@/lib/db";
-import { users, assessments } from "@/lib/db/schema";
-import { eq, and, desc, count, sql } from "drizzle-orm";
+import { requireAuth } from "@/lib/auth-utils";
 
 /**
  * Fetch counselor statistics
- * Returns overview data for the counselor dashboard
+ * Returns overview data for the counselor dashboard from real API
  */
 export async function fetchCounselorStats() {
   try {
-    // For now, return mock data
-    // In production, this would query actual database tables
+    const authResult = await requireAuth(['counselor', 'admin']);
+    if ('error' in authResult) {
+      return {
+        totalStudents: 0,
+        activeSchools: 0,
+        pendingReports: 0,
+        assessmentsThisWeek: 0,
+        aiCoachUsage: 0,
+      };
+    }
+
+    // Fetch from dashboard API
+    const baseUrl = process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3003';
+
+    const response = await fetch(`${baseUrl}/api/counselor/dashboard`, {
+      cache: 'no-store',
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return data.stats || {
+        totalStudents: 0,
+        activeSchools: 0,
+        pendingReports: 0,
+        assessmentsThisWeek: 0,
+        aiCoachUsage: 0,
+      };
+    }
+
+    // Fallback to zeros if API fails
     return {
-      totalStudents: 245,
-      activeSchools: 12,
-      pendingReports: 8,
-      assessmentsThisWeek: 34,
-      aiCoachUsage: 67,
+      totalStudents: 0,
+      activeSchools: 0,
+      pendingReports: 0,
+      assessmentsThisWeek: 0,
+      aiCoachUsage: 0,
     };
   } catch (error) {
     console.error("Error fetching counselor stats:", error);

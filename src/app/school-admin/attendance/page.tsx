@@ -20,7 +20,6 @@ import { db } from "@/lib/db";
 
 // Force dynamic rendering - this page requires database access
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
 export default async function SchoolAdminAttendancePage({
   searchParams,
