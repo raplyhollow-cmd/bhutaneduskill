@@ -31,9 +31,9 @@ export {
 export {
   inventoryItems,
   inventoryCategories,
-  inventoryVendors as vendors,
+  inventoryVendors, // CHANGED: was "inventoryVendors as vendors" - actual DB table is inventory_vendors
   purchaseOrders,
-  inventoryTransactions as stockMovements,
+  inventoryTransactions, // CHANGED: was "inventoryTransactions as stockMovements" - actual DB table is inventory_transactions
 } from "./inventory-schema";
 
 // ============================================================================
@@ -69,7 +69,8 @@ export const users = pgTable("users", {
   enrollmentDate: text("enrollment_date").notNull(),
   lastLogin: text("last_login").notNull(),
   employeeId: text("employee_id"),
-  subjects: json("subjects").$type<string[]>(),
+  // subjects: json("subjects").$type<string[]>(), // REMOVED: DB has text type, not json
+  subjects: text("subjects"), // Database has text type
   tenantId: text("tenant_id").references(() => tenants.id),
   emailVerified: boolean("email_verified").default(false),
   onboardingComplete: boolean("onboarding_complete").default(false),
@@ -78,6 +79,11 @@ export const users = pgTable("users", {
   parentId: text("parent_id").references(() => users.id),
   isActive: boolean("is_active").default(true),
   department: text("department"), // For teachers
+  // Additional profile fields (optional)
+  school: text("school"), // School name (free text field)
+  interests: json("interests").$type<string[]>(), // Array of interests
+  goals: text("goals"), // Career/education goals
+  settings: json("settings").$type<Record<string, any>>(), // User settings including bio
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
@@ -121,7 +127,7 @@ export const schools = pgTable("schools", {
   contactPhone: text("contact_phone"),
   tenantId: text("tenant_id").references(() => tenants.id),
   districtId: text("district_id").references(() => districts.id),
-  domain: text("domain"), // Custom domain for school
+  // domain: text("domain"), // REMOVED: Not in actual database
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
@@ -504,9 +510,10 @@ export const homework = pgTable("homework", {
     type: string;
     url: string;
   }>>(),
-  authorId: text("author_id").references(() => users.id),
-  authorName: text("author_name"),
-  authorRole: text("author_role"), // "teacher" | "school_admin"
+  // REMOVED: author_id, author_name, author_role - not in actual database
+  // authorId: text("author_id").references(() => users.id),
+  // authorName: text("author_name"),
+  // authorRole: text("author_role"), // "teacher" | "school_admin"
   isPublished: boolean("is_published").default(false),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),

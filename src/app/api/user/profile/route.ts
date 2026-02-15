@@ -18,9 +18,16 @@ export async function GET(req: NextRequest) {
       where: (users, { eq }) => eq(users.clerkUserId, userId),
     });
 
-    return NextResponse.json({ profile: userProfile });
+    // Transform the profile to include bio from settings and grade display name
+    const transformedProfile = userProfile ? {
+      ...userProfile,
+      bio: (userProfile as any).settings?.bio || "",
+      grade: (userProfile as any).classGrade ? `Class ${(userProfile as any).classGrade}` : "",
+    } : null;
+
+    return NextResponse.json({ profile: transformedProfile });
   } catch (error) {
-    console.error("Error fetching profile:", error);
+    console.error("[Profile API] Error fetching profile:", error);
     return NextResponse.json(
       { error: "Failed to fetch profile" },
       { status: 500 }
@@ -34,10 +41,13 @@ export async function POST(req: NextRequest) {
     const { userId } = await auth();
 
     if (!userId) {
+      console.error("[Profile API] Unauthorized: No userId");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await req.json();
+    console.log("[Profile API] Updating profile for userId:", userId, "Body:", body);
+
     const {
       firstName,
       lastName,
@@ -56,54 +66,102 @@ export async function POST(req: NextRequest) {
     });
 
     if (existingUser) {
-      // Update existing user
+      console.log("[Profile API] Updating existing user:", existingUser.id);
+
+      // Build update object with only the fields that exist in schema
+      const updateData: any = {
+        updatedAt: new Date(),
+      };
+
+      // Only update fields that are provided and exist in schema
+      if (firstName !== undefined) updateData.firstName = firstName;
+      if (lastName !== undefined) updateData.lastName = lastName;
+      if (email !== undefined) updateData.email = email;
+      if (dateOfBirth !== undefined) updateData.dateOfBirth = dateOfBirth;
+      if (grade !== undefined) {
+        const gradeNum = parseInt(grade.replace("Class ", ""));
+        if (!isNaN(gradeNum)) updateData.classGrade = gradeNum;
+      }
+      if (school !== undefined) updateData.school = school;
+      if (interests !== undefined) updateData.interests = interests;
+      if (goals !== undefined) updateData.goals = goals;
+      if (bio !== undefined) {
+        const currentSettings = (existingUser as any).settings || {};
+        updateData.settings = { ...currentSettings, bio };
+      }
+
+      console.log("[Profile API] Update data:", updateData);
+
       await db
         .update(users)
-        .set({
-          firstName,
-          lastName,
-          email,
-          dateOfBirth,
-          classGrade: grade ? parseInt(grade.replace("Class ", "")) : null,
-          school,
-          interests,
-          goals,
-          settings: { bio },
-          updatedAt: new Date(),
-        })
+        .set(updateData)
         .where(eq(users.id, existingUser.id));
 
-      return NextResponse.json({ success: true, profile: { ...existingUser, ...body } });
+      return NextResponse.json({
+        success: true,
+        profile: { ...existingUser, ...body }
+      });
     } else {
-      // Create new user
+      console.log("[Profile API] Creating new user for userId:", userId);
+
+      // Create new user with minimum required fields
+      const newUserData: any = {
+        id: `user-${Date.now()}`,
+        clerkUserId: userId,
+        type: "student",
+        role: "student",
+        name: `${firstName || ""} ${lastName || ""}`.trim() || "Student",
+        firstName: firstName || "",
+        lastName: lastName || "",
+        email: email || "",
+        phone: "",           // Required but empty for now
+        profileImage: "",    // Required but empty for now
+        gender: "",          // Required but empty for now
+        section: "",         // Required but empty for now
+        rollNumber: "",      // Required but empty for now
+        address: "",         // Required but empty for now
+        city: "",            // Required but empty for now
+        state: "",           // Required but empty for now
+        postalCode: "",      // Required but empty for now
+        country: "Bhutan",   // Required with default
+        parentContact: "",   // Required but empty for now
+        parentPhone: "",     // Required but empty for now
+        emergencyContact: "", // Required but empty for now
+        bloodGroup: "",      // Required but empty for now
+        enrollmentDate: new Date().toISOString(),
+        lastLogin: new Date().toISOString(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        // Optional fields
+        school: school || "",
+        interests: interests || [],
+        goals: goals || "",
+        settings: bio ? { bio } : {},
+      };
+
+      // Add optional fields if provided
+      if (dateOfBirth) newUserData.dateOfBirth = dateOfBirth;
+      if (grade) {
+        const gradeNum = parseInt(grade.replace("Class ", ""));
+        if (!isNaN(gradeNum)) newUserData.classGrade = gradeNum;
+      }
+
+      console.log("[Profile API] Creating user with data:", newUserData);
+
       const result = await db
         .insert(users)
-        .values({
-          id: `user-${Date.now()}`,
-          tenantId: "default",
-          clerkUserId: userId,
-          type: "student",
-          firstName,
-          lastName,
-          email,
-          dateOfBirth,
-          classGrade: grade ? parseInt(grade.replace("Class ", "")) : null,
-          school,
-          interests,
-          goals,
-          settings: { bio },
-          emailVerified: true,
-          createdAt: new Date(),
-        })
+        .values(newUserData)
         .returning();
 
       const newUser = Array.isArray(result) ? result[0] : result;
+      console.log("[Profile API] User created successfully:", newUser.id);
+
       return NextResponse.json({ success: true, profile: newUser });
     }
   } catch (error) {
-    console.error("Error saving profile:", error);
+    console.error("[Profile API] Error saving profile:", error);
     return NextResponse.json(
-      { error: "Failed to save profile" },
+      { error: "Failed to save profile", details: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 }
     );
   }

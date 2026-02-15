@@ -280,9 +280,10 @@ async function seedDatabase() {
       passingScore: 40,
       questions: [],
       attachments: [],
-      authorId: teacherUserId,
-      authorName: `${DEMO_USERS.teacher.firstName} ${DEMO_USERS.teacher.lastName}`,
-      authorRole: "teacher",
+      // REMOVED: authorId, authorName, authorRole - not in actual database
+      // authorId: teacherUserId,
+      // authorName: `${DEMO_USERS.teacher.firstName} ${DEMO_USERS.teacher.lastName}`,
+      // authorRole: "teacher",
       isPublished: hw.isPublished,
       isActive: true,
       createdAt: new Date(),

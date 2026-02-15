@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, code, domain, address, contactEmail, contactPhone } = body;
+    const { name, code, address, contactEmail, contactPhone } = body;
 
     const currentUser = await db.query.users.findFirst({
       where: eq(users.clerkUserId, userId),
@@ -112,7 +112,6 @@ export async function POST(request: NextRequest) {
         level: "middle",
         contactEmail,
         contactPhone,
-        domain,
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
