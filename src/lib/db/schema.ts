@@ -87,7 +87,6 @@ export const users = pgTable("users", {
   tenantId: text("tenant_id").references(() => tenants.id),
   emailVerified: boolean("email_verified").default(false),
   onboardingComplete: boolean("onboarding_complete").default(false),
-  clerkId: text("clerk_id").unique(),
   classGrade: integer("class_grade"),
   parentId: text("parent_id").references(() => users.id),
   isActive: boolean("is_active").default(true),

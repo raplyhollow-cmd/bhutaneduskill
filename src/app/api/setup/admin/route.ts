@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { users, tenants, wizardProgress } from "@/lib/db/schema";
+import { userRoles } from "@/lib/db/rbac-schema";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { neon } from "@neondatabase/serverless";
+
+const sql = neon(process.env.DATABASE_URL!);
 
 export async function POST(request: NextRequest) {
   try {
@@ -72,7 +76,7 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // Create the user
+      // Create user
       await db.insert(users).values({
         id: newUserId,
         clerkUserId: user.id,
@@ -114,6 +118,22 @@ export async function POST(request: NextRequest) {
         ...(data.admin?.adminEmail && { email: data.admin.adminEmail }),
         ...(data.admin?.adminPhone && { phone: data.admin.adminPhone }),
       });
+
+      // Assign platform-admin role in RBAC system
+      const platformAdminRole = await sql`
+        SELECT id FROM roles WHERE slug = 'platform-admin' LIMIT 1
+      `;
+
+      if (platformAdminRole.length > 0) {
+        await db.insert(userRoles).values({
+          id: nanoid(),
+          userId: newUserId,
+          roleId: platformAdminRole[0].id,
+          assignedBy: newUserId, // Self-assigned
+          createdAt: new Date(),
+        });
+        console.log("[Admin Setup] Assigned platform-admin role to user:", newUserId);
+      }
 
       dbUser = (await db.select().from(users).where(eq(users.id, newUserId)).limit(1))[0];
 

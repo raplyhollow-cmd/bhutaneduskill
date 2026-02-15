@@ -19,14 +19,14 @@ export default async function SetupPage() {
       onboardingComplete: users.onboardingComplete,
     })
     .from(users)
-    .where(eq(users.clerkId, user.id))
+    .where(eq(users.clerkUserId, user.id))
     .limit(1);
 
   const userData = userRecord[0];
 
   // If user not found in database, they need to complete registration first
   if (!userData) {
-    redirect("/dashboard");
+    redirect("/setup/unified");
   }
 
   // If onboarding is complete, redirect to their dashboard
