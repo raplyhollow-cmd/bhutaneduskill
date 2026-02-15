@@ -44,7 +44,7 @@ export default async function SetupPage() {
       case "admin":
         redirect("/admin");
       default:
-        redirect("/dashboard");
+        redirect("/");
     }
   }
 

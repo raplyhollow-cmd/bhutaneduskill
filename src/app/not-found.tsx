@@ -45,10 +45,10 @@ export function NotFoundWithLinks() {
               Go Home
             </Link>
             <Link
-              href="/dashboard"
+              href="/"
               className="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
             >
-              Dashboard
+              Home
             </Link>
           </div>
         </div>

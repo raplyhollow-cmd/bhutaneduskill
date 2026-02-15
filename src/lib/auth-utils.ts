@@ -249,6 +249,9 @@ export const ROUTE_PATTERNS: Record<string, {
   '/school-admin': {
     allowedRoles: ['admin', 'counselor'],
   },
+  '/ministry': {
+    allowedRoles: ['ministry'],
+  },
   '/api/teacher': {
     allowedRoles: ['teacher', 'admin'],
   },
@@ -260,6 +263,9 @@ export const ROUTE_PATTERNS: Record<string, {
   },
   '/api/admin': {
     allowedRoles: ['admin'],
+  },
+  '/api/ministry': {
+    allowedRoles: ['ministry', 'admin'],
   },
 };
 
@@ -297,9 +303,11 @@ export function getDashboardForRole(role: string): string {
     parent: '/parent/dashboard',
     counselor: '/counselor/dashboard',
     admin: '/admin/dashboard',
+    'school-admin': '/school-admin/dashboard',
+    ministry: '/ministry',
   };
 
-  return dashboards[role] || '/dashboard';
+  return dashboards[role] || '/';
 }
 
 /**
@@ -462,7 +470,7 @@ export async function requireAuth(allowedRoles?: string[]): Promise<
     return { error: "Forbidden", status: 403 };
   }
 
-  return { user, userId };
+  return { user, userId: user.id };
 }
 
 /**

@@ -426,7 +426,7 @@ export default function FAQPage() {
                 description: "Discover your strengths and explore career paths",
                 icon: GraduationCap,
                 color: "from-green-500 to-teal-500",
-                href: "/dashboard",
+                href: "/dashboard/assessment",
               },
               {
                 title: "For Schools",

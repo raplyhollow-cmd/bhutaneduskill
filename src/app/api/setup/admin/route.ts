@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { users, tenants, wizardProgress } from "@/lib/db/schema";
-import { userRoles } from "@/lib/db/rbac-schema";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { neon } from "@neondatabase/serverless";
@@ -125,13 +124,10 @@ export async function POST(request: NextRequest) {
       `;
 
       if (platformAdminRole.length > 0) {
-        await db.insert(userRoles).values({
-          id: nanoid(),
-          userId: newUserId,
-          roleId: platformAdminRole[0].id,
-          assignedBy: newUserId, // Self-assigned
-          createdAt: new Date(),
-        });
+        await sql`
+          INSERT INTO user_roles (id, user_id, role_id, assigned_by, created_at)
+          VALUES (${nanoid()}, ${newUserId}, ${platformAdminRole[0].id}, ${newUserId}, NOW())
+        `;
         console.log("[Admin Setup] Assigned platform-admin role to user:", newUserId);
       }
 

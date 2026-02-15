@@ -13,6 +13,7 @@ const isProtectedRoute = createRouteMatcher([
   "/counselor(.*)",
   "/admin(.*)",
   "/school-admin(.*)",
+  "/ministry(.*)",
   "/portal(.*)",
 ]);
 

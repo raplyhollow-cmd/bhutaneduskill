@@ -5,6 +5,10 @@
  * View and manage all users across all schools.
  */
 
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,12 +34,9 @@ import {
   XCircle,
   Clock,
   ChevronDown,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
-import { db } from "@/lib/db";
-import { users, schools, tenants } from "@/lib/db/schema";
-import { desc, eq, sql, like, or, and } from "drizzle-orm";
-import { redirect } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
 
 // User type icons and colors
 const userTypeInfo = {
@@ -44,6 +45,7 @@ const userTypeInfo = {
   parent: { icon: UserCircle, color: "text-gray-600", bgColor: "bg-gray-100" },
   admin: { icon: Shield, color: "text-pink-600", bgColor: "bg-pink-100" },
   counselor: { icon: UserCheck, color: "text-purple-600", bgColor: "bg-purple-100" },
+  school_admin: { icon: Shield, color: "text-violet-600", bgColor: "bg-violet-100" },
 };
 
 // Status badges
@@ -53,112 +55,218 @@ const statusBadges = {
   pending: { label: "Pending", color: "bg-yellow-50 text-yellow-700 border-yellow-200", icon: Clock },
 };
 
-async function getUserStats() {
-  const [studentCount, teacherCount, parentCount, adminCount, counselorCount] =
-    await Promise.all([
-      db.select({ count: sql<number>`count(*)` }).from(users).where(eq(users.type, "student")),
-      db.select({ count: sql<number>`count(*)` }).from(users).where(eq(users.type, "teacher")),
-      db.select({ count: sql<number>`count(*)` }).from(users).where(eq(users.type, "parent")),
-      db.select({ count: sql<number>`count(*)` }).from(users).where(eq(users.type, "admin")),
-      db.select({ count: sql<number>`count(*)` }).from(users).where(eq(users.type, "counselor")),
-    ]);
+interface User {
+  id: string;
+  clerkUserId: string;
+  type: string;
+  role: string;
+  name: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  schoolId?: string | null;
+  tenantId?: string | null;
+  isActive: boolean;
+  emailVerified: boolean;
+  onboardingComplete: boolean;
+  lastLogin?: string | null;
+  createdAt: string;
+  school?: {
+    id: string;
+    name: string;
+    code: string;
+  } | null;
+  tenant?: {
+    id: string;
+    name: string;
+    slug: string;
+  } | null;
+}
 
-  return {
-    students: Number(studentCount[0]?.count) || 0,
-    teachers: Number(teacherCount[0]?.count) || 0,
-    parents: Number(parentCount[0]?.count) || 0,
-    admins: Number(adminCount[0]?.count) || 0,
-    counselors: Number(counselorCount[0]?.count) || 0,
-    total:
-      (Number(studentCount[0]?.count) || 0) +
-      (Number(teacherCount[0]?.count) || 0) +
-      (Number(parentCount[0]?.count) || 0) +
-      (Number(adminCount[0]?.count) || 0) +
-      (Number(counselorCount[0]?.count) || 0),
+interface UserStats {
+  total: number;
+  students: number;
+  teachers: number;
+  parents: number;
+  admins: number;
+  counselors: number;
+}
+
+interface PaginatedResponse {
+  data: User[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
   };
 }
 
-async function getAllUsers(limit = 50, offset = 0) {
-  return await db
-    .select({
-      id: users.id,
-      firstName: users.firstName,
-      lastName: users.lastName,
-      email: users.email,
-      phone: users.phone,
-      type: users.type,
-      schoolId: users.schoolId,
-      tenantId: users.tenantId,
-      clerkUserId: users.clerkUserId,
-      emailVerified: users.emailVerified,
-      createdAt: users.createdAt,
-      lastLoginAt: users.lastLoginAt,
-      schoolName: schools.name,
-      schoolCode: schools.code,
-      tenantName: tenants.name,
-    })
-    .from(users)
-    .leftJoin(schools, eq(users.schoolId, schools.id))
-    .leftJoin(tenants, eq(users.tenantId, tenants.id))
-    .orderBy(desc(users.createdAt))
-    .limit(limit)
-    .offset(offset);
-}
+export default function AdminUsersPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-export default async function AdminUsersPage({
-  searchParams,
-}: {
-  searchParams: { role?: string; school?: string; status?: string; search?: string };
-}) {
-  const { userId } = await auth();
+  // State
+  const [users, setUsers] = useState<User[]>([]);
+  const [stats, setStats] = useState<UserStats>({
+    total: 0,
+    students: 0,
+    teachers: 0,
+    parents: 0,
+    admins: 0,
+    counselors: 0,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [isToggling, setIsToggling] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  if (!userId) {
-    redirect("/sign-in");
-  }
+  // Pagination state
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 1,
+  });
 
-  // Get filter values
-  const roleFilter = searchParams.role || "all";
-  const statusFilter = searchParams.status || "all";
-  const searchQuery = searchParams.search || "";
+  // Filter states
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
+  const [roleFilter, setRoleFilter] = useState(searchParams.get("role") || "all");
+  const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "all");
 
-  // Get user stats
-  const stats = await getUserStats();
+  // Fetch users
+  const fetchUsers = async () => {
+    setIsLoading(true);
+    setError(null);
 
-  // Get users with potential filters
-  let allUsers = await getAllUsers(100);
+    try {
+      const params = new URLSearchParams({
+        page: pagination.page.toString(),
+        limit: pagination.limit.toString(),
+      });
 
-  // Apply client-side filtering for search (in production, this would be server-side)
-  if (searchQuery) {
-    allUsers = allUsers.filter(
-      (user) =>
-        user.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.lastName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.email?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }
+      if (searchQuery) params.set("search", searchQuery);
+      if (roleFilter !== "all") params.set("role", roleFilter);
+      if (statusFilter !== "all") params.set("status", statusFilter);
 
-  if (roleFilter !== "all") {
-    allUsers = allUsers.filter((user) => user.type === roleFilter);
-  }
+      const response = await fetch(`/api/admin/users?${params.toString()}`);
 
-  // Status filtering based on emailVerified and lastLogin
-  if (statusFilter === "active") {
-    allUsers = allUsers.filter((user) => user.emailVerified);
-  } else if (statusFilter === "pending") {
-    allUsers = allUsers.filter((user) => !user.emailVerified);
-  } else if (statusFilter === "inactive") {
-    allUsers = allUsers.filter((user) => !user.lastLoginAt && user.emailVerified);
-  }
+      if (!response.ok) {
+        throw new Error("Failed to fetch users");
+      }
 
-  // Get unique schools for filter dropdown
-  const uniqueSchools = Array.from(
-    new Map(allUsers.filter((u) => u.schoolName).map((u) => [u.schoolId, u])).values()
-  );
+      const data: PaginatedResponse = await response.json();
+      setUsers(data.data || []);
+      setPagination(data.pagination);
 
-  // Get unique tenants for filter dropdown
-  const uniqueTenants = Array.from(
-    new Map(allUsers.filter((u) => u.tenantName).map((u) => [u.tenantId, u])).values()
-  );
+      // Calculate stats from the data
+      const statsData: UserStats = {
+        total: data.pagination.total,
+        students: data.data.filter((u) => u.type === "student").length,
+        teachers: data.data.filter((u) => u.type === "teacher").length,
+        parents: data.data.filter((u) => u.type === "parent").length,
+        admins: data.data.filter((u) => u.type === "admin").length,
+        counselors: data.data.filter((u) => u.type === "counselor").length,
+      };
+      setStats(statsData);
+    } catch (err) {
+      console.error("Failed to fetch users:", err);
+      setError("Failed to load users. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Initial fetch and when filters/pagination change
+  useEffect(() => {
+    fetchUsers();
+  }, [pagination.page]);
+
+  // Handle search (debounced)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPagination((prev) => ({ ...prev, page: 1 }));
+      fetchUsers();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery, roleFilter, statusFilter]);
+
+  // Toggle user active status
+  const toggleUserStatus = async (userId: string, currentStatus: boolean) => {
+    setIsToggling(userId);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: !currentStatus }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update user status");
+      }
+
+      // Refresh the users list
+      await fetchUsers();
+    } catch (err) {
+      console.error("Failed to toggle user status:", err);
+      setError("Failed to update user status. Please try again.");
+    } finally {
+      setIsToggling(null);
+    }
+  };
+
+  // Delete user
+  const deleteUser = async (userId: string) => {
+    if (!confirm("Are you sure you want to delete this user? This action cannot be undone.")) {
+      return;
+    }
+
+    setIsDeleting(userId);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete user");
+      }
+
+      // Refresh the users list
+      await fetchUsers();
+    } catch (err) {
+      console.error("Failed to delete user:", err);
+      setError("Failed to delete user. Please try again.");
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  // Apply filters
+  const applyFilters = () => {
+    setPagination((prev) => ({ ...prev, page: 1 }));
+    fetchUsers();
+  };
+
+  // Clear filters
+  const clearFilters = () => {
+    setSearchQuery("");
+    setRoleFilter("all");
+    setStatusFilter("all");
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  };
+
+  // Get user status
+  const getUserStatus = (user: User) => {
+    if (!user.emailVerified) return "pending";
+    if (user.isActive && user.lastLogin) return "active";
+    if (user.isActive && !user.lastLogin) return "pending";
+    return "inactive";
+  };
 
   return (
     <div className="space-y-8">
@@ -169,19 +277,31 @@ export default async function AdminUsersPage({
           <p className="text-gray-600">View and manage all users across the platform</p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline">
+          <Button variant="outline" onClick={fetchUsers} disabled={isLoading}>
             <Filter className="w-4 h-4 mr-2" />
-            Advanced Filters
+            Refresh
           </Button>
           <Button
             style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
             className="text-white"
+            onClick={() => router.push("/admin/users?action=create")}
           >
             <Shield className="w-4 h-4 mr-2" />
             Add User
           </Button>
         </div>
       </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-3">
+          <AlertCircle className="w-5 h-5" />
+          <span>{error}</span>
+          <Button variant="ghost" size="sm" onClick={() => setError(null)} className="ml-auto">
+            <XCircle className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
 
       {/* Stats Overview */}
       <div className="grid grid-cols-2 lg:grid-cols-6 gap-6">
@@ -193,7 +313,7 @@ export default async function AdminUsersPage({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-gray-900">{stats.total}</div>
+            <div className="text-3xl font-bold text-gray-900">{isLoading ? "-" : stats.total}</div>
             <p className="text-xs text-gray-500 mt-1">All user types</p>
           </CardContent>
         </Card>
@@ -206,9 +326,9 @@ export default async function AdminUsersPage({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-orange-600">{stats.students}</div>
+            <div className="text-3xl font-bold text-orange-600">{isLoading ? "-" : stats.students}</div>
             <p className="text-xs text-gray-500 mt-1">
-              {((stats.students / stats.total) * 100).toFixed(1)}% of total
+              {stats.total > 0 ? ((stats.students / stats.total) * 100).toFixed(1) : 0}% of total
             </p>
           </CardContent>
         </Card>
@@ -221,9 +341,9 @@ export default async function AdminUsersPage({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-600">{stats.teachers}</div>
+            <div className="text-3xl font-bold text-blue-600">{isLoading ? "-" : stats.teachers}</div>
             <p className="text-xs text-gray-500 mt-1">
-              {((stats.teachers / stats.total) * 100).toFixed(1)}% of total
+              {stats.total > 0 ? ((stats.teachers / stats.total) * 100).toFixed(1) : 0}% of total
             </p>
           </CardContent>
         </Card>
@@ -236,9 +356,9 @@ export default async function AdminUsersPage({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-gray-600">{stats.parents}</div>
+            <div className="text-3xl font-bold text-gray-600">{isLoading ? "-" : stats.parents}</div>
             <p className="text-xs text-gray-500 mt-1">
-              {((stats.parents / stats.total) * 100).toFixed(1)}% of total
+              {stats.total > 0 ? ((stats.parents / stats.total) * 100).toFixed(1) : 0}% of total
             </p>
           </CardContent>
         </Card>
@@ -251,9 +371,9 @@ export default async function AdminUsersPage({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-pink-600">{stats.admins}</div>
+            <div className="text-3xl font-bold text-pink-600">{isLoading ? "-" : stats.admins}</div>
             <p className="text-xs text-gray-500 mt-1">
-              {((stats.admins / stats.total) * 100).toFixed(1)}% of total
+              {stats.total > 0 ? ((stats.admins / stats.total) * 100).toFixed(1) : 0}% of total
             </p>
           </CardContent>
         </Card>
@@ -266,9 +386,9 @@ export default async function AdminUsersPage({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-purple-600">{stats.counselors}</div>
+            <div className="text-3xl font-bold text-purple-600">{isLoading ? "-" : stats.counselors}</div>
             <p className="text-xs text-gray-500 mt-1">
-              {((stats.counselors / stats.total) * 100).toFixed(1)}% of total
+              {stats.total > 0 ? ((stats.counselors / stats.total) * 100).toFixed(1) : 0}% of total
             </p>
           </CardContent>
         </Card>
@@ -283,9 +403,9 @@ export default async function AdminUsersPage({
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
-                name="search"
                 placeholder="Search by name, email..."
-                defaultValue={searchQuery}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 outline-none"
               />
             </div>
@@ -293,8 +413,8 @@ export default async function AdminUsersPage({
             {/* Role Filter */}
             <div className="relative">
               <select
-                name="role"
-                defaultValue={roleFilter}
+                value={roleFilter}
+                onChange={(e) => setRoleFilter(e.target.value)}
                 className="appearance-none px-4 py-3 pr-10 rounded-lg border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 outline-none bg-white"
               >
                 <option value="all">All Roles</option>
@@ -303,6 +423,7 @@ export default async function AdminUsersPage({
                 <option value="parent">Parents</option>
                 <option value="admin">Admins</option>
                 <option value="counselor">Counselors</option>
+                <option value="school_admin">School Admins</option>
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
             </div>
@@ -310,8 +431,8 @@ export default async function AdminUsersPage({
             {/* Status Filter */}
             <div className="relative">
               <select
-                name="status"
-                defaultValue={statusFilter}
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
                 className="appearance-none px-4 py-3 pr-10 rounded-lg border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 outline-none bg-white"
               >
                 <option value="all">All Status</option>
@@ -322,8 +443,9 @@ export default async function AdminUsersPage({
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
             </div>
 
-            {/* Apply Filter Button */}
+            {/* Apply Filters Button */}
             <Button
+              onClick={applyFilters}
               style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
               className="text-white"
             >
@@ -340,30 +462,36 @@ export default async function AdminUsersPage({
           {roleFilter !== "all" && (
             <Badge
               variant="outline"
-              className="px-3 py-1"
+              className="px-3 py-1 cursor-pointer hover:bg-gray-100"
               style={{ borderColor: "rgb(236 72 153)", color: "rgb(219 39 119)" }}
+              onClick={() => setRoleFilter("all")}
             >
-              Role: {roleFilter}
+              Role: {roleFilter} <XCircle className="w-3 h-3 ml-1" />
             </Badge>
           )}
           {statusFilter !== "all" && (
             <Badge
               variant="outline"
-              className="px-3 py-1"
+              className="px-3 py-1 cursor-pointer hover:bg-gray-100"
               style={{ borderColor: "rgb(236 72 153)", color: "rgb(219 39 119)" }}
+              onClick={() => setStatusFilter("all")}
             >
-              Status: {statusFilter}
+              Status: {statusFilter} <XCircle className="w-3 h-3 ml-1" />
             </Badge>
           )}
           {searchQuery && (
             <Badge
               variant="outline"
-              className="px-3 py-1"
+              className="px-3 py-1 cursor-pointer hover:bg-gray-100"
               style={{ borderColor: "rgb(236 72 153)", color: "rgb(219 39 119)" }}
+              onClick={() => setSearchQuery("")}
             >
-              Search: "{searchQuery}"
+              Search: "{searchQuery}" <XCircle className="w-3 h-3 ml-1" />
             </Badge>
           )}
+          <Button variant="ghost" size="sm" onClick={clearFilters} className="ml-2">
+            Clear All
+          </Button>
         </div>
       )}
 
@@ -374,230 +502,251 @@ export default async function AdminUsersPage({
             <div>
               <CardTitle>All Users</CardTitle>
               <CardDescription>
-                Showing {allUsers.length} of {stats.total} users
+                Showing {users.length} of {pagination.total} users
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm">
-                <Filter className="w-4 h-4 mr-2" />
-                Sort
-              </Button>
-              <Button variant="outline" size="sm">
-                Download CSV
+              <Button variant="outline" size="sm" onClick={fetchUsers} disabled={isLoading}>
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Filter className="w-4 h-4 mr-2" />}
+                Refresh
               </Button>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">User</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Role</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">School/Tenant</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Contact</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Joined</th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-600 text-sm">Status</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600 text-sm">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {allUsers.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="text-center py-12">
-                      <div className="flex flex-col items-center gap-4">
-                        <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
-                          <Users className="w-8 h-8 text-gray-400" />
-                        </div>
-                        <div>
-                          <p className="text-gray-900 font-medium">No users found</p>
-                          <p className="text-gray-500 text-sm">Try adjusting your filters</p>
-                        </div>
-                      </div>
-                    </td>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+              <p className="ml-3 text-gray-600">Loading users...</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">User</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Role</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">School/Tenant</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Contact</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Joined</th>
+                    <th className="text-center py-3 px-4 font-medium text-gray-600 text-sm">Status</th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-600 text-sm">Actions</th>
                   </tr>
-                ) : (
-                  allUsers.map((user) => {
-                    const typeInfo = userTypeInfo[user.type as keyof typeof userTypeInfo];
-                    const UserIcon = typeInfo?.icon || UserCircle;
-                    const isVerified = user.emailVerified;
-                    const hasLoggedIn = user.lastLoginAt;
+                </thead>
+                <tbody>
+                  {users.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="text-center py-12">
+                        <div className="flex flex-col items-center gap-4">
+                          <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
+                            <Users className="w-8 h-8 text-gray-400" />
+                          </div>
+                          <div>
+                            <p className="text-gray-900 font-medium">No users found</p>
+                            <p className="text-gray-500 text-sm">Try adjusting your filters</p>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    users.map((user) => {
+                      const typeInfo = userTypeInfo[user.type as keyof typeof userTypeInfo] || userTypeInfo.student;
+                      const UserIcon = typeInfo.icon;
+                      const userStatus = getUserStatus(user);
+                      const statusBadge = statusBadges[userStatus as keyof typeof statusBadges] || statusBadges.pending;
 
-                    return (
-                      <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-4 px-4">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold ${typeInfo?.bgColor}`}
-                              style={{ color: typeInfo?.color.replace("text-", "") }}
+                      return (
+                        <tr key={user.id} className="border-b border-gray-100 hover:bg-gray-50">
+                          <td className="py-4 px-4">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold ${typeInfo.bgColor}`}
+                                style={{ color: typeInfo.color.replace("text-", "") }}
+                              >
+                                {user.firstName?.[0]}
+                                {user.lastName?.[0]}
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-900">
+                                  {user.firstName} {user.lastName}
+                                </p>
+                                <p className="text-sm text-gray-500">{user.email || "No email"}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-4 px-4">
+                            <Badge
+                              variant="outline"
+                              className={`${typeInfo.bgColor} ${typeInfo.color} border-0 text-xs`}
                             >
-                              {user.firstName?.[0]}
-                              {user.lastName?.[0]}
+                              <UserIcon className="w-3 h-3 mr-1" />
+                              {user.type}
+                            </Badge>
+                          </td>
+                          <td className="py-4 px-4">
+                            <div className="space-y-1">
+                              {user.school?.name && (
+                                <div className="flex items-center gap-1 text-sm text-gray-900">
+                                  <Building2 className="w-3 h-3 text-gray-400" />
+                                  {user.school.name}
+                                </div>
+                              )}
+                              {user.tenant?.name && user.tenant.name !== user.school?.name && (
+                                <p className="text-xs text-gray-500">{user.tenant.name}</p>
+                              )}
                             </div>
-                            <div>
-                              <p className="font-medium text-gray-900">
-                                {user.firstName} {user.lastName}
-                              </p>
-                              <p className="text-sm text-gray-500">{user.email || "No email"}</p>
+                          </td>
+                          <td className="py-4 px-4">
+                            <div className="space-y-1">
+                              {user.email && (
+                                <div className="flex items-center gap-1 text-sm text-gray-600">
+                                  <Mail className="w-3 h-3 text-gray-400" />
+                                  {user.email}
+                                </div>
+                              )}
+                              {user.phone && (
+                                <div className="flex items-center gap-1 text-sm text-gray-600">
+                                  <Calendar className="w-3 h-3 text-gray-400" />
+                                  {user.phone}
+                                </div>
+                              )}
                             </div>
-                          </div>
-                        </td>
-                        <td className="py-4 px-4">
-                          <Badge
-                            variant="outline"
-                            className={`${typeInfo?.bgColor} ${typeInfo?.color} border-0 text-xs`}
-                          >
-                            <UserIcon className="w-3 h-3 mr-1" />
-                            {user.type}
-                          </Badge>
-                        </td>
-                        <td className="py-4 px-4">
-                          <div className="space-y-1">
-                            {user.schoolName && (
-                              <div className="flex items-center gap-1 text-sm text-gray-900">
-                                <Building2 className="w-3 h-3 text-gray-400" />
-                                {user.schoolName}
-                              </div>
-                            )}
-                            {user.tenantName && user.tenantName !== user.schoolName && (
-                              <p className="text-xs text-gray-500">{user.tenantName}</p>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-4 px-4">
-                          <div className="space-y-1">
-                            {user.email && (
-                              <div className="flex items-center gap-1 text-sm text-gray-600">
-                                <Mail className="w-3 h-3 text-gray-400" />
-                                {user.email}
-                              </div>
-                            )}
-                            {user.phone && (
+                          </td>
+                          <td className="py-4 px-4">
+                            <div className="space-y-1">
                               <div className="flex items-center gap-1 text-sm text-gray-600">
                                 <Calendar className="w-3 h-3 text-gray-400" />
-                                {user.phone}
+                                {user.createdAt
+                                  ? new Date(user.createdAt).toLocaleDateString()
+                                  : "N/A"}
                               </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-4 px-4">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-1 text-sm text-gray-600">
-                              <Calendar className="w-3 h-3 text-gray-400" />
-                              {user.createdAt
-                                ? new Date(user.createdAt).toLocaleDateString()
-                                : "N/A"}
-                            </div>
-                            {hasLoggedIn && (
-                              <p className="text-xs text-gray-500">
-                                Last login: {new Date(user.lastLoginAt!).toLocaleDateString()}
-                              </p>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-4 px-4 text-center">
-                          {!isVerified ? (
-                            <Badge className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs">
-                              <Clock className="w-3 h-3 mr-1" />
-                              Pending
-                            </Badge>
-                          ) : hasLoggedIn ? (
-                            <Badge className="bg-green-50 text-green-700 border-green-200 text-xs">
-                              <CheckCircle className="w-3 h-3 mr-1" />
-                              Active
-                            </Badge>
-                          ) : (
-                            <Badge className="bg-gray-50 text-gray-700 border-gray-200 text-xs">
-                              <XCircle className="w-3 h-3 mr-1" />
-                              Inactive
-                            </Badge>
-                          )}
-                        </td>
-                        <td className="py-4 px-4">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 hover:bg-pink-50 hover:text-pink-600"
-                              title="View details"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 hover:bg-pink-50 hover:text-pink-600"
-                              title="Edit user"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 hover:bg-blue-50 hover:text-blue-600"
-                              title="Reset password"
-                            >
-                              <Key className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 hover:bg-orange-50 hover:text-orange-600"
-                              title={isVerified ? "Deactivate" : "Activate"}
-                            >
-                              {isVerified ? (
-                                <UserX className="w-4 h-4" />
-                              ) : (
-                                <UserCheck className="w-4 h-4" />
+                              {user.lastLogin && (
+                                <p className="text-xs text-gray-500">
+                                  Last login: {new Date(user.lastLogin).toLocaleDateString()}
+                                </p>
                               )}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 hover:bg-red-50 hover:text-red-600"
-                              title="Delete user"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                            </div>
+                          </td>
+                          <td className="py-4 px-4 text-center">
+                            <Badge className={statusBadge.color + " text-xs"}>
+                              {statusBadge.icon && <statusBadge.icon className="w-3 h-3 mr-1" />}
+                              {statusBadge.label}
+                            </Badge>
+                          </td>
+                          <td className="py-4 px-4">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hover:bg-pink-50 hover:text-pink-600"
+                                title="View details"
+                                onClick={() => router.push(`/admin/users/${user.id}`)}
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hover:bg-pink-50 hover:text-pink-600"
+                                title="Edit user"
+                                onClick={() => router.push(`/admin/users/${user.id}?action=edit`)}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hover:bg-blue-50 hover:text-blue-600"
+                                title={user.isActive ? "Deactivate" : "Activate"}
+                                onClick={() => toggleUserStatus(user.id, user.isActive)}
+                                disabled={isToggling === user.id}
+                              >
+                                {isToggling === user.id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : user.isActive ? (
+                                  <UserX className="w-4 h-4" />
+                                ) : (
+                                  <UserCheck className="w-4 h-4" />
+                                )}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hover:bg-red-50 hover:text-red-600"
+                                title="Delete user"
+                                onClick={() => deleteUser(user.id)}
+                                disabled={isDeleting === user.id}
+                              >
+                                {isDeleting === user.id ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-4 h-4" />
+                                )}
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           {/* Pagination */}
-          {allUsers.length > 0 && (
+          {users.length > 0 && (
             <div className="flex items-center justify-between mt-6 pt-6 border-t border-gray-200">
               <p className="text-sm text-gray-500">
-                Showing 1-{allUsers.length} of {stats.total} users
+                Showing {(pagination.page - 1) * pagination.limit + 1}-{Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} users
               </p>
               <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" disabled>
-                  Previous
-                </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  style={{
-                    background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)",
-                    color: "white",
-                    border: "none",
-                  }}
+                  onClick={() => setPagination((prev) => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
+                  disabled={pagination.page === 1 || isLoading}
                 >
-                  1
+                  Previous
                 </Button>
-                <Button variant="outline" size="sm">
-                  2
-                </Button>
-                <Button variant="outline" size="sm">
-                  3
-                </Button>
-                <Button variant="outline" size="sm">
+                <div className="flex items-center">
+                  {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (pagination.totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (pagination.page <= 3) {
+                      pageNum = i + 1;
+                    } else if (pagination.page >= pagination.totalPages - 2) {
+                      pageNum = pagination.totalPages - 4 + i;
+                    } else {
+                      pageNum = pagination.page - 2 + i;
+                    }
+
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={pagination.page === pageNum ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setPagination((prev) => ({ ...prev, page: pageNum }))}
+                        disabled={isLoading}
+                        className={pagination.page === pageNum ? "" : ""}
+                        style={
+                          pagination.page === pageNum
+                            ? { background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)", color: "white", border: "none" }
+                            : {}
+                        }
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPagination((prev) => ({ ...prev, page: Math.min(prev.totalPages, prev.page + 1) }))}
+                  disabled={pagination.page === pagination.totalPages || isLoading}
+                >
                   Next
                 </Button>
               </div>

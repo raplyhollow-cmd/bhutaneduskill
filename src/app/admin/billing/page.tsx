@@ -4,9 +4,19 @@
  * Manage billing, subscriptions, and payments for all schools/tenants.
  */
 
+"use client";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   CreditCard,
   DollarSign,
@@ -26,11 +36,68 @@ import {
   Plus,
   Search,
   Filter,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
-// Mock subscription plans
-const subscriptionPlans = [
+// Types
+interface SubscriptionData {
+  id: string;
+  schoolName: string;
+  schoolCode: string;
+  plan: string;
+  status: string;
+  students: number;
+  teachers: number;
+  renewalDate: string;
+  totalPaid: number;
+  isTrial: boolean;
+  trialEndDate?: string;
+  autoRenew: boolean;
+  price: number;
+  currency: string;
+  billingCycle: string;
+}
+
+interface InvoiceData {
+  id: string;
+  invoiceNumber: string;
+  school: string;
+  plan: string;
+  amount: number;
+  currency: string;
+  status: string;
+  dueDate: string;
+  paidDate?: string;
+  pdfUrl?: string;
+  paymentMethod?: string;
+}
+
+interface BillingStats {
+  totalRevenue: number;
+  revenueChange: number;
+  activeSubscriptions: number;
+  pendingInvoices: number;
+  overduePayments: number;
+  monthlyRecurring: number;
+}
+
+interface SubscriptionPlan {
+  id: string;
+  name: string;
+  price: number;
+  currency: string;
+  interval: string;
+  maxStudents: number;
+  maxTeachers: number;
+  features: string[];
+  popular?: boolean;
+}
+
+// Default subscription plans (fallback if API doesn't return them)
+const defaultSubscriptionPlans: SubscriptionPlan[] = [
   {
     id: "starter",
     name: "Starter",
@@ -73,8 +140,8 @@ const subscriptionPlans = [
     price: 129900,
     currency: "BTN",
     interval: "yearly",
-    maxStudents: -1, // Unlimited
-    maxTeachers: -1, // Unlimited
+    maxStudents: -1,
+    maxTeachers: -1,
     features: [
       "Everything in Professional",
       "Unlimited Students & Teachers",
@@ -88,122 +155,6 @@ const subscriptionPlans = [
   },
 ];
 
-// Mock billing data
-const billingData = {
-  totalRevenue: 4589000,
-  revenueChange: 12.5,
-  activeSubscriptions: 12,
-  pendingInvoices: 3,
-  overduePayments: 1,
-  monthlyRecurring: 382416,
-};
-
-const invoices = [
-  {
-    id: "INV-2024-001",
-    school: "Pelkhil School",
-    plan: "Professional",
-    amount: 59900,
-    currency: "BTN",
-    status: "paid",
-    dueDate: "2024-01-15",
-    paidDate: "2024-01-14",
-  },
-  {
-    id: "INV-2024-002",
-    school: "Druk School",
-    plan: "Starter",
-    amount: 29900,
-    currency: "BTN",
-    status: "paid",
-    dueDate: "2024-01-20",
-    paidDate: "2024-01-18",
-  },
-  {
-    id: "INV-2024-003",
-    school: "Yangchenphug HSS",
-    plan: "Professional",
-    amount: 59900,
-    currency: "BTN",
-    status: "pending",
-    dueDate: "2024-02-01",
-    paidDate: null,
-  },
-  {
-    id: "INV-2024-004",
-    school: "Motithang HSS",
-    plan: "Enterprise",
-    amount: 129900,
-    currency: "BTN",
-    status: "pending",
-    dueDate: "2024-02-05",
-    paidDate: null,
-  },
-  {
-    id: "INV-2024-005",
-    school: "Rinchen HSS",
-    plan: "Starter",
-    amount: 29900,
-    currency: "BTN",
-    status: "overdue",
-    dueDate: "2024-01-10",
-    paidDate: null,
-  },
-];
-
-const schoolSubscriptions = [
-  {
-    id: 1,
-    schoolName: "Pelkhil School",
-    plan: "professional",
-    status: "active",
-    students: 342,
-    teachers: 28,
-    renewalDate: "2024-12-15",
-    totalPaid: 179700,
-  },
-  {
-    id: 2,
-    schoolName: "Druk School",
-    plan: "starter",
-    status: "active",
-    students: 198,
-    teachers: 15,
-    renewalDate: "2024-11-20",
-    totalPaid: 59800,
-  },
-  {
-    id: 3,
-    schoolName: "Yangchenphug HSS",
-    plan: "professional",
-    status: "trial",
-    students: 456,
-    teachers: 35,
-    renewalDate: "2024-02-15",
-    totalPaid: 0,
-  },
-  {
-    id: 4,
-    schoolName: "Motithang HSS",
-    plan: "enterprise",
-    status: "active",
-    students: 389,
-    teachers: 42,
-    renewalDate: "2024-10-01",
-    totalPaid: 389700,
-  },
-  {
-    id: 5,
-    schoolName: "Rinchen HSS",
-    plan: "starter",
-    status: "past_due",
-    students: 267,
-    teachers: 18,
-    renewalDate: "2024-01-10",
-    totalPaid: 29900,
-  },
-];
-
 function getStatusBadge(status: string) {
   switch (status) {
     case "active":
@@ -213,7 +164,7 @@ function getStatusBadge(status: string) {
           Active
         </Badge>
       );
-    case "trial":
+    case "trialing":
       return (
         <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
           <Clock className="w-3 h-3 mr-1" />
@@ -258,10 +209,165 @@ function formatCurrency(amount: number, currency: string = "BTN") {
     style: "currency",
     currency: currency,
     minimumFractionDigits: 0,
-  }).format(amount);
+  }).format(amount / 100); // Amount is stored in cents
 }
 
 export default function AdminBillingPage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [subscriptions, setSubscriptions] = useState<SubscriptionData[]>([]);
+  const [invoices, setInvoices] = useState<InvoiceData[]>([]);
+  const [stats, setStats] = useState<BillingStats>({
+    totalRevenue: 0,
+    revenueChange: 0,
+    activeSubscriptions: 0,
+    pendingInvoices: 0,
+    overduePayments: 0,
+    monthlyRecurring: 0,
+  });
+  const [plans] = useState<SubscriptionPlan[]>(defaultSubscriptionPlans);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchBillingData();
+  }, []);
+
+  async function fetchBillingData() {
+    setLoading(true);
+    setError(null);
+
+    try {
+      // Fetch subscriptions and stats in parallel
+      const [subsResponse, invResponse] = await Promise.all([
+        fetch("/api/billing/subscriptions"),
+        fetch("/api/billing/invoices"),
+      ]);
+
+      if (!subsResponse.ok || !invResponse.ok) {
+        throw new Error("Failed to fetch billing data");
+      }
+
+      const subsData = await subsResponse.json();
+      const invData = await invResponse.json();
+
+      if (subsData.success) {
+        setSubscriptions(subsData.data || []);
+        if (subsData.stats) {
+          setStats({
+            totalRevenue: subsData.stats.totalRevenue || 0,
+            revenueChange: 12.5, // Would be calculated from historical data
+            activeSubscriptions: subsData.stats.activeSubscriptions || 0,
+            pendingInvoices: subsData.stats.pendingInvoices || 0,
+            overduePayments: subsData.stats.overduePayments || 0,
+            monthlyRecurring: subsData.stats.monthlyRecurring || 0,
+          });
+        }
+      }
+
+      if (invData.success) {
+        setInvoices(invData.data || []);
+      }
+    } catch (err: any) {
+      console.error("Error fetching billing data:", err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [generatingInvoice, setGeneratingInvoice] = useState(false);
+  const [selectedSubscription, setSelectedSubscription] = useState<string>("");
+  const [invoiceAmount, setInvoiceAmount] = useState<string>("");
+  const [invoiceNotes, setInvoiceNotes] = useState<string>("");
+
+  async function handleGenerateInvoice() {
+    setShowInvoiceModal(true);
+  }
+
+  async function handleCreateInvoice(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedSubscription || !invoiceAmount) return;
+
+    setGeneratingInvoice(true);
+    try {
+      const response = await fetch("/api/billing/invoices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subscriptionId: selectedSubscription,
+          amount: parseInt(invoiceAmount),
+          notes: invoiceNotes || undefined,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Refresh billing data
+        await fetchBillingData();
+        setShowInvoiceModal(false);
+        setSelectedSubscription("");
+        setInvoiceAmount("");
+        setInvoiceNotes("");
+        // Show success feedback
+        alert("Invoice generated successfully!");
+      } else {
+        alert(`Failed to generate invoice: ${data.error}`);
+      }
+    } catch (err) {
+      console.error("Error creating invoice:", err);
+      alert("Failed to generate invoice. Please try again.");
+    } finally {
+      setGeneratingInvoice(false);
+    }
+  }
+
+  async function handleUpdateInvoiceStatus(invoiceId: string, action: string) {
+    try {
+      const response = await fetch("/api/billing/invoices", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoiceId, action }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        fetchBillingData(); // Refresh data
+        // Show success feedback
+        alert(data.message || "Invoice updated successfully");
+      } else {
+        alert(`Failed to update invoice: ${data.error}`);
+      }
+    } catch (err) {
+      console.error("Error updating invoice:", err);
+      alert("Failed to update invoice. Please try again.");
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 animate-spin text-pink-600" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <p className="text-red-600 mb-4">{error}</p>
+          <Button onClick={fetchBillingData} variant="outline">
+            Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -282,6 +388,7 @@ export default function AdminBillingPage() {
           <Button
             style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
             className="text-white"
+            onClick={handleGenerateInvoice}
           >
             <Plus className="w-4 h-4 mr-2" />
             Create Invoice
@@ -300,10 +407,10 @@ export default function AdminBillingPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">
-              {formatCurrency(billingData.totalRevenue)}
+              {formatCurrency(stats.totalRevenue)}
             </div>
             <p className="text-xs text-green-600 mt-1">
-              <TrendingUp className="w-3 h-3 inline" /> +{billingData.revenueChange}% this year
+              <TrendingUp className="w-3 h-3 inline" /> +{stats.revenueChange}% this year
             </p>
           </CardContent>
         </Card>
@@ -317,7 +424,7 @@ export default function AdminBillingPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">
-              {billingData.activeSubscriptions}
+              {stats.activeSubscriptions}
             </div>
             <p className="text-xs text-gray-500 mt-1">Schools subscribed</p>
           </CardContent>
@@ -332,7 +439,7 @@ export default function AdminBillingPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">
-              {billingData.pendingInvoices}
+              {stats.pendingInvoices}
             </div>
             <p className="text-xs text-gray-500 mt-1">Awaiting payment</p>
           </CardContent>
@@ -347,7 +454,7 @@ export default function AdminBillingPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              {billingData.overduePayments}
+              {stats.overduePayments}
             </div>
             <p className="text-xs text-gray-500 mt-1">Requires attention</p>
           </CardContent>
@@ -362,7 +469,7 @@ export default function AdminBillingPage() {
         </CardHeader>
         <CardContent>
           <div className="grid md:grid-cols-3 gap-6">
-            {subscriptionPlans.map((plan) => (
+            {plans.map((plan) => (
               <div
                 key={plan.id}
                 className={`rounded-xl border-2 p-6 relative ${
@@ -441,7 +548,7 @@ export default function AdminBillingPage() {
             <select className="px-4 py-3 rounded-lg border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 outline-none">
               <option value="">All Statuses</option>
               <option value="active">Active</option>
-              <option value="trial">Trial</option>
+              <option value="trialing">Trial</option>
               <option value="past_due">Past Due</option>
             </select>
             <Button variant="outline">
@@ -457,103 +564,109 @@ export default function AdminBillingPage() {
         <CardHeader>
           <CardTitle>School Subscriptions</CardTitle>
           <CardDescription>
-            {schoolSubscriptions.length} schools with active subscriptions
+            {subscriptions.length} schools with active subscriptions
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">School</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Plan</th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-600 text-sm">Students</th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-600 text-sm">Teachers</th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-600 text-sm">Status</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Renewal</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600 text-sm">Total Paid</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600 text-sm">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {schoolSubscriptions.map((sub) => (
-                  <tr key={sub.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-semibold"
+          {subscriptions.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              No subscriptions found
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">School</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Plan</th>
+                    <th className="text-center py-3 px-4 font-medium text-gray-600 text-sm">Students</th>
+                    <th className="text-center py-3 px-4 font-medium text-gray-600 text-sm">Teachers</th>
+                    <th className="text-center py-3 px-4 font-medium text-gray-600 text-sm">Status</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Renewal</th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-600 text-sm">Total Paid</th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-600 text-sm">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {subscriptions.map((sub) => (
+                    <tr key={sub.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-semibold"
+                            style={{
+                              background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)",
+                            }}
+                          >
+                            {sub.schoolName.substring(0, 2).toUpperCase()}
+                          </div>
+                          <Link
+                            href={`/admin/schools/${sub.id}`}
+                            className="font-medium text-gray-900 hover:text-pink-600 transition-colors"
+                          >
+                            {sub.schoolName}
+                          </Link>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <Badge
+                          variant="outline"
+                          className="capitalize"
                           style={{
-                            background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)",
+                            borderColor: "rgb(236 72 153)",
+                            color: "rgb(219 39 119)",
                           }}
                         >
-                          {sub.schoolName.substring(0, 2).toUpperCase()}
+                          {sub.plan}
+                        </Badge>
+                      </td>
+                      <td className="py-4 px-4 text-center">
+                        <span className="inline-flex items-center gap-1 text-sm font-medium text-gray-900">
+                          <Users className="w-4 h-4 text-gray-400" />
+                          {sub.students}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className="text-sm text-gray-600">{sub.teachers}</span>
+                      </td>
+                      <td className="py-4 px-4 text-center">{getStatusBadge(sub.status)}</td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Calendar className="w-4 h-4" />
+                          {new Date(sub.renewalDate).toLocaleDateString("en-BT", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
                         </div>
-                        <Link
-                          href={`/admin/schools/${sub.id}`}
-                          className="font-medium text-gray-900 hover:text-pink-600 transition-colors"
-                        >
-                          {sub.schoolName}
-                        </Link>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <Badge
-                        variant="outline"
-                        className="capitalize"
-                        style={{
-                          borderColor: "rgb(236 72 153)",
-                          color: "rgb(219 39 119)",
-                        }}
-                      >
-                        {sub.plan}
-                      </Badge>
-                    </td>
-                    <td className="py-4 px-4 text-center">
-                      <span className="inline-flex items-center gap-1 text-sm font-medium text-gray-900">
-                        <Users className="w-4 h-4 text-gray-400" />
-                        {sub.students}
-                      </span>
-                    </td>
-                    <td className="py-4 px-4 text-center">
-                      <span className="text-sm text-gray-600">{sub.teachers}</span>
-                    </td>
-                    <td className="py-4 px-4 text-center">{getStatusBadge(sub.status)}</td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Calendar className="w-4 h-4" />
-                        {new Date(sub.renewalDate).toLocaleDateString("en-BT", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                      </div>
-                    </td>
-                    <td className="py-4 px-4 text-right font-medium text-gray-900">
-                      {formatCurrency(sub.totalPaid)}
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 hover:bg-pink-50 hover:text-pink-600"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 hover:bg-pink-50 hover:text-pink-600"
-                        >
-                          <Mail className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      </td>
+                      <td className="py-4 px-4 text-right font-medium text-gray-900">
+                        {formatCurrency(sub.totalPaid)}
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-pink-50 hover:text-pink-600"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-pink-50 hover:text-pink-600"
+                          >
+                            <Mail className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -571,83 +684,90 @@ export default function AdminBillingPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Invoice</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">School</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Plan</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Due Date</th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-600 text-sm">Status</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600 text-sm">Amount</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600 text-sm">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {invoices.map((invoice) => (
-                  <tr key={invoice.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-4 px-4">
-                      <span className="font-mono text-sm font-medium text-gray-900">
-                        {invoice.id}
-                      </span>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="w-4 h-4 text-gray-400" />
-                        <span className="text-gray-900">{invoice.school}</span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <Badge variant="outline" className="capitalize text-xs">
-                        {invoice.plan}
-                      </Badge>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Calendar className="w-4 h-4" />
-                        {new Date(invoice.dueDate).toLocaleDateString("en-BT", {
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </div>
-                    </td>
-                    <td className="py-4 px-4 text-center">{getStatusBadge(invoice.status)}</td>
-                    <td className="py-4 px-4 text-right font-semibold text-gray-900">
-                      {formatCurrency(invoice.amount, invoice.currency)}
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 hover:bg-pink-50 hover:text-pink-600"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 hover:bg-pink-50 hover:text-pink-600"
-                        >
-                          <Download className="w-4 h-4" />
-                        </Button>
-                        {invoice.status !== "paid" && (
+          {invoices.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              No invoices found
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Invoice</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">School</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Plan</th>
+                    <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Due Date</th>
+                    <th className="text-center py-3 px-4 font-medium text-gray-600 text-sm">Status</th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-600 text-sm">Amount</th>
+                    <th className="text-right py-3 px-4 font-medium text-gray-600 text-sm">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoices.map((invoice) => (
+                    <tr key={invoice.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-4 px-4">
+                        <span className="font-mono text-sm font-medium text-gray-900">
+                          {invoice.invoiceNumber}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="w-4 h-4 text-gray-400" />
+                          <span className="text-gray-900">{invoice.school}</span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <Badge variant="outline" className="capitalize text-xs">
+                          {invoice.plan}
+                        </Badge>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Calendar className="w-4 h-4" />
+                          {new Date(invoice.dueDate).toLocaleDateString("en-BT", {
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 text-center">{getStatusBadge(invoice.status)}</td>
+                      <td className="py-4 px-4 text-right font-semibold text-gray-900">
+                        {formatCurrency(invoice.amount, invoice.currency)}
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center justify-end gap-2">
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 hover:bg-pink-50 hover:text-pink-600"
                           >
-                            <Mail className="w-4 h-4" />
+                            <Eye className="w-4 h-4" />
                           </Button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-pink-50 hover:text-pink-600"
+                          >
+                            <Download className="w-4 h-4" />
+                          </Button>
+                          {invoice.status !== "paid" && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 hover:bg-pink-50 hover:text-pink-600"
+                              onClick={() => handleUpdateInvoiceStatus(invoice.id, "send_reminder")}
+                            >
+                              <Mail className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -666,7 +786,7 @@ export default function AdminBillingPage() {
                 </div>
                 <div>
                   <p className="font-medium text-gray-900">RMA Payment Gateway</p>
-                  <p className="text-sm text-gray-500">Bhutan's national payment gateway</p>
+                  <p className="text-sm text-gray-500">Bhutan&apos;s national payment gateway</p>
                 </div>
               </div>
               <Button variant="outline" size="sm">
@@ -718,6 +838,95 @@ export default function AdminBillingPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Create Invoice Modal */}
+      <Dialog open={showInvoiceModal} onOpenChange={setShowInvoiceModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Generate New Invoice</DialogTitle>
+            <DialogDescription>
+              Create a new invoice for a school subscription
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateInvoice}>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Select Subscription *
+                </label>
+                <select
+                  required
+                  value={selectedSubscription}
+                  onChange={(e) => setSelectedSubscription(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 outline-none"
+                >
+                  <option value="">Choose a subscription...</option>
+                  {subscriptions.map((sub) => (
+                    <option key={sub.id} value={sub.id}>
+                      {sub.schoolName} - {sub.plan} ({formatCurrency(sub.price)})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Amount (in cents) *
+                </label>
+                <input
+                  type="number"
+                  required
+                  min="100"
+                  step="100"
+                  value={invoiceAmount}
+                  onChange={(e) => setInvoiceAmount(e.target.value)}
+                  placeholder="e.g., 29900 for Nu. 299.00"
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 outline-none"
+                />
+                <p className="text-xs text-gray-500">
+                  Enter amount in cents (100 = Nu. 1.00)
+                </p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Notes (optional)
+                </label>
+                <textarea
+                  value={invoiceNotes}
+                  onChange={(e) => setInvoiceNotes(e.target.value)}
+                  placeholder="Add any notes for this invoice..."
+                  rows={3}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 outline-none resize-none"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowInvoiceModal(false)}
+                disabled={generatingInvoice}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={generatingInvoice || !selectedSubscription || !invoiceAmount}
+                style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
+                className="text-white"
+              >
+                {generatingInvoice ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  "Generate Invoice"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

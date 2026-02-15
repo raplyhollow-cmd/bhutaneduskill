@@ -1,6 +1,7 @@
 import { pgTable, text, integer, boolean, timestamp, json, jsonb } from "drizzle-orm/pg-core";
 import { sql, eq, and, or, desc, like, inArray } from "drizzle-orm";
 import { rubColleges, rubScholarships } from "./rub-schema";
+import { tenants } from "./tenancy-schema";
 
 // Re-export tables from separate schema files
 export {
@@ -48,6 +49,30 @@ export {
   componentAccess,
   auditLog,
 } from "./rbac-schema";
+
+// ============================================================================
+// MULTI-TENANCY & BILLING
+// ============================================================================
+
+export {
+  tenants,
+  verificationRequests,
+  tenantUsers,
+  tenantSettings,
+  tenantAuditLog,
+  type Tenant,
+} from "./tenancy-schema";
+
+export {
+  subscriptionPlans,
+  subscriptions,
+  invoices,
+  paymentMethods,
+  discountCodes,
+  discountUsages,
+  paymentTransactions,
+  usageRecords,
+} from "./billing-schema";
 
 // ============================================================================
 // USERS TABLE
@@ -141,6 +166,8 @@ export const schools = pgTable("schools", {
   districtId: text("district_id").references(() => districts.id),
   // domain: text("domain"), // REMOVED: Not in actual database
   isActive: boolean("is_active").default(true),
+  status: text("status"), // "pending" | "active" | "suspended" | "inactive"
+  verifiedAt: timestamp("verified_at", { withTimezone: true }), // When school was verified
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
@@ -659,6 +686,7 @@ export const partners = pgTable("partners", {
   email: text("email").notNull(),
   phone: text("phone").notNull(),
   address: text("address").notNull(),
+  contactPerson: text("contact_person"),
   partnershipDate: text("partnership_date").notNull(),
   status: text("status").notNull().default("active"),
   workshopsConducted: integer("workshops_conducted").default(0),
@@ -798,26 +826,6 @@ export const districts = pgTable("districts", {
 });
 
 export type District = typeof districts.$inferSelect;
-
-// ============================================================================
-// TENANTS TABLE
-// ============================================================================
-
-export const tenants = pgTable("tenants", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  slug: text("slug").unique().notNull(),
-  domain: text("domain").unique().notNull(),
-  logo: text("logo").notNull(),
-  primaryColor: text("primary_color").notNull(),
-  secondaryColor: text("secondary_color").notNull(),
-  settings: json("settings").$type<Record<string, any>>(),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
-
-export type Tenant = typeof tenants.$inferSelect;
 
 // ============================================================================
 // EXAM RESULTS ENHANCED TABLE
@@ -1687,3 +1695,69 @@ export const tuitionCategories = pgTable("tuition_categories", {
 });
 
 export type TuitionCategory = typeof tuitionCategories.$inferSelect;
+
+// ============================================================================
+// MINISTRY PORTAL TABLES
+// ============================================================================
+
+// Ministry policies table for national education policies
+export const ministryPolicies = pgTable("ministry_policies", {
+  id: text("id").primaryKey(),
+  category: text("category").notNull(), // assessment, curriculum, calendar, career, etc.
+  title: text("title").notNull(),
+  description: text("description"),
+  effectiveDate: text("effective_date"), // Date as string for compatibility
+  status: text("status").notNull().default("active"), // active, draft, archived
+  createdBy: text("created_by").notNull(), // userId of ministry user
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+  attachments: jsonb("attachments"), // PDFs, documents related to policy
+  scope: text("scope").notNull().default("national"), // national, regional, school-level
+});
+
+export type MinistryPolicy = typeof ministryPolicies.$inferSelect;
+export type NewMinistryPolicy = typeof ministryPolicies.$inferInsert;
+
+// Curriculum standards table for subject requirements per grade
+export const curriculumStandards = pgTable("curriculum_standards", {
+  id: text("id").primaryKey(),
+  subject: text("subject").notNull(), // Mathematics, English, Dzongkha, etc.
+  grade: text("grade").notNull(), // PP, 1, 2, ..., 12
+  hoursRequired: integer("hours_required").notNull().default(40),
+  topics: jsonb("topics"), // Array of topics with hours
+  practicalRatio: integer("practical_ratio").notNull().default(20), // % of practical vs theory
+  assessmentCriteria: jsonb("assessment_criteria"), // Grading criteria
+  effectiveFrom: text("effective_from"), // Date as string
+  effectiveTo: text("effective_to"), // Date as string
+  status: text("status").notNull().default("active"),
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+});
+
+export type CurriculumStandard = typeof curriculumStandards.$inferSelect;
+export type NewCurriculumStandard = typeof curriculumStandards.$inferInsert;
+
+// ============================================================================
+// RE-EXPORT NOTIFICATIONS SCHEMA
+// ============================================================================
+
+export {
+  notifications,
+  notificationDeliveries,
+  userNotificationSettings,
+  notificationTypeEnum,
+  notificationPriorityEnum,
+  notificationStatusEnum,
+  targetAudienceEnum,
+  deliveryStatusEnum,
+} from "./notifications-schema";
+
+export type {
+  Notification,
+  NewNotification,
+  NotificationDelivery,
+  NewNotificationDelivery,
+  UserNotificationSettings,
+  NewUserNotificationSettings,
+} from "./notifications-schema";
