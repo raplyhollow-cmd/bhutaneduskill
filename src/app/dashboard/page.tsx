@@ -71,6 +71,11 @@ export default function DashboardPage() {
         const roleRes = await fetch("/api/auth/set-role");
         if (roleRes.ok) {
           const roleData = await roleRes.json();
+          // Platform admins go to admin portal, skip setup entirely
+          if (roleData.userType === 'admin') {
+            router.push('/admin');
+            return;
+          }
           // If user needs setup or has no user type, redirect to unified setup wizard
           if (roleData.needsSetup || !roleData.userType) {
             router.push("/setup/unified");
