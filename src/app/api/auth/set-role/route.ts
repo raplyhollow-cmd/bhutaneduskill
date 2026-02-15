@@ -23,11 +23,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ userType: null, needsSetup: true });
     }
 
+    // Check if user has completed onboarding
+    if (!user.onboardingComplete) {
+      return NextResponse.json({
+        userType: user.type,
+        userId: user.id,
+        schoolId: user.schoolId,
+        needsSetup: true
+      });
+    }
+
     // Create response with user type cookie
     const response = NextResponse.json({
       userType: user.type,
       userId: user.id,
       schoolId: user.schoolId,
+      needsSetup: false
     });
 
     // Set cookie for middleware to use

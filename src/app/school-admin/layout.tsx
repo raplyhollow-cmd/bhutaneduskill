@@ -40,7 +40,7 @@ export default function SchoolAdminLayout({
           setNeedsSetup(true);
           // Redirect to setup after a short delay to allow state update
           setTimeout(() => {
-            router.push("/setup/school-admin");
+            router.push("/setup/unified");
           }, 100);
           return;
         }
@@ -63,7 +63,7 @@ export default function SchoolAdminLayout({
         // If APIs fail completely, redirect to setup to ensure user is properly configured
         setNeedsSetup(true);
         setTimeout(() => {
-          router.push("/setup/school-admin");
+          router.push("/setup/unified");
         }, 100);
       });
   }, [router]);

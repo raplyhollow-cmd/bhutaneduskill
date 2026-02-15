@@ -31,9 +31,9 @@ export default function StudentLayout({
         // Check if user needs setup (first time login, not in database)
         if (roleData.needsSetup || !roleData.userType) {
           setNeedsSetup(true);
-          // Redirect to setup after a short delay to allow state update
+          // Redirect to unified setup after a short delay to allow state update
           setTimeout(() => {
-            router.push("/setup/student");
+            router.push("/setup/unified");
           }, 100);
           return;
         }
@@ -53,10 +53,10 @@ export default function StudentLayout({
       })
       .catch((error) => {
         console.error("API fetch failed:", error);
-        // If APIs fail completely, redirect to setup to ensure user is properly configured
+        // If APIs fail completely, redirect to unified setup to ensure user is properly configured
         setNeedsSetup(true);
         setTimeout(() => {
-          router.push("/setup/student");
+          router.push("/setup/unified");
         }, 100);
       });
   }, [router]);

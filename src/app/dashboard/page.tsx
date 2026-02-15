@@ -71,11 +71,9 @@ export default function DashboardPage() {
         const roleRes = await fetch("/api/auth/set-role");
         if (roleRes.ok) {
           const roleData = await roleRes.json();
-          // If user needs setup or has no user type, redirect to setup wizard
+          // If user needs setup or has no user type, redirect to unified setup wizard
           if (roleData.needsSetup || !roleData.userType) {
-            // Determine which setup wizard to show based on user type or default to student
-            const portal = roleData.userType || "student";
-            router.push(`/setup/${portal}`);
+            router.push("/setup/unified");
             return;
           }
         }

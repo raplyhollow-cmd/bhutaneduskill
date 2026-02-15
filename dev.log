@@ -183,3 +183,6 @@ Unterminated template
  POST /api/create-admin 500 in 85ms (compile: 52ms, proxy.ts: 12ms, render: 21ms)
  GET /api/auth/set-role 401 in 1137ms (compile: 1053ms, proxy.ts: 26ms, render: 58ms)
   Reload env: .env
+  Reload env: .env.local
+✓ Compiled in 36ms
+✓ Compiled in 1267ms

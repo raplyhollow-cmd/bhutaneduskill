@@ -40,7 +40,7 @@ export default function CounselorLayout({
           setNeedsSetup(true);
           // Redirect to setup after a short delay to allow state update
           setTimeout(() => {
-            router.push("/setup/counselor");
+            router.push("/setup/unified");
           }, 100);
           return;
         }
@@ -63,7 +63,7 @@ export default function CounselorLayout({
         // If APIs fail completely, redirect to setup to ensure user is properly configured
         setNeedsSetup(true);
         setTimeout(() => {
-          router.push("/setup/counselor");
+          router.push("/setup/unified");
         }, 100);
       });
   }, [router]);
