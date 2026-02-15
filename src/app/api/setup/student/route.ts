@@ -137,32 +137,43 @@ export async function POST(request: NextRequest) {
 
     // Update user details
     if (data.personalDetails) {
-      const nameParts = data.personalDetails.fullName.split(" ");
+      const nameParts = data.personalDetails.fullName?.split(" ") || ["", ""];
+      const updateData: any = {
+        firstName: nameParts[0],
+        lastName: nameParts.slice(1).join(" "),
+      };
+      if (data.personalDetails.dateOfBirth) {
+        updateData.dateOfBirth = data.personalDetails.dateOfBirth;
+      }
       await db
         .update(users)
-        .set({
-          firstName: nameParts[0],
-          lastName: nameParts.slice(1).join(" "),
-          dateOfBirth: data.personalDetails.dateOfBirth,
-        })
+        .set(updateData)
         .where(eq(users.id, dbUser.id));
     }
 
     if (data.academicDetails) {
-      await db
-        .update(users)
-        .set({
-          classGrade: parseInt(data.academicDetails.grade),
-          section: data.academicDetails.section,
-        })
-        .where(eq(users.id, dbUser.id));
+      const updateData: any = {};
+      if (data.academicDetails.grade) {
+        updateData.classGrade = parseInt(data.academicDetails.grade);
+        updateData.grade = parseInt(data.academicDetails.grade);
+      }
+      if (data.academicDetails.section) {
+        updateData.section = data.academicDetails.section;
+      }
+      if (Object.keys(updateData).length > 0) {
+        await db
+          .update(users)
+          .set(updateData)
+          .where(eq(users.id, dbUser.id));
+      }
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error in student setup:", error);
+    console.error("Error details:", JSON.stringify(error, Object.getOwnPropertyNames(error)));
     return NextResponse.json(
-      { error: "Failed to process setup" },
+      { error: "Failed to process setup", details: error instanceof Error ? error.message : "Unknown error" },
       { status: 500 }
     );
   }

@@ -284,7 +284,9 @@ export default function UnifiedSetupWizard() {
         setCurrentStep((prev) => prev + 1);
       } else {
         const errorData = await response.json().catch(() => ({}));
-        setError(errorData.error || "Setup failed. Please try again.");
+        const errorMsg = errorData.error || errorData.details || "Setup failed. Please try again.";
+        console.error("Setup API error:", errorData);
+        setError(errorMsg);
       }
     } catch (err) {
       setError("Network error. Please try again.");
