@@ -1,27 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { requirePermission } from "@/lib/rbac";
 import { db } from "@/lib/db";
 import { users, assessments, mbtiResults } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Authenticate user
+    const authResult = await requireAuth();
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId, user } = authResult;
+
+    // Check RBAC permission for creating assessments
+    const permCheck = await requirePermission(userId, "assessments.create");
+    if (permCheck) return permCheck;
 
     const body = await request.json();
     const { answers, results } = body;
-
-    // Get user from database
-    const user = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
 
     // Create assessment record
     const [assessment] = await db
@@ -29,7 +27,7 @@ export async function POST(request: NextRequest) {
       .values({
         id: `mbti_${Date.now()}`,
         tenantId: user.tenantId,
-        userId: user.id,
+        userId: userId,
         type: "mbti",
         status: "completed",
         answers,
@@ -44,7 +42,7 @@ export async function POST(request: NextRequest) {
     await db.insert(mbtiResults).values({
       id: `mbti_res_${Date.now()}`,
       assessmentId: assessment.id,
-      userId: user.id,
+      userId: userId,
       eiScore: results.eiScore,
       snScore: results.snScore,
       tfScore: results.tfScore,
@@ -63,21 +61,19 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Authenticate user
+    const authResult = await requireAuth();
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId } = authResult;
 
-    const user = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    // Check RBAC permission for reading assessments
+    const permCheck = await requirePermission(userId, "assessments.read");
+    if (permCheck) return permCheck;
 
     const userResults = await db.query.mbtiResults.findMany({
-      where: eq(mbtiResults.userId, user.id),
+      where: eq(mbtiResults.userId, userId),
       orderBy: desc(mbtiResults.createdAt),
       limit: 10,
     });

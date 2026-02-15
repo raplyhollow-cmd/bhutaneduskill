@@ -2,9 +2,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { schools } from "@/lib/db/schema";
 import { eq, or, like } from "drizzle-orm";
+import { requireAuth } from "@/lib/auth-utils";
+import { requirePermission } from "@/lib/rbac";
 
+/**
+ * GET /api/schools/lookup
+ * Lookup schools by code or name
+ * Requires authentication and schools.read permission
+ */
 export async function GET(request: NextRequest) {
   try {
+    // Require authentication
+    const authResult = await requireAuth();
+    if ("error" in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+    }
+    const { userId } = authResult;
+
+    // Check schools.read permission
+    const permCheck = await requirePermission(userId, "schools.read");
+    if (permCheck) return permCheck;
+
     const { searchParams } = new URL(request.url);
     const code = searchParams.get("code");
     const name = searchParams.get("name");

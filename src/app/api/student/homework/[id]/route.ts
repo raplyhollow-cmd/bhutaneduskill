@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { requirePermission } from "@/lib/rbac";
 import { db } from "@/lib/db";
-import { homework, homeworkSubmissions, users, homework as homeworkTable } from "@/lib/db/schema";
+import { homework, homeworkSubmissions } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { gradeHomework } from "@/lib/auto-grading";
 
@@ -13,18 +14,17 @@ interface Params {
 export async function GET(request: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const authResult = await requireAuth(['student']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
+    const { user: currentUser, userId } = authResult;
 
-    if (!currentUser || currentUser.type !== "student") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    // Check homework.read permission
+    const permCheck = await requirePermission(userId, "homework.read");
+    if (permCheck) return permCheck;
 
     const homeworkData = await db.query.homework.findFirst({
       where: eq(homework.id, id),
@@ -67,21 +67,21 @@ export async function GET(request: NextRequest, { params }: Params) {
 export async function POST(request: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const authResult = await requireAuth(['student']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+
+    const { user: currentUser, userId } = authResult;
+
+    // Check homework.submit permission (students can submit their homework)
+    // Note: We use homework.read permission for submission as it's part of the homework workflow
+    const permCheck = await requirePermission(userId, "homework.read");
+    if (permCheck) return permCheck;
 
     const body = await request.json();
     const { answers, attachments, textAnswers, integrityMetadata } = body;
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || currentUser.type !== "student") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
     // Get homework details
     const homeworkData = await db.query.homework.findFirst({
@@ -199,21 +199,20 @@ export async function POST(request: NextRequest, { params }: Params) {
 export async function PUT(request: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const authResult = await requireAuth(['student']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+
+    const { user: currentUser, userId } = authResult;
+
+    // Check homework.read permission (for updating draft)
+    const permCheck = await requirePermission(userId, "homework.read");
+    if (permCheck) return permCheck;
 
     const body = await request.json();
     const { answers, attachments, textAnswers } = body;
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || currentUser.type !== "student") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
     // Find existing draft submission
     const existingSubmission = await db.query.homeworkSubmissions.findFirst({

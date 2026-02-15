@@ -15,7 +15,6 @@ import { Loader2, CheckCircle2, Building2, Globe, Settings } from "lucide-react"
 const ADMIN_STEPS = [
   { id: "org", title: "Organization" },
   { id: "admin", title: "Admin Account" },
-  { id: "school", title: "First School" },
   { id: "complete", title: "Complete" },
 ];
 
@@ -43,27 +42,12 @@ export default function PlatformAdminWizard() {
   const [adminEmail, setAdminEmail] = useState("");
   const [adminPhone, setAdminPhone] = useState("");
 
-  // Step 3: First School
-  const [schoolName, setSchoolName] = useState("");
-  const [schoolCode, setSchoolCode] = useState("");
-  const [district, setDistrict] = useState("");
-  const [contactPerson, setContactPerson] = useState("");
-  const [schoolAddress, setSchoolAddress] = useState("");
-
   const canGoNext = () => {
     switch (currentStep) {
       case 1:
         return !!(orgName && orgSlug && timezone);
       case 2:
         return !!(adminName && adminEmail && adminPhone);
-      case 3:
-        // Require school name, district, and school code (or auto-generate it)
-        if (!schoolName || !district) return false;
-        // Auto-generate school code if not set
-        if (!schoolCode) {
-          generateSchoolCode();
-        }
-        return true;
       default:
         return true;
     }
@@ -75,7 +59,7 @@ export default function PlatformAdminWizard() {
 
     if (currentStep === ADMIN_STEPS.length) {
       await completeWizard();
-    } else if (currentStep === 3) {
+    } else if (currentStep === 2) {
       await submitWizardData();
     } else {
       setCurrentStep((prev) => prev + 1);
@@ -84,17 +68,6 @@ export default function PlatformAdminWizard() {
 
   const handleBack = () => {
     setCurrentStep((prev) => Math.max(1, prev - 1));
-  };
-
-  const generateSchoolCode = () => {
-    const abbrev = schoolName
-      .split(" ")
-      .map((word) => word[0])
-      .join("")
-      .toUpperCase()
-      .substring(0, 3);
-    const year = new Date().getFullYear();
-    setSchoolCode(`${abbrev}-${district.substring(0, 3).toUpperCase()}-${year}`);
   };
 
   const submitWizardData = async () => {
@@ -108,15 +81,14 @@ export default function PlatformAdminWizard() {
           data: {
             organization: { orgName, orgSlug, themeColor, timezone },
             admin: { adminName, adminEmail, adminPhone },
-            school: { schoolName, schoolCode, district, contactPerson, schoolAddress },
           },
         }),
       });
 
       if (response.ok) {
         const result = await response.json();
-        console.log("Setup complete, moving to step 4");
-        setCurrentStep(4);
+        console.log("Setup complete, moving to step 3");
+        setCurrentStep(3);
       } else {
         const error = await response.json();
         console.error("Setup API error:", error);
@@ -285,93 +257,8 @@ export default function PlatformAdminWizard() {
         </div>
       )}
 
-      {/* Step 3: First School */}
+      {/* Step 3: Complete */}
       {currentStep === 3 && (
-        <div className="space-y-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-              <Building2 className="w-5 h-5 text-green-600" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold">First School</h2>
-              <p className="text-gray-600">Register the first school on your platform</p>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="schoolName">School Name</Label>
-              <Input
-                id="schoolName"
-                value={schoolName}
-                onChange={(e) => setSchoolName(e.target.value)}
-                placeholder="e.g., Royal High School"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="schoolCode">School Code</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="schoolCode"
-                  value={schoolCode}
-                  onChange={(e) => setSchoolCode(e.target.value.toUpperCase())}
-                  placeholder="RHS-THI-2026"
-                  className="flex-1"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={generateSchoolCode}
-                >
-                  Generate
-                </Button>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Share this code with school administrators for verification
-              </p>
-            </div>
-
-            <div>
-              <Label htmlFor="district">District</Label>
-              <Select value={district} onValueChange={setDistrict}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select district" />
-                </SelectTrigger>
-                <SelectContent>
-                  {["Thimphu", "Paro", "Punakha", "Wangdue", "Trongsa", "Bumthang", "Trashigang", "Mongar", "Samtse", "Sarpang"].map((d) => (
-                    <SelectItem key={d} value={d}>{d}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="contactPerson">Contact Person</Label>
-              <Input
-                id="contactPerson"
-                value={contactPerson}
-                onChange={(e) => setContactPerson(e.target.value)}
-                placeholder="School principal or administrator"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="schoolAddress">School Address</Label>
-              <Textarea
-                id="schoolAddress"
-                value={schoolAddress}
-                onChange={(e) => setSchoolAddress(e.target.value)}
-                placeholder="Full school address"
-                rows={2}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Step 4: Complete */}
-      {currentStep === 4 && (
         <div className="text-center space-y-6 py-8">
           <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto">
             <Globe className="w-10 h-10 text-white" />
@@ -389,20 +276,12 @@ export default function PlatformAdminWizard() {
           <Card className="p-4 bg-blue-50 border-blue-200 text-left">
             <h3 className="font-semibold text-blue-900 mb-3">Next Steps:</h3>
             <ul className="space-y-2 text-sm text-blue-800">
-              <li>✓ Invite more schools to join your platform</li>
+              <li>✓ Go to the <strong>Schools page</strong> to create and manage schools</li>
               <li>✓ Configure global settings and policies</li>
               <li>✓ Set up payment gateway for subscriptions</li>
               <li>✓ Customize career and assessment content</li>
               <li>✓ Monitor platform usage and analytics</li>
             </ul>
-          </Card>
-
-          <Card className="p-3 bg-green-50 border-green-200 text-left">
-            <p className="text-sm text-green-800">
-              <strong>School Code:</strong> {schoolCode}
-              <br />
-              <span className="text-xs">Share this with the school administrator</span>
-            </p>
           </Card>
 
           <Button onClick={completeWizard} size="lg" disabled={isLoading}>
@@ -419,7 +298,7 @@ export default function PlatformAdminWizard() {
       )}
 
       {/* Navigation */}
-      {currentStep < 4 && (
+      {currentStep < 3 && (
         <WizardNavigation
           currentStep={currentStep}
           totalSteps={ADMIN_STEPS.length}

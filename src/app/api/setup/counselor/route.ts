@@ -17,17 +17,44 @@ export async function POST(request: NextRequest) {
     const { step, data } = body;
 
     // Get user from database
-    const userRecord = await db
+    let userRecord = await db
       .select()
       .from(users)
       .where(eq(users.clerkUserId, user.id))
       .limit(1);
 
+    // Create user if not exists (user signed in via Clerk but not in DB yet)
+    let dbUser;
     if (userRecord.length === 0) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+      const userId = `user-${nanoid()}`;
+      const firstName = user.firstName || "Counselor";
+      const lastName = user.lastName || "";
+      const email = user.emailAddresses?.[0]?.emailAddress || "";
 
-    const dbUser = userRecord[0];
+      await db.insert(users).values({
+        id: userId,
+        clerkUserId: user.id,
+        type: "counselor",
+        role: "counselor",
+        name: `${firstName} ${lastName}`.trim(),
+        firstName,
+        lastName,
+        email,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      // Fetch the newly created user
+      userRecord = await db
+        .select()
+        .from(users)
+        .where(eq(users.clerkUserId, user.id))
+        .limit(1);
+
+      dbUser = userRecord[0];
+    } else {
+      dbUser = userRecord[0];
+    }
 
     // Update or create wizard progress
     const existingProgress = await db

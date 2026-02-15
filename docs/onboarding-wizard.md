@@ -320,6 +320,75 @@ wizard_progress {
 
 ---
 
+## Critical Fix: User Creation in Setup Wizards (Feb 15, 2026)
+
+### Problem
+
+Users who sign in with Clerk are **NOT** automatically created in the application database. When they reach the setup wizard, the API would return "User Not Found" error.
+
+### Solution
+
+All setup APIs now **create the user automatically** if they don't exist in the database. This happens after Clerk authentication succeeds but before setup data is processed.
+
+### Pattern Applied
+
+```typescript
+// Get user from database
+let userRecord = await db
+  .select()
+  .from(users)
+  .where(eq(users.clerkUserId, user.id))
+  .limit(1);
+
+// Create user if not exists (user signed in via Clerk but not in DB yet)
+let dbUser;
+if (userRecord.length === 0) {
+  const userId = `user-${nanoid()}`;
+  const firstName = user.firstName || "Default";
+  const lastName = user.lastName || "";
+  const email = user.emailAddresses?.[0]?.emailAddress || "";
+
+  await db.insert(users).values({
+    id: userId,
+    clerkUserId: user.id,
+    type: "student", // or "admin", "teacher", "counselor", "parent", "school-admin"
+    role: "student",
+    name: `${firstName} ${lastName}`.trim(),
+    firstName,
+    lastName,
+    email,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+
+  // Fetch newly created user
+  userRecord = await db
+    .select()
+    .from(users)
+    .where(eq(users.clerkUserId, user.id))
+    .limit(1);
+
+  dbUser = userRecord[0];
+} else {
+  dbUser = userRecord[0];
+}
+
+// Continue with normal setup flow...
+```
+
+### Affected Setup APIs
+
+| API Route | User Type | Notes |
+|-----------|-----------|-------|
+| `/api/setup/admin` | Platform Admin | Creates user with default platform admin values |
+| `/api/setup/school-admin` | School Admin | Creates user + verifies school code + links to school |
+| `/api/setup/teacher` | Teacher | Creates user with default teacher values |
+| `/api/setup/student` | Student | Creates user with default student values |
+| `/api/setup/parent` | Parent | Creates user with default parent values |
+| `/api/setup/counselor` | Counselor | Creates user with default counselor values |
+
+---
+
 ## Post-Wizard Experience
 
 ### First Login Dashboard

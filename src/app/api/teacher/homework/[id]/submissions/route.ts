@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { requirePermission } from "@/lib/rbac";
 import { db } from "@/lib/db";
-import { homework, homeworkSubmissions, users } from "@/lib/db/schema";
+import { homework, homeworkSubmissions } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 
 interface Params {
@@ -12,21 +13,20 @@ interface Params {
 export async function GET(request: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const authResult = await requireAuth(['teacher', 'admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+
+    const { user: currentUser, userId } = authResult;
+
+    // Check homework.read permission (for viewing submissions)
+    const permCheck = await requirePermission(userId, "homework.read");
+    if (permCheck) return permCheck;
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status"); // submitted, graded, all
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || currentUser.type !== "teacher") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
     // Verify homework ownership
     const homeworkData = await db.query.homework.findFirst({

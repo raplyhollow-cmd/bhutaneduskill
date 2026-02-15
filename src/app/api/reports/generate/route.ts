@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { requirePermission } from "@/lib/rbac";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -10,13 +11,19 @@ import { eq } from "drizzle-orm";
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Authenticate user
+    const authResult = await requireAuth();
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId } = authResult;
+
+    // Check RBAC permission for generating reports
+    const permCheck = await requirePermission(userId, "reports.generate");
+    if (permCheck) return permCheck;
 
     const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
+      where: eq(users.id, userId),
     });
 
     if (!currentUser) {
@@ -47,10 +54,16 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Authenticate user
+    const authResult = await requireAuth();
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId } = authResult;
+
+    // Check RBAC permission for viewing reports
+    const permCheck = await requirePermission(userId, "reports.view");
+    if (permCheck) return permCheck;
 
     return NextResponse.json({
       templates: {

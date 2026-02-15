@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
-import { users, schools, tenants, wizardProgress } from "@/lib/db/schema";
+import { users, tenants, wizardProgress } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
@@ -23,11 +23,104 @@ export async function POST(request: NextRequest) {
       .where(eq(users.clerkUserId, user.id))
       .limit(1);
 
-    if (userRecord.length === 0) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    let dbUser;
 
-    const dbUser = userRecord[0];
+    if (userRecord.length === 0) {
+      // User doesn't exist - create them with default values
+      console.log("[Admin Setup] Creating new user for clerkUserId:", user.id);
+
+      const newUserId = `user-${Date.now()}`;
+      const firstName = user.firstName || "";
+      const lastName = user.lastName || "";
+      const email = user.emailAddresses?.[0]?.emailAddress || "";
+
+      // Create organization first if data exists
+      let tenantId;
+      if (data.organization) {
+        tenantId = nanoid();
+        await db.insert(tenants).values({
+          id: tenantId,
+          name: data.organization.orgName,
+          slug: data.organization.orgSlug,
+          domain: `${data.organization.orgSlug}.bhutaneduskill.com`,
+          logo: "/logo.png",
+          primaryColor: data.organization.themeColor || "#f97316",
+          secondaryColor: "#c2410c",
+          settings: {
+            theme: data.organization.themeColor,
+            primaryColor: data.organization.themeColor,
+          },
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      } else {
+        tenantId = nanoid();
+        // Create default tenant
+        await db.insert(tenants).values({
+          id: tenantId,
+          name: "Default Organization",
+          slug: `org-${Date.now()}`,
+          domain: `default-${Date.now()}.bhutaneduskill.com`,
+          logo: "/logo.png",
+          primaryColor: "#f97316",
+          secondaryColor: "#c2410c",
+          settings: {},
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+
+      // Create the user
+      await db.insert(users).values({
+        id: newUserId,
+        clerkUserId: user.id,
+        tenantId,
+        type: "admin",
+        role: "admin",
+        name: `${firstName} ${lastName}`.trim() || "Platform Admin",
+        firstName,
+        lastName,
+        email,
+        // Required fields with defaults
+        phone: data.admin?.adminPhone || "",
+        profileImage: user.imageUrl || "",
+        gender: "",
+        grade: 0,
+        section: "",
+        rollNumber: "",
+        address: "",
+        city: "",
+        state: "",
+        postalCode: "",
+        country: "Bhutan",
+        parentContact: "",
+        parentPhone: "",
+        emergencyContact: "",
+        bloodGroup: "",
+        enrollmentDate: new Date().toISOString().split('T')[0],
+        lastLogin: new Date().toISOString(),
+        onboardingComplete: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        // Additional admin data
+        department: "Administration",
+        // Admin specific fields from form if provided
+        ...(data.admin?.adminName && {
+          firstName: data.admin.adminName.split(" ")[0],
+          lastName: data.admin.adminName.split(" ").slice(1).join(" "),
+        }),
+        ...(data.admin?.adminEmail && { email: data.admin.adminEmail }),
+        ...(data.admin?.adminPhone && { phone: data.admin.adminPhone }),
+      });
+
+      dbUser = (await db.select().from(users).where(eq(users.id, newUserId)).limit(1))[0];
+
+      console.log("[Admin Setup] Created new user:", dbUser.id);
+    } else {
+      dbUser = userRecord[0];
+    }
 
     // Update or create wizard progress
     const existingProgress = await db
@@ -94,51 +187,6 @@ export async function POST(request: NextRequest) {
           phone: data.admin.adminPhone,
         })
         .where(eq(users.id, dbUser.id));
-    }
-
-    // Create first school
-    if (data.school) {
-      const tenantRecord = await db
-        .select()
-        .from(tenants)
-        .where(eq(tenants.id, dbUser.tenantId!))
-        .limit(1);
-
-      if (tenantRecord.length > 0) {
-        await db.insert(schools).values({
-          id: nanoid(),
-          tenantId: tenantRecord[0].id,
-          name: data.school.schoolName,
-          code: data.school.schoolCode,
-          type: "private",
-          address: data.school.schoolAddress || "",
-          city: (data.school as any).city || "Thimphu",
-          state: (data.school as any).state || "Thimphu",
-          country: "Bhutan",
-          postalCode: (data.school as any).postalCode || "12345",
-          phone: (data.school as any).phone || "123456",
-          email: data.admin?.adminEmail || "admin@school.bt",
-          website: "https://school.bt",
-          logo: "/logo.png",
-          establishedYear: 2000,
-          accreditationStatus: "registered",
-          maxStudents: 1000,
-          campusSize: "10 acres",
-          facilities: [],
-          board: "BCSE",
-          principalName: (data.admin as any)?.adminName || "Principal",
-          principalEmail: data.admin?.adminEmail || "principal@school.bt",
-          principalPhone: (data.school as any).phone || "123456",
-          counselorName: "Counselor",
-          counselorEmail: "counselor@school.bt",
-          counselorPhone: "123456",
-          vicePrincipalName: "Vice Principal",
-          contactEmail: data.admin?.adminEmail,
-          contactPhone: (data.school as any).phone || "123456",
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
-      }
     }
 
     return NextResponse.json({ success: true });

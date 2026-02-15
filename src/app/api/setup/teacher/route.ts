@@ -23,11 +23,68 @@ export async function POST(request: NextRequest) {
       .where(eq(users.clerkUserId, user.id))
       .limit(1);
 
-    if (userRecord.length === 0) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    let dbUser;
 
-    const dbUser = userRecord[0];
+    if (userRecord.length === 0) {
+      // User doesn't exist - create them
+      console.log("[Teacher Setup] Creating new user for clerkUserId:", user.id);
+
+      const newUserId = `user-${Date.now()}`;
+      const firstName = user.firstName || "";
+      const lastName = user.lastName || "";
+      const email = user.emailAddresses?.[0]?.emailAddress || "";
+
+      // Create the user
+      await db.insert(users).values({
+        id: newUserId,
+        clerkUserId: user.id,
+        type: "teacher",
+        role: "teacher",
+        name: `${firstName} ${lastName}`.trim() || "Teacher",
+        firstName,
+        lastName,
+        email,
+        // Required fields with defaults
+        phone: data.personalDetails?.phone || "",
+        profileImage: user.imageUrl || "",
+        gender: "",
+        grade: 0,
+        section: "",
+        rollNumber: "",
+        address: "",
+        city: "",
+        state: "",
+        postalCode: "",
+        country: "Bhutan",
+        parentContact: "",
+        parentPhone: "",
+        emergencyContact: "",
+        bloodGroup: "",
+        enrollmentDate: new Date().toISOString().split('T')[0],
+        lastLogin: new Date().toISOString(),
+        onboardingComplete: false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        // Additional teacher fields
+        department: "",
+        employeeId: data.personalDetails?.employeeId || "",
+        subjects: data.subjects || [],
+        // Optional fields from form
+        ...(data.personalDetails?.fullName && {
+          firstName: data.personalDetails.fullName.split(" ")[0],
+          lastName: data.personalDetails.fullName.split(" ").slice(1).join(" "),
+          name: data.personalDetails.fullName,
+        }),
+        ...(data.personalDetails?.email && { email: data.personalDetails.email }),
+        ...(data.personalDetails?.phone && { phone: data.personalDetails.phone }),
+      });
+
+      dbUser = (await db.select().from(users).where(eq(users.id, newUserId)).limit(1))[0];
+
+      console.log("[Teacher Setup] Created new user:", dbUser.id);
+    } else {
+      dbUser = userRecord[0];
+    }
 
     // Update or create wizard progress
     const existingProgress = await db

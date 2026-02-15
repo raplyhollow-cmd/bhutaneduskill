@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
-import { schools, users } from "@/lib/db/schema";
+import { schools } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { requireAuth } from "@/lib/auth-utils";
+import { requirePermission } from "@/lib/rbac";
 
 // GET /api/schools/[id] - Get single school
 export async function GET(
@@ -11,10 +12,16 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const authResult = await requireAuth();
+    if ("error" in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId } = authResult;
+
+    // Check schools.read permission
+    const permCheck = await requirePermission(userId, "schools.read");
+    if (permCheck) return permCheck;
 
     const school = await db.query.schools.findFirst({
       where: eq(schools.id, id),
@@ -38,19 +45,18 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const authResult = await requireAuth(["admin"]);
+    if ("error" in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId } = authResult;
+
+    // Check schools.update permission
+    const permCheck = await requirePermission(userId, "schools.update");
+    if (permCheck) return permCheck;
 
     const body = await request.json();
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || currentUser.type !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
     const [updatedSchool] = await db
       .update(schools)
@@ -72,18 +78,16 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || currentUser.type !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    const authResult = await requireAuth(["admin"]);
+    if ("error" in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId } = authResult;
+
+    // Check schools.delete permission
+    const permCheck = await requirePermission(userId, "schools.delete");
+    if (permCheck) return permCheck;
 
     await db.delete(schools).where(eq(schools.id, id));
 

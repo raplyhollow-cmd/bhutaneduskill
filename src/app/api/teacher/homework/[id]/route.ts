@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { requirePermission } from "@/lib/rbac";
 import { db } from "@/lib/db";
-import { homework, users, homeworkSubmissions } from "@/lib/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { homework, homeworkSubmissions } from "@/lib/db/schema";
+import { eq, desc } from "drizzle-orm";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -12,18 +13,17 @@ interface Params {
 export async function GET(request: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const authResult = await requireAuth(['teacher', 'admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
+    const { user: currentUser, userId } = authResult;
 
-    if (!currentUser || currentUser.type !== "teacher") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    // Check homework.read permission
+    const permCheck = await requirePermission(userId, "homework.read");
+    if (permCheck) return permCheck;
 
     const homeworkData = await db.query.homework.findFirst({
       where: eq(homework.id, id),
@@ -65,21 +65,20 @@ export async function GET(request: NextRequest, { params }: Params) {
 export async function PUT(request: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const authResult = await requireAuth(['teacher', 'admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+
+    const { user: currentUser, userId } = authResult;
+
+    // Check homework.update permission
+    const permCheck = await requirePermission(userId, "homework.update");
+    if (permCheck) return permCheck;
 
     const body = await request.json();
     const { title, description, instructions, questions, attachments, externalLinks, dueDate, lateSubmissionDeadline, maxPoints, passingPoints, timeLimit, attemptsAllowed, showAnswersAfter } = body;
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || currentUser.type !== "teacher") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
     // Verify ownership
     const existingHomework = await db.query.homework.findFirst({
@@ -125,18 +124,17 @@ export async function PUT(request: NextRequest, { params }: Params) {
 export async function DELETE(request: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const authResult = await requireAuth(['teacher', 'admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
+    const { user: currentUser, userId } = authResult;
 
-    if (!currentUser || currentUser.type !== "teacher") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    // Check homework.delete permission
+    const permCheck = await requirePermission(userId, "homework.delete");
+    if (permCheck) return permCheck;
 
     // Verify ownership
     const existingHomework = await db.query.homework.findFirst({
@@ -173,21 +171,20 @@ export async function DELETE(request: NextRequest, { params }: Params) {
 export async function POST(request: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const authResult = await requireAuth(['teacher', 'admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+
+    const { user: currentUser, userId } = authResult;
+
+    // Check homework.update permission (for publish/unpublish actions)
+    const permCheck = await requirePermission(userId, "homework.update");
+    if (permCheck) return permCheck;
 
     const body = await request.json();
     const { action } = body;
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || currentUser.type !== "teacher") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
     // Verify ownership
     const existingHomework = await db.query.homework.findFirst({

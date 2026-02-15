@@ -7,7 +7,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/db/tenant";
+import { requireAuth } from "@/lib/auth-utils";
+import { requirePermission } from "@/lib/rbac";
 import { db } from "@/lib/db";
 import { users, assessments, riasecResults, mbtiResults, discResults, careerMatches, careerPlans, examResults, classes, careers } from "@/lib/db/schema";
 import { eq, and, desc, count, sql } from "drizzle-orm";
@@ -75,7 +76,16 @@ const availableReports: ReportConfig[] = [
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await requireAuth();
+    // Authenticate user
+    const authResult = await requireAuth();
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+    }
+    const { userId, user } = authResult;
+
+    // Check RBAC permission for viewing reports
+    const permCheck = await requirePermission(userId, "reports.view");
+    if (permCheck) return permCheck;
 
     const { searchParams } = new URL(request.url);
     const reportId = searchParams.get("id");
@@ -111,7 +121,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await requireAuth();
+    // Authenticate user
+    const authResult = await requireAuth();
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+    }
+    const { userId, user } = authResult;
+
+    // Check RBAC permission for generating reports
+    const permCheck = await requirePermission(userId, "reports.generate");
+    if (permCheck) return permCheck;
 
     const body = await request.json();
     const { reportId, format = "json", parameters = {} } = body;

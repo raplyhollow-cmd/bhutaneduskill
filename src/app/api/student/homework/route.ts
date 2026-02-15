@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
+import { requirePermission } from "@/lib/rbac";
 import { db } from "@/lib/db";
-import { homework, users, classes, enrollments, homeworkSubmissions } from "@/lib/db/schema";
+import { homework, enrollments, homeworkSubmissions } from "@/lib/db/schema";
 import { eq, and, or, asc, inArray } from "drizzle-orm";
 import type { HomeworkSubmission } from "@/lib/db/schema";
 
@@ -12,7 +13,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: authResult.error }, { status: authResult.status });
   }
 
-  const { user: currentUser } = authResult;
+  const { user: currentUser, userId } = authResult;
+
+  // Check homework.read permission
+  const permCheck = await requirePermission(userId, "homework.read");
+  if (permCheck) return permCheck;
 
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status"); // pending, submitted, all

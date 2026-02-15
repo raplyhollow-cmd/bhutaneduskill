@@ -33,6 +33,7 @@ import {
   Database,
   TrendingUp,
   Megaphone,
+  Shield,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -105,6 +106,11 @@ const navigationItems = {
     { name: "Content", href: "/admin/content", icon: Database },
     { name: "Careers", href: "/admin/careers", icon: Briefcase },
     { name: "Reports", href: "/admin/reports", icon: BarChart3 },
+    { name: "Partners", href: "/admin/partners", icon: Award },
+    { name: "Notifications", href: "/admin/notifications", icon: Megaphone },
+    { name: "Analytics", href: "/admin/analytics", icon: TrendingUp },
+    { name: "Roles", href: "/admin/roles", icon: Shield },
+    { name: "Permissions", href: "/admin/permissions", icon: FileText },
     { name: "Settings", href: "/admin/settings", icon: Settings },
   ],
   "school-admin": [

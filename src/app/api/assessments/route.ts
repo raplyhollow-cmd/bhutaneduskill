@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { requirePermission } from "@/lib/rbac";
 import { db } from "@/lib/db";
 import { users, assessments, careerMatches, riasecResults } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -8,11 +9,16 @@ import { CAREERS_DATABASE } from "@/lib/tenant";
 // POST /api/assessments - Save assessment results
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Authenticate - any authenticated user can create assessments for themselves
+    const authResult = await requireAuth();
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { user, userId } = authResult;
+
+    // Check RBAC permission for creating assessments
+    const permCheck = await requirePermission(userId, "assessments.create");
+    if (permCheck) return permCheck;
 
     const body = await req.json();
     const { type = "riasec", answers, results } = body;
@@ -24,15 +30,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get user from database
-    const user = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
     // Create assessment record
     const [assessment] = await db
       .insert(assessments)
@@ -41,7 +38,7 @@ export async function POST(req: NextRequest) {
           id: `assessment-${Date.now()}`,
           tenantId: user.tenantId,
         }),
-        userId: user.id,
+        userId: userId,
         type,
         status: "completed",
         answers,
@@ -65,7 +62,7 @@ export async function POST(req: NextRequest) {
           id: `riasec_res_${Date.now()}`,
           assessmentId: assessment.id,
         }),
-        userId: user.id,
+        userId: userId,
         realistic: scores.realistic || 0,
         investigative: scores.investigative || 0,
         artistic: scores.artistic || 0,
@@ -123,7 +120,7 @@ export async function POST(req: NextRequest) {
           id: `match-${Date.now()}-${match.careerId}`,
           assessmentId: assessment.id,
         }),
-        studentId: user.id,
+        studentId: userId,
         careerId: match.careerId,
         careerTitle: match.careerTitle,
         matchScore: match.matchScore,
@@ -151,23 +148,19 @@ export async function POST(req: NextRequest) {
 // GET /api/assessments - Get user's assessments
 export async function GET(req: NextRequest) {
   try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Authenticate - any authenticated user can read their own assessments
+    const authResult = await requireAuth();
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId } = authResult;
 
-    // Get user from database first (userId from Clerk is clerkUserId, not internal userId)
-    const user = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!user) {
-      return NextResponse.json({ assessments: [] });
-    }
+    // Check RBAC permission for reading assessments
+    const permCheck = await requirePermission(userId, "assessments.read");
+    if (permCheck) return permCheck;
 
     const userAssessments = await db.query.assessments.findMany({
-      where: (assessments, { eq }) => eq(assessments.userId, user.id),
+      where: (assessments, { eq }) => eq(assessments.userId, userId),
       orderBy: (assessments, { desc }) => [
         desc(assessments.createdAt),
       ],

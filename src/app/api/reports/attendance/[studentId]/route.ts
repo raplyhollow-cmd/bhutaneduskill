@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { requirePermission } from "@/lib/rbac";
 import { db } from "@/lib/db";
 import { attendance, users } from "@/lib/db/schema";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
@@ -12,10 +13,17 @@ interface Params {
 export async function GET(request: NextRequest, { params }: Params) {
   try {
     const { studentId } = await params;
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    // Authenticate user
+    const authResult = await requireAuth();
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId } = authResult;
+
+    // Check RBAC permission for viewing reports
+    const permCheck = await requirePermission(userId, "reports.view");
+    if (permCheck) return permCheck;
 
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get("startDate");
@@ -23,7 +31,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     const termId = searchParams.get("termId");
 
     const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
+      where: eq(users.id, userId),
     });
 
     if (!currentUser || !["admin", "teacher", "counselor", "parent"].includes(currentUser.type)) {

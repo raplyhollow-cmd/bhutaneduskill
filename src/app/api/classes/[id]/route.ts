@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { requirePermission } from "@/lib/rbac";
 import { db } from "@/lib/db";
-import { classes, users } from "@/lib/db/schema";
+import { classes } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 // GET /api/classes/[id] - Get single class
@@ -11,10 +12,17 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const authResult = await requireAuth(['admin', 'school-admin', 'teacher', 'counselor', 'student']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+
+    const { userId } = authResult;
+
+    // Check classes.read permission
+    const permCheck = await requirePermission(userId, "classes.read");
+    if (permCheck) return permCheck;
 
     const classData = await db.query.classes.findFirst({
       where: eq(classes.id, id),
@@ -42,21 +50,21 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+
+    const { user: currentUser, userId } = authResult;
+
+    // Check classes.update permission
+    const permCheck = await requirePermission(userId, "classes.update");
+    if (permCheck) return permCheck;
 
     const body = await request.json();
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
 
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    // Check permissions - must be admin or the class teacher
+    // Check permissions - must be admin or class teacher
     const classData = await db.query.classes.findFirst({
       where: eq(classes.id, id),
     });
@@ -65,7 +73,7 @@ export async function PUT(
       return NextResponse.json({ error: "Class not found" }, { status: 404 });
     }
 
-    if (currentUser.type !== "admin" && classData.teacherId !== currentUser.id) {
+    if (currentUser.type !== "admin" && currentUser.type !== "school-admin" && classData.teacherId !== currentUser.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -89,18 +97,17 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const authResult = await requireAuth(['admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
+    const { userId } = authResult;
 
-    if (!currentUser || currentUser.type !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    // Check classes.delete permission
+    const permCheck = await requirePermission(userId, "classes.delete");
+    if (permCheck) return permCheck;
 
     await db.delete(classes).where(eq(classes.id, id));
 

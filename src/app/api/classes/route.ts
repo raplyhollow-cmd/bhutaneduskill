@@ -1,34 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { requirePermission } from "@/lib/rbac";
 import { db } from "@/lib/db";
-import { classes, users } from "@/lib/db/schema";
+import { classes } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 
 // GET /api/classes - Get classes
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['admin', 'school-admin', 'teacher', 'counselor']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+
+    const { user: currentUser, userId } = authResult;
+
+    // Check classes.read permission
+    const permCheck = await requirePermission(userId, "classes.read");
+    if (permCheck) return permCheck;
 
     const { searchParams } = new URL(request.url);
     const schoolId = searchParams.get("schoolId");
     const teacherId = searchParams.get("teacherId");
     const academicYear = searchParams.get("academicYear");
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    // Only admin, counselor, and teachers can view classes
-    if (!["admin", "counselor", "teacher"].includes(currentUser.type)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
     const conditions = [];
     if (schoolId) {
@@ -76,26 +70,19 @@ export async function GET(request: NextRequest) {
 // POST /api/classes - Create class
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+
+    const { user: currentUser, userId } = authResult;
+
+    // Check classes.create permission
+    const permCheck = await requirePermission(userId, "classes.create");
+    if (permCheck) return permCheck;
 
     const body = await request.json();
     const { name, grade, section, academicYear, students } = body;
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    // Only admin and teachers can create classes
-    if (!["admin", "teacher"].includes(currentUser.type)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
     const teacherId = body.teacherId || currentUser.id;
     const schoolId = body.schoolId || currentUser.schoolId;

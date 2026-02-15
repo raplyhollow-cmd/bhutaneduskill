@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { requirePermission, requireAnyPermission } from "@/lib/rbac";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 // GET /api/users/[id] - Get single user
 export async function GET(
@@ -11,33 +12,35 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(["admin", "school-admin", "counselor", "teacher", "student"]);
+    if ("error" in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
+    const { userId, user: currentUser } = authResult;
 
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    // Check RBAC permission for reading users OR allow students to read their own profile
+    const permCheck = await requireAnyPermission(userId, ["users.read", "users.read.own"]);
+    if (permCheck) {
+      // If no general permission, check if accessing own profile
+      const user = await db.query.users.findFirst({
+        where: eq(users.clerkUserId, userId),
+      });
+
+      if (!user || user.id !== id) {
+        return permCheck;
+      }
     }
 
-    const user = await db.query.users.findFirst({
+    const targetUser = await db.query.users.findFirst({
       where: eq(users.id, id),
     });
 
-    if (!user) {
+    if (!targetUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Students can only view their own profile
-    if (currentUser.type === "student" && currentUser.id !== id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    return NextResponse.json({ user });
+    return NextResponse.json({ user: targetUser });
   } catch (error) {
     console.error("User fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch user" }, { status: 500 });
@@ -51,18 +54,16 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(["admin", "school-admin"]);
+    if ("error" in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
+    const { userId } = authResult;
 
-    if (!currentUser || currentUser.type !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    // Check RBAC permission for deleting users
+    const permCheck = await requirePermission(userId, "users.delete");
+    if (permCheck) return permCheck;
 
     await db.delete(users).where(eq(users.id, id));
 

@@ -1,33 +1,32 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { requirePermission } from "@/lib/rbac";
 import { db } from "@/lib/db";
 import { users, assessments, learningStylesResults } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Authenticate user
+    const authResult = await requireAuth();
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId, user } = authResult;
+
+    // Check RBAC permission for creating assessments
+    const permCheck = await requirePermission(userId, "assessments.create");
+    if (permCheck) return permCheck;
 
     const body = await request.json();
     const { answers, results } = body;
-
-    const user = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
 
     const [assessment] = await db
       .insert(assessments)
       .values({
         id: `ls_${Date.now()}`,
         tenantId: user.tenantId,
-        userId: user.id,
+        userId: userId,
         type: "learning-styles",
         status: "completed",
         answers,
@@ -41,7 +40,7 @@ export async function POST(request: NextRequest) {
     await db.insert(learningStylesResults).values({
       id: `ls_res_${Date.now()}`,
       assessmentId: assessment.id,
-      userId: user.id,
+      userId: userId,
       visual: results.visual,
       auditory: results.auditory,
       readWrite: results.readWrite,

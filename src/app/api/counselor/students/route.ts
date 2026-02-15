@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
+import { requirePermission, requireAnyPermission } from "@/lib/rbac";
 import { db } from "@/lib/db";
 import { users, counselorAssignments, schools, assessments, careerPlans, attendance } from "@/lib/db/schema";
 import { eq, and, desc, sql, gte } from "drizzle-orm";
@@ -11,7 +12,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: authResult.error }, { status: authResult.status });
   }
 
-  const { user: currentUser } = authResult;
+  const { userId, user: currentUser } = authResult;
+
+  // Check RBAC permission for reading students
+  const permCheck = await requireAnyPermission(userId, ["users.read", "students.read"]);
+  if (permCheck) return permCheck;
 
   try {
     // Get school assignments for this counselor

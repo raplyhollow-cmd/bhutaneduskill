@@ -3,33 +3,32 @@ import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { schools, users } from "@/lib/db/schema";
 import { eq, like, or, desc } from "drizzle-orm";
+import { requireAuth } from "@/lib/auth-utils";
+import { requirePermission } from "@/lib/rbac";
 
 // GET /api/schools - Get schools
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth();
+    if ("error" in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { user, userId } = authResult;
+
+    // Check schools.read permission
+    const permCheck = await requirePermission(userId, "schools.read");
+    if (permCheck) return permCheck;
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
     const limit = parseInt(searchParams.get("limit") || "50");
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
     // Only admin and counselors can list all schools
-    if (!["admin", "counselor"].includes(currentUser.type)) {
+    if (!["admin", "counselor"].includes(user.type)) {
       // Non-admin users can only see their own school
-      if (currentUser.schoolId) {
+      if (user.schoolId) {
         const school = await db.query.schools.findFirst({
-          where: eq(schools.id, currentUser.schoolId),
+          where: eq(schools.id, user.schoolId),
         });
         return NextResponse.json({ schools: school ? [school] : [] });
       }
@@ -63,21 +62,18 @@ export async function GET(request: NextRequest) {
 // POST /api/schools - Create school (admin only)
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(["admin"]);
+    if ("error" in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { user, userId } = authResult;
+
+    // Check schools.create permission
+    const permCheck = await requirePermission(userId, "schools.create");
+    if (permCheck) return permCheck;
 
     const body = await request.json();
     const { name, code, address, contactEmail, contactPhone } = body;
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || (currentUser as any).type !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
     const [newSchool] = await db
       .insert(schools)
