@@ -8,15 +8,19 @@ export function getTenantFromRequest(): {
 } {
   // For server-side usage, this will be enhanced with headers()
   // For now, return null and we'll implement with middleware
-  if (typeof window !== "undefined") {
-    const hostname = window.location.hostname;
-    const parts = hostname.split(".");
-    if (parts.length > 2) {
-      return {
-        tenant: parts[0],
-        subdomain: parts[0],
-      };
+  try {
+    if (typeof window !== "undefined" && window.location) {
+      const hostname = window.location.hostname;
+      const parts = hostname.split(".");
+      if (parts.length > 2) {
+        return {
+          tenant: parts[0],
+          subdomain: parts[0],
+        };
+      }
     }
+  } catch {
+    // SSR safety: window.location may not be available during static generation
   }
   return { tenant: null, subdomain: null };
 }

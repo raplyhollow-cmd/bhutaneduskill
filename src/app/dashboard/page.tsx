@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +51,7 @@ interface RecommendedStep {
 
 export default function DashboardPage() {
   const { user, isLoaded } = useUser();
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userStats, setUserStats] = useState<UserStats>({
@@ -63,10 +65,33 @@ export default function DashboardPage() {
   const [skillsInProgress, setSkillsInProgress] = useState<Skill[]>([]);
 
   useEffect(() => {
-    if (isLoaded) {
+    const checkSetupStatus = async () => {
+      // First check if user needs setup before loading dashboard
+      try {
+        const roleRes = await fetch("/api/auth/set-role");
+        if (roleRes.ok) {
+          const roleData = await roleRes.json();
+          // If user needs setup or has no user type, redirect to setup wizard
+          if (roleData.needsSetup || !roleData.userType) {
+            // Determine which setup wizard to show based on user type or default to student
+            const portal = roleData.userType || "student";
+            router.push(`/setup/${portal}`);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error("Failed to check setup status:", error);
+        // Continue to load dashboard on error
+      }
+
+      // If setup is complete, load dashboard data
       loadUserData();
+    };
+
+    if (isLoaded) {
+      checkSetupStatus();
     }
-  }, [isLoaded]);
+  }, [isLoaded, router]);
 
   const loadUserData = async () => {
     try {

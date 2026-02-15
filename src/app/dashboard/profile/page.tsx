@@ -41,6 +41,7 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState<string>("");
 
   const [profile, setProfile] = useState({
     firstName: "",
@@ -88,6 +89,7 @@ export default function ProfilePage() {
   const saveProfile = async () => {
     setIsLoading(true);
     setSaveStatus("saving");
+    setErrorMessage("");
 
     try {
       const response = await fetch("/api/user/profile", {
@@ -103,13 +105,24 @@ export default function ProfilePage() {
           setIsEditing(false);
         }, 1500);
       } else {
+        // Parse error response to show actual error message
+        let errorMsg = "Failed to save profile. Please try again.";
+        try {
+          const errorData = await response.json();
+          errorMsg = errorData.error || errorData.details || errorMsg;
+          console.error("Profile save error:", errorData);
+        } catch {
+          console.error("Profile save failed with status:", response.status);
+        }
+        setErrorMessage(errorMsg);
         setSaveStatus("error");
-        setTimeout(() => setSaveStatus("idle"), 2000);
+        setTimeout(() => setSaveStatus("idle"), 5000); // Keep error message visible longer
       }
     } catch (error) {
       console.error("Failed to save profile:", error);
+      setErrorMessage("Network error. Please check your connection and try again.");
       setSaveStatus("error");
-      setTimeout(() => setSaveStatus("idle"), 2000);
+      setTimeout(() => setSaveStatus("idle"), 5000);
     } finally {
       setIsLoading(false);
     }
@@ -145,7 +158,7 @@ export default function ProfilePage() {
           <p className="text-gray-600">Manage your personal information and preferences</p>
         </div>
         {!isEditing && (
-          <Button variant="outline" onClick={() => setIsEditing(true)}>
+          <Button variant="outline" onClick={() => { setIsEditing(true); setErrorMessage(""); }}>
             <Edit className="w-4 h-4 mr-2" />
             Edit Profile
           </Button>
@@ -285,8 +298,11 @@ export default function ProfilePage() {
               </Button>
             </div>
 
-            {saveStatus === "error" && (
-              <p className="text-red-500 text-sm">Failed to save profile. Please try again.</p>
+            {saveStatus === "error" && errorMessage && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-red-600 text-sm font-medium mb-1">Failed to save profile</p>
+                <p className="text-red-500 text-xs">{errorMessage}</p>
+              </div>
             )}
           </CardContent>
         </Card>

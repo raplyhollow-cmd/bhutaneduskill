@@ -69,29 +69,33 @@ export async function POST(req: NextRequest) {
       console.log("[Profile API] Updating existing user:", existingUser.id);
 
       // Build update object with only the fields that exist in schema
-      const updateData: any = {
+      // We use sql to do a partial update, only updating provided fields
+      const updateData: Record<string, any> = {
         updatedAt: new Date(),
       };
 
       // Only update fields that are provided and exist in schema
-      if (firstName !== undefined) updateData.firstName = firstName;
-      if (lastName !== undefined) updateData.lastName = lastName;
-      if (email !== undefined) updateData.email = email;
-      if (dateOfBirth !== undefined) updateData.dateOfBirth = dateOfBirth;
-      if (grade !== undefined) {
-        const gradeNum = parseInt(grade.replace("Class ", ""));
-        if (!isNaN(gradeNum)) updateData.classGrade = gradeNum;
+      if (typeof firstName === "string") updateData.firstName = firstName.trim();
+      if (typeof lastName === "string") updateData.lastName = lastName.trim();
+      if (typeof email === "string") updateData.email = email.trim();
+      if (typeof dateOfBirth === "string") updateData.dateOfBirth = dateOfBirth;
+      if (typeof grade === "string" && grade) {
+        const gradeNum = parseInt(grade.replace("Class ", "").trim());
+        if (!isNaN(gradeNum) && gradeNum > 0) {
+          updateData.classGrade = gradeNum;
+        }
       }
-      if (school !== undefined) updateData.school = school;
-      if (interests !== undefined) updateData.interests = interests;
-      if (goals !== undefined) updateData.goals = goals;
-      if (bio !== undefined) {
+      if (typeof school === "string") updateData.school = school.trim();
+      if (Array.isArray(interests)) updateData.interests = interests;
+      if (typeof goals === "string") updateData.goals = goals.trim();
+      if (typeof bio === "string") {
         const currentSettings = (existingUser as any).settings || {};
-        updateData.settings = { ...currentSettings, bio };
+        updateData.settings = { ...currentSettings, bio: bio.trim() };
       }
 
       console.log("[Profile API] Update data:", updateData);
 
+      // Perform the update
       await db
         .update(users)
         .set(updateData)
@@ -99,7 +103,7 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        profile: { ...existingUser, ...body }
+        profile: { ...existingUser, ...updateData }
       });
     } else {
       console.log("[Profile API] Creating new user for userId:", userId);
@@ -160,8 +164,24 @@ export async function POST(req: NextRequest) {
     }
   } catch (error) {
     console.error("[Profile API] Error saving profile:", error);
+    console.error("[Profile API] Error stack:", error instanceof Error ? error.stack : "No stack trace");
+
+    // Get more detailed error info
+    let errorMessage = "Unknown error";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+      // Check for common database errors
+      if (error.message.includes("violates")) {
+        errorMessage = "Database constraint violation: " + error.message;
+      } else if (error.message.includes("null value in column")) {
+        errorMessage = "Missing required field: " + error.message;
+      } else if (error.message.includes("duplicate key")) {
+        errorMessage = "Duplicate entry: " + error.message;
+      }
+    }
+
     return NextResponse.json(
-      { error: "Failed to save profile", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to save profile", details: errorMessage },
       { status: 500 }
     );
   }
