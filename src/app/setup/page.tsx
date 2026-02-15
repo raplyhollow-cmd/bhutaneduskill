@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
-import { users, schools } from "@/lib/db/schema";
+import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 export default async function SetupPage() {
@@ -11,11 +11,10 @@ export default async function SetupPage() {
     redirect("/sign-in");
   }
 
-  // Fetch user to determine their role
+  // Check if user exists in database
   const userRecord = await db
     .select({
       role: users.role,
-      schoolId: users.schoolId,
       onboardingComplete: users.onboardingComplete,
     })
     .from(users)
@@ -24,7 +23,7 @@ export default async function SetupPage() {
 
   const userData = userRecord[0];
 
-  // If user not found in database, they need to complete registration first
+  // If user not found in database, redirect to unified setup wizard
   if (!userData) {
     redirect("/setup/unified");
   }
@@ -49,21 +48,6 @@ export default async function SetupPage() {
     }
   }
 
-  // Redirect to appropriate wizard based on role
-  switch (userData.role) {
-    case "school_admin":
-      redirect("/setup/school");
-    case "teacher":
-      redirect("/setup/teacher");
-    case "student":
-      redirect("/setup/student");
-    case "parent":
-      redirect("/setup/parent");
-    case "counselor":
-      redirect("/setup/counselor");
-    case "admin":
-      redirect("/setup/admin");
-    default:
-      redirect("/dashboard");
-  }
+  // User exists but onboarding not complete - redirect to unified setup
+  redirect("/setup/unified");
 }
