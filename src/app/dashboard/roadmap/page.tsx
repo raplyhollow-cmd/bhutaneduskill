@@ -50,7 +50,7 @@ const CAREER_ROADMAPS = {
           "Build small projects (games, websites)",
           "Join coding clubs or competitions",
           "Prepare for Class 12 exams",
-          "Take RIASEC assessment on Career Compass",
+          "Take RIASEC assessment on Bhutan EduSkill",
         ],
       },
       {

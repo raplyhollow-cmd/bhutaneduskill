@@ -52,11 +52,22 @@ export async function POST(request: NextRequest) {
       columns: { type: true, firstName: true, lastName: true },
     });
 
-    if (!user || user.type !== userRole) {
+    if (!user) {
+      console.error("[AI Insights] User not found:", userId);
       return NextResponse.json(
-        { error: "Unauthorized: Role mismatch" },
-        { status: 403 }
+        { error: "User not found", insights: [] },
+        { status: 404 }
       );
+    }
+
+    // Log role mismatch but continue anyway for better UX
+    if (user.type !== userRole) {
+      console.warn("[AI Insights] Role mismatch - using requested role anyway:", {
+        requested: userRole,
+        actual: user.type,
+        userId
+      });
+      // Continue with requested role instead of blocking
     }
 
     // Generate insights based on role

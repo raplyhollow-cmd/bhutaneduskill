@@ -135,7 +135,7 @@ const LEVELS = [
   { level: 7, xp: 2500, title: "Expert" },
   { level: 8, xp: 4000, title: "Legend" },
   { level: 9, xp: 6000, title: "Hero" },
-  { level: 10, xp: 10000, title: "Career Compass Master" },
+  { level: 10, xp: 10000, title: "Bhutan EduSkill Master" },
 ];
 
 export default function AchievementsPage() {

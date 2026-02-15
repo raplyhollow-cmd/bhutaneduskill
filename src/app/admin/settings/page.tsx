@@ -40,7 +40,7 @@ import { auth } from "@clerk/nextjs/server";
 
 // Mock settings data
 const generalSettings = {
-  platformName: "Career Compass",
+  platformName: "Bhutan EduSkill",
   platformUrl: "https://careercompass.bt",
   supportEmail: "support@careercompass.bt",
   contactPhone: "+975 2 34567",

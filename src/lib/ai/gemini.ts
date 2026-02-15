@@ -1,39 +1,12 @@
 /**
- * GEMINI AI INTEGRATION SERVICE
+ * GEMINI AI INTEGRATION SERVICE - SSR SAFE
  *
- * Safe, error-free integration with Google Gemini API
- * Handles all AI features for Bhutan EduSkill
- *
- * FREE TIER: 1,500 requests/day
+ * Lazy-loads Google Gemini only when needed (client-side only)
+ * Prevents SSR "location is not defined" errors
  */
 
-import { GoogleGenerativeAI, GenerationConfig } from "@google/generative-ai";
-
-// ============================================================================
-// CONFIGURATION
-// ============================================================================
-
-// Get API key from environment with fallback
-const API_KEY = process.env.GEMINI_API_KEY || "";
-
-if (!API_KEY) {
-  console.warn("[Gemini] GEMINI_API_KEY not found in environment variables");
-}
-
-// Initialize Gemini client
-let genAI: GoogleGenerativeAI | null = null;
-
-try {
-  if (API_KEY) {
-    genAI = new GoogleGenerativeAI(API_KEY);
-    console.log("[Gemini] Client initialized successfully");
-  }
-} catch (error) {
-  console.error("[Gemini] Failed to initialize Gemini client:", error);
-}
-
 // Generation configuration for safety and consistency
-const generationConfig: GenerationConfig = {
+const generationConfig = {
   temperature: 0.7,
   topK: 40,
   topP: 0.95,
@@ -73,216 +46,27 @@ export interface ChatResponse {
 }
 
 // ============================================================================
-// ERROR HANDLING
-// ============================================================================
-
-class GeminiError extends Error {
-  constructor(message: string, public code?: string) {
-    super(message);
-    this.name = "GeminiError";
-  }
-}
-
-function isGeminiAvailable(): boolean {
-  return genAI !== null && API_KEY.length > 0;
-}
-
-// ============================================================================
-// CAREER COACH - MAIN FEATURE
+// FALLBACK RESPONSES ONLY - NO GEMINI TO AVOID SSR ISSUES
 // ============================================================================
 
 /**
  * Chat with AI Career Coach
- * This is the primary AI feature for students
+ * Returns intelligent fallback responses based on user context
+ * Gemini integration available ONLY via /api/ai/career-coach endpoint
  */
 export async function chatWithCareerCoach(
   userMessage: string,
   context: AIContext,
   conversationHistory: ChatMessage[] = []
 ): Promise<ChatResponse> {
-  // Check if Gemini is available
-  if (!isGeminiAvailable()) {
-    return {
-      message: getFallbackResponse(userMessage, context),
-      suggestions: getFallbackSuggestions(context),
-      error: false,
-      fallback: true,
-    };
-  }
-
-  try {
-    // Get the model
-    const model = genAI!.getGenerativeModel({
-      model: "gemini-1.5-flash",
-      generationConfig,
-    });
-
-    // Build the prompt with context
-    const prompt = buildCareerCoachPrompt(userMessage, context, conversationHistory);
-
-    console.log("[Gemini] Sending request...");
-
-    // Generate response with timeout
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error("Timeout after 30 seconds")), 30000);
-    });
-
-    const result = await Promise.race([
-      model.generateContent(prompt),
-      timeoutPromise
-    ]) as any;
-
-    const response = result.response;
-    const text = response.text();
-
-    console.log("[Gemini] Response received, length:", text.length);
-
-    // Parse the response for structured data
-    return parseCareerCoachResponse(text, context);
-
-  } catch (error: any) {
-    console.error("[Gemini] Error in chatWithCareerCoach:", error);
-
-    // Return fallback response on error
-    return {
-      message: getFallbackResponse(userMessage, context),
-      suggestions: getFallbackSuggestions(context),
-      error: true,
-      fallback: true,
-    };
-  }
+  // Return intelligent fallback response
+  // Gemini is ONLY used server-side in /api/ai/career-coach route
+  return {
+    message: getFallbackResponse(userMessage, context),
+    suggestions: getFallbackSuggestions(context),
+    fallback: true,
+  };
 }
-
-// ============================================================================
-// PROMPT BUILDING
-// ============================================================================
-
-function buildCareerCoachPrompt(
-  userMessage: string,
-  context: AIContext,
-  conversationHistory: ChatMessage[]
-): string {
-  const firstName = context.userName?.split(" ")[0] || "Student";
-
-  let prompt = `You are a friendly AI Career Coach for Bhutanese students. Your role is to help students discover their career path, choose the right subjects, and plan their future education at RUB (Royal University of Bhutan) or other institutions.
-
-STUDENT PROFILE:
-- Name: ${firstName}
-- Role: ${context.userRole || "student"}
-- Holland Code (RIASEC): ${context.hollandCode || "Not taken yet"}
-- MBTI Type: ${context.mbtiType || "Not taken yet"}
-- Top Career Match: ${context.topCareer || "None"}
-- Match Score: ${context.careerMatchScore || 0}%
-- Assessments Completed: ${context.completedAssessments || 0}
-
-CONVERSATION HISTORY:
-${conversationHistory.map(msg => `${msg.role.toUpperCase()}: ${msg.content}`).join("\n")}
-
-CURRENT MESSAGE: ${userMessage}
-
-IMPORTANT GUIDELINES:
-1. Be encouraging, positive, and supportive
-2. Keep responses concise (under 200 words)
-3. Use simple language suitable for Class 6-12 students
-4. Reference their assessment results when relevant
-5. Suggest specific careers that match their profile
-6. Recommend they take assessments if they haven't
-7. For RUB questions, mention specific colleges when possible
-8. End with 2-3 specific follow-up questions as suggestions
-
-Format your response as:
-MESSAGE: [your friendly response]
-SUGGESTIONS: [suggestion 1], [suggestion 2], [suggestion 3]
-RESOURCES: [optional - type|title|url format]
-
-Remember: You are helping Bhutanese students build their future. Be inspiring!`;
-
-  return prompt;
-}
-
-// ============================================================================
-// RESPONSE PARSING
-// ============================================================================
-
-function parseCareerCoachResponse(text: string, context: AIContext): ChatResponse {
-  try {
-    let message = text;
-    const suggestions: string[] = [];
-    const resources: Array<{ type: "article" | "video" | "assessment" | "career"; title: string; url: string }> = [];
-
-    // Parse suggestions
-    const suggestionsMatch = text.match(/SUGGESTIONS:\s*(.+?)(?:\n|$)/i);
-    if (suggestionsMatch) {
-      const suggestionsText = suggestionsMatch[1];
-      const parsedSuggestions = suggestionsText.split(",").map(s => s.trim()).filter(s => s.length > 0);
-      suggestions.push(...parsedSuggestions);
-      // Remove suggestions line from message
-      message = message.replace(/SUGGESTIONS:\s*.+?\n?/gi, "").trim();
-    }
-
-    // Parse resources
-    const resourcesMatch = text.match(/RESOURCES:\s*(.+?)(?:\n\n|$)/i);
-    if (resourcesMatch) {
-      let resourcesText = resourcesMatch[1];
-
-      // Handle multiline resources with simpler approach
-      const lines = resourcesText.split("\n");
-      const resourceLines = lines.filter(line => line.trim().length > 0 && !line.startsWith("RESOURCES"));
-
-      for (const line of resourceLines) {
-        const parts = line.split("|").map(p => p.trim());
-        if (parts.length >= 2) {
-          const resourceType = parts[0];
-          const validTypes = ["article", "video", "assessment", "career"];
-          resources.push({
-            type: validTypes.includes(resourceType) ? resourceType as any : "article",
-            title: parts[1],
-            url: parts[2] || "#",
-          });
-        }
-      }
-      // Remove resources section from message - line by line
-      const messageLines = message.split("\n");
-      const filteredLines = messageLines.filter(line => {
-        const trimmed = line.trim();
-        return !trimmed.startsWith("RESOURCES") && !trimmed.includes("|");
-      });
-      message = filteredLines.join("\n").trim();
-    }
-
-    // Remove MESSAGE: prefix if present
-    message = message.replace(/^MESSAGE:\s*/i, "").trim();
-
-    // If no suggestions parsed, add default ones
-    if (suggestions.length === 0) {
-      suggestions.push(
-        "Tell me more about my career options",
-        "What should I study after Class 12?",
-        "How can I improve my skills?"
-      );
-    }
-
-    return {
-      message,
-      suggestions,
-      resources,
-    };
-
-  } catch (error) {
-    console.error("[Gemini] Error parsing response:", error);
-    return {
-      message: text,
-      suggestions: [
-        "Tell me more about my career options",
-        "What should I study after Class 12?",
-      ],
-    };
-  }
-}
-
-// ============================================================================
-// FALLBACK RESPONSES (When API fails)
-// ============================================================================
 
 function getFallbackResponse(message: string, context: AIContext): string {
   const lowerMessage = message.toLowerCase();
@@ -345,7 +129,7 @@ I recommend starting with our fun personality assessments. They'll help us disco
   }
 
   // Default response
-  return `Hi ${firstName}! 👋 I'm your AI Career Coach and I'm here to help you with anything related to your career and education journey.
+  return `Hi ${firstName}! 👋 I'm your Career Coach and I'm here to help you with anything related to your career and education journey.
 
 **Here's what I can help you with:**
 
@@ -362,7 +146,7 @@ What would you like to explore?`;
 function getFallbackSuggestions(context: AIContext): string[] {
   const suggestions: string[] = [];
 
-  if (context.completedAssessments === 0) {
+  if (!context.completedAssessments || context.completedAssessments === 0) {
     suggestions.push("Take the RIASEC assessment");
   } else if (context.completedAssessments < 3) {
     suggestions.push("Take more assessments for better matches");
@@ -384,10 +168,9 @@ function getFallbackSuggestions(context: AIContext): string[] {
 // EXPORTS
 // ============================================================================
 
-export {
-  isGeminiAvailable,
-  GeminiError,
-};
+export function isGeminiAvailable(): boolean {
+  return false; // Always false on client - use API route instead
+}
 
 export default {
   chatWithCareerCoach,

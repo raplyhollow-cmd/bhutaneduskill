@@ -106,13 +106,20 @@ export default function TeacherDashboard() {
         }),
       });
 
+      // Log for debugging
+      console.log("[Teacher Dashboard] AI Insights API status:", response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log("[Teacher Dashboard] AI Insights received:", data.insights?.length || 0, "insights");
         setAiInsights(data.insights || []);
+      } else {
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+        console.error("[Teacher Dashboard] AI Insights API error:", errorData);
+        setAiInsights([]);
       }
     } catch (error) {
-      console.error("Failed to load AI insights:", error);
-      // Set fallback insights on error
+      console.error("[Teacher Dashboard] Failed to load AI insights:", error);
       setAiInsights([]);
     } finally {
       setIsLoadingInsights(false);

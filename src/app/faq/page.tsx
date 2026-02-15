@@ -41,8 +41,8 @@ export default function FAQPage() {
     {
       id: 1,
       category: "general",
-      question: "What is Career Compass?",
-      answer: "Career Compass is Bhutan's first AI-powered career guidance platform designed for students in Classes 6-12 (ages 11-18). We help students discover their natural talents, build skills, explore career paths, and find opportunities for further education including study abroad options.",
+      question: "What is Bhutan EduSkill?",
+      answer: "Bhutan EduSkill is Bhutan's first AI-powered career guidance platform designed for students in Classes 6-12 (ages 11-18). We help students discover their natural talents, build skills, explore career paths, and find opportunities for further education including study abroad options.",
       icon: Sparkles,
     },
     {
@@ -55,7 +55,7 @@ export default function FAQPage() {
     {
       id: 3,
       category: "general",
-      question: "Is Career Compass available in Dzongkha?",
+      question: "Is Bhutan EduSkill available in Dzongkha?",
       answer: "Currently, our platform is available in English with Dzongkha language support in development. We're working closely with local educators to ensure our content is culturally relevant and accessible to all Bhutanese students.",
       icon: Sparkles,
     },
@@ -64,28 +64,28 @@ export default function FAQPage() {
     {
       id: 4,
       category: "students",
-      question: "What can I do on Career Compass?",
+      question: "What can I do on Bhutan EduSkill?",
       answer: "As a student, you can: Take career assessments to discover your strengths, explore 50+ career pathways with detailed information, find learning resources to improve your skills, learn how to monetize your skills through freelancing, discover scholarships for studying abroad, track your progress with achievements and badges, and get personalized career roadmaps.",
       icon: GraduationCap,
     },
     {
       id: 5,
       category: "students",
-      question: "Is Career Compass free for students?",
-      answer: "Yes! Career Compass offers a free tier that includes basic career assessments, career exploration, and access to some learning resources. Premium features include detailed career reports, personalized learning paths, scholarship matching, and study abroad guidance.",
+      question: "Is Bhutan EduSkill free for students?",
+      answer: "Yes! Bhutan EduSkill offers a free tier that includes basic career assessments, career exploration, and access to some learning resources. Premium features include detailed career reports, personalized learning paths, scholarship matching, and study abroad guidance.",
       icon: GraduationCap,
     },
     {
       id: 6,
       category: "students",
-      question: "How can I start earning money through Career Compass?",
+      question: "How can I start earning money through Bhutan EduSkill?",
       answer: "Our Monetize section shows age-appropriate ways to earn money based on your skills. For students aged 15-16, we suggest local gigs and content creation. For students aged 17-18, we guide you through freelancing platforms like Fiverr and Upwork, where you can offer services such as graphic design, writing, coding, and more.",
       icon: GraduationCap,
     },
     {
       id: 7,
       category: "students",
-      question: "Can Career Compass help me study abroad?",
+      question: "Can Bhutan EduSkill help me study abroad?",
       answer: "Absolutely! We provide comprehensive information about study opportunities in Australia, New Zealand, USA, Singapore, UK, Germany, and Europe. Our platform includes scholarship databases, application guidance, IELTS preparation resources, and country-specific requirements to help you achieve your study abroad dreams.",
       icon: GraduationCap,
     },
@@ -94,8 +94,8 @@ export default function FAQPage() {
     {
       id: 8,
       category: "parents",
-      question: "How can Career Compass help my child?",
-      answer: "Career Compass helps your child discover their natural talents early, make informed subject choices, explore suitable career paths, and develop skills that are in demand. Parents get their own portal to track their child's progress, receive AI-powered insights, and access resources to support their child's career journey.",
+      question: "How can Bhutan EduSkill help my child?",
+      answer: "Bhutan EduSkill helps your child discover their natural talents early, make informed subject choices, explore suitable career paths, and develop skills that are in demand. Parents get their own portal to track their child's progress, receive AI-powered insights, and access resources to support their child's career journey.",
       icon: Users,
     },
     {
@@ -117,7 +117,7 @@ export default function FAQPage() {
     {
       id: 11,
       category: "schools",
-      question: "How can schools partner with Career Compass?",
+      question: "How can schools partner with Bhutan EduSkill?",
       answer: "Schools can partner with us through our B2B subscription model. We offer special pricing for government schools and competitive rates for private schools. Partner schools get full access for all students, teacher portals for class-level analytics, career education resources, and priority support.",
       icon: BookOpen,
     },
@@ -131,7 +131,7 @@ export default function FAQPage() {
     {
       id: 13,
       category: "schools",
-      question: "Does Career Compass align with BCSEA curriculum?",
+      question: "Does Bhutan EduSkill align with BCSEA curriculum?",
       answer: "Yes! Our content is aligned with the Bhutan Council for School Examinations and Assessment (BCSEA) curriculum. We incorporate local career pathways, TVET options, and GNH values into our career recommendations and resources.",
       icon: BookOpen,
     },
@@ -163,7 +163,7 @@ export default function FAQPage() {
     {
       id: 17,
       category: "study-abroad",
-      question: "Which countries does Career Compass cover for study abroad?",
+      question: "Which countries does Bhutan EduSkill cover for study abroad?",
       answer: "We currently cover Australia, New Zealand, United States, United Kingdom, Singapore, Germany, and various European countries. For each country, we provide information on universities, application requirements, visa processes, scholarship opportunities, and cost of living.",
       icon: Globe,
     },
@@ -228,7 +228,7 @@ export default function FAQPage() {
               </span>
             </h1>
             <p className="text-xl md:text-2xl text-blue-100 max-w-3xl mx-auto mb-10 leading-relaxed">
-              Find answers to common questions about Career Compass
+              Find answers to common questions about Bhutan EduSkill
             </p>
           </div>
         </div>
@@ -380,7 +380,7 @@ export default function FAQPage() {
                 Still Have Questions?
               </h2>
               <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
-                Our team is here to help you with any questions about Career Compass
+                Our team is here to help you with any questions about Bhutan EduSkill
               </p>
               <div className="flex flex-wrap gap-4 justify-center">
                 <Button
@@ -415,7 +415,7 @@ export default function FAQPage() {
               Explore More
             </h2>
             <p className="text-gray-600">
-              Discover what Career Compass has to offer
+              Discover what Bhutan EduSkill has to offer
             </p>
           </div>
 

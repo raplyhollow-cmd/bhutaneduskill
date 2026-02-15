@@ -304,7 +304,7 @@ export function PortalSidebar({ userType, userName, userImage }: SidebarProps) {
                 >
                   <GraduationCap className="w-6 h-6" />
                 </motion.div>
-                Career Compass
+                Bhutan EduSkill
               </motion.h1>
               <p className="text-sm text-white/80 mt-1">{portalName}</p>
             </Link>

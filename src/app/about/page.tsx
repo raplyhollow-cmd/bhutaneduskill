@@ -64,7 +64,7 @@ export default function AboutPage() {
       whatsapp: "97577773737",
       icon: Target,
       color: "from-orange-500 to-red-600",
-      description: "Marketing expert connecting schools with Career Compass",
+      description: "Marketing expert connecting schools with Bhutan EduSkill",
     },
   ];
 

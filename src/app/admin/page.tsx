@@ -123,12 +123,24 @@ export default function AdminDashboardPage() {
           },
         }),
       });
+
+      // Log response status for debugging
+      console.log("[Admin Dashboard] AI Insights API status:", response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log("[Admin Dashboard] AI Insights received:", data.insights?.length || 0, "insights");
         setAiInsights(data.insights || []);
+      } else {
+        // Log error details
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+        console.error("[Admin Dashboard] AI Insights API error:", errorData);
+        // Set empty insights to show fallback
+        setAiInsights([]);
       }
     } catch (error) {
-      console.error("Failed to load AI insights:", error);
+      console.error("[Admin Dashboard] Failed to load AI insights:", error);
+      setAiInsights([]);
     } finally {
       setIsLoadingInsights(false);
     }
