@@ -16,6 +16,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { step, data } = body;
 
+    console.log("[Student Setup] Received:", { step, data, body: JSON.stringify(body) });
+
     // Get user from database
     const userRecord = await db
       .select()
