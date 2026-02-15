@@ -35,6 +35,17 @@ export default function AdminLayout({
     ])
       .then(([roleRes, profileRes]) => Promise.all([roleRes.json(), profileRes.json()]))
       .then(([roleData, profileData]) => {
+        // Platform admins skip setup entirely - always let them through
+        if (roleData.userType === 'admin') {
+          setUserType('admin');
+          if (profileData?.profile) {
+            setUserName(`${profileData.profile.firstName} ${profileData.profile.lastName || ''}`.trim());
+          } else {
+            setUserName("Admin");
+          }
+          return;
+        }
+
         // Check if user needs setup (first time login, not in database)
         if (roleData.needsSetup || !roleData.userType) {
           setNeedsSetup(true);

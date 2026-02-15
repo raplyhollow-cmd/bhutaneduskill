@@ -23,6 +23,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ userType: null, needsSetup: true });
     }
 
+    // Platform admins never need onboarding - skip setup check entirely
+    if (user.type === 'admin') {
+      const response = NextResponse.json({
+        userType: user.type,
+        userId: user.id,
+        schoolId: user.schoolId,
+        needsSetup: false
+      });
+      response.cookies.set("userType", user.type, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7,
+      });
+      return response;
+    }
+
     // Check if user has completed onboarding
     if (!user.onboardingComplete) {
       return NextResponse.json({
