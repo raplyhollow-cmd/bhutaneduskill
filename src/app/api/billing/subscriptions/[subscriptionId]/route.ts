@@ -58,11 +58,10 @@ interface SubscriptionDetail {
   tenant?: {
     id: string;
     name: string;
-    code: string;
-    type: string;
-    status: string;
-    email?: string;
-    phone?: string;
+    slug: string;
+    domain?: string;
+    logo?: string;
+    isActive?: boolean;
   };
   plan?: {
     id: string;
@@ -160,11 +159,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
         // Tenant details
         tenantId2: tenants.id,
         tenantName: tenants.name,
-        tenantCode: tenants.code,
-        tenantType: tenants.type,
-        tenantStatus: tenants.status,
-        tenantEmail: tenants.email,
-        tenantPhone: tenants.phone,
+        tenantSlug: tenants.slug,
+        tenantDomain: tenants.domain,
+        tenantLogo: tenants.logo,
+        tenantIsActive: tenants.isActive,
         // Plan details
         planId2: subscriptionPlans.id,
         planName: subscriptionPlans.name,
@@ -238,11 +236,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
         ? {
             id: sub.tenantId2,
             name: sub.tenantName || "",
-            code: sub.tenantCode || "",
-            type: sub.tenantType || "",
-            status: sub.tenantStatus || "",
-            email: sub.tenantEmail || undefined,
-            phone: sub.tenantPhone || undefined,
+            slug: sub.tenantSlug || "",
+            domain: sub.tenantDomain || undefined,
+            logo: sub.tenantLogo || undefined,
+            isActive: sub.tenantIsActive ?? true,
           }
         : undefined,
       plan: sub.planId2

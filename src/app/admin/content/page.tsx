@@ -8,6 +8,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { AddContentDropdown } from "@/components/admin/add-content-dropdown";
 import {
   Briefcase,
   GraduationCap,
@@ -43,11 +44,11 @@ import { auth } from "@clerk/nextjs/server";
 
 // Content type tabs
 const contentTypes = [
-  { id: "all", name: "All Content", icon: Database },
-  { id: "careers", name: "Careers", icon: Briefcase },
-  { id: "colleges", name: "Colleges", icon: GraduationCap },
-  { id: "rub", name: "RUB Programs", icon: BookOpen },
-  { id: "scholarships", name: "Scholarships", icon: Award },
+  { id: "all", name: "All Content", icon: Database, href: "/admin/content" },
+  { id: "careers", name: "Careers", icon: Briefcase, href: "/admin/careers" },
+  { id: "colleges", name: "Colleges", icon: GraduationCap, href: "/admin/content/colleges" },
+  { id: "rub", name: "RUB Programs", icon: BookOpen, href: "/admin/content/programs" },
+  { id: "scholarships", name: "Scholarships", icon: Award, href: "/admin/content/scholarships" },
 ];
 
 async function getContentStats() {
@@ -174,6 +175,9 @@ async function getUpcomingScholarships() {
     .limit(5);
 }
 
+// Client component for interactive elements
+import { ContentActions } from "./content-actions";
+
 export default async function AdminContentPage({
   searchParams,
 }: {
@@ -198,10 +202,11 @@ export default async function AdminContentPage({
     rub: BookOpen,
   };
 
-  const demandColors = {
-    high: "bg-green-100 text-green-700 border-green-200",
-    medium: "bg-yellow-100 text-yellow-700 border-yellow-200",
-    low: "bg-gray-100 text-gray-700 border-gray-200",
+  const contentTypeHref: Record<string, string> = {
+    career: "/admin/careers",
+    college: "/admin/content/colleges",
+    rub: "/admin/content/programs",
+    scholarship: "/admin/content/scholarships",
   };
 
   return (
@@ -215,87 +220,93 @@ export default async function AdminContentPage({
           </p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline">
-            <Upload className="w-4 h-4 mr-2" />
-            Import Content
+          <Button variant="outline" asChild>
+            <Link href="/admin/content/import">
+              <Upload className="w-4 h-4 mr-2" />
+              Import Content
+            </Link>
           </Button>
-          <Button
-            style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
-            className="text-white"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Content
-          </Button>
+          <AddContentDropdown />
         </div>
       </div>
 
       {/* Stats Overview */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <Database className="w-4 h-4" />
-              Total Content
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900">{stats.total}</div>
-            <p className="text-xs text-gray-500 mt-1">All content items</p>
-          </CardContent>
+        <Card className="hover:shadow-md transition-shadow cursor-pointer" asChild>
+          <Link href="/admin/content">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                <Database className="w-4 h-4" />
+                Total Content
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-gray-900">{stats.total}</div>
+              <p className="text-xs text-gray-500 mt-1">All content items</p>
+            </CardContent>
+          </Link>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <Briefcase className="w-4 h-4" />
-              Careers
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-pink-600">{stats.careers}</div>
-            <p className="text-xs text-green-600 mt-1">
-              {stats.activeCareers} active • {stats.bhutanCareers} Bhutan-specific
-            </p>
-          </CardContent>
+        <Card className="hover:shadow-md transition-shadow cursor-pointer" asChild>
+          <Link href="/admin/careers">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                <Briefcase className="w-4 h-4" />
+                Careers
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-pink-600">{stats.careers}</div>
+              <p className="text-xs text-green-600 mt-1">
+                {stats.activeCareers} active • {stats.bhutanCareers} Bhutan-specific
+              </p>
+            </CardContent>
+          </Link>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <GraduationCap className="w-4 h-4" />
-              Colleges
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-blue-600">{stats.colleges}</div>
-            <p className="text-xs text-gray-500 mt-1">Including RUB colleges</p>
-          </CardContent>
+        <Card className="hover:shadow-md transition-shadow cursor-pointer" asChild>
+          <Link href="/admin/content/colleges">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                <GraduationCap className="w-4 h-4" />
+                Colleges
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-blue-600">{stats.colleges}</div>
+              <p className="text-xs text-gray-500 mt-1">Including RUB colleges</p>
+            </CardContent>
+          </Link>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <BookOpen className="w-4 h-4" />
-              RUB Programs
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-purple-600">{stats.rubPrograms}</div>
-            <p className="text-xs text-gray-500 mt-1">Royal University programs</p>
-          </CardContent>
+        <Card className="hover:shadow-md transition-shadow cursor-pointer" asChild>
+          <Link href="/admin/content/programs">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                <BookOpen className="w-4 h-4" />
+                RUB Programs
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-purple-600">{stats.rubPrograms}</div>
+              <p className="text-xs text-gray-500 mt-1">Royal University programs</p>
+            </CardContent>
+          </Link>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <Award className="w-4 h-4" />
-              Scholarships
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-green-600">{stats.scholarships}</div>
-            <p className="text-xs text-gray-500 mt-1">Available scholarships</p>
-          </CardContent>
+        <Card className="hover:shadow-md transition-shadow cursor-pointer" asChild>
+          <Link href="/admin/content/scholarships">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                <Award className="w-4 h-4" />
+                Scholarships
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-green-600">{stats.scholarships}</div>
+              <p className="text-xs text-gray-500 mt-1">Available scholarships</p>
+            </CardContent>
+          </Link>
         </Card>
       </div>
 
@@ -309,7 +320,7 @@ export default async function AdminContentPage({
               return (
                 <Link
                   key={type.id}
-                  href={`/admin/content?tab=${type.id}`}
+                  href={type.href}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all whitespace-nowrap ${
                     isActive
                       ? "text-white"
@@ -376,10 +387,7 @@ export default async function AdminContentPage({
                 <CardTitle>Recent Content</CardTitle>
                 <CardDescription>Latest updated content items</CardDescription>
               </div>
-              <Button variant="outline" size="sm">
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Sync Data
-              </Button>
+              <ContentActions />
             </div>
           </CardHeader>
           <CardContent>
@@ -394,67 +402,78 @@ export default async function AdminContentPage({
                   const Icon =
                     contentTypeIcons[item.contentType as keyof typeof contentTypeIcons];
                   const isActive = "isActive" in item ? item.isActive : true;
+                  const itemHref = contentTypeHref[item.contentType] || "/admin/content";
+
                   return (
                     <div
                       key={`${item.contentType}-${item.id}`}
                       className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                     >
-                      <div
-                        className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                          item.contentType === "career"
-                            ? "bg-pink-100"
-                            : item.contentType === "college"
-                            ? "bg-blue-100"
-                            : "bg-green-100"
-                        }`}
-                      >
-                        <Icon
-                          className={`w-5 h-5 ${
+                      <Link href={itemHref} className="flex items-center gap-4 flex-1">
+                        <div
+                          className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                             item.contentType === "career"
-                              ? "text-pink-600"
+                              ? "bg-pink-100"
                               : item.contentType === "college"
-                              ? "text-blue-600"
-                              : "text-green-600"
+                              ? "bg-blue-100"
+                              : "bg-green-100"
                           }`}
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium text-gray-900 truncate">{item.name}</p>
-                          <Badge variant="outline" className="text-xs capitalize">
-                            {item.contentType}
-                          </Badge>
-                          {isActive && (
-                            <CheckCircle className="w-4 h-4 text-green-500" />
-                          )}
+                        >
+                          <Icon
+                            className={`w-5 h-5 ${
+                              item.contentType === "career"
+                                ? "text-pink-600"
+                                : item.contentType === "college"
+                                ? "text-blue-600"
+                                : "text-green-600"
+                            }`}
+                          />
                         </div>
-                        <div className="flex items-center gap-3 text-sm text-gray-500">
-                          {"riasecCode" in item && item.riasecCode && (
-                            <span>Holland Code: {item.riasecCode}</span>
-                          )}
-                          {"location" in item && item.location && <span>{item.location}</span>}
-                          {"provider" in item && item.provider && <span>{item.provider}</span>}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-gray-900 truncate">{item.name}</p>
+                            <Badge variant="outline" className="text-xs capitalize">
+                              {item.contentType}
+                            </Badge>
+                            {isActive && (
+                              <CheckCircle className="w-4 h-4 text-green-500" />
+                            )}
+                          </div>
+                          <div className="flex items-center gap-3 text-sm text-gray-500">
+                            {"riasecCode" in item && item.riasecCode && (
+                              <span>Holland Code: {item.riasecCode}</span>
+                            )}
+                            {"location" in item && item.location && <span>{item.location}</span>}
+                            {"provider" in item && item.provider && <span>{item.provider}</span>}
+                          </div>
                         </div>
-                      </div>
+                      </Link>
                       <div className="flex items-center gap-1">
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 hover:bg-pink-50 hover:text-pink-600"
+                          asChild
                         >
-                          <Eye className="w-4 h-4" />
+                          <Link href={`${itemHref}/${item.id}`}>
+                            <Eye className="w-4 h-4" />
+                          </Link>
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 hover:bg-pink-50 hover:text-pink-600"
+                          asChild
                         >
-                          <Edit className="w-4 h-4" />
+                          <Link href={`${itemHref}/${item.id}/edit`}>
+                            <Edit className="w-4 h-4" />
+                          </Link>
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 hover:bg-red-50 hover:text-red-600"
+                          disabled
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -481,31 +500,34 @@ export default async function AdminContentPage({
             <CardContent>
               <div className="space-y-3">
                 {topCareers.slice(0, 5).map((career, index) => (
-                  <div
+                  <Link
                     key={career.id}
-                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50"
+                    href={`/admin/careers/${career.id}`}
+                    className="block"
                   >
-                    <div
-                      className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                        index === 0
-                          ? "bg-yellow-100 text-yellow-700"
-                          : "bg-gray-100 text-gray-600"
-                      }`}
-                    >
-                      {index + 1}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900 text-sm truncate">
-                        {career.name}
-                      </p>
-                      {career.riasecCode && (
-                        <p className="text-xs text-gray-500">{career.riasecCode}</p>
+                    <div className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50">
+                      <div
+                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                          index === 0
+                            ? "bg-yellow-100 text-yellow-700"
+                            : "bg-gray-100 text-gray-600"
+                        }`}
+                      >
+                        {index + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-900 text-sm truncate">
+                          {career.name}
+                        </p>
+                        {career.riasecCode && (
+                          <p className="text-xs text-gray-500">{career.riasecCode}</p>
+                        )}
+                      </div>
+                      {career.bhutanSpecific && (
+                        <Sparkles className="w-4 h-4 text-yellow-500 flex-shrink-0" />
                       )}
                     </div>
-                    {career.bhutanSpecific && (
-                      <Sparkles className="w-4 h-4 text-yellow-500 flex-shrink-0" />
-                    )}
-                  </div>
+                  </Link>
                 ))}
               </div>
             </CardContent>
@@ -528,33 +550,36 @@ export default async function AdminContentPage({
                   </p>
                 ) : (
                   upcomingScholarships.map((scholarship) => (
-                    <div
+                    <Link
                       key={scholarship.id}
-                      className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                      href={`/admin/content/scholarships/${scholarship.id}`}
+                      className="block"
                     >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-gray-900 text-sm truncate">
-                            {scholarship.name}
-                          </p>
-                          <p className="text-xs text-gray-500">{scholarship.provider}</p>
+                      <div className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-900 text-sm truncate">
+                              {scholarship.name}
+                            </p>
+                            <p className="text-xs text-gray-500">{scholarship.provider}</p>
+                          </div>
+                          {scholarship.coveragePercentage && (
+                            <div className="flex items-center gap-1 text-green-600">
+                              <DollarSign className="w-3 h-3" />
+                              <span className="text-xs font-medium">
+                                {scholarship.coveragePercentage}%
+                              </span>
+                            </div>
+                          )}
                         </div>
-                        {scholarship.coveragePercentage && (
-                          <div className="flex items-center gap-1 text-green-600">
-                            <DollarSign className="w-3 h-3" />
-                            <span className="text-xs font-medium">
-                              {scholarship.coveragePercentage}%
-                            </span>
+                        {scholarship.applicationCloseDate && (
+                          <div className="mt-2 flex items-center gap-1 text-xs text-red-600">
+                            <Calendar className="w-3 h-3" />
+                            Due: {scholarship.applicationCloseDate}
                           </div>
                         )}
                       </div>
-                      {scholarship.applicationCloseDate && (
-                        <div className="mt-2 flex items-center gap-1 text-xs text-red-600">
-                          <Calendar className="w-3 h-3" />
-                          Due: {scholarship.applicationCloseDate}
-                        </div>
-                      )}
-                    </div>
+                    </Link>
                   ))
                 )}
               </div>
@@ -590,9 +615,16 @@ export default async function AdminContentPage({
               </p>
               <div className="flex items-center justify-between text-xs text-gray-400">
                 <span>Last sync: 2 hours ago</span>
-                <Button variant="ghost" size="sm" className="h-6 text-xs">
-                  <RefreshCw className="w-3 h-3 mr-1" />
-                  Sync
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs"
+                  asChild
+                >
+                  <Link href="/api/admin/content/sync">
+                    <RefreshCw className="w-3 h-3 mr-1" />
+                    Sync
+                  </Link>
                 </Button>
               </div>
             </div>
@@ -613,9 +645,16 @@ export default async function AdminContentPage({
               </p>
               <div className="flex items-center justify-between text-xs text-gray-400">
                 <span>Last sync: 1 day ago</span>
-                <Button variant="ghost" size="sm" className="h-6 text-xs">
-                  <RefreshCw className="w-3 h-3 mr-1" />
-                  Sync
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs"
+                  asChild
+                >
+                  <Link href="/api/admin/content/sync/rub">
+                    <RefreshCw className="w-3 h-3 mr-1" />
+                    Sync
+                  </Link>
                 </Button>
               </div>
             </div>
@@ -636,9 +675,16 @@ export default async function AdminContentPage({
               </p>
               <div className="flex items-center justify-between text-xs text-gray-400">
                 <span>{stats.scholarships} entries</span>
-                <Button variant="ghost" size="sm" className="h-6 text-xs">
-                  <Upload className="w-3 h-3 mr-1" />
-                  Import
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs"
+                  asChild
+                >
+                  <Link href="/admin/content/scholarships">
+                    <Upload className="w-3 h-3 mr-1" />
+                    Import
+                  </Link>
                 </Button>
               </div>
             </div>
@@ -654,19 +700,29 @@ export default async function AdminContentPage({
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3">
-            <Button variant="outline">
-              <Upload className="w-4 h-4 mr-2" />
-              Import CSV/JSON
+            <Button variant="outline" asChild>
+              <Link href="/admin/content/import">
+                <Upload className="w-4 h-4 mr-2" />
+                Import CSV/JSON
+              </Link>
             </Button>
-            <Button variant="outline">
-              <Download className="w-4 h-4 mr-2" />
-              Export Content
+            <Button variant="outline" asChild>
+              <Link href="/api/admin/content/export">
+                <Download className="w-4 h-4 mr-2" />
+                Export Content
+              </Link>
             </Button>
-            <Button variant="outline">
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Sync All Sources
+            <Button variant="outline" asChild>
+              <Link href="/api/admin/content/sync">
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Sync All Sources
+              </Link>
             </Button>
-            <Button variant="outline" className="text-red-600 hover:bg-red-50">
+            <Button
+              variant="outline"
+              className="text-red-600 hover:bg-red-50"
+              disabled
+            >
               <Trash2 className="w-4 h-4 mr-2" />
               Delete Selected
             </Button>

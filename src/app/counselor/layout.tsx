@@ -18,7 +18,7 @@ export default function CounselorLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
-  const [userType, setUserType] = useState<"student" | "teacher" | "parent" | "counselor" | "admin" | "school-admin" | null>(null);
+  const [userType, setUserType] = useState<"student" | "teacher" | "parent" | "counselor" | "admin" | "school-admin" | "ministry" | null>(null);
   const [userName, setUserName] = useState("");
   const [needsSetup, setNeedsSetup] = useState(false);
   const hasFetched = useRef(false);
@@ -35,6 +35,20 @@ export default function CounselorLayout({
     ])
       .then(([roleRes, profileRes]) => Promise.all([roleRes.json(), profileRes.json()]))
       .then(([roleData, profileData]) => {
+        // Portal type validation: redirect non-counselors to their correct portal
+        if (roleData.userType && roleData.userType !== 'counselor') {
+          const portalMap: Record<string, string> = {
+            student: '/student',
+            teacher: '/teacher',
+            parent: '/parent',
+            'school-admin': '/school-admin',
+            admin: '/admin',
+            ministry: '/ministry',
+          };
+          window.location.href = portalMap[roleData.userType] || '/dashboard';
+          return;
+        }
+
         // Check if user needs setup (first time login, not in database)
         if (roleData.needsSetup || !roleData.userType) {
           setNeedsSetup(true);

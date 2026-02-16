@@ -1,0 +1,1 @@
+src/app/api/admin/analytics-data/schools/route.ts(250,3): error TS2741: Property 'status' is missing in type '{ id: string; name: string; code: string; type: string; level: string; city: string; }' but required in type '{ id: string; name: string; code: string; type: string; level: string; city: string; status: string; }'.

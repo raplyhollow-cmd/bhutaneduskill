@@ -178,7 +178,7 @@ const columnMappings: Record<string, Record<string, string>> = {
     employee_id: "employeeId",
     email_verified: "emailVerified",
     onboarding_complete: "onboardingComplete",
-    clerk_id: "clerkId",
+    clerk_id: "clerkUserId",
     class_grade: "classGrade",
     parent_id: "parentId",
     is_active: "isActive",

@@ -38,7 +38,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 
 interface SidebarProps {
-  userType: "student" | "teacher" | "parent" | "counselor" | "admin" | "school-admin";
+  userType: "student" | "teacher" | "parent" | "counselor" | "admin" | "school-admin" | "ministry";
   userName?: string;
   userImage?: string;
 }
@@ -471,7 +471,7 @@ export function PortalHeader({
   title,
   subtitle,
 }: {
-  userType: "student" | "teacher" | "parent" | "counselor" | "admin" | "school-admin";
+  userType: "student" | "teacher" | "parent" | "counselor" | "admin" | "school-admin" | "ministry";
   userName?: string;
   title?: string;
   subtitle?: string;

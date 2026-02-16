@@ -34,7 +34,11 @@ export async function POST(request: NextRequest) {
       const newUserId = `user-${Date.now()}`;
       const firstName = user.firstName || "";
       const lastName = user.lastName || "";
-      const email = user.emailAddresses?.[0]?.emailAddress || "";
+      // Defensive email extraction - try multiple methods
+      const email = user.primaryEmailAddress?.emailAddress
+        || user.emailAddresses?.find((e: any) => e.id === user.primaryEmailAddressId)?.emailAddress
+        || user.emailAddresses?.[0]?.emailAddress
+        || "";
 
       // Create the user with minimum required fields
       await db.insert(users).values({
@@ -64,7 +68,7 @@ export async function POST(request: NextRequest) {
         bloodGroup: "",
         enrollmentDate: new Date().toISOString().split('T')[0],
         lastLogin: new Date().toISOString(),
-        onboardingComplete: false,
+        onboardingComplete: step === "complete",
         createdAt: new Date(),
         updatedAt: new Date(),
         // Optional fields - will be updated from form data
@@ -107,34 +111,48 @@ export async function POST(request: NextRequest) {
       dbUser = userRecord[0];
     }
 
-    // Update or create wizard progress
-    const existingProgress = await db
-      .select()
-      .from(wizardProgress)
-      .where(eq(wizardProgress.userId, dbUser.id))
-      .limit(1);
+    // Update or create wizard progress (gracefully handle missing table)
+    let existingProgress: any[] = [];
+    try {
+      existingProgress = await db
+        .select()
+        .from(wizardProgress)
+        .where(eq(wizardProgress.userId, dbUser.id))
+        .limit(1);
+    } catch (error) {
+      // wizard_progress table doesn't exist - skip progress tracking
+      console.warn("[Student Setup] wizard_progress table not available, skipping progress tracking");
+    }
 
     if (existingProgress.length > 0) {
-      await db
-        .update(wizardProgress)
-        .set({
-          currentStep: step === "complete" ? "5" : String((parseInt(existingProgress[0].currentStep as string) || 0) + 1),
-          data: { ...(existingProgress[0].data as any), ...data },
-          updatedAt: new Date(),
-        })
-        .where(eq(wizardProgress.id, existingProgress[0].id));
+      try {
+        await db
+          .update(wizardProgress)
+          .set({
+            currentStep: step === "complete" ? "5" : String((parseInt(existingProgress[0].currentStep as string) || 0) + 1),
+            data: { ...(existingProgress[0].data as any), ...data },
+            updatedAt: new Date(),
+          })
+          .where(eq(wizardProgress.id, existingProgress[0].id));
+      } catch (error) {
+        console.warn("[Student Setup] Could not update wizard_progress:", error);
+      }
     } else {
-      await db.insert(wizardProgress).values({
-        id: nanoid(),
-        userId: dbUser.id,
-        currentStep: "1",
-        completedSteps: [],
-        data,
-        isCompleted: false,
-        lastUpdated: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
+      try {
+        await db.insert(wizardProgress).values({
+          id: nanoid(),
+          userId: dbUser.id,
+          currentStep: "1",
+          completedSteps: [],
+          data,
+          isCompleted: false,
+          lastUpdated: new Date(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      } catch (error) {
+        console.warn("[Student Setup] Could not insert wizard_progress:", error);
+      }
     }
 
     // Update user details
@@ -168,6 +186,15 @@ export async function POST(request: NextRequest) {
           .set(updateData)
           .where(eq(users.id, dbUser.id));
       }
+    }
+
+    // Mark onboarding as complete when step is "complete"
+    if (step === "complete") {
+      await db
+        .update(users)
+        .set({ onboardingComplete: true })
+        .where(eq(users.id, dbUser.id));
+      console.log("[Student Setup] Marked onboarding as complete for user:", dbUser.id);
     }
 
     return NextResponse.json({ success: true });

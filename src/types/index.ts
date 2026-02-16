@@ -35,7 +35,7 @@ export interface User {
   emailVerified?: boolean;
   settings?: Record<string, unknown>;
   createdAt: Date;
-  lastLoginAt?: Date;
+  lastLogin?: string | null;
 }
 
 // Assessment Types

@@ -366,10 +366,12 @@ async function getUserGrowthTrends(): Promise<UserGrowthTrends> {
 
   const activeLast7Days = active7DaysResult?.count || 0;
 
+  const thirtyDaysAgoForActive = getDateDaysAgo(30);
+
   const [active30DaysResult] = await db
     .select({ count: count() })
     .from(users)
-    .where(gte(users.lastLogin, thirtyDaysAgo));
+    .where(gte(users.lastLogin, thirtyDaysAgoForActive));
 
   const activeLast30Days = active30DaysResult?.count || 0;
 
@@ -464,14 +466,19 @@ async function getCareerInterestsDistribution(): Promise<CareerInterestsDistribu
   const interestByGrade = await Promise.all(
     studentGradesResult.map(async (row) => {
       // Get top career category for this grade
+      // Join through assessments table to get reliable user data
       const [topCategoryResult] = await db
         .select({
           category: careerMatches.careerTitle,
           count: count(),
         })
         .from(careerMatches)
-        .innerJoin(users, eq(careerMatches.studentId, users.id))
-        .where(and(eq(users.type, 'student'), eq(users.grade, row.grade)))
+        .innerJoin(assessments, eq(careerMatches.assessmentId, assessments.id))
+        .innerJoin(users, eq(assessments.userId, users.id))
+        .where(and(
+          eq(users.type, 'student'),
+          eq(users.grade, row.grade)
+        ))
         .groupBy(careerMatches.careerTitle)
         .orderBy(desc(count()))
         .limit(1);

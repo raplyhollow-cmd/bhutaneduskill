@@ -52,7 +52,7 @@ export function error(error: Error | unknown, context?: LogContext): void {
  */
 export function apiError(error: Error | unknown, requestContext: { route: string; method?: string; userId?: string; [key: string]: unknown }): void {
   const ctx: LogContext = { ...requestContext, timestamp: new Date().toISOString() };
-  (error as any)(error, ctx);
+  console.error(LOG_PREFIX, "[API ERROR]", error, ctx);
 }
 
 /**

@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface School {
   id: string;
@@ -57,19 +58,22 @@ export function SchoolCodeInput({
           setSchool(data.school);
           onChange(code, data.school);
         } else {
+          const errorMessage = "School not found. Check the code or contact your school.";
           setSchool(null);
-          setError("School not found. Check the code or contact your school.");
-          onError?.(error);
+          setError(errorMessage);
+          onError?.(errorMessage);
         }
       } else {
+        const errorMessage = "Invalid school code format";
         setSchool(null);
-        setError("Invalid school code format");
-        onError?.(error);
+        setError(errorMessage);
+        onError?.(errorMessage);
       }
     } catch (err) {
+      const errorMessage = "Unable to verify school code. Please try again.";
       setSchool(null);
-      setError("Unable to verify school code. Please try again.");
-      onError?.(error);
+      setError(errorMessage);
+      onError?.(errorMessage);
     } finally {
       setIsValidating(false);
     }
@@ -129,5 +133,3 @@ export function SchoolCodeInput({
     </div>
   );
 }
-
-import { cn } from "@/lib/utils";

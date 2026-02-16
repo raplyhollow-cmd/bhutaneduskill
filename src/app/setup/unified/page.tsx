@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { WizardContainer } from "@/components/wizard/wizard-container";
 import { WizardNavigation } from "@/components/wizard/wizard-navigation";
 import { SchoolCodeInput } from "@/components/wizard/school-code-input";
+import { SchoolSearchInput, type School as SchoolType } from "@/components/wizard/school-search-input";
+import { VerificationCodeInput } from "@/components/wizard/verification-code-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -136,9 +138,48 @@ export default function UnifiedSetupWizard() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // Check if user is already set up (especially admin users)
+  useEffect(() => {
+    let isMounted = true;
+
+    fetch("/api/auth/set-role")
+      .then((res) => res.json())
+      .then((data) => {
+        if (!isMounted) return;
+
+        const { userType, needsSetup } = data;
+
+        // If user does not need setup, redirect to their portal
+        if (!needsSetup && userType) {
+          const redirectMap: Record<string, string> = {
+            student: "/student",
+            teacher: "/teacher",
+            parent: "/parent",
+            counselor: "/counselor",
+            "school-admin": "/school-admin",
+            admin: "/admin",
+            ministry: "/ministry",
+          };
+          const redirectPath = redirectMap[userType] || "/setup/unified";
+          // Use window.location.href for full page navigation that clears state
+          window.location.href = redirectPath;
+        }
+      })
+      .catch(() => {
+        // On error, continue showing setup wizard
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+
   // Common form fields
   const [schoolCode, setSchoolCode] = useState("");
   const [verifiedSchool, setVerifiedSchool] = useState<any>(null);
+  const [selectedSchool, setSelectedSchool] = useState<SchoolType | null>(null);
+  const [isCodeVerified, setIsCodeVerified] = useState(false);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -300,14 +341,27 @@ export default function UnifiedSetupWizard() {
 
     setIsLoading(true);
     try {
-      await fetch("/api/setup/complete", { method: "POST" });
+      // Mark setup as complete
+      const response = await fetch("/api/setup/complete", { method: "POST" });
+
+      if (!response.ok) {
+        const data = await response.json();
+        setError(data.error || "Failed to complete setup");
+        return;
+      }
+
+      console.log("[Setup Complete] Setup complete, redirecting to", `/${selectedRole.id}`);
+
+      // Redirect to portal immediately
       router.push(`/${selectedRole.id}?welcome=true`);
     } catch (err) {
+      console.error("[Setup Complete] Error:", err);
       setError("Failed to complete setup. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
+
 
   const addChild = () => {
     if (newChildName && newChildId) {
@@ -386,38 +440,119 @@ export default function UnifiedSetupWizard() {
     </div>
   );
 
-  const renderSchoolVerification = () => (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold mb-2">Find Your School</h2>
-        <p className="text-gray-600">
-          {selectedRole?.id === "parent"
-            ? "Enter your child's school code to verify and link your account."
-            : "Enter your school code to verify your enrollment."}
-        </p>
-      </div>
+  const renderSchoolVerification = () => {
+    // State 1: No school selected - show search
+    if (!selectedSchool) {
+      return (
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-xl font-semibold mb-2">Find Your School</h2>
+            <p className="text-gray-600">
+              {selectedRole?.id === "parent"
+                ? "Search for your child's school to verify and link your account."
+                : "Search for your school by name to verify your enrollment."}
+            </p>
+          </div>
 
-      <SchoolCodeInput
-        value={schoolCode}
-        onChange={(code, school) => {
-          setSchoolCode(code);
-          setVerifiedSchool(school);
-        }}
-      />
+          <SchoolSearchInput onSchoolSelect={setSelectedSchool} />
+        </div>
+      );
+    }
 
-      {verifiedSchool && (
+    // State 2: School selected but not verified - show code input
+    if (!isCodeVerified) {
+      return (
+        <div className="space-y-6">
+          {/* Selected school card */}
+          <Card className="p-4 bg-blue-50 border-blue-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                  <School className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-blue-900">{selectedSchool.name}</h3>
+                  <p className="text-sm text-blue-700">
+                    {selectedSchool.city}
+                    {selectedSchool.state && `, ${selectedSchool.state}`}
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSelectedSchool(null);
+                  setIsCodeVerified(false);
+                  setSchoolCode("");
+                }}
+                className="text-blue-600 hover:text-blue-700 hover:bg-blue-100"
+              >
+                Change
+              </Button>
+            </div>
+          </Card>
+
+          {/* Verification code input */}
+          <div className="space-y-3">
+            <div>
+              <h3 className="font-medium text-gray-900 mb-1">Enter School Code</h3>
+              <p className="text-sm text-gray-500">
+                Enter your school verification code to confirm your enrollment at {selectedSchool.name}.
+              </p>
+            </div>
+            <VerificationCodeInput
+              expectedCode={selectedSchool.code}
+              schoolName={selectedSchool.name}
+              onVerified={(isValid, code) => {
+                setIsCodeVerified(isValid);
+                setSchoolCode(code);
+                if (isValid) {
+                  setVerifiedSchool(selectedSchool);
+                }
+              }}
+            />
+          </div>
+        </div>
+      );
+    }
+
+    // State 3: Verified - show success
+    return (
+      <div className="space-y-6">
         <Card className="p-4 bg-green-50 border-green-200">
           <div className="flex items-start gap-3">
-            <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
-            <div>
-              <h3 className="font-semibold text-green-900">{verifiedSchool.name}</h3>
-              <p className="text-sm text-green-700">{verifiedSchool.district}, Bhutan</p>
+            <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <h3 className="font-semibold text-green-900">{selectedSchool.name}</h3>
+              <p className="text-sm text-green-700">
+                {selectedSchool.city}
+                {selectedSchool.state && `, ${selectedSchool.state}`}
+              </p>
             </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setIsCodeVerified(false);
+                setVerifiedSchool(null);
+              }}
+              className="text-green-600 hover:text-green-700 hover:bg-green-100"
+            >
+              Change
+            </Button>
           </div>
         </Card>
-      )}
-    </div>
-  );
+
+        <div className="flex items-center gap-2 text-sm text-green-700">
+          <CheckCircle2 className="w-4 h-4" />
+          <span>School verified successfully! You can proceed to the next step.</span>
+        </div>
+      </div>
+    );
+  };
 
   const renderPersonalDetails = () => (
     <div className="space-y-6">

@@ -206,19 +206,34 @@ export async function POST(req: NextRequest) {
       .select({
         id: tenants.id,
         domain: tenants.domain,
-        status: tenants.status,
+        isActive: tenants.isActive,
+        settings: tenants.settings,
       })
       .from(tenants)
       .where(eq(tenants.id, verificationRequest.tenantId))
       .limit(1);
 
     const tenant = tenantResult[0];
+    const tenantSettings = tenant?.settings ? JSON.parse(tenant.settings as string) : {};
+    const tenantStatus = tenantSettings.status as string | undefined;
 
     if (!tenant) {
       return NextResponse.json(
         { error: "Tenant not found", status: 404 } satisfies ApiErrorResponse,
         { status: 404 }
       );
+    }
+
+    // Check if tenant is already verified
+    if (tenantStatus === "verified" || tenant?.isActive === true) {
+      return NextResponse.json({
+        data: {
+          verified: true,
+          domain: body.domain,
+          message: "Domain already verified",
+          tenantId: tenant.id,
+        } as DomainVerificationResponse
+      });
     }
 
     // Verify the domain matches the tenant's expected domain
@@ -249,12 +264,18 @@ export async function POST(req: NextRequest) {
     const isVerified = await checkDnsTxtRecord(body.domain, verificationCode);
 
     if (isVerified) {
-      // Update tenant status
+      // Update tenant status - store in settings and activate
+      const updatedSettings = {
+        ...tenantSettings,
+        status: "verified",
+        verifiedAt: new Date().toISOString(),
+      };
+
       await db
         .update(tenants)
         .set({
-          status: "verified",
-          verifiedAt: new Date(),
+          settings: JSON.stringify(updatedSettings),
+          isActive: true,
           updatedAt: new Date(),
         })
         .where(eq(tenants.id, tenant.id));
@@ -343,8 +364,8 @@ export async function GET(req: NextRequest) {
     const tenantResult = await db
       .select({
         id: tenants.id,
-        status: tenants.status,
-        verifiedAt: tenants.verifiedAt,
+        isActive: tenants.isActive,
+        settings: tenants.settings,
       })
       .from(tenants)
       .where(eq(tenants.id, verificationRequest.tenantId))
@@ -359,14 +380,18 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    const tenantSettings = tenant.settings ? JSON.parse(tenant.settings as string) : {};
+    const tenantStatus = tenantSettings.status as string | undefined;
+    const verifiedAt = tenantSettings.verifiedAt as string | undefined;
+
     return NextResponse.json({
       data: {
-        verified: tenant.status === "verified" || tenant.status === "active",
+        verified: tenant.isActive === true || tenantStatus === "verified" || tenantStatus === "active",
         domain,
         tenantId: tenant.id,
         requestStatus: verificationRequest.status,
-        tenantStatus: tenant.status,
-        verifiedAt: tenant.verifiedAt?.toISOString() || null,
+        tenantStatus: tenantStatus || (tenant.isActive ? "active" : "pending"),
+        verifiedAt: verifiedAt || null,
       }
     });
 

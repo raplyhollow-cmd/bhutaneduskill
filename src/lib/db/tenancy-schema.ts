@@ -11,65 +11,29 @@ import { pgTable, text, integer, boolean, timestamp, json } from "drizzle-orm/pg
 // ============================================================================
 
 /**
- * Tenants represent organizations in the multi-tenant hierarchy
- * - Ministry: Top level (e.g., Ministry of Education, Bhutan)
- * - District: Regional level (e.g., Thimphu Dzongkhag)
- * - School: Individual schools
+ * Tenants represent organizations in the system with theme customization
+ * This table is used for multi-tenant theming support
  */
 export const tenants = pgTable("tenants", {
   id: text("id").primaryKey(),
 
   // Basic information
   name: text("name").notNull(),
-  code: text("code").unique().notNull(), // Unique identifier like "MIN001", "DIS001", "SCH001"
-  type: text("type").notNull(), // "ministry" | "district" | "school"
+  slug: text("slug").notNull().unique(), // URL-friendly identifier for the tenant
+  domain: text("domain").notNull().unique(), // Custom domain for the tenant
 
-  // Hierarchy
-  parentId: text("parent_id").references(() => tenants.id, { onDelete: "set null" }), // For hierarchy (schools -> districts -> ministry)
+  // Branding/Theme
+  logo: text("logo").notNull(), // URL to logo image
+  primaryColor: text("primary_color").notNull(), // Primary brand color (hex or rgb)
+  secondaryColor: text("secondary_color").notNull(), // Secondary brand color
 
-  // Verification
-  domain: text("domain"), // For domain verification (e.g., "school.edu.bt")
-  governmentId: text("government_id"), // Ministry-issued school code
-  status: text("status").notNull().default("pending"), // "pending" | "verified" | "active" | "suspended"
-  verificationMethod: text("verification_method"), // "domain" | "document" | "code"
-  verificationDocuments: json("verification_documents").$type<Array<{
-    type: string;
-    url: string;
-    verified: boolean;
-  }>>(),
-  verifiedAt: timestamp("verified_at", { withTimezone: true }),
-  verifiedBy: text("verified_by"), // User ID of verifier
+  // Configuration (JSON string in database)
+  settings: text("settings"), // Additional tenant settings as JSON
 
-  // Address
-  address: text("address"),
-  city: text("city"),
-  district: text("district"), // Dzongkhag
-  country: text("country").default("Bhutan"),
-  postalCode: text("postal_code"),
-
-  // Contact
-  phone: text("phone"),
-  email: text("email"),
-  website: text("website"),
-
-  // Branding
-  logo: text("logo"), // URL to logo image
-
-  // Configuration
-  settings: json("settings").$type<{
-    timezone?: string;
-    currency?: string;
-    language?: string;
-    features?: Record<string, boolean>;
-    branding?: {
-      primaryColor?: string;
-      secondaryColor?: string;
-    };
-  }>(),
-
-  // Metadata
+  // Status
   isActive: boolean("is_active").default(true),
 
+  // Metadata
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });

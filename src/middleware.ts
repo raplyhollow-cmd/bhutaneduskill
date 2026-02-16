@@ -52,6 +52,8 @@ function isOriginAllowed(origin: string | null): boolean {
 // ============================================================================
 
 export default clerkMiddleware(async (auth, request) => {
+  const { userId } = await auth();
+  const { pathname } = request.nextUrl;
   const response = NextResponse.next();
 
   // ============================================================================

@@ -119,9 +119,25 @@ export default async function StudentDashboardPage() {
   try {
     dashboardData = await fetchStudentDashboard();
   } catch (error) {
-    // Student not found in database - redirect to setup
+    // Don't redirect - show error page instead
     console.error("Dashboard error:", error);
-    redirect("/setup/student");
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Card className="max-w-md mx-4">
+          <CardHeader>
+            <CardTitle className="text-red-600">Dashboard Error</CardTitle>
+            <CardDescription>
+              There was a problem loading your dashboard. Please try refreshing the page.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild>
+              <Link href="/student">Reload Page</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   const { student, homework, assessments, attendance, achievements, deadlines, careerMatches, fees } = dashboardData;

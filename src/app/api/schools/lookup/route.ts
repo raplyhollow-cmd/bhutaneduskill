@@ -1,31 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { schools } from "@/lib/db/schema";
-import { eq, or, like } from "drizzle-orm";
-import { requireAuth } from "@/lib/auth-utils";
-import { requirePermission } from "@/lib/rbac";
+import { eq, like } from "drizzle-orm";
 
 /**
  * GET /api/schools/lookup
  * Lookup schools by code or name
- * Requires authentication and schools.read permission
+ *
+ * NOTE: This endpoint is open (no auth required) because it's used during
+ * the setup flow where users need to verify their school code before they
+ * have an account or permissions. School codes are not sensitive information.
  */
 export async function GET(request: NextRequest) {
   try {
-    // Require authentication
-    const authResult = await requireAuth();
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
-
-    // Check schools.read permission
-    const permCheck = await requirePermission(userId, "schools.read");
-    if (permCheck) return permCheck;
-
     const { searchParams } = new URL(request.url);
     const code = searchParams.get("code");
     const name = searchParams.get("name");
+
+    console.log("[SCHOOL LOOKUP] code:", code, "name:", name);
 
     if (!code && !name) {
       return NextResponse.json(
@@ -33,8 +25,6 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    let school;
 
     if (code) {
       // Lookup by code
@@ -44,8 +34,21 @@ export async function GET(request: NextRequest) {
         .where(eq(schools.code, code.toUpperCase()))
         .limit(1);
 
-      school = results[0];
-    } else if (name) {
+      console.log("[SCHOOL LOOKUP] results:", results);
+
+      const school = results[0];
+
+      if (!school) {
+        return NextResponse.json(
+          { school: null, error: "School not found" },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json({ school });
+    }
+
+    if (name) {
       // Search by name
       const results = await db
         .select()
@@ -56,14 +59,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ schools: results });
     }
 
-    if (!school) {
-      return NextResponse.json(
-        { school: null, error: "School not found" },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({ school });
+    return NextResponse.json(
+      { error: "Invalid request" },
+      { status: 400 }
+    );
   } catch (error) {
     console.error("Error looking up school:", error);
     return NextResponse.json(

@@ -3,7 +3,6 @@ import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { users, wizardProgress } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { nanoid } from "nanoid";
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,23 +31,7 @@ export async function POST(request: NextRequest) {
       .set({ onboardingComplete: true })
       .where(eq(users.id, dbUser.id));
 
-    // Update wizard progress
-    const existingProgress = await db
-      .select()
-      .from(wizardProgress)
-      .where(eq(wizardProgress.userId, dbUser.id))
-      .limit(1);
-
-    if (existingProgress.length > 0) {
-      await db
-        .update(wizardProgress)
-        .set({
-          isCompleted: true,
-          completed: true,
-          updatedAt: new Date(),
-        })
-        .where(eq(wizardProgress.id, existingProgress[0].id));
-    }
+    console.log("[Setup Complete] Marked onboarding complete for user:", dbUser.id, "type:", dbUser.type);
 
     return NextResponse.json({ success: true });
   } catch (error) {

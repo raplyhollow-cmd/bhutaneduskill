@@ -34,6 +34,20 @@ export default function MinistryLayout({
     ])
       .then(([roleRes, profileRes]) => Promise.all([roleRes.json(), profileRes.json()]))
       .then(([roleData, profileData]) => {
+        // Portal type validation: redirect non-ministry users to their correct portal
+        if (roleData.userType && roleData.userType !== 'ministry') {
+          const portalMap: Record<string, string> = {
+            student: '/student',
+            teacher: '/teacher',
+            parent: '/parent',
+            counselor: '/counselor',
+            'school-admin': '/school-admin',
+            admin: '/admin',
+          };
+          window.location.href = portalMap[roleData.userType] || '/dashboard';
+          return;
+        }
+
         // Check if user is ministry type
         if (roleData.userType === 'ministry') {
           if (profileData?.profile) {
@@ -52,14 +66,6 @@ export default function MinistryLayout({
           setTimeout(() => {
             router.push("/setup/ministry");
           }, 100);
-          return;
-        }
-
-        // If user exists but is not ministry type, they shouldn't be here
-        // Redirect to appropriate portal
-        const userType = roleData.userType || profileData?.userType;
-        if (userType && userType !== 'ministry') {
-          router.push(`/dashboard`);
           return;
         }
 

@@ -7,35 +7,18 @@
 
 import { db } from "@/lib/db";
 import { eq } from "drizzle-orm";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { users } from "@/lib/db/schema";
 
 export async function getStudentAuth() {
   // Server-side auth that bypasses Clerk client issues
   // Returns user info if authenticated, null if not authenticated
 
-  const { userId } = await auth();
-
-  if (!userId) {
+  const authResult = await requireAuth(['student']);
+  if ('error' in authResult) {
     return null;
   }
-
-  // Get user from database
-  const user = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId),
-    columns: {
-      id: true,
-      firstName: true,
-      lastName: true,
-      email: true,
-      classGrade: true,
-      section: true,
-      type: true,
-      schoolId: true,
-      profilePicture: true,
-    },
-  });
-
+  const { user } = authResult;  // Full user object from requireAuth
   return user;
 }
 
@@ -43,31 +26,13 @@ export async function fetchStudentAuthForServer() {
   // Direct server-side auth that doesn't rely on Clerk's client auth()
   // Returns user data or null if not authenticated
 
-  const { userId } = await auth();
-
-  if (!userId) {
+  const authResult = await requireAuth(['student']);
+  if ('error' in authResult) {
     return { user: null, authenticated: false };
   }
-
-  // Get user from database
-  const user = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId),
-    columns: {
-      id: true,
-      firstName: true,
-      lastName: true,
-      email: true,
-      classGrade: true,
-      section: true,
-      type: true,
-      schoolId: true,
-      profilePicture: true,
-    },
-  });
-
   return {
-    user,
-    authenticated: !!user,
+    user: authResult.user,
+    authenticated: true,
   };
 }
 

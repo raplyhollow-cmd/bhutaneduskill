@@ -181,15 +181,19 @@ export default function AdminPartnersPage() {
     setError(null);
 
     try {
+      console.log("[PARTNERS] Creating partner with data:", formData);
       const response = await fetch("/api/admin/partners", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
 
+      console.log("[PARTNERS] Response status:", response.status);
+      const responseData = await response.json();
+      console.log("[PARTNERS] Response data:", responseData);
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to create partner");
+        throw new Error(responseData.error || responseData.details || "Failed to create partner");
       }
 
       // Reset form and close modal
@@ -209,7 +213,7 @@ export default function AdminPartnersPage() {
       // Refresh the list
       await fetchPartners();
     } catch (err: any) {
-      console.error("Failed to create partner:", err);
+      console.error("[PARTNERS] Failed to create partner:", err);
       setError(err.message || "Failed to create partner. Please try again.");
     } finally {
       setIsSubmitting(false);

@@ -76,8 +76,8 @@ export async function GET(req: NextRequest) {
         // Tenant/School info
         tenantId: tenants.id,
         tenantName: tenants.name,
-        tenantCode: tenants.code,
-        tenantType: tenants.type,
+        tenantSlug: tenants.slug,
+        tenantDomain: tenants.domain,
         schoolName: schools.name,
         schoolCode: schools.code,
       })
@@ -121,17 +121,11 @@ export async function GET(req: NextRequest) {
 
     // Format response data
     const formattedData = subscriptionsData.map((sub) => {
-      // Get student/teacher counts from users table if subscription doesn't have it
-      const getSchoolName = () => {
-        if (sub.schoolName) return sub.schoolName;
-        if (sub.tenantType === "school") return sub.tenantName;
-        return sub.tenantName || "Unknown";
-      };
-
       return {
         id: sub.id,
-        schoolName: getSchoolName(),
-        schoolCode: sub.schoolCode || sub.tenantCode,
+        schoolName: sub.schoolName || sub.tenantName || "Unknown",
+        schoolCode: sub.schoolCode || undefined,
+        tenantSlug: sub.tenantSlug,
         plan: sub.planName?.toLowerCase() || "unknown",
         status: sub.status,
         students: sub.currentStudents || 0,

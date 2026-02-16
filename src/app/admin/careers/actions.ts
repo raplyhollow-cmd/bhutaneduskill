@@ -11,17 +11,17 @@ import { db } from "@/lib/db";
 import { careers } from "@/lib/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 
 /**
  * Get all careers from the database
  */
 export async function getCareers(limit = 500) {
-  const { userId } = await auth();
-
-  if (!userId) {
-    throw new Error("Unauthorized");
+  const authResult = await requireAuth(['admin']);
+  if ('error' in authResult) {
+    throw new Error(authResult.error);
   }
+  const { userId } = authResult;
 
   try {
     const allCareers = await db
@@ -45,11 +45,11 @@ export async function getCareers(limit = 500) {
  * Get a single career by ID
  */
 export async function getCareerById(id: string) {
-  const { userId } = await auth();
-
-  if (!userId) {
-    throw new Error("Unauthorized");
+  const authResult = await requireAuth(['admin']);
+  if ('error' in authResult) {
+    throw new Error(authResult.error);
   }
+  const { userId } = authResult;
 
   try {
     const career = await db.query.careers.findFirst({
@@ -81,6 +81,7 @@ export async function createCareer(data: {
   riasecCode?: string;
   riasecScores?: Record<string, number>;
   skills?: string[];
+  educationLevel?: string;
   educationPath?: string[];
   subjects?: string[];
   workEnvironment?: string;
@@ -89,11 +90,11 @@ export async function createCareer(data: {
   bhutanSpecific?: boolean;
   tenantId?: string;
 }) {
-  const { userId } = await auth();
-
-  if (!userId) {
-    throw new Error("Unauthorized");
+  const authResult = await requireAuth(['admin']);
+  if ('error' in authResult) {
+    throw new Error(authResult.error);
   }
+  const { userId } = authResult;
 
   try {
     const careerId = `career_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
@@ -103,13 +104,14 @@ export async function createCareer(data: {
     const [newCareer] = await db
       .insert(careers)
       .values({
+        id: careerId,
         // Required fields
         title: data.name, // title is required
         name: data.name,
         slug: data.slug,
         category: "general", // Default category
         industry: "general", // Default industry
-        educationLevel: "high_school", // Default education level
+        educationLevel: data.educationLevel || "high_school",
         icon: "briefcase", // Default icon
         color: "#3b82f6", // Default color
         // Optional fields
@@ -127,11 +129,6 @@ export async function createCareer(data: {
         updatedAt: now,
       } as any)
       .returning();
-
-    // Update the id with the generated value
-    if (newCareer && !newCareer.id) {
-      (newCareer as any).id = careerId;
-    }
 
     revalidatePath("/admin/careers");
     revalidatePath("/dashboard/careers");
@@ -164,11 +161,11 @@ export async function updateCareer(
     isActive?: boolean;
   }
 ) {
-  const { userId } = await auth();
-
-  if (!userId) {
-    throw new Error("Unauthorized");
+  const authResult = await requireAuth(['admin']);
+  if ('error' in authResult) {
+    throw new Error(authResult.error);
   }
+  const { userId } = authResult;
 
   try {
     const updateData: any = {
@@ -218,11 +215,11 @@ export async function updateCareer(
  * Delete a career
  */
 export async function deleteCareer(id: string) {
-  const { userId } = await auth();
-
-  if (!userId) {
-    throw new Error("Unauthorized");
+  const authResult = await requireAuth(['admin']);
+  if ('error' in authResult) {
+    throw new Error(authResult.error);
   }
+  const { userId } = authResult;
 
   try {
     const [deletedCareer] = await db
@@ -251,11 +248,11 @@ export async function bulkUpdateDemand(
   ids: string[],
   bhutanDemand: "high" | "medium" | "low"
 ) {
-  const { userId } = await auth();
-
-  if (!userId) {
-    throw new Error("Unauthorized");
+  const authResult = await requireAuth(['admin']);
+  if ('error' in authResult) {
+    throw new Error(authResult.error);
   }
+  const { userId } = authResult;
 
   try {
     await db
@@ -280,11 +277,11 @@ export async function bulkUpdateDemand(
  * Bulk delete careers
  */
 export async function bulkDeleteCareers(ids: string[]) {
-  const { userId } = await auth();
-
-  if (!userId) {
-    throw new Error("Unauthorized");
+  const authResult = await requireAuth(['admin']);
+  if ('error' in authResult) {
+    throw new Error(authResult.error);
   }
+  const { userId } = authResult;
 
   try {
     await db
@@ -305,11 +302,11 @@ export async function bulkDeleteCareers(ids: string[]) {
  * Search careers by query
  */
 export async function searchCareers(query: string, limit = 20) {
-  const { userId } = await auth();
-
-  if (!userId) {
-    throw new Error("Unauthorized");
+  const authResult = await requireAuth(['admin']);
+  if ('error' in authResult) {
+    throw new Error(authResult.error);
   }
+  const { userId } = authResult;
 
   try {
     // Simple search implementation
@@ -340,11 +337,11 @@ export async function searchCareers(query: string, limit = 20) {
  * Get careers by RIASEC code
  */
 export async function getCareersByRIASEC(riasecCode: string, limit = 50) {
-  const { userId } = await auth();
-
-  if (!userId) {
-    throw new Error("Unauthorized");
+  const authResult = await requireAuth(['admin']);
+  if ('error' in authResult) {
+    throw new Error(authResult.error);
   }
+  const { userId } = authResult;
 
   try {
     const matchingCareers = await db
@@ -368,11 +365,11 @@ export async function getCareersByRIASEC(riasecCode: string, limit = 50) {
  * Get Bhutan-specific careers
  */
 export async function getBhutanCareers(limit = 100) {
-  const { userId } = await auth();
-
-  if (!userId) {
-    throw new Error("Unauthorized");
+  const authResult = await requireAuth(['admin']);
+  if ('error' in authResult) {
+    throw new Error(authResult.error);
   }
+  const { userId } = authResult;
 
   try {
     const bhutanCareers = await db
@@ -408,18 +405,18 @@ export async function importCareers(
     bhutanSpecific?: boolean;
   }>
 ) {
-  const { userId } = await auth();
-
-  if (!userId) {
-    throw new Error("Unauthorized");
+  const authResult = await requireAuth(['admin']);
+  if ('error' in authResult) {
+    throw new Error(authResult.error);
   }
+  const { userId } = authResult;
 
   try {
     const results = await db
       .insert(careers)
       .values(
         data.map((career) => ({
-          id: `career_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          id: `career_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
           // Required fields
           title: career.name,
           name: career.name,

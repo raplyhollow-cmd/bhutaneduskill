@@ -6,6 +6,33 @@ import { eq, and, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { logger } from "@/lib/logger";
 
+// Get tenant by name helper
+async function getTenantByName(name: string) {
+  const result = await db
+    .select()
+    .from(tenants)
+    .where(eq(tenants.name, name))
+    .limit(1);
+  return result[0];
+}
+
+// Update tenant settings helper
+async function updateTenantSettings(name: string, newSettings: Record<string, any>) {
+  const existing = await getTenantByName(name);
+  if (!existing) return null;
+
+  const currentSettings = existing.settings ? JSON.parse(existing.settings as string) : {};
+  const updatedSettings = { ...currentSettings, ...newSettings };
+
+  await db
+    .update(tenants)
+    .set({
+      settings: JSON.stringify(updatedSettings),
+      updatedAt: new Date(),
+    })
+    .where(eq(tenants.name, name));
+}
+
 // In-memory storage for verification requests (in production, use database)
 // This is a temporary solution - add verificationRequests table to schema
 const verificationRequests = new Map<string, VerificationRequest>();
@@ -237,12 +264,12 @@ export async function POST(req: NextRequest) {
       logo: "",
       primaryColor: "rgb(249 115 22)",
       secondaryColor: "rgb(194 65 12)",
-      settings: {
+      settings: JSON.stringify({
         type: "ministry",
         level: ministryData.level,
         verificationStatus: "pending",
         verificationId,
-      },
+      }),
       isActive: false, // Not active until verified
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -345,19 +372,27 @@ export async function PATCH(req: NextRequest) {
       case "approve": {
         // Update tenant status
         if (request.ministryData) {
-          await db
-            .update(tenants)
-            .set({
-              isActive: true,
-              settings: {
-                type: "ministry",
-                level: request.ministryData.level,
-                verificationStatus: "approved",
-                verifiedAt: new Date().toISOString(),
-              },
-              updatedAt: new Date(),
-            })
-            .where(eq(tenants.name, request.ministryData.name));
+          // Get tenant and update settings
+          const existing = await getTenantByName(request.ministryData.name);
+          if (existing) {
+            const currentSettings = existing.settings ? JSON.parse(existing.settings as string) : {};
+            const updatedSettings = {
+              ...currentSettings,
+              type: "ministry",
+              level: request.ministryData.level,
+              verificationStatus: "approved",
+              verifiedAt: new Date().toISOString(),
+            };
+
+            await db
+              .update(tenants)
+              .set({
+                isActive: true,
+                settings: JSON.stringify(updatedSettings),
+                updatedAt: new Date(),
+              })
+              .where(eq(tenants.name, request.ministryData.name));
+          }
 
           // Create admin user for the ministry
           const adminUserId = `user-${nanoid()}`;
@@ -414,19 +449,26 @@ export async function PATCH(req: NextRequest) {
 
         // Update tenant settings
         if (request.ministryData) {
-          await db
-            .update(tenants)
-            .set({
-              isActive: false,
-              settings: {
-                type: "ministry",
-                level: request.ministryData.level,
-                verificationStatus: "rejected",
-                rejectionReason: notes,
-              },
-              updatedAt: new Date(),
-            })
-            .where(eq(tenants.name, request.ministryData.name));
+          const existing = await getTenantByName(request.ministryData.name);
+          if (existing) {
+            const currentSettings = existing.settings ? JSON.parse(existing.settings as string) : {};
+            const updatedSettings = {
+              ...currentSettings,
+              type: "ministry",
+              level: request.ministryData.level,
+              verificationStatus: "rejected",
+              rejectionReason: notes,
+            };
+
+            await db
+              .update(tenants)
+              .set({
+                isActive: false,
+                settings: JSON.stringify(updatedSettings),
+                updatedAt: new Date(),
+              })
+              .where(eq(tenants.name, request.ministryData.name));
+          }
         }
 
         logger.info("Ministry verification rejected", { verificationId, reason: notes });

@@ -10,6 +10,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AddUserModal } from "@/components/admin/add-user-modal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -134,6 +135,9 @@ export default function AdminUsersPage() {
   const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
   const [roleFilter, setRoleFilter] = useState(searchParams.get("role") || "all");
   const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "all");
+
+  // Modal state
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   // Fetch users
   const fetchUsers = async () => {
@@ -284,7 +288,7 @@ export default function AdminUsersPage() {
           <Button
             style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
             className="text-white"
-            onClick={() => router.push("/admin/users?action=create")}
+            onClick={() => setIsAddModalOpen(true)}
           >
             <Shield className="w-4 h-4 mr-2" />
             Add User
@@ -782,6 +786,16 @@ export default function AdminUsersPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Add User Modal */}
+      <AddUserModal
+        open={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSuccess={() => {
+          setIsAddModalOpen(false);
+          fetchUsers();
+        }}
+      />
     </div>
   );
 }

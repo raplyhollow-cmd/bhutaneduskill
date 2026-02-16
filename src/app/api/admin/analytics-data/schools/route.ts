@@ -27,7 +27,6 @@ interface SchoolAnalytics {
     type: string;
     level: string;
     city: string;
-    status: string;
   };
   studentCount: number;
   teacherCount: number;
@@ -238,7 +237,6 @@ async function getSchoolInfo(schoolId: string): Promise<SchoolAnalytics["school"
       type: schools.type,
       level: schools.level,
       city: schools.city,
-      status: schools.status,
     })
     .from(schools)
     .where(eq(schools.id, schoolId))
@@ -478,6 +476,7 @@ async function getFeePaymentStatus(schoolId: string): Promise<SchoolAnalytics["f
       amountPending: studentFees.amountPending,
       status: studentFees.status,
       studentId: studentFees.studentId,
+      dueDate: studentFees.dueDate,
     })
     .from(studentFees)
     .where(eq(studentFees.schoolId, schoolId));
@@ -507,9 +506,8 @@ async function getFeePaymentStatus(schoolId: string): Promise<SchoolAnalytics["f
   // Overdue: pending fees with due date past
   const overdueFees = feesData.filter(f => {
     if (f.status !== 'pending') return false;
-    const dueDate = new Date(f.studentId); // This is wrong, but keeping for now - should parse actual due date
-    // Actually, let's count all pending as potential overdue since we can't parse dates easily
-    return false; // TODO: Implement proper date comparison
+    const dueDate = new Date(f.dueDate);
+    return dueDate < new Date();
   });
 
   return {
@@ -564,9 +562,11 @@ async function getAcademicPerformance(schoolId: string): Promise<SchoolAnalytics
         count: 0,
       });
     }
-    const stats = studentAverages.get(result.studentId)!;
-    stats.total += result.percentage || 0;
-    stats.count++;
+    const stats = studentAverages.get(result.studentId);
+    if (stats) {
+      stats.total += result.percentage || 0;
+      stats.count++;
+    }
   }
 
   const topPerformers = Array.from(studentAverages.entries())
@@ -591,18 +591,22 @@ async function getAcademicPerformance(schoolId: string): Promise<SchoolAnalytics
  */
 async function getCareerInterests(schoolId: string): Promise<SchoolAnalytics["careerInterests"]> {
   // Get career matches for students in this school
+  // Join through assessments table to get reliable user data
   const careerData = await db
     .select({
       careerTitle: careerMatches.careerTitle,
     })
     .from(careerMatches)
-    .innerJoin(users, eq(careerMatches.studentId, users.id))
+    .innerJoin(assessments, eq(careerMatches.assessmentId, assessments.id))
+    .innerJoin(users, eq(assessments.userId, users.id))
     .where(eq(users.schoolId, schoolId));
 
   // Count top categories
   const categoryCounts = new Map<string, number>();
   for (const match of careerData) {
-    categoryCounts.set(match.careerTitle, (categoryCounts.get(match.careerTitle) || 0) + 1);
+    if (match.careerTitle) {
+      categoryCounts.set(match.careerTitle, (categoryCounts.get(match.careerTitle) || 0) + 1);
+    }
   }
 
   const topCareerCategories = Array.from(categoryCounts.entries())
@@ -610,7 +614,7 @@ async function getCareerInterests(schoolId: string): Promise<SchoolAnalytics["ca
     .sort((a, b) => b.count - a.count)
     .slice(0, 10);
 
-  // RUB applications count
+  // RUB applications count - also fix to use proper join
   const [rubAppsResult] = await db
     .select({ count: count() })
     .from(rubApplications)

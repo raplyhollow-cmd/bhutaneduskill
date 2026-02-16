@@ -192,25 +192,33 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Check if school with same government ID already exists
+    // Check if school with same name already exists
+    // Note: governmentId is stored in settings JSON, so check by name instead
     const existingTenant = await db.query.tenants.findFirst({
-      where: eq(tenants.governmentId, body.governmentId),
+      where: eq(tenants.name, body.schoolName),
     });
 
     if (existingTenant) {
-      logger.security("duplicate_school_registration", {
-        governmentId: body.governmentId,
-        existingTenantId: existingTenant.id,
-      });
+      // Try to check if governmentId in settings matches
+      const existingSettings = existingTenant.settings
+        ? JSON.parse(existingTenant.settings as string)
+        : {};
 
-      return NextResponse.json(
-        {
-          error: "A school with this government ID is already registered",
-          details: { existingTenantId: existingTenant.id },
-          status: 409
-        } satisfies ApiErrorResponse,
-        { status: 409 }
-      );
+      if (existingSettings.governmentId === body.governmentId) {
+        logger.security("duplicate_school_registration", {
+          governmentId: body.governmentId,
+          existingTenantId: existingTenant.id,
+        });
+
+        return NextResponse.json(
+          {
+            error: "A school with this government ID is already registered",
+            details: { existingTenantId: existingTenant.id },
+            status: 409
+          } satisfies ApiErrorResponse,
+          { status: 409 }
+        );
+      }
     }
 
     // Generate IDs
@@ -241,24 +249,32 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Create tenant record
+    // Create tenant record with valid schema fields
+    // Note: Extra fields like code, type, status, etc. are stored in settings JSON
     const newTenant = {
       id: tenantId,
       name: body.schoolName,
-      code: body.governmentId,
-      type: "school" as const,
-      domain: body.domain || null,
-      governmentId: body.governmentId,
-      status: tenantStatus,
-      verificationMethod: body.verificationMethod,
-      address: body.address,
-      city: body.district,
-      district: body.district,
-      country: "Bhutan",
-      phone: body.contactPhone,
-      email: body.contactEmail,
-      website: body.website || null,
-      verifiedAt: tenantStatus === "verified" ? new Date() : null,
+      slug: body.schoolName.toLowerCase().replace(/\s+/g, "-"),
+      domain: body.domain || `${body.schoolName.toLowerCase().replace(/\s+/g, "-")}.bhutaneduskill.com`,
+      logo: "",
+      primaryColor: "rgb(249 115 22)",
+      secondaryColor: "rgb(194 65 12)",
+      settings: JSON.stringify({
+        code: body.governmentId,
+        type: "school",
+        governmentId: body.governmentId,
+        status: tenantStatus,
+        verificationMethod: body.verificationMethod,
+        address: body.address,
+        city: body.district,
+        district: body.district,
+        country: "Bhutan",
+        phone: body.contactPhone,
+        email: body.contactEmail,
+        website: body.website || null,
+        verifiedAt: tenantStatus === "verified" ? new Date() : null,
+      }),
+      isActive: tenantStatus === "verified", // Only active if verified
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -429,20 +445,21 @@ export async function GET(req: NextRequest) {
     // Get tenant using select to ensure we use correct schema
     const tenantResult = await db
       .select({
-        status: tenants.status,
-        verifiedAt: tenants.verifiedAt,
+        settings: tenants.settings,
+        isActive: tenants.isActive,
       })
       .from(tenants)
       .where(eq(tenants.id, verificationRequest.tenantId))
       .limit(1);
 
     const tenant = tenantResult[0];
+    const tenantSettings = tenant?.settings ? JSON.parse(tenant.settings as string) : {};
 
     const response = {
       data: {
         requestId: verificationRequest.id,
         status: verificationRequest.status as any,
-        verified: tenant?.status === "verified" || tenant?.status === "active",
+        verified: tenant?.isActive === true || tenantSettings.status === "verified" || tenantSettings.status === "active",
         verificationMethod: verificationRequest.type,
         submittedAt: verificationRequest.submittedAt.toISOString(),
         reviewedAt: verificationRequest.reviewedAt?.toISOString(),

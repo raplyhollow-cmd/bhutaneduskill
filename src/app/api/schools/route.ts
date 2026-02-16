@@ -63,13 +63,19 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const authResult = await requireAuth(["admin"]);
+    console.log("[SCHOOLS POST] authResult:", authResult);
+
     if ("error" in authResult) {
+      console.log("[SCHOOLS POST] Auth error:", authResult.error);
       return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
     const { user, userId } = authResult;
+    console.log("[SCHOOLS POST] User:", userId, "Type:", user.type);
 
     // Check schools.create permission
+    console.log("[SCHOOLS POST] Checking schools.create permission for userId:", userId);
     const permCheck = await requirePermission(userId, "schools.create");
+    console.log("[SCHOOLS POST] Permission check result:", permCheck ? "DENIED" : "GRANTED");
     if (permCheck) return permCheck;
 
     const body = await request.json();

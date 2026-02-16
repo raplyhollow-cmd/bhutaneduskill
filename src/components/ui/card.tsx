@@ -1,8 +1,27 @@
+"use client";
+
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-function Card({ className, ...props }: React.ComponentProps<"div">) {
+interface CardProps extends React.ComponentProps<"div"> {
+  asChild?: boolean;
+}
+
+function Card({ className, asChild, children, ...props }: CardProps) {
+  if (asChild) {
+    const child = React.Children.only(children) as React.ReactElement & { props?: { className?: string } };
+    const childClassName = child.props?.className || "";
+    return React.cloneElement(child, {
+      className: cn(
+        "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border shadow-sm transition-all duration-200 hover:border-border/50 hover:shadow-md",
+        className,
+        childClassName
+      ),
+      ...props
+    });
+  }
+
   return (
     <div
       data-slot="card"
@@ -11,7 +30,9 @@ function Card({ className, ...props }: React.ComponentProps<"div">) {
         className
       )}
       {...props}
-    />
+    >
+      {children}
+    </div>
   )
 }
 

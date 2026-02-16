@@ -75,6 +75,23 @@ export {
 } from "./billing-schema";
 
 // ============================================================================
+// DISTRICTS TABLE
+// ============================================================================
+
+export const districts = pgTable("districts", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  code: text("code").unique().notNull(),
+  dzongkhag: text("dzongkhag").notNull(),
+  country: text("country").notNull().default("Bhutan"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+});
+
+export type District = typeof districts.$inferSelect;
+
+// ============================================================================
 // USERS TABLE
 // ============================================================================
 
@@ -89,23 +106,23 @@ export const users = pgTable("users", {
   email: text("email").notNull(),
   phone: text("phone").notNull(),
   schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }),
-  profileImage: text("profile_image").notNull(),
-  dateOfBirth: text("date_of_birth").notNull(),
-  gender: text("gender").notNull(),
+  profileImage: text("profile_image"),
+  dateOfBirth: text("date_of_birth"),
+  gender: text("gender"),
   grade: integer("grade").notNull(),
-  section: text("section").notNull(),
-  rollNumber: text("roll_number").notNull(),
-  address: text("address").notNull(),
-  city: text("city").notNull(),
-  state: text("state").notNull(),
-  postalCode: text("postal_code").notNull(),
+  section: text("section"),
+  rollNumber: text("roll_number"),
+  address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  postalCode: text("postal_code"),
   country: text("country").notNull(),
-  parentContact: text("parent_contact").notNull(),
-  parentPhone: text("parent_phone").notNull(),
-  emergencyContact: text("emergency_contact").notNull(),
-  bloodGroup: text("blood_group").notNull(),
+  parentContact: text("parent_contact"),
+  parentPhone: text("parent_phone"),
+  emergencyContact: text("emergency_contact"),
+  bloodGroup: text("blood_group"),
   enrollmentDate: text("enrollment_date").notNull(),
-  lastLogin: text("last_login").notNull(),
+  lastLogin: text("last_login"),
   employeeId: text("employee_id"),
   // subjects: json("subjects").$type<string[]>(), // REMOVED: DB has text type, not json
   subjects: text("subjects"), // Database has text type
@@ -166,8 +183,7 @@ export const schools = pgTable("schools", {
   districtId: text("district_id").references(() => districts.id),
   // domain: text("domain"), // REMOVED: Not in actual database
   isActive: boolean("is_active").default(true),
-  status: text("status"), // "pending" | "active" | "suspended" | "inactive"
-  verifiedAt: timestamp("verified_at", { withTimezone: true }), // When school was verified
+  // verifiedAt: timestamp("verified_at", { withTimezone: true }), // REMOVED: Not in actual database
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
@@ -291,6 +307,37 @@ export const assessmentQuestions = pgTable("assessment_questions", {
 export type AssessmentQuestion = typeof assessmentQuestions.$inferSelect;
 
 // ============================================================================
+// ASSESSMENTS TABLE
+// ============================================================================
+
+export const assessments = pgTable("assessments", {
+  id: text("id").primaryKey(),
+  classId: text("class_id").references(() => classes.id, { onDelete: "cascade" }),
+  assessmentTypeId: text("assessment_type_id").references(() => assessmentTypes.id),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  dueDate: text("due_date").notNull(),
+  totalPoints: integer("total_points").notNull(),
+  passingScore: integer("passing_score").notNull(),
+  userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
+  status: text("status"), // "draft" | "published" | "archived"
+  type: text("type"), // "riasec" | "mbti" | "disc" | "work_values"
+  startedAt: timestamp("started_at", { withTimezone: true }), // When the assessment was started
+  results: json("results").$type<Array<{
+    questionId: string;
+    answer: string | string[];
+    score: number;
+    correct: boolean;
+  }>>(), // Assessment results/answers
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+});
+
+export type Assessment = typeof assessments.$inferSelect;
+
+// ============================================================================
 // ASSESSMENT RESULTS TABLE
 // ============================================================================
 
@@ -340,37 +387,6 @@ export const assessmentSubmissions = pgTable("assessment_submissions", {
 });
 
 export type AssessmentSubmission = typeof assessmentSubmissions.$inferSelect;
-
-// ============================================================================
-// ASSESSMENTS TABLE
-// ============================================================================
-
-export const assessments = pgTable("assessments", {
-  id: text("id").primaryKey(),
-  classId: text("class_id").references(() => classes.id, { onDelete: "cascade" }),
-  assessmentTypeId: text("assessment_type_id").references(() => assessmentTypes.id),
-  title: text("title").notNull(),
-  description: text("description").notNull(),
-  dueDate: text("due_date").notNull(),
-  totalPoints: integer("total_points").notNull(),
-  passingScore: integer("passing_score").notNull(),
-  userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
-  status: text("status"), // "draft" | "published" | "archived"
-  type: text("type"), // "riasec" | "mbti" | "disc" | "work_values"
-  startedAt: timestamp("started_at", { withTimezone: true }), // When the assessment was started
-  results: json("results").$type<Array<{
-    questionId: string;
-    answer: string | string[];
-    score: number;
-    correct: boolean;
-  }>>(), // Assessment results/answers
-  completedAt: timestamp("completed_at", { withTimezone: true }),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
-
-export type Assessment = typeof assessments.$inferSelect;
 
 // ============================================================================
 // ANNOUNCEMENTS TABLE
@@ -583,50 +599,6 @@ export const homeworkSubmissions = pgTable("homework_submissions", {
 export type HomeworkSubmission = typeof homeworkSubmissions.$inferSelect;
 
 // ============================================================================
-// CLASS SUBJECTS TABLE
-// ============================================================================
-
-export const classSubjects = pgTable("class_subjects", {
-  id: text("id").primaryKey(),
-  classId: text("class_id").references(() => classes.id, { onDelete: "cascade" }),
-  subjectId: text("subject_id").references(() => subjects.id),
-  teacherId: text("teacher_id").references(() => users.id),
-  periodsPerWeek: integer("periods_per_week").notNull(),
-  isCoreSubject: boolean("is_core_subject").default(true),
-  roomId: text("room_id").references(() => rooms.id),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
-
-export type ClassSubject = typeof classSubjects.$inferSelect;
-
-// ============================================================================
-// TIMETABLE ENTRIES TABLE
-// ============================================================================
-
-export const timetableEntries = pgTable("timetable_entries", {
-  id: text("id").primaryKey(),
-  classId: text("class_id").references(() => classes.id, { onDelete: "cascade" }),
-  subjectId: text("subject_id").references(() => subjects.id),
-  teacherId: text("teacher_id").references(() => users.id),
-  teacherName: json("teacher_name").notNull(),
-  roomId: text("room_id").references(() => rooms.id),
-  roomName: json("room_name").notNull(),
-  periodId: text("period_id").references(() => timePeriods.id),
-  periodName: text("period_name").notNull(),
-  dayOfWeek: text("day_of_week").notNull(),
-  startTime: text("start_time").notNull(),
-  endTime: text("end_time").notNull(),
-  isDoublePeriod: boolean("is_double_period").default(false),
-  notes: text("notes").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
-
-export type TimetableEntry = typeof timetableEntries.$inferSelect;
-
-// ============================================================================
 // TIME PERIODS TABLE
 // ============================================================================
 
@@ -672,6 +644,50 @@ export const rooms = pgTable("rooms", {
 });
 
 export type Room = typeof rooms.$inferSelect;
+
+// ============================================================================
+// CLASS SUBJECTS TABLE
+// ============================================================================
+
+export const classSubjects = pgTable("class_subjects", {
+  id: text("id").primaryKey(),
+  classId: text("class_id").references(() => classes.id, { onDelete: "cascade" }),
+  subjectId: text("subject_id").references(() => subjects.id),
+  teacherId: text("teacher_id").references(() => users.id),
+  periodsPerWeek: integer("periods_per_week").notNull(),
+  isCoreSubject: boolean("is_core_subject").default(true),
+  roomId: text("room_id").references(() => rooms.id),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+});
+
+export type ClassSubject = typeof classSubjects.$inferSelect;
+
+// ============================================================================
+// TIMETABLE ENTRIES TABLE
+// ============================================================================
+
+export const timetableEntries = pgTable("timetable_entries", {
+  id: text("id").primaryKey(),
+  classId: text("class_id").references(() => classes.id, { onDelete: "cascade" }),
+  subjectId: text("subject_id").references(() => subjects.id),
+  teacherId: text("teacher_id").references(() => users.id),
+  teacherName: json("teacher_name").notNull(),
+  roomId: text("room_id").references(() => rooms.id),
+  roomName: json("room_name").notNull(),
+  periodId: text("period_id").references(() => timePeriods.id),
+  periodName: text("period_name").notNull(),
+  dayOfWeek: text("day_of_week").notNull(),
+  startTime: text("start_time").notNull(),
+  endTime: text("end_time").notNull(),
+  isDoublePeriod: boolean("is_double_period").default(false),
+  notes: text("notes").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+});
+
+export type TimetableEntry = typeof timetableEntries.$inferSelect;
 
 // ============================================================================
 // PARTNERS TABLE
@@ -809,23 +825,6 @@ export const feeStructures = pgTable("fee_structures", {
 });
 
 export type FeeStructure = typeof feeStructures.$inferSelect;
-
-// ============================================================================
-// DISTRICTS TABLE
-// ============================================================================
-
-export const districts = pgTable("districts", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  code: text("code").unique().notNull(),
-  dzongkhag: text("dzongkhag").notNull(),
-  country: text("country").notNull().default("Bhutan"),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
-
-export type District = typeof districts.$inferSelect;
 
 // ============================================================================
 // EXAM RESULTS ENHANCED TABLE

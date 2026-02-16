@@ -38,19 +38,26 @@ export function AddSchoolModal({ open, onClose, onSuccess }: AddSchoolModalProps
     setIsLoading(true);
 
     try {
+      const payload = {
+        name,
+        code: generateSchoolCode(),
+        schoolType,
+        level,
+        address,
+        contactEmail,
+        contactPhone,
+      };
+      console.log("[ADD SCHOOL] Sending payload:", payload);
+
       const response = await fetch("/api/schools", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          code: generateSchoolCode(),
-          schoolType,
-          level,
-          address,
-          contactEmail,
-          contactPhone,
-        }),
+        body: JSON.stringify(payload),
       });
+
+      console.log("[ADD SCHOOL] Response status:", response.status);
+      const responseData = await response.json();
+      console.log("[ADD SCHOOL] Response data:", responseData);
 
       if (response.ok) {
         onSuccess();
@@ -62,11 +69,10 @@ export function AddSchoolModal({ open, onClose, onSuccess }: AddSchoolModalProps
         setContactEmail("");
         setContactPhone("");
       } else {
-        const error = await response.json();
-        alert(error.error || "Failed to create school");
+        alert(responseData.error || "Failed to create school");
       }
     } catch (error) {
-      console.error("Error creating school:", error);
+      console.error("[ADD SCHOOL] Error:", error);
       alert("Network error. Please try again.");
     } finally {
       setIsLoading(false);

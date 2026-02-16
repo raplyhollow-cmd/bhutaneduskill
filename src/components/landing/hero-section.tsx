@@ -40,6 +40,7 @@ function FlowStep({
         transition={{
           duration: 2 + index * 0.3,
           repeat: Infinity,
+          repeatType: "loop",
           ease: "easeInOut",
           delay: index * 0.2,
         }}

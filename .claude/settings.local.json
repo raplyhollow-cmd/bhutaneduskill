@@ -47,7 +47,10 @@
       "Bash(npx drizzle-kit generate:*)",
       "Bash(npm run db:generate:*)",
       "Bash(npm run db:studio:*)",
-      "Bash(psql:*)"
+      "Bash(psql:*)",
+      "Bash(grep:*)",
+      "Bash(python3:*)",
+      "Bash(npx next build:*)"
     ]
   }
 }

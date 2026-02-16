@@ -38,3 +38,6 @@ export const db = drizzle(neonClient, { schema });
 export function getDatabaseType(): "neon" | "postgresql" {
   return "neon";
 }
+
+// Export JSON parsing helpers
+export * from "./json-helpers";

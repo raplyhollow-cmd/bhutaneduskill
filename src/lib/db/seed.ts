@@ -14,7 +14,7 @@ const DEMO_TENANT = {
   logo: "/logo.png",
   primaryColor: "rgb(249 115 22)",
   secondaryColor: "rgb(194 65 12)",
-  settings: {},
+  settings: JSON.stringify({}),
   isActive: true,
   createdAt: new Date(),
   updatedAt: new Date(),

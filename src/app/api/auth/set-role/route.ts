@@ -13,23 +13,42 @@ export async function GET(request: NextRequest) {
     }
 
     // Get user from database
-    const user = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
+    const userRecords = await db
+      .select({
+        id: users.id,
+        type: users.type,
+        onboardingComplete: users.onboardingComplete,
+        schoolId: users.schoolId,
+        firstName: users.firstName,
+        lastName: users.lastName,
+      })
+      .from(users)
+      .where(eq(users.clerkUserId, userId))
+      .limit(1);
+
+    const user = userRecords[0];
 
     if (!user) {
-      // User not in database yet - might be first time login
-      // Return null and let frontend handle onboarding
+      // User not in database yet - needs setup
+      console.log("[Set Role] User not found in database, needs setup");
       return NextResponse.json({ userType: null, needsSetup: true });
     }
 
-    // Platform admins never need onboarding - skip setup check entirely
-    if (user.type === 'admin') {
+    console.log("[Set Role] User found:", {
+      id: user.id,
+      type: user.type,
+      onboardingComplete: user.onboardingComplete,
+    });
+
+    // If user has a type, let them in (they were either created by admin or completed setup)
+    // The onboardingComplete field caused timing issues, so we rely on type presence instead
+    if (user.type) {
+      console.log("[Set Role] User has type, allowing access:", user.type);
       const response = NextResponse.json({
         userType: user.type,
-        userId: user.id,
-        schoolId: user.schoolId,
-        needsSetup: false
+        needsSetup: false,
+        firstName: user.firstName,
+        lastName: user.lastName
       });
       response.cookies.set("userType", user.type, {
         httpOnly: true,
@@ -40,33 +59,12 @@ export async function GET(request: NextRequest) {
       return response;
     }
 
-    // Check if user has completed onboarding
-    if (!user.onboardingComplete) {
-      return NextResponse.json({
-        userType: user.type,
-        userId: user.id,
-        schoolId: user.schoolId,
-        needsSetup: true
-      });
-    }
-
-    // Create response with user type cookie
-    const response = NextResponse.json({
-      userType: user.type,
-      userId: user.id,
-      schoolId: user.schoolId,
-      needsSetup: false
+    // If no type, they need setup
+    console.log("[Set Role] User has no type, needs setup");
+    return NextResponse.json({
+      userType: null,
+      needsSetup: true
     });
-
-    // Set cookie for middleware to use
-    response.cookies.set("userType", user.type, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 1 week
-    });
-
-    return response;
   } catch (error) {
     console.error("Error getting user role:", error);
     return NextResponse.json({ error: "Failed to get user role" }, { status: 500 });

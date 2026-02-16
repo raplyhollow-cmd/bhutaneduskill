@@ -1,36 +1,9 @@
 /**
- * Tenant utilities for multi-tenancy
+ * Server-safe constants for Bhutan education data
+ * This file contains ONLY constants and can be safely imported during SSR/SSG
+ *
+ * For client-side tenant utilities, import from '@/lib/tenant-utils'
  */
-
-export function getTenantFromRequest(): {
-  tenant: string | null;
-  subdomain: string | null;
-} {
-  // For server-side usage, this will be enhanced with headers()
-  // For now, return null and we'll implement with middleware
-  try {
-    if (typeof window !== "undefined" && window.location) {
-      const hostname = window.location.hostname;
-      const parts = hostname.split(".");
-      if (parts.length > 2) {
-        return {
-          tenant: parts[0],
-          subdomain: parts[0],
-        };
-      }
-    }
-  } catch {
-    // SSR safety: window.location may not be available during static generation
-  }
-  return { tenant: null, subdomain: null };
-}
-
-export function withTenant<T>(
-  tenant: string,
-  callback: (tenant: string) => T
-): T {
-  return callback(tenant);
-}
 
 // List of Bhutan school codes for validation
 export const BHUTAN_SCHOOL_CODES = [

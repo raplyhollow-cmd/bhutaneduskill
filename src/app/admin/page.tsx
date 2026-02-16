@@ -77,7 +77,7 @@ export default function AdminDashboardPage() {
 
   // Load AI insights after dashboard data is available
   useEffect(() => {
-    if (!isLoading && stats.totalSchools > 0) {
+    if (!isLoading && stats && topSchools && careerInterests && stats.totalSchools > 0) {
       loadAIInsights();
     }
   }, [isLoading, stats, topSchools, careerInterests]);
@@ -85,25 +85,38 @@ export default function AdminDashboardPage() {
   const loadDashboardData = async () => {
     try {
       const response = await fetch("/api/admin/dashboard");
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data.stats || stats);
-        setTopSchools(data.topSchools || []);
-        setCareerInterests(data.careerInterests || []);
-
-        // Generate alerts from data
-        const newAlerts: Alert[] = [];
-        if (data.topSchools && data.topSchools.some((s: TopSchool) => s.completion < 80)) {
-          const lowCount = data.topSchools.filter((s: TopSchool) => s.completion < 80).length;
-          newAlerts.push({ type: "warning", message: `${lowCount} schools have low assessment completion rates` });
-        }
-        if (data.stats && data.stats.totalSchools > 10) {
-          newAlerts.push({ type: "info", message: `Platform now serving ${data.stats.totalSchools} schools across Bhutan` });
-        }
-        setAlerts(newAlerts);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
+      const data = await response.json();
+      setStats(data.stats || stats);
+      setTopSchools(data.topSchools || []);
+      setCareerInterests(data.careerInterests || []);
+
+      // Generate alerts from data
+      const newAlerts: Alert[] = [];
+      if (data.topSchools && data.topSchools.some((s: TopSchool) => s.completion < 80)) {
+        const lowCount = data.topSchools.filter((s: TopSchool) => s.completion < 80).length;
+        newAlerts.push({ type: "warning", message: `${lowCount} schools have low assessment completion rates` });
+      }
+      if (data.stats && data.stats.totalSchools > 10) {
+        newAlerts.push({ type: "info", message: `Platform now serving ${data.stats.totalSchools} schools across Bhutan` });
+      }
+      setAlerts(newAlerts);
     } catch (error) {
       console.error("Failed to load admin dashboard:", error);
+      // Set fallback values to prevent UI errors
+      setStats({
+        totalSchools: 0,
+        totalStudents: 0,
+        totalTeachers: 0,
+        totalAssessments: 0,
+        completionRate: 0,
+        activeNow: 0
+      });
+      setTopSchools([]);
+      setCareerInterests([]);
+      setAlerts([]);
     } finally {
       setIsLoading(false);
     }

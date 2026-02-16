@@ -29,7 +29,11 @@ export async function POST(request: NextRequest) {
       const userId = `user-${nanoid()}`;
       const firstName = user.firstName || "Counselor";
       const lastName = user.lastName || "";
-      const email = user.emailAddresses?.[0]?.emailAddress || "";
+      // Defensive email extraction - try multiple methods
+      const email = user.primaryEmailAddress?.emailAddress
+        || user.emailAddresses?.find((e: any) => e.id === user.primaryEmailAddressId)?.emailAddress
+        || user.emailAddresses?.[0]?.emailAddress
+        || "";
 
       await db.insert(users).values({
         id: userId,
@@ -40,6 +44,7 @@ export async function POST(request: NextRequest) {
         firstName,
         lastName,
         email,
+        onboardingComplete: step === "complete",
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -56,34 +61,56 @@ export async function POST(request: NextRequest) {
       dbUser = userRecord[0];
     }
 
-    // Update or create wizard progress
-    const existingProgress = await db
-      .select()
-      .from(wizardProgress)
-      .where(eq(wizardProgress.userId, dbUser.id))
-      .limit(1);
+    // Mark onboarding as complete when step is "complete"
+    if (step === "complete") {
+      await db
+        .update(users)
+        .set({ onboardingComplete: true })
+        .where(eq(users.id, dbUser.id));
+    }
+
+    // Update or create wizard progress (gracefully handle missing table)
+    let existingProgress: any[] = [];
+    try {
+      existingProgress = await db
+        .select()
+        .from(wizardProgress)
+        .where(eq(wizardProgress.userId, dbUser.id))
+        .limit(1);
+    } catch (error) {
+      // wizard_progress table doesn't exist - skip progress tracking
+      console.warn("[Counselor Setup] wizard_progress table not available, skipping progress tracking");
+    }
 
     if (existingProgress.length > 0) {
-      await db
-        .update(wizardProgress)
-        .set({
-          currentStep: step === "complete" ? "4" : String((parseInt(existingProgress[0].currentStep as string) || 0) + 1),
-          data: { ...(existingProgress[0].data as any), ...data },
-          updatedAt: new Date(),
-        })
-        .where(eq(wizardProgress.id, existingProgress[0].id));
+      try {
+        await db
+          .update(wizardProgress)
+          .set({
+            currentStep: step === "complete" ? "4" : String((parseInt(existingProgress[0].currentStep as string) || 0) + 1),
+            data: { ...(existingProgress[0].data as any), ...data },
+            updatedAt: new Date(),
+          })
+          .where(eq(wizardProgress.id, existingProgress[0].id));
+      } catch (error) {
+        console.warn("[Counselor Setup] Could not update wizard_progress:", error);
+      }
     } else {
-      await db.insert(wizardProgress).values({
-        id: nanoid(),
-        userId: dbUser.id,
-        currentStep: "1",
-        completedSteps: [],
-        data,
-        isCompleted: false,
-        lastUpdated: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
+      try {
+        await db.insert(wizardProgress).values({
+          id: nanoid(),
+          userId: dbUser.id,
+          currentStep: "1",
+          completedSteps: [],
+          data,
+          isCompleted: false,
+          lastUpdated: new Date(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      } catch (error) {
+        console.warn("[Counselor Setup] Could not insert wizard_progress:", error);
+      }
     }
 
     // Update user details

@@ -81,7 +81,7 @@ export function ResultsCard({
               key={index}
               variant={action.variant || "default"}
               onClick={action.onClick}
-              asChild={action.href ? true : undefined}
+              asChild={!!action.href}
             >
               {action.href ? <Link href={action.href}>{action.label}</Link> : action.label}
             </Button>

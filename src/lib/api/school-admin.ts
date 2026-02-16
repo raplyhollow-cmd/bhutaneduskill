@@ -10,20 +10,22 @@
 
 import { db } from "@/lib/db";
 import { users, classes, schools, subjects, homework, homeworkSubmissions, attendance, studentFees, feeStructures, feePayments, counselorAssignments, tuitionCourses, tuitionEnrollments, tutors, examResultsEnhanced, academicTerms, enrollments, teacherAssignments } from "@/lib/db/schema";
+import { parseJsonArray } from "@/lib/db/json-helpers";
 import { eq, and, count, desc, sql, gte, lte, like, inArray } from "drizzle-orm";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { cache } from "react";
 
 // Get current school ID from auth session
-export async function getCurrentSchoolId() {
-  const { userId } = await auth();
-  if (!userId) {
-    throw new Error("Unauthorized");
+export async function getCurrentSchoolId(): Promise<string | null> {
+  const authResult = await requireAuth();
+  if ('error' in authResult) {
+    throw new Error(authResult.error);
   }
+  const { userId } = authResult;  // This is database userId from requireAuth
 
-  // Get user's school ID
+  // Get schoolId from user record
   const user = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId),
+    where: eq(users.id, userId),  // Query by database ID, not clerkUserId
     columns: { schoolId: true },
   });
 
@@ -405,7 +407,7 @@ export async function getClasses(schoolId: string | null, options: {
       room: "TBD",
       floor: "TBD",
       capacity: 40,
-      enrolled: (cls as any).students?.length || 0,
+      enrolled: parseJsonArray((cls as any).students).length,
       academicYear: cls.academicYear,
       status: "active",
       schedule: [],
@@ -643,7 +645,7 @@ export async function getHomeworkList(schoolId: string | null, options: {
         type: (hw as any).type || "assignment",
         dueDate: (hw as any).dueDate || "",
         submitted: submissionCount?.count || 0,
-        total: (hw.class as any)?.students?.length || 0,
+        total: parseJsonArray((hw.class as any)?.students).length,
         graded: gradedCount?.count || 0,
       };
     })

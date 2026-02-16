@@ -18,7 +18,7 @@ import {
   attendance,
 } from "@/lib/db/schema";
 import { eq, and, desc, count, sql, or, like, gte, lte } from "drizzle-orm";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 
 // ============================================================================
 // TYPES
@@ -103,22 +103,19 @@ export interface InterventionData {
 // ============================================================================
 
 export async function getCurrentCounselorId() {
-  const { userId } = await auth();
-  if (!userId) {
-    throw new Error("Unauthorized");
+  const authResult = await requireAuth(['counselor']);
+  if ('error' in authResult) {
+    throw new Error(authResult.error);
   }
+  const { userId } = authResult;  // Database userId
 
-  // Get user's counselor ID
-  const user = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId),
-    columns: { id: true, type: true },
+  // Get counselor record for this user
+  const counselor = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+    columns: { id: true },
   });
 
-  if (!user || user.type !== "counselor") {
-    return null;
-  }
-
-  return user.id;
+  return counselor?.id || null;
 }
 
 // ============================================================================

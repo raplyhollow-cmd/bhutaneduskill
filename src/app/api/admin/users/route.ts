@@ -7,8 +7,9 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
+import { createClerkClient } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
-import { users, schools, tenants } from "@/lib/db/schema";
+import { users, schools } from "@/lib/db/schema";
 import { eq, desc, like, or, and, count, sql, inArray } from "drizzle-orm";
 import { requireAuth, invalidateUserRoleCache } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
@@ -24,7 +25,6 @@ interface UserListQuery {
   search?: string;
   role?: string;
   schoolId?: string;
-  tenantId?: string;
   status?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
@@ -41,7 +41,6 @@ interface UserWithDetails {
   email: string;
   phone: string;
   schoolId?: string | null;
-  tenantId?: string | null;
   isActive: boolean;
   emailVerified: boolean;
   onboardingComplete: boolean;
@@ -54,22 +53,16 @@ interface UserWithDetails {
     name: string;
     code: string;
   } | null;
-  tenant?: {
-    id: string;
-    name: string;
-    slug: string;
-  } | null;
 }
 
 interface CreateUserRequest {
   email: string;
   firstName: string;
   lastName: string;
-  type: 'student' | 'teacher' | 'parent' | 'school_admin' | 'admin' | 'counselor';
+  type: 'student' | 'teacher' | 'parent' | 'school_admin' | 'admin' | 'counselor' | 'ministry';
   role: string;
   phone?: string;
   schoolId?: string;
-  tenantId?: string;
   grade?: number;
   section?: string;
   employeeId?: string;
@@ -101,7 +94,6 @@ export async function GET(request: NextRequest) {
       search: searchParams.get('search') || '',
       role: searchParams.get('role') || '',
       schoolId: searchParams.get('schoolId') || '',
-      tenantId: searchParams.get('tenantId') || '',
       status: searchParams.get('status') || '',
       sortBy: searchParams.get('sortBy') || 'createdAt',
       sortOrder: (searchParams.get('sortOrder') || 'desc') as 'asc' | 'desc',
@@ -135,11 +127,6 @@ export async function GET(request: NextRequest) {
     // School filter
     if (query.schoolId) {
       conditions.push(eq(users.schoolId, query.schoolId));
-    }
-
-    // Tenant filter
-    if (query.tenantId) {
-      conditions.push(eq(users.tenantId, query.tenantId));
     }
 
     // Status filter
@@ -195,14 +182,9 @@ export async function GET(request: NextRequest) {
         schoolId2: schools.id,
         schoolName: schools.name,
         schoolCode: schools.code,
-        // Tenant details
-        tenantId2: tenants.id,
-        tenantName: tenants.name,
-        tenantSlug: tenants.slug,
       })
       .from(users)
       .leftJoin(schools, eq(users.schoolId, schools.id))
-      .leftJoin(tenants, eq(users.tenantId, tenants.id))
       .where(whereClause)
       .orderBy(orderByClause)
       .limit(limit)
@@ -231,11 +213,6 @@ export async function GET(request: NextRequest) {
         id: u.schoolId2,
         name: u.schoolName || '',
         code: u.schoolCode || '',
-      } : null,
-      tenant: u.tenantId2 ? {
-        id: u.tenantId2,
-        name: u.tenantName || '',
-        slug: u.tenantSlug || '',
       } : null,
     }));
 
@@ -292,7 +269,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate user type
-    const validTypes = ['student', 'teacher', 'parent', 'school_admin', 'admin', 'counselor'];
+    const validTypes = ['student', 'teacher', 'parent', 'school_admin', 'admin', 'counselor', 'ministry'];
     if (!validTypes.includes(type)) {
       return NextResponse.json(
         { error: `Invalid user type. Must be one of: ${validTypes.join(', ')}`, status: 400 } as ApiErrorResponse,
@@ -330,27 +307,30 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Verify tenant exists if provided
-    if (body.tenantId) {
-      const tenant = await db
-        .select()
-        .from(tenants)
-        .where(eq(tenants.id, body.tenantId))
-        .limit(1);
+    // Generate user ID
+    const newUserId = `user_${nanoid()}`;
 
-      if (tenant.length === 0) {
-        return NextResponse.json(
-          { error: 'Specified tenant not found', status: 404 } as ApiErrorResponse,
-          { status: 404 }
-        );
-      }
+    // Create user in Clerk.com FIRST (so they can actually sign in)
+    let clerkUser;
+    try {
+      const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
+      clerkUser = await clerkClient.users.createUser({
+        emailAddress: [email],
+        firstName,
+        lastName,
+        skipPasswordRequirement: true, // User will set password via email
+      });
+      logger.info("[Admin] Created Clerk user", { userId: clerkUser.id, email });
+    } catch (clerkError: any) {
+      logger.error("[Admin] Failed to create Clerk user", clerkError);
+      return NextResponse.json(
+        { error: `Failed to create user in Clerk: ${clerkError.errors?.[0]?.message || clerkError.message || 'Unknown error'}` },
+        { status: 400 }
+      );
     }
 
-    // Generate user ID and clerk user ID placeholder
-    const newUserId = `user_${nanoid()}`;
-    const newClerkUserId = `clerk_${nanoid()}`;
-
     // Prepare user data with defaults
+    const newClerkUserId = clerkUser.id; // REAL Clerk ID from Clerk.com
     const now = new Date();
     const userData = {
       id: newUserId,
@@ -363,22 +343,22 @@ export async function POST(request: NextRequest) {
       email,
       phone: body.phone || '',
       schoolId: body.schoolId || null,
-      tenantId: body.tenantId || null,
-      profileImage: '',
-      dateOfBirth: '',
-      gender: '',
+      tenantId: null, // Tenants table doesn't exist yet
+      profileImage: null,
+      dateOfBirth: null,
+      gender: null,
       grade: body.grade || 0,
-      section: body.section || '',
-      rollNumber: '',
-      address: '',
-      city: '',
-      state: '',
-      postalCode: '',
+      section: null,
+      rollNumber: null,
+      address: null,
+      city: null,
+      state: null,
+      postalCode: null,
       country: 'Bhutan',
-      parentContact: '',
-      parentPhone: '',
-      emergencyContact: '',
-      bloodGroup: '',
+      parentContact: null,
+      parentPhone: null,
+      emergencyContact: null,
+      bloodGroup: null,
       enrollmentDate: now.toISOString(),
       lastLogin: null,
       employeeId: body.employeeId || null,

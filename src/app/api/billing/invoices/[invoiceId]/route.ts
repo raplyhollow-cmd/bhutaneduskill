@@ -75,13 +75,8 @@ interface InvoiceDetail {
   tenant?: {
     id: string;
     name: string;
-    code: string;
-    type: string;
-    email?: string;
-    phone?: string;
-    address?: string;
-    city?: string;
-    district?: string;
+    slug?: string;
+    domain?: string;
   };
   // Payment transactions
   paymentHistory?: Array<{
@@ -171,13 +166,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
         // Tenant details
         tenantId: tenants.id,
         tenantName: tenants.name,
-        tenantCode: tenants.code,
-        tenantType: tenants.type,
-        tenantEmail: tenants.email,
-        tenantPhone: tenants.phone,
-        tenantAddress: tenants.address,
-        tenantCity: tenants.city,
-        tenantDistrict: tenants.district,
+        tenantSlug: tenants.slug,
+        tenantDomain: tenants.domain,
       })
       .from(invoices)
       .leftJoin(subscriptions, eq(invoices.subscriptionId, subscriptions.id))
@@ -244,13 +234,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
         ? {
             id: inv.tenantId,
             name: inv.tenantName || "",
-            code: inv.tenantCode || "",
-            type: inv.tenantType || "",
-            email: inv.tenantEmail || undefined,
-            phone: inv.tenantPhone || undefined,
-            address: inv.tenantAddress || undefined,
-            city: inv.tenantCity || undefined,
-            district: inv.tenantDistrict || undefined,
+            slug: inv.tenantSlug || undefined,
+            domain: inv.tenantDomain || undefined,
           }
         : undefined,
       paymentHistory: transactions.map((t) => ({

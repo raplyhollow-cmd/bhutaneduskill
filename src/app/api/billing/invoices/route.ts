@@ -94,8 +94,7 @@ export async function GET(req: NextRequest) {
         // Tenant/School info
         tenantId: tenants.id,
         tenantName: tenants.name,
-        tenantCode: tenants.code,
-        tenantType: tenants.type,
+        tenantSlug: tenants.slug,
         schoolName: schools.name,
       })
       .from(invoices)
@@ -112,7 +111,6 @@ export async function GET(req: NextRequest) {
     const formattedData = invoicesData.map((inv) => {
       const getSchoolName = () => {
         if (inv.schoolName) return inv.schoolName;
-        if (inv.tenantType === "school") return inv.tenantName;
         return inv.tenantName || "Unknown";
       };
 

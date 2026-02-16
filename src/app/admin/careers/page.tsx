@@ -44,6 +44,8 @@ import {
   updateCareer,
   deleteCareer,
 } from "@/app/admin/careers/actions";
+import { AddCareerModal } from "@/components/admin/add-career-modal";
+import { EditCareerModal } from "@/components/admin/edit-career-modal";
 
 // Demand level icons and colors
 const demandConfig = {
@@ -76,6 +78,7 @@ export default function AdminCareersPage() {
   const [careerToDelete, setCareerToDelete] = useState<string | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingCareer, setEditingCareer] = useState<any>(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   // Fetch careers on mount
   useEffect(() => {
@@ -211,6 +214,7 @@ export default function AdminCareersPage() {
           <Button
             style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
             className="text-white min-h-[44px]"
+            onClick={() => setIsAddModalOpen(true)}
           >
             <Plus className="w-4 h-4 mr-2" />
             Add Career
@@ -597,6 +601,10 @@ export default function AdminCareersPage() {
                                 size="icon"
                                 className="h-8 w-8 hover:bg-pink-50 hover:text-pink-600"
                                 title="Edit career"
+                                onClick={() => {
+                                  setEditingCareer(career);
+                                  setShowEditDialog(true);
+                                }}
                               >
                                 <Edit className="w-4 h-4" />
                               </Button>
@@ -777,6 +785,24 @@ export default function AdminCareersPage() {
           </div>
         </div>
       )}
+
+      {/* Add Career Modal */}
+      <AddCareerModal
+        open={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSuccess={fetchCareers}
+      />
+
+      {/* Edit Career Modal */}
+      <EditCareerModal
+        open={showEditDialog}
+        onClose={() => {
+          setShowEditDialog(false);
+          setEditingCareer(null);
+        }}
+        onSuccess={fetchCareers}
+        career={editingCareer}
+      />
     </div>
   );
 }

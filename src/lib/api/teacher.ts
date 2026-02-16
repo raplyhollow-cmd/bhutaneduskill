@@ -8,29 +8,20 @@
 import { db } from "@/lib/db";
 import { users, tutors, tutorEarnings, tuitionCourses, tuitionEnrollments, tutorReviews, liveSessions } from "@/lib/db/schema";
 import { eq, and, count, desc, sql, gte, lte, sum } from "drizzle-orm";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { cache } from "react";
 
 // Get current teacher ID from auth session
 export async function getCurrentTeacherId() {
-  const { userId } = await auth();
-  if (!userId) {
-    throw new Error("Unauthorized");
+  const authResult = await requireAuth(['teacher']);
+  if ('error' in authResult) {
+    throw new Error(authResult.error);
   }
-
-  // Get user's teacher ID
-  const user = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId),
-    columns: { id: true, type: true },
-  });
-
-  if (!user || (user as any).type !== "teacher") {
-    return null;
-  }
+  const { userId } = authResult;  // Database userId
 
   // Get tutor record for this teacher
   const tutor = await db.query.tutors.findFirst({
-    where: eq(tutors.userId, user.id),
+    where: eq(tutors.userId, userId),
     columns: { id: true },
   });
 
