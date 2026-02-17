@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 
 // ============================================================================
 // BCSE API - NOT YET IMPLEMENTED
@@ -15,9 +15,9 @@ import { auth } from "@clerk/nextjs/server";
  */
 
 export async function GET(request: NextRequest) {
-  const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const authResult = await requireAuth();
+  if ('error' in authResult) {
+    return authResult;
   }
 
   return NextResponse.json({
@@ -27,9 +27,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const authResult = await requireAuth(['admin', 'school-admin']);
+  if ('error' in authResult) {
+    return authResult;
   }
 
   return NextResponse.json({
@@ -38,9 +38,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const authResult = await requireAuth(['admin', 'school-admin']);
+  if ('error' in authResult) {
+    return authResult;
   }
 
   return NextResponse.json({

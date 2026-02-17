@@ -5,7 +5,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { schoolEvents, users } from "@/lib/db/schema";
 import { eq, and, desc, gte, lte, or, sql } from "drizzle-orm";
@@ -13,19 +14,11 @@ import { nanoid } from "nanoid";
 
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['student', 'teacher', 'parent', 'admin', 'school-admin']);
+    if ('error' in authResult) {
+      return authResult;
     }
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-      columns: { id: true, type: true, role: true, schoolId: true },
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    const { userId, user } = authResult;
 
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get("start");
@@ -35,8 +28,8 @@ export async function GET(request: NextRequest) {
     const conditions = [];
 
     // Filter by school
-    if (currentUser.schoolId) {
-      conditions.push(eq(schoolEvents.schoolId, currentUser.schoolId));
+    if (user.schoolId) {
+      conditions.push(eq(schoolEvents.schoolId, user.schoolId));
     }
 
     // Filter by date range if provided

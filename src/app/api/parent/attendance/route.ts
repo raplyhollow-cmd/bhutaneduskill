@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { users, attendance as attendanceTable, classes, enrollments } from "@/lib/db/schema";
 import { eq, and, desc, gte, lte } from "drizzle-orm";
@@ -15,10 +16,11 @@ import { eq, and, desc, gte, lte } from "drizzle-orm";
  */
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['parent']);
+    if ('error' in authResult) {
+      return authResult;
     }
+    const { userId, user } = authResult;
 
     const { searchParams } = new URL(request.url);
     const childId = searchParams.get("childId");
@@ -30,21 +32,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "childId is required" }, { status: 400 });
     }
 
-    // Verify current user is a parent
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || currentUser.type !== "parent") {
-      return NextResponse.json({ error: "Forbidden - Parents only" }, { status: 403 });
-    }
-
     // Verify the child belongs to this parent
     const child = await db.query.users.findFirst({
       where: eq(users.id, childId),
     });
 
-    if (!child || child.parentId !== currentUser.id) {
+    if (!child || child.parentId !== user.id) {
       return NextResponse.json({ error: "Child not found or access denied" }, { status: 404 });
     }
 

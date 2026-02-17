@@ -5,7 +5,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { books, circulation, users } from "@/lib/db/schema";
 import { eq, and, desc, or, sql } from "drizzle-orm";
@@ -14,19 +15,14 @@ import { nanoid } from "nanoid";
 // GET - Fetch books and circulation records
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['student', 'teacher', 'admin', 'school-admin']);
+    if ('error' in authResult) {
+      return authResult;
     }
+    const { userId, user } = authResult;
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-      columns: { id: true, type: true, role: true, schoolId: true },
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    const { searchParams } = new URL(request.url);
+    const action = searchParams.get("action"); // books, my-borrows, search
 
     const { searchParams } = new URL(request.url);
     const action = searchParams.get("action"); // books, my-borrows, search

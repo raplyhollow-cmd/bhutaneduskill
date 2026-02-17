@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { users, classes, enrollments, homework, homeworkSubmissions, assessmentSubmissions } from "@/lib/db/schema";
 import { eq, desc, and, inArray, sql } from "drizzle-orm";
@@ -15,23 +16,15 @@ import { eq, desc, and, inArray, sql } from "drizzle-orm";
  */
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['teacher']);
+    if ('error' in authResult) {
+      return authResult;
     }
-
-    // Get current teacher user
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || currentUser.type !== "teacher") {
-      return NextResponse.json({ error: "Forbidden - Teachers only" }, { status: 403 });
-    }
+    const { userId, user } = authResult;
 
     // Get teacher's classes
     const teacherClasses = await db.query.classes.findMany({
-      where: eq(classes.teacherId, currentUser.id),
+      where: eq(classes.teacherId, user.id),
       orderBy: [desc(classes.createdAt)],
     });
 
@@ -52,7 +45,7 @@ export async function GET(request: NextRequest) {
 
     // Get pending assessments (assigned by this teacher)
     const pendingAssessments = await db.query.assessmentSubmissions.findMany({
-      where: eq(assessmentSubmissions.assignedBy, currentUser.id),
+      where: eq(assessmentSubmissions.assignedBy, user.id),
     });
     const pendingAssessmentsCount = pendingAssessments.filter(a => a.status === "pending").length;
 
@@ -125,7 +118,7 @@ export async function GET(request: NextRequest) {
       needsAttention,
     });
   } catch (error) {
-    console.error("Teacher dashboard fetch error:", error);
+    logger.apiError(error, { route: "/api/teacher/dashboard", method: "GET" });
     return NextResponse.json({
       error: "Failed to fetch dashboard data",
       stats: {

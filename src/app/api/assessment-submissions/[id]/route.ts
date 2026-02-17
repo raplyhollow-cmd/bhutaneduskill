@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { assessmentSubmissions, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -10,22 +11,15 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['student', 'teacher', 'admin', 'school-admin']);
+    if ('error' in authResult) {
+      return authResult;
     }
+    const { userId, user } = authResult;
 
     const { id } = await params;
     const body = await request.json();
     const { status, /* startedAt, */ completedAt, timeSpent } = body;
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
 
     const [updatedSubmission] = await db
       .update(assessmentSubmissions)
@@ -35,7 +29,7 @@ export async function PATCH(
 
     return NextResponse.json({ submission: updatedSubmission });
   } catch (error) {
-    console.error("Assessment submission update error:", error);
+    logger.apiError(error, { route: "/api/assessment-submissions/[id]", method: "PATCH" });
     return NextResponse.json({ error: "Failed to update submission" }, { status: 500 });
   }
 }
@@ -46,10 +40,11 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['student', 'teacher', 'admin', 'school-admin']);
+    if ('error' in authResult) {
+      return authResult;
     }
+    const { userId, user } = authResult;
 
     const { id } = await params;
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { attendance, users, classes, enrollments } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -12,18 +13,11 @@ interface Params {
 export async function GET(request: NextRequest, { params }: Params) {
   try {
     const { classId, date } = await params;
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['teacher']);
+    if ('error' in authResult) {
+      return authResult;
     }
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || currentUser.type !== "teacher") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const { userId, user } = authResult;
 
     // Get class students
     const classEnrollments = await db.query.enrollments.findMany({

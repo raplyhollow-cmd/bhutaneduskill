@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { db } from "@/lib/db";
@@ -15,23 +16,11 @@ import { nanoid } from "nanoid";
  */
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['parent']);
+    if ('error' in authResult) {
+      return authResult;
     }
-
-    // Get current parent user
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    if (currentUser.type !== "parent") {
-      return NextResponse.json({ error: "Forbidden - Parents only" }, { status: 403 });
-    }
+    const { userId, user } = authResult;
 
     // Parse form data
     const formData = await request.formData();

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { consentRecords, users } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
@@ -7,23 +8,16 @@ import { eq, and, desc } from "drizzle-orm";
 // GET /api/consent - Get consent records
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['parent', 'admin', 'school-admin']);
+    if ('error' in authResult) {
+      return authResult;
     }
+    const { userId, user } = authResult;
 
     const { searchParams } = new URL(request.url);
     const userId_param = searchParams.get("userId");
     const parentId = searchParams.get("parentId");
     const type = searchParams.get("type");
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
 
     // Build conditions
     const conditions = [];
@@ -61,7 +55,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ records });
   } catch (error) {
-    console.error("Consent records fetch error:", error);
+    logger.apiError(error, { route: "/api/consent", method: "GET" });
     return NextResponse.json({ error: "Failed to fetch consent records" }, { status: 500 });
   }
 }
@@ -69,26 +63,14 @@ export async function GET(request: NextRequest) {
 // POST /api/consent - Create consent request
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['admin', 'counselor']);
+    if ('error' in authResult) {
+      return authResult;
     }
+    const { userId, user } = authResult;
 
     const body = await request.json();
     const { userId: targetUserId, parentId, type, consentText } = body;
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    // Only admin and counselors can create consent requests
-    if (!["admin", "counselor"].includes(currentUser.type)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
     const [record] = await db
       .insert(consentRecords)
@@ -108,7 +90,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ record }, { status: 201 });
   } catch (error) {
-    console.error("Consent creation error:", error);
+    logger.apiError(error, { route: "/api/consent", method: "POST" });
     return NextResponse.json({ error: "Failed to create consent request" }, { status: 500 });
   }
 }

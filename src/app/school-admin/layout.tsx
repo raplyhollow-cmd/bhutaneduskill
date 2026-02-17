@@ -45,7 +45,7 @@ export default function SchoolAdminLayout({
             admin: '/admin',
             ministry: '/ministry',
           };
-          window.location.href = portalMap[roleData.userType] || '/dashboard';
+          router.push(portalMap[roleData.userType] || '/dashboard');
           return;
         }
 

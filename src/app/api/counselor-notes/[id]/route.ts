@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { counselorNotes, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -11,10 +12,11 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['counselor', 'teacher', 'admin', 'school-admin']);
+    if ('error' in authResult) {
+      return authResult;
     }
+    const { userId, user } = authResult;
 
     const note = await db.query.counselorNotes.findFirst({
       where: eq(counselorNotes.id, id),
@@ -26,7 +28,7 @@ export async function GET(
 
     return NextResponse.json({ note });
   } catch (error) {
-    console.error("Counselor note fetch error:", error);
+    logger.apiError(error, { route: "/api/counselor-notes/[id]", method: "GET" });
     return NextResponse.json({ error: "Failed to fetch note" }, { status: 500 });
   }
 }
@@ -38,15 +40,13 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['counselor', 'teacher', 'admin', 'school-admin']);
+    if ('error' in authResult) {
+      return authResult;
     }
+    const { userId, user } = authResult;
 
     const body = await request.json();
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
 
     if (!currentUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });

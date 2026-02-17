@@ -45,7 +45,8 @@ export default function AdminLayout({
             'school-admin': '/school-admin',
             ministry: '/ministry',
           };
-          window.location.href = portalMap[roleData.userType] || '/dashboard';
+          // Use router.push instead of window.location.href for Next.js
+          router.push(portalMap[roleData.userType] || '/dashboard');
           return;
         }
 

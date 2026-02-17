@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { users, classes, attendance, enrollments } from "@/lib/db/schema";
 import { eq, and, desc, gte, lte, sql, SQL } from "drizzle-orm";
@@ -17,10 +18,11 @@ import { eq, and, desc, gte, lte, sql, SQL } from "drizzle-orm";
  */
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['teacher']);
+    if ('error' in authResult) {
+      return authResult;
     }
+    const { userId, user } = authResult;
 
     const { searchParams } = new URL(request.url);
     const classId = searchParams.get("classId");
@@ -28,14 +30,6 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get("endDate");
     const summary = searchParams.get("summary") === "true";
     const limit = parseInt(searchParams.get("limit") || "100");
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || currentUser.type !== "teacher") {
-      return NextResponse.json({ error: "Forbidden - Teachers only" }, { status: 403 });
-    }
 
     // If summary requested, return per-student statistics
     if (summary && classId) {

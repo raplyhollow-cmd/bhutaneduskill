@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { users, fileStorage, examResults } from "@/lib/db/schema";
 import { eq, and, or, desc } from "drizzle-orm";
@@ -13,23 +14,11 @@ import { eq, and, or, desc } from "drizzle-orm";
  */
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['parent']);
+    if ('error' in authResult) {
+      return authResult;
     }
-
-    // Get current parent user
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    if (currentUser.type !== "parent") {
-      return NextResponse.json({ error: "Forbidden - Parents only" }, { status: 403 });
-    }
+    const { userId, user } = authResult;
 
     const { searchParams } = new URL(request.url);
     const childId = searchParams.get("childId");
@@ -42,7 +31,7 @@ export async function GET(request: NextRequest) {
     const child = await db.query.users.findFirst({
       where: and(
         eq(users.id, childId),
-        eq(users.parentId, currentUser.id)
+        eq(users.parentId, user.id)
       ),
     });
 

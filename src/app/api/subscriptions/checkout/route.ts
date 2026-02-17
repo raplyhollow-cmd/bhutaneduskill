@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -10,18 +11,11 @@ import { eq } from "drizzle-orm";
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['admin', 'school-admin']);
+    if ('error' in authResult) {
+      return authResult;
     }
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    const { userId, user } = authResult;
 
     // Subscription feature is secondary - return placeholder for now
     // TODO: Implement proper subscription schema integration
@@ -31,7 +25,7 @@ export async function POST(request: NextRequest) {
       subscriptionId: `sub-${Date.now()}`,
     }, { status: 200 });
   } catch (error) {
-    console.error("Subscription checkout error:", error);
+    logger.apiError(error, { route: "/api/subscriptions/checkout", method: "POST" });
     return NextResponse.json({ error: "Failed to initiate checkout" }, { status: 500 });
   }
 }

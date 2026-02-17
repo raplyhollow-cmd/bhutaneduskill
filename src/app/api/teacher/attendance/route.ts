@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { users, classes, enrollments, teacherAssignments } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -7,23 +8,16 @@ import { eq, and } from "drizzle-orm";
 // GET /api/teacher/attendance - Get classes for attendance marking
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['teacher']);
+    if ('error' in authResult) {
+      return authResult;
     }
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || currentUser.type !== "teacher") {
-      return NextResponse.json({ error: "Forbidden - Teachers only" }, { status: 403 });
-    }
+    const { userId, user } = authResult;
 
     // Get classes assigned to this teacher
     const assignments = await db.query.teacherAssignments.findMany({
       where: and(
-        eq(teacherAssignments.teacherId, currentUser.id),
+        eq(teacherAssignments.teacherId, user.id),
         eq(teacherAssignments.isActive, true)
       ),
       with: {
@@ -54,7 +48,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ classes: classesWithStudents });
   } catch (error) {
-    console.error("Attendance classes fetch error:", error);
+    logger.apiError(error, { route: "/api/teacher/attendance", method: "GET" });
     return NextResponse.json({ error: "Failed to fetch classes" }, { status: 500 });
   }
 }

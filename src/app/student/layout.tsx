@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { PortalSidebar, PortalHeader } from "@/components/shared/portal-sidebar";
 import { StudentBottomNav, MainContentWithBottomNav } from "@/components/shared/portal-bottom-nav";
 
@@ -9,16 +10,25 @@ export default function StudentLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const router = useRouter();
   const [userType, setUserType] = useState<"student" | "teacher" | "parent" | "counselor" | "admin" | "school-admin" | "ministry" | null>(null);
   const [userName, setUserName] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const hasFetched = useRef(false);
 
   useEffect(() => {
-    fetch("/api/auth/set-role")
-      .then((res) => res.json())
-      .then((data) => {
+    // Prevent multiple simultaneous fetch calls
+    if (hasFetched.current) return;
+    hasFetched.current = true;
+
+    Promise.all([
+      fetch("/api/auth/set-role"),
+      fetch("/api/user/profile")
+    ])
+      .then(([roleRes, profileRes]) => Promise.all([roleRes.json(), profileRes.json()]))
+      .then(([roleData, profileData]) => {
         // Portal type validation: redirect non-students to their correct portal
-        if (data.userType && data.userType !== 'student') {
+        if (roleData.userType && roleData.userType !== 'student') {
           const portalMap: Record<string, string> = {
             teacher: '/teacher',
             parent: '/parent',
@@ -27,27 +37,31 @@ export default function StudentLayout({
             admin: '/admin',
             ministry: '/ministry',
           };
-          window.location.href = portalMap[data.userType] || '/dashboard';
+          router.push(portalMap[roleData.userType] || '/dashboard');
           return;
         }
 
         // Check if user needs setup
-        if (data.needsSetup || !data.userType) {
-          window.location.href = "/setup/unified";
+        if (roleData.needsSetup || !roleData.userType) {
+          router.push("/setup/unified");
           return;
         }
 
         // Set user type and name
-        setUserType(data.userType);
-        setUserName(`${data.firstName || ""} ${data.lastName || ""}`.trim() || "Student");
+        setUserType(roleData.userType || "student");
+        if (profileData?.profile) {
+          setUserName(`${profileData.profile.firstName} ${profileData.profile.lastName || ""}`.trim());
+        } else {
+          setUserName("Student");
+        }
         setIsLoading(false);
       })
       .catch((error) => {
         console.error("API fetch failed:", error);
         // If API fails, redirect to setup to ensure user is properly configured
-        window.location.href = "/setup/unified";
+        router.push("/setup/unified");
       });
-  }, []);
+  }, [router]);
 
   if (isLoading) {
     return (

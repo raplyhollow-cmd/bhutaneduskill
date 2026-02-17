@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { consentRecords, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -11,24 +12,17 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['parent', 'admin', 'school-admin']);
+    if ('error' in authResult) {
+      return authResult;
     }
+    const { userId, user } = authResult;
 
     const body = await request.json();
     const { status } = body;
 
     if (!["approved", "revoked", "denied"].includes(status)) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
-    }
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     const record = await db.query.consentRecords.findFirst({

@@ -44,7 +44,7 @@ export default function MinistryLayout({
             'school-admin': '/school-admin',
             admin: '/admin',
           };
-          window.location.href = portalMap[roleData.userType] || '/dashboard';
+          router.push(portalMap[roleData.userType] || '/dashboard');
           return;
         }
 

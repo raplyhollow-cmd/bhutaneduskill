@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { users, studentFees, feePayments } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -13,23 +14,11 @@ import { nanoid } from "nanoid";
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['student', 'parent']);
+    if ('error' in authResult) {
+      return authResult;
     }
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    // Only students and parents can make payments
-    if (!["student", "parent"].includes(currentUser.type)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const { userId, user } = authResult;
 
     const body = await request.json();
 
