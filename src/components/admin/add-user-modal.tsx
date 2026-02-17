@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,7 +56,7 @@ export function AddUserModal({ open, onClose, onSuccess }: AddUserModalProps) {
         payload.schoolId = schoolId;
       }
 
-      console.log("[ADD USER] Sending payload:", payload);
+      logger.debug("[ADD USER] Sending payload:", payload);
 
       const response = await fetch("/api/admin/users", {
         method: "POST",
@@ -62,9 +64,9 @@ export function AddUserModal({ open, onClose, onSuccess }: AddUserModalProps) {
         body: JSON.stringify(payload),
       });
 
-      console.log("[ADD USER] Response status:", response.status);
+      logger.debug("[ADD USER] Response status:", response.status);
       const responseData = await response.json();
-      console.log("[ADD USER] Response data:", responseData);
+      logger.debug("[ADD USER] Response data:", responseData);
 
       if (response.ok) {
         onSuccess();
@@ -81,7 +83,7 @@ export function AddUserModal({ open, onClose, onSuccess }: AddUserModalProps) {
         setError(responseData.error || "Failed to create user");
       }
     } catch (err) {
-      console.error("[ADD USER] Error:", err);
+      logger.error("[ADD USER] Error:", err);
       const errorMessage = err instanceof Error ? err.message : "Network error. Please try again.";
       setError(errorMessage);
     } finally {

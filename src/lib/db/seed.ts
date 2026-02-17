@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { db } from "./index";
 import { users, schools, tenants, districts, classes, enrollments, subjects, homework, attendance, examResultsEnhanced, academicTerms } from "./schema";
 import { nanoid } from "nanoid";
@@ -144,7 +145,7 @@ const DEMO_HOMEWORK = [
  * Creates demo data for testing the application
  */
 async function seedDatabase() {
-  console.log("🌱 Seeding database...");
+  logger.debug("🌱 Seeding database...");
 
   // Create Tenant
   await db.insert(tenants).values(DEMO_TENANT);
@@ -291,7 +292,7 @@ async function seedDatabase() {
     });
   }
 
-  console.log("✅ Database seeded successfully!");
+  logger.debug("✅ Database seeded successfully!");
 }
 
 // Export the seed function

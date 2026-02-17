@@ -1,3 +1,6 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * PLATFORM ADMIN - COUNSELORS MANAGEMENT (Client Component)
  *
@@ -5,7 +8,6 @@
  * View, verify, and manage all counselors across all schools.
  */
 
-"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -152,7 +154,7 @@ export default function AdminCounselorsPage() {
       const schools = Array.from(uniqueSchoolsMap.values());
       setUniqueSchools(schools);
     } catch (error) {
-      console.error("Failed to fetch counselors:", error);
+      logger.error("Failed to fetch counselors:", error);
     } finally {
       setLoading(false);
     }

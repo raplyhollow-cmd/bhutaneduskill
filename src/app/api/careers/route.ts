@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { CAREERS_DATABASE } from "@/lib/tenant";
@@ -38,7 +39,7 @@ export async function GET(req: NextRequest) {
       total: careers.length,
     });
   } catch (error) {
-    console.error("Error fetching careers:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json({ error: "Failed to fetch careers" }, { status: 500 });
   }
 }

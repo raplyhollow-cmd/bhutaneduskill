@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
@@ -31,11 +32,11 @@ export async function POST(request: NextRequest) {
       .set({ onboardingComplete: true })
       .where(eq(users.id, dbUser.id));
 
-    console.log("[Setup Complete] Marked onboarding complete for user:", dbUser.id, "type:", dbUser.type);
+    logger.debug("[Setup Complete] Marked onboarding complete for user:", dbUser.id, "type:", dbUser.type);
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error completing wizard:", error);
+    logger.error("Error completing wizard:", error);
     return NextResponse.json(
       { error: "Failed to complete wizard" },
       { status: 500 }

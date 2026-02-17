@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * Rate Limiting Utility
  * Provides in-memory rate limiting with sliding window algorithm
@@ -280,7 +281,7 @@ export function logRateLimitViolation(
     severity: 'warning',
   };
 
-  console.warn('[Rate Limit] Violation detected:', violation);
+  logger.warn('[Rate Limit] Violation detected:', violation);
 
   // TODO: Send to monitoring service (Sentry, Datadog, etc.)
 }

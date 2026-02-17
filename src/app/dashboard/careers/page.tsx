@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,7 +29,7 @@ export default function CareersPage() {
         setSavedCareers(data.savedCareers || []);
       }
     } catch (error) {
-      console.error("Failed to load saved careers:", error);
+      logger.error("Failed to load saved careers:", error);
     } finally {
       setLoading(false);
     }
@@ -52,7 +54,7 @@ export default function CareersPage() {
         );
       }
     } catch (error) {
-      console.error("Failed to update saved careers:", error);
+      logger.error("Failed to update saved careers:", error);
     }
   };
 

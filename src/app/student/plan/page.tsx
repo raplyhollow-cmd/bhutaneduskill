@@ -1,8 +1,9 @@
+"use client";
+
 /**
  * STUDENT CAREER PLAN PAGE
  * View assessment results, career paths, skills development, and academic goals
  */
-"use client";
 
 import { useState } from "react";
 import { PortalHeader } from "@/components/shared/portal-sidebar";

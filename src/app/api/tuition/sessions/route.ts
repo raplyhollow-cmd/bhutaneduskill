@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
@@ -64,7 +65,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ sessions: filtered });
   } catch (error) {
-    console.error("Sessions fetch error:", error);
+    logger.error("Sessions fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch sessions" }, { status: 500 });
   }
 }
@@ -117,7 +118,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Validation failed", details: error.issues }, { status: 400 });
     }
-    console.error("Session creation error:", error);
+    logger.error("Session creation error:", error);
     return NextResponse.json({ error: "Failed to create session" }, { status: 500 });
   }
 }

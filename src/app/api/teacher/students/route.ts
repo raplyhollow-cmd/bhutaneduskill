@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { requirePermission, requireAnyPermission } from "@/lib/rbac";
@@ -174,7 +175,7 @@ export async function GET(request: NextRequest) {
       totalStudents: validStudents.length,
     });
   } catch (error) {
-    console.error("Teacher students fetch error:", error);
+    logger.error("Teacher students fetch error:", error);
     return NextResponse.json(
       { error: "Failed to fetch students", students: [], studentsByClass: [] },
       { status: 500 }

@@ -15,7 +15,7 @@ export async function GET(request: NextRequest, { params }: Params) {
     const { classId, date } = await params;
     const authResult = await requireAuth(['teacher']);
     if ('error' in authResult) {
-      return authResult;
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
     const { userId, user } = authResult;
 
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       students: studentsWithAttendance,
     });
   } catch (error) {
-    console.error("Attendance fetch error:", error);
+    logger.apiError(error, { route: "/api/teacher/attendance/[classId]/[date]", method: "GET" });
     return NextResponse.json({ error: "Failed to fetch attendance" }, { status: 500 });
   }
 }
@@ -63,24 +63,17 @@ export async function GET(request: NextRequest, { params }: Params) {
 export async function POST(request: NextRequest, { params }: Params) {
   try {
     const { classId, date } = await params;
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['teacher']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId, user } = authResult;
 
     const body = await request.json();
     const { attendance: attendanceData } = body; // Array of { studentId, status, notes, reason }
 
     if (!Array.isArray(attendanceData)) {
       return NextResponse.json({ error: "Invalid attendance data" }, { status: 400 });
-    }
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || currentUser.type !== "teacher") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const now = new Date();
@@ -107,7 +100,7 @@ export async function POST(request: NextRequest, { params }: Params) {
               notes,
               reason: reason as any,
               checkInTime,
-              recordedBy: currentUser.id,
+              recordedBy: user.id,
               updatedAt: now,
             } as any)
             .where(eq(attendance.id, existing.id))
@@ -119,7 +112,7 @@ export async function POST(request: NextRequest, { params }: Params) {
           const [created] = await db.insert(attendance)
             .values({
               id: `att_${Date.now()}_${studentId}`,
-              schoolId: currentUser.schoolId,
+              schoolId: user.schoolId,
               classId: classId,
               studentId,
               date: date,
@@ -127,7 +120,7 @@ export async function POST(request: NextRequest, { params }: Params) {
               notes,
               reason: reason as any,
               checkInTime,
-              recordedBy: currentUser.id,
+              recordedBy: user.id,
               entryMethod: "manual",
               createdAt: now,
               updatedAt: now,
@@ -141,7 +134,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({ attendance: results, count: results.length });
   } catch (error) {
-    console.error("Attendance marking error:", error);
+    logger.apiError(error, { route: "/api/teacher/attendance/[classId]/[date]", method: "POST" });
     return NextResponse.json({ error: "Failed to mark attendance" }, { status: 500 });
   }
 }

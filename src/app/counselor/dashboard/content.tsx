@@ -1,3 +1,6 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * COUNSELOR DASHBOARD PAGE (WITH AI INSIGHTS)
  *
@@ -9,7 +12,6 @@
  * - Quick actions
  */
 
-"use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -90,7 +92,7 @@ export function CounselorDashboardContent() {
         const data = await response.json();
         setDashboardData(data);
       } catch (err) {
-        console.error("Error fetching dashboard:", err);
+        logger.error("Error fetching dashboard:", err);
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
         setIsLoading(false);
@@ -141,7 +143,7 @@ export function CounselorDashboardContent() {
           }
         }
       } catch (err) {
-        console.error("Error fetching AI insights:", err);
+        logger.error("Error fetching AI insights:", err);
         // Set fallback insights on error
         setInsights(getFallbackInsights(dashboardData));
       } finally {

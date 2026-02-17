@@ -1,3 +1,5 @@
+    "use server";
+
 import { Suspense } from "react";
 import { fetchAnnouncements } from "../_actions";
 import type { AnnouncementFormData } from "@/components/announcements";
@@ -15,7 +17,6 @@ export default async function AnnouncementsPage({ searchParams }: PageProps) {
 
   // Server action wrappers
   async function handleCreate(data: AnnouncementFormData) {
-    "use server";
     const { createAnnouncement } = await import("../_actions");
     const result = await createAnnouncement(data);
     if (result.success) {

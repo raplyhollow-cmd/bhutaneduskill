@@ -1,4 +1,5 @@
 "use client"
+import { logger } from "@/lib/logger";
 
 import * as React from "react"
 import { motion, AnimatePresence } from "framer-motion"
@@ -45,8 +46,8 @@ interface UserButtonProps {
  * <UserButton
  *   accounts={accounts}
  *   defaultAccount={currentAccount}
- *   onAccountSwitch={(acc) => console.log(acc)}
- *   onSignOut={() => console.log('signed out')}
+ *   onAccountSwitch={(acc) => logger.debug(acc)}
+ *   onSignOut={() => logger.debug('signed out')}
  * />
  */
 export function UserButton({

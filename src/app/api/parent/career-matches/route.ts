@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
@@ -111,7 +112,7 @@ export async function GET(request: NextRequest) {
       data: { matches: enrichedMatches, total: enrichedMatches.length },
     } satisfies ApiSuccess<{ matches: typeof enrichedMatches; total: number }>);
   } catch (error) {
-    console.error("Error fetching career matches:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { error: "Failed to fetch career matches", status: 500 } satisfies ApiErrorResponse,
       { status: 500 }

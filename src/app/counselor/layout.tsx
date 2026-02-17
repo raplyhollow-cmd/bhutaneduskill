@@ -1,3 +1,6 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * COUNSELOR PORTAL LAYOUT
  *
@@ -5,7 +8,6 @@
  * Uses client-side auth to check if counselor needs setup.
  */
 
-"use client";
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -73,7 +75,7 @@ export default function CounselorLayout({
         }
       })
       .catch((error) => {
-        console.error("API fetch failed:", error);
+        logger.error("API fetch failed:", error);
         // If APIs fail completely, redirect to setup to ensure user is properly configured
         setNeedsSetup(true);
         setTimeout(() => {

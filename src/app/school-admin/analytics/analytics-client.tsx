@@ -1,10 +1,11 @@
+"use client";
+
 /**
  * ANALYTICS CLIENT COMPONENT
  *
  * Client-side component for school analytics with filtering.
  */
 
-"use client";
 
 import { useState, useEffect, useTransition } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

@@ -17,7 +17,7 @@ import { requireAuth } from "@/lib/auth-utils";
 export async function GET(request: NextRequest) {
   const authResult = await requireAuth();
   if ('error' in authResult) {
-    return authResult;
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
   }
 
   return NextResponse.json({
@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const authResult = await requireAuth(['admin', 'school-admin']);
   if ('error' in authResult) {
-    return authResult;
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
   }
 
   return NextResponse.json({
@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   const authResult = await requireAuth(['admin', 'school-admin']);
   if ('error' in authResult) {
-    return authResult;
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
   }
 
   return NextResponse.json({

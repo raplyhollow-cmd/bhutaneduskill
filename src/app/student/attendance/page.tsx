@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * STUDENT ATTENDANCE PAGE
  *
@@ -7,7 +9,6 @@
  * - Duplicate check-in prevention
  */
 
-"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { PortalHeader } from "@/components/shared/portal-sidebar";

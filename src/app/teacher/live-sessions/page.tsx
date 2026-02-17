@@ -1,8 +1,9 @@
+"use client";
+
 /**
  * TEACHER LIVE SESSIONS PAGE
  * Schedule and manage live video sessions (Zoom, Google Meet)
  */
-"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";

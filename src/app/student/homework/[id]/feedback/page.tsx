@@ -1,8 +1,9 @@
+"use client";
+
 /**
  * STUDENT HOMEWORK FEEDBACK PAGE
  * View graded homework with teacher feedback and correct answers
  */
-"use client";
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";

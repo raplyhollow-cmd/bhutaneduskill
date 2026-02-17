@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * TEACHER ATTENDANCE PAGE
  * Take and manage student attendance
@@ -8,7 +10,6 @@
  * - Export attendance data as CSV
  * - Add attendance notes for individual students
  */
-"use client";
 
 import { useState, useEffect, useMemo } from "react";
 import { PortalHeader } from "@/components/shared/portal-sidebar";

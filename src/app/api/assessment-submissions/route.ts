@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
@@ -57,7 +58,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ submissions });
   } catch (error) {
-    console.error("Assessment submissions fetch error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json({ error: "Failed to fetch submissions" }, { status: 500 });
   }
 }
@@ -94,7 +95,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ submission }, { status: 201 });
   } catch (error) {
-    console.error("Assessment submission creation error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json({ error: "Failed to create submission" }, { status: 500 });
   }
 }

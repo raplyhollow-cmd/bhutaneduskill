@@ -1,3 +1,6 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * COUNSELOR - STUDENT NOTES
  *
@@ -9,7 +12,6 @@
  * - Uses counselor_notes table
  */
 
-"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -125,7 +127,7 @@ export default function CounselorNotesPage() {
 
       setStats({ totalNotes, privateNotes, sensitiveNotes, thisWeekNotes });
     } catch (err) {
-      console.error("Error fetching notes:", err);
+      logger.error("Error fetching notes:", err);
       setError("Failed to load notes. Please try again.");
       setNotes([]);
       setStats({

@@ -1,5 +1,6 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { logger } from "@/lib/logger";
 
 // ============================================================================
 // ROUTE PROTECTION
@@ -15,6 +16,29 @@ const isProtectedRoute = createRouteMatcher([
   "/school-admin(.*)",
   "/ministry(.*)",
   "/portal(.*)",
+]);
+
+// Portal redirect mapping based on user type
+function getPortalForUserType(userType: string | null): string {
+  if (!userType) return "/setup/unified";
+
+  const portalMap: Record<string, string> = {
+    student: "/student/dashboard",
+    teacher: "/teacher/dashboard",
+    parent: "/parent/dashboard",
+    counselor: "/counselor/dashboard",
+    "school-admin": "/school-admin/dashboard",
+    admin: "/admin",
+    ministry: "/ministry/dashboard",
+  };
+
+  return portalMap[userType] || "/setup/unified";
+}
+
+// Routes that should trigger intelligent routing
+const shouldIntelligentRoute = createRouteMatcher([
+  "/",
+  "/dashboard",
 ]);
 
 // ============================================================================
@@ -55,6 +79,51 @@ export default clerkMiddleware(async (auth, request) => {
   const { userId } = await auth();
   const { pathname } = request.nextUrl;
   const response = NextResponse.next();
+
+  // ============================================================================
+  // 0. Intelligent Routing for authenticated users on root/dashboard
+  // ============================================================================
+  // If authenticated user visits root or /dashboard, route them to their portal
+  if (userId && shouldIntelligentRoute(request)) {
+    try {
+      // Get app URL from environment or use request origin
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || request.headers.get("host") || "http://localhost:3003";
+      const baseUrl = request.headers.get("x-forwarded-proto")
+        ? `${request.headers.get("x-forwarded-proto")}://${request.headers.get("x-forwarded-host") || request.headers.get("host")}`
+        : appUrl;
+
+      // Fetch user type from our API
+      const apiResponse = await fetch(`${baseUrl}/api/auth/set-role`, {
+        headers: {
+          cookie: request.headers.get("cookie") || "",
+        },
+      });
+
+      if (apiResponse.ok) {
+        const data = await apiResponse.json();
+        const targetUrl = getPortalForUserType(data.userType);
+
+        logger.debug("Intelligent routing", {
+          userId,
+          userType: data.userType,
+          targetUrl,
+          pathname,
+        });
+
+        // Redirect to appropriate portal
+        return NextResponse.redirect(new URL(targetUrl, request.url));
+      } else {
+        logger.warn("Failed to fetch user type for routing", {
+          status: apiResponse.status,
+          userId,
+        });
+        // If API fails, fall through to normal flow
+      }
+    } catch (error) {
+      logger.error("Error during intelligent routing", { error, userId });
+      // If routing fails, fall through to normal flow
+    }
+  }
 
   // ============================================================================
   // 1. CORS Headers (API routes only)
@@ -112,7 +181,6 @@ export default clerkMiddleware(async (auth, request) => {
   // 3. Authentication Check (protected routes only)
   // ============================================================================
   if (isProtectedRoute(request)) {
-    const { userId } = await auth();
     if (!userId) {
       // Clerk will redirect to sign in automatically
       return;

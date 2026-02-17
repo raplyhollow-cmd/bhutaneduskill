@@ -6,6 +6,7 @@ type LogLevel = "debug" | "info" | "warn" | "error";
 
 interface LogContext {
   [key: string]: unknown;
+  [key: number]: unknown; // Allow numeric keys for compatibility
 }
 
 const LOG_PREFIX = "[BhutanEduSkill]";
@@ -41,7 +42,7 @@ export function warn(...args: unknown[]): void {
 /**
  * Error-level logging (always logged)
  */
-export function error(error: Error | unknown, context?: LogContext): void {
+export function error(error: Error | unknown, context?: LogContext | unknown): void {
   const errorMessage = error instanceof Error ? error.message : String(error);
   const errorStack = error instanceof Error ? error.stack : undefined;
   console.error(LOG_PREFIX, "[ERROR]", errorMessage, context || "", errorStack || "");

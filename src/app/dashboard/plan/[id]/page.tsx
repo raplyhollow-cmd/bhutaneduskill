@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -75,7 +77,7 @@ export default function CareerPlanDetailPage() {
         }
       }
     } catch (error) {
-      console.error("Failed to fetch plan:", error);
+      logger.error("Failed to fetch plan:", error);
     } finally {
       setLoading(false);
     }
@@ -109,7 +111,7 @@ export default function CareerPlanDetailPage() {
         }
       }
     } catch (error) {
-      console.error("Failed to save plan:", error);
+      logger.error("Failed to save plan:", error);
       alert("Failed to save plan");
     }
   };

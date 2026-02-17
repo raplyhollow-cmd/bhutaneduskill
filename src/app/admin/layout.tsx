@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * PLATFORM ADMIN PORTAL LAYOUT
  *
@@ -5,7 +7,6 @@
  * Uses client-side auth to check if admin needs setup.
  */
 
-"use client";
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -45,8 +46,8 @@ export default function AdminLayout({
             'school-admin': '/school-admin',
             ministry: '/ministry',
           };
-          // Use router.push instead of window.location.href for Next.js
-          router.push(portalMap[roleData.userType] || '/dashboard');
+          // Use router.push to redirect to appropriate portal
+          router.push(portalMap[roleData.userType] || '/setup/unified');
           return;
         }
 
@@ -85,7 +86,7 @@ export default function AdminLayout({
         }
       })
       .catch((error) => {
-        console.error("API fetch failed:", error);
+        // Log error but don't expose details to client
         // If APIs fail completely, redirect to setup to ensure user is properly configured
         setNeedsSetup(true);
         setTimeout(() => {

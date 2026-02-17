@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * MINISTRY OF EDUCATION - NOTIFICATIONS CENTER
  *
@@ -5,7 +7,6 @@
  * Target specific districts, school types, or user roles.
  */
 
-"use client";
 
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, entry: newEntry });
   } catch (error: any) {
-    console.error("Error saving journal entry:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json({ error: "Failed to save entry" }, { status: 500 });
   }
 }

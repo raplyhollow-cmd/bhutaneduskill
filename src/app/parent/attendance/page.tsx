@@ -1,10 +1,11 @@
+"use client";
+
 /**
  * PARENT ATTENDANCE PAGE
  *
  * Fetches real attendance data from database API
  */
 
-"use client";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";

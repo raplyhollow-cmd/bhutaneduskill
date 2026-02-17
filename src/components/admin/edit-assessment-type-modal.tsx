@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -81,7 +83,7 @@ export function EditAssessmentTypeModal({ open, onClose, onSuccess, assessmentTy
       onSuccess();
       onClose();
     } catch (error) {
-      console.error("[EDIT ASSESSMENT TYPE] Error:", error);
+      logger.error("[EDIT ASSESSMENT TYPE] Error:", error);
       alert(error instanceof Error ? error.message : "Failed to update assessment type. Please try again.");
     } finally {
       setIsLoading(false);

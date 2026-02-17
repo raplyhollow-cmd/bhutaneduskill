@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * MINISTRY OF EDUCATION - BILLING & REVENUE OVERVIEW
  *
@@ -11,7 +13,6 @@
  * - Invoice generation/download
  */
 
-"use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

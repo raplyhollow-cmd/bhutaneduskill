@@ -1,3 +1,6 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * PLATFORM ADMIN - ANALYTICS DASHBOARD
  *
@@ -5,7 +8,6 @@
  * View trends, engagement metrics, and school performance.
  */
 
-"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -170,7 +172,7 @@ export default function AdminAnalyticsPage() {
       setAnalyticsData(result.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
-      console.error("Error fetching analytics:", err);
+      logger.error("Error fetching analytics:", err);
     } finally {
       setLoading(false);
     }

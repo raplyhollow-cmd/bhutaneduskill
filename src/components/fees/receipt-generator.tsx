@@ -1,10 +1,11 @@
+"use client";
+
 /**
  * Receipt Generator Component
  *
  * Generates printable fee receipts.
  */
 
-"use client";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

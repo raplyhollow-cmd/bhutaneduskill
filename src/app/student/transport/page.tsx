@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * STUDENT TRANSPORT PAGE
  *
@@ -9,7 +11,6 @@
  * - Receive delay notifications
  */
 
-"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

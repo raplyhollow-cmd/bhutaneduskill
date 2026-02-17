@@ -1,3 +1,6 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * AI Insights Section for School Admin Dashboard
  *
@@ -5,7 +8,6 @@
  * and displays them using the AIInsightCard component.
  */
 
-"use client";
 
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -87,7 +89,7 @@ export function AIInsightsSection({ stats }: AIInsightsSectionProps) {
           setError(data.error);
         }
       } catch (err) {
-        console.error("Failed to fetch AI insights:", err);
+        logger.error("Failed to fetch AI insights:", err);
         setError("Unable to load insights. Using fallback insights.");
         // Set fallback insights on error
         setFallbackInsights();

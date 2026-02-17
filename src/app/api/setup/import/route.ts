@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
           });
           imported++;
         } catch (err) {
-          console.error("Error importing student:", err);
+          logger.error("Error importing student:", err);
           errors++;
         }
       }
@@ -90,7 +91,7 @@ export async function POST(request: NextRequest) {
           });
           imported++;
         } catch (err) {
-          console.error("Error importing teacher:", err);
+          logger.error("Error importing teacher:", err);
           errors++;
         }
       }
@@ -103,7 +104,7 @@ export async function POST(request: NextRequest) {
       total: data.length,
     });
   } catch (error) {
-    console.error("Error importing data:", error);
+    logger.error("Error importing data:", error);
     return NextResponse.json(
       { error: "Failed to import data" },
       { status: 500 }

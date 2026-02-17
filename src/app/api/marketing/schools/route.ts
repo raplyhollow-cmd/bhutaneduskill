@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { schools, users } from "@/lib/db/schema";
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
       schools: formattedSchools
     });
   } catch (error) {
-    console.error("Error fetching marketing schools:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     // Return empty array on error instead of showing fake data
     return NextResponse.json({ schools: [] }, { status: 200 });
   }

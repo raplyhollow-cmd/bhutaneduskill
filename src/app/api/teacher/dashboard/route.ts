@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
   try {
     const authResult = await requireAuth(['teacher']);
     if ('error' in authResult) {
-      return authResult;
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
     const { userId, user } = authResult;
 
@@ -108,8 +108,8 @@ export async function GET(request: NextRequest) {
     };
 
     // Recent activity (mock for now - would come from activity log)
-    const recentActivity = [];
-    const needsAttention = [];
+    const recentActivity: any[] = [];
+    const needsAttention: any[] = [];
 
     return NextResponse.json({
       stats,

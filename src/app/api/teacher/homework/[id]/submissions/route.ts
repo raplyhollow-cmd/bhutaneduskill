@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { requirePermission } from "@/lib/rbac";
@@ -65,7 +66,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({ submissions });
   } catch (error) {
-    console.error("Submissions fetch error:", error);
+    logger.error("Submissions fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch submissions" }, { status: 500 });
   }
 }

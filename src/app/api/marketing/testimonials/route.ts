@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
       testimonials: []
     });
   } catch (error) {
-    console.error("Error fetching testimonials:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json({ testimonials: [] }, { status: 200 });
   }
 }

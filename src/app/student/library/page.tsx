@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * STUDENT LIBRARY PAGE
  *
@@ -12,7 +14,6 @@
  * - Manage reservations
  */
 
-"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

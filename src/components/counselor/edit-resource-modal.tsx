@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -127,7 +129,7 @@ export function EditResourceModal({ open, onClose, onSuccess, resource }: EditRe
       onSuccess();
       handleClose();
     } catch (error) {
-      console.error("[EDIT RESOURCE] Error:", error);
+      logger.error("[EDIT RESOURCE] Error:", error);
       alert(error instanceof Error ? error.message : "Failed to update resource. Please try again.");
     } finally {
       setIsLoading(false);
@@ -157,7 +159,7 @@ export function EditResourceModal({ open, onClose, onSuccess, resource }: EditRe
       setAccessUrl(data.file.url);
       alert("File uploaded successfully!");
     } catch (error) {
-      console.error("[FILE UPLOAD] Error:", error);
+      logger.error("[FILE UPLOAD] Error:", error);
       alert("Failed to upload file. Please try again.");
     } finally {
       setIsUploading(false);
@@ -215,7 +217,7 @@ export function EditResourceModal({ open, onClose, onSuccess, resource }: EditRe
       onSuccess();
       handleClose();
     } catch (error) {
-      console.error("[DELETE RESOURCE] Error:", error);
+      logger.error("[DELETE RESOURCE] Error:", error);
       alert("Failed to delete resource. Please try again.");
     }
   };

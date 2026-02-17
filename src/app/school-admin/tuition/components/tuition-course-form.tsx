@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * TUITION COURSE FORM COMPONENT
  *
@@ -5,7 +7,6 @@
  * Handles course details, pricing, schedule, and tutor assignment.
  */
 
-"use client";
 
 import { useState, useEffect } from "react";
 import { X, Calendar, Clock, MapPin, Video, Users, DollarSign, Save, Loader2 } from "lucide-react";

@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * PARENT ASSESSMENTS VIEW (FEAT-011)
  *
@@ -17,7 +19,6 @@
  * - Parent portal gray theme
  */
 
-"use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

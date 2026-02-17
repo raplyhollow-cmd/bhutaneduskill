@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * MINISTRY OF EDUCATION - EDUCATION POLICIES PAGE
  *
@@ -9,7 +11,6 @@
  * - Curriculum Standards (per subject/grade)
  */
 
-"use client";
 
 import { useState } from "react";
 import {

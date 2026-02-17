@@ -1,8 +1,9 @@
+"use client";
+
 /**
  * TEACHER LEARNING MODULES PAGE
  * Create and manage learning modules
  */
-"use client";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";

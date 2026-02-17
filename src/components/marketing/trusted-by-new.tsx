@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { motion } from "framer-motion";
 import { GraduationCap, School, Building2, BookOpen, Users, Award, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -46,7 +48,7 @@ export function TrustedByNew({ className }: TrustedByProps) {
         setSchools(schoolsWithColors);
       }
     } catch (error) {
-      console.error("Failed to fetch schools:", error);
+      logger.error("Failed to fetch schools:", error);
     } finally {
       setIsLoading(false);
     }

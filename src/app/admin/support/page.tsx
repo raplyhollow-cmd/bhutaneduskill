@@ -1,10 +1,12 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * PLATFORM ADMIN - SUPPORT TICKETS
  *
  * Manage and track all support tickets from schools and users.
  */
 
-"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -236,7 +238,7 @@ export default function AdminSupportPage() {
         ]);
       }
     } catch (error) {
-      console.error("Error fetching support data:", error);
+      logger.error("Error fetching support data:", error);
     } finally {
       setIsLoading(false);
     }
@@ -276,7 +278,7 @@ export default function AdminSupportPage() {
         fetchData();
       }
     } catch (error) {
-      console.error("Error deleting ticket:", error);
+      logger.error("Error deleting ticket:", error);
       alert("Failed to delete ticket");
     }
   };
@@ -290,7 +292,7 @@ export default function AdminSupportPage() {
         fetchData();
       }
     } catch (error) {
-      console.error("Error updating ticket status:", error);
+      logger.error("Error updating ticket status:", error);
       alert("Failed to update ticket status");
     }
   };

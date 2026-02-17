@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * AI CAREER COACH - The Tempting Feature
  *
@@ -11,7 +13,6 @@
  * - Engagement levels
  */
 
-"use client";
 
 import { useState, useRef, useEffect } from "react";
 import { ErrorBoundary } from "@/components/error/error-boundary";

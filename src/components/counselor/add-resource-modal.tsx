@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -111,7 +113,7 @@ export function AddResourceModal({ open, onClose, onSuccess }: AddResourceModalP
       onSuccess();
       handleClose();
     } catch (error) {
-      console.error("[ADD RESOURCE] Error:", error);
+      logger.error("[ADD RESOURCE] Error:", error);
       alert(error instanceof Error ? error.message : "Failed to create resource. Please try again.");
     } finally {
       setIsLoading(false);
@@ -141,7 +143,7 @@ export function AddResourceModal({ open, onClose, onSuccess }: AddResourceModalP
       setAccessUrl(data.file.url);
       alert("File uploaded successfully!");
     } catch (error) {
-      console.error("[FILE UPLOAD] Error:", error);
+      logger.error("[FILE UPLOAD] Error:", error);
       alert("Failed to upload file. Please try again.");
     } finally {
       setIsUploading(false);

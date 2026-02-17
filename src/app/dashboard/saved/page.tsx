@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,7 +45,7 @@ export default function SavedPage() {
         setSavedCareers(data.savedCareers || []);
       }
     } catch (error) {
-      console.error("Failed to load saved items:", error);
+      logger.error("Failed to load saved items:", error);
     }
   };
 
@@ -56,7 +58,7 @@ export default function SavedPage() {
       });
       loadSavedItems();
     } catch (error) {
-      console.error("Failed to unsave:", error);
+      logger.error("Failed to unsave:", error);
     }
   };
 

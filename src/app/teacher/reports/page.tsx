@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * TEACHER REPORTS PAGE
  * Class performance, student progress, attendance summaries, grade distribution
@@ -8,7 +10,6 @@
  * - Class-wise and subject-wise reports
  * - Real-time data from API
  */
-"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";

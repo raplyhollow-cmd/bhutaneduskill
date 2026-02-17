@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState, useEffect, useCallback } from "react";
 import {
   BarChart3,
@@ -195,7 +197,7 @@ export default function MinistryAnalyticsPage() {
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      console.error("Export error:", err);
+      logger.error("Export error:", err);
       alert(`Failed to export as ${format.toUpperCase()}. Please try again.`);
     } finally {
       setIsExporting(false);

@@ -1,3 +1,5 @@
+"use server";
+
 /**
  * SERVER ACTIONS - ASSSSSMENT MANAGEMENT
  *
@@ -5,7 +7,6 @@
  * These are used by the Platform Admin assessments page.
  */
 
-"use server";
 
 import { db } from "@/lib/db";
 import { assessmentTypes, assessments, assessmentSubmissions, assessmentResults, assessmentQuestions, users, classes } from "@/lib/db/schema";

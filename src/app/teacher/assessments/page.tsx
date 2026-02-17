@@ -1,8 +1,9 @@
+"use client";
+
 /**
  * TEACHER ASSESSMENTS PAGE
  * Create and manage assessments, view results
  */
-"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";

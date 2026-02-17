@@ -1,10 +1,11 @@
+"use client";
+
 /**
  * FEE MANAGEMENT - CLIENT COMPONENT
  *
  * Client-side component with interactivity for fee management.
  */
 
-"use client";
 
 import { useState } from "react";
 import { PortalHeader } from "@/components/shared/portal-sidebar";

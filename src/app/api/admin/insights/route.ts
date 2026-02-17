@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * DATA INSIGHTS API
  *
@@ -41,7 +42,7 @@ export async function GET(request: NextRequest) {
       insights,
     });
   } catch (error: any) {
-    console.error("Insights generation error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json({ error: "Failed to generate insights" }, { status: 500 });
   }
 }

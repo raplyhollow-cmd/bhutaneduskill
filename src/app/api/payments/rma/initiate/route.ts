@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
   try {
     const authResult = await requireAuth(['student', 'parent']);
     if ('error' in authResult) {
-      return authResult;
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
     const { userId, user } = authResult;
 
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify ownership (student can pay their own fees, parent can pay child's fees)
-    if (currentUser.type === "student" && studentFee.studentId !== currentUser.id) {
+    if (user.type === "student" && studentFee.studentId !== user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
     const cancelUrl = `${baseUrl}/student/payments/cancel?payment=${paymentId}`;
 
     // Get customer details
-    const customerName = `${currentUser.firstName} ${currentUser.lastName || ""}`.trim();
+    const customerName = `${user.firstName} ${user.lastName || ""}`.trim();
 
     // Initiate payment with RMA
     const result = await gateway.initiatePayment({
@@ -103,9 +103,9 @@ export async function POST(request: NextRequest) {
       currency: data.currency,
       paymentMethod: data.paymentMethod as any,
       customerName,
-      customerEmail: currentUser.email || undefined,
-      customerPhone: currentUser.phone || undefined,
-      customerId: currentUser.id,
+      customerEmail: user.email || undefined,
+      customerPhone: user.phone || undefined,
+      customerId: user.id,
       returnUrl,
       cancelUrl,
       description: `Fee payment for ${receiptNumber}`,
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
       amount: formatAmount(paymentAmount, data.currency),
     });
   } catch (error) {
-    console.error("RMA payment initiation error:", error);
+    logger.apiError(error, { route: "/api/payments/rma/initiate", method: "POST" });
     return NextResponse.json({ error: "Failed to initiate payment" }, { status: 500 });
   }
 }

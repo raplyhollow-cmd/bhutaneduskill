@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import {
@@ -44,7 +46,7 @@ export function MinistrySidebar({ userName = "Ministry User" }: MinistrySidebarP
       await fetch("/api/auth/logout", { method: "POST" });
       router.push("/sign-in");
     } catch (error) {
-      console.error("Logout error:", error);
+      logger.error("Logout error:", error);
     }
   };
 

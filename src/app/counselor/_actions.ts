@@ -1,3 +1,6 @@
+"use server";
+
+import { logger } from "@/lib/logger";
 /**
  * COUNSELOR DASHBOARD SERVER ACTIONS
  *
@@ -5,7 +8,6 @@
  * Now uses real API data instead of mock values
  */
 
-"use server";
 
 import { requireAuth } from "@/lib/auth-utils";
 
@@ -55,7 +57,7 @@ export async function fetchCounselorStats() {
       aiCoachUsage: 0,
     };
   } catch (error) {
-    console.error("Error fetching counselor stats:", error);
+    logger.error("Error fetching counselor stats:", error);
     return {
       totalStudents: 0,
       activeSchools: 0,

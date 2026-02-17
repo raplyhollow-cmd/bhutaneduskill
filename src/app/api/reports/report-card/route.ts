@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * REPORT CARD GENERATION API
  *
@@ -168,7 +169,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(reportCardData);
   } catch (error) {
-    console.error("Report card generation error:", error);
+    logger.error("Report card generation error:", error);
     return NextResponse.json(
       { error: "Failed to generate report card" },
       { status: 500 }

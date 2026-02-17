@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * PARENT CAREERS VIEW PAGE
  *
@@ -10,7 +12,6 @@
  * - Enhanced career details (skills, education, salary, demand)
  */
 
-"use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";

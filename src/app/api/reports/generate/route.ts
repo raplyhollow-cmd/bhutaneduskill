@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { requirePermission } from "@/lib/rbac";
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
       message: "Report generation feature coming soon"
     }, { status: 201 });
   } catch (error) {
-    console.error("Report generation error:", error);
+    logger.error("Report generation error:", error);
     return NextResponse.json({ error: "Failed to generate report" }, { status: 500 });
   }
 }
@@ -78,7 +79,7 @@ export async function GET(request: NextRequest) {
       message: "Full report templates coming soon"
     });
   } catch (error) {
-    console.error("Report templates fetch error:", error);
+    logger.error("Report templates fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch templates" }, { status: 500 });
   }
 }

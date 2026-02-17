@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
@@ -46,7 +47,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ assessmentTypes: types });
   } catch (error) {
-    console.error("Assessment types fetch error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json({ error: "Failed to fetch assessment types" }, { status: 500 });
   }
 }
@@ -82,7 +83,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ assessmentTypeId: newType }, { status: 201 });
   } catch (error) {
-    console.error("Assessment type creation error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json({ error: "Failed to create assessment type" }, { status: 500 });
   }
 }

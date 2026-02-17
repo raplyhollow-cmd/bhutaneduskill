@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { subjects, users } from "@/lib/db/schema";
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ subjects: allSubjects });
   } catch (error) {
-    console.error("Subjects fetch error:", error);
+    logger.error("Subjects fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch subjects" }, { status: 500 });
   }
 }
@@ -95,7 +96,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Validation failed", details: error.issues }, { status: 400 });
     }
-    console.error("Subject creation error:", error);
+    logger.error("Subject creation error:", error);
     return NextResponse.json({ error: "Failed to create subject" }, { status: 500 });
   }
 }

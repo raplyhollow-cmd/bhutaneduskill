@@ -20,6 +20,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
 import { chatWithGemini } from "@/lib/ai/gemini-server";
+import { fetchRelevantData } from "@/lib/data-assistant";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
 
 // ============================================================================
@@ -278,7 +279,7 @@ KNOWLEDGE AREAS:
 - Authentication: Clerk (user management, session handling)
 - Authorization: RBAC via user_roles table with permissions
 - Hosting: Vercel (Next.js 16 with App Router)
-- AI: Google Gemini API (gemini-1.5-flash model)
+- AI: Google Gemini API (gemini-2.5-flash model)
 - AI Features: Career Coach, Career Predictor, Skill Gap Analyzer, Study Planner, Essay Reviewer, Interview Coach, Scholarship Matcher, Mood Tracker, RUB Admission Predictor
 
 IMPORTANT FILE PATHS (use @/ syntax):
@@ -300,14 +301,16 @@ PORTALS & ROUTES:
 - /ministry - Ministry portal (dashboard, schools, analytics, policies)
 
 COMMON QUESTION TYPES:
-1. "Where is X?" - Provide exact file path with @/ syntax
-2. "How do I add X?" - Step-by-step guidance with code examples
-3. "What's error X?" - Explain and suggest fixes
-4. "How does Y work?" - Explain the system with architecture details
-5. "Show me X code" - Provide relevant code snippets
+1. "How many users?" - Use the provided platform data to give actual numbers
+2. "Where is X?" - Provide exact file path with @/ syntax
+3. "How do I add X?" - Step-by-step guidance with code examples
+4. "What's error X?" - Explain and suggest fixes
+5. "How does Y work?" - Explain the system with architecture details
+6. "System status" - Use provided data to show platform health
 
 COMMUNICATION STYLE:
 - Be concise and direct (admins are technical)
+- When platform data is provided, use it directly - don't suggest querying the database
 - Use exact file paths with @/ syntax (e.g., @/lib/db/schema.ts)
 - Reference the Development Framework when relevant
 - Provide code examples for complex tasks
@@ -476,6 +479,12 @@ export async function POST(request: NextRequest) {
 
     if (context?.task) {
       enhancedPrompt += `\nTask: ${context.task}`;
+    }
+
+    // Fetch real-time data for admin users if the question asks about platform stats
+    const platformData = await fetchRelevantData(message);
+    if (platformData) {
+      enhancedPrompt += `\n\n${platformData}`;
     }
 
     // Call Gemini AI with role-specific system prompt

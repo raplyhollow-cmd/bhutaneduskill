@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -71,7 +73,7 @@ export function RolesClient({ roles: initialRoles }: RolesClientProps) {
         alert(result.error || "Failed to create role");
       }
     } catch (error) {
-      console.error("Create role error:", error);
+      logger.error("Create role error:", error);
       alert("Failed to create role");
     } finally {
       setIsSubmitting(false);
@@ -107,7 +109,7 @@ export function RolesClient({ roles: initialRoles }: RolesClientProps) {
         alert(result.error || "Failed to update role");
       }
     } catch (error) {
-      console.error("Update role error:", error);
+      logger.error("Update role error:", error);
       alert("Failed to update role");
     } finally {
       setIsSubmitting(false);
@@ -131,7 +133,7 @@ export function RolesClient({ roles: initialRoles }: RolesClientProps) {
         alert(result.error || "Failed to delete role");
       }
     } catch (error) {
-      console.error("Delete role error:", error);
+      logger.error("Delete role error:", error);
       alert("Failed to delete role");
     }
   };

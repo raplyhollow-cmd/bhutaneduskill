@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * RMA (Royal Monetary Authority) Payment Gateway Integration for Bhutan
  *
@@ -220,7 +221,7 @@ export class RMAGateway {
         paymentUrl: data.payment_url || data.checkout_url,
       };
     } catch (error) {
-      console.error('RMA Payment initiation error:', error);
+      logger.error('RMA Payment initiation error:', error);
       return {
         success: false,
         error: 'Failed to initiate payment',
@@ -253,7 +254,7 @@ export class RMAGateway {
       });
 
       if (!response.ok) {
-        console.error('RMA status check failed:', response.status);
+        logger.error('RMA status check failed:', response.status);
         return null;
       }
 
@@ -271,7 +272,7 @@ export class RMAGateway {
         metadata: data.metadata,
       };
     } catch (error) {
-      console.error('RMA status check error:', error);
+      logger.error('RMA status check error:', error);
       return null;
     }
   }
@@ -321,7 +322,7 @@ export class RMAGateway {
         refundId: data.refund_id,
       };
     } catch (error) {
-      console.error('RMA refund error:', error);
+      logger.error('RMA refund error:', error);
       return {
         success: false,
         error: 'Failed to process refund',

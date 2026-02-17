@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
       recentPayments: payments,
     });
   } catch (error) {
-    console.error("Student fees fetch error:", error);
+    logger.error("Student fees fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch fees" }, { status: 500 });
   }
 }

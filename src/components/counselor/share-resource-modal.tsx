@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,7 +59,7 @@ export function ShareResourceModal({ open, onClose, resourceId, resourceTitle }:
           setStudentResults(results.students || []);
         }
       } catch (error) {
-        console.error("[SEARCH STUDENTS] Error:", error);
+        logger.error("[SEARCH STUDENTS] Error:", error);
       } finally {
         setIsSearching(false);
       }
@@ -73,7 +75,7 @@ export function ShareResourceModal({ open, onClose, resourceId, resourceTitle }:
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
-      console.error("[COPY LINK] Error:", error);
+      logger.error("[COPY LINK] Error:", error);
     }
   };
 
@@ -105,7 +107,7 @@ export function ShareResourceModal({ open, onClose, resourceId, resourceTitle }:
       setStudentResults([]);
       onClose();
     } catch (error) {
-      console.error("[SHARE RESOURCE] Error:", error);
+      logger.error("[SHARE RESOURCE] Error:", error);
       alert(error instanceof Error ? error.message : "Failed to share resource. Please try again.");
     } finally {
       setIsSharing(false);

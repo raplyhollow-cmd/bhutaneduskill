@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * STUDENT PORTAL SERVER-SIDE AUTH
  *
@@ -41,7 +42,7 @@ export async function fetchStudentDataServer() {
   const { user, authenticated } = await fetchStudentAuthForServer();
 
   if (!authenticated || !user) {
-    console.warn("Student not authenticated in fetchStudentDataServer");
+    logger.warn("Student not authenticated in fetchStudentDataServer");
     return {
       student: null,
       homework: { pending: 0, submitted: 0, graded: 0, total: 0 },

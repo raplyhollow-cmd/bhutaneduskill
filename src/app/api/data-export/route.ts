@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * COMPREHENSIVE DATA EXPORT API
  *
@@ -163,7 +164,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    console.error("Data export GET error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json({ error: "Failed to fetch export info" }, { status: 500 });
   }
 }
@@ -391,7 +392,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    console.error("Data export POST error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json({ error: "Export failed", details: errorMessage }, { status: 500 });
   }
 }

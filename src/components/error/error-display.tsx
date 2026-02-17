@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * Reusable Error Display Component
  *
@@ -5,7 +7,6 @@
  * Provides consistent error UI with optional retry action
  */
 
-"use client";
 
 import React from "react";
 

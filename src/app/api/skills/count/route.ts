@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
@@ -32,7 +33,7 @@ export async function GET(req: NextRequest) {
       count: skillsInProgress
     });
   } catch (error) {
-    console.error("Error fetching skills count:", error);
+    logger.error("Error fetching skills count:", error);
     return NextResponse.json({ count: 0 }, { status: 200 });
   }
 }

@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
@@ -158,7 +159,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ courses: filtered });
   } catch (error) {
-    console.error("Courses fetch error:", error);
+    logger.error("Courses fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch courses" }, { status: 500 });
   }
 }
@@ -240,7 +241,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Validation failed", details: error.issues }, { status: 400 });
     }
-    console.error("Course creation error:", error);
+    logger.error("Course creation error:", error);
     return NextResponse.json({ error: "Failed to create course" }, { status: 500 });
   }
 }

@@ -1,9 +1,10 @@
+"use client";
+
 /**
  * RICH TEXT EDITOR
  * Lightweight WYSIWYG editor for learning module content
  * Uses browser contentEditable API - no external dependencies
  */
-"use client";
 
 import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";

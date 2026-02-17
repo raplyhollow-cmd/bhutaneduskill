@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { requirePermission } from "@/lib/rbac";
@@ -74,7 +75,7 @@ export async function GET(request: NextRequest) {
       dailyBreakdown: Object.entries(dailyBreakdown).map(([date, amount]) => ({ date, amount })),
     });
   } catch (error) {
-    console.error("Fee collection report error:", error);
+    logger.error("Fee collection report error:", error);
     return NextResponse.json({ error: "Failed to generate report" }, { status: 500 });
   }
 }

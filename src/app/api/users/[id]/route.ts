@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { requirePermission, requireAnyPermission } from "@/lib/rbac";
@@ -42,7 +43,7 @@ export async function GET(
 
     return NextResponse.json({ user: targetUser });
   } catch (error) {
-    console.error("User fetch error:", error);
+    logger.error("User fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch user" }, { status: 500 });
   }
 }
@@ -69,7 +70,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("User delete error:", error);
+    logger.error("User delete error:", error);
     return NextResponse.json({ error: "Failed to delete user" }, { status: 500 });
   }
 }

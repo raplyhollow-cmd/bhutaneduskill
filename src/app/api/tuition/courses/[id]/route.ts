@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
@@ -93,7 +94,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("Course fetch error:", error);
+    logger.error("Course fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch course" }, { status: 500 });
   }
 }
@@ -169,7 +170,7 @@ export async function PATCH(
 
     return NextResponse.json({ course: updated });
   } catch (error) {
-    console.error("Course update error:", error);
+    logger.error("Course update error:", error);
     return NextResponse.json({ error: "Failed to update course" }, { status: 500 });
   }
 }
@@ -201,7 +202,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Course deletion error:", error);
+    logger.error("Course deletion error:", error);
     return NextResponse.json({ error: "Failed to delete course" }, { status: 500 });
   }
 }

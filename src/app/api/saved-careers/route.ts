@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
@@ -22,7 +23,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ savedCareers });
   } catch (error) {
-    console.error("Error fetching saved careers:", error);
+    logger.error("Error fetching saved careers:", error);
     return NextResponse.json({ savedCareers: [] }, { status: 200 });
   }
 }
@@ -68,7 +69,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, savedCareers });
   } catch (error) {
-    console.error("Error updating saved careers:", error);
+    logger.error("Error updating saved careers:", error);
     return NextResponse.json({ error: "Failed to update saved careers" }, { status: 500 });
   }
 }

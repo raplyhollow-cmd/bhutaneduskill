@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * AI CAREER COACH API
  *
@@ -68,7 +69,6 @@ export async function POST(request: NextRequest) {
     const matches = assessmentIds.length > 0
       ? await db.query.careerMatches.findMany({
           where: eq(careerMatches.assessmentId, assessmentIds[0]),
-          with: { career: true },
           orderBy: desc(careerMatches.matchScore),
           limit: 5,
         })
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       userRole: userProfile?.role || "student",
       hollandCode: riasecResult?.hollandCode || null,
       mbtiType: (mbtiResult as any)?.personalityType || null,
-      topCareer: (matches[0] as any)?.career?.name || null,
+      topCareer: matches[0]?.careerTitle || null,
       careerMatchScore: matches[0]?.matchScore || null,
       completedAssessments: completedAssessments.length,
     };
@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(responseWithData);
 
   } catch (error: any) {
-    console.error("AI Career Coach error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
 
     // Check for specific error types
     if (error?.message === "Unauthorized" || error?.status === 401) {

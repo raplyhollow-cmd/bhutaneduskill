@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { requirePermission } from "@/lib/rbac";
@@ -38,7 +39,7 @@ export async function GET(
 
     return NextResponse.json({ class: classData });
   } catch (error) {
-    console.error("Class fetch error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json({ error: "Failed to fetch class" }, { status: 500 });
   }
 }
@@ -85,7 +86,7 @@ export async function PUT(
 
     return NextResponse.json({ class: updatedClass });
   } catch (error) {
-    console.error("Class update error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json({ error: "Failed to update class" }, { status: 500 });
   }
 }
@@ -113,7 +114,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Class delete error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json({ error: "Failed to delete class" }, { status: 500 });
   }
 }

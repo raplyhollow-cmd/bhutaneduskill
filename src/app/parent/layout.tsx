@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * PARENT PORTAL LAYOUT
  *
@@ -5,7 +7,6 @@
  * Uses client-side auth to check if parent needs setup.
  */
 
-"use client";
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";

@@ -1,3 +1,6 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * COUNSELOR DASHBOARD PAGE
  *
@@ -8,7 +11,6 @@
  * - Quick actions
  * - Data insights access
  */
-"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,7 +58,7 @@ export default function CounselorDashboardPage() {
         setSchoolPerformance(data.schoolPerformance || []);
       }
     } catch (error) {
-      console.error("Failed to load counselor dashboard:", error);
+      logger.error("Failed to load counselor dashboard:", error);
     } finally {
       setIsLoading(false);
     }

@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
@@ -208,7 +209,7 @@ export async function GET(request: NextRequest) {
       homework: filteredHomework,
     });
   } catch (error) {
-    console.error("Parent homework fetch error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       {
         error: "Failed to fetch homework data",

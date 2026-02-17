@@ -1,8 +1,9 @@
+"use client";
+
 /**
  * STUDENT FEES PAGE
  * View fee structure and payment history
  */
-"use client";
 
 import { PortalHeader } from "@/components/shared/portal-sidebar";
 import { Card, CardContent } from "@/components/ui/card";

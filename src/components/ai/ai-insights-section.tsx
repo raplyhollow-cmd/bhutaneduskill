@@ -1,3 +1,6 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * AI Insights Section Component
  *
@@ -5,7 +8,6 @@
  * This is a client component that handles loading and error states.
  */
 
-"use client";
 
 import { useEffect, useState } from "react";
 import { AIInsightCard, type AIInsightCardProps } from "./ai-insight-card";
@@ -144,7 +146,7 @@ export function AIInsightsSection({
         setInsights([]);
       }
     } catch (err) {
-      console.error("Failed to fetch AI insights:", err);
+      logger.error("Failed to fetch AI insights:", err);
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setIsLoading(false);

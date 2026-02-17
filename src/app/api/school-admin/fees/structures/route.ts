@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ structures });
   } catch (error) {
-    console.error("Fee structures fetch error:", error);
+    logger.error("Fee structures fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch fee structures" }, { status: 500 });
   }
 }
@@ -93,7 +94,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Validation failed", details: error.issues }, { status: 400 });
     }
-    console.error("Fee structure creation error:", error);
+    logger.error("Fee structure creation error:", error);
     return NextResponse.json({ error: "Failed to create fee structure" }, { status: 500 });
   }
 }

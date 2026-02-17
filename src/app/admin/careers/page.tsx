@@ -1,3 +1,6 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * PLATFORM ADMIN - CAREERS CONTENT MANAGEMENT
  *
@@ -5,7 +8,6 @@
  * CRUD operations for career profiles, salary data, and demand outlook.
  */
 
-"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -137,7 +139,7 @@ export default function AdminCareersPage() {
       setCareers(data);
       setFilteredCareers(data);
     } catch (error) {
-      console.error("Failed to fetch careers:", error);
+      logger.error("Failed to fetch careers:", error);
     } finally {
       setLoading(false);
     }
@@ -159,7 +161,7 @@ export default function AdminCareersPage() {
       setShowDeleteDialog(false);
       setCareerToDelete(null);
     } catch (error) {
-      console.error("Failed to delete career:", error);
+      logger.error("Failed to delete career:", error);
     }
   };
 

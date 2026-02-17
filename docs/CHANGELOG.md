@@ -10,6 +10,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Intelligent Post-Authentication Routing** - Middleware-based routing eliminates `/dashboard` intermediate step:
+  - Users now go directly to their appropriate portal after sign-in
+  - No more confusing `/dashboard` URL flash
+  - `src/middleware.ts` enhanced with `getPortalForUserType()` and `shouldIntelligentRoute()`
+- **Portal Selection Page** - `/dashboard` converted to beautiful portal hub:
+  - All 7 portals displayed as cards with icons, descriptions, and hover effects
+  - Users can manually navigate between portals if they have multiple access levels
+  - Fully responsive design with mobile-first approach
+- **Enhanced Middleware** - Added intelligent routing logic for authenticated users on root and `/dashboard` paths
+
+### Changed
+- **Sign-In Flow** - Changed `fallbackRedirectUrl` from `/dashboard` to `/` in both sign-in and sign-up pages
+- **Dashboard Architecture** - Removed server-component router, deleted problematic layout with React hook violation
+- **Code Organization** - 363 files updated: `"use client"` and `"use server"` directives moved to top of files (Turbopack requirement)
+- **AuthResult Pattern** - All 17 API routes now return `NextResponse.json()` instead of raw `authResult` for proper TypeScript types
+
+### Fixed
+- **React Error #310** - Dashboard layout violated Rules of Hooks with conditional return after `useAuth()` call
+- **Circular Import in Logger** - Fixed `src/lib/logger.ts` which was importing itself
+- **Turbopack Build Errors** - Fixed 195+ errors related to `"use client"` and `"use server"` directive positioning
+- **TypeScript Type Errors** - Fixed `LogContext` type to accept numeric keys
+- **Admin Layout Fallback** - Changed from `/dashboard` to `/setup/unified` for invalid user types
+- **Middleware Routing** - Fixed base URL construction for Vercel deployment compatibility
+
+### Removed
+- `src/app/dashboard/layout.tsx` - Deleted problematic client component with React hook violation
+- Old dashboard page server-component router logic
+
+### Added (from previous release)
+- **Real-Time Data for Platform AI** - Admin Platform Assistant now queries Neon PostgreSQL database for actual statistics:
+  - User counts (total, students, teachers, counselors, school admins)
+  - Active users (logged in within last hour)
+  - School statistics (student counts, completion rates)
+  - Assessment completion metrics
+  - System status overview
+- **Data Assistant Module** (`src/lib/data-assistant.ts`):
+  - Question intent detection (user counts, active users, system status, schools, assessments)
+  - Direct Neon PostgreSQL queries via Drizzle ORM
+  - Formatted data injection into AI prompts
 - **Production-Ready Security** - All 70+ API routes now protected with `requireAuth()`:
   - Fee Management APIs (4 routes)
   - Subject & Attendance APIs (3 routes)
@@ -92,6 +131,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Success Responses** - All use `ApiSuccess<T>` with `data` property only
 
 ### Fixed
+- **Student Career Coach 500 Error** - Removed invalid `with: { career: true }` relation from careerMatches query:
+  - `careerMatches.careerId` is a text field, not a foreign key reference
+  - Now uses `matches[0]?.careerTitle` directly from careerMatches table
+  - AI Career Coach now returns actual responses instead of fallback messages
+- **Platform Assistant Generic Responses** - Now uses real database data for:
+  - "How many users?" → Shows exact counts by user type
+  - "System status?" → Shows platform metrics from Neon PostgreSQL
+  - "Active users?" → Lists users active within last hour
+  - "Which school has most students?" → Shows ranked school list
+- **Admin System Prompt Updated** - Instructs AI to use provided data directly instead of suggesting database queries
 - **TypeScript Build** - Zero errors (was 200+)
 - **Admin Careers Page** - "Add Career" button working, modal components created
 - **Portal Authentication** - All 7 portals redirect to setup if user not configured

@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * AI STUDY PLANNER COMPONENT
  *
@@ -11,7 +13,6 @@
  * Uses AI to create balanced, effective study plans.
  */
 
-"use client";
 
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";

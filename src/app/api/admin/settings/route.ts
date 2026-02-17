@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * PLATFORM ADMIN - SETTINGS API
  *
@@ -103,7 +104,7 @@ export async function GET(req: NextRequest) {
       data: settings,
     });
   } catch (error: any) {
-    console.error("Error fetching settings:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { success: false, error: error.message || "Failed to fetch settings" },
       { status: 500 }
@@ -292,7 +293,7 @@ export async function POST(req: NextRequest) {
       data: updatedSettings,
     });
   } catch (error: any) {
-    console.error("Error updating settings:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { success: false, error: error.message || "Failed to update settings" },
       { status: 500 }
@@ -370,7 +371,7 @@ export async function PATCH(req: NextRequest) {
         );
     }
   } catch (error: any) {
-    console.error("Error performing action:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { success: false, error: error.message || "Failed to perform action" },
       { status: 500 }

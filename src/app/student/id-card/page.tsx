@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * STUDENT ID CARD PAGE
  *
@@ -6,7 +8,6 @@
  * - Print or save the ID card
  */
 
-"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

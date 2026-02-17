@@ -1,9 +1,10 @@
+"use client";
+
 /**
  * TEACHER CLASSES PAGE
  * View and manage all classes assigned to the teacher
  */
 
-"use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

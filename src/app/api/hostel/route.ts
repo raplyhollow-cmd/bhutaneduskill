@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * HOSTEL MANAGEMENT API ROUTE
  *
@@ -398,7 +399,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error fetching hostel data:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { error: "Failed to fetch hostel data" } as ApiErrorResponse,
       { status: 500 }
@@ -1111,7 +1112,7 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   } catch (error) {
-    console.error("Error processing hostel request:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { error: "Failed to process request" } as ApiErrorResponse,
       { status: 500 }
@@ -1212,7 +1213,7 @@ export async function PATCH(request: NextRequest) {
       { status: 400 }
     );
   } catch (error) {
-    console.error("Error updating hostel record:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { error: "Failed to update record" } as ApiErrorResponse,
       { status: 500 }
@@ -1268,7 +1269,7 @@ export async function DELETE(request: NextRequest) {
       { status: 400 }
     );
   } catch (error) {
-    console.error("Error deleting hostel record:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { error: "Failed to delete record" } as ApiErrorResponse,
       { status: 500 }

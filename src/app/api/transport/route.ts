@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * TRANSPORT MANAGEMENT API ROUTE
  *
@@ -117,7 +118,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error fetching transport data:", error);
+    logger.error("Error fetching transport data:", error);
     return NextResponse.json(
       { error: "Failed to fetch transport data" },
       { status: 500 }
@@ -224,7 +225,7 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   } catch (error) {
-    console.error("Error processing transport request:", error);
+    logger.error("Error processing transport request:", error);
     return NextResponse.json(
       { error: "Failed to process request" },
       { status: 500 }

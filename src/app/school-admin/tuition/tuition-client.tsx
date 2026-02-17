@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * TUITION CENTER - CLIENT COMPONENT
  *
@@ -10,7 +12,6 @@
  * - Revenue reports
  */
 
-"use client";
 
 import { useState, useEffect, useTransition } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

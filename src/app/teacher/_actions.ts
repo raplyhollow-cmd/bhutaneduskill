@@ -1,3 +1,5 @@
+"use server";
+
 /**
  * TEACHER SERVER ACTIONS
  *
@@ -5,7 +7,6 @@
  * These are wrapped versions of the data fetching utilities for use in client components.
  */
 
-"use server";
 
 import {
   getCurrentTeacherId,

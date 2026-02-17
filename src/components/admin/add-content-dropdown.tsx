@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * Add Content Dropdown Component
  *
@@ -5,7 +7,6 @@
  * Displays options for adding colleges, scholarships, and RUB programs.
  */
 
-"use client";
 
 import { useState } from "react";
 import { Plus, GraduationCap, Award, BookOpen, ChevronDown } from "lucide-react";

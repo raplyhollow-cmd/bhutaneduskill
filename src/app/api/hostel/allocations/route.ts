@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * HOSTEL ALLOCATIONS API ROUTE
  *
@@ -134,7 +135,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Hostel allocations fetch error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { error: "Failed to fetch allocations", status: 500 } as ApiErrorResponse,
       { status: 500 }
@@ -310,7 +311,7 @@ export async function POST(request: NextRequest) {
       message: "Hostel allocation created successfully",
     });
   } catch (error) {
-    console.error("Hostel allocation creation error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { error: "Failed to create allocation", status: 500 } as ApiErrorResponse,
       { status: 500 }
@@ -556,7 +557,7 @@ export async function PATCH(request: NextRequest) {
       message: "Allocation updated successfully",
     });
   } catch (error) {
-    console.error("Hostel allocation update error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { error: "Failed to update allocation", status: 500 } as ApiErrorResponse,
       { status: 500 }
@@ -618,7 +619,7 @@ export async function DELETE(request: NextRequest) {
       message: "Allocation deleted successfully",
     });
   } catch (error) {
-    console.error("Hostel allocation deletion error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { error: "Failed to delete allocation", status: 500 } as ApiErrorResponse,
       { status: 500 }

@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * STUDENT SETTINGS PAGE
  *
@@ -9,7 +11,6 @@
  * - Preferences (theme, notifications)
  */
 
-"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

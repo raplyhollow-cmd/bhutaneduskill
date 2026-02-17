@@ -1,8 +1,9 @@
+"use client";
+
 /**
  * STUDENT ACHIEVEMENTS PAGE
  * View badges, awards, and milestones earned
  */
-"use client";
 
 import { useState } from "react";
 import React from "react";

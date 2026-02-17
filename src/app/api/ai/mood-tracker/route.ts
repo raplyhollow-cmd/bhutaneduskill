@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * AI MOOD TRACKER / WELLNESS COACH API
  *
@@ -396,7 +397,7 @@ export async function POST(request: NextRequest) {
       const aiResponse = await chatWithGemini(prompt, MOOD_TRACKER_SYSTEM);
       parsedResponse = parseAIResponse(aiResponse);
     } catch (aiError) {
-      console.error("AI Mood Tracker error, using fallback:", aiError);
+      logger.apiError("AI Mood Tracker error, using fallback:", aiError);
       parsedResponse = generateFallbackResponse(body);
     }
 
@@ -438,7 +439,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(response);
 
   } catch (error: any) {
-    console.error("Mood Tracker API error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
 
     return NextResponse.json(
       {

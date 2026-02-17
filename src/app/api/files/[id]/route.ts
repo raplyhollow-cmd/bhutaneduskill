@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
@@ -69,7 +70,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({ error: "Cannot download this file type" }, { status: 400 });
   } catch (error) {
-    console.error("File download error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json({ error: "Failed to download file" }, { status: 500 });
   }
 }
@@ -107,7 +108,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("File delete error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json({ error: "Failed to delete file" }, { status: 500 });
   }
 }

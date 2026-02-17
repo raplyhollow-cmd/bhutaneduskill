@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -93,7 +95,7 @@ export function EditTicketModal({ open, onClose, onSuccess, ticket }: EditTicket
       onSuccess();
       onClose();
     } catch (error) {
-      console.error("[EDIT TICKET] Error:", error);
+      logger.error("[EDIT TICKET] Error:", error);
       alert(error instanceof Error ? error.message : "Failed to update ticket. Please try again.");
     } finally {
       setIsLoading(false);

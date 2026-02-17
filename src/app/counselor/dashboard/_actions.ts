@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * COUNSELOR DASHBOARD ACTIONS
  *
@@ -136,7 +137,7 @@ export async function fetchCounselorStats(counselorId: string): Promise<Counselo
       aiCoachUsage: recentAssessments.length,
     };
   } catch (error) {
-    console.error("Error fetching counselor stats:", error);
+    logger.error("Error fetching counselor stats:", error);
     return {
       totalStudents: 0,
       activeSchools: 0,

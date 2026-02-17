@@ -1,10 +1,11 @@
+"use client";
+
 /**
  * Search Dialog Component
  *
  * Command palette style search dialog
  */
 
-"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";

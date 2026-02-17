@@ -1,8 +1,10 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * HOMEWORK GRADING PANEL
  * Teacher interface for grading student submissions
  */
-"use client";
 
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -157,7 +159,7 @@ export function GradingPanel({
         [submission.id]: newGradingResults,
       }));
     } catch (error) {
-      console.error("Auto-grading error:", error);
+      logger.error("Auto-grading error:", error);
     } finally {
       setAutoGradingInProgress(false);
     }

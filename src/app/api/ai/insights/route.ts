@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * UNIFIED AI INSIGHTS API
  *
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!user) {
-      console.error("[AI Insights] User not found:", userId);
+      logger.apiError(new Error("[AI Insights] User not found"), { route: "/api/ai/insights", method: "GET", userId });
       return NextResponse.json(
         { error: "User not found", insights: [] },
         { status: 404 }
@@ -63,7 +64,7 @@ export async function POST(request: NextRequest) {
 
     // Log role mismatch but continue anyway for better UX
     if (user.type !== userRole) {
-      console.warn("[AI Insights] Role mismatch - using requested role anyway:", {
+      logger.warn("[AI Insights] Role mismatch - using requested role anyway:", {
         requested: userRole,
         actual: user.type,
         userId
@@ -97,7 +98,7 @@ export async function POST(request: NextRequest) {
       generatedAt: new Date().toISOString(),
     });
   } catch (error: any) {
-    console.error("[AI Insights] Error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { error: "Failed to generate insights", insights: [] },
       { status: 500 }

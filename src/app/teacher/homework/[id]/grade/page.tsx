@@ -1,8 +1,9 @@
+"use client";
+
 /**
  * TEACHER HOMEWORK GRADING PAGE
  * Page for viewing homework submissions and grading student work
  */
-"use client";
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";

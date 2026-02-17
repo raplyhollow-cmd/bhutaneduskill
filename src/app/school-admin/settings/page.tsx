@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * SCHOOL ADMIN - SCHOOL SETTINGS
  *
@@ -14,7 +16,6 @@
  * All settings persist to the database via API calls.
  */
 
-"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

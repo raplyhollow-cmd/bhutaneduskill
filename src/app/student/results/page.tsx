@@ -1,8 +1,9 @@
+"use client";
+
 /**
  * STUDENT RESULTS PAGE
  * View all exam results, graded homework, and assessment results
  */
-"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";

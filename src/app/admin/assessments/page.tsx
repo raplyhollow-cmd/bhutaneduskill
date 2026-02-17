@@ -1,3 +1,6 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * PLATFORM ADMIN - ASSSSMENT MANAGEMENT
  *
@@ -5,7 +8,6 @@
  * Features: Assessment Types, Assessments, Results tabs with full CRUD operations.
  */
 
-"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -163,7 +165,7 @@ export default function AdminAssessmentsPage() {
       setAssessmentTypes(data);
       setFilteredTypes(data);
     } catch (error) {
-      console.error("Failed to fetch assessment types:", error);
+      logger.error("Failed to fetch assessment types:", error);
     } finally {
       setTypesLoading(false);
     }
@@ -176,7 +178,7 @@ export default function AdminAssessmentsPage() {
       setAssessments(data);
       setFilteredAssessments(data);
     } catch (error) {
-      console.error("Failed to fetch assessments:", error);
+      logger.error("Failed to fetch assessments:", error);
     } finally {
       setAssessmentsLoading(false);
     }
@@ -189,7 +191,7 @@ export default function AdminAssessmentsPage() {
       setResults(data);
       setFilteredResults(data);
     } catch (error) {
-      console.error("Failed to fetch results:", error);
+      logger.error("Failed to fetch results:", error);
     } finally {
       setResultsLoading(false);
     }
@@ -201,7 +203,7 @@ export default function AdminAssessmentsPage() {
       const data = await getAssessmentStats();
       setStats(data);
     } catch (error) {
-      console.error("Failed to fetch stats:", error);
+      logger.error("Failed to fetch stats:", error);
     } finally {
       setStatsLoading(false);
     }
@@ -215,7 +217,7 @@ export default function AdminAssessmentsPage() {
       setTypeToDelete(null);
       fetchStats();
     } catch (error) {
-      console.error("Failed to delete assessment type:", error);
+      logger.error("Failed to delete assessment type:", error);
       alert("Failed to delete assessment type. Please try again.");
     }
   };
@@ -226,7 +228,7 @@ export default function AdminAssessmentsPage() {
       setAssessments(assessments.filter((a) => a.id !== id));
       fetchStats();
     } catch (error) {
-      console.error("Failed to delete assessment:", error);
+      logger.error("Failed to delete assessment:", error);
       alert("Failed to delete assessment. Please try again.");
     }
   };

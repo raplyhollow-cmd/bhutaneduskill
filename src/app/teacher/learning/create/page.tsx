@@ -1,8 +1,9 @@
+"use client";
+
 /**
  * TEACHER LEARNING MODULE CREATOR PAGE
  * Dedicated page for creating learning modules - redirects to main page with create mode
  */
-"use client";
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";

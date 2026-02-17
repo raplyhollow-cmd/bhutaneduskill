@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
@@ -259,7 +260,7 @@ export async function GET(request: NextRequest) {
       schoolPerformance,
     });
   } catch (error) {
-    console.error("Counselor dashboard fetch error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json({
       stats: {
         totalStudents: 0,

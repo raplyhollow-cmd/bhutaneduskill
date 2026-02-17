@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users, examResults } from "@/lib/db/schema";
@@ -67,7 +68,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ results });
   } catch (error: unknown) {
-    console.error("Results fetch error:", error);
+    logger.error("Results fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch results" }, { status: 500 });
   }
 }
@@ -148,7 +149,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    console.error("Results save error:", error);
+    logger.error("Results save error:", error);
     return NextResponse.json({ error: "Failed to save results" }, { status: 500 });
   }
 }

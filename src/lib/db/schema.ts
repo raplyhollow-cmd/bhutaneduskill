@@ -1643,6 +1643,92 @@ export const circulation = pgTable("circulation", {
 export type Circulation = typeof circulation.$inferSelect;
 
 // ============================================================================
+// LIBRARY MEMBERS TABLE
+// ============================================================================
+
+export const libraryMembers = pgTable("library_members", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }),
+  userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
+  memberType: text("member_type").notNull(), // "student" | "teacher" | "staff"
+  membershipNumber: text("membership_number").notNull().unique(),
+  membershipStatus: text("membership_status").notNull(), // "active" | "inactive" | "suspended"
+  joinedDate: text("joined_date").notNull(),
+  expiryDate: text("expiry_date"),
+  borrowingLimit: integer("borrowing_limit").default(5), // Max books allowed
+  currentlyBorrowed: integer("currently_borrowed").default(0),
+  totalBorrowed: integer("total_borrowed").default(0),
+  fineDue: integer("fine_due").default(0),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+});
+
+export type LibraryMember = typeof libraryMembers.$inferSelect;
+
+// ============================================================================
+// LIBRARY RESERVATIONS TABLE
+// ============================================================================
+
+export const libraryReservations = pgTable("library_reservations", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }),
+  bookId: text("book_id").references(() => books.id, { onDelete: "cascade" }),
+  userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
+  reservationDate: text("reservation_date").notNull(),
+  expiryDate: text("expiry_date").notNull(),
+  status: text("status").notNull(), // "pending" | "ready" | "fulfilled" | "cancelled" | "expired"
+  priority: integer("priority").default(1), // Higher priority gets the book first
+  notifiedDate: text("notified_date"), // When user was notified book is ready
+  fulfilledDate: text("fulfilled_date"), // When reservation was fulfilled
+  cancelledDate: text("cancelled_date"),
+  cancellationReason: text("cancellation_reason"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+});
+
+export type LibraryReservation = typeof libraryReservations.$inferSelect;
+
+// ============================================================================
+// DIGITAL RESOURCES TABLE
+// ============================================================================
+
+export const digitalResources = pgTable("digital_resources", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  resourceType: text("resource_type").notNull(), // "ebook" | "audio" | "video" | "document" | "journal" | "magazine"
+  format: text("format").notNull(), // "pdf" | "epub" | "mp3" | "mp4" | "doc" etc.
+  fileUrl: text("file_url").notNull(),
+  fileSize: integer("file_size"), // in bytes
+  duration: integer("duration"), // For audio/video in seconds
+  pages: integer("pages"), // For ebooks/documents
+  author: text("author"),
+  publisher: text("publisher"),
+  publicationYear: integer("publication_year"),
+  isbn: text("isbn"),
+  category: text("category"),
+  tags: json("tags").$type<string[]>(),
+  language: text("language").default("en"),
+  coverImage: text("cover_image"),
+  accessLevel: text("access_level").notNull(), // "public" | "student" | "teacher" | "admin"
+  downloadAllowed: boolean("download_allowed").default(true),
+  viewCount: integer("view_count").default(0),
+  downloadCount: integer("download_count").default(0),
+  isActive: boolean("is_active").default(true),
+  uploadedBy: text("uploaded_by").references(() => users.id),
+  licenseInfo: text("license_info"),
+  sourceUrl: text("source_url"), // External source URL if applicable
+  expirationDate: text("expiration_date"), // For temporary access resources
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+});
+
+export type DigitalResource = typeof digitalResources.$inferSelect;
+
+// ============================================================================
 // CONSENT RECORDS TABLE
 // ============================================================================
 

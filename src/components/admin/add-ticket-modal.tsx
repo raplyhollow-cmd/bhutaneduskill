@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -92,7 +94,7 @@ export function AddTicketModal({ open, onClose, onSuccess }: AddTicketModalProps
       setTags([]);
       setTagInput("");
     } catch (error) {
-      console.error("[ADD TICKET] Error:", error);
+      logger.error("[ADD TICKET] Error:", error);
       alert(error instanceof Error ? error.message : "Failed to create ticket. Please try again.");
     } finally {
       setIsLoading(false);

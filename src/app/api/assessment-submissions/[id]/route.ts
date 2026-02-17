@@ -13,7 +13,7 @@ export async function PATCH(
   try {
     const authResult = await requireAuth(['student', 'teacher', 'admin', 'school-admin']);
     if ('error' in authResult) {
-      return authResult;
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
     const { userId, user } = authResult;
 
@@ -42,7 +42,7 @@ export async function GET(
   try {
     const authResult = await requireAuth(['student', 'teacher', 'admin', 'school-admin']);
     if ('error' in authResult) {
-      return authResult;
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
     const { userId, user } = authResult;
 
@@ -58,7 +58,7 @@ export async function GET(
 
     return NextResponse.json({ submission });
   } catch (error) {
-    console.error("Assessment submission fetch error:", error);
+    logger.apiError(error, { route: "/api/assessment-submissions/[id]", method: "GET" });
     return NextResponse.json({ error: "Failed to fetch submission" }, { status: 500 });
   }
 }
@@ -69,25 +69,19 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId, user } = authResult;
 
     const { id } = await params;
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || currentUser.type !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
     await db.delete(assessmentSubmissions).where(eq(assessmentSubmissions.id, id));
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Assessment submission delete error:", error);
+    logger.apiError(error, { route: "/api/assessment-submissions/[id]", method: "DELETE" });
     return NextResponse.json({ error: "Failed to delete submission" }, { status: 500 });
   }
 }

@@ -1,8 +1,9 @@
+"use client";
+
 /**
  * CERTIFICATE GENERATOR
  * Generate completion certificates for learning modules
  */
-"use client";
 
 import { useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";

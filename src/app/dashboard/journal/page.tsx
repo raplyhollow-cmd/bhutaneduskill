@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -90,7 +92,7 @@ export default function JournalPage() {
         setEntries(data.entries || []);
       }
     } catch (error) {
-      console.error("Failed to load entries:", error);
+      logger.error("Failed to load entries:", error);
     }
   };
 
@@ -110,7 +112,7 @@ export default function JournalPage() {
         resetForm();
       }
     } catch (error) {
-      console.error("Failed to save entry:", error);
+      logger.error("Failed to save entry:", error);
     }
   };
 
@@ -119,7 +121,7 @@ export default function JournalPage() {
       await fetch(`/api/journal/${id}`, { method: "DELETE" });
       loadEntries();
     } catch (error) {
-      console.error("Failed to delete entry:", error);
+      logger.error("Failed to delete entry:", error);
     }
   };
 

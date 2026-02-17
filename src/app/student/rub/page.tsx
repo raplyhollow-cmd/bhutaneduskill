@@ -1,8 +1,9 @@
+"use client";
+
 /**
  * STUDENT RUB COLLEGE SEARCH PAGE
  * Search and filter RUB programs, view requirements, track applications
  */
-"use client";
 
 import { useState } from "react";
 import { PortalHeader } from "@/components/shared/portal-sidebar";

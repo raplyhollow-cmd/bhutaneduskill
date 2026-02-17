@@ -1,3 +1,6 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * COUNSELOR - STUDENT INTERVENTIONS
  *
@@ -10,7 +13,6 @@
  * - Progress notes
  */
 
-"use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -165,7 +167,7 @@ export default function CounselorInterventionsPage() {
         throw new Error(result.error || "Failed to fetch interventions");
       }
     } catch (err) {
-      console.error("Error fetching interventions:", err);
+      logger.error("Error fetching interventions:", err);
       setError("Failed to load interventions. Please try again.");
       setInterventions([]);
       setStats({
@@ -189,7 +191,7 @@ export default function CounselorInterventionsPage() {
         }
       }
     } catch (err) {
-      console.error("Error fetching students:", err);
+      logger.error("Error fetching students:", err);
     }
   };
 

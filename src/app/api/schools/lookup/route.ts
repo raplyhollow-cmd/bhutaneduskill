@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { schools } from "@/lib/db/schema";
@@ -17,7 +18,7 @@ export async function GET(request: NextRequest) {
     const code = searchParams.get("code");
     const name = searchParams.get("name");
 
-    console.log("[SCHOOL LOOKUP] code:", code, "name:", name);
+    logger.debug("[SCHOOL LOOKUP] code:", code, "name:", name);
 
     if (!code && !name) {
       return NextResponse.json(
@@ -34,7 +35,7 @@ export async function GET(request: NextRequest) {
         .where(eq(schools.code, code.toUpperCase()))
         .limit(1);
 
-      console.log("[SCHOOL LOOKUP] results:", results);
+      logger.debug("[SCHOOL LOOKUP] results:", results);
 
       const school = results[0];
 
@@ -62,7 +63,7 @@ export async function GET(request: NextRequest) {
       { status: 400 }
     );
   } catch (error) {
-    console.error("Error looking up school:", error);
+    logger.error("Error looking up school:", error);
     return NextResponse.json(
       { error: "Failed to lookup school" },
       { status: 500 }

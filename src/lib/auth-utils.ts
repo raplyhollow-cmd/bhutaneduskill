@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * Authentication & Authorization Utilities
  * Server-side role verification to prevent cookie manipulation attacks
@@ -413,9 +414,9 @@ export function logAuthEvent(
   };
 
   if (event === 'unauthorized_access' || event === 'role_mismatch') {
-    console.warn('[Security Auth]', logEntry);
+    logger.warn('[Security Auth]', logEntry);
   } else {
-    console.log('[Security Auth]', logEntry);
+    logger.debug('[Security Auth]', logEntry);
   }
 
   // TODO: Send to monitoring/audit service

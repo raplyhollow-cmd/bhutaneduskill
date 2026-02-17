@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { attendance, users, classes } from "@/lib/db/schema";
@@ -87,7 +88,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ results }, { status: results.failed > 0 ? 207 : 201 });
   } catch (error) {
-    console.error("Bulk import error:", error);
+    logger.error("Bulk import error:", error);
     return NextResponse.json({ error: "Failed to import attendance" }, { status: 500 });
   }
 }

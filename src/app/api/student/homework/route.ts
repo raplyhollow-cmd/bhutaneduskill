@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { requirePermission } from "@/lib/rbac";
@@ -88,7 +89,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ homework: filteredHomework });
   } catch (error) {
-    console.error("Student homework fetch error:", error);
+    logger.error("Student homework fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch homework" }, { status: 500 });
   }
 }

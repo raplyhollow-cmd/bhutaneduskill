@@ -1,3 +1,6 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * COUNSELOR - REPORT GENERATION
  *
@@ -10,7 +13,6 @@
  * - Export in multiple formats (PDF, Excel, CSV)
  */
 
-"use client";
 
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -199,7 +201,7 @@ export default function CounselorReportsPage() {
 
   const handleGenerateReport = () => {
     // In production, this would call an API to generate the report
-    console.log("Generating report:", selectedTemplate, selectedFormat, dateRange);
+    logger.debug("Generating report:", selectedTemplate, selectedFormat, dateRange);
     setShowGenerateModal(false);
     setSelectedTemplate(null);
   };

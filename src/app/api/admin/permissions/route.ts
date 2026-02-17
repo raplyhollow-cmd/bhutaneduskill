@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * RBAC PERMISSIONS API
  *
@@ -60,7 +61,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Permissions fetch error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { success: false, error: "Failed to fetch permissions" },
       { status: 500 }

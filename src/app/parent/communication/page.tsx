@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * PARENT COMMUNICATION PAGE
  *
@@ -14,7 +16,6 @@
  * @feat FEAT-008 - Parent Communication
  */
 
-"use client";
 
 import * as React from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

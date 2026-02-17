@@ -1,3 +1,5 @@
+"use server";
+
 /**
  * SERVER ACTIONS - CONTENT MANAGEMENT
  *
@@ -5,7 +7,6 @@
  * These are used by the Platform Admin content management page.
  */
 
-"use server";
 
 import { db } from "@/lib/db";
 import { colleges, scholarships, rubPrograms } from "@/lib/db/schema";

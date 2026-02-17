@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -96,7 +98,7 @@ export function EditScholarshipModal({ open, onClose, onSuccess, scholarship }: 
       onSuccess();
       onClose();
     } catch (error) {
-      console.error("[EDIT SCHOLARSHIP] Error:", error);
+      logger.error("[EDIT SCHOLARSHIP] Error:", error);
       alert(error instanceof Error ? error.message : "Failed to update scholarship. Please try again.");
     } finally {
       setIsLoading(false);

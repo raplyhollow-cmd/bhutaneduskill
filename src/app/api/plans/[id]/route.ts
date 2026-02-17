@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
@@ -34,7 +35,7 @@ export async function GET(
 
     return NextResponse.json({ plan });
   } catch (error) {
-    console.error("Career plan fetch error:", error);
+    logger.error("Career plan fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch plan" }, { status: 500 });
   }
 }
@@ -86,7 +87,7 @@ export async function PUT(
 
     return NextResponse.json({ plan: updatedPlan });
   } catch (error) {
-    console.error("Career plan update error:", error);
+    logger.error("Career plan update error:", error);
     return NextResponse.json({ error: "Failed to update plan" }, { status: 500 });
   }
 }
@@ -123,7 +124,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Career plan delete error:", error);
+    logger.error("Career plan delete error:", error);
     return NextResponse.json({ error: "Failed to delete plan" }, { status: 500 });
   }
 }

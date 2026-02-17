@@ -14,7 +14,7 @@ export async function GET(
     const { id } = await params;
     const authResult = await requireAuth(['counselor', 'teacher', 'admin', 'school-admin']);
     if ('error' in authResult) {
-      return authResult;
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
     const { userId, user } = authResult;
 
@@ -42,15 +42,11 @@ export async function PUT(
     const { id } = await params;
     const authResult = await requireAuth(['counselor', 'teacher', 'admin', 'school-admin']);
     if ('error' in authResult) {
-      return authResult;
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
     const { userId, user } = authResult;
 
     const body = await request.json();
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
 
     const note = await db.query.counselorNotes.findFirst({
       where: eq(counselorNotes.id, id),
@@ -61,7 +57,7 @@ export async function PUT(
     }
 
     // Only the author can update
-    if (note.counselorId !== currentUser.id) {
+    if (note.counselorId !== user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -73,7 +69,7 @@ export async function PUT(
 
     return NextResponse.json({ note: updatedNote });
   } catch (error) {
-    console.error("Counselor note update error:", error);
+    logger.apiError(error, { route: "/api/counselor-notes/[id]", method: "PUT" });
     return NextResponse.json({ error: "Failed to update note" }, { status: 500 });
   }
 }
@@ -85,18 +81,11 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['counselor', 'teacher', 'admin', 'school-admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    const { userId, user } = authResult;
 
     const note = await db.query.counselorNotes.findFirst({
       where: eq(counselorNotes.id, id),
@@ -107,7 +96,7 @@ export async function DELETE(
     }
 
     // Only the author can delete
-    if (note.counselorId !== currentUser.id) {
+    if (note.counselorId !== user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -115,7 +104,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Counselor note delete error:", error);
+    logger.apiError(error, { route: "/api/counselor-notes/[id]", method: "DELETE" });
     return NextResponse.json({ error: "Failed to delete note" }, { status: 500 });
   }
 }

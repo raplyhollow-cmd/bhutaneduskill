@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * PARENT DOCUMENTS PAGE
  *
@@ -8,7 +10,6 @@
  * - Document categories
  */
 
-"use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";

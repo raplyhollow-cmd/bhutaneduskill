@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * RBAC ROLE PERMISSIONS API
  *
@@ -67,7 +68,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("Role permissions fetch error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { success: false, error: "Failed to fetch role permissions" },
       { status: 500 }
@@ -159,7 +160,7 @@ export async function POST(
       message: "Permission assigned to role successfully",
     }, { status: 201 });
   } catch (error) {
-    console.error("Role permission assignment error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { success: false, error: "Failed to assign permission to role" },
       { status: 500 }
@@ -220,7 +221,7 @@ export async function DELETE(
       message: "Permission removed from role successfully",
     });
   } catch (error) {
-    console.error("Role permission removal error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { success: false, error: "Failed to remove permission from role" },
       { status: 500 }

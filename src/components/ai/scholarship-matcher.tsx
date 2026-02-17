@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * AI SCHOLARSHIP MATCHER COMPONENT
  *
@@ -5,7 +7,6 @@
  * Shows matched scholarships, application tips, and document requirements
  */
 
-"use client";
 
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";

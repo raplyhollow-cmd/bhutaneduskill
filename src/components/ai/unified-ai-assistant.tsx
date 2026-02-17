@@ -1,3 +1,6 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * UNIFIED AI ASSISTANT
  *
@@ -8,7 +11,6 @@
  * Only ONE bubble is shown at a time.
  */
 
-"use client";
 
 import { useEffect, useState } from "react";
 import { PlatformAssistant } from "@/components/ai/platform-assistant";
@@ -40,7 +42,7 @@ export function UnifiedAIAssistant() {
         setUserName(profile.name || user?.firstName || user?.fullName || "User");
       })
       .catch((error) => {
-        console.error("Failed to fetch user profile:", error);
+        logger.error("Failed to fetch user profile:", error);
         // Default to student if API fails
         setUserRole("student");
         setUserName(user?.firstName || user?.fullName || "User");

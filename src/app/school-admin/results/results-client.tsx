@@ -1,10 +1,11 @@
+"use client";
+
 /**
  * RESULTS CLIENT COMPONENT
  *
  * Client-side component for exam results management with server actions.
  */
 
-"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";

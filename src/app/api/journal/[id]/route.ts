@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
@@ -29,7 +30,7 @@ export async function GET(
 
     return NextResponse.json({ entry });
   } catch (error) {
-    console.error("Error fetching journal entry:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json({ error: "Failed to fetch entry" }, { status: 500 });
   }
 }
@@ -78,7 +79,7 @@ export async function PUT(
 
     return NextResponse.json({ entry: entries[entryIndex] });
   } catch (error) {
-    console.error("Error updating journal entry:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json({ error: "Failed to update entry" }, { status: 500 });
   }
 }
@@ -112,7 +113,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting journal entry:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json({ error: "Failed to delete entry" }, { status: 500 });
   }
 }

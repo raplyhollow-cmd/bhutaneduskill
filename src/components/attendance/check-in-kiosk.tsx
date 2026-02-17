@@ -1,8 +1,10 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * CHECK-IN KIOSK
  * Student self check-in interface with QR/scanner support
  */
-"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -72,7 +74,7 @@ export function CheckInKiosk({
           });
         },
         () => {
-          console.log("Location access denied");
+          logger.debug("Location access denied");
         }
       );
     }
@@ -132,7 +134,7 @@ export function CheckInKiosk({
         )
       );
     } catch (error) {
-      console.error("Check-out failed", error);
+      logger.error("Check-out failed", error);
     }
   };
 

@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * SCHOOL ADMIN - TIMETABLE MANAGEMENT
  *
@@ -13,7 +15,6 @@
  * - Print timetables
  */
 
-"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

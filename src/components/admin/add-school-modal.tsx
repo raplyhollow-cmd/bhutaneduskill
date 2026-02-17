@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,7 +49,7 @@ export function AddSchoolModal({ open, onClose, onSuccess }: AddSchoolModalProps
         contactEmail,
         contactPhone,
       };
-      console.log("[ADD SCHOOL] Sending payload:", payload);
+      logger.debug("[ADD SCHOOL] Sending payload:", payload);
 
       const response = await fetch("/api/schools", {
         method: "POST",
@@ -55,9 +57,9 @@ export function AddSchoolModal({ open, onClose, onSuccess }: AddSchoolModalProps
         body: JSON.stringify(payload),
       });
 
-      console.log("[ADD SCHOOL] Response status:", response.status);
+      logger.debug("[ADD SCHOOL] Response status:", response.status);
       const responseData = await response.json();
-      console.log("[ADD SCHOOL] Response data:", responseData);
+      logger.debug("[ADD SCHOOL] Response data:", responseData);
 
       if (response.ok) {
         onSuccess();
@@ -72,7 +74,7 @@ export function AddSchoolModal({ open, onClose, onSuccess }: AddSchoolModalProps
         alert(responseData.error || "Failed to create school");
       }
     } catch (error) {
-      console.error("[ADD SCHOOL] Error:", error);
+      logger.error("[ADD SCHOOL] Error:", error);
       alert("Network error. Please try again.");
     } finally {
       setIsLoading(false);

@@ -1,5 +1,7 @@
 "use server";
 
+import { logger } from "@/lib/logger";
+
 import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
@@ -110,7 +112,7 @@ export async function createSupportTicket(data: SupportTicketData) {
     revalidatePath("/admin/support");
     return { success: true, data: newTicket };
   } catch (error) {
-    console.error("Error creating support ticket:", error);
+    logger.error("Error creating support ticket:", error);
     return { error: "Failed to create support ticket" };
   }
 }
@@ -196,7 +198,7 @@ export async function getSupportTickets(filters?: {
 
     return { success: true, data: tickets };
   } catch (error) {
-    console.error("Error fetching support tickets:", error);
+    logger.error("Error fetching support tickets:", error);
     return { error: "Failed to fetch support tickets" };
   }
 }
@@ -268,7 +270,7 @@ export async function getSupportTicketById(ticketId: string) {
 
     return { success: true, data: { ticket, responses } };
   } catch (error) {
-    console.error("Error fetching support ticket:", error);
+    logger.error("Error fetching support ticket:", error);
     return { error: "Failed to fetch support ticket" };
   }
 }
@@ -346,7 +348,7 @@ export async function updateSupportTicket(ticketId: string, data: TicketUpdateDa
     revalidatePath(`/admin/support/${ticketId}`);
     return { success: true, data: updatedTicket };
   } catch (error) {
-    console.error("Error updating support ticket:", error);
+    logger.error("Error updating support ticket:", error);
     return { error: "Failed to update support ticket" };
   }
 }
@@ -370,7 +372,7 @@ export async function deleteSupportTicket(ticketId: string) {
     revalidatePath("/admin/support");
     return { success: true, data: { message: "Ticket deleted successfully" } };
   } catch (error) {
-    console.error("Error deleting support ticket:", error);
+    logger.error("Error deleting support ticket:", error);
     return { error: "Failed to delete support ticket" };
   }
 }
@@ -441,7 +443,7 @@ export async function addTicketResponse(ticketId: string, data: TicketResponseDa
     revalidatePath(`/admin/support/${ticketId}`);
     return { success: true, data: newResponse };
   } catch (error) {
-    console.error("Error adding ticket response:", error);
+    logger.error("Error adding ticket response:", error);
     return { error: "Failed to add response" };
   }
 }
@@ -465,7 +467,7 @@ export async function getTicketResponses(ticketId: string) {
 
     return { success: true, data: responses };
   } catch (error) {
-    console.error("Error fetching ticket responses:", error);
+    logger.error("Error fetching ticket responses:", error);
     return { error: "Failed to fetch responses" };
   }
 }
@@ -493,7 +495,7 @@ export async function getSupportAgents() {
 
     return { success: true, data: agents };
   } catch (error) {
-    console.error("Error fetching support agents:", error);
+    logger.error("Error fetching support agents:", error);
     return { error: "Failed to fetch support agents" };
   }
 }
@@ -532,7 +534,7 @@ export async function createSupportAgent(data: SupportAgentData) {
     revalidatePath("/admin/support");
     return { success: true, data: newAgent };
   } catch (error) {
-    console.error("Error creating support agent:", error);
+    logger.error("Error creating support agent:", error);
     return { error: "Failed to create support agent" };
   }
 }
@@ -577,7 +579,7 @@ export async function updateSupportAgent(agentId: string, data: Partial<SupportA
     revalidatePath("/admin/support");
     return { success: true, data: updatedAgent };
   } catch (error) {
-    console.error("Error updating support agent:", error);
+    logger.error("Error updating support agent:", error);
     return { error: "Failed to update support agent" };
   }
 }
@@ -601,7 +603,7 @@ export async function deleteSupportAgent(agentId: string) {
     revalidatePath("/admin/support");
     return { success: true, data: { message: "Agent deleted successfully" } };
   } catch (error) {
-    console.error("Error deleting support agent:", error);
+    logger.error("Error deleting support agent:", error);
     return { error: "Failed to delete support agent" };
   }
 }
@@ -655,7 +657,7 @@ export async function getSupportStats() {
 
     return { success: true, data: { stats, categories } };
   } catch (error) {
-    console.error("Error fetching support stats:", error);
+    logger.error("Error fetching support stats:", error);
     return { error: "Failed to fetch support stats" };
   }
 }

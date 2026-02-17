@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
   try {
     const authResult = await requireAuth(['admin', 'school-admin']);
     if ('error' in authResult) {
-      return authResult;
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
     const { userId, user } = authResult;
 

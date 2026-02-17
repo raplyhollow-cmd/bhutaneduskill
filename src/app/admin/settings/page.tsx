@@ -1,10 +1,12 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * PLATFORM ADMIN - SETTINGS
  *
  * Platform-wide configuration, system settings, and preferences.
  */
 
-"use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -267,7 +269,7 @@ export default function AdminSettingsPage() {
         originalSettings.current = fetchedSettings;
       }
     } catch (err: any) {
-      console.error("Error fetching settings:", err);
+      logger.error("Error fetching settings:", err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -308,7 +310,7 @@ export default function AdminSettingsPage() {
         throw new Error(data.error || "Failed to save settings");
       }
     } catch (err: any) {
-      console.error("Error saving settings:", err);
+      logger.error("Error saving settings:", err);
       toast({
         title: "Save failed",
         description: err.message || "Failed to save settings. Please try again.",
@@ -352,7 +354,7 @@ export default function AdminSettingsPage() {
         throw new Error("Some settings failed to save");
       }
     } catch (err: any) {
-      console.error("Error saving settings:", err);
+      logger.error("Error saving settings:", err);
       toast({
         title: "Save failed",
         description: err.message || "Failed to save settings. Please try again.",
@@ -392,7 +394,7 @@ export default function AdminSettingsPage() {
         throw new Error(data.error || "Failed to perform action");
       }
     } catch (err: any) {
-      console.error("Error performing action:", err);
+      logger.error("Error performing action:", err);
       toast({
         title: "Action failed",
         description: err.message || "Failed to perform action. Please try again.",

@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * COUNSELOR DATA FETCHING UTILITIES
  *
@@ -241,7 +242,7 @@ export async function getCounselorStudents(counselorId: string | null): Promise<
 
     return studentsWithData as CounselorStudentData[];
   } catch (error) {
-    console.error("Error fetching counselor students:", error);
+    logger.error("Error fetching counselor students:", error);
     return [];
   }
 }
@@ -340,7 +341,7 @@ export async function getCounselorNotes(
 
     return enrichedNotes;
   } catch (error) {
-    console.error("Error fetching counselor notes:", error);
+    logger.error("Error fetching counselor notes:", error);
     return [];
   }
 }

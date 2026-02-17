@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * ID CARD GENERATOR API ROUTE
  *
@@ -67,7 +68,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error generating ID card:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { error: "Failed to generate ID card" },
       { status: 500 }

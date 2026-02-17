@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
               ? JSON.parse(assessmentItem.results)
               : assessmentItem.results;
           } catch (e) {
-            console.error("Failed to parse assessment results:", e);
+            logger.apiError("Failed to parse assessment results:", e);
           }
         }
 

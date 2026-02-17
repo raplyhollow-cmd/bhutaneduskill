@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * REVENUE REPORT COMPONENT
  *
@@ -5,7 +7,6 @@
  * Shows total revenue, tutor earnings, platform fees, and monthly trends.
  */
 
-"use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

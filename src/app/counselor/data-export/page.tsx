@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * DATA EXPORT PAGE
  *
@@ -5,7 +7,6 @@
  * This is where the main asset (DATA) becomes accessible and portable.
  */
 
-"use client";
 
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

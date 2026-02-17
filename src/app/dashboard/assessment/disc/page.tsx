@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -83,7 +85,7 @@ export default function DISCAssessmentPage() {
         }),
       });
     } catch (error) {
-      console.error("Failed to save assessment:", error);
+      logger.error("Failed to save assessment:", error);
     }
   };
 

@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * useApiData Hook
  *
@@ -95,7 +96,7 @@ export async function fetchApi<T>(
 
     return await response.json();
   } catch (error) {
-    console.error(`API fetch error for ${url}:`, error);
+    logger.error(`API fetch error for ${url}:`, error);
     throw error;
   }
 }

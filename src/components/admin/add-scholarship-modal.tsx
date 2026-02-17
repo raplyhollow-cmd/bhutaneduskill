@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,7 +71,7 @@ export function AddScholarshipModal({ open, onClose, onSuccess }: AddScholarship
       setApplicationCloseDate("");
       setAcademicYear("");
     } catch (error) {
-      console.error("[ADD SCHOLARSHIP] Error:", error);
+      logger.error("[ADD SCHOLARSHIP] Error:", error);
       alert(error instanceof Error ? error.message : "Failed to create scholarship. Please try again.");
     } finally {
       setIsLoading(false);

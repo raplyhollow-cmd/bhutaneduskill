@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { schools, schoolSettings, academicYears, gradeConfigurations, bellSchedules } from "@/lib/db/schema";
@@ -279,7 +280,7 @@ export async function GET(request: NextRequest) {
       bellSchedules: bellScheduleData,
     });
   } catch (error) {
-    console.error("School settings fetch error:", error);
+    logger.error("School settings fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch school settings" }, { status: 500 });
   }
 }
@@ -607,7 +608,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    console.error("School settings update error:", error);
+    logger.error("School settings update error:", error);
     return NextResponse.json(
       { error: "Failed to update school settings" },
       { status: 500 }
@@ -709,7 +710,7 @@ export async function PUT(request: NextRequest) {
         { status: 400 }
       );
     }
-    console.error("School settings action error:", error);
+    logger.error("School settings action error:", error);
     return NextResponse.json(
       { error: "Failed to perform action" },
       { status: 500 }

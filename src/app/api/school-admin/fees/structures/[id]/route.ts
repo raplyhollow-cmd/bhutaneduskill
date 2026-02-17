@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({ structure });
   } catch (error) {
-    console.error("Fee structure fetch error:", error);
+    logger.error("Fee structure fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch fee structure" }, { status: 500 });
   }
 }
@@ -63,7 +64,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({ structure: updated });
   } catch (error) {
-    console.error("Fee structure update error:", error);
+    logger.error("Fee structure update error:", error);
     return NextResponse.json({ error: "Failed to update fee structure" }, { status: 500 });
   }
 }
@@ -86,7 +87,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Fee structure delete error:", error);
+    logger.error("Fee structure delete error:", error);
     return NextResponse.json({ error: "Failed to delete fee structure" }, { status: 500 });
   }
 }

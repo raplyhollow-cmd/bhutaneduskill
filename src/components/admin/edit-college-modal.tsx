@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -102,7 +104,7 @@ export function EditCollegeModal({ open, onClose, onSuccess, college }: EditColl
       onSuccess();
       onClose();
     } catch (error) {
-      console.error("[EDIT COLLEGE] Error:", error);
+      logger.error("[EDIT COLLEGE] Error:", error);
       alert(error instanceof Error ? error.message : "Failed to update college. Please try again.");
     } finally {
       setIsLoading(false);

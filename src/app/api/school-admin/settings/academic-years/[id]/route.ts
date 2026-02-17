@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { academicYears } from "@/lib/db/schema";
@@ -43,7 +44,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Academic year deletion error:", error);
+    logger.error("Academic year deletion error:", error);
     return NextResponse.json(
       { error: "Failed to delete academic year" },
       { status: 500 }
@@ -103,7 +104,7 @@ export async function PATCH(
 
     return NextResponse.json({ academicYear: updated });
   } catch (error) {
-    console.error("Academic year update error:", error);
+    logger.error("Academic year update error:", error);
     return NextResponse.json(
       { error: "Failed to update academic year" },
       { status: 500 }

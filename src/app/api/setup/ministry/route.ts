@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
@@ -131,7 +132,7 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   } catch (error) {
-    console.error("Ministry setup error:", error);
+    logger.error("Ministry setup error:", error);
     return NextResponse.json(
       { success: false, error: "Setup failed. Please try again." },
       { status: 500 }

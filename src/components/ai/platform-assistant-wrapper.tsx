@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * PLATFORM ASSISTANT WRAPPER
  *
@@ -5,7 +7,6 @@
  * It's used in the root layout to provide role-aware AI assistance.
  */
 
-"use client";
 
 import { useEffect, useState } from "react";
 import { PlatformAssistant } from "@/components/ai/platform-assistant";

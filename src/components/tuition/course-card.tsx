@@ -1,8 +1,9 @@
+"use client";
+
 /**
  * COURSE CARD
  * Display tuition courses for discovery
  */
-"use client";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

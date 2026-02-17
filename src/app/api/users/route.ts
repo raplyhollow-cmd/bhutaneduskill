@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { requirePermission, requireAnyPermission } from "@/lib/rbac";
@@ -70,7 +71,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ users: userList });
   } catch (error) {
-    console.error("Users fetch error:", error);
+    logger.error("Users fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
   }
 }
@@ -105,7 +106,7 @@ export async function PUT(request: NextRequest) {
     const updatedUser = Array.isArray(result) ? result[0] : result;
     return NextResponse.json({ user: updatedUser });
   } catch (error) {
-    console.error("User update error:", error);
+    logger.error("User update error:", error);
     return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
   }
 }
@@ -139,7 +140,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ user: newUser }, { status: 201 });
   } catch (error) {
-    console.error("User creation error:", error);
+    logger.error("User creation error:", error);
     return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
   }
 }

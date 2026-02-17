@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * FEE MANAGER COMPONENT
  *
@@ -5,7 +7,6 @@
  * Manages fee structures, student fees, payments, and receipts.
  */
 
-"use client";
 
 import { useState } from "react";
 import {

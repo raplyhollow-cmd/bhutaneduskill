@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * COUNSELOR - CAREER PLANNING TOOLS
  *
@@ -9,7 +11,6 @@
  * - Monitor student progress
  */
 
-"use client";
 
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

@@ -1,3 +1,6 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * PLATFORM ADMIN - TEACHERS MANAGEMENT
  *
@@ -5,7 +8,6 @@
  * View, verify, and manage all teachers across all schools.
  */
 
-"use client";
 
 import { useEffect, useCallback, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -98,7 +100,7 @@ export default function AdminTeachersPage() {
       setTeachers(transformedData);
       setFilteredTeachers(transformedData);
     } catch (error) {
-      console.error("Failed to fetch teachers:", error);
+      logger.error("Failed to fetch teachers:", error);
       setTeachers([]);
       setFilteredTeachers([]);
     } finally {
@@ -135,11 +137,11 @@ export default function AdminTeachersPage() {
         await fetchTeachers();
       } else {
         const error = await response.json();
-        console.error('Failed to verify teacher:', error.error);
+        logger.error('Failed to verify teacher:', error.error);
         alert(error.error || 'Failed to verify teacher');
       }
     } catch (error) {
-      console.error('Error verifying teacher:', error);
+      logger.error('Error verifying teacher:', error);
       alert('Failed to verify teacher');
     } finally {
       setIsVerifying(null);
@@ -167,11 +169,11 @@ export default function AdminTeachersPage() {
         await fetchTeachers();
       } else {
         const error = await response.json();
-        console.error('Failed to delete teacher:', error.error);
+        logger.error('Failed to delete teacher:', error.error);
         alert(error.error || 'Failed to delete teacher');
       }
     } catch (error) {
-      console.error('Error deleting teacher:', error);
+      logger.error('Error deleting teacher:', error);
       alert('Failed to delete teacher');
     }
   };

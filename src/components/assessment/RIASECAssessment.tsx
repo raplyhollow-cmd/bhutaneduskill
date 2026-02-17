@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState } from "react";
 import { AssessmentContainer, OptionButton } from "@/components/assessment";
 import { ResultsCard, ScoreBar, SuggestionCard } from "@/components/assessment";
@@ -62,7 +64,7 @@ export function RIASECAssessment({ title, description, questions, assessmentType
         }),
       });
     } catch (error) {
-      console.error("Failed to save assessment:", error);
+      logger.error("Failed to save assessment:", error);
     }
   };
 

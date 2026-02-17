@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { bellSchedules } from "@/lib/db/schema";
@@ -43,7 +44,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Bell schedule deletion error:", error);
+    logger.error("Bell schedule deletion error:", error);
     return NextResponse.json(
       { error: "Failed to delete bell schedule" },
       { status: 500 }
@@ -103,7 +104,7 @@ export async function PATCH(
 
     return NextResponse.json({ bellSchedule: updated });
   } catch (error) {
-    console.error("Bell schedule update error:", error);
+    logger.error("Bell schedule update error:", error);
     return NextResponse.json(
       { error: "Failed to update bell schedule" },
       { status: 500 }

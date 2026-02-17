@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
@@ -180,7 +181,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ tutors: transformedTutors });
   } catch (error) {
-    console.error("Tutors fetch error:", error);
+    logger.error("Tutors fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch tutors" }, { status: 500 });
   }
 }
@@ -281,7 +282,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Validation failed", details: error.issues }, { status: 400 });
     }
-    console.error("Tutor registration error:", error);
+    logger.error("Tutor registration error:", error);
     return NextResponse.json({ error: "Failed to register tutor" }, { status: 500 });
   }
 }

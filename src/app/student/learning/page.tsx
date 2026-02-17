@@ -1,8 +1,9 @@
+"use client";
+
 /**
  * STUDENT LEARNING MODULES PAGE
  * Browse and enroll in learning modules
  */
-"use client";
 
 import { useState } from "react";
 import { PortalHeader } from "@/components/shared/portal-sidebar";

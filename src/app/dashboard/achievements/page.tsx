@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -163,7 +165,7 @@ export default function AchievementsPage() {
         setLastVisitDate(settings.lastVisitDate || null);
       }
     } catch (error) {
-      console.error("Failed to load user data:", error);
+      logger.error("Failed to load user data:", error);
     }
   };
 

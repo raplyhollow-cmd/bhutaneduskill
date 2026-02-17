@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { requirePermission } from "@/lib/rbac";
@@ -92,7 +93,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ homework: homeworkList });
   } catch (error) {
-    console.error("Homework fetch error:", error);
+    logger.error("Homework fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch homework" }, { status: 500 });
   }
 }
@@ -166,7 +167,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Validation failed", details: error.issues }, { status: 400 });
     }
-    console.error("Homework creation error:", error);
+    logger.error("Homework creation error:", error);
     return NextResponse.json({ error: "Failed to create homework" }, { status: 500 });
   }
 }

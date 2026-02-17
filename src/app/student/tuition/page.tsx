@@ -1,8 +1,9 @@
+"use client";
+
 /**
  * STUDENT TUITION PAGE
  * Browse and book tutors and courses
  */
-"use client";
 
 import { useState } from "react";
 import { PortalHeader } from "@/components/shared/portal-sidebar";

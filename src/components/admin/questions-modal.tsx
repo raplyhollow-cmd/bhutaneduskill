@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -99,7 +101,7 @@ export function QuestionsModal({ open, onClose, assessmentType, onSuccess }: Que
       const data = await getAssessmentQuestions(assessmentType.id);
       setQuestions(data);
     } catch (error) {
-      console.error("Failed to fetch questions:", error);
+      logger.error("Failed to fetch questions:", error);
     } finally {
       setIsLoading(false);
     }
@@ -129,7 +131,7 @@ export function QuestionsModal({ open, onClose, assessmentType, onSuccess }: Que
       });
       onSuccess();
     } catch (error) {
-      console.error("Failed to add question:", error);
+      logger.error("Failed to add question:", error);
       alert(error instanceof Error ? error.message : "Failed to add question");
     } finally {
       setIsLoading(false);
@@ -155,7 +157,7 @@ export function QuestionsModal({ open, onClose, assessmentType, onSuccess }: Que
       setEditingIndex(null);
       onSuccess();
     } catch (error) {
-      console.error("Failed to update question:", error);
+      logger.error("Failed to update question:", error);
       alert(error instanceof Error ? error.message : "Failed to update question");
     } finally {
       setIsLoading(false);
@@ -174,7 +176,7 @@ export function QuestionsModal({ open, onClose, assessmentType, onSuccess }: Que
       await fetchQuestions();
       onSuccess();
     } catch (error) {
-      console.error("Failed to delete question:", error);
+      logger.error("Failed to delete question:", error);
       alert(error instanceof Error ? error.message : "Failed to delete question");
     } finally {
       setIsLoading(false);
@@ -204,7 +206,7 @@ export function QuestionsModal({ open, onClose, assessmentType, onSuccess }: Que
       }
       await fetchQuestions();
     } catch (error) {
-      console.error("Failed to reorder questions:", error);
+      logger.error("Failed to reorder questions:", error);
     } finally {
       setIsLoading(false);
     }
@@ -222,7 +224,7 @@ export function QuestionsModal({ open, onClose, assessmentType, onSuccess }: Que
       await fetchQuestions();
       onSuccess();
     } catch (error) {
-      console.error("Failed to toggle question:", error);
+      logger.error("Failed to toggle question:", error);
     } finally {
       setIsLoading(false);
     }

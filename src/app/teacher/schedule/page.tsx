@@ -1,8 +1,9 @@
+"use client";
+
 /**
  * TEACHER SCHEDULE PAGE
  * Weekly timetable view with class schedule, events, and calendar integration
  */
-"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";

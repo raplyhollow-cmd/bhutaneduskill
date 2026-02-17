@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 
@@ -124,7 +125,7 @@ export async function GET(request: NextRequest) {
       offset,
     });
   } catch (error) {
-    console.error("Failed to fetch announcements:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { error: "Failed to fetch announcements", announcements: [], total: 0 },
       { status: 500 }
@@ -223,7 +224,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, announcement }, { status: 201 });
   } catch (error) {
-    console.error("Failed to create announcement:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to create announcement" },
       { status: 500 }

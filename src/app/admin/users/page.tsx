@@ -1,3 +1,6 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * PLATFORM ADMIN - USERS MANAGEMENT
  *
@@ -5,7 +8,6 @@
  * View and manage all users across all schools.
  */
 
-"use client";
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -175,7 +177,7 @@ export default function AdminUsersPage() {
       };
       setStats(statsData);
     } catch (err) {
-      console.error("Failed to fetch users:", err);
+      logger.error("Failed to fetch users:", err);
       setError("Failed to load users. Please try again.");
     } finally {
       setIsLoading(false);
@@ -215,7 +217,7 @@ export default function AdminUsersPage() {
       // Refresh the users list
       await fetchUsers();
     } catch (err) {
-      console.error("Failed to toggle user status:", err);
+      logger.error("Failed to toggle user status:", err);
       setError("Failed to update user status. Please try again.");
     } finally {
       setIsToggling(null);
@@ -243,7 +245,7 @@ export default function AdminUsersPage() {
       // Refresh the users list
       await fetchUsers();
     } catch (err) {
-      console.error("Failed to delete user:", err);
+      logger.error("Failed to delete user:", err);
       setError("Failed to delete user. Please try again.");
     } finally {
       setIsDeleting(null);

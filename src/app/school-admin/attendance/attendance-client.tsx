@@ -1,10 +1,11 @@
+"use client";
+
 /**
  * ATTENDANCE CLIENT COMPONENT
  *
  * Client-side component for attendance management with server actions.
  */
 
-"use client";
 
 import { useState, useEffect, useTransition } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

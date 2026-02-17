@@ -1,8 +1,9 @@
+"use client";
+
 /**
  * MODULE CREATOR
  * Teacher interface for creating learning modules with content and lessons
  */
-"use client";
 
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

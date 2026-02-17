@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -79,7 +81,7 @@ export default function ResultsPage() {
         setSubjects([]);
       }
     } catch (error) {
-      console.error("Failed to save results:", error);
+      logger.error("Failed to save results:", error);
       alert("Failed to save results");
     }
   };

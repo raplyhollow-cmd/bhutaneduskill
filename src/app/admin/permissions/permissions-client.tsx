@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -87,7 +89,7 @@ export function PermissionsClient({
         }
       }
     } catch (error) {
-      console.error("Toggle permission error:", error);
+      logger.error("Toggle permission error:", error);
       alert("Failed to update permission");
     } finally {
       setIsUpdating(false);

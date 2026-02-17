@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * ENROLLMENT MANAGER COMPONENT
  *
@@ -5,7 +7,6 @@
  * Handles enrollment creation, status updates, and payment tracking.
  */
 
-"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

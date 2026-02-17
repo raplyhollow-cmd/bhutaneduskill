@@ -1,3 +1,6 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * SCHOOL CALENDAR PAGE (Public)
  *
@@ -5,7 +8,6 @@
  * Students, teachers, parents can all view this page
  */
 
-"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -88,7 +90,7 @@ export default function SchoolCalendarPage() {
         setEvents(data.events || []);
         setCanCreate(data.user?.canCreate || false);
       } catch (error) {
-        console.error("Error fetching events:", error);
+        logger.error("Error fetching events:", error);
       } finally {
         setLoading(false);
       }

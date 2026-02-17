@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * BILLING - SUBSCRIPTIONS API
  *
@@ -161,7 +162,7 @@ export async function GET(req: NextRequest) {
     });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Failed to fetch subscriptions";
-    console.error("Error fetching subscriptions:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { success: false, error: errorMessage },
       { status: 500 }
@@ -268,7 +269,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Failed to create subscription";
-    console.error("Error creating subscription:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { success: false, error: errorMessage },
       { status: 500 }
@@ -360,7 +361,7 @@ export async function PATCH(req: NextRequest) {
     });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Failed to update subscription";
-    console.error("Error updating subscription:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { success: false, error: errorMessage },
       { status: 500 }
@@ -400,7 +401,7 @@ export async function DELETE(req: NextRequest) {
     });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Failed to cancel subscription";
-    console.error("Error canceling subscription:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { success: false, error: errorMessage },
       { status: 500 }

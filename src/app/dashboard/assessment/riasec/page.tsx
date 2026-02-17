@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,7 +54,7 @@ export default function AssessmentPage() {
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error("Failed to save assessment:", error);
+      logger.error("Failed to save assessment:", error);
       return null;
     }
   };

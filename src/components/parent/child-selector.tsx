@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * CHILD SELECTOR COMPONENT
  *
@@ -22,7 +24,6 @@
  * ```
  */
 
-"use client";
 
 import * as React from "react";
 import {

@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { requirePermission } from "@/lib/rbac";
@@ -110,7 +111,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       patterns,
     });
   } catch (error) {
-    console.error("Attendance report error:", error);
+    logger.error("Attendance report error:", error);
     return NextResponse.json({ error: "Failed to generate report" }, { status: 500 });
   }
 }

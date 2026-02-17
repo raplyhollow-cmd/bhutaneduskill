@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * TUTOR ASSIGNMENT FORM COMPONENT
  *
@@ -5,7 +7,6 @@
  * Collects tutor qualifications, subjects, availability, and rates.
  */
 
-"use client";
 
 import { useState, useEffect } from "react";
 import { X, GraduationCap, DollarSign, Clock, Calendar, Save } from "lucide-react";

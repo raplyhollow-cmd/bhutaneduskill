@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * TEACHER PORTAL LAYOUT
  *
@@ -5,7 +7,6 @@
  * Redirects to /setup/teacher if not configured.
  */
 
-"use client";
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";

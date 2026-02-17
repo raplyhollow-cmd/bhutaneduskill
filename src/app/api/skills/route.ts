@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
@@ -33,7 +34,7 @@ export async function GET(req: NextRequest) {
       userProgress: userSkills,
     });
   } catch (error) {
-    console.error("Error fetching skills:", error);
+    logger.error("Error fetching skills:", error);
     return NextResponse.json(
       { skills: SKILL_CATEGORIES, userProgress: {} },
       { status: 200 }
@@ -81,7 +82,7 @@ export async function POST(req: NextRequest) {
       level: newLevel,
     });
   } catch (error) {
-    console.error("Error updating skills:", error);
+    logger.error("Error updating skills:", error);
     return NextResponse.json({ error: "Failed to update skills" }, { status: 500 });
   }
 }

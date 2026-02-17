@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
@@ -375,7 +377,7 @@ export function Example() {
         title="Add Homework"
         description="Create new assignment"
         icon={TrendingUp}
-        onClick={() => console.log("clicked")}
+        onClick={() => logger.debug("clicked")}
       />
     </>
   );

@@ -1,9 +1,10 @@
+"use client";
+
 /**
  * Announcement Form Component
  * Form for creating and editing announcements
  */
 
-"use client";
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";

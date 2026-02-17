@@ -1,8 +1,9 @@
+"use client";
+
 /**
  * TEACHER STUDENTS PAGE
  * View all students across teacher's classes with filters
  */
-"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";

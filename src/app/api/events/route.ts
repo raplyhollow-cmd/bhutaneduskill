@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   try {
     const authResult = await requireAuth(['student', 'teacher', 'parent', 'admin', 'school-admin']);
     if ('error' in authResult) {
-      return authResult;
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
     const { userId, user } = authResult;
 
@@ -67,13 +67,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       events,
       user: {
-        id: currentUser.id,
-        role: currentUser.role,
-        canCreate: currentUser.role === "school_admin" || currentUser.role === "admin" || currentUser.role === "teacher",
+        id: user.id,
+        role: user.role,
+        canCreate: user.role === "school_admin" || user.role === "admin" || user.role === "teacher",
       },
     });
   } catch (error) {
-    console.error("Error fetching events:", error);
+    logger.apiError(error, { route: "/api/events", method: "GET" });
     return NextResponse.json(
       { error: "Failed to fetch events" },
       { status: 500 }
@@ -83,22 +83,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-      columns: { id: true, type: true, role: true, schoolId: true, firstName: true, lastName: true },
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    const { userId, user } = authResult;
 
     // Only admins and teachers can create events
-    const canCreate = currentUser.role === "school_admin" || currentUser.role === "admin" || currentUser.role === "teacher";
+    const canCreate = user.role === "school_admin" || user.role === "admin" || user.role === "teacher";
     if (!canCreate) {
       return NextResponse.json(
         { error: "You don't have permission to create events" },
@@ -143,7 +135,7 @@ export async function POST(request: NextRequest) {
     const now = new Date();
     const [event] = await db.insert(schoolEvents).values({
       id: nanoid(),
-      schoolId: currentUser.schoolId || "",
+      schoolId: user.schoolId || "",
       title,
       description: description || "",
       eventType,
@@ -157,7 +149,7 @@ export async function POST(request: NextRequest) {
       status: "upcoming",
       reminders: [],
       attachments: attachments || [],
-      createdBy: currentUser.id,
+      createdBy: user.id,
       createdAt: now,
       updatedAt: now,
     }).returning();
@@ -167,7 +159,7 @@ export async function POST(request: NextRequest) {
       event: event[0],
     });
   } catch (error) {
-    console.error("Error creating event:", error);
+    logger.apiError(error, { route: "/api/events", method: "POST" });
     return NextResponse.json(
       { error: "Failed to create event" },
       { status: 500 }

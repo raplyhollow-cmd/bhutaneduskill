@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -82,7 +84,7 @@ export default function ProfilePage() {
         }
       }
     } catch (error) {
-      console.error("Failed to load profile:", error);
+      logger.error("Failed to load profile:", error);
     }
   };
 
@@ -110,16 +112,16 @@ export default function ProfilePage() {
         try {
           const errorData = await response.json();
           errorMsg = errorData.error || errorData.details || errorMsg;
-          console.error("Profile save error:", errorData);
+          logger.error("Profile save error:", errorData);
         } catch {
-          console.error("Profile save failed with status:", response.status);
+          logger.error("Profile save failed with status:", response.status);
         }
         setErrorMessage(errorMsg);
         setSaveStatus("error");
         setTimeout(() => setSaveStatus("idle"), 5000); // Keep error message visible longer
       }
     } catch (error) {
-      console.error("Failed to save profile:", error);
+      logger.error("Failed to save profile:", error);
       setErrorMessage("Network error. Please check your connection and try again.");
       setSaveStatus("error");
       setTimeout(() => setSaveStatus("idle"), 5000);

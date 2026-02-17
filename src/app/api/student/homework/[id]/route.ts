@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { requirePermission } from "@/lib/rbac";
@@ -58,7 +59,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       submission,
     });
   } catch (error) {
-    console.error("Homework fetch error:", error);
+    logger.error("Homework fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch homework" }, { status: 500 });
   }
 }
@@ -190,7 +191,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       return NextResponse.json({ submission: created, gradingResult }, { status: 201 });
     }
   } catch (error) {
-    console.error("Homework submission error:", error);
+    logger.error("Homework submission error:", error);
     return NextResponse.json({ error: "Failed to submit homework" }, { status: 500 });
   }
 }
@@ -242,7 +243,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({ submission: updated });
   } catch (error) {
-    console.error("Draft update error:", error);
+    logger.error("Draft update error:", error);
     return NextResponse.json({ error: "Failed to update draft" }, { status: 500 });
   }
 }

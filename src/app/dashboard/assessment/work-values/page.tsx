@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState } from "react";
 import { AssessmentContainer, LikertOption } from "@/components/assessment";
 import { ResultsCard, ScoreBar, SuggestionCard } from "@/components/assessment";
@@ -39,7 +41,7 @@ export default function WorkValuesPage() {
         body: JSON.stringify({ type: "work-values", answers: finalAnswers, results: assessmentResult }),
       });
     } catch (error) {
-      console.error("Failed to save assessment:", error);
+      logger.error("Failed to save assessment:", error);
     }
   };
 

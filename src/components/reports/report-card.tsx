@@ -1,3 +1,6 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * REPORT CARD COMPONENT WITH PDF GENERATION
  *
@@ -7,7 +10,6 @@
  * - Print and download functionality
  */
 
-"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -125,7 +127,7 @@ export function ReportCardGenerator() {
         setStudents(data.students || []);
       }
     } catch (error) {
-      console.error("Failed to fetch students:", error);
+      logger.error("Failed to fetch students:", error);
       setStudents([]);
     } finally {
       setIsLoadingStudents(false);
@@ -209,7 +211,7 @@ export function ReportCardGenerator() {
         setIsGenerating(false);
       }, 500);
     } catch (error) {
-      console.error("PDF generation error:", error);
+      logger.error("PDF generation error:", error);
       setIsGenerating(false);
     }
   };

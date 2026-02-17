@@ -1,8 +1,9 @@
+"use client";
+
 /**
  * MODULE VIEWER
  * Student interface for viewing learning modules and tracking progress
  */
-"use client";
 
 import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

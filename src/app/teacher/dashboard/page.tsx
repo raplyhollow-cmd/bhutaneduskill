@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * TEACHER DASHBOARD
  *
@@ -8,7 +10,6 @@
  * - Teaching suggestions
  * - Quick actions for class management
  */
-"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

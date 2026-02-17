@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,7 +55,7 @@ export default function JournalDetailPage() {
           setTags(data.entry.tags || []);
         }
       } catch (error) {
-        console.error("Failed to fetch entry:", error);
+        logger.error("Failed to fetch entry:", error);
       } finally {
         setLoading(false);
       }
@@ -93,7 +95,7 @@ export default function JournalDetailPage() {
         }
       }
     } catch (error) {
-      console.error("Failed to save entry:", error);
+      logger.error("Failed to save entry:", error);
       alert("Failed to save entry");
     }
   };
@@ -110,7 +112,7 @@ export default function JournalDetailPage() {
         router.push("/dashboard/journal");
       }
     } catch (error) {
-      console.error("Failed to delete entry:", error);
+      logger.error("Failed to delete entry:", error);
       alert("Failed to delete entry");
     }
   };

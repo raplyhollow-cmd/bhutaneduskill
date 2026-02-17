@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
   try {
     const authResult = await requireAuth(['parent']);
     if ('error' in authResult) {
-      return authResult;
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
     const { userId, user } = authResult;
 
@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     const child = await db.query.users.findFirst({
       where: and(
         eq(users.id, entityId),
-        eq(users.parentId, currentUser.id)
+        eq(users.parentId, user.id)
       ),
     });
 
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("Parent file upload error:", error);
+    logger.apiError(error, { route: "/api/parent/documents/upload", method: "POST" });
     return NextResponse.json(
       { error: "Failed to upload file" },
       { status: 500 }

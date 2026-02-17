@@ -1,3 +1,6 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * PLATFORM ADMIN - RUB PROGRAMS CONTENT MANAGEMENT
  *
@@ -5,7 +8,6 @@
  * CRUD operations for programs offered by RUB colleges.
  */
 
-"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -120,7 +122,7 @@ export default function AdminProgramsPage() {
       setPrograms(data.programs || []);
       setFilteredPrograms(data.programs || []);
     } catch (error) {
-      console.error("Failed to fetch programs:", error);
+      logger.error("Failed to fetch programs:", error);
     } finally {
       setLoading(false);
     }
@@ -133,7 +135,7 @@ export default function AdminProgramsPage() {
       const data = await response.json();
       setColleges(data.colleges || []);
     } catch (error) {
-      console.error("Failed to fetch colleges:", error);
+      logger.error("Failed to fetch colleges:", error);
     }
   };
 
@@ -163,7 +165,7 @@ export default function AdminProgramsPage() {
       resetForm();
       fetchPrograms();
     } catch (error) {
-      console.error("Failed to save program:", error);
+      logger.error("Failed to save program:", error);
       alert("Failed to save program. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -184,7 +186,7 @@ export default function AdminProgramsPage() {
       setShowDeleteDialog(false);
       setDeletingId(null);
     } catch (error) {
-      console.error("Failed to delete program:", error);
+      logger.error("Failed to delete program:", error);
       alert("Failed to delete program. Please try again.");
     }
   };

@@ -1,3 +1,6 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * PLATFORM ADMIN - PARTNER DETAIL PAGE
  *
@@ -8,7 +11,6 @@
  * - Portal access management
  */
 
-"use client";
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -212,7 +214,7 @@ export default function PartnerDetailPage() {
           setAnalytics(analyticsData.data);
         }
       } catch (err) {
-        console.error("Failed to fetch partner data:", err);
+        logger.error("Failed to fetch partner data:", err);
         setError("Failed to load partner details. Please try again.");
       } finally {
         setIsLoading(false);
@@ -314,7 +316,7 @@ export default function PartnerDetailPage() {
 
       router.push("/admin/partners");
     } catch (err) {
-      console.error("Failed to delete partner:", err);
+      logger.error("Failed to delete partner:", err);
       setError("Failed to delete partner. Please try again.");
     }
   };

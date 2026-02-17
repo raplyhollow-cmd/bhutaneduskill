@@ -1,3 +1,6 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * PLATFORM ADMIN - REPORTS
  *
@@ -5,7 +8,6 @@
  * Generate and download various reports for schools, users, and analytics.
  */
 
-"use client";
 
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -97,7 +99,7 @@ export default function AdminReportsPage() {
         setReportData(result.data);
       }
     } catch (error) {
-      console.error("Failed to fetch reports data:", error);
+      logger.error("Failed to fetch reports data:", error);
     } finally {
       setLoading(false);
     }
@@ -144,7 +146,7 @@ export default function AdminReportsPage() {
         alert(`Failed to generate report: ${error.error}`);
       }
     } catch (error) {
-      console.error("Failed to generate report:", error);
+      logger.error("Failed to generate report:", error);
       alert("Failed to generate report. Please try again.");
     } finally {
       setGenerating(null);

@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * Next.js Global Error Page
  *
@@ -7,7 +9,6 @@
  * Docs: https://nextjs.org/docs/app/building-your-application/routing/error-handling
  */
 
-"use client";
 
 import { ErrorDisplay } from "@/components/error/error-display";
 

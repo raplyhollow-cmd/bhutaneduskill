@@ -1,3 +1,6 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * AI MOOD TRACKER / WELLNESS COACH COMPONENT
  *
@@ -13,7 +16,6 @@
  * - Crisis resources for Bhutan
  */
 
-"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -136,7 +138,7 @@ function saveToStorage(history: MoodEntry[]) {
     const trimmed = history.slice(-30);
     localStorage.setItem(MOOD_STORAGE_KEY, JSON.stringify(trimmed));
   } catch (e) {
-    console.error("Failed to save mood history:", e);
+    logger.error("Failed to save mood history:", e);
   }
 }
 

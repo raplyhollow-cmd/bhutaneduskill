@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * RBAC ROLES API
  *
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
       data: rolesList,
     });
   } catch (error) {
-    console.error("Roles fetch error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { success: false, error: "Failed to fetch roles" },
       { status: 500 }
@@ -128,7 +129,7 @@ export async function POST(request: NextRequest) {
       data: newRole,
     }, { status: 201 });
   } catch (error) {
-    console.error("Role creation error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { success: false, error: "Failed to create role" },
       { status: 500 }
@@ -197,7 +198,7 @@ export async function PATCH(request: NextRequest) {
       data: updated,
     });
   } catch (error) {
-    console.error("Role update error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { success: false, error: "Failed to update role" },
       { status: 500 }
@@ -254,7 +255,7 @@ export async function DELETE(request: NextRequest) {
       message: "Role deleted successfully",
     });
   } catch (error) {
-    console.error("Role deletion error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { success: false, error: "Failed to delete role" },
       { status: 500 }

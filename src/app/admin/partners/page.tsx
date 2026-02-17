@@ -1,3 +1,6 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * PLATFORM ADMIN - PARTNERS MANAGEMENT
  *
@@ -5,7 +8,6 @@
  * Partnerships help students explore career opportunities.
  */
 
-"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -153,7 +155,7 @@ export default function AdminPartnersPage() {
       setPagination(data.pagination);
       setStats(data.statistics);
     } catch (err) {
-      console.error("Failed to fetch partners:", err);
+      logger.error("Failed to fetch partners:", err);
       setError("Failed to load partners. Please try again.");
     } finally {
       setIsLoading(false);
@@ -181,16 +183,16 @@ export default function AdminPartnersPage() {
     setError(null);
 
     try {
-      console.log("[PARTNERS] Creating partner with data:", formData);
+      logger.debug("[PARTNERS] Creating partner with data:", formData);
       const response = await fetch("/api/admin/partners", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
 
-      console.log("[PARTNERS] Response status:", response.status);
+      logger.debug("[PARTNERS] Response status:", response.status);
       const responseData = await response.json();
-      console.log("[PARTNERS] Response data:", responseData);
+      logger.debug("[PARTNERS] Response data:", responseData);
 
       if (!response.ok) {
         throw new Error(responseData.error || responseData.details || "Failed to create partner");
@@ -213,7 +215,7 @@ export default function AdminPartnersPage() {
       // Refresh the list
       await fetchPartners();
     } catch (err: any) {
-      console.error("[PARTNERS] Failed to create partner:", err);
+      logger.error("[PARTNERS] Failed to create partner:", err);
       setError(err.message || "Failed to create partner. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -247,7 +249,7 @@ export default function AdminPartnersPage() {
       // Refresh the list
       await fetchPartners();
     } catch (err: any) {
-      console.error("Failed to update partner:", err);
+      logger.error("Failed to update partner:", err);
       setError(err.message || "Failed to update partner. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -275,7 +277,7 @@ export default function AdminPartnersPage() {
       // Refresh the partners list
       await fetchPartners();
     } catch (err) {
-      console.error("Failed to delete partner:", err);
+      logger.error("Failed to delete partner:", err);
       setError("Failed to delete partner. Please try again.");
     } finally {
       setIsDeleting(null);

@@ -1,3 +1,6 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * COUNSELOR - COUNSELING RESOURCES
  *
@@ -9,7 +12,6 @@
  * - Study skills materials
  */
 
-"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -131,7 +133,7 @@ export default function CounselorResourcesPage() {
       setCategories(data.categories || []);
       setStats(data.stats || { totalResources: 0, totalDownloads: 0, featuredCount: 0, categoriesCount: 0 });
     } catch (err) {
-      console.error("Error fetching resources data:", err);
+      logger.error("Error fetching resources data:", err);
       setError("Failed to load resources. Please try again.");
     } finally {
       setLoading(false);
@@ -167,7 +169,7 @@ export default function CounselorResourcesPage() {
         setCategories(data.categories || []);
         setStats(data.stats || { totalResources: 0, totalDownloads: 0, featuredCount: 0, categoriesCount: 0 });
       } catch (err) {
-        console.error("Error fetching resources data:", err);
+        logger.error("Error fetching resources data:", err);
         setError("Failed to load resources. Please try again.");
       } finally {
         setLoading(false);

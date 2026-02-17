@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * Student Dashboard AI Insights Wrapper
  *
@@ -6,7 +8,6 @@
  * and passes it to the unified AI insights API.
  */
 
-"use client";
 
 import { AIInsightsSection } from "@/components/ai/ai-insights-section";
 

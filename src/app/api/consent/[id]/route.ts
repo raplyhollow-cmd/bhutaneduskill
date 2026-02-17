@@ -14,7 +14,7 @@ export async function PATCH(
     const { id } = await params;
     const authResult = await requireAuth(['parent', 'admin', 'school-admin']);
     if ('error' in authResult) {
-      return authResult;
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
     const { userId, user } = authResult;
 
@@ -34,7 +34,7 @@ export async function PATCH(
     }
 
     // Only the parent can approve/deny their consent
-    if (record.parentId !== currentUser.id) {
+    if (record.parentId !== user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -56,7 +56,7 @@ export async function PATCH(
 
     return NextResponse.json({ record: updatedRecord });
   } catch (error) {
-    console.error("Consent update error:", error);
+    logger.apiError(error, { route: "/api/consent/[id]", method: "PUT" });
     return NextResponse.json({ error: "Failed to update consent" }, { status: 500 });
   }
 }
@@ -68,10 +68,11 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['parent', 'admin', 'counselor']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId, user } = authResult;
 
     const record = await db.query.consentRecords.findFirst({
       where: eq(consentRecords.id, id),
@@ -83,7 +84,7 @@ export async function GET(
 
     return NextResponse.json({ record });
   } catch (error) {
-    console.error("Consent fetch error:", error);
+    logger.apiError(error, { route: "/api/consent/[id]", method: "GET" });
     return NextResponse.json({ error: "Failed to fetch consent" }, { status: 500 });
   }
 }

@@ -1,9 +1,10 @@
+"use client";
+
 /**
  * AI Insight Card Component
  * Displays AI-generated insights with dismissible option
  */
 
-"use client";
 
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";

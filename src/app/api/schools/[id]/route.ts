@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { schools } from "@/lib/db/schema";
@@ -33,7 +34,7 @@ export async function GET(
 
     return NextResponse.json({ school });
   } catch (error) {
-    console.error("School fetch error:", error);
+    logger.error("School fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch school" }, { status: 500 });
   }
 }
@@ -66,7 +67,7 @@ export async function PUT(
 
     return NextResponse.json({ school: updatedSchool });
   } catch (error) {
-    console.error("School update error:", error);
+    logger.error("School update error:", error);
     return NextResponse.json({ error: "Failed to update school" }, { status: 500 });
   }
 }
@@ -93,7 +94,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("School delete error:", error);
+    logger.error("School delete error:", error);
     return NextResponse.json({ error: "Failed to delete school" }, { status: 500 });
   }
 }

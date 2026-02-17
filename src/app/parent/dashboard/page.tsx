@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * PARENT DASHBOARD PAGE (WITH AI INSIGHTS)
  *
@@ -8,7 +10,6 @@
  * - Communication with teachers
  */
 
-"use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";

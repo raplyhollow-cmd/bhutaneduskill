@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * AI PLATFORM ASSISTANT - Role-Aware AI Assistant for All Portal Users
  *
@@ -17,7 +19,6 @@
  * - Technical privilege control (non-admins denied technical answers)
  */
 
-"use client";
 
 import { useState, useRef, useEffect } from "react";
 import { ErrorBoundary } from "@/components/error/error-boundary";

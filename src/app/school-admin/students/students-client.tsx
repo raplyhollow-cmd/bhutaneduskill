@@ -1,10 +1,11 @@
+"use client";
+
 /**
  * STUDENTS CLIENT COMPONENT
  *
  * Client-side component for students management with server actions.
  */
 
-"use client";
 
 import { useState, useEffect, useTransition } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

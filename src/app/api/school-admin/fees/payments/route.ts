@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ payments });
   } catch (error) {
-    console.error("Payments fetch error:", error);
+    logger.error("Payments fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch payments" }, { status: 500 });
   }
 }
@@ -114,7 +115,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Validation failed", details: error.issues }, { status: 400 });
     }
-    console.error("Payment creation error:", error);
+    logger.error("Payment creation error:", error);
     return NextResponse.json({ error: "Failed to record payment" }, { status: 500 });
   }
 }

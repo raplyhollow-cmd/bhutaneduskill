@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * AI CAREER PATH PREDICTOR COMPONENT
  *
@@ -5,7 +7,6 @@
  * Shows match probabilities, backup options, skills to develop, and next steps
  */
 
-"use client";
 
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";

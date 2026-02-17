@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { subjects, users } from "@/lib/db/schema";
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({ subject });
   } catch (error) {
-    console.error("Subject fetch error:", error);
+    logger.error("Subject fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch subject" }, { status: 500 });
   }
 }
@@ -62,7 +63,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({ subject: updated });
   } catch (error) {
-    console.error("Subject update error:", error);
+    logger.error("Subject update error:", error);
     return NextResponse.json({ error: "Failed to update subject" }, { status: 500 });
   }
 }
@@ -83,7 +84,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Subject delete error:", error);
+    logger.error("Subject delete error:", error);
     return NextResponse.json({ error: "Failed to delete subject" }, { status: 500 });
   }
 }

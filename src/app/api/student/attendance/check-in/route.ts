@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * STUDENT SELF CHECK-IN API
  *
@@ -215,7 +216,7 @@ export async function POST(request: NextRequest) {
     } satisfies ApiSuccess<CheckInResponse>, { status: 201 });
 
   } catch (error) {
-    console.error("Check-in error:", error);
+    logger.error("Check-in error:", error);
     return NextResponse.json(
       { error: "Failed to check in", status: 500, details: error instanceof Error ? error.message : String(error) } satisfies ApiErrorResponse,
       { status: 500 }
@@ -272,7 +273,7 @@ export async function GET(request: NextRequest) {
     } satisfies ApiSuccess<TodayStatusResponse>);
 
   } catch (error) {
-    console.error("Check-in status error:", error);
+    logger.error("Check-in status error:", error);
     return NextResponse.json(
       { error: "Failed to get status", status: 500 } satisfies ApiErrorResponse,
       { status: 500 }

@@ -1,3 +1,6 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * PLATFORM ADMIN - COLLEGES CONTENT MANAGEMENT
  *
@@ -5,7 +8,6 @@
  * CRUD operations for Royal University of Bhutan colleges.
  */
 
-"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -110,7 +112,7 @@ export default function AdminCollegesPage() {
       setColleges(data.colleges || []);
       setFilteredColleges(data.colleges || []);
     } catch (error) {
-      console.error("Failed to fetch colleges:", error);
+      logger.error("Failed to fetch colleges:", error);
     } finally {
       setLoading(false);
     }
@@ -142,7 +144,7 @@ export default function AdminCollegesPage() {
       resetForm();
       fetchColleges();
     } catch (error) {
-      console.error("Failed to save college:", error);
+      logger.error("Failed to save college:", error);
       alert("Failed to save college. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -163,7 +165,7 @@ export default function AdminCollegesPage() {
       setShowDeleteDialog(false);
       setDeletingId(null);
     } catch (error) {
-      console.error("Failed to delete college:", error);
+      logger.error("Failed to delete college:", error);
       alert("Failed to delete college. Please try again.");
     }
   };

@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({ tutor: { ...tutor, reviews } });
   } catch (error) {
-    console.error("Tutor fetch error:", error);
+    logger.error("Tutor fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch tutor" }, { status: 500 });
   }
 }
@@ -107,7 +108,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({ tutor: updated });
   } catch (error) {
-    console.error("Tutor update error:", error);
+    logger.error("Tutor update error:", error);
     return NextResponse.json({ error: "Failed to update tutor" }, { status: 500 });
   }
 }

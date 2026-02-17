@@ -1,3 +1,5 @@
+"use server";
+
 /**
  * SERVER ACTIONS - PARTNERS MANAGEMENT
  *
@@ -5,7 +7,6 @@
  * These are used by the Platform Admin partners page.
  */
 
-"use server";
 
 import { db } from "@/lib/db";
 import { partners, users } from "@/lib/db/schema";

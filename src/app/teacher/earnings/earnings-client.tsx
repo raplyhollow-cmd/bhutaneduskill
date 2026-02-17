@@ -1,10 +1,11 @@
+"use client";
+
 /**
  * TEACHER EARNINGS CLIENT COMPONENT
  *
  * Client-side component for earnings management with server actions.
  */
 
-"use client";
 
 import { useState, useEffect, useTransition } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

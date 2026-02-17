@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * ANNOUNCEMENTS API ROUTE
  *
@@ -63,7 +64,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ announcements: fetchedAnnouncements });
   } catch (error) {
-    console.error("Announcements fetch error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json({ error: "Failed to fetch announcements" }, { status: 500 });
   }
 }
@@ -114,7 +115,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, announcement: newAnnouncement });
   } catch (error) {
-    console.error("Announcement creation error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json({ error: "Failed to create announcement" }, { status: 500 });
   }
 }
@@ -162,7 +163,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Announcement delete error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json({ error: "Failed to delete announcement" }, { status: 500 });
   }
 }

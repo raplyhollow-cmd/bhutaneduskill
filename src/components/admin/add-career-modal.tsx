@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,7 +84,7 @@ export function AddCareerModal({ open, onClose, onSuccess }: AddCareerModalProps
       setBhutanDemand("medium");
       setBhutanSpecific(false);
     } catch (error) {
-      console.error("[ADD CAREER] Error:", error);
+      logger.error("[ADD CAREER] Error:", error);
       alert(error instanceof Error ? error.message : "Failed to create career. Please try again.");
     } finally {
       setIsLoading(false);

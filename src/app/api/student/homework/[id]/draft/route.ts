@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { requirePermission } from "@/lib/rbac";
@@ -74,7 +75,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       return NextResponse.json({ submission: created }, { status: 201 });
     }
   } catch (error) {
-    console.error("Draft save error:", error);
+    logger.error("Draft save error:", error);
     return NextResponse.json({ error: "Failed to save draft" }, { status: 500 });
   }
 }

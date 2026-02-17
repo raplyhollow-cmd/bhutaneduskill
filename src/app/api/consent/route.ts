@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   try {
     const authResult = await requireAuth(['parent', 'admin', 'school-admin']);
     if ('error' in authResult) {
-      return authResult;
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
     const { userId, user } = authResult;
 
@@ -35,8 +35,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Parents can only see their own consent records
-    if (currentUser.type === "parent") {
-      conditions.push(eq(consentRecords.parentId, currentUser.id));
+    if (user.type === "parent") {
+      conditions.push(eq(consentRecords.parentId, user.id));
     }
 
     let records: any[];
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
         where: conditions.length === 1 ? conditions[0] : and(...conditions),
         orderBy: desc(consentRecords.createdAt),
       });
-    } else if (currentUser.type === "admin" || currentUser.type === "counselor") {
+    } else if (user.type === "admin" || user.type === "counselor") {
       records = await db.query.consentRecords.findMany({
         orderBy: desc(consentRecords.createdAt),
       });
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
   try {
     const authResult = await requireAuth(['admin', 'counselor']);
     if ('error' in authResult) {
-      return authResult;
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
     const { userId, user } = authResult;
 

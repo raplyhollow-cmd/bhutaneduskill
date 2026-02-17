@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * SCHOOL ADMIN - CREATE NEW TEACHER
  *
@@ -12,7 +14,6 @@
  * - Success/error states
  */
 
-"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";

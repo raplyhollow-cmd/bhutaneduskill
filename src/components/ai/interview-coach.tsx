@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * AI INTERVIEW COACH COMPONENT
  *
@@ -15,7 +17,6 @@
  * - Mobile responsive design
  */
 
-"use client";
 
 import { useState, useRef, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";

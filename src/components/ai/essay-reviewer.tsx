@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * AI ESSAY REVIEWER COMPONENT
  *
@@ -6,7 +8,6 @@
  * style, and suggestions for improvement.
  */
 
-"use client";
 
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";

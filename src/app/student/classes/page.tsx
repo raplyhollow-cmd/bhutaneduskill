@@ -1,8 +1,9 @@
+"use client";
+
 /**
  * STUDENT CLASSES PAGE
  * View all classes student is enrolled in with quick access to classmates, homework, etc.
  */
-"use client";
 
 import { useState, useEffect } from "react";
 import { PortalHeader } from "@/components/shared/portal-sidebar";

@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * RBAC ROLE USERS API
  *
@@ -74,7 +75,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("Role users fetch error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { success: false, error: "Failed to fetch role users" },
       { status: 500 }
@@ -175,7 +176,7 @@ export async function POST(
       message: "Role assigned to user successfully",
     }, { status: 201 });
   } catch (error) {
-    console.error("Role assignment error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { success: false, error: "Failed to assign role to user" },
       { status: 500 }
@@ -250,7 +251,7 @@ export async function DELETE(
       message: "Role removed from user successfully",
     });
   } catch (error) {
-    console.error("Role removal error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { success: false, error: "Failed to remove role from user" },
       { status: 500 }

@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
   try {
     const authResult = await requireAuth(['teacher']);
     if ('error' in authResult) {
-      return authResult;
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
     const { userId, user } = authResult;
 
@@ -184,7 +184,7 @@ export async function GET(request: NextRequest) {
       count: records.length,
     });
   } catch (error) {
-    console.error("Attendance history fetch error:", error);
+    logger.error("Attendance history fetch error:", error);
     return NextResponse.json(
       { error: "Failed to fetch attendance history" },
       { status: 500 }

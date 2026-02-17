@@ -1,8 +1,9 @@
+"use client";
+
 /**
  * TEACHER HOMEWORK PAGE
  * Create and manage homework assignments
  */
-"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { PortalHeader } from "@/components/shared/portal-sidebar";

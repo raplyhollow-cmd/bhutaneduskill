@@ -1,8 +1,9 @@
+"use client";
+
 /**
  * LIVE SESSION COMPONENT
  * Real-time video session interface for tuition
  */
-"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

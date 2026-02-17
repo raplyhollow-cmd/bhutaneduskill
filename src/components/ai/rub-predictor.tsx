@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * AI RUB ADMISSION PREDICTOR COMPONENT
  *
@@ -6,7 +8,6 @@
  * backup options, and preparation recommendations
  */
 
-"use client";
 
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";

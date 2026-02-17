@@ -1,3 +1,6 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * PLATFORM ADMIN - SCHOLARSHIPS CONTENT MANAGEMENT
  *
@@ -5,7 +8,6 @@
  * CRUD operations for scholarships available to students.
  */
 
-"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -111,7 +113,7 @@ export default function AdminScholarshipsPage() {
       setScholarships(data.scholarships || []);
       setFilteredScholarships(data.scholarships || []);
     } catch (error) {
-      console.error("Failed to fetch scholarships:", error);
+      logger.error("Failed to fetch scholarships:", error);
     } finally {
       setLoading(false);
     }
@@ -143,7 +145,7 @@ export default function AdminScholarshipsPage() {
       resetForm();
       fetchScholarships();
     } catch (error) {
-      console.error("Failed to save scholarship:", error);
+      logger.error("Failed to save scholarship:", error);
       alert("Failed to save scholarship. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -164,7 +166,7 @@ export default function AdminScholarshipsPage() {
       setShowDeleteDialog(false);
       setDeletingId(null);
     } catch (error) {
-      console.error("Failed to delete scholarship:", error);
+      logger.error("Failed to delete scholarship:", error);
       alert("Failed to delete scholarship. Please try again.");
     }
   };

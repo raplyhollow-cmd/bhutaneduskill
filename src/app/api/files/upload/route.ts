@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { writeFile, mkdir, unlink } from "fs/promises";
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
     const magicNumberValidation = validateFileMagicNumber(buffer, fileExtension);
     if (!magicNumberValidation.isValid) {
       // Log security event
-      console.warn('[Security] File upload magic number mismatch:', {
+      logger.warn('[Security] File upload magic number mismatch:', {
         userId,
         fileName: file.name,
         declaredType: file.type,
@@ -135,7 +136,7 @@ export async function POST(request: NextRequest) {
 
     // TODO: Integrate virus scanning
     // For now, log for manual review
-    console.log('[File Upload] File saved, awaiting virus scan:', {
+    logger.info('[File Upload] File saved, awaiting virus scan:', {
       fileId: `file_${Date.now()}`,
       userId: currentUser.id,
       fileName: safeFileName,
@@ -166,7 +167,7 @@ export async function POST(request: NextRequest) {
       { status: 201, headers }
     );
   } catch (error) {
-    console.error("File upload error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
 
     // Clean up partial uploads if error occurred
     // (implementation would depend on error stage)

@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { schools } from "@/lib/db/schema";
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ school: schoolRecords[0] });
   } catch (error) {
-    console.error("School code verification error:", error);
+    logger.error("School code verification error:", error);
     return NextResponse.json({ error: "Verification failed" }, { status: 500 });
   }
 }

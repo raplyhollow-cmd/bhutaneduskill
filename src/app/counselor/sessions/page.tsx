@@ -1,3 +1,6 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * COUNSELOR - COUNSELING SESSIONS
  *
@@ -9,7 +12,6 @@
  * - Session types (individual, group, family)
  */
 
-"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -226,7 +228,7 @@ export default function CounselorSessionsPage() {
       setSessions(data.sessions || []);
       setStats(data.stats || null);
     } catch (err) {
-      console.error("Error fetching sessions:", err);
+      logger.error("Error fetching sessions:", err);
       setError("Failed to load sessions. Please try again.");
       setSessions([]);
       setStats({

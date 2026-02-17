@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState } from "react";
 import { AssessmentContainer, OptionButton } from "@/components/assessment";
 import { ResultsCard, ScoreBar, TraitCard } from "@/components/assessment";
@@ -51,7 +53,7 @@ export default function LearningStylesPage() {
         body: JSON.stringify({ type: "learning-styles", answers: finalAnswers, results: assessmentResult }),
       });
     } catch (error) {
-      console.error("Failed to save assessment:", error);
+      logger.error("Failed to save assessment:", error);
     }
   };
 

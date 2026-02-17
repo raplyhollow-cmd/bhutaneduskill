@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -104,7 +106,7 @@ export function EditCareerModal({ open, onClose, onSuccess, career }: EditCareer
       onSuccess();
       onClose();
     } catch (error) {
-      console.error("[EDIT CAREER] Error:", error);
+      logger.error("[EDIT CAREER] Error:", error);
       alert(error instanceof Error ? error.message : "Failed to update career. Please try again.");
     } finally {
       setIsLoading(false);

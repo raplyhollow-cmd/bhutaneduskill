@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 import { useState } from "react";
@@ -12,7 +14,7 @@ export function ContentActions() {
     try {
       await fetch("/api/admin/content/sync", { method: "POST" });
     } catch (error) {
-      console.error("Sync failed:", error);
+      logger.error("Sync failed:", error);
     } finally {
       setIsSyncing(false);
     }

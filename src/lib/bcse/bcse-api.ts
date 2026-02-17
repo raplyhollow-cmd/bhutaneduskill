@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * BCSE (Bhutan Council for School Examinations) API Integration
  * Handles communication with BCSE systems for exam registrations and results
@@ -135,7 +136,7 @@ export class BCSEApiClient {
 
       return data;
     } catch (error) {
-      console.error("BCSE API request failed:", error);
+      logger.error("BCSE API request failed:", error);
       throw error;
     }
   }

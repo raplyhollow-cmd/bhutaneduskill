@@ -1,3 +1,6 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * COUNSELOR - STUDENTS MANAGEMENT
  *
@@ -9,7 +12,6 @@
  * - Track career planning progress
  */
 
-"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -110,7 +112,7 @@ export default function CounselorStudentsPage() {
       setStudents(data.students || []);
       setStats(data.stats || null);
     } catch (err) {
-      console.error("Error fetching students:", err);
+      logger.error("Error fetching students:", err);
       setError("Failed to load students. Please try again.");
       setStudents([]);
       setStats({

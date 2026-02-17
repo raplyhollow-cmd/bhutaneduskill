@@ -1,3 +1,6 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * ATTENDANCE TRACKER
  * Teacher interface for taking attendance
@@ -9,7 +12,6 @@
  * - Save attendance to existing API
  * - Support quick marking with keyboard shortcuts (P=Present, A=Absent, L=Late, E=Excused)
  */
-"use client";
 
 import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -244,7 +246,7 @@ export function AttendanceTracker({
       setSaveStatus("success");
       setTimeout(() => setSaveStatus("idle"), 3000);
     } catch (error) {
-      console.error("Save error:", error);
+      logger.error("Save error:", error);
       setSaveStatus("error");
       setTimeout(() => setSaveStatus("idle"), 3000);
     } finally {

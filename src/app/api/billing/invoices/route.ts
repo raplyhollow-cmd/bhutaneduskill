@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * BILLING - INVOICES API
  *
@@ -145,7 +146,7 @@ export async function GET(req: NextRequest) {
     });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Failed to fetch invoices";
-    console.error("Error fetching invoices:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { success: false, error: errorMessage },
       { status: 500 }
@@ -254,7 +255,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Failed to create invoice";
-    console.error("Error creating invoice:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { success: false, error: errorMessage },
       { status: 500 }
@@ -347,7 +348,7 @@ export async function PATCH(req: NextRequest) {
     );
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Failed to update invoice";
-    console.error("Error updating invoice:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { success: false, error: errorMessage },
       { status: 500 }
@@ -386,7 +387,7 @@ export async function DELETE(req: NextRequest) {
     });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Failed to cancel invoice";
-    console.error("Error cancelling invoice:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { success: false, error: errorMessage },
       { status: 500 }

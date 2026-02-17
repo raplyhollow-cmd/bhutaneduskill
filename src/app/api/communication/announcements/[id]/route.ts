@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 
@@ -90,7 +91,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json({ announcement });
   } catch (error) {
-    console.error("Failed to fetch announcement:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { error: "Failed to fetch announcement" },
       { status: 500 }
@@ -185,7 +186,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json({ success: true, announcement: updated });
   } catch (error) {
-    console.error("Failed to update announcement:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to update announcement" },
       { status: 500 }
@@ -253,7 +254,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Failed to delete announcement:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { error: "Failed to delete announcement" },
       { status: 500 }

@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
@@ -110,7 +111,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ classes: validClasses });
   } catch (error) {
-    console.error("Student classes fetch error:", error);
+    logger.error("Student classes fetch error:", error);
     return NextResponse.json(
       { error: "Failed to fetch classes", classes: [] },
       { status: 500 }

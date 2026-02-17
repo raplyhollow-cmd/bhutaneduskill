@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { requirePermission } from "@/lib/rbac";
@@ -140,7 +141,7 @@ export async function POST(req: NextRequest) {
       careerMatches: matches,
     });
   } catch (error) {
-    console.error("Error saving assessment:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { error: "Failed to save assessment" },
       { status: 500 }
@@ -175,7 +176,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ assessments: userAssessments });
   } catch (error) {
-    console.error("Error fetching assessments:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { error: "Failed to fetch assessments" },
       { status: 500 }

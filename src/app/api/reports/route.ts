@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * COMPREHENSIVE REPORT SYSTEM API
  *
@@ -316,7 +317,7 @@ export async function GET(request: NextRequest) {
     if (error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    console.error("Reports GET error:", error);
+    logger.error("Reports GET error:", error);
     return NextResponse.json({ error: "Failed to fetch reports" }, { status: 500 });
   }
 }
@@ -428,7 +429,7 @@ export async function POST(request: NextRequest) {
     if (error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    console.error("Report generation error:", error);
+    logger.error("Report generation error:", error);
     return NextResponse.json({ error: "Failed to generate report", details: error.message }, { status: 500 });
   }
 }

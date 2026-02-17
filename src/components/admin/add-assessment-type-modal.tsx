@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -58,7 +60,7 @@ export function AddAssessmentTypeModal({ open, onClose, onSuccess }: AddAssessme
       setTotalQuestions("10");
       setPassingScore("70");
     } catch (error) {
-      console.error("[ADD ASSESSMENT TYPE] Error:", error);
+      logger.error("[ADD ASSESSMENT TYPE] Error:", error);
       alert(error instanceof Error ? error.message : "Failed to create assessment type. Please try again.");
     } finally {
       setIsLoading(false);

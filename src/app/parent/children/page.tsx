@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * PARENT CHILDREN PAGE
  *
@@ -8,7 +10,6 @@
  * - Add child verification
  */
 
-"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

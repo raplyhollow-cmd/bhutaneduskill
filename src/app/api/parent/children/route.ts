@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   try {
     const authResult = await requireAuth(['parent']);
     if ('error' in authResult) {
-      return authResult;
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
     const { userId, user } = authResult;
 
@@ -147,7 +147,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ children: enrichedChildren });
   } catch (error) {
-    console.error("Parent children fetch error:", error);
+    logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { error: "Failed to fetch children", children: [] },
       { status: 500 }

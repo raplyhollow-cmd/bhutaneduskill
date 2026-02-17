@@ -50,7 +50,7 @@ export interface TrackInteractionResult {
  * });
  *
  * if (result.success) {
- *   console.log("Tracked interaction:", result.interactionId);
+ *   logger.debug("Tracked interaction:", result.interactionId);
  * }
  * ```
  */

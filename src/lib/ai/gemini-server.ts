@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 /**
  * GEMINI AI SERVER-SIDE SERVICE
  *
@@ -18,7 +19,7 @@ import { CAREER_COACH_SYSTEM } from "./prompts";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 if (!GEMINI_API_KEY && process.env.NODE_ENV === "production") {
-  console.warn("WARNING: GEMINI_API_KEY not set in production. AI features will use fallback responses.");
+  logger.warn("WARNING: GEMINI_API_KEY not set in production. AI features will use fallback responses.");
 }
 
 const generationConfig = {
@@ -125,7 +126,7 @@ export async function chatWithGemini(
 
     return text;
   } catch (error) {
-    console.error("Gemini API error:", error);
+    logger.error("Gemini API error:", error);
     throw error;
   }
 }
@@ -171,7 +172,7 @@ export async function chatWithGeminiWithHistory(
 
     return text;
   } catch (error) {
-    console.error("Gemini API error:", error);
+    logger.error("Gemini API error:", error);
     throw error;
   }
 }
@@ -328,7 +329,7 @@ Please provide a helpful, encouraging response. If appropriate, include 2-3 foll
       fallback: false,
     };
   } catch (error) {
-    console.error("AI Career Coach error:", error);
+    logger.error("AI Career Coach error:", error);
 
     // Return fallback response on error
     return {

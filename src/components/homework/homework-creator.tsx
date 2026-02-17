@@ -1,8 +1,9 @@
+"use client";
+
 /**
  * HOMEWORK CREATOR COMPONENT
  * Teacher interface for creating homework with multiple question types
  */
-"use client";
 
 import { useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

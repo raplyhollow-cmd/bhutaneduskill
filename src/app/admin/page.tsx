@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -104,7 +106,7 @@ export default function AdminDashboardPage() {
       }
       setAlerts(newAlerts);
     } catch (error) {
-      console.error("Failed to load admin dashboard:", error);
+      logger.error("Failed to load admin dashboard:", error);
       // Set fallback values to prevent UI errors
       setStats({
         totalSchools: 0,
@@ -138,21 +140,21 @@ export default function AdminDashboardPage() {
       });
 
       // Log response status for debugging
-      console.log("[Admin Dashboard] AI Insights API status:", response.status);
+      logger.debug("[Admin Dashboard] AI Insights API status:", response.status);
 
       if (response.ok) {
         const data = await response.json();
-        console.log("[Admin Dashboard] AI Insights received:", data.insights?.length || 0, "insights");
+        logger.debug("[Admin Dashboard] AI Insights received:", data.insights?.length || 0, "insights");
         setAiInsights(data.insights || []);
       } else {
         // Log error details
         const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
-        console.error("[Admin Dashboard] AI Insights API error:", errorData);
+        logger.error("[Admin Dashboard] AI Insights API error:", errorData);
         // Set empty insights to show fallback
         setAiInsights([]);
       }
     } catch (error) {
-      console.error("[Admin Dashboard] Failed to load AI insights:", error);
+      logger.error("[Admin Dashboard] Failed to load AI insights:", error);
       setAiInsights([]);
     } finally {
       setIsLoadingInsights(false);

@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { requirePermission } from "@/lib/rbac";
@@ -48,7 +49,7 @@ export async function GET(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({ submission });
   } catch (error) {
-    console.error("Submission fetch error:", error);
+    logger.error("Submission fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch submission" }, { status: 500 });
   }
 }
@@ -142,7 +143,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({ submission: updated });
   } catch (error) {
-    console.error("Grading error:", error);
+    logger.error("Grading error:", error);
     return NextResponse.json({ error: "Failed to grade submission" }, { status: 500 });
   }
 }

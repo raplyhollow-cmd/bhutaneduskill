@@ -1,8 +1,9 @@
+"use client";
+
 /**
  * TUTOR PROFILE CARD
  * Display tutor information for the tuition marketplace
  */
-"use client";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

@@ -1,3 +1,6 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * PLATFORM ADMIN - NOTIFICATIONS CENTER
  *
@@ -5,7 +8,6 @@
  * Target specific schools or user types.
  */
 
-"use client";
 
 import { useState, useEffect, FormEvent } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -138,7 +140,7 @@ export default function AdminNotificationsPage() {
       setNotifications(result.data || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
-      console.error("Error fetching notifications:", err);
+      logger.error("Error fetching notifications:", err);
     } finally {
       setLoading(false);
     }

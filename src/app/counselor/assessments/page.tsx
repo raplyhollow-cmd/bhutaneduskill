@@ -1,3 +1,6 @@
+"use client";
+
+import { logger } from "@/lib/logger";
 /**
  * COUNSELOR - ASSESSMENT TOOLS
  *
@@ -9,7 +12,6 @@
  * - Assessment history
  */
 
-"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -136,7 +138,7 @@ export default function CounselorAssessmentsPage() {
           completionRate: data.completionRate || 0,
         });
       } catch (error) {
-        console.error("Error loading assessment results:", error);
+        logger.error("Error loading assessment results:", error);
         setResults([]);
       } finally {
         setLoading(false);

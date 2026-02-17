@@ -1,3 +1,6 @@
+"use server";
+
+import { logger } from "@/lib/logger";
 /**
  * ADMIN BILLING - SERVER ACTIONS
  *
@@ -11,7 +14,6 @@
  * FEAT-018
  */
 
-"use server";
 
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
@@ -299,7 +301,7 @@ export async function fetchBillingData(): Promise<ActionResult<{
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Failed to fetch billing data";
-    console.error("Error fetching billing data:", error);
+    logger.error("Error fetching billing data:", error);
     return { success: false, error: errorMessage };
   }
 }
@@ -406,7 +408,7 @@ export async function createInvoice(data: {
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Failed to create invoice";
-    console.error("Error creating invoice:", error);
+    logger.error("Error creating invoice:", error);
     return { success: false, error: errorMessage };
   }
 }
@@ -506,7 +508,7 @@ export async function updateInvoiceStatus(data: {
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Failed to update invoice";
-    console.error("Error updating invoice:", error);
+    logger.error("Error updating invoice:", error);
     return { success: false, error: errorMessage };
   }
 }
@@ -582,7 +584,7 @@ export async function processRefund(data: {
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Failed to process refund";
-    console.error("Error processing refund:", error);
+    logger.error("Error processing refund:", error);
     return { success: false, error: errorMessage };
   }
 }
@@ -672,7 +674,7 @@ export async function updateSubscription(data: {
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Failed to update subscription";
-    console.error("Error updating subscription:", error);
+    logger.error("Error updating subscription:", error);
     return { success: false, error: errorMessage };
   }
 }

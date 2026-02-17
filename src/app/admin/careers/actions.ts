@@ -1,3 +1,5 @@
+"use server";
+
 /**
  * SERVER ACTIONS - CAREERS MANAGEMENT
  *
@@ -5,7 +7,6 @@
  * These are used by the Platform Admin careers page.
  */
 
-"use server";
 
 import { db } from "@/lib/db";
 import { careers } from "@/lib/db/schema";

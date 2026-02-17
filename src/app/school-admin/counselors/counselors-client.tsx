@@ -1,10 +1,11 @@
+"use client";
+
 /**
  * COUNSELORS MANAGEMENT - CLIENT COMPONENT
  *
  * Client-side component with interactivity for counselor management.
  */
 
-"use client";
 
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";

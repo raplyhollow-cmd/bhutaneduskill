@@ -1,8 +1,9 @@
+"use client";
+
 /**
  * TEACHER HOMEWORK CREATE PAGE
  * Page for teachers to create new homework assignments
  */
-"use client";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
