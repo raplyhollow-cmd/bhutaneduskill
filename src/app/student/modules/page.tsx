@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * STUDENT LEARNING MODULES PAGE
  * Browse, enroll, and view learning modules
@@ -279,7 +280,7 @@ export default function StudentModulesPage() {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
-      console.error("Error fetching modules:", err);
+      logger.error("Error fetching modules:", err);
     } finally {
       setLoading(false);
     }
@@ -299,7 +300,7 @@ export default function StudentModulesPage() {
         setEnrolledModules(result.data.modules);
       }
     } catch (err) {
-      console.error("Error fetching enrolled modules:", err);
+      logger.error("Error fetching enrolled modules:", err);
     }
   };
 
@@ -323,7 +324,7 @@ export default function StudentModulesPage() {
       await Promise.all([fetchBrowseModules(), fetchEnrolledModules()]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to enroll in module");
-      console.error("Error enrolling in module:", err);
+      logger.error("Error enrolling in module:", err);
     } finally {
       setEnrollingId(null);
     }
@@ -367,7 +368,7 @@ export default function StudentModulesPage() {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load module");
-      console.error("Error loading module:", err);
+      logger.error("Error loading module:", err);
     } finally {
       setLoadingModule(false);
     }
@@ -390,7 +391,7 @@ export default function StudentModulesPage() {
       // Refresh enrolled modules to update progress
       await fetchEnrolledModules();
     } catch (err) {
-      console.error("Error updating progress:", err);
+      logger.error("Error updating progress:", err);
     }
   };
 
@@ -410,7 +411,7 @@ export default function StudentModulesPage() {
         setView("enrolled");
       }
     } catch (err) {
-      console.error("Error completing module:", err);
+      logger.error("Error completing module:", err);
     }
   };
 

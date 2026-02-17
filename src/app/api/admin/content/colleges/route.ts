@@ -5,6 +5,7 @@ import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
+import { logContentModified, AuditActions } from "@/lib/audit-log";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
 
 const collegeSchema = z.object({
@@ -105,6 +106,22 @@ export async function POST(request: NextRequest) {
 
     logger.info("College created", { collegeId, userId });
 
+    // Log audit event for college creation
+    await logContentModified(
+      AuditActions.COLLEGE_CREATED,
+      "college",
+      collegeId,
+      undefined,
+      {
+        name: newCollege.name,
+        code: newCollege.code,
+        type: newCollege.type,
+        dzongkhag: newCollege.dzongkhag,
+      },
+      userId,
+      request
+    );
+
     return NextResponse.json(
       { data: newCollege, message: "College created successfully" } satisfies ApiSuccess<typeof newCollege>,
       { status: 201 }
@@ -190,6 +207,17 @@ export async function PUT(request: NextRequest) {
 
     logger.info("College updated", { collegeId: id, userId });
 
+    // Log audit event for college update
+    await logContentModified(
+      AuditActions.COLLEGE_UPDATED,
+      "college",
+      id,
+      { name: existing.name, code: existing.code },
+      { name: updatedCollege.name, code: updatedCollege.code },
+      userId,
+      request
+    );
+
     return NextResponse.json({
       data: updatedCollege,
       message: "College updated successfully"
@@ -247,6 +275,17 @@ export async function DELETE(request: NextRequest) {
     await db.delete(colleges).where(eq(colleges.id, id));
 
     logger.info("College deleted", { collegeId: id, userId });
+
+    // Log audit event for college deletion
+    await logContentModified(
+      AuditActions.COLLEGE_DELETED,
+      "college",
+      id,
+      { name: existing.name, code: existing.code },
+      undefined,
+      userId,
+      request
+    );
 
     return NextResponse.json({
       data: { success: true },

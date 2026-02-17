@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * TEACHER HOMEWORK PAGE
  * Create and manage homework assignments
@@ -56,7 +57,7 @@ export default function TeacherHomeworkPage() {
         setHomeworkList(result.homework || []);
       }
     } catch (error) {
-      console.error("Failed to fetch homework:", error);
+      logger.error("Failed to fetch homework:", error);
       showNotification("error", "Failed to load homework assignments");
     } finally {
       setLoading(false);
@@ -86,7 +87,7 @@ export default function TeacherHomeworkPage() {
         throw new Error(error.error || "Failed to create homework");
       }
     } catch (error: unknown) {
-      console.error("Failed to save homework:", error);
+      logger.error("Failed to save homework:", error);
       showNotification("error", error instanceof Error ? error.message : "Failed to create homework");
     } finally {
       setSubmitting(false);
@@ -108,7 +109,7 @@ export default function TeacherHomeworkPage() {
         throw new Error("Failed to delete homework");
       }
     } catch (error: unknown) {
-      console.error("Failed to delete homework:", error);
+      logger.error("Failed to delete homework:", error);
       showNotification("error", error instanceof Error ? error.message : "Failed to delete homework");
     }
   };
@@ -126,7 +127,7 @@ export default function TeacherHomeworkPage() {
         throw new Error("Failed to publish homework");
       }
     } catch (error: unknown) {
-      console.error("Failed to publish homework:", error);
+      logger.error("Failed to publish homework:", error);
       showNotification("error", error instanceof Error ? error.message : "Failed to publish homework");
     }
   };

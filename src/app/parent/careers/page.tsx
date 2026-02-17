@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * PARENT CAREERS VIEW PAGE
  *
@@ -316,7 +317,7 @@ export default function ParentCareersPage() {
           }
         }
       } catch (err) {
-        console.error("Error fetching children:", err);
+        logger.error("Error fetching children:", err);
         setError("Failed to load children data");
       } finally {
         setLoading(false);
@@ -372,7 +373,7 @@ export default function ParentCareersPage() {
           }
         }
       } catch (err) {
-        console.error("Error fetching career data:", err);
+        logger.error("Error fetching career data:", err);
       } finally {
         setCareerDataLoading(false);
       }

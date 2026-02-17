@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -113,7 +114,7 @@ export default function MinistryDashboard() {
       setTopSchools(data.topSchools || []);
       setCareerInterests(data.careerInterests || []);
     } catch (err) {
-      console.error("Failed to load ministry dashboard:", err);
+      logger.error("Failed to load ministry dashboard:", err);
       setError("Failed to load dashboard data");
       // Set default values to prevent UI errors
       setStats({
@@ -147,19 +148,19 @@ export default function MinistryDashboard() {
         }),
       });
 
-      console.log("[Ministry Dashboard] AI Insights API status:", response.status);
+      logger.debug("[Ministry Dashboard] AI Insights API status:", response.status);
 
       if (response.ok) {
         const data = await response.json();
-        console.log("[Ministry Dashboard] AI Insights received:", data.insights?.length || 0, "insights");
+        logger.debug("[Ministry Dashboard] AI Insights received:", data.insights?.length || 0, "insights");
         setAiInsights(data.insights || []);
       } else {
         const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
-        console.error("[Ministry Dashboard] AI Insights API error:", errorData);
+        logger.error("[Ministry Dashboard] AI Insights API error:", errorData);
         setAiInsights([]);
       }
     } catch (err) {
-      console.error("[Ministry Dashboard] Failed to load AI insights:", err);
+      logger.error("[Ministry Dashboard] Failed to load AI insights:", err);
       setAiInsights([]);
     } finally {
       setIsLoadingInsights(false);

@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * TEACHER CLASSES PAGE
  * View and manage all classes assigned to the teacher
@@ -184,7 +185,7 @@ export default function TeacherClassesPage() {
         setClasses(processedClasses);
         setStudentsByClass(studentsData.studentsByClass || []);
       } catch (err) {
-        console.error("Error fetching classes data:", err);
+        logger.error("Error fetching classes data:", err);
         setError(err instanceof Error ? err.message : "Failed to load classes");
         setClasses([]);
         setStudentsByClass([]);

@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       const lastName = user.lastName || "";
       // Defensive email extraction - try multiple methods
       const email = user.primaryEmailAddress?.emailAddress
-        || user.emailAddresses?.find((e: any) => e.id === user.primaryEmailAddressId)?.emailAddress
+        || user.emailAddresses?.find((e: { id: string; emailAddress?: string }) => e.id === user.primaryEmailAddressId)?.emailAddress
         || user.emailAddresses?.[0]?.emailAddress
         || "";
 
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update or create wizard progress (gracefully handle missing table)
-    let existingProgress: any[] = [];
+    let existingProgress: Array<{ id: string; currentStep: string; data: Record<string, unknown> }> = [];
     try {
       existingProgress = await db
         .select()
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
           .update(wizardProgress)
           .set({
             currentStep: step === "complete" ? "5" : String((parseInt(existingProgress[0].currentStep as string) || 0) + 1),
-            data: { ...(existingProgress[0].data as any), ...data },
+            data: { ...(existingProgress[0].data as Record<string, unknown>), ...data },
             updatedAt: new Date(),
           })
           .where(eq(wizardProgress.id, existingProgress[0].id));
@@ -159,7 +159,11 @@ export async function POST(request: NextRequest) {
     // Update user details
     if (data.personalDetails) {
       const nameParts = data.personalDetails.fullName?.split(" ") || ["", ""];
-      const updateData: any = {
+      const updateData: {
+        firstName: string;
+        lastName: string;
+        dateOfBirth?: string;
+      } = {
         firstName: nameParts[0],
         lastName: nameParts.slice(1).join(" "),
       };
@@ -173,7 +177,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (data.academicDetails) {
-      const updateData: any = {};
+      const updateData: Record<string, number | string> = {};
       if (data.academicDetails.grade) {
         updateData.classGrade = parseInt(data.academicDetails.grade);
         updateData.grade = parseInt(data.academicDetails.grade);

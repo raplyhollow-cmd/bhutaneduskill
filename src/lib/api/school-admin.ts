@@ -12,8 +12,8 @@ import { db } from "@/lib/db";
 import { users, classes, schools, subjects, homework, homeworkSubmissions, attendance, studentFees, feeStructures, feePayments, counselorAssignments, tuitionCourses, tuitionEnrollments, tutors, examResultsEnhanced, academicTerms, enrollments, teacherAssignments } from "@/lib/db/schema";
 import { parseJsonArray } from "@/lib/db/json-helpers";
 import { eq, and, count, desc, sql, gte, lte, like, inArray } from "drizzle-orm";
-import { requireAuth } from "@/lib/auth-utils";
 import { cache } from "react";
+import { requireAuthServer } from "@/lib/auth-utils-server";
 
 // ============================================================================
 // TYPES
@@ -176,7 +176,7 @@ interface TuitionCourseWithExtras {
 
 // Get current school ID from auth session
 export async function getCurrentSchoolId(): Promise<string | null> {
-  const authResult = await requireAuth();
+  const authResult = await requireAuthServer();
   if ('error' in authResult) {
     throw new Error(authResult.error);
   }

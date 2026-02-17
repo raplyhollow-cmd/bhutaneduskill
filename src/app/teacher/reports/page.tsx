@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * TEACHER REPORTS PAGE
  * Class performance, student progress, attendance summaries, grade distribution
@@ -589,7 +590,7 @@ export default function TeacherReportsPage() {
         setReportData(getFallbackData());
       }
     } catch (error) {
-      console.error("Error fetching reports:", error);
+      logger.error("Error fetching reports:", error);
       setReportData(getFallbackData());
     } finally {
       setIsLoading(false);
@@ -620,7 +621,7 @@ export default function TeacherReportsPage() {
         await exportToExcel(reportData, reportType);
       }
     } catch (error) {
-      console.error("Export failed:", error);
+      logger.error("Export failed:", error);
       alert("Export failed. Please try again.");
     } finally {
       setIsExporting(false);

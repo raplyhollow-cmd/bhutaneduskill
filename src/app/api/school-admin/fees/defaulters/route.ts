@@ -35,19 +35,19 @@ export async function GET(request: NextRequest) {
     });
 
     // Get student names separately
-    const studentIds = [...new Set(defaulters.map((df: any) => df.studentId))];
+    const studentIds = [...new Set(defaulters.map((df) => df.studentId))];
     const studentRecords = studentIds.length > 0 ? await db.query.users.findMany({
-      where: eq(users.id, studentIds[0] as any), // Get first student - will need proper IN clause
+      where: eq(users.id, studentIds[0]), // Get first student - will need proper IN clause
     }) : [];
 
     // Create a map for quick lookup
-    const studentMap = new Map(studentRecords.map((s: any) => [s.id, s]));
+    const studentMap = new Map(studentRecords.map((s) => [s.id, s]));
 
     // Filter by status and calculate outstanding
     const defaulterList = defaulters
-      .filter((df: any) => df.status === "pending" || df.status === "partial")
-      .map((df: any) => {
-        const student: any = studentMap.get(df.studentId);
+      .filter((df) => df.status === "pending" || df.status === "partial")
+      .map((df) => {
+        const student = studentMap.get(df.studentId);
         return {
           studentId: df.studentId,
           studentName: student?.name || "Unknown",

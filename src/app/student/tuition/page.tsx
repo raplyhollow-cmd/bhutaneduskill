@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Search, Filter, GraduationCap, BookOpen, Video } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 // Mock tutors
 const mockTutors = [
@@ -115,22 +116,22 @@ export default function StudentTuitionPage() {
   );
 
   const handleViewProfile = (tutorId: string) => {
-    console.log("View tutor profile:", tutorId);
+    logger.debug("View tutor profile:", tutorId);
     // In production: navigate to tutor profile page
   };
 
   const handleBook = (tutorId: string) => {
-    console.log("Book tutor:", tutorId);
+    logger.debug("Book tutor:", tutorId);
     // In production: open booking modal
   };
 
   const handleEnroll = (courseId: string) => {
-    console.log("Enroll in course:", courseId);
+    logger.debug("Enroll in course:", courseId);
     // In production: await fetch('/api/tuition/enroll', { method: 'POST' })
   };
 
   const handleViewCourse = (courseId: string) => {
-    console.log("View course details:", courseId);
+    logger.debug("View course details:", courseId);
     // In production: navigate to course details page
   };
 

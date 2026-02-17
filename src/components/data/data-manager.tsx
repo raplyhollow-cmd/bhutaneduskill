@@ -66,7 +66,7 @@ type ExportFormat = "json" | "csv" | "xml" | "excel";
 export interface DataManagerProps {
   dataSource?: string; // Pre-selected data source
   allowedRoles?: string[]; // Restrict to certain roles
-  onExport?: (format: ExportFormat, data: any[]) => void;
+  onExport?: (format: ExportFormat, data: Record<string, unknown>[]) => void;
   readonly?: boolean; // View-only mode
   embedded?: boolean; // Embedded in another page
 }
@@ -79,7 +79,7 @@ export function DataManager({
   embedded = false,
 }: DataManagerProps) {
   const [selectedSource, setSelectedSource] = useState(initialSource || "users");
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -133,8 +133,8 @@ export function DataManager({
       // In production, this would call the actual export endpoint
       setData([]);
 
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
     }
@@ -170,13 +170,18 @@ export function DataManager({
       if (onExport) {
         onExport(format, filteredData);
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
     }
   }
 
-  function getNestedValue(obj: any, path: string): any {
-    return path.split(".").reduce((current, key) => current?.[key], obj);
+  function getNestedValue(obj: Record<string, unknown>, path: string): unknown {
+    return path.split(".").reduce((current: unknown, key) => {
+      if (current && typeof current === "object" && key in current) {
+        return (current as Record<string, unknown>)[key];
+      }
+      return undefined;
+    }, obj);
   }
 
   function toggleRowSelection(id: string) {
@@ -193,7 +198,7 @@ export function DataManager({
     if (selectedRows.size === paginatedData.length) {
       setSelectedRows(new Set());
     } else {
-      setSelectedRows(new Set(paginatedData.map((d) => d.id || d._id || JSON.stringify(d))));
+      setSelectedRows(new Set(paginatedData.map((d) => String(d.id || d._id || JSON.stringify(d)))));
     }
   }
 
@@ -383,11 +388,11 @@ export function DataManager({
                   </TableHeader>
                   <TableBody>
                     {paginatedData.map((item, index) => {
-                      const itemId = item.id || item._id || index.toString();
+                      const itemId = String(item.id || item._id || index.toString());
                       const isSelected = selectedRows.has(itemId);
 
                       return (
-                        <TableRow key={itemId} className={isSelected ? "bg-blue-50" : ""}>
+                        <TableRow key={itemId as any} className={isSelected ? "bg-blue-50" : ""}>
                           <TableCell>
                             <Button
                               variant="ghost"
@@ -490,7 +495,7 @@ export function DataManager({
   );
 }
 
-function formatCellValue(value: any, type: string): React.ReactNode {
+function formatCellValue(value: unknown, type: string): React.ReactNode {
   if (value === null || value === undefined) {
     return <span className="text-gray-400">-</span>;
   }
@@ -503,7 +508,7 @@ function formatCellValue(value: any, type: string): React.ReactNode {
         <Badge variant="outline" className="bg-gray-50 text-gray-700">No</Badge>
       );
     case "date":
-      return value ? new Date(value).toLocaleDateString() : "-";
+      return value ? new Date(value as string | Date).toLocaleDateString() : "-";
     case "array":
       return Array.isArray(value) ? (
         <span className="text-xs">[{value.length} items]</span>

@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * STUDENT SETTINGS PAGE
  *
@@ -154,7 +155,7 @@ export default function StudentSettingsPage() {
         setQuietHoursStart(notifications.quietHoursStart || "22:00");
         setQuietHoursEnd(notifications.quietHoursEnd || "07:00");
       } catch (error) {
-        console.error("Failed to fetch settings:", error);
+        logger.error("Failed to fetch settings:", error);
         setSaveError("Failed to load settings. Please refresh the page.");
       } finally {
         setIsLoading(false);
@@ -215,7 +216,7 @@ export default function StudentSettingsPage() {
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (error) {
-      console.error("Upload error:", error);
+      logger.error("Upload error:", error);
       setSaveError(error instanceof Error ? error.message : "Failed to upload profile picture");
     } finally {
       setIsSaving(false);
@@ -278,7 +279,7 @@ export default function StudentSettingsPage() {
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (error) {
-      console.error("Save error:", error);
+      logger.error("Save error:", error);
       setSaveError(error instanceof Error ? error.message : "Failed to save settings");
     } finally {
       setIsSaving(false);

@@ -29,12 +29,13 @@ import {
   FileDown,
 } from "lucide-react";
 import jsPDF from "jspdf";
+import type { LucideIcon } from "lucide-react";
 
 interface ReportTemplate {
   id: string;
   name: string;
   description: string;
-  icon: any;
+  icon: LucideIcon;
   category: string;
   schedule?: string;
   available: boolean;
@@ -60,7 +61,7 @@ interface ReportData {
 const categories = ["All", "Schools", "Users", "Assessments", "Analytics", "Finance"];
 
 // Icon mapping for report types
-const iconMap: Record<string, any> = {
+const iconMap: Record<string, LucideIcon> = {
   "school-performance": School,
   "user-engagement": Users,
   "assessment-summary": GraduationCap,
@@ -74,7 +75,7 @@ interface GeneratedReport {
   name: string;
   generatedAt: string;
   status: string;
-  data?: any;
+  data?: Record<string, unknown>;
 }
 
 export default function AdminReportsPage() {
@@ -153,7 +154,7 @@ export default function AdminReportsPage() {
     }
   };
 
-  const downloadJSON = (report: any) => {
+  const downloadJSON = (report: Record<string, unknown>) => {
     const dataStr = JSON.stringify(report, null, 2);
     const dataBlob = new Blob([dataStr], { type: "application/json" });
     const url = URL.createObjectURL(dataBlob);
@@ -166,7 +167,7 @@ export default function AdminReportsPage() {
     URL.revokeObjectURL(url);
   };
 
-  const generatePDF = (report: any) => {
+  const generatePDF = (report: Record<string, unknown>) => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -194,19 +195,19 @@ export default function AdminReportsPage() {
     // Report Title
     doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
-    doc.text(report.title, 20, yPosition);
+    doc.text(String(report.title || "Report"), 20, yPosition);
     yPosition += 10;
 
     // Metadata
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
-    doc.text(`Generated: ${new Date(report.generatedAt).toLocaleString()}`, 20, yPosition);
+    doc.text(`Generated: ${new Date(String(report.generatedAt || Date.now())).toLocaleString()}`, 20, yPosition);
     yPosition += 7;
-    doc.text(`Report Type: ${report.type}`, 20, yPosition);
+    doc.text(`Report Type: ${String(report.type || "unknown")}`, 20, yPosition);
     yPosition += 15;
 
     // Summary Section
-    if (report.summary) {
+    if (report.summary && typeof report.summary === "object") {
       checkPageBreak(40);
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
@@ -215,17 +216,18 @@ export default function AdminReportsPage() {
 
       doc.setFontSize(11);
       doc.setFont("helvetica", "normal");
-      Object.entries(report.summary).forEach(([key, value]) => {
+      Object.entries(report.summary as Record<string, unknown>).forEach(([key, value]) => {
         checkPageBreak(7);
         const label = key.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase());
-        doc.text(`${label}: ${String(value)}`, 25, yPosition);
+        doc.text(`${label}: ${String(value ?? "")}`, 25, yPosition);
         yPosition += 7;
       });
       yPosition += 10;
     }
 
     // Data sections based on report type
-    if (report.type === "school-performance" && report.schools) {
+    const reportType = String(report.type || "");
+    if (reportType === "school-performance" && report.schools && Array.isArray(report.schools)) {
       checkPageBreak(30);
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
@@ -245,22 +247,23 @@ export default function AdminReportsPage() {
 
       // Table rows
       doc.setFont("helvetica", "normal");
-      report.schools.forEach((school: any, index: number) => {
+      report.schools.forEach((school: unknown, index: number) => {
+        const s = school as Record<string, unknown>;
         checkPageBreak(8);
         if (index % 2 === 0) {
           doc.setFillColor(250, 250, 250);
           doc.rect(15, yPosition - 5, pageWidth - 30, 8, "F");
         }
-        const name = school.name?.substring(0, 30) || "N/A";
+        const name = String(s.name ?? "N/A").substring(0, 30);
         doc.text(name, 20, yPosition);
-        doc.text(String(school.students || 0), 100, yPosition);
-        doc.text(String(school.teachers || 0), 130, yPosition);
-        doc.text(school.schoolType || "N/A", 160, yPosition);
+        doc.text(String(s.students ?? 0), 100, yPosition);
+        doc.text(String(s.teachers ?? 0), 130, yPosition);
+        doc.text(String(s.schoolType ?? "N/A"), 160, yPosition);
         yPosition += 8;
       });
     }
 
-    if (report.type === "user-engagement" && report.usersByType) {
+    if (reportType === "user-engagement" && report.usersByType && typeof report.usersByType === "object") {
       checkPageBreak(30);
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
@@ -269,15 +272,15 @@ export default function AdminReportsPage() {
 
       doc.setFontSize(11);
       doc.setFont("helvetica", "normal");
-      Object.entries(report.usersByType).forEach(([key, value]) => {
+      Object.entries(report.usersByType as Record<string, unknown>).forEach(([key, value]) => {
         checkPageBreak(7);
         const label = key.replace(/([A-Z])/g, " $1").replace(/^./, (str) => str.toUpperCase());
-        doc.text(`${label}: ${String(value)}`, 25, yPosition);
+        doc.text(`${label}: ${String(value ?? "")}`, 25, yPosition);
         yPosition += 7;
       });
     }
 
-    if (report.type === "career-interests" && report.topCareers) {
+    if (reportType === "career-interests" && report.topCareers && Array.isArray(report.topCareers)) {
       checkPageBreak(30);
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
@@ -286,10 +289,11 @@ export default function AdminReportsPage() {
 
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
-      report.topCareers.forEach((career: any, index: number) => {
+      report.topCareers.forEach((career: unknown, index: number) => {
+        const c = career as Record<string, unknown>;
         checkPageBreak(7);
-        doc.text(`${index + 1}. ${career.career}`, 25, yPosition);
-        doc.text(`(${career.count} students)`, 160, yPosition);
+        doc.text(`${index + 1}. ${String(c.career ?? "Unknown")}`, 25, yPosition);
+        doc.text(`(${String(c.count ?? 0)} students)`, 160, yPosition);
         yPosition += 7;
       });
     }

@@ -7,6 +7,7 @@ import { eq, and } from "drizzle-orm";
 import { validateBody, rmaPaymentSchema } from "@/lib/validation";
 import { createRMAGateway, formatAmount } from "@/lib/payment/rma-gateway";
 import { nanoid } from "nanoid";
+import { applyRateLimitAuth, RateLimitPresets } from "@/lib/rate-limit";
 
 // ============================================================================
 // POST /api/payments/rma/initiate - Initiate RMA payment
@@ -14,6 +15,9 @@ import { nanoid } from "nanoid";
 
 export async function POST(request: NextRequest) {
   try {
+    // Apply rate limiting for payment endpoint (stricter)
+    const rateLimitResult = await applyRateLimitAuth(request, undefined, RateLimitPresets.payment);
+    if (rateLimitResult) return rateLimitResult;
     const authResult = await requireAuth(['student', 'parent']);
     if ('error' in authResult) {
       return NextResponse.json({ error: authResult.error }, { status: authResult.status });

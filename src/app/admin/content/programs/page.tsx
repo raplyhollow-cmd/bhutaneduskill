@@ -36,15 +36,51 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+// Types for program data
+interface Program {
+  id: string;
+  name: string;
+  code: string;
+  collegeId: string;
+  level: string;
+  field: string;
+  discipline?: string;
+  duration: number;
+  durationType: string;
+  totalSeats: number;
+  minPercentage: number;
+  requiredSubjects: string[];
+  eligibilityCriteria?: string;
+  tuitionFee: number;
+  hostelFee: number;
+  otherFees: number;
+  description?: string;
+  careerProspects: string[];
+  isActive: boolean;
+  admissionOpen: boolean;
+  college?: {
+    id: string;
+    name: string;
+  };
+}
+
+interface College {
+  id: string;
+  name: string;
+}
+
+type ProgramLevel = "certificate" | "diploma" | "bachelor" | "master" | "phd";
+type ProgramField = "engineering" | "arts" | "science" | "business" | "education" | "medicine";
+
 export default function AdminProgramsPage() {
-  const [programs, setPrograms] = useState<any[]>([]);
-  const [colleges, setColleges] = useState<any[]>([]);
-  const [filteredPrograms, setFilteredPrograms] = useState<any[]>([]);
+  const [programs, setPrograms] = useState<Program[]>([]);
+  const [colleges, setColleges] = useState<College[]>([]);
+  const [filteredPrograms, setFilteredPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [levelFilter, setLevelFilter] = useState("all");
-  const [fieldFilter, setFieldFilter] = useState("all");
-  const [collegeFilter, setCollegeFilter] = useState("all");
+  const [levelFilter, setLevelFilter] = useState<string>("all");
+  const [fieldFilter, setFieldFilter] = useState<string>("all");
+  const [collegeFilter, setCollegeFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -52,7 +88,7 @@ export default function AdminProgramsPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [editingProgram, setEditingProgram] = useState<any>(null);
+  const [editingProgram, setEditingProgram] = useState<Program | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -191,7 +227,7 @@ export default function AdminProgramsPage() {
     }
   };
 
-  const openEditModal = (program: any) => {
+  const openEditModal = (program: Program) => {
     setEditingProgram(program);
     setFormData({
       name: program.name || "",
@@ -632,7 +668,7 @@ export default function AdminProgramsPage() {
                   <Label htmlFor="level">Level *</Label>
                   <Select
                     value={formData.level}
-                    onValueChange={(value: any) => setFormData({ ...formData, level: value })}
+                    onValueChange={(value: ProgramLevel) => setFormData({ ...formData, level: value })}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -650,7 +686,7 @@ export default function AdminProgramsPage() {
                   <Label htmlFor="field">Field *</Label>
                   <Select
                     value={formData.field}
-                    onValueChange={(value: any) => setFormData({ ...formData, field: value })}
+                    onValueChange={(value: ProgramField) => setFormData({ ...formData, field: value })}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -909,7 +945,7 @@ export default function AdminProgramsPage() {
                   <Label htmlFor="edit-level">Level *</Label>
                   <Select
                     value={formData.level}
-                    onValueChange={(value: any) => setFormData({ ...formData, level: value })}
+                    onValueChange={(value: ProgramLevel) => setFormData({ ...formData, level: value })}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -927,7 +963,7 @@ export default function AdminProgramsPage() {
                   <Label htmlFor="edit-field">Field *</Label>
                   <Select
                     value={formData.field}
-                    onValueChange={(value: any) => setFormData({ ...formData, field: value })}
+                    onValueChange={(value: ProgramField) => setFormData({ ...formData, field: value })}
                   >
                     <SelectTrigger>
                       <SelectValue />

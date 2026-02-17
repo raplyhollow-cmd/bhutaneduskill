@@ -7,10 +7,12 @@
  * - Recommended next steps
  * - Upcoming deadlines
  * - Recent activity
- *
  * Now using real database data via server actions.
  */
 
+"use client";
+
+import { logger } from "@/lib/logger";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -120,7 +122,7 @@ export default async function StudentDashboardPage() {
     dashboardData = await fetchStudentDashboard();
   } catch (error) {
     // Don't redirect - show error page instead
-    console.error("Dashboard error:", error);
+    logger.error("Dashboard error:", error);
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <Card className="max-w-md mx-4">

@@ -1,10 +1,20 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { PortalSidebar, PortalHeader } from "@/components/shared/portal-sidebar";
-import { StudentBottomNav, MainContentWithBottomNav } from "@/components/shared/portal-bottom-nav";
+import { UniversalMobileSidebar, UniversalPortalHeader } from "@/components/mobile/universal-mobile-sidebar";
 
+/**
+ * Student Portal Layout
+ *
+ * Uses the Universal Mobile Template for consistent mobile UX across all portals.
+ * - Mobile: Hamburger menu with slide-in sidebar
+ * - Desktop: Always-visible sidebar
+ * - NO bottom navigation (removed as per user decision)
+ *
+ * To change mobile behavior, edit: src/config/portal-config.ts
+ */
 export default function StudentLayout({
   children,
 }: {
@@ -57,30 +67,32 @@ export default function StudentLayout({
         setIsLoading(false);
       })
       .catch((error) => {
-        console.error("API fetch failed:", error);
+        logger.error("API fetch failed:", error);
         // If API fails, redirect to setup to ensure user is properly configured
         router.push("/setup/unified");
       });
   }, [router]);
 
+  // Loading state - Uses 100dvh to fix iOS Safari address bar bug
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-[100dvh] flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
+  // Main layout - Uses 100dvh for proper mobile viewport height
   return (
-    <div className="min-h-screen bg-gray-50">
-      <PortalSidebar userType={userType} userName={userName} />
+    <div className="min-h-[100dvh] bg-gray-50">
+      {/* Universal Sidebar - Works for ALL portals */}
+      <UniversalMobileSidebar portalType={userType || "student"} userName={userName} />
+
+      {/* Main content area with desktop padding for sidebar */}
       <div className="lg:pl-64">
-        <PortalHeader userType={userType} userName={userName} />
-        <MainContentWithBottomNav>
-          <main className="p-6">{children}</main>
-        </MainContentWithBottomNav>
+        <UniversalPortalHeader portalType={userType || "student"} userName={userName} />
+        <main className="p-6">{children}</main>
       </div>
-      <StudentBottomNav />
     </div>
   );
 }

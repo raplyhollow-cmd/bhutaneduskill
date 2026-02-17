@@ -13,6 +13,7 @@ import { users, schools } from "@/lib/db/schema";
 import { eq, desc, like, or, and, count, sql, inArray } from "drizzle-orm";
 import { requireAuth, invalidateUserRoleCache } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
+import { logUserCreated } from "@/lib/audit-log";
 import type { ApiSuccess, ApiErrorResponse, PaginatedResponse, Pagination } from "@/types";
 
 // ============================================================================
@@ -342,25 +343,25 @@ export async function POST(request: NextRequest) {
       lastName,
       email,
       phone: body.phone || '',
-      schoolId: body.schoolId || null,
-      tenantId: null, // Tenants table doesn't exist yet
-      profileImage: null,
-      dateOfBirth: null,
-      gender: null,
+      schoolId: (body.schoolId || null) as string | null,
+      tenantId: null as string | null,
+      profileImage: null as string | null,
+      dateOfBirth: null as string | null,
+      gender: null as string | null,
       grade: body.grade || 0,
-      section: null,
-      rollNumber: null,
-      address: null,
-      city: null,
-      state: null,
-      postalCode: null,
+      section: null as string | null,
+      rollNumber: null as string | null,
+      address: null as string | null,
+      city: null as string | null,
+      state: null as string | null,
+      postalCode: null as string | null,
       country: 'Bhutan',
-      parentContact: null,
-      parentPhone: null,
-      emergencyContact: null,
-      bloodGroup: null,
+      parentContact: null as string | null,
+      parentPhone: null as string | null,
+      emergencyContact: null as string | null,
+      bloodGroup: null as string | null,
       enrollmentDate: now.toISOString(),
-      lastLogin: null,
+      lastLogin: null as string | null,
       employeeId: body.employeeId || null,
       subjects: body.subjects ? JSON.stringify(body.subjects) : '',
       emailVerified: false,
@@ -380,6 +381,21 @@ export async function POST(request: NextRequest) {
     const createdUser = Array.isArray(result) ? result[0] : result;
 
     logger.info('User created', { userId: createdUser.id, createdBy: userId, type });
+
+    // Log audit event for user creation
+    await logUserCreated(
+      createdUser.id,
+      {
+        email: createdUser.email,
+        type: createdUser.type,
+        role: createdUser.role,
+        name: createdUser.name,
+        clerkUserId: createdUser.clerkUserId,
+        schoolId: createdUser.schoolId,
+      },
+      userId,
+      request
+    );
 
     // TODO: Create Clerk user via Clerk API if sendInvitation is true
     // TODO: Send welcome email

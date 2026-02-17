@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -111,13 +112,13 @@ export default function MinistrySchoolsPage() {
         setSchools(data.data.schools);
         setFilteredSchools(data.data.schools);
       } else {
-        console.error("Failed to fetch schools:", data);
+        logger.error("Failed to fetch schools:", data);
         // Fallback to empty array on error
         setSchools([]);
         setFilteredSchools([]);
       }
     } catch (error) {
-      console.error("Error fetching schools:", error);
+      logger.error("Error fetching schools:", error);
       setSchools([]);
       setFilteredSchools([]);
     } finally {
@@ -236,7 +237,7 @@ export default function MinistrySchoolsPage() {
         alert(data.error || "Failed to delete school");
       }
     } catch (error) {
-      console.error("Error deleting school:", error);
+      logger.error("Error deleting school:", error);
       alert("Network error. Please try again.");
     } finally {
       setIsDeleting(false);
@@ -267,7 +268,7 @@ export default function MinistrySchoolsPage() {
         alert(data.error || "Failed to update school status");
       }
     } catch (error) {
-      console.error("Error updating school status:", error);
+      logger.error("Error updating school status:", error);
       alert("Network error. Please try again.");
     }
   };
@@ -301,7 +302,7 @@ export default function MinistrySchoolsPage() {
         alert(data.error || "Failed to update school status");
       }
     } catch (error) {
-      console.error("Error updating bulk status:", error);
+      logger.error("Error updating bulk status:", error);
       alert("Network error. Please try again.");
     } finally {
       setIsBulkUpdating(false);
@@ -357,7 +358,7 @@ export default function MinistrySchoolsPage() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("Error exporting CSV:", error);
+      logger.error("Error exporting CSV:", error);
       alert("Failed to export data");
     } finally {
       setIsExporting(false);

@@ -64,7 +64,7 @@ export async function getTenantId(): Promise<string | null> {
 /**
  * Check if user has specific role
  */
-export function hasRole(user: any, roles: string[]): boolean {
+export function hasRole(user: { type: string }, roles: string[]): boolean {
   return roles.includes(user.type);
 }
 
@@ -72,7 +72,7 @@ export function hasRole(user: any, roles: string[]): boolean {
  * Check if user can access resource (same tenant or specific roles)
  */
 export function canAccessResource(
-  user: any,
+  user: { type: string; tenantId: string | null },
   resourceTenantId: string,
   allowedRoles: string[] = ["admin"]
 ): boolean {
@@ -103,7 +103,7 @@ export function createTenantFilter(tenantId: string) {
  * School-specific access check
  * Counselors and teachers can only access their school's data
  */
-export function canAccessSchool(user: any, schoolId: string): boolean {
+export function canAccessSchool(user: { type: string; schoolId: string | null }, schoolId: string): boolean {
   // Admins can access all schools
   if (user.type === "admin") {
     return true;
@@ -128,7 +128,7 @@ export async function getAccessibleTenantIds(userId: string): Promise<string[]> 
   // Admins can see all tenants
   if (user.type === "admin") {
     const allTenants = await db.query.tenants.findMany();
-    return allTenants.map((t: any) => t.id);
+    return allTenants.map((t) => (t as unknown as { id: string }).id);
   }
 
   // Others can only see their own tenant

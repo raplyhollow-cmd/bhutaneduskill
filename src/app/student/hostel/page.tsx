@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * STUDENT HOSTEL PAGE
  *
@@ -218,7 +219,7 @@ export default function StudentHostelPage() {
       setComplaints(compData.complaints || []);
       setRules(rulesData.rules || []);
     } catch (error) {
-      console.error("Error fetching hostel data:", error);
+      logger.error("Error fetching hostel data:", error);
     } finally {
       setLoading(false);
     }
@@ -254,7 +255,7 @@ export default function StudentHostelPage() {
         alert(data.error || "Failed to submit request");
       }
     } catch (error) {
-      console.error("Error submitting request:", error);
+      logger.error("Error submitting request:", error);
       alert("Failed to submit request. Please try again.");
     } finally {
       setSubmitting(false);
@@ -295,7 +296,7 @@ export default function StudentHostelPage() {
         alert(data.error || "Failed to submit leave request");
       }
     } catch (error) {
-      console.error("Error submitting leave request:", error);
+      logger.error("Error submitting leave request:", error);
       alert("Failed to submit leave request. Please try again.");
     } finally {
       setSubmitting(false);
@@ -330,7 +331,7 @@ export default function StudentHostelPage() {
         alert(data.error || "Failed to submit complaint");
       }
     } catch (error) {
-      console.error("Error submitting complaint:", error);
+      logger.error("Error submitting complaint:", error);
       alert("Failed to submit complaint. Please try again.");
     } finally {
       setSubmitting(false);
@@ -362,7 +363,7 @@ export default function StudentHostelPage() {
         alert(data.error || "Failed to submit room change request");
       }
     } catch (error) {
-      console.error("Error submitting room change request:", error);
+      logger.error("Error submitting room change request:", error);
       alert("Failed to submit room change request. Please try again.");
     } finally {
       setSubmitting(false);

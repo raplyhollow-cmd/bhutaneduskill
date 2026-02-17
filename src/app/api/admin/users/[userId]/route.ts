@@ -12,6 +12,7 @@ import { users, schools, tenants } from "@/lib/db/schema";
 import { eq, and, or } from "drizzle-orm";
 import { requireAuth, invalidateUserRoleCache } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
+import { logUserUpdated, logUserDeleted } from "@/lib/audit-log";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
 
 // ============================================================================
@@ -431,6 +432,15 @@ export async function PATCH(
 
     logger.info('User updated', { userId, updatedBy: adminId, changes: Object.keys(updateData) });
 
+    // Log audit event for user update
+    await logUserUpdated(
+      userId,
+      { email: user.email, type: user.type, role: user.role, name: user.name },
+      { email: updatedUser.email, type: updatedUser.type, role: updatedUser.role, name: updatedUser.name },
+      adminId,
+      request
+    );
+
     // Return updated user without sensitive fields
     const { clerkUserId: _, ...safeUser } = updatedUser;
 
@@ -504,6 +514,15 @@ export async function DELETE(
 
       logger.info('User hard deleted', { userId, deletedBy: adminId });
 
+      // Log audit event for hard delete
+      await logUserDeleted(
+        userId,
+        { email: user.email, type: user.type, role: user.role, name: user.name },
+        adminId,
+        true,
+        request
+      );
+
       // TODO: Handle related records cleanup (cascade should handle most)
       // - Assessments, homework submissions, etc. will cascade delete
       // - Consider soft deleting related records instead
@@ -526,6 +545,15 @@ export async function DELETE(
       invalidateUserRoleCache(user.clerkUserId);
 
       logger.info('User soft deleted', { userId, deletedBy: adminId });
+
+      // Log audit event for soft delete (deactivation)
+      await logUserDeleted(
+        userId,
+        { email: user.email, type: user.type, role: user.role, name: user.name },
+        adminId,
+        false,
+        request
+      );
 
       return NextResponse.json({
         data: null,

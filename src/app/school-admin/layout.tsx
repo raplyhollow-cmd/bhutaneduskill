@@ -1,17 +1,20 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * SCHOOL ADMIN PORTAL LAYOUT
  *
- * For school principals/admins to manage their school.
- * Uses client-side auth to check if school admin needs setup.
+ * Uses the Universal Mobile Template for consistent mobile UX across all portals.
+ * - Mobile: Hamburger menu with slide-in sidebar
+ * - Desktop: Always-visible sidebar
+ * - NO bottom navigation (removed as per user decision)
+ *
+ * To change mobile behavior, edit: src/config/portal-config.ts
  */
-
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { PortalSidebar, PortalHeader } from "@/components/shared/portal-sidebar";
-import { SchoolAdminBottomNav, MainContentWithBottomNav } from "@/components/shared/portal-bottom-nav";
+import { UniversalMobileSidebar, UniversalPortalHeader } from "@/components/mobile/universal-mobile-sidebar";
 
 export default function SchoolAdminLayout({
   children,
@@ -74,7 +77,7 @@ export default function SchoolAdminLayout({
         }
       })
       .catch((error) => {
-        console.error("API fetch failed:", error);
+        logger.error("API fetch failed:", error);
         // If APIs fail completely, redirect to setup to ensure user is properly configured
         setNeedsSetup(true);
         setTimeout(() => {
@@ -83,9 +86,10 @@ export default function SchoolAdminLayout({
       });
   }, [router]);
 
+  // Loading state - Uses 100dvh to fix iOS Safari address bar bug
   if (!userType) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-[100dvh] flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-violet-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -94,53 +98,54 @@ export default function SchoolAdminLayout({
   // Show loading while redirecting to setup
   if (needsSetup) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center gap-4">
         <div className="w-8 h-8 border-4 border-violet-500 border-t-transparent rounded-full animate-spin" />
         <p className="text-gray-600">Setting up your profile...</p>
       </div>
     );
   }
 
+  // Main layout - Uses 100dvh for proper mobile viewport height
   return (
-    <div className="min-h-screen bg-gray-50">
-      <PortalSidebar userType="school-admin" userName={userName} />
+    <div className="min-h-[100dvh] bg-gray-50">
+      {/* Universal Sidebar - Works for ALL portals */}
+      <UniversalMobileSidebar portalType="school-admin" userName={userName} />
+
+      {/* Main content area with desktop padding for sidebar */}
       <div className="lg:pl-64">
-        <PortalHeader userType="school-admin" userName={userName} />
-        <MainContentWithBottomNav>
-          <main className="p-6">
-            {/* Portal Banner */}
-            <div className="mb-6 text-white rounded-xl p-6 shadow-lg premium-card" style={{ background: 'linear-gradient(135deg, rgb(139 92 246) 0%, rgb(124 58 237) 100%)' }}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-2xl font-bold mb-1">Welcome to School Admin Portal</h1>
-                  <p className="text-white/90">
-                    Manage your school, students, teachers, and track progress all in one place.
-                  </p>
-                </div>
-                <div className="hidden md:block">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="w-16 h-16 text-white/80"
-                  >
-                    <path d="M3 21h18" />
-                    <path d="M5 21V7l8-4 8 4v14" />
-                    <path d="M8 9a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2H8V9z" />
-                  </svg>
-                </div>
+        <UniversalPortalHeader portalType="school-admin" userName={userName} />
+        <main className="p-6">
+          {/* Portal Banner */}
+          <div className="mb-6 text-white rounded-xl p-6 shadow-lg premium-card" style={{ background: 'linear-gradient(135deg, rgb(139 92 246) 0%, rgb(124 58 237) 100%)' }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold mb-1">Welcome to School Admin Portal</h1>
+                <p className="text-white/90">
+                  Manage your school, students, teachers, and track progress all in one place.
+                </p>
+              </div>
+              <div className="hidden md:block">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-16 h-16 text-white/80"
+                >
+                  <path d="M3 21h18" />
+                  <path d="M5 21V7l8-4 8 4v14" />
+                  <path d="M8 9a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2H8V9z" />
+                </svg>
               </div>
             </div>
+          </div>
 
-            {children}
-          </main>
-        </MainContentWithBottomNav>
+          {children}
+        </main>
       </div>
-      <SchoolAdminBottomNav />
     </div>
   );
 }

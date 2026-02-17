@@ -7,10 +7,10 @@
  * - Import results via CSV
  * - View exam details
  * - Export results
- *
  * Now using real database data via server actions.
  */
 
+import { logger } from "@/lib/logger";
 import { ResultsClient } from "./results-client";
 import { getExamResults } from "@/lib/api/school-admin";
 import { getCurrentSchoolId } from "@/lib/api/school-admin";
@@ -38,7 +38,7 @@ export default async function SchoolAdminResultsPage({
       initialTotal = result.total;
     }
   } catch (error) {
-    console.error("Failed to load exam results:", error);
+    logger.error("Failed to load exam results:", error);
   }
 
   return (

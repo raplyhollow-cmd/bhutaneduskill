@@ -107,7 +107,7 @@ async function getStudentData(studentId: string, teacherUserId: string) {
   const validEnrollments = enrollmentRecords.filter((e) => {
     if (!e.class) return false;
     const classArray = Array.isArray(e.class) ? e.class : [e.class];
-    return classArray.some((c: any) => c.id && teacherClassIds.includes(c.id));
+    return classArray.some((c: { id: string }) => c.id && teacherClassIds.includes(c.id));
   });
 
   if (validEnrollments.length === 0) {
@@ -159,8 +159,9 @@ async function getStudentData(studentId: string, teacherUserId: string) {
   const pendingCount = hwSubmissions.filter((h) => h.status === "draft").length;
   const lateSubmissions = hwSubmissions.filter((h) => {
     if (!h.submittedAt || !h.homework) return false;
-    const hw = h.homework as { dueDate?: string | Date };
-    return hw.dueDate && new Date(h.submittedAt) > new Date(hw.dueDate);
+    const homeworkArray = Array.isArray(h.homework) ? h.homework : [h.homework];
+    const hw = homeworkArray[0] as { dueDate?: string | Date } | undefined;
+    return hw?.dueDate && new Date(h.submittedAt) > new Date(hw.dueDate);
   }).length;
 
   // Get parent info
@@ -236,7 +237,7 @@ export default async function TeacherStudentDetailPage({ params }: PageProps) {
   }
 
   // At this point, authResult is guaranteed to be the success type
-  const userId = (authResult as { user: any; userId: string }).userId;
+  const userId = (authResult as { user: { id: string }; userId: string }).userId;
   const { id } = await params;
 
   const data = await getStudentData(id, userId);
@@ -630,35 +631,43 @@ export default async function TeacherStudentDetailPage({ params }: PageProps) {
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-3">Recent Submissions</h3>
                   <div className="space-y-2">
-                    {homework.recentSubmissions.map((sub: any, index: number) => (
-                      <div
-                        key={index}
-                        className="flex items-center justify-between p-3 border rounded-lg"
-                      >
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">
-                            {sub.homework?.title || "Homework"}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {sub.submittedAt
-                              ? new Date(sub.submittedAt).toLocaleDateString()
-                              : "Not submitted"}
-                          </p>
-                        </div>
-                        <Badge
-                          variant="outline"
-                          className={
-                            sub.status === "graded"
-                              ? "bg-green-100 text-green-700 border-green-200"
-                              : sub.status === "submitted"
-                              ? "bg-blue-100 text-blue-700 border-blue-200"
-                              : "bg-gray-100 text-gray-700 border-gray-200"
-                          }
+                    {homework.recentSubmissions.map((sub, index: number) => {
+                      // Extract homework title - homework can be an array or single object
+                      const homeworkData = sub.homework;
+                      const homeworkArray = Array.isArray(homeworkData) ? homeworkData : homeworkData ? [homeworkData] : [];
+                      const firstHomework = homeworkArray[0] as { title?: string } | undefined;
+                      const homeworkTitle = firstHomework?.title || "Homework";
+
+                      return (
+                        <div
+                          key={index}
+                          className="flex items-center justify-between p-3 border rounded-lg"
                         >
-                          {sub.status.charAt(0).toUpperCase() + sub.status.slice(1)}
-                        </Badge>
-                      </div>
-                    ))}
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">
+                              {homeworkTitle}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {sub.submittedAt
+                                ? new Date(sub.submittedAt).toLocaleDateString()
+                                : "Not submitted"}
+                            </p>
+                          </div>
+                          <Badge
+                            variant="outline"
+                            className={
+                              sub.status === "graded"
+                                ? "bg-green-100 text-green-700 border-green-200"
+                                : sub.status === "submitted"
+                                ? "bg-blue-100 text-blue-700 border-blue-200"
+                                : "bg-gray-100 text-gray-700 border-gray-200"
+                            }
+                          >
+                            {sub.status.charAt(0).toUpperCase() + sub.status.slice(1)}
+                          </Badge>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

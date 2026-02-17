@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * RESULTS CLIENT COMPONENT
  *
@@ -67,7 +68,7 @@ export function ResultsClient({
       setResults(result.results);
       setTotal(result.total);
     } catch (error) {
-      console.error("Failed to load results:", error);
+      logger.error("Failed to load results:", error);
     } finally {
       setLoading(false);
     }

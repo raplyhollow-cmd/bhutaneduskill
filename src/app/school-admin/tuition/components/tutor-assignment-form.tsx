@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * TUTOR ASSIGNMENT FORM COMPONENT
  *
@@ -59,7 +60,7 @@ export function TutorAssignmentForm({ onClose, onSuccess }: TutorAssignmentFormP
           setTeachers(data.teachers || []);
         }
       } catch (error) {
-        console.error("Failed to fetch teachers:", error);
+        logger.error("Failed to fetch teachers:", error);
       }
     };
     fetchTeachers();

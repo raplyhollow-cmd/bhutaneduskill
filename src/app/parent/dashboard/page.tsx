@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * PARENT DASHBOARD PAGE (WITH AI INSIGHTS)
  *
@@ -133,7 +134,7 @@ export default function ParentDashboardPage() {
         });
 
       } catch (err) {
-        console.error("Error fetching parent data:", err);
+        logger.error("Error fetching parent data:", err);
         setError("Failed to load dashboard data");
       } finally {
         setLoading(false);
@@ -204,7 +205,7 @@ export default function ParentDashboardPage() {
         insightsFetchedRef.current.add(selectedChildId);
 
       } catch (err) {
-        console.error("Error fetching AI insights:", err);
+        logger.error("Error fetching AI insights:", err);
         setInsightsError("Failed to load AI insights");
         setAiInsights([]);
       } finally {
@@ -274,7 +275,7 @@ export default function ParentDashboardPage() {
       insightsFetchedRef.current.add(selectedChildId);
 
     } catch (err) {
-      console.error("Error refreshing AI insights:", err);
+      logger.error("Error refreshing AI insights:", err);
       setInsightsError("Failed to refresh AI insights");
       setAiInsights([]);
     } finally {

@@ -297,7 +297,7 @@ export async function chatWithCareerCoachFromServer(
 
   try {
     const model = client.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.5-flash",
       generationConfig,
       safetySettings,
       systemInstruction: CAREER_COACH_SYSTEM,

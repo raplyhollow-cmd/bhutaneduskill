@@ -43,7 +43,60 @@ import Link from "next/link";
 
 // Mock student data - in production, this would come from the database
 const getMockStudent = (id: string) => {
-  const students: Record<string, any> = {
+  const students: Record<string, {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    dateOfBirth: string;
+    grade: number;
+    section: string;
+    school: string;
+    address: string;
+    guardianName: string;
+    guardianPhone: string;
+    guardianEmail: string;
+    counselor: string;
+    enrollmentDate: string;
+    gpa: number;
+    attendanceRate: number;
+    assessmentStatus: string;
+    assessmentsTaken: number;
+    topCareer: string;
+    careerMatch: number;
+    planStatus: string;
+    riasecResults: {
+      realistic: number;
+      investigative: number;
+      artistic: number;
+      social: number;
+      enterprising: number;
+      conventional: number;
+      code: string;
+    };
+    mbtiResult: string;
+    workValues: string[];
+    careerMatches: Array<{
+      career: string;
+      match: number;
+      category: string;
+    }>;
+    academicStrengths: string[];
+    areasForImprovement: string[];
+    sessionHistory: Array<{
+      date: string;
+      type: string;
+      topic: string;
+      notes: string;
+    }>;
+    notes: Array<{
+      date: string;
+      content: string;
+      author: string;
+    }>;
+    nextSession: string;
+  }> = {
     STU001: {
       id: "STU001",
       firstName: "Tashi",
@@ -412,7 +465,7 @@ export default async function CounselorStudentDetailPage({
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {student.careerMatches.map((match: any, index: number) => (
+                {student.careerMatches.map((match: { career: string; match: number; category: string }, index: number) => (
                   <div key={index} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -495,7 +548,7 @@ export default async function CounselorStudentDetailPage({
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {student.sessionHistory.map((session: any, index: number) => (
+                {student.sessionHistory.map((session: { date: string; type: string; topic: string; notes: string }, index: number) => (
                   <div key={index} className="p-4 border rounded-lg">
                     <div className="flex items-start justify-between mb-2">
                       <div>
@@ -532,7 +585,7 @@ export default async function CounselorStudentDetailPage({
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {student.notes.map((note: any, index: number) => (
+                {student.notes.map((note: { date: string; content: string; author: string }, index: number) => (
                   <div key={index} className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
                     <div className="flex items-start justify-between mb-1">
                       <p className="text-sm text-gray-900">{note.content}</p>

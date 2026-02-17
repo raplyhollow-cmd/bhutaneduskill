@@ -1,4 +1,5 @@
 "use client";
+import { logger } from "@/lib/logger";
 
 /**
  * PARENT DOCUMENTS PAGE
@@ -138,7 +139,7 @@ export default function ParentDocumentsPage() {
       const data = await response.json();
       setDocuments(data.documents || []);
     } catch (err) {
-      console.error("Error fetching documents:", err);
+      logger.error("Error fetching documents:", err);
       setError("Failed to load documents");
     } finally {
       setLoading(false);
@@ -167,7 +168,7 @@ export default function ParentDocumentsPage() {
           setLoading(false);
         }
       } catch (err) {
-        console.error("Error fetching children:", err);
+        logger.error("Error fetching children:", err);
         setError("Failed to load children");
         setLoading(false);
       }
@@ -238,7 +239,7 @@ export default function ParentDocumentsPage() {
         fetchDocuments(selectedChildId);
       }
     } catch (err) {
-      console.error("Error uploading document:", err);
+      logger.error("Error uploading document:", err);
       showAlert("error", "Upload failed", "Failed to upload the document. Please try again.");
     } finally {
       setUploading(false);
@@ -268,7 +269,7 @@ export default function ParentDocumentsPage() {
 
       showAlert("success", "Download started", `${fileName} is being downloaded.`);
     } catch (err) {
-      console.error("Error downloading document:", err);
+      logger.error("Error downloading document:", err);
       showAlert("error", "Download failed", "Failed to download the document. Please try again.");
     }
   };

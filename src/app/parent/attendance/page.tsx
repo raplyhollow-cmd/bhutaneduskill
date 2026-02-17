@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * PARENT ATTENDANCE PAGE
  *
@@ -74,7 +75,7 @@ export default function ParentAttendancePage() {
           setLoading(false);
         }
       } catch (error) {
-        console.error("Error loading data:", error);
+        logger.error("Error loading data:", error);
         setLoading(false);
       }
     }
@@ -92,7 +93,7 @@ export default function ParentAttendancePage() {
       setAttendance(data.attendance || []);
       calculateStats(data.attendance || []);
     } catch (error) {
-      console.error("Error loading attendance:", error);
+      logger.error("Error loading attendance:", error);
       setAttendance([]);
       setAttendanceStats({
         total: 0,

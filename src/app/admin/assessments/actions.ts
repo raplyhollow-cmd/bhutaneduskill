@@ -155,7 +155,7 @@ export async function updateAssessmentType(
   const { userId } = authResult;
 
   try {
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       updatedAt: new Date(),
     };
 
@@ -394,7 +394,7 @@ export async function updateAssessment(
   const { userId } = authResult;
 
   try {
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       updatedAt: new Date(),
     };
 
@@ -775,7 +775,7 @@ export async function getQuestionById(questionId: string) {
 export async function createAssessmentQuestion(data: {
   assessmentTypeId: string;
   questionText: string;
-  questionData?: any;
+  questionData?: Record<string, unknown>;
   options?: string[];
   correctAnswer?: string;
   points?: number;
@@ -834,7 +834,7 @@ export async function updateAssessmentQuestion(
   questionId: string,
   data: {
     questionText?: string;
-    questionData?: any;
+    questionData?: Record<string, unknown>;
     options?: string[];
     correctAnswer?: string;
     points?: number;
@@ -849,7 +849,7 @@ export async function updateAssessmentQuestion(
   const { userId } = authResult;
 
   try {
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       updatedAt: new Date(),
     };
 
@@ -919,7 +919,7 @@ export async function bulkCreateQuestions(
   assessmentTypeId: string,
   questions: Array<{
     questionText: string;
-    questionData?: any;
+    questionData?: Record<string, unknown>;
     options?: string[];
     correctAnswer?: string;
     points?: number;

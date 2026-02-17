@@ -1,4 +1,5 @@
 "use server";
+import { logger } from "@/lib/logger";
 
 /**
  * SCHOOL ADMIN SERVER ACTIONS
@@ -195,7 +196,7 @@ export async function markAttendance(data: {
 
     return { success: true, count: recordsToInsert.length };
   } catch (error) {
-    console.error("Failed to mark attendance:", error);
+    logger.error("Failed to mark attendance:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to save attendance",
@@ -370,7 +371,7 @@ export async function fetchAnnouncements(options: {
       total: total as number,
     };
   } catch (error) {
-    console.error("Failed to fetch announcements:", error);
+    logger.error("Failed to fetch announcements:", error);
     return { announcements: [], total: 0 };
   }
 }
@@ -398,7 +399,7 @@ export async function fetchAnnouncementById(id: string): Promise<AnnouncementDat
 
     return (announcement as AnnouncementData) || null;
   } catch (error) {
-    console.error("Failed to fetch announcement:", error);
+    logger.error("Failed to fetch announcement:", error);
     return null;
   }
 }
@@ -491,7 +492,7 @@ export async function createAnnouncement(data: {
 
     return { success: true, announcement };
   } catch (error) {
-    console.error("Failed to create announcement:", error);
+    logger.error("Failed to create announcement:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to create announcement",
@@ -579,7 +580,7 @@ export async function updateAnnouncement(
 
     return { success: true, announcement: updated };
   } catch (error) {
-    console.error("Failed to update announcement:", error);
+    logger.error("Failed to update announcement:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to update announcement",
@@ -608,7 +609,7 @@ export async function deleteAnnouncement(id: string) {
 
     return { success: true };
   } catch (error) {
-    console.error("Failed to delete announcement:", error);
+    logger.error("Failed to delete announcement:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to delete announcement",
@@ -651,7 +652,7 @@ export async function togglePinAnnouncement(id: string) {
 
     return { success: true, announcement: updated };
   } catch (error) {
-    console.error("Failed to toggle pin:", error);
+    logger.error("Failed to toggle pin:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to toggle pin",

@@ -4,14 +4,17 @@ import { logger } from "@/lib/logger";
 /**
  * MINISTRY PORTAL LAYOUT
  *
- * For Ministry of Education officials to manage national education policies.
- * Uses client-side auth to check if user needs setup.
+ * Uses the Universal Mobile Template for consistent mobile UX across all portals.
+ * - Mobile: Hamburger menu with slide-in sidebar
+ * - Desktop: Always-visible sidebar
+ * - NO bottom navigation (removed as per user decision)
+ *
+ * To change mobile behavior, edit: src/config/portal-config.ts
  */
-
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { MinistrySidebar } from "@/components/shared/ministry-sidebar";
+import { UniversalMobileSidebar, UniversalPortalHeader } from "@/components/mobile/universal-mobile-sidebar";
 
 export default function MinistryLayout({
   children,
@@ -90,10 +93,10 @@ export default function MinistryLayout({
       });
   }, [router]);
 
-  // Show loading while checking auth
+  // Show loading while checking auth - Uses 100dvh to fix iOS Safari address bar bug
   if (!isReady) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-[100dvh] flex items-center justify-center bg-gray-50">
         <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -102,7 +105,7 @@ export default function MinistryLayout({
   // Show loading while redirecting to setup
   if (needsSetup) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-gray-50">
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center gap-4 bg-gray-50">
         <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
         <p className="text-gray-600">Setting up your Ministry profile...</p>
       </div>
@@ -114,11 +117,16 @@ export default function MinistryLayout({
     background: 'linear-gradient(135deg, rgb(168 85 247) 0%, rgb(147 51 234) 100%)'
   };
 
+  // Main layout - Uses 100dvh for proper mobile viewport height
   return (
-    <div className="min-h-screen bg-gray-50">
-      <MinistrySidebar userName={userName} />
+    <div className="min-h-[100dvh] bg-gray-50">
+      {/* Universal Sidebar - Now Ministry uses the SAME component as other portals! */}
+      <UniversalMobileSidebar portalType="ministry" userName={userName} />
+
+      {/* Main content area with desktop padding for sidebar */}
       <div className="lg:pl-64">
-        <div className="p-6">
+        <UniversalPortalHeader portalType="ministry" userName={userName} />
+        <main className="p-6">
           {/* Portal Banner */}
           <div className="mb-6 text-white rounded-xl p-6 shadow-lg" style={bannerStyle}>
             <div className="flex items-center justify-between">
@@ -146,7 +154,7 @@ export default function MinistryLayout({
           </div>
 
           {children}
-        </div>
+        </main>
       </div>
     </div>
   );

@@ -268,9 +268,9 @@ export default function AdminSettingsPage() {
         setSettings(fetchedSettings);
         originalSettings.current = fetchedSettings;
       }
-    } catch (err: any) {
+    } catch (err) {
       logger.error("Error fetching settings:", err);
-      setError(err.message);
+      setError(err instanceof Error ? err.message : "Failed to fetch settings");
     } finally {
       setLoading(false);
     }
@@ -309,11 +309,11 @@ export default function AdminSettingsPage() {
       } else {
         throw new Error(data.error || "Failed to save settings");
       }
-    } catch (err: any) {
+    } catch (err) {
       logger.error("Error saving settings:", err);
       toast({
         title: "Save failed",
-        description: err.message || "Failed to save settings. Please try again.",
+        description: err instanceof Error ? err.message : "Failed to save settings. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -353,11 +353,11 @@ export default function AdminSettingsPage() {
       } else {
         throw new Error("Some settings failed to save");
       }
-    } catch (err: any) {
+    } catch (err) {
       logger.error("Error saving settings:", err);
       toast({
         title: "Save failed",
-        description: err.message || "Failed to save settings. Please try again.",
+        description: err instanceof Error ? err.message : "Failed to save settings. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -393,11 +393,11 @@ export default function AdminSettingsPage() {
       } else {
         throw new Error(data.error || "Failed to perform action");
       }
-    } catch (err: any) {
+    } catch (err) {
       logger.error("Error performing action:", err);
       toast({
         title: "Action failed",
-        description: err.message || "Failed to perform action. Please try again.",
+        description: err instanceof Error ? err.message : "Failed to perform action. Please try again.",
         variant: "destructive",
       });
     }

@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * TEACHER ATTENDANCE PAGE
  * Take and manage student attendance
@@ -101,7 +102,7 @@ export default function TeacherAttendancePage() {
 
         setClasses(classData);
       } catch (err) {
-        console.error("Error fetching classes:", err);
+        logger.error("Error fetching classes:", err);
         setError("Failed to load classes. Please try again.");
       } finally {
         setIsLoading(false);
@@ -125,7 +126,7 @@ export default function TeacherAttendancePage() {
             setHistoryData(data);
           }
         } catch (err) {
-          console.error("Error fetching history:", err);
+          logger.error("Error fetching history:", err);
         } finally {
           setIsLoadingHistory(false);
         }
@@ -153,7 +154,7 @@ export default function TeacherAttendancePage() {
             setRecentRecords(recordsWithStudent);
           }
         } catch (err) {
-          console.error("Error fetching recent records:", err);
+          logger.error("Error fetching recent records:", err);
         }
       };
 
@@ -259,7 +260,7 @@ export default function TeacherAttendancePage() {
             setExistingAttendance([]);
           }
         } catch (err) {
-          console.error("Error fetching attendance:", err);
+          logger.error("Error fetching attendance:", err);
           setExistingAttendance([]);
         }
       };

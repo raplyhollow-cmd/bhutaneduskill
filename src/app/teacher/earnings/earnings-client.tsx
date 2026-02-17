@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * TEACHER EARNINGS CLIENT COMPONENT
  *
@@ -74,7 +75,7 @@ export function EarningsClient({
         setAllTransactions(result.allTransactions);
         setCourseStats(result.courseStats);
       } catch (error) {
-        console.error("Failed to load earnings:", error);
+        logger.error("Failed to load earnings:", error);
       } finally {
         setLoading(false);
       }

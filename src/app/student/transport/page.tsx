@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * STUDENT TRANSPORT PAGE
  *
@@ -150,7 +151,7 @@ export default function StudentTransportPage() {
           setHasTransport(false);
         }
       } catch (error) {
-        console.error("Error fetching transport data:", error);
+        logger.error("Error fetching transport data:", error);
       } finally {
         setLoading(false);
       }
@@ -187,7 +188,7 @@ export default function StudentTransportPage() {
       }
       setLastRefresh(new Date());
     } catch (error) {
-      console.error("Error fetching tracking data:", error);
+      logger.error("Error fetching tracking data:", error);
     } finally {
       setTrackingLoading(false);
     }
@@ -203,7 +204,7 @@ export default function StudentTransportPage() {
         setNotifications(data.notifications);
       }
     } catch (error) {
-      console.error("Error fetching notifications:", error);
+      logger.error("Error fetching notifications:", error);
     }
   };
 

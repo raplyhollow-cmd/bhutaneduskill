@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * TEACHER STUDENTS PAGE
  * View all students across teacher's classes with filters
@@ -149,7 +150,7 @@ export default function TeacherStudentsPage() {
         setStudents(apiStudents);
         setFilteredStudents(apiStudents);
       } catch (err) {
-        console.error("Error fetching student data:", err);
+        logger.error("Error fetching student data:", err);
         setError(err instanceof Error ? err.message : "Failed to load students");
         // Set empty arrays on error
         setClasses([]);
@@ -227,7 +228,7 @@ export default function TeacherStudentsPage() {
       link.download = `students_export_${new Date().toISOString().split("T")[0]}.csv`;
       link.click();
     } catch (err) {
-      console.error("Export error:", err);
+      logger.error("Export error:", err);
     } finally {
       setIsExporting(false);
     }

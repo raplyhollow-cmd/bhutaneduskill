@@ -1,17 +1,20 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * PARENT PORTAL LAYOUT
  *
- * For parents to monitor their child's progress and career exploration.
- * Uses client-side auth to check if parent needs setup.
+ * Uses the Universal Mobile Template for consistent mobile UX across all portals.
+ * - Mobile: Hamburger menu with slide-in sidebar
+ * - Desktop: Always-visible sidebar
+ * - NO bottom navigation (removed as per user decision)
+ *
+ * To change mobile behavior, edit: src/config/portal-config.ts
  */
-
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { PortalSidebar, PortalHeader } from "@/components/shared/portal-sidebar";
-import { ParentBottomNav, MainContentWithBottomNav } from "@/components/shared/portal-bottom-nav";
+import { UniversalMobileSidebar, UniversalPortalHeader } from "@/components/mobile/universal-mobile-sidebar";
 
 export default function ParentLayout({
   children,
@@ -74,7 +77,7 @@ export default function ParentLayout({
         }
       })
       .catch((error) => {
-        console.error("API fetch failed:", error);
+        logger.error("API fetch failed:", error);
         // If APIs fail completely, redirect to setup to ensure user is properly configured
         setNeedsSetup(true);
         setTimeout(() => {
@@ -83,9 +86,10 @@ export default function ParentLayout({
       });
   }, [router]);
 
+  // Loading state - Uses 100dvh to fix iOS Safari address bar bug
   if (!userType) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-[100dvh] flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-gray-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -94,7 +98,7 @@ export default function ParentLayout({
   // Show loading while redirecting to setup
   if (needsSetup) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center gap-4">
         <div className="w-8 h-8 border-4 border-gray-500 border-t-transparent rounded-full animate-spin" />
         <p className="text-gray-600">Setting up your profile...</p>
       </div>
@@ -106,47 +110,48 @@ export default function ParentLayout({
     background: 'linear-gradient(135deg, rgb(107 114 128) 0%, rgb(75 85 99) 100%)'
   };
 
+  // Main layout - Uses 100dvh for proper mobile viewport height
   return (
-    <div className="min-h-screen bg-gray-50">
-      <PortalSidebar userType="parent" userName={userName} />
+    <div className="min-h-[100dvh] bg-gray-50">
+      {/* Universal Sidebar - Works for ALL portals */}
+      <UniversalMobileSidebar portalType="parent" userName={userName} />
+
+      {/* Main content area with desktop padding for sidebar */}
       <div className="lg:pl-64">
-        <PortalHeader userType="parent" userName={userName} />
-        <MainContentWithBottomNav>
-          <main className="p-6">
-            {/* Portal Banner */}
-            <div className="mb-6 text-white rounded-xl p-6 shadow-lg premium-card" style={bannerStyle}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-2xl font-bold mb-1">Welcome to Parent Portal</h1>
-                  <p className="text-white/90">
-                    Monitor your child's career exploration and academic progress.
-                  </p>
-                </div>
-                <div className="hidden md:block">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="w-16 h-16 text-white/80"
-                  >
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                    <circle cx="8.5" cy="7" r="4" />
-                    <line x1="20" y1="8" x2="20" y2="14" />
-                    <line x1="23" y1="11" x2="17" y2="11" />
-                  </svg>
-                </div>
+        <UniversalPortalHeader portalType="parent" userName={userName} />
+        <main className="p-6">
+          {/* Portal Banner */}
+          <div className="mb-6 text-white rounded-xl p-6 shadow-lg premium-card" style={bannerStyle}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold mb-1">Welcome to Parent Portal</h1>
+                <p className="text-white/90">
+                  Monitor your child's career exploration and academic progress.
+                </p>
+              </div>
+              <div className="hidden md:block">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-16 h-16 text-white/80"
+                >
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="8.5" cy="7" r="4" />
+                  <line x1="20" y1="8" x2="20" y2="14" />
+                  <line x1="23" y1="11" x2="17" y2="11" />
+                </svg>
               </div>
             </div>
+          </div>
 
-            {children}
-          </main>
-        </MainContentWithBottomNav>
+          {children}
+        </main>
       </div>
-      <ParentBottomNav />
     </div>
   );
 }

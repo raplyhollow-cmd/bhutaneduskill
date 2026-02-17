@@ -21,12 +21,16 @@ import { safeTrackAIInteraction, AI_FEATURE_IDS } from "@/lib/ai/track-interacti
 interface InsightRequest {
   userRole: "admin" | "teacher" | "counselor" | "school-admin" | "parent" | "student" | "ministry";
   contextData?: {
-    stats?: Record<string, any>;
-    recentActivity?: any[];
-    students?: any[];
-    schools?: any[];
-    careerInterests?: any[];
+    stats?: Record<string, unknown>;
+    recentActivity?: Array<{ description?: string }>;
+    students?: unknown[];
+    schools?: Array<{ completion?: number }>;
+    careerInterests?: Array<{ career?: string; percentage?: number }>;
   };
+}
+
+interface SchoolWithCompletion {
+  completion?: number;
 }
 
 interface AIInsight {
@@ -97,7 +101,7 @@ export async function POST(request: NextRequest) {
       insights,
       generatedAt: new Date().toISOString(),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
       { error: "Failed to generate insights", insights: [] },
@@ -153,14 +157,14 @@ async function generateAdminInsights(
   const stats = contextData?.stats || {};
 
   // Fetch real data
-  const totalSchools = stats.totalSchools || 0;
-  const totalStudents = stats.totalStudents || 0;
-  const completionRate = stats.completionRate || 0;
+  const totalSchools = (stats.totalSchools as number) || 0;
+  const totalStudents = (stats.totalStudents as number) || 0;
+  const completionRate = (stats.completionRate as number) || 0;
   const topSchools = contextData?.schools || [];
   const careerInterests = contextData?.careerInterests || [];
 
   // Insight 1: School Engagement Alert
-  const lowCompletionSchools = topSchools.filter((s: any) => s.completion < 80);
+  const lowCompletionSchools = topSchools.filter((s) => typeof s.completion === "number" && s.completion < 80);
   if (lowCompletionSchools.length > 0) {
     insights.push({
       type: "warning",
@@ -248,7 +252,7 @@ async function generateTeacherInsights(
   const stats = contextData?.stats || {};
 
   // At-risk students
-  const atRiskCount = stats.atRiskStudents || 0;
+  const atRiskCount = (stats.atRiskStudents as number) || 0;
   if (atRiskCount > 0) {
     insights.push({
       type: "warning",
@@ -262,7 +266,7 @@ async function generateTeacherInsights(
   }
 
   // Class performance
-  const avgScore = stats.averageScore || 0;
+  const avgScore = (stats.averageScore as number) || 0;
   insights.push({
     type: avgScore >= 70 ? "success" : "info",
     title: "Class Performance Overview",
@@ -287,7 +291,7 @@ async function generateCounselorInsights(
   const stats = contextData?.stats || {};
 
   // Students needing intervention
-  const needsIntervention = stats.needsIntervention || 0;
+  const needsIntervention = (stats.needsIntervention as number) || 0;
   if (needsIntervention > 0) {
     insights.push({
       type: "warning",
@@ -304,7 +308,7 @@ async function generateCounselorInsights(
   insights.push({
     type: "info",
     title: "Assessment Completion Trends",
-    message: `${stats.completedThisWeek || 0} students completed assessments this week. Career exploration is ${stats.trend === "up" ? "increasing" : "stable"}.`,
+    message: `${(stats.completedThisWeek as number) || 0} students completed assessments this week. Career exploration is ${(stats.trend as string) === "up" ? "increasing" : "stable"}.`,
     actions: [
       { label: "View Assessments", href: "/counselor/assessments" },
       { label: "Student Reports", href: "/counselor/reports" },
@@ -326,12 +330,14 @@ async function generateSchoolAdminInsights(
   const stats = contextData?.stats || {};
 
   // Pending actions
-  const pendingActions = (stats.pendingFees || 0) + (stats.pendingAttendance || 0);
+  const pendingFees = (stats.pendingFees as number) || 0;
+  const pendingAttendance = (stats.pendingAttendance as number) || 0;
+  const pendingActions = pendingFees + pendingAttendance;
   if (pendingActions > 0) {
     insights.push({
       type: "warning",
       title: "Pending Actions Required",
-      message: `${pendingActions} items require attention: ${stats.pendingFees || 0} fee payments pending, ${stats.pendingAttendance || 0} attendance records to review.`,
+      message: `${pendingActions} items require attention: ${pendingFees} fee payments pending, ${pendingAttendance} attendance records to review.`,
       actions: [
         { label: "View Fees", href: "/school-admin/fees" },
         { label: "Attendance", href: "/school-admin/attendance" },
@@ -343,7 +349,7 @@ async function generateSchoolAdminInsights(
   insights.push({
     type: "success",
     title: "School Performance",
-    message: `${stats.totalStudents || 0} enrolled students. Revenue collection at ${stats.revenuePercentage || 85}%. Teacher-student ratio is 1:${stats.teacherStudentRatio || 25}.`,
+    message: `${(stats.totalStudents as number) || 0} enrolled students. Revenue collection at ${(stats.revenuePercentage as number) || 85}%. Teacher-student ratio is 1:${(stats.teacherStudentRatio as number) || 25}.`,
     actions: [
       { label: "View Reports", href: "/school-admin/reports" },
       { label: "Manage Teachers", href: "/school-admin/teachers" },
@@ -364,14 +370,15 @@ async function generateParentInsights(
   const insights: AIInsight[] = [];
   const stats = contextData?.stats || {};
 
-  const childName = stats.childName || "Your child";
+  const childName = (stats.childName as string) || "Your child";
 
   // Attendance alert
-  if (stats.attendance && stats.attendance < 75) {
+  const attendance = (stats.attendance as number) || 0;
+  if (attendance < 75) {
     insights.push({
       type: "warning",
       title: "Attendance Alert",
-      message: `${childName}'s attendance is ${stats.attendance}%. Please ensure regular school attendance for better academic outcomes.`,
+      message: `${childName}'s attendance is ${attendance}%. Please ensure regular school attendance for better academic outcomes.`,
       actions: [
         { label: "View Details", href: "/parent/attendance" },
         { label: "Contact Teacher", href: "/parent/communication" },
@@ -380,11 +387,12 @@ async function generateParentInsights(
   }
 
   // Homework pending
-  if (stats.pendingHomework && stats.pendingHomework > 0) {
+  const pendingHomework = (stats.pendingHomework as number) || 0;
+  if (pendingHomework > 0) {
     insights.push({
       type: "info",
       title: "Homework Pending",
-      message: `${childName} has ${stats.pendingHomework} pending homework submissions. Encourage completion to stay on track.`,
+      message: `${childName} has ${pendingHomework} pending homework submissions. Encourage completion to stay on track.`,
       actions: [
         { label: "View Homework", href: "/parent/homework" },
       ],
@@ -392,11 +400,12 @@ async function generateParentInsights(
   }
 
   // Academic performance
-  if (stats.averageScore !== undefined) {
+  const averageScore = (stats.averageScore as number);
+  if (averageScore !== undefined) {
     insights.push({
-      type: stats.averageScore >= 70 ? "success" : "tip",
+      type: averageScore >= 70 ? "success" : "tip",
       title: "Academic Progress",
-      message: `${childName}'s average score is ${stats.averageScore}%. ${stats.averageScore >= 70 ? "Good progress!" : "Consider additional learning support."}`,
+      message: `${childName}'s average score is ${averageScore}%. ${averageScore >= 70 ? "Good progress!" : "Consider additional learning support."}`,
       actions: [
         { label: "View Progress", href: "/parent/progress" },
         { label: "Learning Modules", href: "/parent/learning" },
@@ -420,11 +429,11 @@ async function generateStudentInsights(
   const userName = user.firstName || "Student";
 
   // Get student stats
-  const assessmentsCompleted = stats.assessmentsCompleted || stats.completedAssessments || 0;
-  const homeworkPending = stats.homeworkPending || stats.pendingHomework || 0;
-  const attendanceRate = stats.attendanceRate || stats.attendance || 0;
-  const careerMatches = stats.careerMatches || stats.topMatches || 0;
-  const averageScore = stats.averageScore || 0;
+  const assessmentsCompleted = (stats.assessmentsCompleted as number) || (stats.completedAssessments as number) || 0;
+  const homeworkPending = (stats.homeworkPending as number) || (stats.pendingHomework as number) || 0;
+  const attendanceRate = (stats.attendanceRate as number) || (stats.attendance as number) || 0;
+  const careerMatches = (stats.careerMatches as number) || (stats.topMatches as number) || 0;
+  const averageScore = (stats.averageScore as number) || 0;
 
   // Insight 1: Career Discovery (based on assessments)
   if (assessmentsCompleted === 0) {
@@ -574,7 +583,7 @@ async function generateMinistryInsights(
   const recentActivity = contextData?.recentActivity || [];
 
   // Insight 1: Schools Needing Attention (low completion rates)
-  const lowCompletionSchools = topSchools.filter((s: any) => s.completion < 70);
+  const lowCompletionSchools = topSchools.filter((s) => typeof s.completion === "number" && s.completion < 70);
   if (lowCompletionSchools.length > 0) {
     insights.push({
       type: "warning",
@@ -588,9 +597,9 @@ async function generateMinistryInsights(
   }
 
   // Insight 2: National Enrollment Growth
-  const enrollmentGrowth = stats.enrollmentGrowth || 0;
-  const totalStudents = stats.totalStudents || 0;
-  const totalSchools = stats.totalSchools || 0;
+  const enrollmentGrowth = (stats.enrollmentGrowth as number) || 0;
+  const totalStudents = (stats.totalStudents as number) || 0;
+  const totalSchools = (stats.totalSchools as number) || 0;
 
   let growthMessage = `National student enrollment at ${totalStudents.toLocaleString()} across ${totalSchools} schools.`;
   if (enrollmentGrowth > 5) {
@@ -649,7 +658,7 @@ async function generateMinistryInsights(
   }
 
   // Insight 4: Assessment Completion at National Level
-  const completionRate = stats.assessmentCompletion || 0;
+  const completionRate = (stats.assessmentCompletion as number) || 0;
   if (completionRate < 60) {
     insights.push({
       type: "warning",

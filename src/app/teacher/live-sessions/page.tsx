@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * TEACHER LIVE SESSIONS PAGE
  * Schedule and manage live video sessions (Zoom, Google Meet)
@@ -176,7 +177,7 @@ export default function TeacherLiveSessionsPage() {
           ]);
         }
       } catch (error) {
-        console.error("Error fetching sessions:", error);
+        logger.error("Error fetching sessions:", error);
       } finally {
         setIsLoading(false);
       }
@@ -285,7 +286,7 @@ export default function TeacherLiveSessionsPage() {
         });
       }
     } catch (error) {
-      console.error("Error creating session:", error);
+      logger.error("Error creating session:", error);
     }
   };
 

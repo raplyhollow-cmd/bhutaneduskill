@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * ANALYTICS CLIENT COMPONENT
  *
@@ -53,7 +54,7 @@ export function AnalyticsClient({ initialData }: AnalyticsClientProps) {
       const result = await fetchAnalytics();
       setData(result);
     } catch (error) {
-      console.error("Failed to load analytics:", error);
+      logger.error("Failed to load analytics:", error);
     } finally {
       setLoading(false);
     }

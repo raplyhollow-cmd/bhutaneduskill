@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * SCHOOL ADMIN - SCHOOL SETTINGS
  *
@@ -404,7 +405,7 @@ export default function SchoolSettingsPage() {
         setBellSchedules(data.bellSchedules);
       }
     } catch (error) {
-      console.error("Failed to fetch settings:", error);
+      logger.error("Failed to fetch settings:", error);
       setErrorMessage("Failed to load settings. Please refresh the page.");
     } finally {
       setIsLoading(false);
@@ -440,7 +441,7 @@ export default function SchoolSettingsPage() {
       setSaveStatus("success");
       setTimeout(() => setSaveStatus("idle"), 3000);
     } catch (error) {
-      console.error("Failed to save settings:", error);
+      logger.error("Failed to save settings:", error);
       setSaveStatus("error");
       setErrorMessage(error instanceof Error ? error.message : "Failed to save settings");
       setTimeout(() => setErrorMessage(null), 5000);
@@ -509,7 +510,7 @@ export default function SchoolSettingsPage() {
       setSaveStatus("success");
       setTimeout(() => setSaveStatus("idle"), 3000);
     } catch (error) {
-      console.error("Failed to create academic year:", error);
+      logger.error("Failed to create academic year:", error);
       setSaveStatus("error");
     } finally {
       setIsSaving(false);
@@ -530,7 +531,7 @@ export default function SchoolSettingsPage() {
 
       setAcademicYears((prev) => prev.filter((ay) => ay.id !== id));
     } catch (error) {
-      console.error("Failed to delete academic year:", error);
+      logger.error("Failed to delete academic year:", error);
     }
   };
 
@@ -563,7 +564,7 @@ export default function SchoolSettingsPage() {
       setSaveStatus("success");
       setTimeout(() => setSaveStatus("idle"), 3000);
     } catch (error) {
-      console.error("Failed to save grade configuration:", error);
+      logger.error("Failed to save grade configuration:", error);
       setSaveStatus("error");
     } finally {
       setIsSaving(false);
@@ -600,7 +601,7 @@ export default function SchoolSettingsPage() {
       setSaveStatus("success");
       setTimeout(() => setSaveStatus("idle"), 3000);
     } catch (error) {
-      console.error("Failed to create bell schedule:", error);
+      logger.error("Failed to create bell schedule:", error);
       setSaveStatus("error");
     } finally {
       setIsSaving(false);
@@ -621,7 +622,7 @@ export default function SchoolSettingsPage() {
 
       setBellSchedules((prev) => prev.filter((bs) => bs.id !== id));
     } catch (error) {
-      console.error("Failed to delete bell schedule:", error);
+      logger.error("Failed to delete bell schedule:", error);
     }
   };
 

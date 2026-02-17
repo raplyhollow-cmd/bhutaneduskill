@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * TEACHER ASSESSMENTS PAGE
  * Create and manage assessments, view results
@@ -154,7 +155,7 @@ export default function TeacherAssessmentsPage() {
           setAssessments(mockAssessments);
         }
       } catch (error) {
-        console.error("Error fetching assessments:", error);
+        logger.error("Error fetching assessments:", error);
       } finally {
         setIsLoading(false);
       }

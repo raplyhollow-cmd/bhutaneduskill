@@ -327,7 +327,7 @@ export async function POST(request: NextRequest) {
 
     // Anonymize if requested
     if (anonymize) {
-      data = anonymizeData(data, source.fields);
+      data = anonymizeData(data as unknown as Record<string, unknown>[], source.fields) as unknown as DataSourceRecord[];
     }
 
     // Convert to requested format

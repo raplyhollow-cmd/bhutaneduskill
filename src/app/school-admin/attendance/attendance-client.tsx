@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * ATTENDANCE CLIENT COMPONENT
  *
@@ -80,7 +81,7 @@ export function AttendanceClient({
       });
       setRecords(result.records);
     } catch (error) {
-      console.error("Failed to load attendance:", error);
+      logger.error("Failed to load attendance:", error);
     } finally {
       setLoading(false);
     }

@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * TEACHERS CLIENT COMPONENT
  *
@@ -74,7 +75,7 @@ export function TeachersClient({
       setTeachers(result.teachers);
       setTotal(result.total);
     } catch (error) {
-      console.error("Failed to load teachers:", error);
+      logger.error("Failed to load teachers:", error);
     } finally {
       setLoading(false);
     }

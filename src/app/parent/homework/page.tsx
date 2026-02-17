@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * PARENT HOMEWORK PAGE
  *
@@ -123,7 +124,7 @@ export default function ParentHomeworkPage() {
           setSelectedChildId(result.children[0].id);
         }
       } catch (err) {
-        console.error("Error fetching homework:", err);
+        logger.error("Error fetching homework:", err);
         setError("Failed to load homework data");
       } finally {
         setLoading(false);
@@ -156,7 +157,7 @@ export default function ParentHomeworkPage() {
         const result: HomeworkResponse = await response.json();
         setData(result);
       } catch (err) {
-        console.error("Error fetching filtered homework:", err);
+        logger.error("Error fetching filtered homework:", err);
         setError("Failed to load homework data");
       }
     };

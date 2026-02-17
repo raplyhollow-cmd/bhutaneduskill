@@ -1,4 +1,5 @@
 "use client";
+import { logger } from "@/lib/logger";
 
 /**
  * TEACHER LEAVE MANAGEMENT PAGE
@@ -142,7 +143,7 @@ export default function TeacherLeavePage() {
         setLeaveRequests(mappedRequests);
         setTeachers(teachersData.teachers || []);
       } catch (error) {
-        console.error("Error fetching data:", error);
+        logger.error("Error fetching data:", error);
       } finally {
         setLoading(false);
       }
@@ -189,7 +190,7 @@ export default function TeacherLeavePage() {
         alert(data.error || "Failed to submit leave request");
       }
     } catch (error) {
-      console.error("Error submitting leave request:", error);
+      logger.error("Error submitting leave request:", error);
       alert("Failed to submit leave request. Please try again.");
     } finally {
       setSubmitting(false);
@@ -221,7 +222,7 @@ export default function TeacherLeavePage() {
         alert(data.error || "Failed to cancel leave request");
       }
     } catch (error) {
-      console.error("Error cancelling leave request:", error);
+      logger.error("Error cancelling leave request:", error);
       alert("Failed to cancel leave request. Please try again.");
     }
   };

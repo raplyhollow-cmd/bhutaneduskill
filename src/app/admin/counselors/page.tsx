@@ -46,37 +46,31 @@ import {
   verifyCounselor,
   deleteCounselor,
 } from "@/app/admin/counselors/actions";
+import type { User } from "@/types";
 
-interface CounselorData {
-  id: string;
-  name: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string | null;
-  schoolId: string | null;
+interface CounselorAssignment {
+  schoolId: string;
+  schoolName: string;
+  schoolCode: string;
+}
+
+interface CounselorStats {
+  assignedSchools: number;
+  totalNotes: number;
+  activePlans: number;
+}
+
+interface CounselorData extends User {
   schoolName: string | null;
-  emailVerified: boolean;
-  lastLogin: string | null;
-  type: string;
-  createdAt: Date | string | null;
-  stats: {
-    assignedSchools: number;
-    totalNotes: number;
-    activePlans: number;
-  };
-  assignments: Array<{
-    schoolId: string;
-    schoolName: string;
-    schoolCode: string;
-  }>;
+  stats: CounselorStats;
+  assignments: CounselorAssignment[];
 }
 
 export default function AdminCounselorsPage() {
   const [loading, setLoading] = useState(true);
   const [counselors, setCounselors] = useState<CounselorData[]>([]);
   const [filteredCounselors, setFilteredCounselors] = useState<CounselorData[]>([]);
-  const [uniqueSchools, setUniqueSchools] = useState<any[]>([]);
+  const [uniqueSchools, setUniqueSchools] = useState<CounselorData[]>([]);
 
   // Filter states
   const [searchQuery, setSearchQuery] = useState("");
@@ -134,7 +128,7 @@ export default function AdminCounselorsPage() {
       const counselorsData: CounselorData[] = data.data || [];
 
       // Enrich with stats and assignments (for now using mock stats)
-      const enriched = counselorsData.map((c: any) => ({
+      const enriched = counselorsData.map((c: CounselorData) => ({
         ...c,
         stats: {
           assignedSchools: 0,
@@ -176,8 +170,8 @@ export default function AdminCounselorsPage() {
       await verifyCounselor(counselor.id);
       // Refresh counselors list
       await fetchCounselors();
-    } catch (error: any) {
-      alert(error.message || "Failed to verify counselor");
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to verify counselor");
     } finally {
       setIsVerifying(null);
     }
@@ -196,8 +190,8 @@ export default function AdminCounselorsPage() {
       setIsDeleteDialogOpen(false);
       setDeletingCounselor(null);
       await fetchCounselors();
-    } catch (error: any) {
-      alert(error.message || "Failed to delete counselor");
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to delete counselor");
     }
   };
 
@@ -333,7 +327,7 @@ export default function AdminCounselorsPage() {
               className="px-4 py-3 min-h-[44px] rounded-lg border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none bg-white"
             >
               <option value="all">All Schools</option>
-              {uniqueSchools.map((school: any) => (
+              {uniqueSchools.map((school) => (
                 <option key={school.schoolId} value={school.schoolId}>
                   {school.schoolName}
                 </option>
@@ -422,7 +416,7 @@ export default function AdminCounselorsPage() {
                       <td className="py-4 px-4">
                         <div className="space-y-2">
                           {counselor.assignments && counselor.assignments.length > 0 ? (
-                            counselor.assignments.map((assignment: any) => (
+                            counselor.assignments.map((assignment) => (
                               <div key={assignment.schoolId} className="flex items-center gap-2">
                                 <Building2 className="w-3 h-3 text-gray-400" />
                                 <span className="text-sm text-gray-700">{assignment.schoolName}</span>
@@ -605,9 +599,9 @@ export default function AdminCounselorsPage() {
         </CardHeader>
         <CardContent>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {uniqueSchools.slice(0, 6).map((school: any) => {
+            {uniqueSchools.slice(0, 6).map((school) => {
               const schoolCounselors = filteredCounselors.filter((c) =>
-                c.assignments?.some((a: any) => a.schoolId === school.schoolId)
+                c.assignments?.some((a) => a.schoolId === school.schoolId)
               );
               return (
                 <div key={school.schoolId} className="p-4 bg-gray-50 rounded-lg">
@@ -857,7 +851,7 @@ export default function AdminCounselorsPage() {
                 <div className="space-y-2">
                   <h4 className="font-medium text-gray-900">School Assignments</h4>
                   <div className="flex flex-wrap gap-2">
-                    {viewingCounselor.assignments.map((assignment: any) => (
+                    {viewingCounselor.assignments.map((assignment) => (
                       <Badge key={assignment.schoolId} variant="outline">
                         {assignment.schoolName}
                       </Badge>

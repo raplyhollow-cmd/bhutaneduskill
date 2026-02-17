@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * TEACHER LEARNING MODULES PAGE
  * Create and manage learning modules
@@ -248,7 +249,7 @@ export default function TeacherLearningPage() {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
-      console.error("Error fetching modules:", err);
+      logger.error("Error fetching modules:", err);
     } finally {
       setLoading(false);
     }
@@ -298,7 +299,7 @@ export default function TeacherLearningPage() {
       setEditingModule(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save module");
-      console.error("Error saving module:", err);
+      logger.error("Error saving module:", err);
       throw err;
     }
   };
@@ -328,7 +329,7 @@ export default function TeacherLearningPage() {
       await fetchModules();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete module");
-      console.error("Error deleting module:", err);
+      logger.error("Error deleting module:", err);
     } finally {
       setActionLoading(null);
     }
@@ -350,7 +351,7 @@ export default function TeacherLearningPage() {
       await fetchModules();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to publish module");
-      console.error("Error publishing module:", err);
+      logger.error("Error publishing module:", err);
     } finally {
       setActionLoading(null);
     }
@@ -372,7 +373,7 @@ export default function TeacherLearningPage() {
       await fetchModules();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to unpublish module");
-      console.error("Error unpublishing module:", err);
+      logger.error("Error unpublishing module:", err);
     } finally {
       setActionLoading(null);
     }
@@ -394,7 +395,7 @@ export default function TeacherLearningPage() {
       await fetchModules();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to duplicate module");
-      console.error("Error duplicating module:", err);
+      logger.error("Error duplicating module:", err);
     } finally {
       setActionLoading(null);
     }

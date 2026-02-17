@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      event: event[0],
+      event: event[0] || event,
     });
   } catch (error) {
     logger.apiError(error, { route: "/api/events", method: "POST" });

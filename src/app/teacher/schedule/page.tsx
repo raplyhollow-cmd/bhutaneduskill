@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * TEACHER SCHEDULE PAGE
  * Weekly timetable view with class schedule, events, and calendar integration
@@ -209,7 +210,7 @@ export default function TeacherSchedulePage() {
           ]);
         }
       } catch (error) {
-        console.error("Error fetching schedule:", error);
+        logger.error("Error fetching schedule:", error);
       } finally {
         setIsLoading(false);
       }

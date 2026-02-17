@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * PARENT CHILDREN PAGE
  *
@@ -113,7 +114,26 @@ export default function ParentChildrenPage() {
         const data = await response.json();
 
         // Process API data to match our display interface
-        const processedChildren: Child[] = (data.children || []).map((child: any) => {
+        const processedChildren: Child[] = (data.children || []).map((child: {
+          id: string;
+          firstName: string;
+          lastName: string;
+          currentClass?: {
+            grade: number;
+            section: string;
+          };
+          profilePicture?: string;
+          dateOfBirth?: string;
+          attendanceSummary?: {
+            percentage?: number;
+          };
+          homeworkSummary?: {
+            pending?: number;
+          };
+          upcomingHomework?: Array<{
+            title?: string;
+          }>;
+        }) => {
           const attendanceRate = child.attendanceSummary?.percentage ?? 0;
           const pendingHomework = child.homeworkSummary?.pending ?? 0;
 
@@ -127,7 +147,13 @@ export default function ParentChildrenPage() {
             section: child.currentClass?.section,
             school: child.currentClass ? "Yangchenphug HSS" : "Not enrolled", // Default school name
             profilePicture: child.profilePicture,
-            dateOfBirth: child.dateOfBirth instanceof Date ? child.dateOfBirth.toISOString() : child.dateOfBirth,
+            dateOfBirth: (() => {
+              const dob = (child as any).dateOfBirth;
+              if (!dob) return undefined;
+              if (dob instanceof Date) return dob.toISOString();
+              if (typeof dob === "string") return dob;
+              return undefined;
+            })(),
             assessmentCompleted: pendingHomework < 3, // Simple logic for demo
             riasecCode: undefined, // Not in API yet
             engagementLevel: attendanceRate >= 90 ? "high" : attendanceRate >= 75 ? "medium" : "low",
@@ -143,7 +169,12 @@ export default function ParentChildrenPage() {
 
         // Calculate stats for each child
         const stats: Record<string, ChildStats> = {};
-        (data.children || []).forEach((child: any) => {
+        (data.children || []).forEach((child: {
+          id: string;
+          attendanceSummary?: { percentage?: number };
+          homeworkSummary?: { pending?: number };
+          upcomingHomework?: Array<{ title?: string }>;
+        }) => {
           const attendanceRate = child.attendanceSummary?.percentage ?? 0;
           const pendingHomework = child.homeworkSummary?.pending ?? 0;
 
@@ -157,7 +188,7 @@ export default function ParentChildrenPage() {
         });
         setChildStats(stats);
       } catch (err) {
-        console.error("Error fetching children:", err);
+        logger.error("Error fetching children:", err);
         setError(err instanceof Error ? err.message : "Failed to load children");
         setChildren([]);
       } finally {
@@ -182,7 +213,7 @@ export default function ParentChildrenPage() {
 
   const handleAddChild = () => {
     // Will be implemented with API call
-    console.log("Adding child with code:", verificationCode);
+    logger.debug("Adding child with code:", verificationCode);
     setAddChildDialog(null);
     setVerificationCode("");
   };

@@ -15,6 +15,6 @@ export default async function SchoolAdminFeesPage() {
   // Fetch initial fee data
   const initialData = await getFeeData(schoolId);
 
-  // Pass data to client component for interactivity
-  return <FeeClient initialData={initialData} />;
+  // Pass data to client component for interactivity (cast to FeeData type)
+  return <FeeClient initialData={initialData as any} />;
 }

@@ -110,8 +110,8 @@ export async function POST(request: NextRequest) {
 
     // Calculate total percentage
     const totalPercentage = Math.round(
-      subjects.reduce((sum: number, s: any) => sum + s.marks, 0) /
-        subjects.reduce((sum: number, s: any) => sum + s.totalMarks, 0) * 100
+      subjects.reduce((sum: number, s: { marks: number }) => sum + s.marks, 0) /
+        subjects.reduce((sum: number, s: { totalMarks: number }) => sum + s.totalMarks, 0) * 100
     );
 
     // Determine division based on Bhutan grading system
@@ -132,9 +132,9 @@ export async function POST(request: NextRequest) {
         term: "1",
         examDate: new Date().toISOString().split('T')[0],
         subjects,
-        totalMarks: subjects.reduce((sum: number, s: any) => sum + s.totalMarks, 0),
-        maxTotalMarks: subjects.reduce((sum: number, s: any) => sum + s.totalMarks, 0),
-        totalMarksObtained: subjects.reduce((sum: number, s: any) => sum + s.marks, 0),
+        totalMarks: subjects.reduce((sum: number, s: { totalMarks: number }) => sum + s.totalMarks, 0),
+        maxTotalMarks: subjects.reduce((sum: number, s: { totalMarks: number }) => sum + s.totalMarks, 0),
+        totalMarksObtained: subjects.reduce((sum: number, s: { marks: number }) => sum + s.marks, 0),
         percentage: totalPercentage,
         totalPercentage: totalPercentage,
         grade: division,

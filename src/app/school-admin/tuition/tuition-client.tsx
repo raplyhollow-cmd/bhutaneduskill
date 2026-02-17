@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * TUITION CENTER - CLIENT COMPONENT
  *
@@ -144,7 +145,7 @@ export function TuitionClient({ initialCourses, initialTotal }: TuitionClientPro
       setCourses(data.courses);
       setTotal(data.total);
     } catch (error) {
-      console.error("Failed to load courses:", error);
+      logger.error("Failed to load courses:", error);
     } finally {
       setLoading(false);
     }
@@ -160,7 +161,7 @@ export function TuitionClient({ initialCourses, initialTotal }: TuitionClientPro
         setTutors(data.tutors || []);
       }
     } catch (error) {
-      console.error("Failed to load tutors:", error);
+      logger.error("Failed to load tutors:", error);
     } finally {
       setLoading(false);
     }
@@ -176,7 +177,7 @@ export function TuitionClient({ initialCourses, initialTotal }: TuitionClientPro
         setEnrollments(data.enrollments || []);
       }
     } catch (error) {
-      console.error("Failed to load enrollments:", error);
+      logger.error("Failed to load enrollments:", error);
     } finally {
       setLoading(false);
     }

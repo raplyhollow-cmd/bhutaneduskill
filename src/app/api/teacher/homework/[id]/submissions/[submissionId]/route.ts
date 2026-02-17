@@ -32,7 +32,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       where: eq(homework.id, id),
     });
 
-    if (!homeworkData || (homeworkData as any).teacherId !== currentUser.id) {
+    if (!homeworkData || (homeworkData as { teacherId?: string }).teacherId !== currentUser.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -78,7 +78,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
       where: eq(homework.id, id),
     });
 
-    if (!homeworkData || (homeworkData as any).teacherId !== currentUser.id) {
+    if (!homeworkData || (homeworkData as { teacherId?: string }).teacherId !== currentUser.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -91,7 +91,17 @@ export async function PUT(request: NextRequest, { params }: Params) {
     }
 
     // Prepare update data
-    const updateData: any = {
+    const updateData: {
+      status: string;
+      gradedBy: string;
+      gradedAt: Date;
+      updatedAt: Date;
+      score?: number;
+      maxScore?: number;
+      percentage?: number;
+      feedback?: string;
+      questionFeedback?: unknown;
+    } = {
       status: "graded",
       gradedBy: currentUser.id,
       gradedAt: new Date(),
@@ -101,9 +111,19 @@ export async function PUT(request: NextRequest, { params }: Params) {
     if (autoGrade && homeworkData.questions) {
       // Auto-grade using auto-grading engine
       const supportedTypes = ["multiple_choice", "true_false", "fill_blank", "short_answer", "essay", "numeric", "math_expression", "match_following"];
-      const gradableQuestions = homeworkData.questions
-        .filter((q: any) => supportedTypes.includes(q.type))
-        .map((q: any) => ({
+      const gradableQuestions = (homeworkData.questions as unknown as Array<{
+        id: string;
+        type: string;
+        question: string;
+        options?: string[];
+        correctAnswer?: string | string[];
+        points?: number;
+        tolerance?: number;
+        keywords?: string[];
+        explanation?: string;
+      }>)
+        .filter((q) => supportedTypes.includes(q.type))
+        .map((q) => ({
           id: q.id,
           type: q.type,
           question: q.question,
@@ -115,9 +135,10 @@ export async function PUT(request: NextRequest, { params }: Params) {
           explanation: q.explanation,
         }));
 
+      const submissionAnswers = (submission as { answers?: unknown }).answers;
       const gradingResult = gradeHomework(
         gradableQuestions.length > 0 ? (gradableQuestions as any) : [],
-        Array.isArray((submission as any).answers) ? (submission as any).answers : [],
+        Array.isArray(submissionAnswers) ? submissionAnswers : [],
         undefined
       );
 

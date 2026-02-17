@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { feeStructures, users } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
+import { logFeeModified } from "@/lib/audit-log";
 
 const feeStructureSchema = z.object({
   name: z.string().min(1),
@@ -88,6 +89,21 @@ export async function POST(request: NextRequest) {
       createdAt: new Date(),
       updatedAt: new Date(),
     }).returning();
+
+    // Log audit event for fee structure creation
+    await logFeeModified(
+      "created",
+      newStructure.id,
+      undefined,
+      {
+        name: newStructure.name,
+        grade: newStructure.grade,
+        academicYear: newStructure.academicYear,
+        totalFees: newStructure.totalFees,
+      },
+      userId,
+      request
+    );
 
     return NextResponse.json({ structure: newStructure }, { status: 201 });
   } catch (error) {

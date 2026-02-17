@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * COUNSELORS MANAGEMENT - CLIENT COMPONENT
  *
@@ -48,7 +49,7 @@ export function CounselorsClient({ initialCounselors, initialTotal }: Counselors
       setCounselors(data.counselors);
       setTotal(data.total);
     } catch (error) {
-      console.error("Failed to refresh counselors:", error);
+      logger.error("Failed to refresh counselors:", error);
     } finally {
       setLoading(false);
     }

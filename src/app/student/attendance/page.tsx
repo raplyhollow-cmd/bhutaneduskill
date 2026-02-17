@@ -1,4 +1,5 @@
 "use client";
+import { logger } from "@/lib/logger";
 
 /**
  * STUDENT ATTENDANCE PAGE
@@ -95,7 +96,7 @@ export default function StudentAttendancePage() {
       const data = await response.json();
       setAttendance(data.attendance || []);
     } catch (error) {
-      console.error("Error loading attendance:", error);
+      logger.error("Error loading attendance:", error);
       setAttendance([]);
     } finally {
       setLoading(false);
@@ -110,7 +111,7 @@ export default function StudentAttendancePage() {
       const data = await response.json();
       setCheckInStatus(data.data);
     } catch (error) {
-      console.error("Error loading check-in status:", error);
+      logger.error("Error loading check-in status:", error);
     }
   }, []);
 
@@ -165,7 +166,7 @@ export default function StudentAttendancePage() {
       } else {
         setCheckInMessage("Failed to check in. Please try again.");
       }
-      console.error("Check-in error:", error);
+      logger.error("Check-in error:", error);
     } finally {
       setCheckInLoading(false);
     }
@@ -203,7 +204,7 @@ export default function StudentAttendancePage() {
         setCheckInMessage(data.error || "Check-in failed");
       }
     } catch (error) {
-      console.error("QR check-in error:", error);
+      logger.error("QR check-in error:", error);
       setCheckInMessage("Failed to check in. Please try again.");
     } finally {
       setCheckInLoading(false);

@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * STUDENT ID CARD PAGE
  *
@@ -62,7 +63,7 @@ export default function StudentIdCardPage() {
         const data = await response.json();
         setStudentData(data);
       } catch (error) {
-        console.error("Error fetching student data:", error);
+        logger.error("Error fetching student data:", error);
       } finally {
         setLoading(false);
       }
@@ -92,7 +93,7 @@ export default function StudentIdCardPage() {
         document.body.removeChild(a);
       }
     } catch (error) {
-      console.error("Error downloading ID card:", error);
+      logger.error("Error downloading ID card:", error);
       alert("Failed to download ID card. Please try again.");
     } finally {
       setDownloading(false);

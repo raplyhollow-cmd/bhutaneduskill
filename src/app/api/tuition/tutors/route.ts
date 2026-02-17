@@ -140,12 +140,19 @@ export async function GET(request: NextRequest) {
 
     if (search) {
       const searchLower = search.toLowerCase();
-      filtered = filtered.filter((t: any) =>
-        (t.user?.firstName?.toLowerCase() || "").includes(searchLower) ||
-        (t.user?.lastName?.toLowerCase() || "").includes(searchLower) ||
-        t.subjects?.some((s: string) => s.toLowerCase().includes(searchLower)) ||
-        (t.bio?.toLowerCase() || "").includes(searchLower)
-      );
+      filtered = filtered.filter((t) => {
+        // Extract user from relation array
+        const userArray = t.user as unknown as { firstName?: string | null; lastName?: string | null }[] | undefined;
+        const user = userArray?.[0];
+        const subjects = t.subjects as unknown;
+
+        return (
+          (user?.firstName?.toLowerCase() || "").includes(searchLower) ||
+          (user?.lastName?.toLowerCase() || "").includes(searchLower) ||
+          (typeof subjects === "string" ? subjects.toLowerCase().includes(searchLower) : false) ||
+          (t.bio?.toLowerCase() || "").includes(searchLower)
+        );
+      });
     }
 
     // Transform tutors for the frontend

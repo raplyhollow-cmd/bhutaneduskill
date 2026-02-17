@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * STUDENTS CLIENT COMPONENT
  *
@@ -92,7 +93,7 @@ export function StudentsClient({
       setStudents(result.students);
       setTotal(result.total);
     } catch (error) {
-      console.error("Failed to load students:", error);
+      logger.error("Failed to load students:", error);
     } finally {
       setLoading(false);
     }

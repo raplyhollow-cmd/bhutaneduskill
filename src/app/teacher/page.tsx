@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -83,7 +84,7 @@ export default function TeacherDashboardPage() {
         setRecentActivity(data.recentActivity || []);
         setNeedsAttention(data.needsAttention || []);
       } catch (error) {
-        console.error("Error loading dashboard data:", error);
+        logger.error("Error loading dashboard data:", error);
       } finally {
         setLoading(false);
       }

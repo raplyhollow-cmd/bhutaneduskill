@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
@@ -107,7 +108,7 @@ export default function MinistrySetupWizard() {
         alert(error.error || "Setup failed. Please try again.");
       }
     } catch (error) {
-      console.error("Setup error:", error);
+      logger.error("Setup error:", error);
       alert("Network error. Please try again.");
     } finally {
       setIsLoading(false);

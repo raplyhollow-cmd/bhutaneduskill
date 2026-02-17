@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * TEACHER HOMEWORK CREATE PAGE
  * Page for teachers to create new homework assignments
@@ -106,7 +107,7 @@ export default function CreateHomeworkPage() {
         alert(`Failed to create homework: ${error.error || "Unknown error"}`);
       }
     } catch (error) {
-      console.error("Error creating homework:", error);
+      logger.error("Error creating homework:", error);
       alert("Failed to create homework. Please try again.");
     } finally {
       setIsSaving(false);

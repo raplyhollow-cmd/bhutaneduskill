@@ -41,9 +41,39 @@ import {
 import { AddUserModal } from "@/components/admin/add-user-modal";
 import { EditTeacherModal } from "@/components/admin/edit-teacher-modal";
 
+// Types for teacher data - compatible with EditTeacherModal's Teacher interface
+export interface TeacherData {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  employeeId?: string;
+  department?: string;
+  schoolId?: string;
+  subjects?: string | string[];
+  clerkUserId?: string;
+  emailVerified?: boolean;
+  createdAt: Date | string;
+  lastLogin?: string | null;
+  schoolName?: string | null;
+  schoolCode?: string | null;
+  schoolType?: string | null;
+  stats: {
+    classes: number;
+    students: number;
+  };
+}
+
+interface SchoolOption {
+  schoolId: string;
+  schoolName: string;
+}
+
 // Helper function to parse subjects field (stored as JSON string in DB)
-function parseSubjects(subjects: string | null | undefined): string[] {
+function parseSubjects(subjects: string | string[] | null | undefined): string[] {
   if (!subjects) return [];
+  if (Array.isArray(subjects)) return subjects;
   try {
     return typeof subjects === "string" ? JSON.parse(subjects) : subjects;
   } catch {
@@ -51,12 +81,17 @@ function parseSubjects(subjects: string | null | undefined): string[] {
   }
 }
 
+interface SchoolOption {
+  schoolId: string;
+  schoolName: string;
+}
+
 export default function AdminTeachersPage() {
   const searchParams = useSearchParams();
 
   // State for data
-  const [teachers, setTeachers] = useState<any[]>([]);
-  const [filteredTeachers, setFilteredTeachers] = useState<any[]>([]);
+  const [teachers, setTeachers] = useState<TeacherData[]>([]);
+  const [filteredTeachers, setFilteredTeachers] = useState<TeacherData[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Filter states - initialize from URL params
@@ -67,13 +102,13 @@ export default function AdminTeachersPage() {
 
   // Modal states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [viewingTeacher, setViewingTeacher] = useState<any | null>(null);
+  const [viewingTeacher, setViewingTeacher] = useState<TeacherData | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-  const [deletingTeacher, setDeletingTeacher] = useState<any | null>(null);
+  const [deletingTeacher, setDeletingTeacher] = useState<TeacherData | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isVerifying, setIsVerifying] = useState<string | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingTeacher, setEditingTeacher] = useState<any | null>(null);
+  const [editingTeacher, setEditingTeacher] = useState<TeacherData | null>(null);
 
   // Fetch teachers from API
   const fetchTeachers = useCallback(async () => {
@@ -86,7 +121,7 @@ export default function AdminTeachersPage() {
       const teachersData = data.data || [];
 
       // Transform data to match expected format
-      const transformedData = teachersData.map((teacher: any) => ({
+      const transformedData = teachersData.map((teacher: TeacherData & { school?: { name?: string; code?: string; type?: string } }) => ({
         ...teacher,
         schoolName: teacher.school?.name || null,
         schoolCode: teacher.school?.code || null,
@@ -114,19 +149,19 @@ export default function AdminTeachersPage() {
   }, [fetchTeachers]);
 
   // Handle view teacher
-  const handleViewTeacher = (teacher: any) => {
+  const handleViewTeacher = (teacher: TeacherData) => {
     setViewingTeacher(teacher);
     setIsViewDialogOpen(true);
   };
 
   // Handle edit teacher
-  const handleEditTeacher = (teacher: any) => {
+  const handleEditTeacher = (teacher: TeacherData) => {
     setEditingTeacher(teacher);
     setIsEditModalOpen(true);
   };
 
   // Handle verify teacher
-  const handleVerifyTeacher = async (teacher: any) => {
+  const handleVerifyTeacher = async (teacher: TeacherData) => {
     setIsVerifying(teacher.id);
     try {
       const response = await fetch(`/api/admin/users/${teacher.id}/verify`, {
@@ -149,7 +184,7 @@ export default function AdminTeachersPage() {
   };
 
   // Handle delete teacher
-  const handleDeleteTeacher = (teacher: any) => {
+  const handleDeleteTeacher = (teacher: TeacherData) => {
     setDeletingTeacher(teacher);
     setIsDeleteDialogOpen(true);
   };
@@ -232,11 +267,11 @@ export default function AdminTeachersPage() {
   }, {} as Record<string, number>);
 
   // Get unique schools for filter
-  const uniqueSchools = Array.from(
+  const uniqueSchools: SchoolOption[] = Array.from(
     new Map(
       filteredTeachers
-        .filter((t: any) => t.schoolName)
-        .map((t: any) => [t.schoolId, t])
+        .filter((t: TeacherData) => t.schoolName && t.schoolId)
+        .map((t: TeacherData) => [t.schoolId, { schoolId: t.schoolId!, schoolName: t.schoolName! }] as [string, SchoolOption])
     ).values()
   );
 
@@ -345,9 +380,9 @@ export default function AdminTeachersPage() {
         <CardContent>
           <div className="flex flex-wrap gap-3">
             {Object.entries(subjectCounts)
-              .sort(([, a]: [string, any], [, b]: [string, any]) => b - a)
+              .sort(([, a], [, b]) => (b as number) - (a as number))
               .slice(0, 10)
-              .map(([subject, count]: [string, number]) => (
+              .map(([subject, count]) => (
                 <Badge
                   key={subject}
                   variant="outline"
@@ -385,7 +420,7 @@ export default function AdminTeachersPage() {
               className="px-4 py-3 min-h-[44px] rounded-lg border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 outline-none bg-white"
             >
               <option value="all">All Schools</option>
-              {uniqueSchools.map((school: any) => (
+              {uniqueSchools.map((school) => (
                 <option key={school.schoolId} value={school.schoolId}>
                   {school.schoolName}
                 </option>
@@ -433,7 +468,7 @@ export default function AdminTeachersPage() {
               onClick={() => setSchoolFilter("all")}
               style={{ borderColor: "rgb(236 72 153)", color: "rgb(219 39 119)" }}
             >
-              School: {(uniqueSchools as any[]).find((s: any) => s.schoolId === schoolFilter)?.schoolName} <XCircle className="w-3 h-3 ml-1" />
+              School: {uniqueSchools.find((s) => s.schoolId === schoolFilter)?.schoolName} <XCircle className="w-3 h-3 ml-1" />
             </Badge>
           )}
           {subjectFilter !== "all" && (
@@ -1057,7 +1092,17 @@ export default function AdminTeachersPage() {
         open={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         onSuccess={fetchTeachers}
-        teacher={editingTeacher}
+        teacher={editingTeacher ? {
+          id: editingTeacher.id,
+          firstName: editingTeacher.firstName,
+          lastName: editingTeacher.lastName,
+          email: editingTeacher.email,
+          phone: editingTeacher.phone,
+          employeeId: editingTeacher.employeeId,
+          department: editingTeacher.department,
+          schoolId: editingTeacher.schoolId,
+          subjects: Array.isArray(editingTeacher.subjects) ? JSON.stringify(editingTeacher.subjects) : editingTeacher.subjects,
+        } : null}
       />
     </div>
   );

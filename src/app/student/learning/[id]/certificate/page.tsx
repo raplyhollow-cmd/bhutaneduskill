@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * STUDENT CERTIFICATE PAGE
  * View and download completion certificate for a learning module
@@ -135,7 +136,7 @@ export default function StudentCertificatePage() {
           url: window.location.href,
         });
       } catch (err) {
-        console.log("Share canceled");
+        logger.debug("Share canceled");
       }
     } else {
       setShowShareModal(true);

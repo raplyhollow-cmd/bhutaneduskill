@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * TEACHER DASHBOARD
  *
@@ -87,7 +88,7 @@ export default function TeacherDashboard() {
       // Load AI insights
       await loadAIInsights();
     } catch (error) {
-      console.error("Failed to load dashboard:", error);
+      logger.error("Failed to load dashboard:", error);
     } finally {
       setIsLoading(false);
     }
@@ -108,19 +109,19 @@ export default function TeacherDashboard() {
       });
 
       // Log for debugging
-      console.log("[Teacher Dashboard] AI Insights API status:", response.status);
+      logger.debug("[Teacher Dashboard] AI Insights API status:", response.status);
 
       if (response.ok) {
         const data = await response.json();
-        console.log("[Teacher Dashboard] AI Insights received:", data.insights?.length || 0, "insights");
+        logger.debug("[Teacher Dashboard] AI Insights received:", data.insights?.length || 0, "insights");
         setAiInsights(data.insights || []);
       } else {
         const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
-        console.error("[Teacher Dashboard] AI Insights API error:", errorData);
+        logger.error("[Teacher Dashboard] AI Insights API error:", errorData);
         setAiInsights([]);
       }
     } catch (error) {
-      console.error("[Teacher Dashboard] Failed to load AI insights:", error);
+      logger.error("[Teacher Dashboard] Failed to load AI insights:", error);
       setAiInsights([]);
     } finally {
       setIsLoadingInsights(false);

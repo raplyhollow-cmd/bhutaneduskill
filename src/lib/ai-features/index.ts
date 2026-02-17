@@ -224,7 +224,7 @@ export interface AIInteraction {
   output: string;
   satisfaction?: number; // 1-5 rating
   timestamp: Date;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // ============================================================================
@@ -236,9 +236,9 @@ export interface CareerCoachMessage {
   content: string;
   timestamp: Date;
   context?: {
-    userProfile?: any;
-    assessments?: any[];
-    careerMatches?: any[];
+    userProfile?: Record<string, unknown> | null;
+    assessments?: Array<{ type: string; results?: Record<string, unknown> }>;
+    careerMatches?: Array<{ career: { name: string }; matchScore: number }>;
   };
 }
 
@@ -279,10 +279,10 @@ export async function generateCareerCoachResponse(
 
   // Get career matches
   const matches = await db.query.careerMatches.findMany({
-    where: eq((careerMatches as any).userId, userId),
+    where: eq(careerMatches.studentId, userId),
     with: { career: true },
     limit: 5,
-  });
+  }) as unknown as Array<{ career?: { name?: string }; matchScore?: number }>;
 
   // Extract insights from the message (data capture!)
   const interests = extractCareerInterests(message);
@@ -307,9 +307,9 @@ export async function generateCareerCoachResponse(
 
 function generateCoachResponse(
   message: string,
-  user: any,
-  riasecResult: any,
-  matches: any[]
+  user: { name?: string | null } | null,
+  riasecResult: { hollandCode?: string } | null,
+  matches: Array<{ career?: { name?: string }; matchScore?: number }>
 ): string {
   const lowerMessage = message.toLowerCase();
 
@@ -346,7 +346,7 @@ function generateCoachResponse(
   return `${greeting}I'm your AI Career Coach and I'm here to help you with anything related to your career and education journey. You can ask me about:\n\n• Career options that match your personality\n• Skills you need to develop\n• College and program recommendations\n• Study tips and planning\n• Any career-related questions\n\nWhat would you like to know?`;
 }
 
-function generateSuggestions(user: any, riasecResult: any): string[] {
+function generateSuggestions(user: { name?: string | null } | null, riasecResult: { hollandCode?: string } | null): string[] {
   const suggestions = [
     "Take the DISC assessment to discover your work style",
     "Explore careers matched to your personality type",

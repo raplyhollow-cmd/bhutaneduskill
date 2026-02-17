@@ -14,13 +14,7 @@ import {
   validateFileMagicNumber,
   validateFileSize,
 } from "@/lib/file-validation";
-import { checkRateLimit, getClientIp, getRateLimitPresetForPath, getRateLimitHeaders } from "@/lib/rate-limit";
-
-// Rate limiting for file uploads (stricter than general API)
-const UPLOAD_RATE_LIMIT = {
-  maxRequests: 5, // 5 uploads
-  windowMs: 60 * 1000, // per minute
-};
+import { checkRateLimitWithConfig, getClientIp, RateLimitPresets, type RateLimitCheckResult } from "@/lib/rate-limit";
 
 /**
  * Enhanced file upload with security validations
@@ -40,18 +34,25 @@ export async function POST(request: NextRequest) {
 
     const { userId, user } = authResult;
 
-    // Rate limiting check
+    // Rate limiting check using fileUpload preset
     const clientIp = getClientIp(request);
-    const rateLimitResult = checkRateLimit(`${userId}_${clientIp}`, UPLOAD_RATE_LIMIT);
+    const rateLimitResult = checkRateLimitWithConfig(
+      `user:${userId}:${clientIp}`,
+      RateLimitPresets.fileUpload
+    );
 
-    const headers = getRateLimitHeaders({
-      success: !rateLimitResult.isLimited,
-      limit: UPLOAD_RATE_LIMIT.maxRequests,
-      remaining: rateLimitResult.remaining,
-      reset: new Date(rateLimitResult.resetTime),
-    });
+    // Create rate limit headers
+    const headers: Record<string, string> = {
+      'X-RateLimit-Limit': rateLimitResult.limit.toString(),
+      'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
+      'X-RateLimit-Reset': Math.ceil(rateLimitResult.resetTime / 1000).toString(),
+    };
 
-    if (rateLimitResult.isLimited) {
+    if (rateLimitResult.retryAfter) {
+      headers['Retry-After'] = rateLimitResult.retryAfter.toString();
+    }
+
+    if (!rateLimitResult.allowed) {
       return NextResponse.json(
         { error: "Too many upload requests. Please try again later." },
         { status: 429, headers }

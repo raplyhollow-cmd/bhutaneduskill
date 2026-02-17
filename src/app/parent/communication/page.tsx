@@ -81,6 +81,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 
 // ============================================================================
 // TYPES
@@ -213,7 +214,7 @@ async function fetchConversations(
     const data: ApiResponse<{ conversations: Conversation[]; total: number }> = await response.json();
     return data.data || { conversations: [], total: 0 };
   } catch (error) {
-    console.error("Error fetching conversations:", error);
+    logger.error("Error fetching conversations:", error);
     return { conversations: [], total: 0 };
   }
 }
@@ -225,7 +226,7 @@ async function fetchMessages(conversationId: string): Promise<{ messages: Messag
     const data: ApiResponse<{ messages: Message[]; conversation: Conversation }> = await response.json();
     return data.data || { messages: [], conversation: {} as Conversation };
   } catch (error) {
-    console.error("Error fetching messages:", error);
+    logger.error("Error fetching messages:", error);
     return { messages: [], conversation: {} as Conversation };
   }
 }
@@ -248,7 +249,7 @@ async function sendMessage(data: {
     const result: ApiResponse<{ message: Message; conversationId: string }> = await response.json();
     return result.data!;
   } catch (error) {
-    console.error("Error sending message:", error);
+    logger.error("Error sending message:", error);
     throw error;
   }
 }
@@ -261,7 +262,7 @@ async function markMessagesRead(messageIds: string[], conversationId?: string, r
       body: JSON.stringify({ messageIds, conversationId, read }),
     });
   } catch (error) {
-    console.error("Error marking messages:", error);
+    logger.error("Error marking messages:", error);
   }
 }
 
@@ -271,7 +272,7 @@ async function deleteMessage(messageId: string): Promise<void> {
       method: "DELETE",
     });
   } catch (error) {
-    console.error("Error deleting message:", error);
+    logger.error("Error deleting message:", error);
   }
 }
 
@@ -281,7 +282,7 @@ async function archiveConversation(conversationId: string): Promise<void> {
       method: "DELETE",
     });
   } catch (error) {
-    console.error("Error archiving conversation:", error);
+    logger.error("Error archiving conversation:", error);
   }
 }
 
@@ -292,7 +293,7 @@ async function fetchChildren(): Promise<Child[]> {
     const data = await response.json();
     return data.children || [];
   } catch (error) {
-    console.error("Error fetching children:", error);
+    logger.error("Error fetching children:", error);
     return [];
   }
 }
@@ -308,7 +309,7 @@ async function fetchContacts(search?: string, type?: string): Promise<TeacherCon
     const data: ApiResponse<{ contacts: TeacherContact[] }> = await response.json();
     return data.data?.contacts || [];
   } catch (error) {
-    console.error("Error fetching contacts:", error);
+    logger.error("Error fetching contacts:", error);
     return [];
   }
 }
@@ -320,7 +321,7 @@ async function fetchAnnouncements(): Promise<Announcement[]> {
     const data = await response.json();
     return data.data || data.announcements || [];
   } catch (error) {
-    console.error("Error fetching announcements:", error);
+    logger.error("Error fetching announcements:", error);
     return [];
   }
 }
@@ -345,7 +346,7 @@ async function uploadFile(file: File): Promise<MessageAttachment | null> {
       size: data.data!.file.size,
     };
   } catch (error) {
-    console.error("Error uploading file:", error);
+    logger.error("Error uploading file:", error);
     return null;
   }
 }
@@ -357,7 +358,7 @@ async function fetchNotificationPreferences(): Promise<NotificationPreferences |
     const data = await response.json();
     return data.data?.notifications || null;
   } catch (error) {
-    console.error("Error fetching notification preferences:", error);
+    logger.error("Error fetching notification preferences:", error);
     return null;
   }
 }
@@ -370,7 +371,7 @@ async function updateNotificationPreferences(preferences: Partial<NotificationPr
       body: JSON.stringify(preferences),
     });
   } catch (error) {
-    console.error("Error updating notification preferences:", error);
+    logger.error("Error updating notification preferences:", error);
   }
 }
 
@@ -804,7 +805,7 @@ export default function ParentCommunicationPage() {
           setCurrentUserId(data.user?.id || "");
         }
       } catch (error) {
-        console.error("Error fetching current user:", error);
+        logger.error("Error fetching current user:", error);
       }
     };
     fetchCurrentUser();
@@ -984,7 +985,7 @@ export default function ParentCommunicationPage() {
       setComposeData({ recipientId: "", subject: "", content: "", attachments: [] });
       setShowCompose(false);
     } catch (error) {
-      console.error("Failed to send message:", error);
+      logger.error("Failed to send message:", error);
     } finally {
       setIsSending(false);
     }

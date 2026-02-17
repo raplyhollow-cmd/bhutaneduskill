@@ -1,4 +1,4 @@
-import { pgTable, text, integer, boolean, timestamp, json, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, boolean, timestamp, json, jsonb, index } from "drizzle-orm/pg-core";
 import { sql, eq, and, or, desc, like, inArray } from "drizzle-orm";
 import { rubColleges, rubScholarships } from "./rub-schema";
 import { tenants } from "./tenancy-schema";
@@ -188,7 +188,17 @@ export const users = pgTable("users", {
   settings: json("settings").$type<Record<string, any>>(), // User settings including bio
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
+}, (table) => ({
+  // Indexes for frequently queried columns
+  clerkUserIdIdx: index("idx_users_clerk_user_id").on(table.clerkUserId),
+  schoolIdIdx: index("idx_users_school_id").on(table.schoolId),
+  typeIdx: index("idx_users_type").on(table.type),
+  parentIdIdx: index("idx_users_parent_id").on(table.parentId),
+  emailIdx: index("idx_users_email").on(table.email),
+  isActiveIdx: index("idx_users_is_active").on(table.isActive),
+  // Composite index for school + type (common query pattern)
+  schoolTypeIdx: index("idx_users_school_type").on(table.schoolId, table.type),
+}));
 
 export type User = typeof users.$inferSelect;
 
@@ -234,7 +244,13 @@ export const schools = pgTable("schools", {
   // verifiedAt: timestamp("verified_at", { withTimezone: true }), // REMOVED: Not in actual database
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
+}, (table) => ({
+  // Indexes for frequently queried columns
+  codeIdx: index("idx_schools_code").on(table.code),
+  isActiveIdx: index("idx_schools_is_active").on(table.isActive),
+  districtIdIdx: index("idx_schools_district_id").on(table.districtId),
+  tenantIdIdx: index("idx_schools_tenant_id").on(table.tenantId),
+}));
 
 export type School = typeof schools.$inferSelect;
 
@@ -429,7 +445,15 @@ export const classes = pgTable("classes", {
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
+}, (table) => ({
+  // Indexes for frequently queried columns
+  schoolIdIdx: index("idx_classes_school_id").on(table.schoolId),
+  teacherIdIdx: index("idx_classes_teacher_id").on(table.teacherId),
+  gradeIdx: index("idx_classes_grade").on(table.grade),
+  isActiveIdx: index("idx_classes_is_active").on(table.isActive),
+  // Composite index for school + grade (common query pattern)
+  schoolGradeIdx: index("idx_classes_school_grade").on(table.schoolId, table.grade),
+}));
 
 export type Class = typeof classes.$inferSelect;
 
@@ -521,7 +545,15 @@ export const assessments = pgTable("assessments", {
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
+}, (table) => ({
+  // Indexes for frequently queried columns
+  userIdIdx: index("idx_assessments_user_id").on(table.userId),
+  classIdIdx: index("idx_assessments_class_id").on(table.classId),
+  typeIdx: index("idx_assessments_type").on(table.type),
+  statusIdx: index("idx_assessments_status").on(table.status),
+  // Composite index for user + type (common query pattern)
+  userTypeIdx: index("idx_assessments_user_type").on(table.userId, table.type),
+}));
 
 export type Assessment = typeof assessments.$inferSelect;
 
@@ -761,7 +793,14 @@ export const homework = pgTable("homework", {
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
+}, (table) => ({
+  // Indexes for frequently queried columns
+  classIdIdx: index("idx_homework_class_id").on(table.classId),
+  subjectIdIdx: index("idx_homework_subject_id").on(table.subjectId),
+  isPublishedIdx: index("idx_homework_is_published").on(table.isPublished),
+  dueDateIdx: index("idx_homework_due_date").on(table.dueDate),
+  isActiveIdx: index("idx_homework_is_active").on(table.isActive),
+}));
 
 export type Homework = typeof homework.$inferSelect;
 
@@ -782,7 +821,14 @@ export const homeworkSubmissions = pgTable("homework_submissions", {
   isLate: boolean("is_late").default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
+}, (table) => ({
+  // Indexes for frequently queried columns
+  homeworkIdIdx: index("idx_homework_submissions_homework_id").on(table.homeworkId),
+  studentIdIdx: index("idx_homework_submissions_student_id").on(table.studentId),
+  statusIdx: index("idx_homework_submissions_status").on(table.status),
+  // Composite index for homework + student (common query pattern)
+  homeworkStudentIdx: index("idx_homework_submissions_homework_student").on(table.homeworkId, table.studentId),
+}));
 
 export type HomeworkSubmission = typeof homeworkSubmissions.$inferSelect;
 
@@ -985,7 +1031,17 @@ export const enrollments = pgTable("enrollments", {
   section: text("section"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
+}, (table) => ({
+  // Indexes for frequently queried columns
+  studentIdIdx: index("idx_enrollments_student_id").on(table.studentId),
+  classIdIdx: index("idx_enrollments_class_id").on(table.classId),
+  statusIdx: index("idx_enrollments_status").on(table.status),
+  academicYearIdx: index("idx_enrollments_academic_year").on(table.academicYear),
+  // Composite index for class + status (common query pattern)
+  classStatusIdx: index("idx_enrollments_class_status").on(table.classId, table.status),
+  // Composite index for student + academic year (common query pattern)
+  studentYearIdx: index("idx_enrollments_student_year").on(table.studentId, table.academicYear),
+}));
 
 export type Enrollment = typeof enrollments.$inferSelect;
 
@@ -1144,7 +1200,18 @@ export const attendance = pgTable("attendance", {
   entryMethod: text("entry_method"), // How attendance was recorded (manual, biometric, etc.)
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
+}, (table) => ({
+  // Indexes for frequently queried columns
+  studentIdIdx: index("idx_attendance_student_id").on(table.studentId),
+  classIdIdx: index("idx_attendance_class_id").on(table.classId),
+  schoolIdIdx: index("idx_attendance_school_id").on(table.schoolId),
+  dateIdx: index("idx_attendance_date").on(table.date),
+  statusIdx: index("idx_attendance_status").on(table.status),
+  // Composite index for student + date (common query pattern)
+  studentDateIdx: index("idx_attendance_student_date").on(table.studentId, table.date),
+  // Composite index for class + date (common query pattern)
+  classDateIdx: index("idx_attendance_class_date").on(table.classId, table.date),
+}));
 
 export type Attendance = typeof attendance.$inferSelect;
 
@@ -1638,7 +1705,15 @@ export const circulation = pgTable("circulation", {
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
+}, (table) => ({
+  // Indexes for frequently queried columns
+  bookIdIdx: index("idx_circulation_book_id").on(table.bookId),
+  borrowerIdIdx: index("idx_circulation_borrower_id").on(table.borrowerId),
+  statusIdx: index("idx_circulation_status").on(table.status),
+  dueDateIdx: index("idx_circulation_due_date").on(table.dueDate),
+  // Composite index for borrower + status (common query pattern)
+  borrowerStatusIdx: index("idx_circulation_borrower_status").on(table.borrowerId, table.status),
+}));
 
 export type Circulation = typeof circulation.$inferSelect;
 
@@ -1662,7 +1737,13 @@ export const libraryMembers = pgTable("library_members", {
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
+}, (table) => ({
+  // Indexes for frequently queried columns
+  schoolIdIdx: index("idx_library_members_school_id").on(table.schoolId),
+  userIdIdx: index("idx_library_members_user_id").on(table.userId),
+  membershipStatusIdx: index("idx_library_members_membership_status").on(table.membershipStatus),
+  membershipNumberIdx: index("idx_library_members_membership_number").on(table.membershipNumber),
+}));
 
 export type LibraryMember = typeof libraryMembers.$inferSelect;
 
@@ -1686,7 +1767,16 @@ export const libraryReservations = pgTable("library_reservations", {
   notes: text("notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
+}, (table) => ({
+  // Indexes for frequently queried columns
+  schoolIdIdx: index("idx_library_reservations_school_id").on(table.schoolId),
+  bookIdIdx: index("idx_library_reservations_book_id").on(table.bookId),
+  userIdIdx: index("idx_library_reservations_user_id").on(table.userId),
+  statusIdx: index("idx_library_reservations_status").on(table.status),
+  expiryDateIdx: index("idx_library_reservations_expiry_date").on(table.expiryDate),
+  // Composite index for book + status (common query pattern)
+  bookStatusIdx: index("idx_library_reservations_book_status").on(table.bookId, table.status),
+}));
 
 export type LibraryReservation = typeof libraryReservations.$inferSelect;
 
@@ -1724,7 +1814,14 @@ export const digitalResources = pgTable("digital_resources", {
   expirationDate: text("expiration_date"), // For temporary access resources
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
+}, (table) => ({
+  // Indexes for frequently queried columns
+  schoolIdIdx: index("idx_digital_resources_school_id").on(table.schoolId),
+  resourceTypeIdx: index("idx_digital_resources_resource_type").on(table.resourceType),
+  categoryIdx: index("idx_digital_resources_category").on(table.category),
+  accessLevelIdx: index("idx_digital_resources_access_level").on(table.accessLevel),
+  isActiveIdx: index("idx_digital_resources_is_active").on(table.isActive),
+}));
 
 export type DigitalResource = typeof digitalResources.$inferSelect;
 
@@ -1748,7 +1845,14 @@ export const consentRecords = pgTable("consent_records", {
   expiresAt: timestamp("expires_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
+}, (table) => ({
+  // Indexes for frequently queried columns
+  userIdIdx: index("idx_consent_records_user_id").on(table.userId),
+  parentIdIdx: index("idx_consent_records_parent_id").on(table.parentId),
+  studentIdIdx: index("idx_consent_records_student_id").on(table.studentId),
+  typeIdx: index("idx_consent_records_type").on(table.type),
+  statusIdx: index("idx_consent_records_status").on(table.status),
+}));
 
 export type ConsentRecord = typeof consentRecords.$inferSelect;
 
@@ -1777,7 +1881,15 @@ export const counselorNotes = pgTable("counselor_notes", {
   sessionDate: text("session_date").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
+}, (table) => ({
+  // Indexes for frequently queried columns
+  counselorIdIdx: index("idx_counselor_notes_counselor_id").on(table.counselorId),
+  studentIdIdx: index("idx_counselor_notes_student_id").on(table.studentId),
+  noteTypeIdx: index("idx_counselor_notes_note_type").on(table.noteType),
+  sessionDateIdx: index("idx_counselor_notes_session_date").on(table.sessionDate),
+  // Composite index for counselor + student (common query pattern)
+  counselorStudentIdx: index("idx_counselor_notes_counselor_student").on(table.counselorId, table.studentId),
+}));
 
 export type CounselorNote = typeof counselorNotes.$inferSelect;
 
@@ -1813,7 +1925,18 @@ export const counselingSessions = pgTable("counseling_sessions", {
   tags: json("tags").$type<string[]>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
+}, (table) => ({
+  // Indexes for frequently queried columns
+  counselorIdIdx: index("idx_counseling_sessions_counselor_id").on(table.counselorId),
+  studentIdIdx: index("idx_counseling_sessions_student_id").on(table.studentId),
+  statusIdx: index("idx_counseling_sessions_status").on(table.status),
+  sessionDateIdx: index("idx_counseling_sessions_session_date").on(table.sessionDate),
+  schoolIdIdx: index("idx_counseling_sessions_school_id").on(table.schoolId),
+  // Composite index for counselor + date (common query pattern)
+  counselorDateIdx: index("idx_counseling_sessions_counselor_date").on(table.counselorId, table.sessionDate),
+  // Composite index for student + status (common query pattern)
+  studentStatusIdx: index("idx_counseling_sessions_student_status").on(table.studentId, table.status),
+}));
 
 export type CounselingSession = typeof counselingSessions.$inferSelect;
 

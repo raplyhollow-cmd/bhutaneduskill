@@ -26,7 +26,7 @@ export type ExportStatus = "pending" | "processing" | "completed" | "failed";
 export interface ExportOptions {
   format: ExportFormat;
   fields?: string[]; // Specific fields to export (empty = all)
-  filters?: Record<string, any>; // Filter criteria
+  filters?: Record<string, unknown>; // Filter criteria
   limit?: number; // Max records
   offset?: number; // Pagination
   anonymize?: boolean; // Remove PII
@@ -37,7 +37,7 @@ export interface ExportResult {
   success: boolean;
   format: ExportFormat;
   filename: string;
-  data?: any;
+  data?: unknown;
   recordCount?: number;
   error?: string;
 }
@@ -51,7 +51,7 @@ export interface DataSource {
   table: string;
   description: string;
   fields: ExportField[];
-  defaultFilters?: Record<string, any>;
+  defaultFilters?: Record<string, unknown>;
 }
 
 export interface ExportField {
@@ -59,7 +59,7 @@ export interface ExportField {
   label: string;
   type: "string" | "number" | "boolean" | "date" | "array" | "object";
   sensitive?: boolean; // PII flag
-  format?: (value: any) => any; // Custom formatter
+  format?: (value: unknown) => unknown; // Custom formatter
 }
 
 // All data sources in the ecosystem - centralized for easy management
@@ -319,7 +319,7 @@ export const dataSources: Record<string, DataSource> = {
 /**
  * Convert data array to CSV format
  */
-export function toCSV(data: any[], fields: ExportField[]): string {
+export function toCSV(data: unknown[], fields: ExportField[]): string {
   if (data.length === 0) return "";
 
   // Headers
@@ -329,7 +329,7 @@ export function toCSV(data: any[], fields: ExportField[]): string {
   // CSV rows
   const rows = data.map((item) => {
     return keys.map((key) => {
-      const value = getNestedValue(item, key);
+      const value = getNestedValue(item as Record<string, unknown>, key);
       return formatCSVValue(value);
     }).join(",");
   });
@@ -340,16 +340,16 @@ export function toCSV(data: any[], fields: ExportField[]): string {
 /**
  * Convert data array to XML format
  */
-export function toXML(data: any[], rootName: string, itemName: string): string {
-  const items = data.map((item) => objectToXML(item, itemName)).join("\n");
+export function toXML(data: unknown[], rootName: string, itemName: string): string {
+  const items = data.map((item) => objectToXML(item as Record<string, unknown>, itemName)).join("\n");
   return `<?xml version="1.0" encoding="UTF-8"?>\n<${rootName}>\n${items}\n</${rootName}>`;
 }
 
-function objectToXML(obj: any, itemName: string): string {
+function objectToXML(obj: Record<string, unknown>, itemName: string): string {
   const entries = Object.entries(obj).map(([key, value]) => {
     const safeKey = key.replace(/[^a-zA-Z0-9]/g, "_");
-    const safeValue = typeof value === "object"
-      ? objectToXML(value, safeKey.slice(0, -1))
+    const safeValue = typeof value === "object" && value !== null
+      ? objectToXML(value as Record<string, unknown>, safeKey.slice(0, -1))
       : String(value ?? "");
     return `  <${safeKey}>${safeValue}</${safeKey}>`;
   }).join("\n");
@@ -360,7 +360,7 @@ function objectToXML(obj: any, itemName: string): string {
 /**
  * Format a value for CSV (escape quotes, commas)
  */
-function formatCSVValue(value: any): string {
+function formatCSVValue(value: unknown): string {
   if (value === null || value === undefined) return "";
   const stringValue = String(value);
   if (stringValue.includes(",") || stringValue.includes('"') || stringValue.includes("\n")) {
@@ -372,8 +372,13 @@ function formatCSVValue(value: any): string {
 /**
  * Get nested object value by dot notation key
  */
-function getNestedValue(obj: any, key: string): any {
-  return key.split(".").reduce((o, k) => o?.[k], obj);
+function getNestedValue(obj: Record<string, unknown>, key: string): unknown {
+  return key.split(".").reduce((o: unknown, k: string) => {
+    if (o && typeof o === "object") {
+      return (o as Record<string, unknown>)[k];
+    }
+    return undefined;
+  }, obj as unknown);
 }
 
 // ============================================================================
@@ -383,7 +388,7 @@ function getNestedValue(obj: any, key: string): any {
 /**
  * Anonymize sensitive data fields
  */
-export function anonymizeData(data: any[], fields: ExportField[]): any[] {
+export function anonymizeData(data: Record<string, unknown>[], fields: ExportField[]): Record<string, unknown>[] {
   const sensitiveKeys = fields
     .filter((f) => f.sensitive)
     .map((f) => f.key);
@@ -399,11 +404,18 @@ export function anonymizeData(data: any[], fields: ExportField[]): any[] {
   });
 }
 
-function setNestedValue(obj: any, key: string, value: any): void {
+function setNestedValue(obj: Record<string, unknown>, key: string, value: unknown): void {
   const keys = key.split(".");
   const lastKey = keys.pop()!;
-  const target = keys.reduce((o, k) => o[k], obj);
-  target[lastKey] = value;
+  const target = keys.reduce((o: unknown, k: string) => {
+    if (o && typeof o === "object") {
+      return (o as Record<string, unknown>)[k];
+    }
+    return undefined;
+  }, obj as unknown);
+  if (target && typeof target === "object") {
+    (target as Record<string, unknown>)[lastKey] = value;
+  }
 }
 
 // ============================================================================
@@ -426,7 +438,7 @@ export async function exportData(request: ExportRequest, userId: string, userRol
 
     // Get data from database (this would be implemented per source)
     // For now, return a template response
-    const data: any[] = []; // Would fetch from DB
+    const data: Record<string, unknown>[] = []; // Would fetch from DB
 
     // Apply filters if specified
     let filteredData = data;
@@ -456,7 +468,7 @@ export async function exportData(request: ExportRequest, userId: string, userRol
     }
 
     // Convert to requested format
-    let exportData: any;
+    let exportData: string;
     let filename: string;
 
     const timestamp = new Date().toISOString().split("T")[0];
@@ -503,12 +515,13 @@ export async function exportData(request: ExportRequest, userId: string, userRol
       recordCount: finalData.length,
     };
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Export failed";
     return {
       success: false,
       format: request.options.format,
       filename: "",
-      error: error.message || "Export failed",
+      error: errorMessage,
     };
   }
 }

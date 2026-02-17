@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * HOMEWORK CLIENT COMPONENT
  *
@@ -68,7 +69,7 @@ export function HomeworkClient({
       setHomeworkList(result.homework);
       setTotal(result.total);
     } catch (error) {
-      console.error("Failed to load homework:", error);
+      logger.error("Failed to load homework:", error);
     } finally {
       setLoading(false);
     }

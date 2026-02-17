@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * ENROLLMENT MANAGER COMPONENT
  *
@@ -139,7 +140,7 @@ export function EnrollmentManager({ onLoadData }: EnrollmentManagerProps) {
         setEnrollments(transformedEnrollments);
       }
     } catch (error) {
-      console.error("Failed to fetch enrollments:", error);
+      logger.error("Failed to fetch enrollments:", error);
     } finally {
       setLoading(false);
     }

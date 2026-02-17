@@ -150,15 +150,15 @@ export async function GET(request: NextRequest) {
         teacherRemarks: "Keep up the good work!",
       },
       extracurricular: {
-        activities: [],
-        achievements: [],
+        activities: [] as any[],
+        achievements: [] as any[],
       },
       school: {
         name: schoolData?.name || "School",
-        logo: undefined,
+        logo: undefined as string | undefined,
         address: schoolData?.address || "",
         phone: schoolData?.contactPhone || "",
-        website: undefined,
+        website: undefined as string | undefined,
       },
       signature: {
         classTeacher: classData?.name || "Class Teacher",

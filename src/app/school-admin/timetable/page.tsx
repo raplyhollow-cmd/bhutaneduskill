@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * SCHOOL ADMIN - TIMETABLE MANAGEMENT
  *
@@ -228,7 +229,7 @@ export default function TimetablePage() {
         setSelectedClass(data.classes[0]);
       }
     } catch (err) {
-      console.error("Error fetching timetable data:", err);
+      logger.error("Error fetching timetable data:", err);
       setError("Failed to load timetable data. Please try again.");
     } finally {
       setLoading(false);
@@ -255,7 +256,7 @@ export default function TimetablePage() {
         setConflicts([]);
       }
     } catch (err) {
-      console.error("Error fetching timetable for class:", err);
+      logger.error("Error fetching timetable for class:", err);
     }
   };
 
@@ -446,7 +447,7 @@ export default function TimetablePage() {
       setShowCreateModal(false);
       setEditingCell(null);
     } catch (err) {
-      console.error("Error saving entry:", err);
+      logger.error("Error saving entry:", err);
       setError("Failed to save entry. Please try again.");
     } finally {
       setIsSaving(false);
@@ -469,7 +470,7 @@ export default function TimetablePage() {
       setShowCreateModal(false);
       setEditingCell(null);
     } catch (err) {
-      console.error("Error deleting entry:", err);
+      logger.error("Error deleting entry:", err);
       setError("Failed to delete entry. Please try again.");
     } finally {
       setIsSaving(false);
@@ -518,11 +519,11 @@ export default function TimetablePage() {
       setGenerationResult(data);
 
       // Show success summary
-      console.log("Timetable generated successfully:", data.summary);
+      logger.debug("Timetable generated successfully:", data.summary);
 
       // Display any warnings as error message (temporary)
       if (data.summary.warnings.length > 0) {
-        console.warn("Generation warnings:", data.summary.warnings);
+        logger.warn("Generation warnings:", data.summary.warnings);
         setError(`Generated with ${data.summary.warnings.length} warning(s). Check console for details.`);
         setTimeout(() => setError(null), 5000);
       } else {
@@ -530,7 +531,7 @@ export default function TimetablePage() {
         setTimeout(() => setError(null), 3000);
       }
     } catch (err) {
-      console.error("Error generating timetable:", err);
+      logger.error("Error generating timetable:", err);
       setError("Failed to generate timetable. Please try again.");
     } finally {
       setIsGenerating(false);
@@ -597,7 +598,7 @@ export default function TimetablePage() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error("Error exporting:", err);
+      logger.error("Error exporting:", err);
       setError("Failed to export timetable. Please try again.");
     }
   };

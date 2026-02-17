@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * SCHOOL ADMIN - REPORTS GENERATION
  *
@@ -129,7 +130,7 @@ export default function ReportsPage() {
         setScheduledReports(data.scheduledReports || []);
         setStats(data.stats || { totalGenerated: 0, downloadsThisMonth: 0, scheduledReports: 0, templatesCount: 0 });
       } catch (err) {
-        console.error("Error fetching reports data:", err);
+        logger.error("Error fetching reports data:", err);
         setError("Failed to load reports data. Please try again.");
       } finally {
         setLoading(false);

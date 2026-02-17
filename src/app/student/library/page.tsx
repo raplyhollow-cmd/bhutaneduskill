@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * STUDENT LIBRARY PAGE
  *
@@ -159,7 +160,7 @@ export default function StudentLibraryPage() {
         setMyReservations(reservationsData.data.reservations || []);
       }
     } catch (error) {
-      console.error("Error fetching library data:", error);
+      logger.error("Error fetching library data:", error);
       showToast("Failed to load library data", "error");
     } finally {
       setLoading(false);
@@ -196,7 +197,7 @@ export default function StudentLibraryPage() {
         showToast(data.error || "Failed to borrow book", "error");
       }
     } catch (error) {
-      console.error("Error borrowing book:", error);
+      logger.error("Error borrowing book:", error);
       showToast("Failed to borrow book. Please try again.", "error");
     } finally {
       setBorrowing(null);
@@ -226,7 +227,7 @@ export default function StudentLibraryPage() {
         showToast(data.error || "Failed to renew book", "error");
       }
     } catch (error) {
-      console.error("Error renewing book:", error);
+      logger.error("Error renewing book:", error);
       showToast("Failed to renew book. Please try again.", "error");
     } finally {
       setRenewing(null);
@@ -261,7 +262,7 @@ export default function StudentLibraryPage() {
         showToast(data.error || "Failed to return book", "error");
       }
     } catch (error) {
-      console.error("Error returning book:", error);
+      logger.error("Error returning book:", error);
       showToast("Failed to return book. Please try again.", "error");
     } finally {
       setReturning(null);
@@ -289,7 +290,7 @@ export default function StudentLibraryPage() {
         showToast(data.error || "Failed to reserve book", "error");
       }
     } catch (error) {
-      console.error("Error reserving book:", error);
+      logger.error("Error reserving book:", error);
       showToast("Failed to reserve book. Please try again.", "error");
     } finally {
       setReserving(null);
@@ -319,7 +320,7 @@ export default function StudentLibraryPage() {
         showToast(data.error || "Failed to cancel reservation", "error");
       }
     } catch (error) {
-      console.error("Error cancelling reservation:", error);
+      logger.error("Error cancelling reservation:", error);
       showToast("Failed to cancel reservation. Please try again.", "error");
     } finally {
       setCancelling(null);

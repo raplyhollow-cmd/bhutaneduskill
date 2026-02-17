@@ -1,4 +1,5 @@
 "use server";
+import { logger } from "@/lib/logger";
 
 /**
  * TEACHER SERVER ACTIONS
@@ -95,7 +96,7 @@ export async function requestPayout() {
       message: `Payout request for Nu. ${totalAmount.toLocaleString()} has been submitted.`,
     };
   } catch (error) {
-    console.error("Failed to request payout:", error);
+    logger.error("Failed to request payout:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to request payout",

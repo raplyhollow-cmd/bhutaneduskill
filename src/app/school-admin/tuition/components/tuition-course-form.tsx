@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * TUITION COURSE FORM COMPONENT
  *
@@ -88,7 +89,7 @@ export function TuitionCourseForm({ course, tutors: initialTutors = [], onClose,
             setTutors(data.tutors || []);
           }
         } catch (err) {
-          console.error("Failed to fetch tutors:", err);
+          logger.error("Failed to fetch tutors:", err);
         } finally {
           setLoadingTutors(false);
         }

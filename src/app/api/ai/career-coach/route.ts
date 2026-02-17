@@ -22,6 +22,32 @@ import {
 } from "@/lib/ai-features";
 
 // ============================================================================
+// SAFE QUERY HELPER
+// ============================================================================
+
+/**
+ * Safely execute a database query with error handling.
+ * Returns default value if query fails, preventing the entire request from failing.
+ */
+async function safeQuery<T>(
+  queryFn: () => Promise<T>,
+  defaultValue: T,
+  queryName: string
+): Promise<T> {
+  try {
+    const result = await queryFn();
+    logger.debug(`[Career Coach] ${queryName} query succeeded`);
+    return result;
+  } catch (error) {
+    logger.warn(`[Career Coach] ${queryName} query failed, using default value`, {
+      error: error instanceof Error ? error.message : String(error),
+      queryName
+    });
+    return defaultValue;
+  }
+}
+
+// ============================================================================
 // POST - Chat with AI Career Coach
 // ============================================================================
 
@@ -44,46 +70,70 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Message is required" }, { status: 400 });
     }
 
-    // Get user profile for personalization
-    const userProfile = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-    });
+    // Query 1: Get user profile for personalization
+    const userProfile = await safeQuery(
+      () => db.query.users.findFirst({
+        where: eq(users.id, userId),
+      }),
+      null,
+      "user profile"
+    );
 
-    // Get assessment results for context
-    const riasecResult = await db.query.riasecResults.findFirst({
-      where: eq(riasecResults.userId, userId),
-      orderBy: desc(riasecResults.createdAt),
-    });
+    // Query 2: Get RIASEC assessment results
+    const riasecResult = await safeQuery(
+      () => db.query.riasecResults.findFirst({
+        where: eq(riasecResults.userId, userId),
+        orderBy: desc(riasecResults.createdAt),
+      }),
+      null,
+      "RIASEC results"
+    );
 
-    const mbtiResult = await db.query.mbtiResults.findFirst({
-      where: eq(mbtiResults.userId, userId),
-      orderBy: desc(mbtiResults.createdAt),
-    });
+    // Query 3: Get MBTI assessment results
+    const mbtiResult = await safeQuery(
+      () => db.query.mbtiResults.findFirst({
+        where: eq(mbtiResults.userId, userId),
+        orderBy: desc(mbtiResults.createdAt),
+      }),
+      null,
+      "MBTI results"
+    );
 
-    // Get career matches (via assessments)
-    const userAssessments = await db.query.assessments.findMany({
-      where: eq(assessments.userId, userId),
-    });
+    // Query 4: Get user assessments
+    const userAssessments = await safeQuery(
+      () => db.query.assessments.findMany({
+        where: eq(assessments.userId, userId),
+      }),
+      [],
+      "user assessments"
+    );
+
+    // Query 5: Get career matches
     const assessmentIds = userAssessments.map(a => a.id);
+    let matches: typeof careerMatches.$inferSelect[] = [];
+    if (assessmentIds.length > 0) {
+      matches = await safeQuery(
+        () => db.query.careerMatches.findMany({
+            where: eq(careerMatches.assessmentId, assessmentIds[0]),
+            orderBy: desc(careerMatches.matchScore),
+            limit: 5,
+          }),
+        [],
+        "career matches"
+      );
+    }
 
-    const matches = assessmentIds.length > 0
-      ? await db.query.careerMatches.findMany({
-          where: eq(careerMatches.assessmentId, assessmentIds[0]),
-          orderBy: desc(careerMatches.matchScore),
-          limit: 5,
-        })
-      : [];
+    // Query 6: Get career plan
+    const careerPlan = await safeQuery(
+      () => db.query.careerPlans.findFirst({
+        where: eq(careerPlans.userId, userId),
+      }),
+      null,
+      "career plan"
+    );
 
-    // Get career plan if exists
-    const careerPlan = await db.query.careerPlans.findFirst({
-      where: eq(careerPlans.userId, userId),
-    });
-
-    // Get completed assessments count
-    const allAssessments = await db.query.assessments.findMany({
-      where: eq(assessments.userId, userId),
-    });
-    const completedAssessments = allAssessments.filter((a) => a.status === "completed");
+    // Calculate completed assessments count
+    const completedAssessments = userAssessments.filter((a) => a.status === "completed");
 
     // Build context for AI
     const aiContext: AIContext = {

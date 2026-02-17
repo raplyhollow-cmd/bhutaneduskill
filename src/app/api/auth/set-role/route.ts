@@ -4,9 +4,13 @@ import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+import { applyRateLimit, applyRateLimitAuth, addRateLimitHeaders, checkRateLimitWithConfig, RateLimitPresets } from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
   try {
+    // Apply rate limiting for auth endpoint
+    const rateLimitResult = await applyRateLimit(request, RateLimitPresets.auth);
+    if (rateLimitResult) return rateLimitResult;
     const { userId } = await auth();
 
     if (!userId) {
@@ -75,6 +79,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   let userType: string | undefined;
   try {
+    // Apply rate limiting for auth endpoint
+    const rateLimitResult = await applyRateLimit(request, RateLimitPresets.auth);
+    if (rateLimitResult) return rateLimitResult;
     const { userId } = await auth();
 
     if (!userId) {

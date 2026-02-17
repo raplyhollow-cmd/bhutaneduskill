@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * STUDENT CLASSES PAGE
  * View all classes student is enrolled in with quick access to classmates, homework, etc.
@@ -82,7 +83,7 @@ export default function StudentClassesPage() {
         setIsLoading(false);
       })
       .catch((err) => {
-        console.error("Failed to fetch classes:", err);
+        logger.error("Failed to fetch classes:", err);
         setError("Failed to load classes. Please try again.");
         setIsLoading(false);
       });

@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
           allocation: {
             ...allocation,
             hostel,
-            roomType: (allocation.room as any)?.roomType || "standard",
+            roomType: ((allocation.room as unknown) as { roomType?: string } | null)?.roomType || "standard",
             feeAmount: allocation.feeAmount,
             feePaid: allocation.feePaid,
             checkInDate: allocation.allocationDate,
@@ -160,7 +160,7 @@ export async function GET(request: NextRequest) {
       const status = searchParams.get("status") || "available";
       const roomType = searchParams.get("roomType");
 
-      const whereConditions: any[] = [
+      const whereConditions: Array<ReturnType<typeof eq> | ReturnType<typeof sql>> = [
         eq(hostelRooms.schoolId, currentUser.schoolId || ""),
       ];
 
@@ -211,7 +211,7 @@ export async function GET(request: NextRequest) {
       const startDate = searchParams.get("startDate");
       const endDate = searchParams.get("endDate");
 
-      const whereConditions: any[] = [];
+      const whereConditions: Array<ReturnType<typeof eq> | ReturnType<typeof sql>> = [];
 
       // Only allow viewing own attendance for students
       if (currentUser.type === "student") {
@@ -258,7 +258,7 @@ export async function GET(request: NextRequest) {
       const studentId = searchParams.get("studentId");
       const status = searchParams.get("status");
 
-      const whereConditions: any[] = [
+      const whereConditions: Array<ReturnType<typeof eq> | ReturnType<typeof sql>> = [
         eq(hostelLeaveRequests.schoolId, currentUser.schoolId || ""),
       ];
 
@@ -297,7 +297,7 @@ export async function GET(request: NextRequest) {
         ),
       });
 
-      let studentPayments = [];
+      let studentPayments: unknown[] = [];
       if (currentUser.type === "student") {
         studentPayments = await db.query.hostelPayments.findMany({
           where: eq(hostelPayments.studentId, currentUser.id),
@@ -335,7 +335,7 @@ export async function GET(request: NextRequest) {
     if (action === "rules") {
       const hostelId = searchParams.get("hostelId");
 
-      const whereConditions: any[] = [
+      const whereConditions: Array<ReturnType<typeof eq> | ReturnType<typeof sql>> = [
         eq(hostelRules.schoolId, currentUser.schoolId || ""),
         eq(hostelRules.isActive, true),
       ];
@@ -364,7 +364,7 @@ export async function GET(request: NextRequest) {
     if (action === "complaints") {
       const status = searchParams.get("status");
 
-      const whereConditions: any[] = [
+      const whereConditions: Array<ReturnType<typeof eq> | ReturnType<typeof sql>> = [
         eq(hostelComplaints.schoolId, currentUser.schoolId || ""),
       ];
 

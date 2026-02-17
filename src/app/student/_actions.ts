@@ -1,4 +1,5 @@
 "use server";
+import { logger } from "@/lib/logger";
 
 /**
  * STUDENT SERVER ACTIONS
@@ -158,7 +159,7 @@ export async function submitHomework(data: {
       return { success: true, submissionId: newSubmission.id };
     }
   } catch (error) {
-    console.error("Failed to submit homework:", error);
+    logger.error("Failed to submit homework:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to submit homework",
@@ -218,7 +219,7 @@ export async function fetchStudentProfile() {
       schoolId: student.schoolId,
     };
   } catch (error) {
-    console.error("Failed to fetch student profile:", error);
+    logger.error("Failed to fetch student profile:", error);
     return null;
   }
 }
@@ -262,7 +263,7 @@ export async function updateStudentProfile(data: {
 
     return { success: true };
   } catch (error) {
-    console.error("Failed to update student profile:", error);
+    logger.error("Failed to update student profile:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to update profile",
@@ -333,7 +334,7 @@ export async function selfCheckIn(data: {
 
     return { success: true, checkInTime };
   } catch (error) {
-    console.error("Failed to check in:", error);
+    logger.error("Failed to check in:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to check in",
@@ -390,7 +391,7 @@ export async function fetchFeeStatus() {
       })),
     };
   } catch (error) {
-    console.error("Failed to fetch fee status:", error);
+    logger.error("Failed to fetch fee status:", error);
     return null;
   }
 }
@@ -545,7 +546,7 @@ export async function fetchStudentAnnouncements(): Promise<{
       pinned,
     };
   } catch (error) {
-    console.error("Failed to fetch announcements:", error);
+    logger.error("Failed to fetch announcements:", error);
     return { announcements: [], pinned: [] };
   }
 }
@@ -594,7 +595,7 @@ export async function markAnnouncementAsRead(announcementId: string) {
 
     return { success: true };
   } catch (error) {
-    console.error("Failed to mark announcement as read:", error);
+    logger.error("Failed to mark announcement as read:", error);
     return {
       success: false,
       error: error instanceof Error ? error.message : "Failed to mark as read",

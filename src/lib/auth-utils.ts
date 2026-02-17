@@ -1,7 +1,10 @@
 import { logger } from "@/lib/logger";
+
 /**
  * Authentication & Authorization Utilities
  * Server-side role verification to prevent cookie manipulation attacks
+ *
+ * IMPORTANT: This file contains server-side only imports and must be marked as such.
  */
 
 import { db } from "@/lib/db";

@@ -5,6 +5,7 @@ import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
 import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
+import { logContentModified, AuditActions } from "@/lib/audit-log";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
 
 // Schema matching the database rubScholarships table and form data
@@ -147,6 +148,22 @@ export async function POST(request: NextRequest) {
 
     logger.info("Scholarship created", { scholarshipId: newScholarship.id, userId });
 
+    // Log audit event for scholarship creation
+    await logContentModified(
+      AuditActions.SCHOLARSHIP_CREATED,
+      "scholarship",
+      newScholarship.id,
+      undefined,
+      {
+        name: newScholarship.name,
+        code: newScholarship.code,
+        type: newScholarship.type,
+        provider: newScholarship.provider,
+      },
+      userId,
+      request
+    );
+
     return NextResponse.json(
       {
         data: { scholarship: newScholarship, message: "Scholarship created successfully" },
@@ -241,6 +258,17 @@ export async function PUT(request: NextRequest) {
 
     logger.info("Scholarship updated", { scholarshipId: id, userId });
 
+    // Log audit event for scholarship update
+    await logContentModified(
+      AuditActions.SCHOLARSHIP_UPDATED,
+      "scholarship",
+      id,
+      { name: existing.name, code: existing.code },
+      { name: updatedScholarship.name, code: updatedScholarship.code },
+      userId,
+      request
+    );
+
     return NextResponse.json({
       data: { scholarship: updatedScholarship, message: "Scholarship updated successfully" },
       status: 200
@@ -298,6 +326,17 @@ export async function DELETE(request: NextRequest) {
     await db.delete(scholarships).where(eq(scholarships.id, id));
 
     logger.info("Scholarship deleted", { scholarshipId: id, userId });
+
+    // Log audit event for scholarship deletion
+    await logContentModified(
+      AuditActions.SCHOLARSHIP_DELETED,
+      "scholarship",
+      id,
+      { name: existing.name, code: existing.code },
+      undefined,
+      userId,
+      request
+    );
 
     return NextResponse.json({
       data: { success: true, message: "Scholarship deleted successfully" },

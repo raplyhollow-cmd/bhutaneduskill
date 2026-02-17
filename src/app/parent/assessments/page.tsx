@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * PARENT ASSESSMENTS VIEW (FEAT-011)
  *
@@ -557,7 +558,7 @@ export default function ParentAssessmentsPage() {
           setChildren([]);
         }
       } catch (err) {
-        console.error("Error fetching children:", err);
+        logger.error("Error fetching children:", err);
         setError("Failed to load children data");
       } finally {
         setLoading(false);
@@ -670,7 +671,7 @@ export default function ParentAssessmentsPage() {
 
         assessmentsFetchedRef.current.add(selectedChildId);
       } catch (err) {
-        console.error("Error fetching assessments:", err);
+        logger.error("Error fetching assessments:", err);
         setAssessmentsError("Failed to load assessment data");
       } finally {
         setAssessmentsLoading(false);

@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * STUDENT HOMEWORK PAGE
  * View and submit homework assignments
@@ -95,7 +96,7 @@ export default function StudentHomeworkPage() {
         setSubjects(uniqueSubjects as string[]);
       }
     } catch (error) {
-      console.error("Failed to fetch homework:", error);
+      logger.error("Failed to fetch homework:", error);
       showNotification("error", "Failed to load homework assignments");
     } finally {
       setLoading(false);
@@ -126,7 +127,7 @@ export default function StudentHomeworkPage() {
         }
       })
       .catch((error: unknown) => {
-        console.error("Failed to submit homework:", error);
+        logger.error("Failed to submit homework:", error);
         showNotification("error", error instanceof Error ? error.message : "Failed to submit homework");
       })
       .finally(() => {
@@ -150,7 +151,7 @@ export default function StudentHomeworkPage() {
         }
       })
       .catch((error: unknown) => {
-        console.error("Failed to save draft:", error);
+        logger.error("Failed to save draft:", error);
         showNotification("error", error instanceof Error ? error.message : "Failed to save draft");
       });
   };

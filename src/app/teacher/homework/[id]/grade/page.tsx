@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * TEACHER HOMEWORK GRADING PAGE
  * Page for viewing homework submissions and grading student work
@@ -66,7 +67,7 @@ export default function GradeHomeworkPage() {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
-      console.error("Error fetching homework:", err);
+      logger.error("Error fetching homework:", err);
     }
   };
 
@@ -78,7 +79,7 @@ export default function GradeHomeworkPage() {
         setSubmissions(data.submissions || []);
       }
     } catch (err) {
-      console.error("Error fetching submissions:", err);
+      logger.error("Error fetching submissions:", err);
     }
   };
 
@@ -100,7 +101,7 @@ export default function GradeHomeworkPage() {
         alert("Failed to save grades. Please try again.");
       }
     } catch (err) {
-      console.error("Error saving grades:", err);
+      logger.error("Error saving grades:", err);
       alert("Failed to save grades. Please try again.");
     }
   };
@@ -113,7 +114,7 @@ export default function GradeHomeworkPage() {
       alert(`Grades released for ${submissionIds.length} students`);
       await fetchSubmissions();
     } catch (err) {
-      console.error("Error releasing grades:", err);
+      logger.error("Error releasing grades:", err);
       alert("Failed to release grades. Please try again.");
     } finally {
       setIsReleasing(false);

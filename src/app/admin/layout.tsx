@@ -3,15 +3,17 @@
 /**
  * PLATFORM ADMIN PORTAL LAYOUT
  *
- * For platform administrators to manage multi-tenant operations.
- * Uses client-side auth to check if admin needs setup.
+ * Uses the Universal Mobile Template for consistent mobile UX across all portals.
+ * - Mobile: Hamburger menu with slide-in sidebar
+ * - Desktop: Always-visible sidebar
+ * - NO bottom navigation (removed as per user decision)
+ *
+ * To change mobile behavior, edit: src/config/portal-config.ts
  */
-
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { PortalSidebar, PortalHeader } from "@/components/shared/portal-sidebar";
-import { AdminBottomNav, MainContentWithBottomNav } from "@/components/shared/portal-bottom-nav";
+import { UniversalMobileSidebar, UniversalPortalHeader } from "@/components/mobile/universal-mobile-sidebar";
 
 export default function AdminLayout({
   children,
@@ -95,9 +97,10 @@ export default function AdminLayout({
       });
   }, [router]);
 
+  // Loading state - Uses 100dvh to fix iOS Safari address bar bug
   if (!userType) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-[100dvh] flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -106,7 +109,7 @@ export default function AdminLayout({
   // Show loading while redirecting to setup
   if (needsSetup) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center gap-4">
         <div className="w-8 h-8 border-4 border-pink-500 border-t-transparent rounded-full animate-spin" />
         <p className="text-gray-600">Setting up your profile...</p>
       </div>
@@ -118,46 +121,47 @@ export default function AdminLayout({
     background: 'linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)'
   };
 
+  // Main layout - Uses 100dvh for proper mobile viewport height
   return (
-    <div className="min-h-screen bg-gray-50">
-      <PortalSidebar userType="admin" userName={userName} />
+    <div className="min-h-[100dvh] bg-gray-50">
+      {/* Universal Sidebar - Works for ALL portals */}
+      <UniversalMobileSidebar portalType="admin" userName={userName} />
+
+      {/* Main content area with desktop padding for sidebar */}
       <div className="lg:pl-64">
-        <PortalHeader userType="admin" userName={userName} />
-        <MainContentWithBottomNav>
-          <main className="p-6">
-            {/* Portal Banner */}
-            <div className="mb-6 text-white rounded-xl p-6 shadow-lg premium-card" style={bannerStyle}>
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-2xl font-bold mb-1">Welcome to Admin Portal</h1>
-                  <p className="text-white/90">
-                    Manage entire platform - schools, users, analytics, and settings.
-                  </p>
-                </div>
-                <div className="hidden md:block">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="w-16 h-16 text-white/80"
-                  >
-                    <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                    <path d="M2 17l10 5 10-5" />
-                    <path d="M2 12l10 5 10-5" />
-                  </svg>
-                </div>
+        <UniversalPortalHeader portalType="admin" userName={userName} />
+        <main className="p-6">
+          {/* Portal Banner */}
+          <div className="mb-6 text-white rounded-xl p-6 shadow-lg premium-card" style={bannerStyle}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold mb-1">Welcome to Admin Portal</h1>
+                <p className="text-white/90">
+                  Manage entire platform - schools, users, analytics, and settings.
+                </p>
+              </div>
+              <div className="hidden md:block">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-16 h-16 text-white/80"
+                >
+                  <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                  <path d="M2 17l10 5 10-5" />
+                  <path d="M2 12l10 5 10-5" />
+                </svg>
               </div>
             </div>
+          </div>
 
-            {children}
-          </main>
-        </MainContentWithBottomNav>
+          {children}
+        </main>
       </div>
-      <AdminBottomNav />
     </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * STUDENT LEAVE MANAGEMENT PAGE
  *
@@ -179,7 +180,7 @@ export default function StudentLeavePage() {
         setLeaveRequests(data.leaveRequests || []);
         setLeaveBalance(data.leaveBalance || null);
       } catch (err) {
-        console.error("Error fetching leave requests:", err);
+        logger.error("Error fetching leave requests:", err);
         toastError({
           title: "Error",
           description: "Failed to load leave requests. Please try again.",
@@ -252,7 +253,7 @@ export default function StudentLeavePage() {
         });
       }
     } catch (err) {
-      console.error("Error submitting leave request:", err);
+      logger.error("Error submitting leave request:", err);
       toastError({
         title: "Network Error",
         description: "Failed to submit leave request. Please check your connection.",
@@ -291,7 +292,7 @@ export default function StudentLeavePage() {
         });
       }
     } catch (err) {
-      console.error("Error cancelling leave request:", err);
+      logger.error("Error cancelling leave request:", err);
       toastError({
         title: "Network Error",
         description: "Failed to cancel leave request. Please check your connection.",

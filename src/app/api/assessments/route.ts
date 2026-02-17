@@ -6,10 +6,15 @@ import { db } from "@/lib/db";
 import { users, assessments, careerMatches, riasecResults } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { CAREERS_DATABASE } from "@/lib/tenant";
+import { applyRateLimitAuth, RateLimitPresets } from "@/lib/rate-limit";
+import { logAssessmentResult } from "@/lib/audit-log";
 
 // POST /api/assessments - Save assessment results
 export async function POST(req: NextRequest) {
   try {
+    // Apply rate limiting for assessment endpoint
+    const rateLimitResult = await applyRateLimitAuth(req, undefined, RateLimitPresets.assessment);
+    if (rateLimitResult) return rateLimitResult;
     // Authenticate - only students, teachers, admins, and school-admins can create assessments
     const authResult = await requireAuth(['student', 'teacher', 'admin', 'school-admin']);
     if ('error' in authResult) {
@@ -134,6 +139,19 @@ export async function POST(req: NextRequest) {
         createdAt: new Date(),
       } as any);
     }
+
+    // Log audit event for assessment completion (don't await - non-blocking)
+    logAssessmentResult(
+      assessment.id,
+      userId,
+      type,
+      {
+        hollandCode,
+        careerMatches: matches.length,
+        topMatchScore: matches[0]?.matchScore,
+      },
+      req
+    ).catch((err) => logger.error("Failed to log assessment", err));
 
     return NextResponse.json({
       success: true,

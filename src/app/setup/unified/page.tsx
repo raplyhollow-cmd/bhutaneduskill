@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { WizardContainer } from "@/components/wizard/wizard-container";
@@ -326,7 +327,7 @@ export default function UnifiedSetupWizard() {
       } else {
         const errorData = await response.json().catch(() => ({}));
         const errorMsg = errorData.error || errorData.details || "Setup failed. Please try again.";
-        console.error("Setup API error:", errorData);
+        logger.error("Setup API error:", errorData);
         setError(errorMsg);
       }
     } catch (err) {
@@ -350,12 +351,12 @@ export default function UnifiedSetupWizard() {
         return;
       }
 
-      console.log("[Setup Complete] Setup complete, redirecting to", `/${selectedRole.id}`);
+      logger.debug("[Setup Complete] Setup complete, redirecting to", `/${selectedRole.id}`);
 
       // Redirect to portal immediately
       router.push(`/${selectedRole.id}?welcome=true`);
     } catch (err) {
-      console.error("[Setup Complete] Error:", err);
+      logger.error("[Setup Complete] Error:", err);
       setError("Failed to complete setup. Please try again.");
     } finally {
       setIsLoading(false);

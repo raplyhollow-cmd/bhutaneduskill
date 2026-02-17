@@ -1,4 +1,5 @@
 import { db } from "@/lib/db";
+import { logger } from "@/lib/logger";
 import { users, schools, assessments } from "@/lib/db/schema";
 import { eq, count, and, gte, desc, sql } from "drizzle-orm";
 
@@ -302,7 +303,7 @@ export async function fetchRelevantData(message: string): Promise<string | null>
         return null;
     }
   } catch (error) {
-    console.error("Data query error:", error);
+    logger.error("Data query error:", error);
     return null;
   }
 }
