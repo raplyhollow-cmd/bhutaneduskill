@@ -32,7 +32,7 @@ import {
 import Link from "next/link";
 import { fetchStudentDashboard } from "../_actions";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AIInsightCard } from "@/components/ai/ai-insight-card";
+import { StudentAIInsights } from "./ai-insights-wrapper";
 
 // Force dynamic rendering - this page uses server actions that require headers
 export const dynamic = 'force-dynamic';
@@ -253,43 +253,16 @@ export default async function StudentDashboardPage() {
         </CardContent>
       </Card>
 
-      {/* AI Insights Section */}
-      <div className="grid md:grid-cols-3 gap-4">
-        <AIInsightCard
-          type="tip"
-          title="AI Career Insight"
-          message={assessments.completed >= 1
-            ? `Based on your ${assessments.completed} assessment${assessments.completed > 1 ? "s" : ""}, you show strong potential in ${careerMatches.topMatches > 0 ? "analytical and creative fields." : "exploring new paths."}`
-            : "Complete your first assessment to unlock personalized AI career insights!"}
-          actions={assessments.completed >= 1 ? [
-            { label: "View Careers", href: "/dashboard/careers" }
-          ] : [
-            { label: "Take Assessment", href: "/dashboard/assessment/riasec" }
-          ]}
-        />
-
-        <AIInsightCard
-          type="info"
-          title="Study Recommendation"
-          message={homework.pending > 0
-            ? `You have ${homework.pending} pending assignment${homework.pending > 1 ? "s" : ""}. Focus on completing them this weekend for better grades.`
-            : "All caught up! Keep up the great work on your studies."}
-          actions={homework.pending > 0 ? [
-            { label: "View Homework", href: "/student/homework" }
-          ] : []}
-        />
-
-        <AIInsightCard
-          type="success"
-          title="Attendance Goal"
-          message={attendance.rate >= 80
-            ? `Excellent! Your ${attendance.rate}% attendance rate shows great dedication. Keep it up!`
-            : `Your attendance is ${attendance.rate}%. Aim for 85%+ to qualify for perfect attendance awards.`}
-          actions={attendance.rate < 85 ? [
-            { label: "View Calendar", href: "/student/attendance" }
-          ] : []}
-        />
-      </div>
+      {/* AI Insights Section - Dynamic from API */}
+      <StudentAIInsights
+        dashboardData={{
+          assessments,
+          homework,
+          attendance,
+          careerMatches,
+          fees,
+        }}
+      />
 
       {/* Quick Stats */}
       <div className="grid md:grid-cols-4 gap-6">

@@ -24,6 +24,21 @@ import type { ApiSuccess, ApiErrorResponse } from "@/types";
 // TYPES
 // ============================================================================
 
+interface PaymentDetails {
+  transactionId?: string;
+  bankReference?: string;
+  cardLast4?: string;
+  paidBy?: string;
+  notes?: string;
+}
+
+interface LineItem {
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  amount: number;
+}
+
 interface InvoiceDetail {
   id: string;
   invoiceNumber: string;
@@ -92,7 +107,7 @@ interface InvoiceDetail {
 }
 
 interface UpdateInvoiceRequest {
-  action?: "mark_paid" | "mark_pending" | "mark_overdue" | "void" | "send_reminder" | "record_payment";
+  action?: "mark_paid" | "mark_pending" | "mark_overdue" | "void" | "send_reminder" | "record_payment" | "refund";
   status?: "draft" | "pending" | "paid" | "overdue" | "cancelled" | "refunded";
   paymentMethod?: "card" | "bank" | "rma" | "cash" | "cheque" | "manual";
   paymentDetails?: {
@@ -104,6 +119,8 @@ interface UpdateInvoiceRequest {
   };
   amount?: number;
   notes?: string;
+  refundAmount?: number;
+  refundReason?: string;
 }
 
 type RouteContext = {
@@ -205,11 +222,11 @@ export async function GET(request: NextRequest, context: RouteContext) {
       currency: inv.currency,
       status: inv.status,
       paymentMethod: inv.paymentMethod,
-      paymentDetails: (inv.paymentDetails as any) || null,
+      paymentDetails: (inv.paymentDetails as PaymentDetails | null) || null,
       pdfUrl: inv.pdfUrl,
       notes: inv.notes,
       internalNotes: inv.internalNotes,
-      lineItems: (inv.lineItems as any) || [],
+      lineItems: (inv.lineItems as LineItem[] | null) || [],
       periodStart: inv.periodStart,
       periodEnd: inv.periodEnd,
       refundAmount: inv.refundAmount || 0,
@@ -456,12 +473,12 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             paidAt: isFullyPaid ? new Date() : invoice.paidAt,
             paymentMethod,
             paymentDetails: {
-              ...(invoice.paymentDetails as any),
+              ...(invoice.paymentDetails as PaymentDetails | null || {}),
               ...paymentDetails,
               transactionId: paymentDetails.transactionId || transactionId,
               paidBy: paymentDetails.paidBy || userId,
               amount: amount,
-            } as any,
+            } as PaymentDetails,
             updatedAt: new Date(),
           })
           .where(eq(invoices.id, invoiceId));
@@ -487,10 +504,71 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         } satisfies ApiSuccess<{ message: string; isFullyPaid: boolean; remainingAmount: number }>);
       }
 
+      case "refund": {
+        if (invoice.status !== "paid") {
+          return NextResponse.json(
+            { error: "Can only refund paid invoices", status: 400 } as ApiErrorResponse,
+            { status: 400 }
+          );
+        }
+
+        const refundAmount = body.refundAmount || invoice.totalAmount;
+        const refundReason = body.refundReason || "No reason provided";
+
+        if (refundAmount > invoice.totalAmount - (invoice.refundAmount || 0)) {
+          return NextResponse.json(
+            { error: "Refund amount exceeds available balance", status: 400 } as ApiErrorResponse,
+            { status: 400 }
+          );
+        }
+
+        // Create refund transaction ID
+        const refundTransactionId = `refund-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+
+        // Calculate new refund amount (cumulative)
+        const newRefundAmount = (invoice.refundAmount || 0) + refundAmount;
+        const isFullyRefunded = newRefundAmount >= invoice.totalAmount;
+
+        await db
+          .update(invoices)
+          .set({
+            refundAmount: newRefundAmount,
+            refundReason,
+            refundedAt: new Date(),
+            status: isFullyRefunded ? "refunded" : "paid",
+            paymentDetails: {
+              ...(invoice.paymentDetails as PaymentDetails | null || {}),
+              refundTransactionId,
+              refundedBy: userId,
+            } as PaymentDetails,
+            updatedAt: new Date(),
+          })
+          .where(eq(invoices.id, invoiceId));
+
+        logger.info("Invoice refund processed", {
+          invoiceId,
+          refundAmount,
+          refundReason,
+          refundTransactionId,
+          isFullyRefunded,
+          processedBy: userId,
+        });
+
+        return NextResponse.json({
+          data: {
+            message: isFullyRefunded ? "Invoice fully refunded" : "Partial refund processed",
+            refundAmount: newRefundAmount,
+            remainingAmount: invoice.totalAmount - newRefundAmount,
+            isFullyRefunded,
+          },
+          message: "Refund processed",
+        } satisfies ApiSuccess<{ message: string; refundAmount: number; remainingAmount: number; isFullyRefunded: boolean }>);
+      }
+
       default: {
         // Generic status update
         if (body.status) {
-          const updates: Record<string, any> = {
+          const updates: Record<string, unknown> = {
             status: body.status,
             updatedAt: new Date(),
           };

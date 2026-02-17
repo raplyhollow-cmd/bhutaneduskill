@@ -1,13 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { colleges, rubPrograms } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
+import type { ApiSuccess, ApiErrorResponse } from "@/types";
 
 // GET /api/student/content/colleges - Discover colleges
 export async function GET(request: NextRequest) {
+  const authResult = await requireAuth(['student', 'admin']);
+  if ('error' in authResult) {
+    return NextResponse.json(
+      { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
+      { status: authResult.status }
+    );
+  }
+
+  const { userId } = authResult;
+
   try {
-    const { userId } = await auth();
 
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type"); // "bhutan", "international"
@@ -46,7 +57,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ colleges: filtered });
   } catch (error) {
-    console.error("Colleges discovery error:", error);
-    return NextResponse.json({ error: "Failed to discover colleges" }, { status: 500 });
+    logger.apiError(error, { route: "/api/student/content/colleges", method: "GET", userId });
+    return NextResponse.json(
+      { error: "Failed to discover colleges", status: 500 } satisfies ApiErrorResponse,
+      { status: 500 }
+    );
   }
 }

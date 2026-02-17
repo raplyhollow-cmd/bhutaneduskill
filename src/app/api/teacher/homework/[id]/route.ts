@@ -4,6 +4,7 @@ import { requirePermission } from "@/lib/rbac";
 import { db } from "@/lib/db";
 import { homework, homeworkSubmissions } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
+import { logger } from "@/lib/logger";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -11,8 +12,10 @@ interface Params {
 
 // GET /api/teacher/homework/[id] - Get homework details
 export async function GET(request: NextRequest, { params }: Params) {
+  let id: string | undefined;
   try {
-    const { id } = await params;
+    const resolvedParams = await params;
+    id = resolvedParams.id;
 
     const authResult = await requireAuth(['teacher', 'admin']);
     if ('error' in authResult) {
@@ -56,15 +59,17 @@ export async function GET(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({ homework: homeworkData, stats });
   } catch (error) {
-    console.error("Homework fetch error:", error);
+    logger.error(error, { route: "/api/teacher/homework/[id]", method: "GET", id });
     return NextResponse.json({ error: "Failed to fetch homework" }, { status: 500 });
   }
 }
 
 // PUT /api/teacher/homework/[id] - Update homework
 export async function PUT(request: NextRequest, { params }: Params) {
+  let id: string | undefined;
   try {
-    const { id } = await params;
+    const resolvedParams = await params;
+    id = resolvedParams.id;
 
     const authResult = await requireAuth(['teacher', 'admin']);
     if ('error' in authResult) {
@@ -115,15 +120,17 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({ homework: updatedHomework });
   } catch (error) {
-    console.error("Homework update error:", error);
+    logger.error(error, { route: "/api/teacher/homework/[id]", method: "PUT", id });
     return NextResponse.json({ error: "Failed to update homework" }, { status: 500 });
   }
 }
 
 // DELETE /api/teacher/homework/[id] - Delete homework
 export async function DELETE(request: NextRequest, { params }: Params) {
+  let id: string | undefined;
   try {
-    const { id } = await params;
+    const resolvedParams = await params;
+    id = resolvedParams.id;
 
     const authResult = await requireAuth(['teacher', 'admin']);
     if ('error' in authResult) {
@@ -162,15 +169,17 @@ export async function DELETE(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Homework delete error:", error);
+    logger.error(error, { route: "/api/teacher/homework/[id]", method: "DELETE", id });
     return NextResponse.json({ error: "Failed to delete homework" }, { status: 500 });
   }
 }
 
 // POST /api/teacher/homework/[id] - Publish homework
 export async function POST(request: NextRequest, { params }: Params) {
+  let id: string | undefined;
   try {
-    const { id } = await params;
+    const resolvedParams = await params;
+    id = resolvedParams.id;
 
     const authResult = await requireAuth(['teacher', 'admin']);
     if ('error' in authResult) {
@@ -234,7 +243,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
-    console.error("Homework action error:", error);
+    logger.error(error, { route: "/api/teacher/homework/[id]", method: "POST", id });
     return NextResponse.json({ error: "Failed to perform action" }, { status: 500 });
   }
 }

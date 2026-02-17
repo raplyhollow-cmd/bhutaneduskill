@@ -317,3 +317,142 @@ export interface FilterParams {
   startDate?: string;
   endDate?: string;
 }
+
+// ============================================================================
+// LIBRARY TYPES
+// ============================================================================
+
+/**
+ * Book status types
+ */
+export type BookStatus = "available" | "borrowed" | "reserved" | "lost" | "damaged" | "maintenance";
+
+/**
+ * Book condition types
+ */
+export type BookCondition = "new" | "good" | "fair" | "poor" | "damaged";
+
+/**
+ * Library book entity
+ */
+export interface LibraryBook extends BaseEntity {
+  id: string;
+  schoolId: string;
+  isbn: string;
+  title: string;
+  author: string;
+  publicationYear: number;
+  category: string;
+  publisher: string;
+  language: string;
+  description: string;
+  totalPages: number;
+  coverImage: string;
+  status: BookStatus;
+  isActive: boolean;
+}
+
+/**
+ * Circulation status types
+ */
+export type CirculationStatus = "borrowed" | "returned" | "overdue" | "lost";
+
+/**
+ * Library circulation record (book borrowing)
+ */
+export interface LibraryCirculation extends BaseEntity {
+  id: string;
+  bookId: string;
+  borrowerId: string;
+  studentId: string;
+  borrowDate: string;
+  dueDate: string;
+  returnDate?: string;
+  status: CirculationStatus;
+  fine: number;
+  finePaid: boolean;
+  renewals: number;
+  maxRenewals: number;
+  notes?: string;
+  book?: {
+    id: string;
+    title: string;
+    author: string;
+    isbn: string;
+    category: string;
+    coverImage: string;
+    publicationYear: number;
+    status: string;
+  };
+  borrower?: {
+    id: string;
+    name: string;
+    email: string;
+    type: string;
+  };
+  calculatedFine?: number;
+  isOverdue?: boolean;
+  daysOverdue?: number;
+}
+
+/**
+ * Reservation status types
+ */
+export type ReservationStatus = "pending" | "ready" | "fulfilled" | "cancelled" | "expired";
+
+/**
+ * Book reservation/hold request
+ */
+export interface BookReservation extends BaseEntity {
+  id: string;
+  schoolId: string;
+  bookId: string;
+  requesterId: string;
+  requesterType: "student" | "teacher" | "admin" | "staff";
+  requesterName?: string;
+  reservationDate: string;
+  expiryDate: string;
+  notifiedDate?: string;
+  status: ReservationStatus;
+  priority: number;
+  notes?: string;
+  cancellationReason?: string;
+  book?: {
+    id: string;
+    title: string;
+    author: string;
+    isbn: string;
+    coverImage: string;
+  };
+}
+
+/**
+ * Library statistics
+ */
+export interface LibraryStats {
+  totalBooks: number;
+  availableBooks: number;
+  borrowedBooks: number;
+  reservedBooks: number;
+  overdueBooks: number;
+  totalDigitalResources: number;
+  totalMembers: number;
+  activeMembers: number;
+  totalFines: number;
+  finesPaid: number;
+  finesPending: number;
+  borrowsThisMonth: number;
+  returnsThisMonth: number;
+  newBooksThisMonth: number;
+}
+
+/**
+ * Library dashboard data
+ */
+export interface LibraryDashboard {
+  stats: LibraryStats;
+  recentCirculation: LibraryCirculation[];
+  pendingReservations: BookReservation[];
+  overdueBooks: Array<LibraryCirculation & { book: LibraryBook; borrower: { id: string; name: string } }>;
+  popularBooks: Array<LibraryBook & { borrowCount: number }>;
+}

@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { tutors, users, tuitionCategories } from "@/lib/db/schema";
 import { eq, desc, like, or } from "drizzle-orm";
 import { z } from "zod";
 
 const tutorSchema = z.object({
+  teacherId: z.string().optional(), // For school-admin adding a teacher as tutor
   bio: z.string().optional(),
   qualifications: z.array(z.object({
     degree: z.string(),
@@ -44,9 +45,9 @@ const tutorSchema = z.object({
 // GET /api/tuition/tutors - List all tutors
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['admin', 'school-admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
 
     const { searchParams } = new URL(request.url);
@@ -79,10 +80,26 @@ export async function GET(request: NextRequest) {
         if (typeof t.subjects === 'string') {
           try {
             const subjects = JSON.parse(t.subjects as string);
-            return subjects.some((s: any) => s.subjectName === subject || s.proficiency === subject);
+            return subjects.some((s: unknown) => {
+              if (typeof s === 'object' && s !== null && 'subjectName' in s) {
+                return (s as { subjectName: string }).subjectName === subject;
+              }
+              if (typeof s === 'object' && s !== null && 'proficiency' in s) {
+                return (s as { proficiency: string }).proficiency === subject;
+              }
+              return false;
+            });
           } catch {
             return false;
           }
+        }
+        if (Array.isArray(t.subjects)) {
+          return t.subjects.some((s: unknown) => {
+            if (typeof s === 'object' && s !== null && 'subjectName' in s) {
+              return (s as { subjectName: string }).subjectName === subject;
+            }
+            return false;
+          });
         }
         return false;
       });
@@ -130,39 +147,80 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ tutors: filtered });
+    // Transform tutors for the frontend
+    const transformedTutors = filtered.map((t) => {
+      const subjectNames: string[] = [];
+      if (Array.isArray(t.subjects)) {
+        t.subjects.forEach((s: unknown) => {
+          if (typeof s === 'object' && s !== null && 'subjectName' in s) {
+            subjectNames.push((s as { subjectName: string }).subjectName);
+          }
+        });
+      }
+
+      // Extract user from relation array
+      const userArray = t.user as unknown as { id: string; firstName: string | null; lastName: string | null; profilePicture: string | null }[] | undefined;
+      const user = userArray?.[0];
+
+      return {
+        id: t.id,
+        userId: t.userId,
+        name: user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Unknown" : "Unknown",
+        bio: t.bio,
+        subjects: subjectNames,
+        gradeLevels: t.gradeLevels as number[],
+        hourlyRate: t.hourlyRate,
+        hourlyRateOnline: t.hourlyRateOnline,
+        averageRating: t.averageRating ? t.averageRating / 100 : 0,
+        totalStudents: t.totalStudents,
+        isActive: t.isActive,
+        teachingMode: t.teachingMode,
+      };
+    });
+
+    return NextResponse.json({ tutors: transformedTutors });
   } catch (error) {
     console.error("Tutors fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch tutors" }, { status: 500 });
   }
 }
 
-// POST /api/tuition/tutors - Register as tutor
+// POST /api/tuition/tutors - Register as tutor or add teacher as tutor
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['admin', 'school-admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId, user } = authResult;
 
     const body = await request.json();
     const validatedData = tutorSchema.parse(body);
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    // Determine which user to create tutor profile for
+    const targetUserId = validatedData.teacherId || userId;
 
     // Check if already a tutor
     const existing = await db.query.tutors.findFirst({
-      where: eq(tutors.userId, currentUser.id),
+      where: eq(tutors.userId, targetUserId),
     });
 
     if (existing) {
       return NextResponse.json({ error: "Already registered as a tutor" }, { status: 400 });
+    }
+
+    // Get user info for the target
+    const targetUser = await db.query.users.findFirst({
+      where: eq(users.id, targetUserId),
+      columns: {
+        id: true,
+        firstName: true,
+        lastName: true,
+      },
+    });
+
+    if (!targetUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     // Build availability array from form data
@@ -186,9 +244,11 @@ export async function POST(request: NextRequest) {
       teachingMode = "in_person";
     }
 
+    const tutorId = `tutor_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+
     const [newTutor] = await db.insert(tutors).values({
-      id: `tutor_${Date.now()}`,
-      userId: currentUser.id,
+      id: tutorId,
+      userId: targetUserId,
       bio: validatedData.bio || "",
       subjects: (validatedData.subjects || []).map((s: any) => ({
         subjectId: s.id || s,

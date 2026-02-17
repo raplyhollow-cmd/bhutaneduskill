@@ -17,6 +17,18 @@ export {
   vehicleMaintenance,
   vehicleTracking,
   transportIncidents,
+  drivers,
+  vehicles,
+  transportRoutes,
+  transportAllocations,
+  type Vehicle,
+  type Driver,
+  type TransportRoute,
+  type TransportAllocation,
+  type BusAttendance,
+  type VehicleMaintenance,
+  type VehicleTracking,
+  type TransportIncident,
 } from "./transport-schema";
 
 export {
@@ -27,14 +39,26 @@ export {
   hostelLeaveRequests,
   hostelFacilities,
   hostelMess,
+  hostelFees,
+  hostelPayments,
+  roomInspections,
+  hostelComplaints,
+  hostelRules,
 } from "./hostel-schema";
 
 export {
   inventoryItems,
   inventoryCategories,
-  inventoryVendors, // CHANGED: was "inventoryVendors as vendors" - actual DB table is inventory_vendors
+  inventoryVendors,
   purchaseOrders,
-  inventoryTransactions, // CHANGED: was "inventoryTransactions as stockMovements" - actual DB table is inventory_transactions
+  inventoryTransactions,
+  assetAssignments,
+  assetMaintenance,
+  assetDisposal,
+  stockAdjustments,
+  inventoryAlerts,
+  inventoryReports,
+  inventorySettings,
 } from "./inventory-schema";
 
 // ============================================================================
@@ -49,6 +73,30 @@ export {
   componentAccess,
   auditLog,
 } from "./rbac-schema";
+
+// ============================================================================
+// NOTIFICATIONS
+// ============================================================================
+
+export {
+  notifications,
+  notificationDeliveries,
+  userNotificationSettings,
+  notificationTypeEnum,
+  notificationPriorityEnum,
+  notificationStatusEnum,
+  targetAudienceEnum,
+  deliveryStatusEnum,
+} from "./notifications-schema";
+
+export type {
+  Notification,
+  NewNotification,
+  NotificationDelivery,
+  NewNotificationDelivery,
+  UserNotificationSettings,
+  NewUserNotificationSettings,
+} from "./notifications-schema";
 
 // ============================================================================
 // MULTI-TENANCY & BILLING
@@ -189,6 +237,146 @@ export const schools = pgTable("schools", {
 });
 
 export type School = typeof schools.$inferSelect;
+
+// ============================================================================
+// SCHOOL SETTINGS TABLE
+// ============================================================================
+
+/**
+ * School configuration and settings
+ * Stores academic, fee, notification, integration, and security settings
+ */
+export const schoolSettings = pgTable("school_settings", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }).notNull(),
+
+  // General Settings
+  schoolName: text("school_name").notNull(),
+  schoolCode: text("school_code").notNull(),
+  email: text("email").notNull(),
+  phone: text("phone").notNull(),
+  address: text("address").notNull(),
+  district: text("district").notNull(),
+  website: text("website").notNull(),
+  logo: text("logo"),
+
+  // Academic Settings
+  academicYearStart: text("academic_year_start").notNull(),
+  academicYearEnd: text("academic_year_end").notNull(),
+  currentTerm: text("current_term").notNull(),
+  gradingSystem: text("grading_system").notNull(), // "percentage" | "gpa" | "cwa" | "grade"
+  passMark: text("pass_mark").notNull(),
+  workingDays: json("working_days").$type<string[]>(),
+
+  // Fee Settings
+  currency: text("currency").notNull(),
+  lateFeeEnabled: boolean("late_fee_enabled").default(false),
+  lateFeeAmount: text("late_fee_amount").notNull(),
+  lateFeeAfter: text("late_fee_after").notNull(),
+  discountEnabled: boolean("discount_enabled").default(false),
+
+  // Notification Settings
+  emailNotifications: boolean("email_notifications").default(true),
+  smsNotifications: boolean("sms_notifications").default(true),
+  attendanceAlerts: boolean("attendance_alerts").default(true),
+  feeReminders: boolean("fee_reminders").default(true),
+  examResults: boolean("exam_results").default(true),
+
+  // Integration Settings
+  paymentGateway: text("payment_gateway").notNull(),
+  emailService: text("email_service").notNull(),
+  smsService: text("sms_service").notNull(),
+
+  // Security Settings
+  twoFactorAuth: boolean("two_factor_auth").default(false),
+  sessionTimeout: text("session_timeout").notNull(),
+  ipRestriction: boolean("ip_restriction").default(false),
+  allowedIps: text("allowed_ips"),
+
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+});
+
+export type SchoolSettings = typeof schoolSettings.$inferSelect;
+
+// ============================================================================
+// ACADEMIC YEARS TABLE
+// ============================================================================
+
+/**
+ * Academic year configuration
+ * Tracks terms and their dates
+ */
+export const academicYears = pgTable("academic_years", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }).notNull(),
+  name: text("name").notNull(), // e.g., "2025-2026"
+  startDate: text("start_date").notNull(),
+  endDate: text("end_date").notNull(),
+  isActive: boolean("is_active").default(false),
+  currentTerm: text("current_term"), // e.g., "Spring 2025"
+  terms: json("terms").$type<Array<{
+    name: string;
+    startDate: string;
+    endDate: string;
+  }>>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+});
+
+export type AcademicYear = typeof academicYears.$inferSelect;
+
+// ============================================================================
+// GRADE CONFIGURATIONS TABLE
+// ============================================================================
+
+/**
+ * Grade configuration for the school's grading system
+ * Defines grade ranges and their meanings
+ */
+export const gradeConfigurations = pgTable("grade_configurations", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }).notNull(),
+  gradingSystem: text("grading_system").notNull(), // "percentage" | "gpa" | "cwa" | "grade"
+  passMark: text("pass_mark").notNull(),
+  grades: json("grades").$type<Array<{
+    grade: string; // e.g., "A", "B+", "4.0"
+    minScore: number;
+    maxScore: number;
+    label: string;
+    gpa?: number;
+  }>>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+});
+
+export type GradeConfiguration = typeof gradeConfigurations.$inferSelect;
+
+// ============================================================================
+// BELL SCHEDULES TABLE
+// ============================================================================
+
+/**
+ * Bell schedule configuration
+ * Defines the daily school schedule
+ */
+export const bellSchedules = pgTable("bell_schedules", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }).notNull(),
+  name: text("name").notNull(), // e.g., "Regular Day", "Short Day", "Exam Schedule"
+  isActive: boolean("is_active").default(true),
+  periods: json("periods").$type<Array<{
+    periodNumber: number;
+    name: string; // e.g., "Period 1", "Lunch", "Break"
+    startTime: string; // HH:MM format
+    endTime: string; // HH:MM format
+    type: "class" | "break" | "lunch";
+  }>>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+});
+
+export type BellSchedule = typeof bellSchedules.$inferSelect;
 
 // ============================================================================
 // BOOKS TABLE
@@ -672,6 +860,7 @@ export const timetableEntries = pgTable("timetable_entries", {
   id: text("id").primaryKey(),
   classId: text("class_id").references(() => classes.id, { onDelete: "cascade" }),
   subjectId: text("subject_id").references(() => subjects.id),
+  subjectName: text("subject_name").notNull(),
   teacherId: text("teacher_id").references(() => users.id),
   teacherName: json("teacher_name").notNull(),
   roomId: text("room_id").references(() => rooms.id),
@@ -712,6 +901,48 @@ export const partners = pgTable("partners", {
 });
 
 export type Partner = typeof partners.$inferSelect;
+
+// ============================================================================
+// PARTNER COMMISSIONS TABLE
+// ============================================================================
+
+export const partnerCommissions = pgTable("partner_commissions", {
+  id: text("id").primaryKey(),
+  partnerId: text("partner_id").references(() => partners.id, { onDelete: "cascade" }).notNull(),
+  period: text("period").notNull(), // Format: "YYYY-MM" (e.g., "2025-12")
+  amount: integer("amount").notNull(), // Commission amount in currency units
+  status: text("status").notNull().default("pending"), // "pending" | "paid" | "overdue"
+  description: text("description").notNull(),
+  paidDate: text("paid_date"), // Date when commission was paid
+  dueDate: text("due_date"), // Date when commission is due
+  metadata: json("metadata").$type<Record<string, unknown>>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+});
+
+export type PartnerCommission = typeof partnerCommissions.$inferSelect;
+
+// ============================================================================
+// PARTNER PORTAL USERS TABLE
+// ============================================================================
+
+export const partnerPortalUsers = pgTable("partner_portal_users", {
+  id: text("id").primaryKey(),
+  partnerId: text("partner_id").references(() => partners.id, { onDelete: "cascade" }).notNull(),
+  clerkUserId: text("clerk_user_id").notNull(),
+  email: text("email").notNull(),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  role: text("role").notNull().default("viewer"), // "viewer" | "editor" | "admin"
+  isActive: boolean("is_active").default(true),
+  lastLoginAt: text("last_login_at"),
+  invitedBy: text("invited_by").references(() => users.id),
+  invitationAcceptedAt: timestamp("invitation_accepted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+});
+
+export type PartnerPortalUser = typeof partnerPortalUsers.$inferSelect;
 
 // ============================================================================
 // COUNSELOR RESOURCES TABLE
@@ -1369,86 +1600,23 @@ export const leaveRequests = pgTable("leave_requests", {
 export type LeaveRequest = typeof leaveRequests.$inferSelect;
 
 // ============================================================================
-// VEHICLES TABLE
+// LEAVE BALANCES TABLE
 // ============================================================================
 
-export const vehicles = pgTable("vehicles", {
+export const leaveBalances = pgTable("leave_balances", {
   id: text("id").primaryKey(),
-  schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }),
-  routeId: text("route_id").notNull(),
-  assignedRouteId: text("assigned_route_id"), // Currently assigned route (can change)
-  registrationNumber: text("registration_number").unique().notNull(),
-  vehicleNumber: text("vehicle_number"), // Alias for registrationNumber
-  vehicleType: text("vehicle_type").notNull(), // "bus" | "van" | "mini_bus"
-  capacity: integer("capacity").notNull(),
-  driverName: text("driver_name").notNull(),
-  driverPhone: text("driver_phone").notNull(),
-  driverLicense: text("driver_license").notNull(),
-  conductorName: text("conductor_name"),
-  conductorPhone: text("conductor_phone"),
-  status: text("status").notNull(), // "active" | "maintenance" | "inactive"
-  gpsEnabled: boolean("gps_enabled").default(true),
-  trackingDeviceId: text("tracking_device_id"),
-  insuranceExpiry: text("insurance_expiry"),
-  pollutionExpiry: text("pollution_expiry"),
-  fitnessExpiry: text("fitness_expiry"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
-
-export type Vehicle = typeof vehicles.$inferSelect;
-
-// ============================================================================
-// TRANSPORT ROUTES TABLE
-// ============================================================================
-
-export const transportRoutes = pgTable("transport_routes", {
-  id: text("id").primaryKey(),
-  schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }),
-  name: text("name").notNull(),
-  routeName: text("route_name"), // Alias for name
-  routeNumber: text("route_number").unique().notNull(),
-  startLocation: text("start_location").notNull(),
-  endLocation: text("end_location").notNull(),
-  stops: json("stops").$type<Array<{
-    name: string;
-    location: { lat: string; lng: string };
-    time: string;
-  }>>().notNull(),
-  distance: integer("distance").notNull(), // in km
-  estimatedTime: integer("estimated_time").notNull(), // in minutes
-  fee: integer("fee").notNull(),
-  morningStartTime: text("morning_start_time"), // Morning pickup start time
-  afternoonEndTime: text("afternoon_end_time"), // Afternoon drop end time
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
-
-export type TransportRoute = typeof transportRoutes.$inferSelect;
-
-// ============================================================================
-// TRANSPORT ALLOCATIONS TABLE
-// ============================================================================
-
-export const transportAllocations = pgTable("transport_allocations", {
-  id: text("id").primaryKey(),
-  studentId: text("student_id").references(() => users.id, { onDelete: "cascade" }).unique(),
-  routeId: text("route_id").references(() => transportRoutes.id, { onDelete: "cascade" }),
-  vehicleId: text("vehicle_id").references(() => vehicles.id, { onDelete: "set null" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   schoolId: text("school_id").references(() => schools.id),
-  stopName: text("stop_name").notNull(),
-  pickupTime: text("pickup_time").notNull(),
-  dropTime: text("drop_time").notNull(),
-  academicYear: text("academic_year").notNull(),
-  fee: integer("fee").notNull(),
-  isPaid: boolean("is_paid").default(false),
-  isActive: boolean("is_active").default(true),
+  leaveType: text("leave_type").notNull(), // "sick" | "vacation" | "emergency" | "family" | "other" | "casual" | "official"
+  year: integer("year").notNull(), // Academic/Calendar year
+  totalDays: integer("total_days").notNull().default(0), // Total allocated days
+  usedDays: integer("used_days").notNull().default(0), // Days used so far
+  remainingDays: integer("remaining_days").notNull().default(0), // Calculated remaining
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
-export type TransportAllocation = typeof transportAllocations.$inferSelect;
+export type LeaveBalance = typeof leaveBalances.$inferSelect;
 
 // ============================================================================
 // CIRCULATION TABLE
@@ -1526,6 +1694,103 @@ export const counselorNotes = pgTable("counselor_notes", {
 });
 
 export type CounselorNote = typeof counselorNotes.$inferSelect;
+
+// ============================================================================
+// COUNSELING SESSIONS TABLE
+// ============================================================================
+
+export const counselingSessions = pgTable("counseling_sessions", {
+  id: text("id").primaryKey(),
+  counselorId: text("counselor_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  studentId: text("student_id").references(() => users.id, { onDelete: "cascade" }),
+  type: text("type").notNull().default("individual"), // "individual" | "group" | "family" | "crisis"
+  status: text("status").notNull().default("scheduled"), // "scheduled" | "in_progress" | "completed" | "cancelled" | "no_show"
+  sessionDate: timestamp("session_date", { withTimezone: true }).notNull(),
+  startTime: text("start_time").notNull(), // Format: "HH:MM"
+  endTime: text("end_time").notNull(), // Format: "HH:MM"
+  location: text("location"), // Physical location or virtual meeting link
+  topic: text("topic"),
+  notes: text("notes"),
+  outcome: text("outcome"), // Summary of session outcome
+  actionItems: json("action_items").$type<Array<{
+    action: string;
+    assignedTo: string;
+    dueDate: string;
+    completed: boolean;
+  }>>(),
+  isRecurring: boolean("is_recurring").default(false),
+  recurringPattern: text("recurring_pattern"), // "weekly" | "biweekly" | "monthly"
+  recurringEndDate: timestamp("recurring_end_date", { withTimezone: true }),
+  parentSessionId: text("parent_session_id").references(() => counselingSessions.id, { onDelete: "cascade" }), // For recurring sessions
+  schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }),
+  confidentialityLevel: text("confidentiality_level").default("standard"), // "standard" | "high" | "critical"
+  tags: json("tags").$type<string[]>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+});
+
+export type CounselingSession = typeof counselingSessions.$inferSelect;
+
+// ============================================================================
+// STUDENT INTERVENTIONS TABLE
+// ============================================================================
+
+export const studentInterventions = pgTable("student_interventions", {
+  id: text("id").primaryKey(),
+  counselorId: text("counselor_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  studentId: text("student_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }),
+  type: text("type").notNull(), // "academic" | "behavioral" | "personal" | "career" | "social"
+  category: text("category").notNull(), // e.g., "Grade Improvement", "Attendance Issues", "Social Adjustment"
+  priority: text("priority").notNull().default("medium"), // "low" | "medium" | "high" | "urgent"
+  status: text("status").notNull().default("active"), // "planned" | "active" | "monitoring" | "completed" | "cancelled"
+  description: text("description").notNull(),
+  goals: json("goals").$type<Array<{
+    id: string;
+    text: string;
+    status: "pending" | "in_progress" | "completed";
+    targetDate?: string;
+  }>>(),
+  startDate: timestamp("start_date", { withTimezone: true }).notNull(),
+  targetDate: timestamp("target_date", { withTimezone: true }).notNull(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  followUpDate: timestamp("follow_up_date", { withTimezone: true }),
+  progress: integer("progress").default(0), // 0-100
+  notes: json("notes").$type<Array<{
+    id: string;
+    content: string;
+    createdBy: string;
+    createdAt: string;
+  }>>(),
+  outcome: text("outcome"), // Summary of the intervention outcome
+  outcomeRating: text("outcome_rating"), // "successful" | "partially_successful" | "unsuccessful"
+  tags: json("tags").$type<string[]>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+});
+
+export type StudentIntervention = typeof studentInterventions.$inferSelect;
+export type NewStudentIntervention = typeof studentInterventions.$inferInsert;
+
+// ============================================================================
+// INTERVENTION PROGRESS NOTES TABLE
+// ============================================================================
+
+export const interventionNotes = pgTable("intervention_notes", {
+  id: text("id").primaryKey(),
+  interventionId: text("intervention_id").references(() => studentInterventions.id, { onDelete: "cascade" }).notNull(),
+  counselorId: text("counselor_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  content: text("content").notNull(),
+  progressUpdate: integer("progress_update"), // New progress value after this note
+  statusChange: text("status_change"), // If status changed with this note
+  milestoneReached: boolean("milestone_reached").default(false),
+  milestoneDescription: text("milestone_description"),
+  isConfidential: boolean("is_confidential").default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+});
+
+export type InterventionNote = typeof interventionNotes.$inferSelect;
+export type NewInterventionNote = typeof interventionNotes.$inferInsert;
 
 // ============================================================================
 // WIZARD PROGRESS TABLE
@@ -1667,11 +1932,6 @@ export const colleges = rubColleges;
 export const scholarships = rubScholarships;
 export const examResults = examResultsEnhanced;
 
-// Re-export additional tables from transport-schema
-export {
-  drivers,
-} from "./transport-schema";
-
 // Announcement reads table for tracking read receipts
 export const announcementReads = pgTable("announcement_reads", {
   id: text("id").primaryKey(),
@@ -1738,25 +1998,122 @@ export type CurriculumStandard = typeof curriculumStandards.$inferSelect;
 export type NewCurriculumStandard = typeof curriculumStandards.$inferInsert;
 
 // ============================================================================
-// RE-EXPORT NOTIFICATIONS SCHEMA
+// RE-EXPORT MESSAGING SCHEMA
 // ============================================================================
 
 export {
-  notifications,
-  notificationDeliveries,
-  userNotificationSettings,
-  notificationTypeEnum,
-  notificationPriorityEnum,
-  notificationStatusEnum,
-  targetAudienceEnum,
-  deliveryStatusEnum,
-} from "./notifications-schema";
+  conversations,
+  messages,
+  notificationPreferences,
+  notificationQueue,
+} from "./messaging-schema";
 
 export type {
-  Notification,
-  NewNotification,
-  NotificationDelivery,
-  NewNotificationDelivery,
-  UserNotificationSettings,
-  NewUserNotificationSettings,
-} from "./notifications-schema";
+  Conversation,
+  Message,
+  NotificationPreference,
+  NotificationQueueItem,
+} from "./messaging-schema";
+
+// ============================================================================
+// AI INTERACTIONS TABLE
+// ============================================================================
+
+// AI interactions tracking for analytics and personalization
+export const aiInteractions = pgTable("ai_interactions", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  featureId: text("feature_id").notNull(), // "ai-career-coach", "skill-gap-analyzer", "scholarship-matcher", etc.
+  interactionData: json("interaction_data").$type<Record<string, any>>(), // Stores message, response length, interests, concerns, etc.
+  metadata: json("metadata").$type<Record<string, any>>(), // Additional tracking data
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type AIInteraction = typeof aiInteractions.$inferSelect;
+export type NewAIInteraction = typeof aiInteractions.$inferInsert;
+
+// ============================================================================
+// SUPPORT TICKETS TABLE
+// ============================================================================
+
+// Support tickets for managing user support requests
+export const supportTickets = pgTable("support_tickets", {
+  id: text("id").primaryKey(),
+  ticketNumber: text("ticket_number").notNull().unique(), // Format: TKT-YYYY-NNNN
+  subject: text("subject").notNull(),
+  description: text("description").notNull(),
+  category: text("category").notNull(), // "bug" | "feature_request" | "question" | "billing" | "technical" | "account"
+  priority: text("priority").notNull().default("medium"), // "critical" | "high" | "medium" | "low"
+  status: text("status").notNull().default("open"), // "open" | "in_progress" | "waiting" | "resolved" | "closed"
+  schoolId: text("school_id").references(() => schools.id, { onDelete: "set null" }),
+  createdById: text("created_by_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdByRole: text("created_by_role").notNull(), // "student" | "teacher" | "parent" | "school_admin" | "counselor"
+  assignedToId: text("assigned_to_id").references(() => users.id, { onDelete: "set null" }),
+  assignedToName: text("assigned_to_name"), // Display name for team/agent
+  resolution: text("resolution"), // Final resolution summary
+  resolutionTime: integer("resolution_time"), // Time to resolve in minutes
+  satisfactionRating: integer("satisfaction_rating"), // 1-5 stars
+  satisfactionFeedback: text("satisfaction_feedback"),
+  attachments: json("attachments").$type<Array<{
+    id: string;
+    name: string;
+    url: string;
+    type: string;
+    size: number;
+  }>>(),
+  tags: json("tags").$type<string[]>(),
+  source: text("source").notNull().default("portal"), // "portal" | "email" | "api" | "phone"
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  closedAt: timestamp("closed_at", { withTimezone: true }),
+  lastResponseAt: timestamp("last_response_at", { withTimezone: true }),
+  responseCount: integer("response_count").notNull().default(0),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+});
+
+export type SupportTicket = typeof supportTickets.$inferSelect;
+export type NewSupportTicket = typeof supportTickets.$inferInsert;
+
+// Support ticket responses for tracking conversation
+export const supportTicketResponses = pgTable("support_ticket_responses", {
+  id: text("id").primaryKey(),
+  ticketId: text("ticket_id").notNull().references(() => supportTickets.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  userRole: text("user_role").notNull(), // "admin" | "agent" | "customer"
+  userName: text("user_name").notNull(), // Display name
+  message: text("message").notNull(),
+  isInternal: boolean("is_internal").notNull().default(false), // Internal notes between agents
+  attachments: json("attachments").$type<Array<{
+    id: string;
+    name: string;
+    url: string;
+    type: string;
+    size: number;
+  }>>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+});
+
+export type SupportTicketResponse = typeof supportTicketResponses.$inferSelect;
+export type NewSupportTicketResponse = typeof supportTicketResponses.$inferInsert;
+
+// Support agents/team members for ticket assignment
+export const supportAgents = pgTable("support_agents", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  role: text("role").notNull(), // "agent" | "lead" | "manager"
+  team: text("team").notNull(), // "Support" | "Tech" | "Finance" | "Dev"
+  specialties: json("specialties").$type<string[]>(), // Categories they handle
+  isActive: boolean("is_active").notNull().default(true),
+  maxConcurrentTickets: integer("max_concurrent_tickets").notNull().default(10),
+  currentTicketCount: integer("current_ticket_count").notNull().default(0),
+  averageResponseTime: integer("average_response_time"), // in minutes
+  totalTicketsResolved: integer("total_tickets_resolved").notNull().default(0),
+  satisfactionScore: integer("satisfaction_score"), // Average rating 1-5
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+});
+
+export type SupportAgent = typeof supportAgents.$inferSelect;
+export type NewSupportAgent = typeof supportAgents.$inferInsert;

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { tuitionEnrollments, tuitionCourses, users, tutors } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
@@ -7,28 +7,45 @@ import { eq, and, desc } from "drizzle-orm";
 // GET /api/tuition/enrollments - List enrollments
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['student', 'admin', 'school-admin', 'teacher']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { user: currentUser, userId: currentUserId } = authResult;
 
     const { searchParams } = new URL(request.url);
-    const type = searchParams.get("type"); // "tutor" or "student"
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    const type = searchParams.get("type"); // "tutor", "student", or "all" for school-admin
+    const schoolId = searchParams.get("schoolId");
 
     let enrollments: any[];
 
-    if (type === "tutor") {
+    if (type === "all" || (currentUser.type === 'school-admin' || currentUser.type === 'admin')) {
+      // School-admin can see all enrollments for their school
+      const filterSchoolId = schoolId || currentUser.schoolId;
+
+      enrollments = await db.query.tuitionEnrollments.findMany({
+        with: {
+          student: true,
+          course: true,
+          tutor: {
+            with: {
+              user: true,
+            },
+          },
+        },
+        orderBy: [desc(tuitionEnrollments.enrollmentDate)],
+      });
+
+      // Filter by school if needed
+      if (filterSchoolId) {
+        enrollments = enrollments.filter((e: typeof enrollments[0]) =>
+          e.course?.schoolId === filterSchoolId
+        );
+      }
+    } else if (type === "tutor" || currentUser.type === 'teacher') {
       // Get tutor's enrollments
       const tutor = await db.query.tutors.findFirst({
-        where: eq(tutors.userId, currentUser.id),
+        where: eq(tutors.userId, currentUserId),
       });
 
       if (!tutor) {
@@ -46,7 +63,7 @@ export async function GET(request: NextRequest) {
     } else {
       // Get student's enrollments
       enrollments = await db.query.tuitionEnrollments.findMany({
-        where: eq(tuitionEnrollments.studentId, currentUser.id),
+        where: eq(tuitionEnrollments.studentId, currentUserId),
         with: {
           tutor: {
             with: {
@@ -69,21 +86,14 @@ export async function GET(request: NextRequest) {
 // POST /api/tuition/enrollments - Enroll in course
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['student', 'admin', 'school-admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { user: currentUser } = authResult;
 
     const body = await request.json();
     const { courseId, paymentMethod, paymentId } = body;
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
 
     // Get course details
     const course = await db.query.tuitionCourses.findFirst({

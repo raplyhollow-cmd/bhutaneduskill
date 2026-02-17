@@ -80,11 +80,55 @@ export async function GET(request: NextRequest) {
         const gradedCount = hwSubmissionsData.filter((h) => h.status === "graded").length;
         const pendingCount = hwSubmissionsData.filter((h) => h.status === "draft").length;
 
+        // Get parent/guardian information
+        let parentGuardianName: string | null = null;
+        let parentGuardianPhone: string | null = null;
+        let parentGuardianEmail: string | null = null;
+
+        const studentRecord = studentData as {
+          firstName?: string | null;
+          lastName?: string | null;
+          parentContact?: string | null;
+          parentPhone?: string | null;
+          emergencyContact?: string | null;
+          parentId?: string | null;
+        };
+
+        if (studentRecord.parentContact) {
+          parentGuardianName = studentRecord.parentContact;
+        }
+        if (studentRecord.parentPhone) {
+          parentGuardianPhone = studentRecord.parentPhone;
+        }
+        if (studentRecord.emergencyContact) {
+          parentGuardianPhone = parentGuardianPhone || studentRecord.emergencyContact;
+        }
+
+        // Try to get parent from parentId
+        if (studentRecord.parentId) {
+          const parentUser = await db.query.users.findFirst({
+            where: eq(users.id, studentRecord.parentId),
+            columns: {
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
+            },
+          });
+          if (parentUser) {
+            parentGuardianName = parentGuardianName || `${parentUser.firstName || ""} ${parentUser.lastName || ""}`.trim() || null;
+            parentGuardianEmail = parentUser.email;
+            if (!parentGuardianPhone && parentUser.phone) {
+              parentGuardianPhone = parentUser.phone;
+            }
+          }
+        }
+
         return {
           id: studentData.id,
-          name: `${(studentData as any).firstName || ""} ${(studentData as any).lastName || ""}`.trim(),
-          firstName: (studentData as any).firstName || "",
-          lastName: (studentData as any).lastName || "",
+          name: `${studentRecord.firstName || ""} ${studentRecord.lastName || ""}`.trim(),
+          firstName: studentRecord.firstName || "",
+          lastName: studentRecord.lastName || "",
           email: studentData.email,
           profilePicture: (studentData as any).profilePicture || null,
           classGrade: cls.grade,
@@ -105,6 +149,9 @@ export async function GET(request: NextRequest) {
             total: hwSubmissionsData.length,
           },
           enrolledAt: enrollmentItem.enrollmentDate,
+          parentGuardianName,
+          parentGuardianPhone,
+          parentGuardianEmail,
         };
       })
     );

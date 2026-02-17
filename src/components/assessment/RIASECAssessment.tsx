@@ -3,16 +3,23 @@
 import { useState } from "react";
 import { AssessmentContainer, OptionButton } from "@/components/assessment";
 import { ResultsCard, ScoreBar, SuggestionCard } from "@/components/assessment";
-import { calculateRIASEC } from "@/lib/riasec";
+import { calculateRIASEC, type RIASECResult } from "@/lib/riasec";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
+interface RIASECQuestion {
+  id: string;
+  text: string;
+  category: string;
+  options: Array<{ value: number; text: string }>;
+}
+
 interface RIASECAssessmentProps {
   title: string;
   description: string;
-  questions: Array<{ id: string; text: string; category: string; options: Array<{ value: number; text: string }> }>;
+  questions: RIASECQuestion[];
   assessmentType: string;
 }
 
@@ -28,7 +35,7 @@ const CATEGORY_NAMES: Record<string, string> = {
 export function RIASECAssessment({ title, description, questions, assessmentType }: RIASECAssessmentProps) {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<RIASECResult | null>(null);
 
   const handleAnswer = (value: number) => {
     const newAnswers = { ...answers, [questions[currentQuestion].id]: value };
@@ -43,7 +50,7 @@ export function RIASECAssessment({ title, description, questions, assessmentType
     }
   };
 
-  const saveAssessment = async (finalAnswers: Record<string, number>, assessmentResult: any) => {
+  const saveAssessment = async (finalAnswers: Record<string, number>, assessmentResult: RIASECResult) => {
     try {
       await fetch("/api/assessments", {
         method: "POST",

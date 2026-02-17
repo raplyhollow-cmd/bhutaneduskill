@@ -11,6 +11,101 @@ import { eq, and, count, desc, sql, gte, lte, inArray } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth-utils";
 import { cache } from "react";
 
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface UserRecord {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  phone: string | null;
+  classGrade: number | null;
+  section: string | null;
+  schoolId: string | null;
+  dateOfBirth: string | null;
+  profilePicture: string | null;
+  type: string;
+}
+
+interface AssessmentWithExtras {
+  id: string;
+  userId: string;
+  type: string;
+  status: string;
+  completedAt: Date | null;
+  createdAt: Date;
+}
+
+interface HomeworkSubmissionWithExtras {
+  id: string;
+  homeworkId: string;
+  studentId: string;
+  score: number | null;
+  percentage?: number | null;
+  feedback: string | null;
+  gradedAt: Date | null;
+  submittedAt: Date | null;
+  createdAt: Date;
+}
+
+interface HomeworkWithExtras {
+  id: string;
+  title: string;
+  type?: string | null;
+  subjectId: string | null;
+  dueDate: string;
+  assignedDate: string;
+  maxPoints?: number | null;
+  isPublished: boolean | null;
+}
+
+interface ExamResultWithExtras {
+  id: string;
+  studentId: string;
+  examName: string | null;
+  examType: string | null;
+  examYear?: number | null;
+  overallPercentage?: number | null;
+  percentage?: number | null;
+  totalPercentage?: number | null;
+  division?: string | null;
+}
+
+interface StudentFeeWithExtras {
+  id: string;
+  studentId: string;
+  totalAmount?: number | null;
+  amountPaid?: number | null;
+  amountPending?: number | null;
+  status: string;
+  dueDate?: string | null;
+}
+
+interface ModuleProgressWithExtras {
+  id: string;
+  studentId: string;
+  moduleId: string;
+  progressPercentage?: number | null;
+  completedAt: Date | null;
+  certificateUrl: string | null;
+  createdAt: Date;
+  lastAccessedAt: Date;
+}
+
+interface TuitionEnrollmentWithExtras {
+  id: string;
+  studentId: string;
+  courseId: string;
+  progressPercentage?: number | null;
+  completedAt: Date | null;
+  enrolledAt: Date | string;
+  expiresAt?: Date | string | null;
+  certificateUrl?: string | null;
+  amountPaid?: number | null;
+}
+
 // Get current student ID from auth session
 export async function getCurrentStudentId() {
   const authResult = await requireAuth(['student']);
@@ -167,7 +262,8 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
     throw new Error("Student not found");
   }
 
-  const studentName = `${(studentRecord as any).firstName} ${(studentRecord as any).lastName || ""}`.trim();
+  const userRecord = studentRecord as UserRecord;
+  const studentName = `${userRecord.firstName} ${userRecord.lastName || ""}`.trim();
 
   // Get student's class enrollment
   const enrollment = await db.query.enrollments.findFirst({
@@ -179,18 +275,18 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
 
   const studentInfo: StudentInfo = {
     id: studentRecord.id,
-    firstName: (studentRecord as any).firstName,
-    lastName: (studentRecord as any).lastName,
+    firstName: userRecord.firstName,
+    lastName: userRecord.lastName,
     name: studentName,
-    email: studentRecord.email,
-    phone: studentRecord.phone,
-    classGrade: studentRecord.classGrade,
-    section: studentRecord.section,
+    email: userRecord.email,
+    phone: userRecord.phone,
+    classGrade: userRecord.classGrade,
+    section: userRecord.section,
     className: null, // Relation removed - would need separate query
     classId: enrollment?.classId || null,
-    schoolId: studentRecord.schoolId,
-    dateOfBirth: studentRecord.dateOfBirth,
-    profilePicture: studentRecord.profilePicture,
+    schoolId: userRecord.schoolId,
+    dateOfBirth: userRecord.dateOfBirth,
+    profilePicture: userRecord.profilePicture,
   };
 
   // 2. Get homework summary
@@ -244,7 +340,7 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
 
   // Get RIASEC result for career matching
   let hollandCode: string | null = null;
-  if (latestAssessment && (latestAssessment as any).type === "riasec") {
+  if (latestAssessment && (latestAssessment as AssessmentWithExtras).type === "riasec") {
     const riasecResult = await db.query.riasecResults.findFirst({
       where: eq(riasecResults.userId, studentId),
       orderBy: [desc(riasecResults.createdAt)],
@@ -252,11 +348,12 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
     hollandCode = riasecResult?.hollandCode || null;
   }
 
+  const assessmentWithExtras = latestAssessment as AssessmentWithExtras | null;
   const assessmentSummary: AssessmentSummary = {
     completed: completedAssessments.length,
     total: studentAssessments.length,
     latestResult: latestAssessment ? {
-      type: (latestAssessment as any).type,
+      type: assessmentWithExtras!.type,
       completedAt: latestAssessment.completedAt ? new Date(latestAssessment.completedAt).toISOString() : null,
     } : null,
   };
@@ -302,14 +399,15 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
 
   // Add completed assessment achievement
   if (latestAssessment && latestAssessment.status === "completed") {
+    const assessmentWithExtras = latestAssessment as AssessmentWithExtras;
     achievements.push({
       id: `assessment-${latestAssessment.id}`,
       type: "assessment",
-      title: `Completed ${(latestAssessment as any).type.toUpperCase()} Assessment`,
+      title: `Completed ${assessmentWithExtras.type.toUpperCase()} Assessment`,
       description: "Career assessment completed successfully",
-      date: (latestAssessment.completedAt as any || latestAssessment.createdAt) instanceof Date
-        ? (latestAssessment.completedAt as any || latestAssessment.createdAt).toISOString()
-        : new Date(latestAssessment.completedAt as any || latestAssessment.createdAt).toISOString(),
+      date: (latestAssessment.completedAt || latestAssessment.createdAt) instanceof Date
+        ? (latestAssessment.completedAt || latestAssessment.createdAt).toISOString()
+        : new Date(latestAssessment.completedAt || latestAssessment.createdAt).toISOString(),
     });
   }
 
@@ -326,11 +424,12 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
     });
 
     if (hw) {
+      const subWithExtras = sub as HomeworkSubmissionWithExtras;
       achievements.push({
         id: `homework-${sub.id}`,
         type: "homework",
         title: `Submitted: ${hw.title}`,
-        description: sub.gradedAt ? `Scored: ${(sub as any).percentage || 0}%` : "Awaiting grading",
+        description: sub.gradedAt ? `Scored: ${subWithExtras.percentage || 0}%` : "Awaiting grading",
         date: sub.submittedAt ? new Date(sub.submittedAt).toISOString() : sub.createdAt.toISOString(),
       });
     }
@@ -387,12 +486,13 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
       if (!submission) {
         const dueDate = new Date(hw.dueDate);
         const daysUntil = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        const hwWithExtras = hw as HomeworkWithExtras;
 
         deadlines.push({
           id: `homework-${hw.id}`,
           type: "homework",
           title: hw.title,
-          description: `${(hw as any).type} - ${hw.subjectId || "Class"}`,
+          description: `${hwWithExtras.type || "assignment"} - ${hw.subjectId || "Class"}`,
           dueDate: hw.dueDate,
           daysUntil,
           urgency: daysUntil <= 2 ? "high" : daysUntil <= 7 ? "medium" : "low",
@@ -469,12 +569,13 @@ eq(careerMatches.isTopMatch, true)
     });
 
     if (studentFee) {
+      const feeWithExtras = studentFee as StudentFeeWithExtras;
       feeStatus = {
-        totalAmount: (studentFee as any).totalAmount || 0,
-        amountPaid: (studentFee as any).amountPaid || 0,
+        totalAmount: feeWithExtras.totalAmount || 0,
+        amountPaid: feeWithExtras.amountPaid || 0,
         amountPending: studentFee.amountPending || 0,
         status: studentFee.status as "paid" | "partial" | "pending",
-        dueDate: studentFee.dueDate,
+        dueDate: feeWithExtras.dueDate || null,
       };
     }
   }
@@ -569,7 +670,8 @@ export async function getStudentProgressData(): Promise<StudentProgressData> {
     throw new Error("Student not found");
   }
 
-  const studentName = `${(studentRecord as any).firstName} ${(studentRecord as any).lastName || ""}`.trim();
+  const userRecord = studentRecord as UserRecord;
+  const studentName = `${userRecord.firstName} ${userRecord.lastName || ""}`.trim();
 
   // Get enrollment for class info
   const enrollment = await db.query.enrollments.findFirst({
@@ -581,18 +683,18 @@ export async function getStudentProgressData(): Promise<StudentProgressData> {
 
   const studentInfo: StudentInfo = {
     id: studentRecord.id,
-    firstName: (studentRecord as any).firstName,
-    lastName: (studentRecord as any).lastName,
+    firstName: userRecord.firstName,
+    lastName: userRecord.lastName,
     name: studentName,
-    email: studentRecord.email,
-    phone: studentRecord.phone,
-    classGrade: studentRecord.classGrade,
-    section: studentRecord.section,
+    email: userRecord.email,
+    phone: userRecord.phone,
+    classGrade: userRecord.classGrade,
+    section: userRecord.section,
     className: null, // Relation removed - would need separate query
     classId: enrollment?.classId || null,
-    schoolId: studentRecord.schoolId,
-    dateOfBirth: studentRecord.dateOfBirth,
-    profilePicture: studentRecord.profilePicture,
+    schoolId: userRecord.schoolId,
+    dateOfBirth: userRecord.dateOfBirth,
+    profilePicture: userRecord.profilePicture,
   };
 
   // Get attendance records (last 30 days)
@@ -633,19 +735,37 @@ export async function getStudentProgressData(): Promise<StudentProgressData> {
     limit: 10,
   });
 
-  const examResults: ExamResult[] = examResultsData.map(result => ({
-    id: result.id,
-    examName: result.examName,
-    examType: result.examType,
-    examYear: result.examYear,
-    overallPercentage: (result as any).overallPercentage ?? (result as any).percentage ?? (result as any).totalPercentage ?? 0,
-    division: (result as any).division || null,
-    subjectResults: (result as any).subjectResults || [],
-  }));
+  const examResults: ExamResult[] = examResultsData.map(result => {
+    const resultData = result as {
+      examName?: string | null;
+      examType?: string | null;
+      examYear?: number | null;
+      overallPercentage?: number | null;
+      percentage?: number | null;
+      totalPercentage?: number | null;
+      division?: string | null;
+    };
+    return {
+      id: result.id,
+      examName: resultData.examName || "",
+      examType: resultData.examType || "",
+      examYear: resultData.examYear || new Date().getFullYear(),
+      overallPercentage: resultData.overallPercentage ?? resultData.percentage ?? resultData.totalPercentage ?? 0,
+      division: resultData.division || null,
+      subjectResults: [],
+    };
+  });
 
   // Calculate grade average
   const gradeAverage = examResultsData.length > 0
-    ? Math.round(examResultsData.reduce((sum, r: any) => sum + (r.overallPercentage ?? r.percentage ?? r.totalPercentage ?? 0), 0) / examResultsData.length)
+    ? Math.round(examResultsData.reduce((sum, r) => {
+        const rData = r as {
+          overallPercentage?: number | null;
+          percentage?: number | null;
+          totalPercentage?: number | null;
+        };
+        return sum + (rData.overallPercentage ?? rData.percentage ?? rData.totalPercentage ?? 0);
+      }, 0) / examResultsData.length)
     : 0;
 
   // Get homework performance by subject
@@ -680,10 +800,11 @@ export async function getStudentProgressData(): Promise<StudentProgressData> {
       subject.totalAssignments++;
 
       if (submission) {
+        const subWithExtras = submission as HomeworkSubmissionWithExtras;
         subject.completedAssignments++;
-        if ((submission as any).percentage) {
+        if (subWithExtras.percentage) {
           subject.averageScore = Math.round(
-            (subject.averageScore * (subject.completedAssignments - 1) + (submission as any).percentage) /
+            (subject.averageScore * (subject.completedAssignments - 1) + subWithExtras.percentage) /
             subject.completedAssignments
           );
         }
@@ -699,15 +820,18 @@ export async function getStudentProgressData(): Promise<StudentProgressData> {
     orderBy: [desc(moduleProgress.lastAccessedAt)],
   });
 
-  const learningProgress: LearningProgress[] = learningProgressData.map(p => ({
-    moduleId: p.moduleId,
-    moduleTitle: "Unknown Module", // Relation removed - would need separate query
-    subject: "General", // Relation removed - would need separate query
-    progress: (p as any).progressPercentage || 0,
-    isCompleted: p.completedAt !== null,
-    completedAt: p.completedAt ? new Date(p.completedAt).toISOString() : null,
-    certificateUrl: p.certificateUrl,
-  }));
+  const learningProgress: LearningProgress[] = learningProgressData.map(p => {
+    const pWithExtras = p as ModuleProgressWithExtras;
+    return {
+      moduleId: p.moduleId,
+      moduleTitle: "Unknown Module", // Relation removed - would need separate query
+      subject: "General", // Relation removed - would need separate query
+      progress: pWithExtras.progressPercentage || 0,
+      isCompleted: p.completedAt !== null,
+      completedAt: p.completedAt ? new Date(p.completedAt).toISOString() : null,
+      certificateUrl: p.certificateUrl,
+    };
+  });
 
   return {
     student: studentInfo,
@@ -801,14 +925,14 @@ export async function getStudentHomework(options: {
       title: hw.title,
       description: hw.description,
       subject: hw.subjectId || null, // Relation removed - use subjectId directly
-      type: (hw as any).type,
+      type: (hw as HomeworkWithExtras).type || "assignment",
       dueDate: hw.dueDate,
       assignedDate: hw.assignedDate,
-      maxPoints: (hw as any).maxPoints,
+      maxPoints: (hw as HomeworkWithExtras).maxPoints || null,
       status: itemStatus,
       submissionId: submission?.id || null,
       score: submission?.score || null,
-      percentage: (submission as any)?.percentage || null,
+      percentage: (submission as HomeworkSubmissionWithExtras | undefined)?.percentage || null,
       feedback: submission?.feedback || null,
       gradedAt: submission?.gradedAt ? new Date(submission.gradedAt).toISOString() : null,
       teacherName: "Unknown", // Relation removed - would need separate query
@@ -851,6 +975,7 @@ export async function getStudentTuitionCourses(): Promise<StudentTuitionCourse[]
   });
 
   return enrollments.map(e => {
+    const eWithExtras = e as TuitionEnrollmentWithExtras;
     return {
       id: e.id,
       courseId: e.courseId,
@@ -858,12 +983,12 @@ export async function getStudentTuitionCourses(): Promise<StudentTuitionCourse[]
       type: "online_recorded" as "online_recorded" | "online_live" | "physical", // Default type
       tutorName: "Unknown", // Relation removed - would need separate query
       tutorRating: 0, // Relation removed - would need separate query
-      progress: (e as any).progressPercentage || 0,
+      progress: eWithExtras.progressPercentage || 0,
       isCompleted: e.completedAt !== null,
       enrolledAt: new Date(e.enrolledAt).toISOString(),
-      expiresAt: (e as any).expiresAt ? new Date((e as any).expiresAt).toISOString() : null,
-      certificateUrl: (e as any).certificateUrl,
-      amountPaid: (e as any).amountPaid,
+      expiresAt: eWithExtras.expiresAt ? new Date(eWithExtras.expiresAt).toISOString() : null,
+      certificateUrl: eWithExtras.certificateUrl || null,
+      amountPaid: eWithExtras.amountPaid || 0,
     };
   });
 }

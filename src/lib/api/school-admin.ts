@@ -15,6 +15,165 @@ import { eq, and, count, desc, sql, gte, lte, like, inArray } from "drizzle-orm"
 import { requireAuth } from "@/lib/auth-utils";
 import { cache } from "react";
 
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface ClassWithTeacher {
+  id: string;
+  name: string;
+  grade: number;
+  section: string | null;
+  teacherId: string | null;
+  students: string | unknown;
+  academicYear: string | null;
+  createdAt: Date | null;
+  teacher?: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+  }[];
+}
+
+interface UserWithSchoolRelation {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  name?: string | null;
+  classGrade: number | null;
+  section: string | null;
+  email: string | null;
+}
+
+interface SubjectWithExtras {
+  id: string;
+  code: string;
+  name: string;
+  grade: number | null;
+  nameDzongkha?: string | null;
+  icon?: string | null;
+  color?: string | null;
+  createdAt: Date | null;
+}
+
+interface HomeworkWithRelations {
+  id: string;
+  title: string;
+  type?: string | null;
+  dueDate?: string | null;
+  classId: string;
+  subjectId: string | null;
+  createdAt: Date | null;
+  class?: {
+    id: string;
+    name: string;
+    students: string | unknown;
+  }[];
+  subject?: {
+    id: string;
+    type: string | null;
+  }[];
+  teacher?: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+  }[];
+}
+
+interface AttendanceRecordWithExtras {
+  id: string;
+  studentId: string;
+  classId: string;
+  date: string;
+  status: string;
+  enteredBy?: string | null;
+  checkInTime?: string | null;
+  entryMethod?: string | null;
+}
+
+interface ExamResultWithExtras {
+  id: string;
+  studentId: string;
+  examName: string | null;
+  examType: string | null;
+  examYear?: number | null;
+  overallPercentage?: number | null;
+  percentage?: number | null;
+  totalPercentage?: number | null;
+  isVerified?: boolean | null;
+  createdAt: Date | null;
+}
+
+interface FeeStructureWithExtras {
+  id: string;
+  name: string;
+  grade: number | null;
+  totalFees?: number | null;
+  totalAnnualAmount?: number | null;
+  isActive?: boolean | null;
+}
+
+interface StudentFeeWithExtras {
+  id: string;
+  studentId: string;
+  amount: number | null;
+  amountPaid?: number | null;
+  amountWaived?: number | null;
+  amountPending?: number | null;
+  totalAmount?: number | null;
+  structureId?: string | null;
+  status: string;
+  dueDate?: string | null;
+  student?: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    name?: string | null;
+    classGrade: number | null;
+    section: string | null;
+    email: string | null;
+  }[];
+}
+
+interface CounselorAssignmentWithExtras {
+  id: string;
+  counselorId: string;
+  schoolId: string;
+  isActive: boolean | null;
+  counselor?: {
+    id: string;
+    name?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
+    email?: string | null;
+    phone?: string | null;
+  }[];
+  school?: {
+    id: string;
+    name: string;
+  }[];
+}
+
+interface TuitionCourseWithExtras {
+  id: string;
+  title: string;
+  type?: string | null;
+  price?: number | null;
+  status: string;
+  tutorId: string;
+  createdAt: Date | null;
+  tutor?: {
+    id: string;
+    averageRating?: number | null;
+    user?: {
+      id: string;
+      name?: string | null;
+      firstName?: string | null;
+      lastName?: string | null;
+    }[];
+  }[];
+}
+
 // Get current school ID from auth session
 export async function getCurrentSchoolId(): Promise<string | null> {
   const authResult = await requireAuth();
@@ -391,10 +550,15 @@ export async function getClasses(schoolId: string | null, options: {
     .where(and(...conditions));
 
   const transformed: ClassData[] = classesList.map((cls) => {
-    const teacher = cls.teacher as any;
-    const classTeacher = teacher
-      ? `${teacher.firstName || ""} ${teacher.lastName || ""}`.trim()
+    // Access teacher relation - Drizzle returns relations as arrays
+    const teacherArray = cls.teacher as unknown as { id: string; firstName: string | null; lastName: string | null }[] | undefined;
+    const teacherRelation = teacherArray?.[0];
+    const classTeacher = teacherRelation
+      ? `${teacherRelation.firstName || ""} ${teacherRelation.lastName || ""}`.trim()
       : "Not Assigned";
+
+    // Access students field
+    const studentsData = cls.students as unknown as string | string[];
 
     return {
       id: cls.id,
@@ -402,13 +566,13 @@ export async function getClasses(schoolId: string | null, options: {
       grade: cls.grade,
       section: cls.section || "",
       classTeacher,
-      classTeacherId: cls.teacherId,
+      classTeacherId: cls.teacherId || "",
       subjects: [],
       room: "TBD",
       floor: "TBD",
       capacity: 40,
-      enrolled: parseJsonArray((cls as any).students).length,
-      academicYear: cls.academicYear,
+      enrolled: parseJsonArray(studentsData).length,
+      academicYear: cls.academicYear || "",
       status: "active",
       schedule: [],
     };
@@ -461,16 +625,19 @@ export async function getSubjects(schoolId: string | null, options: {
     .from(subjects)
     .where(and(...conditions));
 
-  const transformed: SubjectData[] = subjectsList.map((subject) => ({
-    id: subject.id,
-    code: subject.code,
-    name: subject.name,
-    nameDz: (subject as any).nameDzongkha || null,
-    grade: subject.grade,
-    icon: (subject as any).icon || null,
-    color: (subject as any).color || null,
-    isActive: true, // Default to active
-  }));
+  const transformed: SubjectData[] = subjectsList.map((subject) => {
+    const subjectWithExtras = subject as SubjectWithExtras;
+    return {
+      id: subject.id,
+      code: subject.code,
+      name: subject.name,
+      nameDz: subjectWithExtras.nameDzongkha || null,
+      grade: subject.grade,
+      icon: subjectWithExtras.icon || null,
+      color: subjectWithExtras.color || null,
+      isActive: true, // Default to active
+    };
+  });
 
   return { subjects: transformed, total: countResult?.count || 0 };
 }
@@ -542,6 +709,7 @@ export async function getAttendanceRecords(schoolId: string | null, options: {
       const isCompleted = attendanceRecords.length > 0;
       const firstRecord = attendanceRecords[0];
 
+      const firstRecordWithExtras = firstRecord as AttendanceRecordWithExtras | undefined;
       return {
         id: cls.id,
         date: selectedDate,
@@ -551,9 +719,9 @@ export async function getAttendanceRecords(schoolId: string | null, options: {
         present,
         absent,
         late,
-        markedBy: (firstRecord as any)?.enteredBy || null,
-        markedAt: (firstRecord as any)?.checkInTime || null,
-        entryMethod: (firstRecord as any)?.entryMethod || null,
+        markedBy: firstRecordWithExtras?.enteredBy || null,
+        markedAt: firstRecordWithExtras?.checkInTime || null,
+        entryMethod: firstRecordWithExtras?.entryMethod || null,
         status: isCompleted ? "completed" : "pending",
       };
     })
@@ -637,15 +805,21 @@ export async function getHomeworkList(schoolId: string | null, options: {
           sql`${homeworkSubmissions.gradedAt} IS NOT NULL`
         ));
 
+      // Access relations - Drizzle returns arrays
+      const classArray = hw.class as unknown as { id: string; name: string; students: string | unknown }[] | undefined;
+      const classRelation = classArray?.[0];
+      const subjectArray = hw.subject as unknown as { id: string; name: string }[] | undefined;
+      const subjectRelation = subjectArray?.[0];
+
       return {
         id: hw.id,
         title: hw.title,
-        class: (hw.class as any)?.name || "Unknown",
-        subject: (hw.subject as any)?.type || "Unknown",
-        type: (hw as any).type || "assignment",
-        dueDate: (hw as any).dueDate || "",
+        class: classRelation?.name || "Unknown",
+        subject: subjectRelation?.name || "Unknown",
+        type: "assignment", // Default type as homework table doesn't have type field
+        dueDate: hw.dueDate || "",
         submitted: submissionCount?.count || 0,
-        total: parseJsonArray((hw.class as any)?.students).length,
+        total: classRelation ? parseJsonArray(classRelation.students as string | string[]).length : 0,
         graded: gradedCount?.count || 0,
       };
     })
@@ -701,16 +875,19 @@ export async function getExamResults(schoolId: string | null, options: {
     .from(examResultsEnhanced)
     .where(and(...conditions));
 
-  const transformed: ExamResultData[] = resultsList.map((result: any) => ({
-    id: result.id,
-    examName: result.examName || "Exam",
-    examType: result.examType,
-    class: "All Classes", // Would need to aggregate
-    date: result.createdAt ? new Date(result.createdAt).toISOString().split('T')[0] : "",
-    students: 0, // Would need to count
-    published: !!result.isVerified,
-    avgPercentage: result.overallPercentage ?? result.percentage ?? result.totalPercentage ?? 0,
-  }));
+  const transformed: ExamResultData[] = resultsList.map((result) => {
+    const resultWithExtras = result as ExamResultWithExtras;
+    return {
+      id: result.id,
+      examName: resultWithExtras.examName || "Exam",
+      examType: resultWithExtras.examType || "",
+      class: "All Classes", // Would need to aggregate
+      date: resultWithExtras.createdAt ? new Date(resultWithExtras.createdAt).toISOString().split('T')[0] : "",
+      students: 0, // Would need to count
+      published: !!resultWithExtras.isVerified,
+      avgPercentage: resultWithExtras.overallPercentage ?? resultWithExtras.percentage ?? resultWithExtras.totalPercentage ?? 0,
+    };
+  });
 
   return { results: transformed, total: countResult?.count || 0 };
 }
@@ -790,17 +967,20 @@ export async function getFeeData(schoolId: string | null) {
     limit: 100,
   });
 
-  const structures: FeeStructureData[] = structuresList.map((s) => ({
-    id: s.id,
-    name: s.name,
-    category: "tuition",
-    amount: (s as any).totalAnnualAmount || s.totalFees || 0,
-    frequency: "annual",
-    dueDay: 31,
-    classId: s.grade.toString(),
-    applicableTo: "class",
-    isActive: !!s.isActive,
-  }));
+  const structures: FeeStructureData[] = structuresList.map((s) => {
+    const sWithExtras = s as FeeStructureWithExtras;
+    return {
+      id: s.id,
+      name: s.name,
+      category: "tuition",
+      amount: sWithExtras.totalAnnualAmount || sWithExtras.totalFees || 0,
+      frequency: "annual",
+      dueDay: 31,
+      classId: s.grade?.toString() || "",
+      applicableTo: "class",
+      isActive: !!sWithExtras.isActive,
+    };
+  });
 
   // Get student fees
   const studentFeesList = await db.query.studentFees.findMany({
@@ -813,7 +993,18 @@ export async function getFeeData(schoolId: string | null) {
 
   const studentFeesData: StudentFeeData[] = await Promise.all(
     studentFeesList.map(async (sf) => {
-      const student = sf.student as any;
+      // Access student relation - Drizzle returns arrays
+      const studentArray = sf.student as unknown as {
+        id: string;
+        firstName: string | null;
+        lastName: string | null;
+        name?: string | null;
+        classGrade: number | null;
+        section: string | null;
+        email: string | null;
+      }[] | undefined;
+      const student = studentArray?.[0];
+
       const studentName = student
         ? `${student.firstName || ""} ${student.lastName || ""}`.trim() || student.name || "Unknown"
         : "Unknown";
@@ -824,7 +1015,12 @@ export async function getFeeData(schoolId: string | null) {
         : "Unknown";
 
       let status: "paid" | "partial" | "overdue" = "partial";
-      const sfData = sf as any;
+      const sfData = sf as {
+        amountPaid?: number | null;
+        totalAmount?: number | null;
+        amountWaived?: number | null;
+        structureId?: string | null;
+      };
       if ((sfData.amountPaid || 0) >= (sfData.totalAmount || 0)) {
         status = "paid";
       } else if (sf.dueDate && new Date(sf.dueDate) < new Date()) {
@@ -843,7 +1039,7 @@ export async function getFeeData(schoolId: string | null) {
         amount: sfData.totalAmount || sf.amount || 0,
         paidAmount: sfData.amountPaid || 0,
         waivedAmount: sfData.amountWaived || 0,
-        dueDate: sf.dueDate,
+        dueDate: sf.dueDate || null,
         status,
       };
     })
@@ -909,33 +1105,49 @@ export async function getCounselors(schoolId: string | null, options: {
 
   // Get unique counselors
   const uniqueCounselors = Array.from(
-    new Map(assignments.map((a: any) => [a.counselor?.id, a])).values()
+    new Map(assignments.map((a) => {
+      // Access counselor array and get first item's id
+      const counselorArray = a.counselor as unknown as { id: string }[] | undefined;
+      return [counselorArray?.[0]?.id || a.counselorId, a] as const;
+    })).values()
   );
 
   const transformed: CounselorData[] = await Promise.all(
-    uniqueCounselors.map(async (assignment: any) => {
-      const counselor = assignment.counselor;
+    uniqueCounselors.map(async (assignment) => {
+      // Access counselor relation - Drizzle returns arrays
+      const counselorArray = assignment.counselor as unknown as {
+        id: string;
+        name?: string | null;
+        firstName?: string | null;
+        lastName?: string | null;
+        email?: string | null;
+        phone?: string | null;
+      }[] | undefined;
+      const counselor = counselorArray?.[0];
       const name = counselor?.name || `${counselor?.firstName || ""} ${counselor?.lastName || ""}`.trim() || "Unknown";
 
       // Get all schools assigned to this counselor
       const allAssignments = await db.query.counselorAssignments.findMany({
-        where: eq(counselorAssignments.counselorId, counselor?.id),
+        where: eq(counselorAssignments.counselorId, counselor?.id || ""),
         with: {
           school: true,
         },
       });
 
-      const assignedSchools = allAssignments.map((a: any) => a.school?.name || "Unknown");
+      const assignedSchools = allAssignments.map((a) => {
+        const schoolArray = a.school as unknown as { id: string; name: string }[] | undefined;
+        return schoolArray?.[0]?.name || "Unknown";
+      });
 
       // Count students for this counselor's assigned schools
       let totalStudents = 0;
-      for (const assignment of allAssignments) {
-        if (assignment.schoolId) {
+      for (const assignmentItem of allAssignments) {
+        if (assignmentItem.schoolId) {
           const [studentCount] = await db
             .select({ count: count() })
             .from(users)
             .where(and(
-              eq(users.schoolId, assignment.schoolId),
+              eq(users.schoolId, assignmentItem.schoolId),
               eq(users.type, "student")
             ));
           totalStudents += studentCount?.count || 0;
@@ -943,10 +1155,10 @@ export async function getCounselors(schoolId: string | null, options: {
       }
 
       return {
-        id: counselor.id,
+        id: counselor?.id || "",
         name,
-        email: counselor.email,
-        phone: counselor.phone,
+        email: counselor?.email || null,
+        phone: counselor?.phone || null,
         assignedSchools,
         totalStudents,
         isActive: true,
@@ -999,8 +1211,20 @@ export async function getTuitionCourses(schoolId: string | null, options: {
     .where(eq(tuitionCourses.status, "published"));
 
   const transformed: TuitionCourseData[] = await Promise.all(
-    coursesList.map(async (course: any) => {
-      const user = course.tutor?.user;
+    coursesList.map(async (course) => {
+      // Access tutor relation - Drizzle returns nested arrays
+      const tutorArray = course.tutor as unknown as {
+        id: string;
+        averageRating?: number | null;
+        user?: {
+          id: string;
+          name?: string | null;
+          firstName?: string | null;
+          lastName?: string | null;
+        }[];
+      }[] | undefined;
+      const tutorRelation = tutorArray?.[0];
+      const user = tutorRelation?.user?.[0];
       const tutorName = user?.name || `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Unknown";
 
       // Get enrollment count
@@ -1010,18 +1234,21 @@ export async function getTuitionCourses(schoolId: string | null, options: {
         .where(eq(tuitionEnrollments.courseId, course.id));
 
       // Get average rating
-      const rating = (course as any).tutor?.averageRating
-        ? ((course as any).tutor.averageRating / 10)
+      const rating = tutorRelation?.averageRating
+        ? (tutorRelation.averageRating / 10)
         : 4.0;
+
+      // Get type and price
+      const courseData = course as { type?: string | null; price?: number | null };
 
       return {
         id: course.id,
         title: course.title,
         tutor: tutorName,
-        type: (course as any).type || "course",
+        type: courseData.type || "course",
         students: enrollmentCount?.count || 0,
         rating,
-        price: (course as any).price || 0,
+        price: courseData.price || 0,
         status: "active",
       };
     })
@@ -1143,7 +1370,14 @@ export async function getAnalytics(schoolId: string | null): Promise<AnalyticsDa
 
   let averageScore = 0;
   if (examResults.length > 0) {
-    const totalPercentage = examResults.reduce((sum, r: any) => sum + (r.overallPercentage ?? r.percentage ?? r.totalPercentage ?? 0), 0);
+    const totalPercentage = examResults.reduce((sum, r) => {
+      const rData = r as {
+        overallPercentage?: number | null;
+        percentage?: number | null;
+        totalPercentage?: number | null;
+      };
+      return sum + (rData.overallPercentage ?? rData.percentage ?? rData.totalPercentage ?? 0);
+    }, 0);
     averageScore = Math.round(totalPercentage / examResults.length);
   }
 
@@ -1165,18 +1399,26 @@ export async function getAnalytics(schoolId: string | null): Promise<AnalyticsDa
     ? Math.round(((feesPaid + feesPartial) / totalFees) * 100)
     : 0;
 
-  const pendingFees = allStudentFees.filter((f) => (f.amountPending || 0) > 0).length;
+  const pendingFeesCount = allStudentFees.filter((f) => (f.amountPending || 0) > 0).length;
 
   // Calculate total revenue from paid fees
-  const totalRevenue = allStudentFees.reduce((sum, f) => sum + ((f as any).amountPaid || 0), 0);
+  const totalRevenue = allStudentFees.reduce((sum, f) => {
+    const fData = f as { amountPaid?: number | null };
+    return sum + (fData.amountPaid || 0);
+  }, 0);
 
   // 5. Top Performers (students with highest scores)
   const topPerformers: TopPerformer[] = [];
   const studentScores = new Map<string, { score: number; count: number; name: string; grade: number | null; section: string | null }>();
 
-  examResults.forEach((result: any) => {
+  examResults.forEach((result) => {
+    const rData = result as {
+      overallPercentage?: number | null;
+      percentage?: number | null;
+      totalPercentage?: number | null;
+    };
     const existing = studentScores.get(result.studentId);
-    const score = result.overallPercentage ?? result.percentage ?? result.totalPercentage ?? 0;
+    const score = rData.overallPercentage ?? rData.percentage ?? rData.totalPercentage ?? 0;
     if (existing) {
       existing.score = Math.max(existing.score, score);
       existing.count++;
@@ -1290,7 +1532,15 @@ export async function getAnalytics(schoolId: string | null): Promise<AnalyticsDa
 
   for (const fee of pendingFeeStudents) {
     if (!studentsNeedingAttention.find((s) => s.id === fee.studentId)) {
-      const student = (fee as any).student;
+      const studentArray = fee.student as unknown as {
+        id: string;
+        firstName: string | null;
+        lastName: string | null;
+        name?: string | null;
+        classGrade: number | null;
+        section: string | null;
+      }[] | undefined;
+      const student = studentArray?.[0];
       const name = student
         ? `${student.firstName || ""} ${student.lastName || ""}`.trim() || student.name || "Unknown"
         : "Unknown";
@@ -1311,7 +1561,14 @@ export async function getAnalytics(schoolId: string | null): Promise<AnalyticsDa
   // Declining scores (comparing recent vs older results would require more complex logic)
   // For now, we'll add students with very low scores (<40%)
   const lowScoreStudents = examResults
-    .filter((r: any) => (r.overallPercentage ?? r.percentage ?? r.totalPercentage ?? 0) < 40)
+    .filter((r) => {
+      const rData = r as {
+        overallPercentage?: number | null;
+        percentage?: number | null;
+        totalPercentage?: number | null;
+      };
+      return (rData.overallPercentage ?? rData.percentage ?? rData.totalPercentage ?? 0) < 40;
+    })
     .slice(0, 5);
 
   for (const result of lowScoreStudents) {
@@ -1377,7 +1634,12 @@ export async function getAnalytics(schoolId: string | null): Promise<AnalyticsDa
       if (!gradeGroups.has(grade)) {
         gradeGroups.set(grade, []);
       }
-      gradeGroups.get(grade)!.push((result as any).overallPercentage ?? (result as any).percentage ?? (result as any).totalPercentage ?? 0);
+      const rData = result as {
+        overallPercentage?: number | null;
+        percentage?: number | null;
+        totalPercentage?: number | null;
+      };
+      gradeGroups.get(grade)!.push(rData.overallPercentage ?? rData.percentage ?? rData.totalPercentage ?? 0);
     }
   }
 
@@ -1406,7 +1668,7 @@ export async function getAnalytics(schoolId: string | null): Promise<AnalyticsDa
     averageScore,
     feeCollectionRate,
     totalRevenue,
-    pendingFees,
+    pendingFees: pendingFeesCount,
     topPerformers: topPerformers.slice(0, 5),
     studentsNeedingAttention: studentsNeedingAttention.slice(0, 10),
     attendanceTrends,

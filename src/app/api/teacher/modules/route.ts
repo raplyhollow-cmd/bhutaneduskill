@@ -1,127 +1,255 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
-import { db } from "@/lib/db";
-import { learningModules, users } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
-import { z } from "zod";
+/**
+ * TEACHER LEARNING MODULES API
+ * CRUD operations for learning modules created by teachers
+ */
 
-const moduleSchema = z.object({
+import { NextRequest, NextResponse } from "next/server";
+import { nanoid } from "nanoid";
+import { requireAuth } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
+import { db } from "@/lib/db";
+import { learningModules, users, moduleProgress } from "@/lib/db/schema";
+import { eq, desc, count } from "drizzle-orm";
+import { z } from "zod";
+// Using simple response types instead of ApiSuccess/ApiErrorResponse
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface ModuleContent {
+  id: string;
+  type: "text" | "video" | "image" | "document" | "quiz" | "assignment" | "link";
+  title: string;
+  content?: string;
+  url?: string;
+  fileUrl?: string;
+  duration?: number;
+  order: number;
+}
+
+interface ModuleLesson {
+  id: string;
+  title: string;
+  description?: string;
+  contents: ModuleContent[];
+  order: number;
+}
+
+interface ModuleContentData {
+  lessons: ModuleLesson[];
+  objectives?: string[];
+  prerequisites?: string[];
+  tags?: string[];
+}
+
+// ============================================================================
+// VALIDATION SCHEMAS
+// ============================================================================
+
+const moduleContentSchema: z.ZodType<ModuleContent> = z.object({
+  id: z.string(),
+  type: z.enum(["text", "video", "image", "document", "quiz", "assignment", "link"]),
   title: z.string().min(1),
-  description: z.string().optional(),
-  subjectId: z.string().optional(),
-  lessons: z.array(z.object({
-    id: z.string(),
-    title: z.string(),
-    content: z.string(),
-    videoUrl: z.string().optional(),
-    attachments: z.array(z.object({
-      name: z.string(),
-      url: z.string(),
-      type: z.string(),
-    })).optional(),
-    duration: z.number(),
-    order: z.number(),
-  })),
-  quiz: z.any().optional(),
-  isPublished: z.boolean().optional(),
-  isPublic: z.boolean().optional(),
-  enrollable: z.boolean().optional(),
-  maxEnrollments: z.number().optional(),
-  estimatedDuration: z.number().optional(),
+  content: z.string().optional(),
+  url: z.string().optional(),
+  fileUrl: z.string().optional(),
+  duration: z.number().optional(),
+  order: z.number(),
 });
 
+const moduleLessonSchema: z.ZodType<ModuleLesson> = z.object({
+  id: z.string(),
+  title: z.string().min(1),
+  description: z.string().optional(),
+  contents: z.array(moduleContentSchema),
+  order: z.number(),
+});
+
+const createModuleSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  description: z.string().min(1, "Description is required"),
+  subjectId: z.string().optional(),
+  classId: z.string().optional(),
+  category: z.enum(["subject", "skill", "exam_prep", "career"]).default("subject"),
+  level: z.enum(["beginner", "intermediate", "advanced"]).default("beginner"),
+  duration: z.number().min(1).optional(),
+  thumbnail: z.string().optional(),
+  isPublic: z.boolean().default(false),
+  isPremium: z.boolean().default(false),
+  isPublished: z.boolean().default(false),
+  price: z.number().min(0).default(0),
+  content: z.object({
+    lessons: z.array(moduleLessonSchema).default([]),
+    objectives: z.array(z.string()).optional(),
+    prerequisites: z.array(z.string()).optional(),
+    tags: z.array(z.string()).optional(),
+  }).optional(),
+});
+
+const updateModuleSchema = createModuleSchema.partial();
+
+// ============================================================================
 // GET /api/teacher/modules - List all modules created by teacher
+// ============================================================================
+
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(["teacher"]);
+    if ("error" in authResult) {
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status }
+      );
     }
+    const { userId } = authResult;
 
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get("status"); // draft, published
+    const status = searchParams.get("status"); // draft, published, all
+    const category = searchParams.get("category");
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || currentUser.type !== "teacher") {
-      return NextResponse.json({ error: "Forbidden - Teachers only" }, { status: 403 });
-    }
-
-    let conditions = [eq(learningModules.teacherId, currentUser.id)];
-
-    if (status === "draft") {
-      // Add isPublished check
-    } else if (status === "published") {
-      // Add isPublished check
-    }
-
+    // Get modules with stats
     const modules = await db.query.learningModules.findMany({
-      where: eq(learningModules.teacherId, currentUser.id),
+      where: eq(learningModules.teacherId, userId),
       with: {
-        subject: true,
+        subject: {
+          columns: {
+            id: true,
+            name: true,
+          },
+        },
       },
       orderBy: [desc(learningModules.createdAt)],
     });
 
-    return NextResponse.json({ modules });
+    // Get enrollment stats for each module individually
+    const enrichedModules = await Promise.all(
+      modules.map(async (m) => {
+        const enrollments = await db.query.moduleProgress.findMany({
+          where: eq(moduleProgress.moduleId, m.id),
+        });
+
+        const completedCount = enrollments.filter((e) => e.isCompleted).length;
+        const content = m.content as ModuleContentData | null;
+        const lessonsCount = content?.lessons?.length || 0;
+
+        return {
+          ...m,
+          lessonsCount,
+          enrollmentCount: enrollments.length,
+          completedCount,
+        };
+      })
+    );
+
+    // Filter by status if specified
+    let filteredModules = enrichedModules;
+    if (status === "draft") {
+      filteredModules = enrichedModules.filter((m) => !m.isPublished);
+    } else if (status === "published") {
+      filteredModules = enrichedModules.filter((m) => m.isPublished);
+    }
+
+    // Filter by category if specified
+    if (category) {
+      filteredModules = filteredModules.filter((m) => m.category === category);
+    }
+
+    logger.info("Teacher modules fetched", { userId, count: filteredModules.length });
+
+    return NextResponse.json({ modules: filteredModules });
   } catch (error) {
-    console.error("Modules fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch modules" }, { status: 500 });
+    logger.apiError(error, { route: "/api/teacher/modules", method: "GET" });
+    return NextResponse.json(
+      { error: "Failed to fetch modules" },
+      { status: 500 }
+    );
   }
 }
 
+// ============================================================================
 // POST /api/teacher/modules - Create new learning module
+// ============================================================================
+
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(["teacher"]);
+    if ("error" in authResult) {
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status }
+      );
     }
+    const { userId } = authResult;
 
     const body = await request.json();
-    const validatedData = moduleSchema.parse(body);
+    const validationResult = createModuleSchema.safeParse(body);
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || currentUser.type !== "teacher") {
-      return NextResponse.json({ error: "Forbidden - Teachers only" }, { status: 403 });
+    if (!validationResult.success) {
+      return NextResponse.json(
+        {
+          error: "Validation failed",
+          details: validationResult.error.issues,
+        },
+        { status: 400 }
+      );
     }
 
-    // Calculate estimated duration if not provided
-    let estimatedDuration = validatedData.estimatedDuration;
-    if (!estimatedDuration && validatedData.lessons) {
-      estimatedDuration = validatedData.lessons.reduce((sum, l) => sum + l.duration, 0);
+    const data = validationResult.data;
+    const now = new Date();
+    const moduleId = `mod_${nanoid(12)}`;
+
+    // Calculate duration from lessons if not provided
+    let duration = data.duration;
+    if (!duration && data.content?.lessons) {
+      const lessonDurations = data.content.lessons.reduce((sum, lesson) => {
+        const contentDurations = lesson.contents.reduce((cSum, content) => cSum + (content.duration || 0), 0);
+        return sum + contentDurations;
+      }, 0);
+      duration = lessonDurations || 60; // Default 1 hour if no duration set
+    }
+    if (!duration) {
+      duration = 60; // Default 1 hour
     }
 
-    const [newModule] = await db.insert(learningModules).values({
-      id: `mod_${Date.now()}`,
-      schoolId: currentUser.schoolId,
-      subjectId: validatedData.subjectId,
-      teacherId: currentUser.id,
-      title: validatedData.title,
-      description: validatedData.description,
-      lessons: validatedData.lessons || [],
-      quiz: validatedData.quiz,
-      isPublished: validatedData.isPublished || false,
-      isPublic: validatedData.isPublic || false,
-      allowPreview: true,
-      enrollable: validatedData.enrollable || false,
-      maxEnrollments: validatedData.maxEnrollments,
-      estimatedDuration,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    } as any).returning();
+    const [newModule] = await db
+      .insert(learningModules)
+      .values({
+        id: moduleId,
+        title: data.title,
+        description: data.description,
+        subjectId: data.subjectId,
+        classId: data.classId,
+        teacherId: userId,
+        category: data.category,
+        level: data.level,
+        duration,
+        content: data.content,
+        thumbnail: data.thumbnail || "/images/default-module-thumbnail.png",
+        isPublic: data.isPublic,
+        isPremium: data.isPremium,
+        isPublished: data.isPublished,
+        price: data.price,
+        tags: data.content?.tags,
+        objectives: data.content?.objectives,
+        prerequisites: data.content?.prerequisites,
+        isActive: true,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
 
-    return NextResponse.json({ module: newModule }, { status: 201 });
+    logger.info("Learning module created", { moduleId, userId, title: data.title });
+
+    return NextResponse.json(
+      { module: newModule },
+      { status: 201 }
+    );
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: "Validation failed", details: error.issues }, { status: 400 });
-    }
-    console.error("Module creation error:", error);
-    return NextResponse.json({ error: "Failed to create module" }, { status: 500 });
+    logger.apiError(error, { route: "/api/teacher/modules", method: "POST" });
+    return NextResponse.json(
+      { error: "Failed to create module" },
+      { status: 500 }
+    );
   }
 }

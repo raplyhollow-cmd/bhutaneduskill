@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { studentFees, users, feeStructures } from "@/lib/db/schema";
 import { eq, and, lte, desc } from "drizzle-orm";
@@ -7,21 +7,16 @@ import { eq, and, lte, desc } from "drizzle-orm";
 // GET /api/school-admin/fees/defaulters - List fee defaulters
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['admin', 'school-admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { user } = authResult;
 
     const { searchParams } = new URL(request.url);
     const overdueOnly = searchParams.get("overdueOnly") === "true";
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || currentUser.type !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const currentUser = user;
 
     let conditions = [
       eq(studentFees.schoolId, currentUser.schoolId),

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
+import { requireAuth } from "@/lib/auth-utils";
 import { eq } from "drizzle-orm";
 
 // GET /api/journal/[id] - Get a single journal entry
@@ -10,23 +10,15 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['student']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
 
+    const { user } = authResult;
     const { id } = await params;
 
-    const userProfile = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!userProfile) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    const settings = (userProfile.settings as any) || {};
+    const settings = (user?.settings as any) || {};
     const entries = settings.journalEntries || [];
 
     const entry = entries.find((e: any) => e.id === id);
@@ -48,25 +40,17 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['student']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
 
+    const { user } = authResult;
     const { id } = await params;
     const body = await req.json();
     const { title, content, mood, tags, date } = body;
 
-    const userProfile = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!userProfile) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    const settings = (userProfile.settings as any) || {};
+    const settings = (user?.settings as any) || {};
     const entries = settings.journalEntries || [];
 
     const entryIndex = entries.findIndex((e: any) => e.id === id);
@@ -90,7 +74,7 @@ export async function PUT(
         settings: { ...settings, journalEntries: entries },
         updatedAt: new Date(),
       })
-      .where(eq(users.id, userProfile.id));
+      .where(eq(users.id, user.id));
 
     return NextResponse.json({ entry: entries[entryIndex] });
   } catch (error) {
@@ -105,23 +89,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['student']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
 
+    const { user } = authResult;
     const { id } = await params;
 
-    const userProfile = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!userProfile) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    const settings = (userProfile.settings as any) || {};
+    const settings = (user?.settings as any) || {};
     const entries = settings.journalEntries || [];
 
     const filteredEntries = entries.filter((e: any) => e.id !== id);
@@ -132,7 +108,7 @@ export async function DELETE(
         settings: { ...settings, journalEntries: filteredEntries },
         updatedAt: new Date(),
       })
-      .where(eq(users.id, userProfile.id));
+      .where(eq(users.id, user.id));
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -29,6 +29,8 @@ import {
   AlertCircle,
   ChevronRight,
   Loader2,
+  ChevronDown,
+  GraduationCap,
 } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
@@ -42,9 +44,10 @@ interface TeacherClass {
   subjectId?: string;
   schoolId?: string;
   teacherId?: string;
-  room?: string;
+  roomNumber?: string;
   capacity?: number;
   schedule?: string;
+  isActive?: boolean;
   status?: "active" | "archived";
   createdAt?: string;
   updatedAt?: string;
@@ -67,53 +70,129 @@ interface TeacherClass {
   nextClass?: string;
 }
 
+interface ClassStudent {
+  id: string;
+  name: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  profilePicture: string | null;
+  classGrade: number;
+  section: string;
+  className: string;
+  classId: string;
+  rollNumber?: string;
+  attendanceSummary?: {
+    present: number;
+    absent: number;
+    percentage: number | null;
+    totalRecorded: number;
+  };
+  homeworkSummary?: {
+    submitted: number;
+    graded: number;
+    pending: number;
+    total: number;
+  };
+  enrolledAt?: string;
+}
+
+interface StudentsByClass {
+  classId: string;
+  className: string;
+  grade: number;
+  section: string;
+  students: ClassStudent[];
+}
+
 type FilterStatus = "all" | "active" | "archived";
 
 export default function TeacherClassesPage() {
   const [classes, setClasses] = useState<TeacherClass[]>([]);
+  const [studentsByClass, setStudentsByClass] = useState<StudentsByClass[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<FilterStatus>("all");
   const [sortBy, setSortBy] = useState<"name" | "students" | "schedule">("name");
+  const [expandedClassId, setExpandedClassId] = useState<string | null>(null);
 
-  // Fetch classes from API
+  // Fetch classes and students from API
   useEffect(() => {
-    const fetchClasses = async () => {
+    const fetchData = async () => {
       try {
         setIsLoading(true);
         setError(null);
 
-        const response = await fetch("/api/classes");
-        if (!response.ok) {
-          throw new Error(`Failed to fetch classes: ${response.statusText}`);
+        // Fetch both classes and students data in parallel
+        const [classesResponse, studentsResponse] = await Promise.all([
+          fetch("/api/classes"),
+          fetch("/api/teacher/students"),
+        ]);
+
+        if (!classesResponse.ok) {
+          throw new Error(`Failed to fetch classes: ${classesResponse.statusText}`);
         }
 
-        const data = await response.json();
+        const classesData = await classesResponse.json();
 
-        // Process and enrich class data
-        const processedClasses: TeacherClass[] = (data.classes || []).map((cls: any) => ({
-          ...cls,
-          students: 0, // Will be populated when enrollments are fetched
-          attendanceRate: 90, // Default placeholder - can be calculated from actual data
-          homeworkCompletion: 80, // Default placeholder
-          averageScore: 75, // Default placeholder
-          topic: "Current topic", // Default placeholder
-          nextClass: "Scheduled", // Default placeholder
-          status: cls.status || "active",
-        }));
+        // Process students data if available
+        let studentsData: { studentsByClass?: StudentsByClass[]; students?: ClassStudent[] } = {};
+        if (studentsResponse.ok) {
+          studentsData = await studentsResponse.json();
+        }
+
+        // Process and enrich class data with real student counts
+        const processedClasses: TeacherClass[] = (classesData.classes || []).map((cls: TeacherClass) => {
+          // Find students for this class
+          const classStudents = studentsData.studentsByClass?.find(
+            (sbc) => sbc.classId === cls.id
+          );
+
+          // Calculate stats from real student data
+          const classStudentList = classStudents?.students || [];
+          const studentCount = classStudentList.length;
+
+          // Calculate average attendance from student data
+          const attendanceValues = classStudentList
+            .map((s) => s.attendanceSummary?.percentage)
+            .filter((p): p is number => p !== null && p !== undefined);
+          const avgAttendance = attendanceValues.length > 0
+            ? Math.round(attendanceValues.reduce((a, b) => a + b, 0) / attendanceValues.length)
+            : 0;
+
+          // Calculate homework completion rate
+          const totalHomework = classStudentList.reduce((sum, s) => sum + (s.homeworkSummary?.total || 0), 0);
+          const submittedHomework = classStudentList.reduce((sum, s) => sum + (s.homeworkSummary?.submitted || 0), 0);
+          const homeworkCompletion = totalHomework > 0
+            ? Math.round((submittedHomework / totalHomework) * 100)
+            : 0;
+
+          return {
+            ...cls,
+            students: studentCount,
+            attendanceRate: avgAttendance,
+            homeworkCompletion: homeworkCompletion,
+            averageScore: 0, // Would be calculated from assessment results
+            topic: "Current topic", // Could be fetched from class topics/lessons
+            nextClass: cls.schedule || "Schedule not set",
+            status: cls.isActive !== false ? "active" : "archived",
+          };
+        });
 
         setClasses(processedClasses);
+        setStudentsByClass(studentsData.studentsByClass || []);
       } catch (err) {
-        console.error("Error fetching classes:", err);
+        console.error("Error fetching classes data:", err);
         setError(err instanceof Error ? err.message : "Failed to load classes");
         setClasses([]);
+        setStudentsByClass([]);
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchClasses();
+    fetchData();
   }, []);
 
   // Filter and sort classes
@@ -128,9 +207,20 @@ export default function TeacherClassesPage() {
     .sort((a, b) => {
       if (sortBy === "name") return a.name.localeCompare(b.name);
       if (sortBy === "students") return (b.students || 0) - (a.students || 0);
-      if (sortBy === "schedule") return (a.schedule || "").localeCompare(b.schedule || "");
+      if (sortBy === "schedule") return (a.nextClass || "").localeCompare(b.nextClass || "");
       return 0;
     });
+
+  // Toggle class expansion
+  const toggleClassExpand = (classId: string) => {
+    setExpandedClassId((prev) => (prev === classId ? null : classId));
+  };
+
+  // Get students for a specific class
+  const getStudentsForClass = (classId: string): ClassStudent[] => {
+    const classData = studentsByClass.find((sbc) => sbc.classId === classId);
+    return classData?.students || [];
+  };
 
   const stats = {
     totalClasses: classes.length,
@@ -285,97 +375,171 @@ export default function TeacherClassesPage() {
         </Card>
       ) : (
         <div className="grid md:grid-cols-2 gap-4">
-          {filteredClasses.map((cls) => (
-            <Card
-              key={cls.id}
-              className="hover:shadow-lg transition-all duration-200 hover:-translate-y-1"
-            >
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <CardTitle className="text-lg">{cls.name}</CardTitle>
-                    <CardDescription className="mt-1">
-                      Grade {cls.grade} - {cls.section}
-                    </CardDescription>
-                  </div>
-                  <Button variant="ghost" size="icon-sm">
-                    <MoreVertical className="w-4 h-4" />
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Class Info */}
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Users className="w-4 h-4" />
-                    <span>{cls.students || 0} students</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Calendar className="w-4 h-4" />
-                    <span>{cls.room || "TBD"}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-gray-600 col-span-2">
-                    <Clock className="w-4 h-4" />
-                    <span>{cls.schedule || "Schedule not set"}</span>
-                  </div>
-                </div>
+          {filteredClasses.map((cls) => {
+            const classStudents = getStudentsForClass(cls.id);
+            const isExpanded = expandedClassId === cls.id;
 
-                {/* Current Topic */}
-                <div className="bg-blue-50 rounded-lg p-3">
-                  <p className="text-xs text-blue-600 font-medium mb-1">Current Topic</p>
-                  <p className="text-sm font-medium text-gray-900">{cls.topic || "Not set"}</p>
-                </div>
-
-                {/* Progress Bars */}
-                <div className="space-y-2">
-                  <div>
-                    <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="text-gray-500">Attendance</span>
-                      <span className="font-medium text-gray-700">{cls.attendanceRate || 0}%</span>
+            return (
+              <Card
+                key={cls.id}
+                className="hover:shadow-lg transition-all duration-200 hover:-translate-y-1 overflow-hidden"
+              >
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <CardTitle className="text-lg">{cls.name}</CardTitle>
+                      <CardDescription className="mt-1">
+                        Grade {cls.grade} - {cls.section}
+                      </CardDescription>
                     </div>
-                    <div className="w-full bg-gray-200 rounded-full h-1.5">
-                      <div
-                        className="bg-green-500 h-1.5 rounded-full transition-all"
-                        style={{ width: `${cls.attendanceRate || 0}%` }}
+                    <Badge variant={cls.status === "active" ? "default" : "secondary"}>
+                      {cls.status === "active" ? "Active" : "Archived"}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Class Info */}
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <Users className="w-4 h-4" />
+                      <span>{cls.students || 0} students</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <Calendar className="w-4 h-4" />
+                      <span>{cls.roomNumber || "TBD"}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-600 col-span-2">
+                      <Clock className="w-4 h-4" />
+                      <span>{cls.nextClass}</span>
+                    </div>
+                  </div>
+
+                  {/* Current Topic */}
+                  <div className="bg-blue-50 rounded-lg p-3">
+                    <p className="text-xs text-blue-600 font-medium mb-1">Current Topic</p>
+                    <p className="text-sm font-medium text-gray-900">{cls.topic || "Not set"}</p>
+                  </div>
+
+                  {/* Progress Bars */}
+                  <div className="space-y-2">
+                    <div>
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="text-gray-500">Attendance</span>
+                        <span className="font-medium text-gray-700">{cls.attendanceRate || 0}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-1.5">
+                        <div
+                          className="bg-green-500 h-1.5 rounded-full transition-all"
+                          style={{ width: `${cls.attendanceRate || 0}%` }}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="text-gray-500">Homework</span>
+                        <span className="font-medium text-gray-700">{cls.homeworkCompletion || 0}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-1.5">
+                        <div
+                          className="bg-blue-500 h-1.5 rounded-full transition-all"
+                          style={{ width: `${cls.homeworkCompletion || 0}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Expandable Students List */}
+                  <div className="border-t pt-3">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-between text-gray-700 hover:text-gray-900"
+                      onClick={() => toggleClassExpand(cls.id)}
+                    >
+                      <span className="flex items-center gap-2">
+                        <GraduationCap className="w-4 h-4" />
+                        Students ({classStudents.length})
+                      </span>
+                      <ChevronDown
+                        className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-180" : ""}`}
                       />
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="text-gray-500">Homework</span>
-                      <span className="font-medium text-gray-700">{cls.homeworkCompletion || 0}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-1.5">
-                      <div
-                        className="bg-blue-500 h-1.5 rounded-full transition-all"
-                        style={{ width: `${cls.homeworkCompletion || 0}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
+                    </Button>
 
-                {/* Quick Actions */}
-                <div className="flex gap-2 pt-2">
-                  <Button variant="outline" size="sm" className="flex-1" asChild>
-                    <Link href={`/teacher/classes/${cls.id}`}>
-                      View Details
-                      <ChevronRight className="w-3 h-3 ml-1" />
-                    </Link>
-                  </Button>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href={`/teacher/homework/create?classId=${cls.id}`}>
-                      <BookOpen className="w-4 h-4" />
-                    </Link>
-                  </Button>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href={`/teacher/attendance`}>
-                      <CheckCircle className="w-4 h-4" />
-                    </Link>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                    {isExpanded && classStudents.length > 0 && (
+                      <div className="mt-3 space-y-2 max-h-48 overflow-y-auto">
+                        {classStudents.map((student) => (
+                          <div
+                            key={student.id}
+                            className="flex items-center justify-between p-2 bg-gray-50 rounded-lg text-sm"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                <span className="text-blue-600 font-medium text-xs">
+                                  {student.firstName?.charAt(0) || student.name.charAt(0)}
+                                </span>
+                              </div>
+                              <div>
+                                <p className="font-medium text-gray-900">{student.name}</p>
+                                <p className="text-xs text-gray-500">
+                                  {student.rollNumber ? `Roll: ${student.rollNumber}` : `ID: ${student.id.slice(-6)}`}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div className="text-right">
+                                <p className="text-xs text-gray-500">
+                                  {student.attendanceSummary?.percentage ?? "--"}%
+                                </p>
+                                <p className="text-xs text-gray-400">Attendance</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-xs text-gray-500">
+                                  {student.homeworkSummary?.submitted ?? 0}/{student.homeworkSummary?.total ?? 0}
+                                </p>
+                                <p className="text-xs text-gray-400">Homework</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {isExpanded && classStudents.length === 0 && (
+                      <div className="mt-3 text-center py-4 text-sm text-gray-500">
+                        No students enrolled in this class yet.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Quick Actions */}
+                  <div className="flex gap-2 pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      asChild
+                    >
+                      <Link href={`/teacher/homework/create?classId=${cls.id}`}>
+                        <BookOpen className="w-4 h-4 mr-1" />
+                        Homework
+                      </Link>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      asChild
+                    >
+                      <Link href={`/teacher/attendance?classId=${cls.id}`}>
+                        <CheckCircle className="w-4 h-4 mr-1" />
+                        Attendance
+                      </Link>
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

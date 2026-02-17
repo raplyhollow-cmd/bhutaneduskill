@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { users, careerPlans } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -11,18 +11,13 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const authResult = await requireAuth(['student', 'counselor', 'admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
 
-    const user = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    const user = authResult.user;
 
     const plan = await db.query.careerPlans.findFirst({
       where: eq(careerPlans.id, id),
@@ -32,8 +27,8 @@ export async function GET(
       return NextResponse.json({ error: "Plan not found" }, { status: 404 });
     }
 
-    // Check ownership
-    if (plan.userId !== user.id) {
+    // Check ownership - counselors and admins can view any plan
+    if (user.type !== 'admin' && user.type !== 'counselor' && plan.userId !== user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -51,21 +46,16 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const authResult = await requireAuth(['student', 'counselor', 'admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+
+    const user = authResult.user;
 
     const body = await request.json();
     const { targetCareer, currentPhase, shortTermGoals, longTermGoals, actionSteps, milestones, status } = body;
-
-    const user = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
 
     const existingPlan = await db.query.careerPlans.findFirst({
       where: eq(careerPlans.id, id),
@@ -75,8 +65,8 @@ export async function PUT(
       return NextResponse.json({ error: "Plan not found" }, { status: 404 });
     }
 
-    // Check ownership
-    if (existingPlan.userId !== user.id) {
+    // Check ownership - counselors and admins can update any plan
+    if (user.type !== 'admin' && user.type !== 'counselor' && existingPlan.userId !== user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -108,18 +98,13 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const authResult = await requireAuth(['student', 'counselor', 'admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
 
-    const user = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    const user = authResult.user;
 
     const existingPlan = await db.query.careerPlans.findFirst({
       where: eq(careerPlans.id, id),
@@ -129,8 +114,8 @@ export async function DELETE(
       return NextResponse.json({ error: "Plan not found" }, { status: 404 });
     }
 
-    // Check ownership
-    if (existingPlan.userId !== user.id) {
+    // Check ownership - counselors and admins can delete any plan
+    if (user.type !== 'admin' && user.type !== 'counselor' && existingPlan.userId !== user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

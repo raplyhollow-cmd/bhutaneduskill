@@ -12,6 +12,7 @@ import { colleges, scholarships, rubPrograms } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
 
 // ============================================================================
 // COLLEGES
@@ -43,7 +44,7 @@ export async function getColleges(limit = 500) {
       isActive: !!college.isActive,
     }));
   } catch (error) {
-    console.error("Failed to fetch colleges:", error);
+    logger.error(error, { action: "getColleges", userId });
     throw new Error("Failed to fetch colleges");
   }
 }
@@ -76,7 +77,7 @@ export async function getCollegeById(id: string) {
       isActive: !!college.isActive,
     };
   } catch (error) {
-    console.error("Failed to fetch college:", error);
+    logger.error(error, { action: "getCollegeById", id, userId });
     throw new Error("Failed to fetch college");
   }
 }
@@ -150,7 +151,7 @@ export async function createCollege(data: {
 
     return newCollege;
   } catch (error) {
-    console.error("Failed to create college:", error);
+    logger.error(error, { action: "createCollege", userId });
     throw new Error("Failed to create college");
   }
 }
@@ -237,7 +238,7 @@ export async function updateCollege(
       isActive: !!updatedCollege.isActive,
     };
   } catch (error) {
-    console.error("Failed to update college:", error);
+    logger.error(error, { action: "updateCollege", id, userId });
     throw new Error("Failed to update college");
   }
 }
@@ -267,7 +268,7 @@ export async function deleteCollege(id: string) {
 
     return deletedCollege;
   } catch (error) {
-    console.error("Failed to delete college:", error);
+    logger.error(error, { action: "deleteCollege", id, userId });
     throw new Error("Failed to delete college");
   }
 }
@@ -302,7 +303,7 @@ export async function getScholarships(limit = 500) {
       isActive: !!scholarship.isActive,
     }));
   } catch (error) {
-    console.error("Failed to fetch scholarships:", error);
+    logger.error(error, { action: "getScholarships", userId });
     throw new Error("Failed to fetch scholarships");
   }
 }
@@ -335,7 +336,7 @@ export async function getScholarshipById(id: string) {
       isActive: !!scholarship.isActive,
     };
   } catch (error) {
-    console.error("Failed to fetch scholarship:", error);
+    logger.error(error, { action: "getScholarshipById", id, userId });
     throw new Error("Failed to fetch scholarship");
   }
 }
@@ -411,7 +412,7 @@ export async function createScholarship(data: {
 
     return newScholarship;
   } catch (error) {
-    console.error("Failed to create scholarship:", error);
+    logger.error(error, { action: "createScholarship", userId });
     throw new Error("Failed to create scholarship");
   }
 }
@@ -500,7 +501,7 @@ export async function updateScholarship(
       isActive: !!updatedScholarship.isActive,
     };
   } catch (error) {
-    console.error("Failed to update scholarship:", error);
+    logger.error(error, { action: "updateScholarship", id, userId });
     throw new Error("Failed to update scholarship");
   }
 }
@@ -530,7 +531,7 @@ export async function deleteScholarship(id: string) {
 
     return deletedScholarship;
   } catch (error) {
-    console.error("Failed to delete scholarship:", error);
+    logger.error(error, { action: "deleteScholarship", id, userId });
     throw new Error("Failed to delete scholarship");
   }
 }
@@ -562,7 +563,7 @@ export async function getRUBPrograms(limit = 500) {
       admissionOpen: !!program.admissionOpen,
     }));
   } catch (error) {
-    console.error("Failed to fetch RUB programs:", error);
+    logger.error(error, { action: "getRUBPrograms", userId });
     throw new Error("Failed to fetch RUB programs");
   }
 }
@@ -592,7 +593,7 @@ export async function getRUBProgramById(id: string) {
       admissionOpen: !!program.admissionOpen,
     };
   } catch (error) {
-    console.error("Failed to fetch RUB program:", error);
+    logger.error(error, { action: "getRUBProgramById", id, userId });
     throw new Error("Failed to fetch RUB program");
   }
 }
@@ -673,7 +674,7 @@ export async function createRUBProgram(data: {
 
     return newProgram;
   } catch (error) {
-    console.error("Failed to create RUB program:", error);
+    logger.error(error, { action: "createRUBProgram", userId });
     throw new Error("Failed to create RUB program");
   }
 }
@@ -764,7 +765,7 @@ export async function updateRUBProgram(
       admissionOpen: !!updatedProgram.admissionOpen,
     };
   } catch (error) {
-    console.error("Failed to update RUB program:", error);
+    logger.error(error, { action: "updateRUBProgram", id, userId });
     throw new Error("Failed to update RUB program");
   }
 }
@@ -794,7 +795,7 @@ export async function deleteRUBProgram(id: string) {
 
     return deletedProgram;
   } catch (error) {
-    console.error("Failed to delete RUB program:", error);
+    logger.error(error, { action: "deleteRUBProgram", id, userId });
     throw new Error("Failed to delete RUB program");
   }
 }

@@ -41,9 +41,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+export type CrudItemValue = string | number | boolean | string[] | null | undefined;
+
 export interface CrudItem {
   id: string;
-  [key: string]: any;
+  [key: string]: CrudItemValue;
 }
 
 export interface CrudColumn {
@@ -52,7 +54,7 @@ export interface CrudColumn {
   type?: "text" | "number" | "textarea" | "select" | "date" | "badge";
   options?: { value: string; label: string }[];
   editable?: boolean;
-  render?: (value: any, item: CrudItem) => React.ReactNode;
+  render?: (value: CrudItemValue, item: CrudItem) => React.ReactNode;
 }
 
 export interface CrudCardProps {

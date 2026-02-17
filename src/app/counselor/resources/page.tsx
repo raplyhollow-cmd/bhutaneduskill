@@ -11,7 +11,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,10 +37,12 @@ import {
   Loader2,
   Briefcase,
   Users,
+  Share2,
 } from "lucide-react";
 import Link from "next/link";
-// Note: Resources temporarily using mock data until backend API is ready
-// TODO: Implement /api/counselor/resources endpoint
+import { AddResourceModal } from "@/components/counselor/add-resource-modal";
+import { EditResourceModal } from "@/components/counselor/edit-resource-modal";
+import { ShareResourceModal } from "@/components/counselor/share-resource-modal";
 
 interface ResourceData {
   id: string;
@@ -94,6 +96,11 @@ export default function CounselorResourcesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Modal states
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingResource, setEditingResource] = useState<ResourceData | null>(null);
+  const [sharingResource, setSharingResource] = useState<{ id: string; title: string } | null>(null);
+
   // Data state
   const [resources, setResources] = useState<ResourceData[]>([]);
   const [categories, setCategories] = useState<ResourceCategory[]>([]);
@@ -108,6 +115,33 @@ export default function CounselorResourcesPage() {
     featuredCount: 0,
     categoriesCount: 0,
   });
+
+  // Fetch data callback
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch("/api/counselor/resources");
+      if (!response.ok) throw new Error("Failed to fetch resources");
+
+      const data = await response.json();
+
+      setResources(data.resources || []);
+      setCategories(data.categories || []);
+      setStats(data.stats || { totalResources: 0, totalDownloads: 0, featuredCount: 0, categoriesCount: 0 });
+    } catch (err) {
+      console.error("Error fetching resources data:", err);
+      setError("Failed to load resources. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Fetch data on mount
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   // UI state
   const [searchQuery, setSearchQuery] = useState("");
@@ -233,6 +267,7 @@ export default function CounselorResourcesPage() {
         </div>
         <Button
           className="gap-2"
+          onClick={() => setIsAddModalOpen(true)}
           style={{ background: "linear-gradient(135deg, rgb(168 85 247), rgb(147 51 234))" }}
         >
           <Plus className="w-4 h-4" />
@@ -436,11 +471,21 @@ export default function CounselorResourcesPage() {
                     </Badge>
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button variant="ghost" size="sm" className="h-7 w-7">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7"
+                      onClick={() => setEditingResource(resource)}
+                    >
                       <Edit className="w-3 h-3" />
                     </Button>
-                    <Button variant="ghost" size="sm" className="h-7 w-7">
-                      <Trash2 className="w-3 h-3" />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7"
+                      onClick={() => setSharingResource({ id: resource.id, title: resource.title })}
+                    >
+                      <Share2 className="w-3 h-3" />
                     </Button>
                   </div>
                 </div>
@@ -485,11 +530,12 @@ export default function CounselorResourcesPage() {
                   </Button>
                   <Button
                     size="sm"
+                    variant="outline"
                     className="flex-1"
-                    style={{ background: "linear-gradient(135deg, rgb(168 85 247), rgb(147 51 234))" }}
+                    onClick={() => setSharingResource({ id: resource.id, title: resource.title })}
                   >
-                    <Download className="w-3 h-3 mr-1" />
-                    Save
+                    <Share2 className="w-3 h-3 mr-1" />
+                    Share
                   </Button>
                 </div>
               </CardContent>
@@ -525,13 +571,52 @@ export default function CounselorResourcesPage() {
                 <p className="text-sm text-gray-500">Upload PDFs, videos, or add links to resources</p>
               </div>
             </div>
-            <Button style={{ background: "linear-gradient(135deg, rgb(168 85 247), rgb(147 51 234))" }}>
+            <Button
+              style={{ background: "linear-gradient(135deg, rgb(168 85 247), rgb(147 51 234))" }}
+              onClick={() => setIsAddModalOpen(true)}
+            >
               <Plus className="w-4 h-4 mr-2" />
               Add Resource
             </Button>
           </div>
         </CardContent>
       </Card>
+
+      {/* Modals */}
+      <AddResourceModal
+        open={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSuccess={fetchData}
+      />
+
+      {editingResource && (
+        <EditResourceModal
+          open={!!editingResource}
+          onClose={() => setEditingResource(null)}
+          onSuccess={fetchData}
+          resource={{
+            id: editingResource.id,
+            title: editingResource.title,
+            description: editingResource.description,
+            resourceType: editingResource.type,
+            format: editingResource.type,
+            category: editingResource.category,
+            tags: editingResource.tags,
+            accessUrl: editingResource.url,
+            thumbnailUrl: editingResource.thumbnail,
+            isFeatured: editingResource.isFeatured,
+          }}
+        />
+      )}
+
+      {sharingResource && (
+        <ShareResourceModal
+          open={!!sharingResource}
+          onClose={() => setSharingResource(null)}
+          resourceId={sharingResource.id}
+          resourceTitle={sharingResource.title}
+        />
+      )}
     </div>
   );
 }

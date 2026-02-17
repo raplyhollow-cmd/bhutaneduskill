@@ -29,9 +29,7 @@ export default function SignUpPage() {
         {/* Sign Up Form */}
         <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-xl p-8 border border-gray-200 dark:border-gray-800">
           <SignUp
-            afterSignInUrl={redirectUrl}
-            afterSignUpUrl={redirectUrl}
-            redirectUrl={redirectUrl}
+            fallbackRedirectUrl={redirectUrl}
           />
         </div>
 

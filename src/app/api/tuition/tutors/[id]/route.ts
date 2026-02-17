@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { tutors, users, tutorReviews } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -11,6 +11,11 @@ interface Params {
 // GET /api/tuition/tutors/[id] - Get tutor profile
 export async function GET(request: NextRequest, { params }: Params) {
   try {
+    const authResult = await requireAuth(['admin', 'school-admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+    }
+
     const { id } = await params;
     const tutor = await db.query.tutors.findFirst({
       where: eq(tutors.id, id),
@@ -59,21 +64,14 @@ export async function GET(request: NextRequest, { params }: Params) {
 // PUT /api/tuition/tutors/[id] - Update tutor profile
 export async function PUT(request: NextRequest, { params }: Params) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['admin', 'school-admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { user: currentUser } = authResult;
 
     const body = await request.json();
     const { bio, qualifications, experience, subjects, gradeLevels, location, travelRadius, hourlyRateOnline, hourlyRatePhysical, availableDays, availableSlots, bankAccount } = body;
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
 
     const { id } = await params;
     // Verify ownership

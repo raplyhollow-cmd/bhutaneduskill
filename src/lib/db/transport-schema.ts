@@ -27,6 +27,7 @@ export const vehicles = pgTable("vehicles", {
 
   // Capacity
   seatingCapacity: integer("seating_capacity").notNull(),
+  capacity: integer("capacity"), // Alias for seating_capacity (used in APIs)
   standingCapacity: integer("standing_capacity").default(0),
 
   // Features
@@ -42,6 +43,20 @@ export const vehicles = pgTable("vehicles", {
 
   // Status
   status: text("status").notNull().default("active"), // "active", "maintenance", "inactive", "retired"
+
+  // Route assignment (denormalized for quick access)
+  routeId: text("route_id"), // Currently assigned route
+  assignedRouteId: text("assigned_route_id"), // Alias for route_id
+
+  // Driver info (denormalized for quick access)
+  driverName: text("driver_name"), // Primary driver's name
+  driverPhone: text("driver_phone"), // Driver's contact
+  conductorName: text("conductor_name"), // Bus attendant/conductor name
+  conductorPhone: text("conductor_phone"), // Bus attendant/conductor phone
+
+  // GPS/Tracking
+  gpsEnabled: boolean("gps_enabled").default(false),
+  trackingDeviceId: text("tracking_device_id"), // GPS device ID
 
   // Notes
   notes: text("notes"),
@@ -106,6 +121,10 @@ export const transportRoutes = pgTable("transport_routes", {
   name: text("name"), // Alias for route_name
   description: text("description"),
 
+  // Location endpoints
+  startLocation: text("start_location"), // Starting point
+  endLocation: text("end_location"), // Ending point
+
   // Route path (JSON array of stops)
   stops: json("stops").$type<Array<{
     id: string;
@@ -126,9 +145,11 @@ export const transportRoutes = pgTable("transport_routes", {
   afternoonStartTime: text("afternoon_start_time"), // HH:MM - leaves school
   afternoonEndTime: text("afternoon_end_time"), // HH:MM - last drop
 
-  // Distance
+  // Distance and duration
   totalDistance: integer("total_distance"), // In km
+  distance: integer("distance"), // Alias for total_distance
   estimatedDuration: integer("estimated_duration"), // In minutes
+  estimatedTime: integer("estimated_time"), // Alias for estimated_duration
 
   // Assignment
   vehicleId: text("vehicle_id"), // Assigned vehicle
@@ -174,6 +195,7 @@ export const transportAllocations = pgTable("transport_allocations", {
   dropStopId: text("drop_stop_id"), // Afternoon drop stop
   pickupPoint: text("pickup_point"), // Display name
   dropPoint: text("drop_point"), // Display name
+  stopName: text("stop_name"), // Bus stop name (used for display)
 
   // Timing
   pickupTime: text("pickup_time"), // Expected pickup time
@@ -184,8 +206,11 @@ export const transportAllocations = pgTable("transport_allocations", {
 
   // Status
   status: text("status").notNull().default("active"), // "active", "inactive", "changed"
+  isActive: boolean("is_active").default(true), // Quick active/inactive check
 
   // Fee
+  fee: integer("fee"), // Transport fee (may differ from route fee)
+  isPaid: boolean("is_paid").default(false), // Payment status
   feeWaived: boolean("fee_waived").default(false),
   notes: text("notes"),
 

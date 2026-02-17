@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { subjects, users } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
+import { requireAuth } from "@/lib/auth-utils";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -11,10 +11,11 @@ interface Params {
 // GET /api/school-admin/subjects/[id] - Get subject details
 export async function GET(request: NextRequest, { params }: Params) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['admin', 'school-admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId } = authResult;
 
     const { id } = await params;
     const subject = await db.query.subjects.findFirst({
@@ -35,21 +36,14 @@ export async function GET(request: NextRequest, { params }: Params) {
 // PUT /api/school-admin/subjects/[id] - Update subject
 export async function PUT(request: NextRequest, { params }: Params) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['admin', 'school-admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId } = authResult;
 
     const body = await request.json();
     const { code, name, nameDzongkha, grade, description, icon, color, isActive } = body;
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || !["admin", "teacher"].includes(currentUser.type)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
     const { id } = await params;
     const [updated] = await db.update(subjects)
@@ -76,18 +70,11 @@ export async function PUT(request: NextRequest, { params }: Params) {
 // DELETE /api/school-admin/subjects/[id] - Soft delete subject
 export async function DELETE(request: NextRequest, { params }: Params) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['admin', 'school-admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || !["admin", "teacher"].includes(currentUser.type)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const { userId } = authResult;
 
     const { id } = await params;
     await db.update(subjects)

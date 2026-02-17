@@ -5,24 +5,34 @@ import { eq, desc } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth-utils";
 
 export async function GET(request: NextRequest) {
-  const authResult = await requireAuth();
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+  try {
+    const authResult = await requireAuth(['student', 'counselor', 'admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+    }
+
+    const { user } = authResult;
+
+    // Use direct select instead of query (relations not configured)
+    const plans = await db
+      .select()
+      .from(careerPlans)
+      .where(eq(careerPlans.userId, user.id))
+      .orderBy(desc(careerPlans.createdAt))
+      .limit(10);
+
+    return NextResponse.json({ plans });
+  } catch (error) {
+    console.error("Career plans fetch error:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch career plans", plans: [] },
+      { status: 500 }
+    );
   }
-
-  const { user } = authResult;
-
-  const plans = await db.query.careerPlans.findMany({
-    where: eq(careerPlans.userId, user.id),
-    orderBy: desc(careerPlans.createdAt),
-    limit: 10,
-  });
-
-  return NextResponse.json({ plans });
 }
 
 export async function POST(request: NextRequest) {
-  const authResult = await requireAuth();
+  const authResult = await requireAuth(['student', 'counselor', 'admin']);
   if ('error' in authResult) {
     return NextResponse.json({ error: authResult.error }, { status: authResult.status });
   }

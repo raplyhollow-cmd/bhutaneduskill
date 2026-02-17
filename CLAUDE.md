@@ -3,7 +3,7 @@
 **Project:** B2B SaaS Multi-tenant School Management Platform
 **Target:** Bhutan Middle Schools (Class 6-12)
 **Tech Stack:** Next.js 16 + TypeScript + Neon PostgreSQL + Clerk + Vercel
-**Last Updated:** February 15, 2026
+**Last Updated:** February 16, 2026
 **Local URL:** http://localhost:3003
 
 ---
@@ -276,13 +276,15 @@ npx tsc --noEmit     # Type check without build
 
 | File | Purpose |
 |------|---------|
+| `docs/DEVELOPMENT_FRAMEWORK.md` | **Single source of truth** for all patterns |
+| `docs/README.md` | Documentation index |
+| `docs/CHANGELOG.md` | Version history |
 | `src/lib/auth-utils.ts` | `requireAuth(allowedRoles?)` helper |
 | `src/lib/logger.ts` | debug/info/warn/error/security logging |
 | `src/types/index.ts` | ApiSuccess<T>, ApiErrorResponse types |
 | `src/middleware.ts` | CORS + security headers |
-| `src/lib/db/schema.ts` | Main database schema (40+ tables) |
+| `src/lib/db/schema.ts` | Main database schema (90+ tables) |
 | `MEMORY.md` | Project memory with fixes and patterns |
-| `docs/technology-stack.md` | B2B SaaS architecture details |
 
 ---
 
@@ -316,13 +318,17 @@ npx tsc --noEmit     # Type check without build
 
 # Documentation Index
 
+> **Documentation has been reorganized!** See [docs/README.md](docs/README.md) for the complete index.
+
 | Topic | File |
 |-------|------|
-| Technology Stack | [docs/technology-stack.md](docs/technology-stack.md) |
-| Database Schema | [docs/database-schema.md](docs/database-schema.md) |
-| API Routes | [docs/api-routes.md](docs/api-routes.md) |
-| UX Design System | [docs/ux-design-system.md](docs/ux-design-system.md) |
-| Portal Colors | [docs/portal-colors.md](docs/portal-colors.md) |
+| **Development Framework** | [docs/DEVELOPMENT_FRAMEWORK.md](docs/DEVELOPMENT_FRAMEWORK.md) - **READ THIS FIRST** |
+| **Documentation Index** | [docs/README.md](docs/README.md) |
+| Changelog | [docs/CHANGELOG.md](docs/CHANGELOG.md) |
+| Architecture | [docs/architecture/](docs/architecture/) |
+| Design System | [docs/design/](docs/design/) |
+| Guides | [docs/guides/](docs/guides/) |
+| Plans | [docs/plans/](docs/plans/) |
 | Project Memory | [MEMORY.md](MEMORY.md) |
 
 ---

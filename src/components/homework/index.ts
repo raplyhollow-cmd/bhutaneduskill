@@ -11,3 +11,4 @@ export type {
   StudentSubmission,
   GradingResult,
 } from "./grading-panel";
+export type { HomeworkAnswer, HomeworkSubmissionMetadata } from "./homework-submission";

@@ -1,36 +1,71 @@
+/**
+ * STUDENT LEARNING MODULES API
+ * Browse and enroll in learning modules
+ */
+
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { nanoid } from "nanoid";
+import { requireAuth } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
-import { learningModules, moduleProgress, users, enrollments } from "@/lib/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { learningModules, moduleProgress, users } from "@/lib/db/schema";
+import { eq, and, desc, or, inArray } from "drizzle-orm";
+import { z } from "zod";
+
+interface ModuleContentData {
+  lessons: unknown[];
+  objectives?: string[];
+  prerequisites?: string[];
+  tags?: string[];
+}
 
 // GET /api/student/modules - List available modules
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(["student"]);
+    if ("error" in authResult) {
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status }
+      );
     }
+    const { userId } = authResult;
 
     const { searchParams } = new URL(request.url);
     const enrolled = searchParams.get("enrolled"); // "true" or "false"
+    const category = searchParams.get("category");
+    const level = searchParams.get("level");
+    const subject = searchParams.get("subject");
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
+    // Get student's school ID
+    const student = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+      columns: {
+        schoolId: true,
+        classGrade: true,
+      },
     });
 
-    if (!currentUser || currentUser.type !== "student") {
-      return NextResponse.json({ error: "Forbidden - Students only" }, { status: 403 });
+    if (!student) {
+      return NextResponse.json(
+        { error: "Student not found" },
+        { status: 404 }
+      );
     }
 
     if (enrolled === "true") {
-      // Get enrolled modules
+      // Get enrolled modules with progress
       const myProgress = await db.query.moduleProgress.findMany({
-        where: eq(moduleProgress.studentId, currentUser.id),
+        where: eq(moduleProgress.studentId, userId),
         with: {
           module: {
             with: {
-              subject: true,
+              subject: {
+                columns: {
+                  id: true,
+                  name: true,
+                },
+              },
               teacher: {
                 columns: {
                   id: true,
@@ -44,16 +79,31 @@ export async function GET(request: NextRequest) {
         orderBy: [desc(moduleProgress.lastAccessedAt)],
       });
 
-      return NextResponse.json({ modules: myProgress.map(p => ({ ...(p.module as any), progress: p })) });
+      const enrichedModules = myProgress.map((p) => {
+        const content = (p.module as any)?.content as ModuleContentData | null;
+        const lessonsCount = content?.lessons?.length || 0;
+        return {
+          ...(p.module as any),
+          lessonsCount,
+          progress: p,
+        };
+      });
+
+      logger.info("Student enrolled modules fetched", { userId, count: enrichedModules.length });
+
+      return NextResponse.json({ modules: enrichedModules });
     }
 
-    // Get available modules from student's school and public modules
+    // Get available published modules from student's school and public modules
     const modules = await db.query.learningModules.findMany({
-      where: and(
-        eq(learningModules.isPublished, true),
-      ),
+      where: eq(learningModules.isPublished, true),
       with: {
-        subject: true,
+        subject: {
+          columns: {
+            id: true,
+            name: true,
+          },
+        },
         teacher: {
           columns: {
             id: true,
@@ -66,62 +116,98 @@ export async function GET(request: NextRequest) {
     });
 
     // Filter by school or public
-    const availableModules = modules.filter(m =>
-      (m as any).schoolId === currentUser.schoolId || m.isPublic
+    const availableModules = modules.filter(
+      (m) => m.teacherId === student.schoolId || m.isPublic
     );
 
     // Get progress for each module
-    const moduleIds = availableModules.map(m => m.id);
-    const progressList = await db.query.moduleProgress.findMany({
-      where: and(
-        eq(moduleProgress.studentId, currentUser.id),
-      ),
-    });
+    const moduleIds = availableModules.map((m) => m.id);
+    const progressList = moduleIds.length > 0
+      ? await db.query.moduleProgress.findMany({
+          where: and(
+            eq(moduleProgress.studentId, userId),
+          ),
+        })
+      : [];
 
-    const progressMap = new Map(progressList.map(p => [p.moduleId, p]));
+    const progressMap = new Map(progressList.map((p) => [p.moduleId, p]));
 
-    const enrichedModules = availableModules.map(m => ({
-      ...m,
-      progress: progressMap.get(m.id),
-      isEnrolled: progressMap.has(m.id),
-    }));
+    // Enrich modules with progress info
+    const enrichedModules = availableModules
+      .filter((m) => {
+        // Apply filters
+        if (category && m.category !== category) return false;
+        if (level && m.level !== level) return false;
+        return true;
+      })
+      .map((m) => {
+        const progress = progressMap.get(m.id);
+        const content = m.content as ModuleContentData | null;
+        const lessonsCount = content?.lessons?.length || 0;
+        return {
+          ...m,
+          lessonsCount,
+          progress: progress || null,
+          isEnrolled: !!progress,
+        };
+      });
+
+    logger.info("Student available modules fetched", { userId, count: enrichedModules.length });
 
     return NextResponse.json({ modules: enrichedModules });
   } catch (error) {
-    console.error("Modules fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch modules" }, { status: 500 });
+    logger.apiError(error, { route: "/api/student/modules", method: "GET" });
+    return NextResponse.json(
+      { error: "Failed to fetch modules" },
+      { status: 500 }
+    );
   }
 }
 
 // POST /api/student/modules - Enroll in module
+const enrollSchema = z.object({
+  moduleId: z.string().min(1, "Module ID is required"),
+});
+
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(["student"]);
+    if ("error" in authResult) {
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status }
+      );
     }
+    const { userId } = authResult;
 
     const body = await request.json();
-    const { moduleId } = body;
+    const validationResult = enrollSchema.safeParse(body);
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || currentUser.type !== "student") {
-      return NextResponse.json({ error: "Forbidden - Students only" }, { status: 403 });
+    if (!validationResult.success) {
+      return NextResponse.json(
+        {
+          error: "Validation failed",
+          details: validationResult.error.issues,
+        },
+        { status: 400 }
+      );
     }
+
+    const { moduleId } = validationResult.data;
 
     // Check if already enrolled
     const existing = await db.query.moduleProgress.findFirst({
       where: and(
         eq(moduleProgress.moduleId, moduleId),
-        eq(moduleProgress.studentId, currentUser.id)
+        eq(moduleProgress.studentId, userId)
       ),
     });
 
     if (existing) {
-      return NextResponse.json({ error: "Already enrolled" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Already enrolled in this module" },
+        { status: 400 }
+      );
     }
 
     // Check module exists and is published
@@ -129,36 +215,76 @@ export async function POST(request: NextRequest) {
       where: eq(learningModules.id, moduleId),
     });
 
-    if (!module || !module.isPublished) {
-      return NextResponse.json({ error: "Module not available" }, { status: 404 });
+    if (!module) {
+      return NextResponse.json(
+        { error: "Module not found" },
+        { status: 404 }
+      );
     }
 
-    // Check enrollment limit
-    if ((module as any).maxEnrollments) {
-      const currentEnrollments = await db.query.moduleProgress.findMany({
-        where: eq(moduleProgress.moduleId, moduleId),
-      });
+    if (!module.isPublished) {
+      return NextResponse.json(
+        { error: "Module is not available for enrollment" },
+        { status: 400 }
+      );
+    }
 
-      if (currentEnrollments.length >= (module as any).maxEnrollments) {
-        return NextResponse.json({ error: "Module is full" }, { status: 400 });
+    // Check if module has prerequisites
+    const content = module.content as ModuleContentData | null;
+    if (content?.prerequisites && content.prerequisites.length > 0) {
+      // Verify student has completed prerequisite modules
+      for (const prereqId of content.prerequisites) {
+        const prereqProgress = await db.query.moduleProgress.findFirst({
+          where: and(
+            eq(moduleProgress.moduleId, prereqId),
+            eq(moduleProgress.studentId, userId)
+          ),
+        });
+
+        if (!prereqProgress || !prereqProgress.isCompleted) {
+          return NextResponse.json(
+            {
+              error: "Prerequisites not met",
+              details: { prerequisites: content.prerequisites },
+            },
+            { status: 400 }
+          );
+        }
       }
     }
 
     const now = new Date();
-    const [progress] = await db.insert(moduleProgress).values({
-      id: `prog_${Date.now()}`,
-      moduleId,
-      studentId: currentUser.id,
-      completedLessons: [],
-      progressPercentage: 0,
-      enrolledAt: now,
-      lastAccessedAt: now,
-      createdAt: now,
-    } as any).returning();
+    const progressId = `prog_${nanoid(12)}`;
 
-    return NextResponse.json({ progress }, { status: 201 });
+    const [progress] = await db
+      .insert(moduleProgress)
+      .values({
+        id: progressId,
+        moduleId,
+        studentId: userId,
+        status: "not_started",
+        isCompleted: false,
+        progress: 0,
+        completedLessons: [],
+        currentLesson: null,
+        timeSpent: 0,
+        lastAccessedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+
+    logger.info("Student enrolled in module", { moduleId, userId, progressId });
+
+    return NextResponse.json(
+      { progress, module },
+      { status: 201 }
+    );
   } catch (error) {
-    console.error("Module enrollment error:", error);
-    return NextResponse.json({ error: "Failed to enroll in module" }, { status: 500 });
+    logger.apiError(error, { route: "/api/student/modules", method: "POST" });
+    return NextResponse.json(
+      { error: "Failed to enroll in module" },
+      { status: 500 }
+    );
   }
 }

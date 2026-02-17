@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { schools } from "@/lib/db/schema";
-import { eq, like } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 /**
  * GET /api/schools/lookup
@@ -49,14 +49,12 @@ export async function GET(request: NextRequest) {
     }
 
     if (name) {
-      // Search by name
-      const results = await db
-        .select()
-        .from(schools)
-        .where(like(schools.name, `%${name}%`))
-        .limit(10);
+      // Search by name - using sql template for proper escaping
+      const results = await db.execute(
+        sql`SELECT * FROM schools WHERE name LIKE ${'%' + name + '%'} LIMIT 10`
+      );
 
-      return NextResponse.json({ schools: results });
+      return NextResponse.json({ schools: results.rows });
     }
 
     return NextResponse.json(

@@ -10,7 +10,7 @@
 
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ import {
   Mail,
   Phone,
   Loader2,
+  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
 import { AIInsightCard } from "@/components/ai/ai-insight-card";
@@ -62,6 +63,13 @@ interface ParentStats {
   upcomingMeetings: number;
 }
 
+interface AIInsight {
+  type: "warning" | "success" | "info" | "tip";
+  title: string;
+  message: string;
+  actions?: Array<{ label: string; href: string }>;
+}
+
 export default function ParentDashboardPage() {
   const router = useRouter();
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
@@ -69,8 +77,18 @@ export default function ParentDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<ParentStats | null>(null);
+  const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [insightsError, setInsightsError] = useState<string | null>(null);
 
   const hasFetched = useRef(false);
+  const insightsFetchedRef = useRef<Set<string>>(new Set());
+
+  // Selected child data (memoized to avoid issues with useEffect dependency)
+  const selectedChild = useMemo(
+    () => children.find((c) => c.id === selectedChildId),
+    [children, selectedChildId]
+  );
 
   useEffect(() => {
     if (hasFetched.current) return;
@@ -124,92 +142,150 @@ export default function ParentDashboardPage() {
     fetchParentData();
   }, []);
 
-  // Selected child data
-  const selectedChild = children.find((c) => c.id === selectedChildId);
+  // Fetch AI insights when selected child changes
+  useEffect(() => {
+    if (!selectedChildId || !selectedChild) return;
 
-  // Generate AI insights based on child data
-  const generateAIInsights = (child: Child) => {
-    const insights = [];
+    // Skip if we've already fetched insights for this child
+    if (insightsFetchedRef.current.has(selectedChildId)) return;
 
-    if (child.attendance < 75) {
-      insights.push({
-        type: "warning" as const,
-        title: "Attendance Alert",
-        message: `${child.firstName}'s attendance is ${child.attendance}%. Consider discussing with their teachers to identify any challenges.`,
-        actions: [{ label: "View Attendance", href: "/parent/attendance" }],
+    const fetchAIInsights = async () => {
+      try {
+        setInsightsLoading(true);
+        setInsightsError(null);
+
+        // Calculate average score from recent grades
+        let averageScore = 0;
+        if (selectedChild.recentGrades && selectedChild.recentGrades.length > 0) {
+          const recentGrades = selectedChild.recentGrades.slice(0, 5);
+          const gradeMap: Record<string, number> = {
+            "A+": 95, "A": 90, "B+": 85, "B": 80, "C+": 75, "C": 70,
+            "D+": 65, "D": 60, "E": 55, "F": 50
+          };
+          const totalScore = recentGrades.reduce((sum, g) => sum + (gradeMap[g.grade] || 0), 0);
+          averageScore = Math.round(totalScore / recentGrades.length);
+        }
+
+        const response = await fetch("/api/ai/insights", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userRole: "parent",
+            contextData: {
+              stats: {
+                childName: `${selectedChild.firstName} ${selectedChild.lastName}`,
+                attendance: selectedChild.attendance,
+                pendingHomework: selectedChild.homeworkPending,
+                averageScore: averageScore,
+                classGrade: selectedChild.classGrade,
+                section: selectedChild.section,
+                careerInterests: selectedChild.careerInterests || [],
+                feePending: selectedChild.feeStatus?.amountPending || 0,
+              }
+            }
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch AI insights");
+        }
+
+        const data = await response.json();
+
+        if (data.success && data.insights) {
+          setAiInsights(data.insights);
+        } else {
+          // Fall back to empty array if API returns no insights
+          setAiInsights([]);
+        }
+
+        // Mark that we've fetched insights for this child
+        insightsFetchedRef.current.add(selectedChildId);
+
+      } catch (err) {
+        console.error("Error fetching AI insights:", err);
+        setInsightsError("Failed to load AI insights");
+        setAiInsights([]);
+      } finally {
+        setInsightsLoading(false);
+      }
+    };
+
+    fetchAIInsights();
+  }, [selectedChildId, selectedChild]);
+
+  // Refresh AI insights function
+  const refreshInsights = async () => {
+    if (!selectedChildId || !selectedChild) return;
+
+    try {
+      setInsightsLoading(true);
+      setInsightsError(null);
+
+      // Clear the cached insights for this child
+      insightsFetchedRef.current.delete(selectedChildId);
+
+      // Calculate average score from recent grades
+      let averageScore = 0;
+      if (selectedChild.recentGrades && selectedChild.recentGrades.length > 0) {
+        const recentGrades = selectedChild.recentGrades.slice(0, 5);
+        const gradeMap: Record<string, number> = {
+          "A+": 95, "A": 90, "B+": 85, "B": 80, "C+": 75, "C": 70,
+          "D+": 65, "D": 60, "E": 55, "F": 50
+        };
+        const totalScore = recentGrades.reduce((sum, g) => sum + (gradeMap[g.grade] || 0), 0);
+        averageScore = Math.round(totalScore / recentGrades.length);
+      }
+
+      const response = await fetch("/api/ai/insights", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userRole: "parent",
+          contextData: {
+            stats: {
+              childName: `${selectedChild.firstName} ${selectedChild.lastName}`,
+              attendance: selectedChild.attendance,
+              pendingHomework: selectedChild.homeworkPending,
+              averageScore: averageScore,
+              classGrade: selectedChild.classGrade,
+              section: selectedChild.section,
+              careerInterests: selectedChild.careerInterests || [],
+              feePending: selectedChild.feeStatus?.amountPending || 0,
+            }
+          }
+        })
       });
-    } else if (child.attendance >= 90) {
-      insights.push({
-        type: "success" as const,
-        title: "Excellent Attendance!",
-        message: `${child.firstName} has maintained ${child.attendance}% attendance. Keep up the great work!`,
-        actions: [],
-      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch AI insights");
+      }
+
+      const data = await response.json();
+
+      if (data.success && data.insights) {
+        setAiInsights(data.insights);
+      } else {
+        setAiInsights([]);
+      }
+
+      // Mark that we've fetched insights for this child
+      insightsFetchedRef.current.add(selectedChildId);
+
+    } catch (err) {
+      console.error("Error refreshing AI insights:", err);
+      setInsightsError("Failed to refresh AI insights");
+      setAiInsights([]);
+    } finally {
+      setInsightsLoading(false);
     }
+  };
 
-    if (child.homeworkPending > 3) {
-      insights.push({
-        type: "warning" as const,
-        title: "Homework Pending",
-        message: `${child.homeworkPending} homework assignments are pending. Encourage ${child.firstName} to complete them on time.`,
-        actions: [{ label: "View Homework", href: "/parent/homework" }],
-      });
-    }
-
-    if (child.feeStatus?.amountPending > 0) {
-      insights.push({
-        type: "warning" as const,
-        title: "Fee Payment Reminder",
-        message: `You have Nu. ${child.feeStatus.amountPending} pending in fees. Please clear dues to avoid late fees.`,
-        actions: [{ label: "Pay Fees", href: "/parent/fees/pay" }],
-      });
-    }
-
-    if (child.recentGrades && child.recentGrades.length > 0) {
-      const recentGrades = child.recentGrades.slice(0, 3);
-      const avgGrade = recentGrades.reduce((sum, g) => {
-        const gradeMap: Record<string, number> = { "A+": 4.3, "A": 4.0, "B+": 3.7, "B": 3.3, "C+": 3.0, "C": 2.7, "D+": 2.3, "D": 2.0, "E": 1.7, "F": 1.3 };
-        const gradePoints = gradeMap[g.grade] || 0;
-        return sum + gradePoints;
-      }, 0) / recentGrades.length;
-
-      const avgGradePoint = avgGrade / recentGrades.length;
-
-      // Determine grade label
-      let gradeLabel = "";
-      if (avgGradePoint >= 4.0) gradeLabel = "Excellent (A+)";
-      else if (avgGradePoint >= 3.7) gradeLabel = "Very Good (A)";
-      else if (avgGradePoint >= 3.3) gradeLabel = "Good (B+)";
-      else if (avgGradePoint >= 2.7) gradeLabel = "Satisfactory (B)";
-      else gradeLabel = "Needs Improvement";
-
-      insights.push({
-        type: avgGradePoint >= 3.7 ? "success" : "info",
-        title: "Academic Performance",
-        message: `${child.firstName}'s recent performance: ${gradeLabel}. Recent grades in ${recentGrades.map((g) => g.subject).join(", ")}.`,
-        actions: [{ label: "View Progress", href: "/parent/progress" }],
-      });
-    }
-
-    if (child.careerInterests && child.careerInterests.length > 0) {
-      insights.push({
-        type: "tip" as const,
-        title: "Career Guidance",
-        message: `${child.firstName} has shown interest in: ${child.careerInterests.slice(0, 2).join(", ")}. Consider exploring careers in these areas.`,
-        actions: [{ label: "Career Plan", href: "/parent/careers" }],
-      });
-    }
-
-    if (insights.length === 0) {
-      insights.push({
-        type: "info" as const,
-        title: "Getting Started",
-        message: `Encourage ${child.firstName} to take career assessments to discover their interests and strengths.`,
-        actions: [{ label: "View Assessments", href: "/assessments" }],
-      });
-    }
-
-    return insights;
+  // Handle child selection change
+  const handleChildChange = (childId: string) => {
+    setSelectedChildId(childId);
+    setAiInsights([]); // Clear insights for new child
+    setInsightsError(null);
   };
 
   if (loading) {
@@ -262,8 +338,6 @@ export default function ParentDashboardPage() {
     );
   }
 
-  const aiInsights = selectedChild ? generateAIInsights(selectedChild) : [];
-
   return (
     <div className="space-y-6">
       {/* Welcome */}
@@ -283,27 +357,130 @@ export default function ParentDashboardPage() {
 
       {/* Multi-child Selector */}
       {children.length > 1 && (
-        <div className="flex items-center gap-4 overflow-x-auto pb-4">
-          <Badge className="bg-gray-100 text-gray-700 px-3 py-1.5 whitespace-nowrap">
-            {children.length} Children
-          </Badge>
-          <span className="text-sm text-gray-500">
-            Select a child to view their details
-          </span>
-        </div>
+        <Card>
+          <CardContent className="pt-4">
+            <div className="flex items-center gap-4 overflow-x-auto pb-2">
+              <Badge className="bg-gray-100 text-gray-700 px-3 py-1.5 whitespace-nowrap">
+                {children.length} Children
+              </Badge>
+              <div className="flex gap-2">
+                {children.map((child) => (
+                  <Button
+                    key={child.id}
+                    variant={selectedChildId === child.id ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handleChildChange(child.id)}
+                    className="whitespace-nowrap"
+                    style={
+                      selectedChildId === child.id
+                        ? { background: "linear-gradient(135deg, rgb(107 114 128) 0%, rgb(75 85 99) 100%)" }
+                        : undefined
+                    }
+                  >
+                    {child.firstName} {child.lastName}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* AI Insights Section */}
-      <div className="grid md:grid-cols-2 gap-4">
-        {aiInsights.map((insight, index) => (
-          <AIInsightCard
-            key={index}
-            type={insight.type}
-            title={insight.title}
-            message={insight.message}
-            actions={insight.actions}
-          />
-        ))}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-bold text-gray-900">
+            AI Insights for {selectedChild.firstName}
+          </h2>
+          <div className="flex items-center gap-2">
+            {insightsLoading && (
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Generating...
+              </div>
+            )}
+            {!insightsLoading && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={refreshInsights}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <RefreshCw className="w-4 h-4 mr-1" />
+                Refresh
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {insightsLoading ? (
+          <div className="grid md:grid-cols-2 gap-4">
+            {[1, 2].map((i) => (
+              <Card key={i} className="border-2 border-gray-200">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gray-100 animate-pulse" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-gray-200 rounded animate-pulse w-1/2" />
+                      <div className="h-3 bg-gray-200 rounded animate-pulse w-full" />
+                      <div className="h-3 bg-gray-200 rounded animate-pulse w-3/4" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : insightsError ? (
+          <Card className="border-amber-200 bg-amber-50">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-amber-900">Could not load AI insights</p>
+                  <p className="text-sm text-amber-700">{insightsError}</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => {
+                      setInsightsError(null);
+                      insightsFetchedRef.current.delete(selectedChildId);
+                      window.location.reload();
+                    }}
+                  >
+                    Retry
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : aiInsights.length > 0 ? (
+          <div className="grid md:grid-cols-2 gap-4">
+            {aiInsights.map((insight, index) => (
+              <AIInsightCard
+                key={index}
+                type={insight.type}
+                title={insight.title}
+                message={insight.message}
+                actions={insight.actions}
+              />
+            ))}
+          </div>
+        ) : (
+          <Card className="border-blue-200 bg-blue-50">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <CheckCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-blue-900">No insights available</p>
+                  <p className="text-sm text-blue-700">
+                    AI insights will appear here once {selectedChild.firstName} has more activity data.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Quick Stats */}

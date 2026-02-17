@@ -17,6 +17,22 @@ import {
 import { RUB_COLLEGES, CAREERS_DATABASE } from "@/lib/tenant";
 import Link from "next/link";
 
+interface CollegeProgram {
+  name: string;
+  duration: string;
+  minMarks: number;
+  seats: number;
+  eligibility?: string;
+}
+
+interface RUBCollege {
+  id: string;
+  name: string;
+  location: string;
+  programs: CollegeProgram[];
+  website?: string;
+}
+
 export default function RUBPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCollege, setSelectedCollege] = useState<string | null>(null);
@@ -27,12 +43,12 @@ export default function RUBPage() {
     return (
       college.name.toLowerCase().includes(searchLower) ||
       college.location.toLowerCase().includes(searchLower) ||
-      college.programs.some((p: any) => p.name.toLowerCase().includes(searchLower))
+      college.programs.some((p: CollegeProgram) => p.name.toLowerCase().includes(searchLower))
     );
   });
 
   // Get recommended programs based on career interests
-  const getRecommendedPrograms = (collegePrograms: any[]) => {
+  const getRecommendedPrograms = (collegePrograms: CollegeProgram[]) => {
     // This would use user's assessment results in production
     const popularPrograms = [
       "B.E. in Computer Science",
@@ -41,7 +57,7 @@ export default function RUBPage() {
       "B.A.",
       "B.Sc. in Agriculture",
     ];
-    return collegePrograms.filter((p: any) =>
+    return collegePrograms.filter((p: CollegeProgram) =>
       popularPrograms.some((pp) => p.name.includes(pp.split(" in ")[1] || pp))
     );
   };
@@ -137,7 +153,7 @@ export default function RUBPage() {
                   Programs Offered ({college.programs.length})
                 </h4>
                 <div className="space-y-2">
-                  {college.programs.slice(0, 4).map((program: any, index: number) => (
+                  {college.programs.slice(0, 4).map((program: CollegeProgram, index: number) => (
                     <div
                       key={index}
                       className="flex items-center justify-between p-2 bg-gray-50 rounded-lg text-sm"
@@ -168,7 +184,7 @@ export default function RUBPage() {
                   Related Careers
                 </h4>
                 <div className="flex flex-wrap gap-2">
-                  {getRelatedCareers(college.programs.map((p: any) => p.name)).map((career) => (
+                  {getRelatedCareers(college.programs.map((p: CollegeProgram) => p.name)).map((career) => (
                     <Badge key={career} variant="outline" className="text-xs">
                       {career}
                     </Badge>
@@ -288,7 +304,7 @@ export default function RUBPage() {
 }
 
 // Helper function to get related careers based on college programs
-function getRelatedCareers(programs: string[]): string[] {
+function getRelatedCareers(programs: (string | CollegeProgram)[]): string[] {
   const careerMap: Record<string, string[]> = {
     "Computer Science": ["Software Developer", "Data Analyst", "IT Specialist"],
     "Civil Engineering": ["Civil Engineer", "Architect", "Project Manager"],
@@ -305,7 +321,7 @@ function getRelatedCareers(programs: string[]): string[] {
   };
 
   const related = new Set<string>();
-  programs.forEach((program: any) => {
+  programs.forEach((program: string | CollegeProgram) => {
     const programName = typeof program === 'string' ? program : program.name;
     Object.entries(careerMap).forEach(([key, careers]) => {
       if (programName.toLowerCase().includes(key.toLowerCase())) {

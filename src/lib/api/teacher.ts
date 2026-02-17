@@ -11,6 +11,61 @@ import { eq, and, count, desc, sql, gte, lte, sum } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth-utils";
 import { cache } from "react";
 
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface TutorEarningWithExtras {
+  id: string;
+  tutorId: string;
+  amount: number | null;
+  sourceType?: string | null;
+  sourceId?: string | null;
+  grossAmount?: number | null;
+  platformFee?: number | null;
+  payoutStatus: string | null;
+  earnedAt: string | null;
+  withdrawnAt: string | null;
+  payoutMethod?: string | null;
+  enrollmentId?: string | null;
+}
+
+interface TuitionEnrollmentWithStudent {
+  id: string;
+  courseId: string;
+  studentId: string;
+  student?: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+  };
+}
+
+interface LiveSessionWithStudent {
+  id: string;
+  title?: string | null;
+  subject?: string | null;
+  studentId?: string | null;
+  student?: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+  };
+}
+
+interface TuitionCourseWithExtras {
+  id: string;
+  title: string;
+  type?: string | null;
+  price?: number | null;
+  tutorId: string;
+}
+
+interface TutorWithUser {
+  id: string;
+  averageRating?: number | null;
+}
+
 // Get current teacher ID from auth session
 export async function getCurrentTeacherId() {
   const authResult = await requireAuth(['teacher']);
@@ -146,55 +201,74 @@ export async function getTeacherEarnings(tutorId: string | null) {
   // Build transactions list
   const transactions: TransactionData[] = await Promise.all(
     allEarnings.slice(0, 50).map(async (earning) => {
+      // Access properties directly - Drizzle relations
+      const earningData = earning as {
+        sourceType?: string | null;
+        sourceId?: string | null;
+        grossAmount?: number | null;
+        platformFee?: number | null;
+        payoutMethod?: string | null;
+        enrollmentId?: string | null;
+      };
       let title = "";
       let studentName: string | undefined;
       let type: "course_sale" | "live_session" | "payout";
 
-      if ((earning as any).sourceType === "course") {
+      if (earningData.sourceType === "course") {
         type = "course_sale";
         // Get course details
         const course = await db.query.tuitionCourses.findFirst({
-          where: eq(tuitionCourses.id, (earning as any).sourceId),
+          where: eq(tuitionCourses.id, earningData.sourceId || ""),
           columns: { title: true },
         });
         title = course?.title || "Course Sale";
 
         // Get student info from enrollment
-        if (earning.enrollmentId) {
+        if (earningData.enrollmentId) {
           const enrollment = await db.query.tuitionEnrollments.findFirst({
-            where: eq(tuitionEnrollments.id, earning.enrollmentId),
+            where: eq(tuitionEnrollments.id, earningData.enrollmentId),
             with: {
               student: true,
             },
           });
-          if (enrollment?.student) {
-            studentName = `${(enrollment.student as any).firstName} ${(enrollment.student as any).lastName || ""}`.trim();
+          const studentArray = enrollment?.student as unknown as {
+            firstName: string | null;
+            lastName: string | null;
+          }[] | undefined;
+          const student = studentArray?.[0];
+          if (student) {
+            studentName = `${student.firstName} ${student.lastName || ""}`.trim();
           }
         }
-      } else if ((earning as any).sourceType === "live_session") {
+      } else if (earningData.sourceType === "live_session") {
         type = "live_session";
         // Get session details
         const session = await db.query.liveSessions.findFirst({
-          where: eq(liveSessions.id, (earning as any).sourceId),
-          columns: { title: true },
+          where: eq(liveSessions.id, earningData.sourceId || ""),
+          columns: { title: true, subject: true },
         });
-        title = session?.title || `${(session as any)?.subject || ""} Live Session`;
+        title = session?.title || `${session?.subject || ""} Live Session`;
 
         // For live sessions, student would be from the session
-        if ((earning as any).sourceId) {
+        if (earningData.sourceId) {
           const session = await db.query.liveSessions.findFirst({
-            where: eq(liveSessions.id, (earning as any).sourceId),
+            where: eq(liveSessions.id, earningData.sourceId),
             with: {
               student: true,
             },
           });
-          if (session?.student) {
-            studentName = `${(session.student as any).firstName} ${(session.student as any).lastName || ""}`.trim();
+          const studentArray = session?.student as unknown as {
+            firstName: string | null;
+            lastName: string | null;
+          }[] | undefined;
+          const student = studentArray?.[0];
+          if (student) {
+            studentName = `${student.firstName} ${student.lastName || ""}`.trim();
           }
         }
       } else {
         type = "payout";
-        title = `Payout - ${new Date(earning.earnedAt).toLocaleDateString("en-US", { month: "long", year: "numeric" })}`;
+        title = `Payout - ${new Date(earning.earnedAt || new Date()).toLocaleDateString("en-US", { month: "long", year: "numeric" })}`;
       }
 
       const status = earning.payoutStatus === "paid"
@@ -207,13 +281,13 @@ export async function getTeacherEarnings(tutorId: string | null) {
         id: earning.id,
         type,
         title,
-        amount: (earning as any).grossAmount || 0,
-        fee: (earning as any).platformFee || 0,
+        amount: earningData.grossAmount || 0,
+        fee: earningData.platformFee || 0,
         netAmount: earning.amount || 0,
         status,
         date: earning.earnedAt ? new Date(earning.earnedAt).toISOString().split("T")[0] : "",
         student: studentName,
-        method: (earning as any).payoutMethod || undefined,
+        method: earningData.payoutMethod || undefined,
       };
     })
   );
@@ -226,6 +300,7 @@ export async function getTeacherEarnings(tutorId: string | null) {
 
   const courseStats: CourseStatsData[] = await Promise.all(
     courses.map(async (course) => {
+      const courseData = course as { type?: string | null; price?: number | null };
       // Get enrollment count
       const [enrollmentResult] = await db
         .select({ count: count(), totalRevenue: sum(tuitionEnrollments.tutorEarnings) })
@@ -255,7 +330,7 @@ export async function getTeacherEarnings(tutorId: string | null) {
 
       // For live sessions, get sessions completed
       let sessionsCompleted = 0;
-      if ((course as any).type === "online_live") {
+      if (courseData.type === "online_live") {
         const sessions = await db.query.liveSessions.findMany({
           where: and(
             eq(liveSessions.courseId, course.id),
@@ -268,17 +343,17 @@ export async function getTeacherEarnings(tutorId: string | null) {
       return {
         id: course.id,
         title: course.title,
-        type: (course as any).type === "online_recorded"
+        type: courseData.type === "online_recorded"
           ? "Recorded Course"
-          : (course as any).type === "online_live"
+          : courseData.type === "online_live"
           ? "Live Sessions"
           : "Physical Tuition",
         enrollments: enrollmentResult.count || 0,
         totalRevenue: Number(enrollmentResult.totalRevenue || 0),
         avgRating: Math.round(avgRating * 10) / 10,
-        price: (course as any).price || 0,
-        completionRate: (course as any).type === "online_recorded" ? completionRate : undefined,
-        sessionsCompleted: (course as any).type === "online_live" ? sessionsCompleted : undefined,
+        price: courseData.price || 0,
+        completionRate: courseData.type === "online_recorded" ? completionRate : undefined,
+        sessionsCompleted: courseData.type === "online_live" ? sessionsCompleted : undefined,
       };
     })
   );

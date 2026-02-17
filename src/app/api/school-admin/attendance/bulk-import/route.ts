@@ -1,30 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { attendance, users, classes } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
+import { requireAuth } from "@/lib/auth-utils";
 
 // POST /api/school-admin/attendance/bulk-import - CSV import of attendance
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['admin', 'school-admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId, user } = authResult;
 
     const body = await request.json();
     const { records } = body; // Array of attendance records
 
     if (!Array.isArray(records)) {
       return NextResponse.json({ error: "Invalid data format" }, { status: 400 });
-    }
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || currentUser.type !== "admin") {
-      return NextResponse.json({ error: "Forbidden - Admins only" }, { status: 403 });
     }
 
     const now = new Date();
@@ -70,8 +63,8 @@ export async function POST(request: NextRequest) {
           // Create new
           await db.insert(attendance)
             .values({
-              id: `att_${Date.now()}_${studentId}_${Math.random().toString(36).substr(2, 9)}`,
-              schoolId: currentUser.schoolId,
+              id: `att_${Date.now()}_${studentId}_${Math.random().toString(36).substring(2, 11)}`,
+              schoolId: user.schoolId,
               classId,
               studentId,
               date,
@@ -79,7 +72,7 @@ export async function POST(request: NextRequest) {
               notes,
               reason,
               entryMethod: "csv_import",
-              recordedBy: currentUser.id,
+              recordedBy: userId,
               createdAt: now,
               updatedAt: now,
             });

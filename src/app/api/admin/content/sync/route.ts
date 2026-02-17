@@ -1,52 +1,54 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
+import type { ApiSuccess, ApiErrorResponse } from "@/types";
 import { db } from "@/lib/db";
-import { dataSources, users } from "@/lib/db/schema";
+import { dataSources } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 // GET /api/admin/content/sync - Get sync status
 export async function GET(request: NextRequest) {
+  const authResult = await requireAuth(['admin']);
+  if ('error' in authResult) {
+    return NextResponse.json(
+      { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
+      { status: authResult.status }
+    );
+  }
+
+  const { userId } = authResult;
+
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || currentUser.type !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
     const sources = await db.query.dataSources.findMany();
 
-    return NextResponse.json({ sources });
+    logger.info("Sync status fetched", { userId, count: sources.length });
+
+    return NextResponse.json({ data: sources } satisfies ApiSuccess<typeof sources>);
   } catch (error) {
-    console.error("Sync status fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch sync status" }, { status: 500 });
+    logger.apiError(error, { route: "/api/admin/content/sync", method: "GET", userId });
+    return NextResponse.json(
+      { error: "Failed to fetch sync status", status: 500 } satisfies ApiErrorResponse,
+      { status: 500 }
+    );
   }
 }
 
 // POST /api/admin/content/sync - Trigger sync
 export async function POST(request: NextRequest) {
-  try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  const authResult = await requireAuth(['admin']);
+  if ('error' in authResult) {
+    return NextResponse.json(
+      { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
+      { status: authResult.status }
+    );
+  }
 
+  const { userId } = authResult;
+
+  try {
     const body = await request.json();
     const { source } = body; // "ipedx", "onet", "rub"
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || currentUser.type !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
     // Update sync status
     await db.update(dataSources)
@@ -59,13 +61,16 @@ export async function POST(request: NextRequest) {
     // Trigger sync process (placeholder - in production, this would call the actual sync service)
     // For now, just return success
 
+    logger.info("Sync triggered", { source, userId });
+
     return NextResponse.json({
-      success: true,
-      message: `Sync initiated for ${source}`,
-      // syncStatus: "active",
-    });
+      data: { success: true, message: `Sync initiated for ${source}` },
+    } satisfies ApiSuccess<{ success: boolean; message: string }>);
   } catch (error) {
-    console.error("Sync trigger error:", error);
-    return NextResponse.json({ error: "Failed to trigger sync" }, { status: 500 });
+    logger.apiError(error, { route: "/api/admin/content/sync", method: "POST", userId });
+    return NextResponse.json(
+      { error: "Failed to trigger sync", status: 500 } satisfies ApiErrorResponse,
+      { status: 500 }
+    );
   }
 }

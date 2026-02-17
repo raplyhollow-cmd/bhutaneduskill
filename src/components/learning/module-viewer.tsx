@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Play,
   CheckCircle,
@@ -35,7 +36,7 @@ export interface StudentProgress {
 }
 
 export interface LearningModule {
-  id: string;
+  id?: string;
   title: string;
   description: string;
   subject: string;
@@ -44,6 +45,8 @@ export interface LearningModule {
   thumbnailUrl?: string;
   estimatedHours: number;
   lessons: ModuleLesson[];
+  classId?: string;
+  isPublished?: boolean;
 }
 
 interface ModuleViewerProps {
@@ -319,9 +322,10 @@ function ContentRenderer({ content }: ContentRendererProps) {
   switch (content.type) {
     case "text":
       return (
-        <div className="prose max-w-none">
-          <p className="whitespace-pre-wrap">{content.content || ""}</p>
-        </div>
+        <div
+          className="prose prose-sm max-w-none"
+          dangerouslySetInnerHTML={{ __html: content.content || "" }}
+        />
       );
 
     case "video":
@@ -422,9 +426,7 @@ function ContentRenderer({ content }: ContentRendererProps) {
               <p className="text-sm text-muted-foreground">Knowledge Check</p>
             </div>
           </div>
-          <p className="text-muted-foreground">
-            Quiz functionality coming soon. Quiz ID: {content.url}
-          </p>
+          <QuizRenderer content={content} />
         </div>
       );
 
@@ -447,4 +449,198 @@ function ContentRenderer({ content }: ContentRendererProps) {
     default:
       return <p>Unknown content type</p>;
   }
+}
+
+// ============================================================================
+// QUIZ RENDERER COMPONENT
+// ============================================================================
+
+interface QuizRendererProps {
+  content: ModuleContent;
+}
+
+interface QuizQuestion {
+  id: string;
+  type: "multiple_choice" | "true_false" | "short_answer";
+  question: string;
+  options?: string[];
+  correctAnswer: string | number;
+  points: number;
+  explanation?: string;
+}
+
+interface QuizData {
+  questions: QuizQuestion[];
+  passingScore: number;
+  timeLimit?: number;
+  shuffleQuestions: boolean;
+  showResults: "immediate" | "after_completion" | "never";
+}
+
+function QuizRenderer({ content }: QuizRendererProps) {
+  const [started, setStarted] = useState(false);
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [answers, setAnswers] = useState<Record<string, string | number>>({});
+  const [showResults, setShowResults] = useState(false);
+  const [score, setScore] = useState(0);
+
+  // Extract quiz data from content
+  const quizData = content.quizData as QuizData | undefined;
+  const questions = quizData?.questions || [];
+
+  if (!started) {
+    return (
+      <div className="text-center py-8">
+        <div className="mb-4">
+          <p className="text-2xl font-bold">{questions.length}</p>
+          <p className="text-sm text-muted-foreground">Questions</p>
+        </div>
+        {quizData?.timeLimit && (
+          <div className="mb-4">
+            <p className="text-2xl font-bold">{quizData.timeLimit}</p>
+            <p className="text-sm text-muted-foreground">Minutes</p>
+          </div>
+        )}
+        {quizData?.passingScore && (
+          <div className="mb-4">
+            <p className="text-2xl font-bold">{quizData.passingScore}%</p>
+            <p className="text-sm text-muted-foreground">Passing Score</p>
+          </div>
+        )}
+        <Button onClick={() => setStarted(true)}>Start Quiz</Button>
+      </div>
+    );
+  }
+
+  if (showResults) {
+    const percentage = Math.round((score / questions.length) * 100);
+    const passed = percentage >= (quizData?.passingScore || 70);
+
+    return (
+      <div className="text-center py-8">
+        <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 ${passed ? "bg-green-100" : "bg-amber-100"}`}>
+          <span className={`text-3xl font-bold ${passed ? "text-green-600" : "text-amber-600"}`}>
+            {percentage}%
+          </span>
+        </div>
+        <h3 className="text-xl font-bold mb-2">
+          {passed ? "Congratulations! You passed!" : "Keep practicing!"}
+        </h3>
+        <p className="text-muted-foreground mb-4">
+          You got {score} out of {questions.length} questions correct.
+        </p>
+        <Button variant="outline" onClick={() => {
+          setStarted(false);
+          setShowResults(false);
+          setCurrentQuestion(0);
+          setAnswers({});
+          setScore(0);
+        }}>
+          Retake Quiz
+        </Button>
+      </div>
+    );
+  }
+
+  const question = questions[currentQuestion];
+  if (!question) {
+    return <p>No questions available.</p>;
+  }
+
+  const handleAnswer = (value: string | number) => {
+    setAnswers({ ...answers, [question.id]: value });
+  };
+
+  const handleNext = () => {
+    if (currentQuestion < questions.length - 1) {
+      setCurrentQuestion(currentQuestion + 1);
+    } else {
+      // Calculate score
+      let correct = 0;
+      questions.forEach((q) => {
+        const answer = answers[q.id];
+        if (answer === q.correctAnswer) correct++;
+      });
+      setScore(correct);
+      setShowResults(true);
+    }
+  };
+
+  const hasAnswer = answers[question.id] !== undefined;
+
+  return (
+    <div className="space-y-6">
+      {/* Progress */}
+      <div className="flex items-center gap-4">
+        <div className="flex-1">
+          <div className="flex items-center justify-between text-sm mb-2">
+            <span>Question {currentQuestion + 1} of {questions.length}</span>
+            <span className="text-muted-foreground">{question.points} points</span>
+          </div>
+          <Progress value={((currentQuestion + 1) / questions.length) * 100} />
+        </div>
+      </div>
+
+      {/* Question */}
+      <div>
+        <p className="font-medium text-lg mb-4">{question.question}</p>
+
+        {question.type === "multiple_choice" && question.options && (
+          <div className="space-y-2">
+            {question.options.map((option, idx) => (
+              <button
+                key={idx}
+                onClick={() => handleAnswer(idx)}
+                className={`w-full text-left p-4 rounded-lg border transition-colors ${
+                  answers[question.id] === idx
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "hover:bg-muted"
+                }`}
+              >
+                <span className="font-medium mr-2">{String.fromCharCode(65 + idx)}.</span>
+                {option}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {question.type === "true_false" && (
+          <div className="space-y-2">
+            {[
+              { value: "true", label: "True" },
+              { value: "false", label: "False" },
+            ].map((option) => (
+              <button
+                key={option.value}
+                onClick={() => handleAnswer(option.value)}
+                className={`w-full text-left p-4 rounded-lg border transition-colors ${
+                  answers[question.id] === option.value
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "hover:bg-muted"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {question.type === "short_answer" && (
+          <Textarea
+            value={answers[question.id] as string || ""}
+            onChange={(e) => handleAnswer(e.target.value)}
+            placeholder="Type your answer here..."
+            rows={3}
+          />
+        )}
+      </div>
+
+      {/* Actions */}
+      <div className="flex justify-end">
+        <Button onClick={handleNext} disabled={!hasAnswer}>
+          {currentQuestion < questions.length - 1 ? "Next Question" : "Submit Quiz"}
+        </Button>
+      </div>
+    </div>
+  );
 }

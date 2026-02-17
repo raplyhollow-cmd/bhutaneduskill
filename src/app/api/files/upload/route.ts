@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { writeFile, mkdir, unlink } from "fs/promises";
 import { join } from "path";
 import { db } from "@/lib/db";
@@ -31,11 +31,13 @@ const UPLOAD_RATE_LIMIT = {
  */
 export async function POST(request: NextRequest) {
   try {
-    // Authentication check
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Authentication check with role-based access
+    const authResult = await requireAuth(['admin', 'school-admin', 'teacher', 'student']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+
+    const { userId, user } = authResult;
 
     // Rate limiting check
     const clientIp = getClientIp(request);
@@ -180,6 +182,12 @@ export async function POST(request: NextRequest) {
  * Get allowed file types and size limits
  */
 export async function GET() {
+  // Authentication check with role-based access
+  const authResult = await requireAuth(['admin', 'school-admin', 'teacher', 'student']);
+  if ('error' in authResult) {
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+  }
+
   return NextResponse.json({
     allowedTypes: {
       image: ['jpeg', 'png', 'gif', 'webp'],

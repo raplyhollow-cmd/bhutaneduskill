@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowRight, Building, GraduationCap, MapPin, Users, BookOpen } from "lucide-react";
+import { ErrorBoundary } from "@/components/error/error-boundary";
 
 const categories = [
   {
@@ -66,6 +67,22 @@ function ProgramCategory({ category, index }: { category: typeof categories[0]; 
 
 export function RUBCollegesSection() {
   return (
+    <ErrorBoundary
+      fallback={
+        <section className="py-24 bg-white dark:bg-gray-950">
+          <div className="max-w-6xl mx-auto px-6">
+            <div className="text-center">
+              <h2 className="text-3xl sm:text-4xl font-semibold text-gray-950 dark:text-white mb-4">
+                Royal University of Bhutan
+              </h2>
+              <p className="text-lg text-gray-600 dark:text-gray-400">
+                Explore programs across 11 colleges and find the perfect fit for your future.
+              </p>
+            </div>
+          </div>
+        </section>
+      }
+    >
     <section className="py-24 bg-white dark:bg-gray-950">
       <div className="max-w-6xl mx-auto px-6">
         {/* Header */}
@@ -201,5 +218,6 @@ export function RUBCollegesSection() {
         </motion.div>
       </div>
     </section>
+    </ErrorBoundary>
   );
 }

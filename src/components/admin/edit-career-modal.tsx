@@ -8,11 +8,26 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { updateCareer } from "@/app/admin/careers/actions";
 
+interface Career {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  riasecCode?: string;
+  skills?: string[];
+  educationLevel?: string;
+  subjects?: string[];
+  workEnvironment?: string;
+  typicalSalary?: string;
+  bhutanDemand?: "high" | "medium" | "low";
+  bhutanSpecific?: boolean;
+}
+
 interface EditCareerModalProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  career: any;
+  career: Career | null;
 }
 
 export function EditCareerModal({ open, onClose, onSuccess, career }: EditCareerModalProps) {
@@ -224,7 +239,7 @@ export function EditCareerModal({ open, onClose, onSuccess, career }: EditCareer
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="edit-bhutanDemand">Demand in Bhutan *</Label>
-              <Select value={bhutanDemand} onValueChange={(value: any) => setBhutanDemand(value)}>
+              <Select value={bhutanDemand} onValueChange={(value: "high" | "medium" | "low") => setBhutanDemand(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

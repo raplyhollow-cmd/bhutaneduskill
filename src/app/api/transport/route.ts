@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { transportRoutes, transportAllocations, vehicles, drivers, users } from "@/lib/db/schema";
 import { eq, and, desc, sql, or } from "drizzle-orm";
@@ -14,13 +14,14 @@ import { nanoid } from "nanoid";
 // GET - Fetch transport data
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth();
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId, user } = authResult;
 
     const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
+      where: eq(users.id, userId),
       columns: { id: true, type: true, role: true, schoolId: true },
     });
 
@@ -36,7 +37,7 @@ export async function GET(request: NextRequest) {
       const allocation = await db.query.transportAllocations.findFirst({
         where: and(
           eq(transportAllocations.studentId, currentUser.id),
-          sql`${transportAllocations.isActive} = 1`
+          eq(transportAllocations.isActive, true)
         ),
         with: {
           route: {
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
       const routes = await db.query.transportRoutes.findMany({
         where: and(
           eq(transportRoutes.schoolId, currentUser.schoolId || ""),
-          sql`${transportRoutes.isActive} = 1`
+          eq(transportRoutes.isActive, true)
         ),
         with: {
           vehicle: true,
@@ -98,7 +99,7 @@ export async function GET(request: NextRequest) {
     const routes = await db.query.transportRoutes.findMany({
       where: and(
         eq(transportRoutes.schoolId, currentUser.schoolId || ""),
-        sql`${transportRoutes.isActive} = 1`
+        eq(transportRoutes.isActive, true)
       ),
       with: {
         vehicle: true,
@@ -127,26 +128,19 @@ export async function GET(request: NextRequest) {
 // POST - Create or update transport data
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['admin', 'school-admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId, user } = authResult;
 
     const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
+      where: eq(users.id, userId),
       columns: { id: true, type: true, role: true, schoolId: true },
     });
 
     if (!currentUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    // Only school admins can manage transport
-    if (currentUser.role !== "school_admin" && currentUser.role !== "admin") {
-      return NextResponse.json(
-        { error: "You don't have permission to manage transport" },
-        { status: 403 }
-      );
     }
 
     const body = await request.json();
@@ -187,10 +181,10 @@ export async function POST(request: NextRequest) {
         stops: stops || [],
         capacity: 40, // Default capacity
         currentStudents: 0,
-        isActive: 1,
+        isActive: true,
         academicYear: new Date().getFullYear().toString(),
-        createdAt: Math.floor(Date.now() / 1000),
-        updatedAt: Math.floor(Date.now() / 1000),
+        createdAt: new Date(),
+        updatedAt: new Date(),
       } as any).returning();
 
       return NextResponse.json({
@@ -214,8 +208,9 @@ export async function POST(request: NextRequest) {
         dropTime,
         academicYear: new Date().getFullYear().toString(),
         status: "active",
-        createdAt: Math.floor(Date.now() / 1000),
-        updatedAt: Math.floor(Date.now() / 1000),
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       } as any).returning();
 
       return NextResponse.json({

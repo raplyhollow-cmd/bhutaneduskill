@@ -1,29 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
-import { assessmentTypes, users } from "@/lib/db/schema";
+import { assessmentTypes } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 
 // GET /api/assessment-types - Get assessment types
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId } = authResult;
 
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category");
     const targetAudience = searchParams.get("targetAudience");
     const targetGrade = searchParams.get("targetGrade");
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
 
     // Build conditions - only show active assessments
     const conditions = [eq(assessmentTypes.isActive, true)];
@@ -61,21 +54,14 @@ export async function GET(request: NextRequest) {
 // POST /api/assessment-types - Create assessment type (admin only)
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId } = authResult;
 
     const body = await request.json();
     const { slug, name, description, targetGrade, targetAudience, category, duration, questionCount } = body;
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || (currentUser as any).type !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
     const [newType] = await db
       .insert(assessmentTypes)

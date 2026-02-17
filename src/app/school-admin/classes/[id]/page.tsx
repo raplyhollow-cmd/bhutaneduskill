@@ -48,6 +48,66 @@ interface ClassDetailPageProps {
   searchParams: Promise<{ page?: string }>;
 }
 
+interface Teacher {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  employeeId?: string;
+  email?: string;
+}
+
+interface Student {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+}
+
+interface DrizzleEnrollmentResult {
+  id: string;
+  studentId: string;
+  rollNumber?: string;
+  status: string;
+  section?: string;
+  academicYear: string;
+  enrollmentDate: string;
+  classId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  student: Student[];
+}
+
+interface DrizzleTeacherAssignmentResult {
+  id: string;
+  teacherId: string;
+  classId: string;
+  subjectId?: string;
+  role: string;
+  isPrimary: boolean;
+  isActive: boolean;
+  academicYear: string;
+  createdAt: Date;
+  updatedAt: Date;
+  teacher: Teacher[];
+}
+
+interface HomeworkItem {
+  id: string;
+  title: string;
+  dueDate: string | Date;
+  isPublished: boolean;
+}
+
+interface ClassInfo {
+  id: string;
+  grade: number;
+  section: string;
+  academicYear: string;
+  teacherId: string;
+  schoolId: string;
+}
+
 async function getClassData(classId: string) {
   const { userId } = await auth();
   if (!userId) {
@@ -57,7 +117,7 @@ async function getClassData(classId: string) {
   // Get class details
   const classInfo = await db.query.classes.findFirst({
     where: eq(classes.id, classId),
-  });
+  }) as ClassInfo | null;
 
   if (!classInfo) {
     return null;
@@ -66,7 +126,7 @@ async function getClassData(classId: string) {
   // Get class teacher
   const classTeacher = await db.query.users.findFirst({
     where: eq(users.id, classInfo.teacherId),
-  });
+  }) as Teacher | null;
 
   // Get enrolled students
   const enrollmentList = await db.query.enrollments.findMany({
@@ -78,7 +138,7 @@ async function getClassData(classId: string) {
       student: true,
     },
     orderBy: [enrollments.rollNumber],
-  });
+  }) as DrizzleEnrollmentResult[];
 
   // Get subjects for this grade
   const gradeSubjects = await db.query.subjects.findMany({
@@ -94,14 +154,14 @@ async function getClassData(classId: string) {
     with: {
       teacher: true,
     },
-  });
+  }) as DrizzleTeacherAssignmentResult[];
 
   // Get recent homework for this class
   const recentHomework = await db.query.homework.findMany({
     where: eq(homework.classId, classId),
     orderBy: [desc(homework.createdAt)],
     limit: 5,
-  });
+  }) as HomeworkItem[];
 
   // Get attendance summary for today
   const today = new Date().toISOString().split("T")[0];
@@ -119,7 +179,7 @@ async function getClassData(classId: string) {
   // Note: Disable ts-expect for Drizzle ORM query results
   const availableStudents = await db.query.users.findMany({
     where: eq(users.type, "student"),
-  });
+  }) as Student[];
 
   return {
     classInfo,
@@ -365,14 +425,14 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
               </CardHeader>
               <CardContent className="space-y-3">
                 {otherTeachers.map((assignment) => {
-                  const teacher = assignment.teacher as any;
+                  const teacher = assignment.teacher[0]; // teacher is an array from Drizzle query
                   return (
                     <div key={assignment.id} className="flex items-center gap-3">
                       <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-xs font-medium">
-                        {teacher.firstName?.[0]}{teacher.lastName?.[0] || ""}
+                        {teacher?.firstName?.[0]}{teacher?.lastName?.[0] || ""}
                       </div>
                       <div className="flex-1">
-                        <p className="text-sm font-medium">{teacher.firstName} {teacher.lastName || ""}</p>
+                        <p className="text-sm font-medium">{teacher?.firstName || ""} {teacher?.lastName || ""}</p>
                         <p className="text-xs text-gray-500 capitalize">{assignment.role}</p>
                       </div>
                     </div>
@@ -437,7 +497,7 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-violet-100 rounded-full flex items-center justify-center">
                               <span className="text-violet-600 font-medium text-sm">
-                                {((enrollment.student as any)?.firstName?.[0] ?? '') + ((enrollment.student as any)?.lastName?.[0] ?? '')}
+                                {(enrollment.student[0]?.firstName?.[0] ?? '') + (enrollment.student[0]?.lastName?.[0] ?? '')}
                               </span>
                             </div>
                             <div>
@@ -445,24 +505,24 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                                 href={`/school-admin/students/${enrollment.studentId}`}
                                 className="font-medium text-gray-900 hover:text-violet-600"
                               >
-                                {(enrollment.student as any)?.firstName ?? ''} {(enrollment.student as any)?.lastName ?? ''}
+                                {enrollment.student[0]?.firstName ?? ''} {enrollment.student[0]?.lastName ?? ''}
                               </Link>
-                              <p className="text-sm text-gray-500">{(enrollment.student as any)?.email || "No email"}</p>
+                              <p className="text-sm text-gray-500">{enrollment.student[0]?.email || "No email"}</p>
                             </div>
                           </div>
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex flex-col gap-1 text-sm">
-                            {(enrollment.student as any)?.phone && (
+                            {enrollment.student[0]?.phone && (
                               <div className="flex items-center gap-1 text-gray-600">
                                 <Phone className="w-3 h-3" />
-                                {(enrollment.student as any).phone}
+                                {enrollment.student[0].phone}
                               </div>
                             )}
-                            {(enrollment.student as any)?.email && (
+                            {enrollment.student[0]?.email && (
                               <div className="flex items-center gap-1 text-gray-600">
                                 <Mail className="w-3 h-3" />
-                                {(enrollment.student as any).email}
+                                {enrollment.student[0].email}
                               </div>
                             )}
                           </div>

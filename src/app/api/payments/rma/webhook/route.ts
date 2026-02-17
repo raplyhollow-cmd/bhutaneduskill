@@ -3,6 +3,7 @@ import { createRMAGateway } from "@/lib/payment/rma-gateway";
 import { db } from "@/lib/db";
 import { feePayments, studentFees } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { logger } from "@/lib/logger";
 
 // ============================================================================
 // POST /api/payments/rma/webhook - RMA payment webhook
@@ -29,14 +30,14 @@ export async function POST(request: NextRequest) {
     const signature = request.headers.get("X-RMA-Signature") || request.headers.get("x-signature");
 
     if (!signature) {
-      console.warn("[RMA Webhook] Missing signature");
+      logger.warn("Webhook missing signature", { ip: request.headers.get("x-forwarded-for") || "unknown" });
       return NextResponse.json({ error: "Missing signature" }, { status: 401 });
     }
 
     const isValid = gateway.verifyWebhookSignature(rawBody, signature);
 
     if (!isValid) {
-      console.warn("[RMA Webhook] Invalid signature");
+      logger.security("invalid_webhook_signature", { signature: signature?.substring(0, 10) + "..." });
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!payment) {
-      console.warn("[RMA Webhook] Payment not found:", transaction_id);
+      logger.warn("Payment not found for webhook", { transactionId: transaction_id });
       return NextResponse.json({ error: "Payment not found" }, { status: 404 });
     }
 
@@ -70,7 +71,7 @@ export async function POST(request: NextRequest) {
     const paymentStatus = await gateway.checkPaymentStatus(transaction_id);
 
     if (!paymentStatus) {
-      console.error("[RMA Webhook] Failed to check payment status");
+      logger.error(new Error("Failed to check payment status"), { transactionId: transaction_id });
       return NextResponse.json({ error: "Failed to verify payment" }, { status: 500 });
     }
 
@@ -103,7 +104,7 @@ export async function POST(request: NextRequest) {
           .where(eq(studentFees.id, studentFee.id));
       }
 
-      console.log("[RMA Webhook] Payment completed:", transaction_id);
+      logger.info("Payment completed successfully", { transactionId: transaction_id, amount });
 
     } else if (paymentStatus.status === "failed" || paymentStatus.status === "cancelled") {
       // Payment failed or cancelled
@@ -113,7 +114,7 @@ export async function POST(request: NextRequest) {
         })
         .where(eq(feePayments.id, payment.id));
 
-      console.log("[RMA Webhook] Payment failed:", transaction_id, paymentStatus.failureReason);
+      logger.info("Payment failed or cancelled", { transactionId: transaction_id, status: paymentStatus.status, reason: paymentStatus.failureReason });
     }
 
     // Return success response to RMA
@@ -122,7 +123,7 @@ export async function POST(request: NextRequest) {
       message: "Webhook processed",
     });
   } catch (error) {
-    console.error("[RMA Webhook] Error:", error);
+    logger.error(error, { route: "/api/payments/rma/webhook", method: "POST" });
     return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 });
   }
 }

@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { logger } from "@/lib/logger";
 
 // GET /api/user/profile - Get user profile
 export async function GET(req: NextRequest) {
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ profile: transformedProfile });
   } catch (error) {
-    console.error("[Profile API] Error fetching profile:", error);
+    logger.error(error, { route: "/api/user/profile", method: "GET" });
     return NextResponse.json(
       { error: "Failed to fetch profile" },
       { status: 500 }
@@ -41,12 +42,12 @@ export async function POST(req: NextRequest) {
     const { userId } = await auth();
 
     if (!userId) {
-      console.error("[Profile API] Unauthorized: No userId");
+      logger.security("unauthorized_access_attempt", { route: "/api/user/profile", method: "POST" });
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await req.json();
-    console.log("[Profile API] Updating profile for userId:", userId, "Body:", body);
+    logger.info("Updating profile", { userId });
 
     const {
       firstName,
@@ -66,7 +67,7 @@ export async function POST(req: NextRequest) {
     });
 
     if (existingUser) {
-      console.log("[Profile API] Updating existing user:", existingUser.id);
+      logger.debug("Updating existing user", { userId: existingUser.id });
 
       // Build update object with only the fields that exist in schema
       // We use sql to do a partial update, only updating provided fields
@@ -93,7 +94,7 @@ export async function POST(req: NextRequest) {
         updateData.settings = { ...currentSettings, bio: bio.trim() };
       }
 
-      console.log("[Profile API] Update data:", updateData);
+      logger.debug("User profile update data", { updateData });
 
       // Perform the update
       await db
@@ -106,7 +107,7 @@ export async function POST(req: NextRequest) {
         profile: { ...existingUser, ...updateData }
       });
     } else {
-      console.log("[Profile API] Creating new user for userId:", userId);
+      logger.info("Creating new user", { clerkUserId: userId });
 
       // Create new user with minimum required fields
       const newUserData: any = {
@@ -150,7 +151,7 @@ export async function POST(req: NextRequest) {
         if (!isNaN(gradeNum)) newUserData.classGrade = gradeNum;
       }
 
-      console.log("[Profile API] Creating user with data:", newUserData);
+      logger.debug("Creating user with data", { userId: newUserData.id });
 
       const result = await db
         .insert(users)
@@ -158,13 +159,12 @@ export async function POST(req: NextRequest) {
         .returning();
 
       const newUser = Array.isArray(result) ? result[0] : result;
-      console.log("[Profile API] User created successfully:", newUser.id);
+      logger.info("User created successfully", { userId: newUser.id });
 
       return NextResponse.json({ success: true, profile: newUser });
     }
   } catch (error) {
-    console.error("[Profile API] Error saving profile:", error);
-    console.error("[Profile API] Error stack:", error instanceof Error ? error.stack : "No stack trace");
+    logger.error(error, { route: "/api/user/profile", method: "POST" });
 
     // Get more detailed error info
     let errorMessage = "Unknown error";

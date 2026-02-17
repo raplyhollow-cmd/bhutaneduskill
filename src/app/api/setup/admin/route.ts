@@ -5,6 +5,7 @@ import { users, tenants, wizardProgress } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { neon } from "@neondatabase/serverless";
+import { logger } from "@/lib/logger";
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
 
     if (userRecord.length === 0) {
       // User doesn't exist - create them with default values
-      console.log("[Admin Setup] Creating new user for clerkUserId:", user.id);
+      logger.info("Creating new admin user", { clerkUserId: user.id });
 
       const newUserId = `user-${Date.now()}`;
       const firstName = user.firstName || "";
@@ -132,12 +133,12 @@ export async function POST(request: NextRequest) {
           INSERT INTO user_roles (id, user_id, role_id, assigned_by, created_at)
           VALUES (${nanoid()}, ${newUserId}, ${platformAdminRole[0].id}, ${newUserId}, NOW())
         `;
-        console.log("[Admin Setup] Assigned platform-admin role to user:", newUserId);
+        logger.info("Assigned platform-admin role to user", { userId: newUserId });
       }
 
       dbUser = (await db.select().from(users).where(eq(users.id, newUserId)).limit(1))[0];
 
-      console.log("[Admin Setup] Created new user:", dbUser.id);
+      logger.info("Created new admin user", { userId: dbUser.id });
     } else {
       dbUser = userRecord[0];
     }
@@ -152,7 +153,7 @@ export async function POST(request: NextRequest) {
         .limit(1);
     } catch (error) {
       // wizard_progress table doesn't exist - skip progress tracking
-      console.warn("[Admin Setup] wizard_progress table not available, skipping progress tracking");
+      logger.warn("wizard_progress table not available, skipping progress tracking");
     }
 
     if (existingProgress.length > 0) {
@@ -166,7 +167,7 @@ export async function POST(request: NextRequest) {
           })
           .where(eq(wizardProgress.id, existingProgress[0].id));
       } catch (error) {
-        console.warn("[Admin Setup] Could not update wizard_progress:", error);
+        logger.warn("Could not update wizard_progress", { error });
       }
     } else {
       try {
@@ -182,7 +183,7 @@ export async function POST(request: NextRequest) {
           updatedAt: new Date(),
         });
       } catch (error) {
-        console.warn("[Admin Setup] Could not insert wizard_progress:", error);
+        logger.warn("Could not insert wizard_progress", { error });
       }
     }
 
@@ -229,12 +230,12 @@ export async function POST(request: NextRequest) {
         .update(users)
         .set({ onboardingComplete: true })
         .where(eq(users.id, dbUser.id));
-      console.log("[Admin Setup] Marked onboarding as complete for user:", dbUser.id);
+      logger.info("Marked onboarding as complete for admin", { userId: dbUser.id });
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error in admin setup:", error);
+    logger.error(error, { route: "/api/setup/admin", method: "POST" });
     return NextResponse.json(
       { error: "Failed to process setup" },
       { status: 500 }

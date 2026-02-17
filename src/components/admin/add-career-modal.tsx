@@ -217,7 +217,7 @@ export function AddCareerModal({ open, onClose, onSuccess }: AddCareerModalProps
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="bhutanDemand">Demand in Bhutan *</Label>
-              <Select value={bhutanDemand} onValueChange={(value: any) => setBhutanDemand(value)}>
+              <Select value={bhutanDemand} onValueChange={(value: "high" | "medium" | "low") => setBhutanDemand(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

@@ -1,20 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { users, examResults } from "@/lib/db/schema";
 import { eq, and, or, desc } from "drizzle-orm";
-import { requireAuth, canAccessSchool } from "@/lib/db/tenant";
+import { requireAuth } from "@/lib/auth-utils";
+import { canAccessSchool } from "@/lib/db/tenant";
 
 export async function GET(request: NextRequest) {
   try {
-    const currentUser = await requireAuth();
+    const authResult = await requireAuth(['student', 'teacher', 'admin', 'school-admin', 'parent', 'counselor']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+    }
+
+    const currentUser = authResult.user;
 
     const { searchParams } = new URL(request.url);
     const studentId = searchParams.get("studentId");
     const examType = searchParams.get("examType");
 
     // Determine which results to fetch based on user role
-    let whereCondition: any = eq(examResults.userId, currentUser.id);
+    let whereCondition: ReturnType<typeof eq> | undefined = eq(examResults.userId, currentUser.id);
 
     // Counselors, teachers, and admins can view other students' results
     if (["counselor", "teacher", "admin"].includes(currentUser.type)) {
@@ -61,10 +66,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ results });
-  } catch (error: any) {
-    if (error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+  } catch (error: unknown) {
     console.error("Results fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch results" }, { status: 500 });
   }
@@ -72,7 +74,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const currentUser = await requireAuth();
+    const authResult = await requireAuth(['teacher', 'admin', 'school-admin', 'counselor']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+    }
+
+    const currentUser = authResult.user;
 
     const body = await request.json();
     const { userId, examType, examYear, subjects } = body;
@@ -137,8 +144,8 @@ export async function POST(request: NextRequest) {
       .returning();
 
     return NextResponse.json({ success: true, result });
-  } catch (error: any) {
-    if (error.message === "Unauthorized") {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     console.error("Results save error:", error);

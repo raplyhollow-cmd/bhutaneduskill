@@ -15,8 +15,11 @@ export async function POST(request: NextRequest) {
     const { userId, user } = authResult;
 
     // Check RBAC permission for creating assessments
-    const permCheck = await requirePermission(userId, "assessments.create");
-    if (permCheck) return permCheck;
+    // Students can create assessments for themselves without special permission
+    if (user.type !== "student") {
+      const permCheck = await requirePermission(userId, "assessments.create");
+      if (permCheck) return permCheck;
+    }
 
     const body = await request.json();
     const { answers, results } = body;
@@ -59,28 +62,79 @@ export async function POST(request: NextRequest) {
   }
 }
 
+/**
+ * GET /api/assessments/mbti - Get MBTI assessment results
+ *
+ * Query params:
+ * - userId: Filter by user ID (for parents viewing children's results)
+ * - limit: Maximum results to return (default: 10)
+ */
 export async function GET(request: NextRequest) {
   try {
-    // Authenticate user
-    const authResult = await requireAuth();
+    const authResult = await requireAuth(['parent', 'student', 'teacher', 'admin', 'school-admin', 'counselor']);
     if ('error' in authResult) {
       return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
-    const { userId } = authResult;
+    const { userId, user } = authResult;
 
-    // Check RBAC permission for reading assessments
-    const permCheck = await requirePermission(userId, "assessments.read");
-    if (permCheck) return permCheck;
+    const { searchParams } = new URL(request.url);
+    const userIdParam = searchParams.get("userId");
+    const limit = parseInt(searchParams.get("limit") || "10");
 
-    const userResults = await db.query.mbtiResults.findMany({
-      where: eq(mbtiResults.userId, userId),
-      orderBy: desc(mbtiResults.createdAt),
-      limit: 10,
-    });
+    // Parents can view their children's results
+    // Students can only view their own results
+    let targetUserId = userIdParam;
 
-    return NextResponse.json({ results: userResults });
+    if (user.type === "student") {
+      // Students can only see their own results
+      targetUserId = userId;
+    } else if (user.type === "parent" && !userIdParam) {
+      // Parent must specify which child
+      return NextResponse.json(
+        { error: "userId parameter is required for parents", results: [] },
+        { status: 400 }
+      );
+    }
+
+    // Build query conditions
+    const conditions = targetUserId ? eq(mbtiResults.userId, targetUserId) : undefined;
+
+    let results;
+    if (conditions) {
+      results = await db.query.mbtiResults.findMany({
+        where: conditions,
+        orderBy: [desc(mbtiResults.createdAt)],
+        limit,
+      });
+    } else {
+      results = await db.query.mbtiResults.findMany({
+        orderBy: [desc(mbtiResults.createdAt)],
+        limit,
+      });
+    }
+
+    // Format results to match expected schema
+    const formattedResults = results.map((result) => ({
+      ...result,
+      personalityType: result.personalityType || "INTJ",
+      scores: {
+        e: result.eiScore ? Math.round((100 + result.eiScore) / 2) : 50,
+        i: result.eiScore ? Math.round((100 - result.eiScore) / 2) : 50,
+        s: result.snScore ? Math.round((100 + result.snScore) / 2) : 50,
+        n: result.snScore ? Math.round((100 - result.snScore) / 2) : 50,
+        t: result.tfScore ? Math.round((100 + result.tfScore) / 2) : 50,
+        f: result.tfScore ? Math.round((100 - result.tfScore) / 2) : 50,
+        j: result.jpScore ? Math.round((100 + result.jpScore) / 2) : 50,
+        p: result.jpScore ? Math.round((100 - result.jpScore) / 2) : 50,
+      },
+      strengths: result.traits as string[] || [],
+      weaknesses: [],
+      recommendedCareers: result.recommendedCareers as string[] || [],
+    }));
+
+    return NextResponse.json({ results: formattedResults });
   } catch (error) {
     console.error("MBTI results fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch results" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to fetch results", results: [] }, { status: 500 });
   }
 }

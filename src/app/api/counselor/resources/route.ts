@@ -12,13 +12,58 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
-import { digitalResources } from "@/lib/db/library-schema";
-import { desc, eq, and, like, or, sql } from "drizzle-orm";
+import { counselorResources, users } from "@/lib/db/schema";
+import { notifications, notificationDeliveries } from "@/lib/db/notifications-schema";
+import { desc, eq, and, like, or, sql, count } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { logger } from "@/lib/logger";
+
+// Type definitions for proper type safety
+interface CreateResourceRequest {
+  title: string;
+  description: string;
+  resourceType: string;
+  format: string;
+  category: string;
+  tags: string[];
+  accessUrl: string;
+  thumbnailUrl: string;
+  isFeatured: boolean;
+}
+
+interface UpdateResourceRequest extends CreateResourceRequest {
+  id: string;
+}
+
+interface ShareResourceRequest {
+  resourceId: string;
+  studentIds: string[];
+  message?: string;
+}
+
+interface ResourceCategory {
+  id: string;
+  name: string;
+  icon: string;
+  count: number;
+  color: string;
+}
+
+// Category configuration
+const CATEGORIES: Record<string, { name: string; icon: string; color: string }> = {
+  career: { name: "Career Guidance", icon: "GraduationCap", color: "bg-blue-100 text-blue-700" },
+  college: { name: "College Resources", icon: "Briefcase", color: "bg-green-100 text-green-700" },
+  scholarship: { name: "Scholarship Info", icon: "Heart", color: "bg-red-100 text-red-700" },
+  mental: { name: "Mental Health", icon: "Brain", color: "bg-purple-100 text-purple-700" },
+  study: { name: "Study Skills", icon: "BookOpen", color: "bg-yellow-100 text-yellow-700" },
+  tools: { name: "Tools & Templates", icon: "FileText", color: "bg-gray-100 text-gray-700" },
+  video: { name: "Video Resources", icon: "Video", color: "bg-indigo-100 text-indigo-700" },
+  assessment: { name: "Assessment Templates", icon: "TrendingUp", color: "bg-teal-100 text-teal-700" },
+  intervention: { name: "Intervention Strategies", icon: "Users", color: "bg-orange-100 text-orange-700" },
+};
 
 // GET /api/counselor/resources - Fetch all resources with filtering
 export async function GET(request: NextRequest) {
-  // Allow students, teachers, counselors, school-admins to access resources
   const authResult = await requireAuth(['student', 'teacher', 'counselor', 'school-admin', 'admin']);
   if ('error' in authResult) {
     return NextResponse.json({ error: authResult.error }, { status: authResult.status });
@@ -32,114 +77,103 @@ export async function GET(request: NextRequest) {
 
   try {
     // Build query conditions
-    const conditions = [];
+    const conditions = [
+      eq(counselorResources.isActive, true),
+    ];
 
     // Add search filter
     if (search) {
       conditions.push(
         or(
-          like(digitalResources.title, `%${search}%`),
-          like(digitalResources.description, `%${search}%`)
-        )
+          like(counselorResources.title, `%${search}%`),
+          like(counselorResources.description, `%${search}%`)
+        )!
       );
     }
 
-    // Add category filter (using tags for categorization)
+    // Add category filter
     if (category !== "all") {
-      // Check if category exists in tags array
-      conditions.push(sql`${digitalResources.tags} LIKE ${`%${category}%`}`);
+      conditions.push(eq(counselorResources.category, category));
     }
 
     // Add type filter
     if (type !== "all") {
-      conditions.push(eq(digitalResources.resourceType, type));
+      conditions.push(eq(counselorResources.type, type));
     }
 
     // Add featured filter
     if (featured) {
-      // For now, mark all with certain tags as featured
-      conditions.push(sql`${digitalResources.tags} LIKE ${`%featured%`}`);
+      conditions.push(eq(counselorResources.isPublic, true));
     }
 
     // Build where clause
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    const whereClause = and(...conditions);
 
     // Fetch resources
     const resources = await db
       .select({
-        id: digitalResources.id,
-        title: digitalResources.title,
-        description: digitalResources.description,
-        resourceType: digitalResources.resourceType,
-        format: digitalResources.format,
-        fileSize: digitalResources.fileSize,
-        accessUrl: digitalResources.accessUrl,
-        thumbnailUrl: digitalResources.thumbnailUrl,
-        subjects: digitalResources.subjects,
-        tags: digitalResources.tags,
-        totalDownloads: digitalResources.totalDownloads,
-        totalViews: digitalResources.totalViews,
-        isActive: digitalResources.isActive,
-        createdAt: digitalResources.createdAt,
+        id: counselorResources.id,
+        title: counselorResources.title,
+        description: counselorResources.description,
+        type: counselorResources.type,
+        category: counselorResources.category,
+        url: counselorResources.url,
+        content: counselorResources.content,
+        tags: counselorResources.tags,
+        targetAudience: counselorResources.targetAudience,
+        isPublic: counselorResources.isPublic,
+        viewCount: counselorResources.viewCount,
+        downloadCount: counselorResources.downloadCount,
+        createdAt: counselorResources.createdAt,
+        updatedAt: counselorResources.updatedAt,
       })
-      .from(digitalResources)
+      .from(counselorResources)
       .where(whereClause)
-      .orderBy(desc(digitalResources.createdAt))
+      .orderBy(desc(counselorResources.createdAt))
       .limit(100);
 
-    // Fetch categories (based on unique tags)
-    const allResources = await db
-      .select({ tags: digitalResources.tags })
-      .from(digitalResources)
-      .where(eq(digitalResources.isActive, true));
+    // Fetch categories with counts
+    const categoryCounts = await db
+      .select({
+        category: counselorResources.category,
+        count: count(),
+      })
+      .from(counselorResources)
+      .where(eq(counselorResources.isActive, true))
+      .groupBy(counselorResources.category);
 
-    // Extract unique categories from tags
-    const categoryMap = new Map<string, number>();
-    const categoryIcons: Record<string, string> = {
-      career: "GraduationCap",
-      college: "Briefcase",
-      scholarship: "Heart",
-      mental: "Brain",
-      study: "BookOpen",
-      tools: "FileText",
-      video: "Video",
-    };
-
-    allResources.forEach((resource) => {
-      const tags = resource.tags as string[] || [];
-      tags.forEach((tag) => {
-        if (Object.keys(categoryIcons).includes(tag)) {
-          categoryMap.set(tag, (categoryMap.get(tag) || 0) + 1);
-        }
-      });
-    });
-
-    const categories = Array.from(categoryMap.entries()).map(([id, count]) => ({
-      id,
-      name: id.charAt(0).toUpperCase() + id.slice(1),
-      icon: categoryIcons[id] || "BookOpen",
-      count,
-    }));
+    const categories: ResourceCategory[] = Object.keys(CATEGORIES).map((catId) => {
+      const catCount = categoryCounts.find((c) => c.category === catId);
+      return {
+        id: catId,
+        name: CATEGORIES[catId].name,
+        icon: CATEGORIES[catId].icon,
+        count: catCount?.count || 0,
+        color: CATEGORIES[catId].color,
+      };
+    }).filter((cat) => cat.count > 0);
 
     // Calculate stats
     const totalResources = resources.length;
-    const totalDownloads = resources.reduce((sum, r) => sum + (r.totalDownloads || 0), 0);
-    const featuredCount = resources.filter((r) =>
-      (r.tags as string[] || []).includes("featured")
-    ).length;
+    const totalDownloads = resources.reduce((sum, r) => sum + (r.downloadCount || 0), 0);
+    const featuredCount = resources.filter((r) => r.isPublic).length;
+
+    logger.info("Counselor resources fetched", {
+      resourceCount: totalResources,
+      categoriesCount: categories.length,
+    });
 
     return NextResponse.json({
       resources: resources.map((r) => ({
         ...r,
-        category: (r.tags as string[] || [])[0] || "tools", // Use first tag as category
-        type: r.format || "document",
-        addedDate: new Date(r.createdAt as any).toISOString(),
-        isFeatured: (r.tags as string[] || []).includes("featured"),
-        downloads: r.totalDownloads || 0,
-        views: r.totalViews || 0,
-        fileSize: r.fileSize ? `${Math.round((r.fileSize / 1024)).toString()} KB` : undefined,
-        url: r.accessUrl || "#",
-        thumbnail: r.thumbnailUrl,
+        resourceType: r.type,
+        format: r.type,
+        addedDate: new Date(r.createdAt).toISOString(),
+        isFeatured: r.isPublic,
+        downloads: r.downloadCount || 0,
+        views: r.viewCount || 0,
+        url: r.url || "#",
+        thumbnail: (r.content as any)?.thumbnailUrl || null,
       })),
       categories,
       stats: {
@@ -150,9 +184,14 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Error fetching counselor resources:", error);
+    logger.apiError(error, { route: "/api/counselor/resources", method: "GET" });
     return NextResponse.json(
-      { error: "Failed to fetch resources", resources: [], categories: [], stats: { totalResources: 0, totalDownloads: 0, featuredCount: 0, categoriesCount: 0 } },
+      {
+        error: "Failed to fetch resources",
+        resources: [],
+        categories: [],
+        stats: { totalResources: 0, totalDownloads: 0, featuredCount: 0, categoriesCount: 0 }
+      },
       { status: 500 }
     );
   }
@@ -165,7 +204,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: authResult.error }, { status: authResult.status });
   }
 
-  const body = await request.json();
+  const { userId } = authResult;
+  const body: CreateResourceRequest = await request.json();
+
   const {
     title,
     description,
@@ -180,40 +221,67 @@ export async function POST(request: NextRequest) {
 
   try {
     // Validate required fields
-    if (!title || !description || !resourceType) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    if (!title || !description || !resourceType || !category) {
+      return NextResponse.json(
+        { error: "Missing required fields: title, description, resourceType, and category are required" },
+        { status: 400 }
+      );
     }
 
+    // Validate category exists
+    if (!CATEGORIES[category]) {
+      return NextResponse.json(
+        { error: `Invalid category: ${category}. Must be one of: ${Object.keys(CATEGORIES).join(", ")}` },
+        { status: 400 }
+      );
+    }
+
+    const resourceId = `resource_${Date.now()}_${nanoid(8)}`;
     const now = new Date();
 
+    // Prepare content object with thumbnail URL if provided
+    const content: Record<string, unknown> = {};
+    if (thumbnailUrl) {
+      content.thumbnailUrl = thumbnailUrl;
+    }
+
     // Create new resource
-    const newResource = await db
-      .insert(digitalResources)
+    const [newResource] = await db
+      .insert(counselorResources)
       .values({
-        id: nanoid(),
+        id: resourceId,
         schoolId: "platform", // Platform-wide resources
         title,
         description,
-        resourceType,
-        format: format || "pdf",
-        accessUrl: accessUrl || "",
-        thumbnailUrl,
-        subjects: category ? [category] : [],
+        type: resourceType,
+        category,
+        url: accessUrl || "",
+        content: Object.keys(content).length > 0 ? content : null,
         tags: isFeatured ? [...tags, "featured"] : tags,
-        totalDownloads: 0,
-        totalViews: 0,
+        targetAudience: "all",
+        isPublic: isFeatured,
         isActive: true,
+        viewCount: 0,
+        downloadCount: 0,
+        createdBy: userId,
         createdAt: now,
         updatedAt: now,
       })
       .returning();
+
+    logger.info("Counselor resource created", {
+      resourceId,
+      title,
+      category,
+      createdBy: userId,
+    });
 
     return NextResponse.json({
       success: true,
       resource: newResource,
     });
   } catch (error) {
-    console.error("Error creating counselor resource:", error);
+    logger.apiError(error, { route: "/api/counselor/resources", method: "POST" });
     return NextResponse.json({ error: "Failed to create resource" }, { status: 500 });
   }
 }
@@ -225,7 +293,8 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: authResult.error }, { status: authResult.status });
   }
 
-  const body = await request.json();
+  const { userId } = authResult;
+  const body: UpdateResourceRequest = await request.json();
   const { id, ...updates } = body;
 
   try {
@@ -233,26 +302,86 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Resource ID required" }, { status: 400 });
     }
 
+    // Validate category if provided
+    if (updates.category && !CATEGORIES[updates.category]) {
+      return NextResponse.json(
+        { error: `Invalid category: ${updates.category}` },
+        { status: 400 }
+      );
+    }
+
+    // Prepare update data
+    const updateData: Record<string, unknown> = {
+      ...updates,
+      updatedAt: new Date(),
+    };
+
+    // Handle content object for thumbnail
+    if (updates.thumbnailUrl !== undefined) {
+      const existingResource = await db
+        .select({ content: counselorResources.content })
+        .from(counselorResources)
+        .where(eq(counselorResources.id, id))
+        .limit(1);
+
+      const existingContent = (existingResource[0]?.content as Record<string, unknown>) || {};
+      updateData.content = {
+        ...existingContent,
+        thumbnailUrl: updates.thumbnailUrl,
+      };
+      delete updateData.thumbnailUrl;
+    }
+
+    // Map isFeatured to isPublic
+    if (updates.isFeatured !== undefined) {
+      updateData.isPublic = updates.isFeatured;
+      delete updateData.isFeatured;
+
+      // Update tags to include/remove featured
+      if (updateData.tags) {
+        const tags = updateData.tags as string[];
+        if (updates.isFeatured && !tags.includes("featured")) {
+          (updateData.tags as string[]) = [...tags, "featured"];
+        } else if (!updates.isFeatured) {
+          (updateData.tags as string[]) = tags.filter((t: string) => t !== "featured");
+        }
+      }
+    }
+
+    // Map resourceType to type
+    if (updates.resourceType !== undefined) {
+      updateData.type = updates.resourceType;
+      delete updateData.resourceType;
+    }
+
+    // Map accessUrl to url
+    if (updates.accessUrl !== undefined) {
+      updateData.url = updates.accessUrl;
+      delete updateData.accessUrl;
+    }
+
     // Update resource
     const updated = await db
-      .update(digitalResources)
-      .set({
-        ...updates,
-        updatedAt: Date.now(),
-      })
-      .where(eq(digitalResources.id, id))
+      .update(counselorResources)
+      .set(updateData)
+      .where(eq(counselorResources.id, id))
       .returning();
 
     if (updated.length === 0) {
       return NextResponse.json({ error: "Resource not found" }, { status: 404 });
     }
 
+    logger.info("Counselor resource updated", {
+      resourceId: id,
+      updatedBy: userId,
+    });
+
     return NextResponse.json({
       success: true,
       resource: updated[0],
     });
   } catch (error) {
-    console.error("Error updating counselor resource:", error);
+    logger.apiError(error, { route: "/api/counselor/resources", method: "PATCH" });
     return NextResponse.json({ error: "Failed to update resource" }, { status: 500 });
   }
 }
@@ -264,6 +393,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: authResult.error }, { status: authResult.status });
   }
 
+  const { userId } = authResult;
   const searchParams = request.nextUrl.searchParams;
   const id = searchParams.get("id");
 
@@ -272,12 +402,20 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Resource ID required" }, { status: 400 });
     }
 
-    // Delete resource
-    await db.delete(digitalResources).where(eq(digitalResources.id, id));
+    // Soft delete by setting isActive to false
+    await db
+      .update(counselorResources)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(counselorResources.id, id));
+
+    logger.info("Counselor resource deleted", {
+      resourceId: id,
+      deletedBy: userId,
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting counselor resource:", error);
+    logger.apiError(error, { route: "/api/counselor/resources", method: "DELETE" });
     return NextResponse.json({ error: "Failed to delete resource" }, { status: 500 });
   }
 }

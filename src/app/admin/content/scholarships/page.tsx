@@ -121,9 +121,9 @@ export default function AdminScholarshipsPage() {
     setIsSubmitting(true);
     try {
       const url = isEdit
-        ? `/api/admin/content/scholarships/${editingScholarship?.id}`
+        ? `/api/admin/content/scholarships?id=${editingScholarship?.id}`
         : "/api/admin/content/scholarships";
-      const method = isEdit ? "PATCH" : "POST";
+      const method = isEdit ? "PUT" : "POST";
 
       const response = await fetch(url, {
         method,
@@ -154,7 +154,7 @@ export default function AdminScholarshipsPage() {
     if (!deletingId) return;
 
     try {
-      const response = await fetch(`/api/admin/content/scholarships/${deletingId}`, {
+      const response = await fetch(`/api/admin/content/scholarships?id=${deletingId}`, {
         method: "DELETE",
       });
 

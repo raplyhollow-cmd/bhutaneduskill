@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { feePayments, studentFees, users } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
@@ -16,22 +16,17 @@ const paymentSchema = z.object({
 // GET /api/school-admin/fees/payments - List all payments
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['admin', 'school-admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId, user } = authResult;
 
     const { searchParams } = new URL(request.url);
     const studentId = searchParams.get("studentId");
     const limit = parseInt(searchParams.get("limit") || "50");
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || currentUser.type !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const currentUser = user;
 
     const payments = await db.query.feePayments.findMany({
       where: studentId ? eq(feePayments.studentFeeId, studentId) : undefined,
@@ -52,21 +47,16 @@ export async function GET(request: NextRequest) {
 // POST /api/school-admin/fees/payments - Record payment
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['admin', 'school-admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId, user } = authResult;
 
     const body = await request.json();
     const validatedData = paymentSchema.parse(body);
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || currentUser.type !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const currentUser = user;
 
     // Get student fee record
     const studentFee = await db.query.studentFees.findFirst({

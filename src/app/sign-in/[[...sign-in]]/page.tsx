@@ -29,9 +29,7 @@ export default function SignInPage() {
         {/* Sign In Form */}
         <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-xl p-8 border border-gray-200 dark:border-gray-800">
           <SignIn
-            afterSignInUrl={redirectUrl}
-            afterSignUpUrl={redirectUrl}
-            redirectUrl={redirectUrl}
+            fallbackRedirectUrl={redirectUrl}
           />
         </div>
 
@@ -45,9 +43,8 @@ export default function SignInPage() {
 
         {/* Help Links */}
         <div className="mt-8 flex justify-center gap-6 text-sm">
-          <Link href="/forgot-password" className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
-            Forgot password?
-          </Link>
+          {/* Clerk's SignIn component has built-in forgot password functionality */}
+          {/* Link removed to avoid 404 - users can use Clerk's built-in flow */}
           <Link href="/contact" className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
             Need help?
           </Link>

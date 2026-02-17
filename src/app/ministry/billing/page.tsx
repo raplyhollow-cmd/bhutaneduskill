@@ -3,6 +3,12 @@
  *
  * VIEW-ONLY page for transparency. Ministry users can view billing data
  * but CANNOT modify any billing settings, plans, or subscriptions.
+ *
+ * FEAT-022: Ministry Billing Implementation
+ * - Platform revenue dashboard
+ * - School-wise billing breakdown
+ * - Payment tracking
+ * - Invoice generation/download
  */
 
 "use client";
@@ -27,210 +33,122 @@ import {
   Search,
   Filter,
   Lock,
+  RefreshCw,
+  FileDown,
+  Receipt,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useToast } from "@/components/ui/toast";
 
-// Mock subscription plans (VIEW ONLY - Ministry cannot edit)
-const subscriptionPlans = [
-  {
-    id: "starter",
-    name: "Starter",
-    price: 29900,
-    currency: "BTN",
-    interval: "yearly",
-    maxStudents: 500,
-    maxTeachers: 50,
-    features: [
-      "Basic School Management",
-      "Student & Teacher Portals",
-      "Attendance Tracking",
-      "Homework Management",
-      "Basic Reports",
-      "Email Support",
-    ],
-  },
-  {
-    id: "professional",
-    name: "Professional",
-    price: 59900,
-    currency: "BTN",
-    interval: "yearly",
-    maxStudents: 2000,
-    maxTeachers: 150,
-    features: [
-      "Everything in Starter",
-      "Parent Portal",
-      "Career Guidance Assessments",
-      "Fee Management",
-      "Learning Modules",
-      "Advanced Analytics",
-      "Priority Support",
-    ],
-    popular: true,
-  },
-  {
-    id: "enterprise",
-    name: "Enterprise",
-    price: 129900,
-    currency: "BTN",
-    interval: "yearly",
-    maxStudents: -1,
-    maxTeachers: -1,
-    features: [
-      "Everything in Professional",
-      "Unlimited Students & Teachers",
-      "Custom Integrations",
-      "White-label Options",
-      "Dedicated Account Manager",
-      "On-premise Deployment Option",
-      "24/7 Phone Support",
-      "SLA Guarantee",
-    ],
-  },
-];
+// ============================================================================
+// TYPES
+// ============================================================================
 
-// Mock billing data for Ministry view
-const billingData = {
-  totalRevenue: 4589000,
-  revenueChange: 12.5,
-  activeSubscriptions: 12,
-  newSubscriptionsThisMonth: 2,
-  monthlyRecurring: 382416,
-};
+interface RevenueStatistics {
+  totalRevenue: number;
+  revenueChange: number;
+  activeSubscriptions: number;
+  newSubscriptionsThisMonth: number;
+  monthlyRecurring: number;
+  annualRecurring: number;
+  pendingInvoices: number;
+  paidInvoices: number;
+  overdueInvoices: number;
+}
 
-// Monthly revenue trend (last 12 months)
-const monthlyRevenue = [
-  { month: "Mar", revenue: 324000 },
-  { month: "Apr", revenue: 358000 },
-  { month: "May", revenue: 372000 },
-  { month: "Jun", revenue: 368000 },
-  { month: "Jul", revenue: 385000 },
-  { month: "Aug", revenue: 401000 },
-  { month: "Sep", revenue: 428000 },
-  { month: "Oct", revenue: 415000 },
-  { month: "Nov", revenue: 442000 },
-  { month: "Dec", revenue: 458000 },
-  { month: "Jan", revenue: 472000 },
-  { month: "Feb", revenue: 498000 },
-];
+interface MonthlyRevenueData {
+  month: string;
+  revenue: number;
+}
 
-const invoices = [
-  {
-    id: "INV-2024-001",
-    school: "Pelkhil School",
-    plan: "Professional",
-    amount: 59900,
-    currency: "BTN",
-    status: "paid",
-    dueDate: "2024-01-15",
-    paidDate: "2024-01-14",
-  },
-  {
-    id: "INV-2024-002",
-    school: "Druk School",
-    plan: "Starter",
-    amount: 29900,
-    currency: "BTN",
-    status: "paid",
-    dueDate: "2024-01-20",
-    paidDate: "2024-01-18",
-  },
-  {
-    id: "INV-2024-003",
-    school: "Yangchenphug HSS",
-    plan: "Professional",
-    amount: 59900,
-    currency: "BTN",
-    status: "pending",
-    dueDate: "2024-02-01",
-    paidDate: null,
-  },
-  {
-    id: "INV-2024-004",
-    school: "Motithang HSS",
-    plan: "Enterprise",
-    amount: 129900,
-    currency: "BTN",
-    status: "pending",
-    dueDate: "2024-02-05",
-    paidDate: null,
-  },
-  {
-    id: "INV-2024-005",
-    school: "Rinchen HSS",
-    plan: "Starter",
-    amount: 29900,
-    currency: "BTN",
-    status: "overdue",
-    dueDate: "2024-01-10",
-    paidDate: null,
-  },
-];
+interface PlanRevenueBreakdown {
+  planName: string;
+  totalRevenue: number;
+  subscriptionCount: number;
+  percentage: number;
+}
 
-const schoolSubscriptions = [
-  {
-    id: 1,
-    schoolName: "Pelkhil School",
-    plan: "professional",
-    planPrice: 59900,
-    status: "active",
-    students: 342,
-    teachers: 28,
-    startDate: "2023-12-15",
-    renewalDate: "2024-12-15",
-    totalPaid: 179700,
-  },
-  {
-    id: 2,
-    schoolName: "Druk School",
-    plan: "starter",
-    planPrice: 29900,
-    status: "active",
-    students: 198,
-    teachers: 15,
-    startDate: "2023-11-20",
-    renewalDate: "2024-11-20",
-    totalPaid: 59800,
-  },
-  {
-    id: 3,
-    schoolName: "Yangchenphug HSS",
-    plan: "professional",
-    planPrice: 59900,
-    status: "trial",
-    students: 456,
-    teachers: 35,
-    startDate: "2024-01-15",
-    renewalDate: "2024-02-15",
-    totalPaid: 0,
-  },
-  {
-    id: 4,
-    schoolName: "Motithang HSS",
-    plan: "enterprise",
-    planPrice: 129900,
-    status: "active",
-    students: 389,
-    teachers: 42,
-    startDate: "2023-10-01",
-    renewalDate: "2024-10-01",
-    totalPaid: 389700,
-  },
-  {
-    id: 5,
-    schoolName: "Rinchen HSS",
-    plan: "starter",
-    planPrice: 29900,
-    status: "past_due",
-    students: 267,
-    teachers: 18,
-    startDate: "2023-01-10",
-    renewalDate: "2024-01-10",
-    totalPaid: 29900,
-  },
-];
+interface SchoolSubscriptionData {
+  id: string;
+  schoolName: string;
+  schoolCode: string;
+  plan: string;
+  planPrice: number;
+  status: string;
+  students: number;
+  teachers: number;
+  startDate: string;
+  renewalDate: string;
+  totalPaid: number;
+  isTrial: boolean;
+  autoRenew: boolean;
+}
 
-function getStatusBadge(status: string) {
+interface InvoiceData {
+  id: string;
+  invoiceNumber: string;
+  school: string;
+  plan: string;
+  amount: number;
+  currency: string;
+  status: string;
+  dueDate: string;
+  paidDate: string | null;
+  pdfUrl: string | null;
+}
+
+interface PaymentMethodData {
+  id: string;
+  type: string;
+  provider: string;
+  isActive: boolean;
+  isDefault: boolean;
+  displayInfo: string;
+}
+
+interface BillingOverviewData {
+  statistics: RevenueStatistics;
+  monthlyRevenue: MonthlyRevenueData[];
+  revenueByPlan: PlanRevenueBreakdown[];
+  subscriptions: SchoolSubscriptionData[];
+  invoices: InvoiceData[];
+  paymentMethods: PaymentMethodData[];
+  currency: {
+    code: string;
+    symbol: string;
+    gstRate: number;
+  };
+  generatedAt: string;
+}
+
+interface ApiResponse<T> {
+  data?: T;
+  error?: string;
+  status?: number;
+}
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+function formatCurrency(amount: number, currency: string = "BTN"): string {
+  return new Intl.NumberFormat("en-BT", {
+    style: "currency",
+    currency: currency,
+    minimumFractionDigits: 0,
+  }).format(amount);
+}
+
+function formatDate(dateString: string | null): string {
+  if (!dateString) return "N/A";
+  return new Date(dateString).toLocaleDateString("en-BT", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function getStatusBadge(status: string): React.ReactNode {
   switch (status) {
     case "active":
       return (
@@ -239,7 +157,7 @@ function getStatusBadge(status: string) {
           Active
         </Badge>
       );
-    case "trial":
+    case "trialing":
       return (
         <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
           <Clock className="w-3 h-3 mr-1" />
@@ -251,6 +169,13 @@ function getStatusBadge(status: string) {
         <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
           <AlertCircle className="w-3 h-3 mr-1" />
           Past Due
+        </Badge>
+      );
+    case "canceled":
+      return (
+        <Badge variant="outline" className="bg-gray-50 text-gray-700 border-gray-200">
+          <AlertCircle className="w-3 h-3 mr-1" />
+          Canceled
         </Badge>
       );
     case "pending":
@@ -279,35 +204,302 @@ function getStatusBadge(status: string) {
   }
 }
 
-function formatCurrency(amount: number, currency: string = "BTN") {
-  return new Intl.NumberFormat("en-BT", {
-    style: "currency",
-    currency: currency,
-    minimumFractionDigits: 0,
-  }).format(amount);
-}
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
 
 export default function MinistryBillingPage() {
+  const { toast } = useToast();
+
+  // Data state
+  const [billingData, setBillingData] = useState<BillingOverviewData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [planFilter, setPlanFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
 
-  // Filter subscriptions based on search and filters
-  const filteredSubscriptions = schoolSubscriptions.filter((sub) => {
+  // Invoice modal state
+  const [selectedInvoice, setSelectedInvoice] = useState<InvoiceData | null>(null);
+  const [isGeneratingInvoice, setIsGeneratingInvoice] = useState(false);
+
+  /**
+   * Fetch billing data from API
+   */
+  const fetchBillingData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const params = new URLSearchParams();
+      if (statusFilter) params.append("status", statusFilter);
+      if (planFilter) params.append("plan", planFilter);
+      if (searchQuery) params.append("search", searchQuery);
+
+      const response = await fetch(`/api/ministry/billing?${params.toString()}`);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch billing data: ${response.statusText}`);
+      }
+
+      const result: ApiResponse<BillingOverviewData> = await response.json();
+
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      if (result.data) {
+        setBillingData(result.data);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to load billing data";
+      setError(message);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: message,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [statusFilter, planFilter, searchQuery, toast]);
+
+  /**
+   * Handle invoice download
+   */
+  const handleDownloadInvoice = async (invoice: InvoiceData) => {
+    if (invoice.pdfUrl) {
+      // Direct download if PDF exists
+      window.open(invoice.pdfUrl, "_blank");
+      return;
+    }
+
+    // Generate PDF on the fly
+    setIsGeneratingInvoice(true);
+
+    try {
+      const response = await fetch(`/api/billing/invoices/${invoice.id}`);
+
+      if (!response.ok) {
+        throw new Error("Failed to generate invoice PDF");
+      }
+
+      const result = await response.json();
+
+      if (result.data?.pdfUrl) {
+        window.open(result.data.pdfUrl, "_blank");
+        toast({
+          title: "Success",
+          description: "Invoice PDF generated successfully",
+        });
+      } else {
+        // Create a simple printable version
+        const printWindow = window.open("", "_blank");
+        if (printWindow) {
+          printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <title>Invoice ${invoice.invoiceNumber}</title>
+              <style>
+                body { font-family: Arial, sans-serif; padding: 40px; }
+                .header { border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 20px; }
+                .invoice-number { font-size: 24px; font-weight: bold; }
+                .details { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+                .total { font-size: 20px; font-weight: bold; text-align: right; }
+              </style>
+            </head>
+            <body>
+              <div class="header">
+                <div class="invoice-number">INVOICE ${invoice.invoiceNumber}</div>
+              </div>
+              <div class="details">
+                <div>
+                  <strong>School:</strong> ${invoice.school}<br>
+                  <strong>Plan:</strong> ${invoice.plan}
+                </div>
+                <div style="text-align: right;">
+                  <strong>Date:</strong> ${formatDate(invoice.dueDate)}<br>
+                  <strong>Status:</strong> ${invoice.status.toUpperCase()}
+                </div>
+              </div>
+              <div class="total">Total: ${formatCurrency(invoice.amount, invoice.currency)}</div>
+            </body>
+            </html>
+          `);
+          printWindow.document.close();
+          printWindow.print();
+        }
+      }
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to download invoice",
+      });
+    } finally {
+      setIsGeneratingInvoice(false);
+    }
+  };
+
+  /**
+   * Handle export report
+   */
+  const handleExportReport = async () => {
+    try {
+      const response = await fetch("/api/ministry/billing");
+      const result: ApiResponse<BillingOverviewData> = await response.json();
+
+      if (!result.data) {
+        throw new Error("No data to export");
+      }
+
+      // Create CSV content
+      const csvContent = [
+        ["School", "Plan", "Status", "Students", "Teachers", "Amount (BTN)", "Renewal Date"],
+        ...result.data.subscriptions.map((sub) => [
+          sub.schoolName,
+          sub.plan,
+          sub.status,
+          sub.students.toString(),
+          sub.teachers.toString(),
+          (sub.planPrice / 100).toString(),
+          formatDate(sub.renewalDate),
+        ]),
+      ]
+        .map((row) => row.join(","))
+        .join("\n");
+
+      // Download CSV
+      const blob = new Blob([csvContent], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `billing-report-${new Date().toISOString().split("T")[0]}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Success",
+        description: "Billing report exported successfully",
+      });
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to export report",
+      });
+    }
+  };
+
+  /**
+   * Handle generate invoice for a subscription
+   */
+  const handleGenerateInvoice = async (subscriptionId: string, schoolName: string) => {
+    setIsGeneratingInvoice(true);
+
+    try {
+      const response = await fetch("/api/ministry/billing", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ subscriptionId }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to generate invoice: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      if (result.data?.invoice) {
+        toast({
+          title: "Invoice Generated",
+          description: `Invoice ${result.data.invoice.invoiceNumber} created for ${schoolName}`,
+        });
+
+        // Refresh billing data to show new invoice
+        await fetchBillingData();
+      } else if (result.data?.message) {
+        toast({
+          title: "Info",
+          description: result.data.message,
+        });
+      }
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: err instanceof Error ? err.message : "Failed to generate invoice",
+      });
+    } finally {
+      setIsGeneratingInvoice(false);
+    }
+  };
+
+  // Load data on mount
+  useEffect(() => {
+    fetchBillingData();
+  }, [fetchBillingData]);
+
+  /**
+   * Filter subscriptions based on search and filters
+   */
+  const filteredSubscriptions = billingData?.subscriptions.filter((sub) => {
     const matchesSearch = sub.schoolName.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesPlan = !planFilter || sub.plan === planFilter;
     const matchesStatus = !statusFilter || sub.status === statusFilter;
     return matchesSearch && matchesPlan && matchesStatus;
-  });
+  }) ?? [];
 
-  // Calculate revenue by plan
-  const revenueByPlan = {
-    starter: schoolSubscriptions.filter(s => s.plan === "starter").length * 29900,
-    professional: schoolSubscriptions.filter(s => s.plan === "professional").length * 59900,
-    enterprise: schoolSubscriptions.filter(s => s.plan === "enterprise").length * 129900,
+  /**
+   * Calculate revenue by plan for display
+   */
+  const getRevenueByPlanForDisplay = (): PlanRevenueBreakdown[] => {
+    if (!billingData) return [];
+
+    return billingData.revenueByPlan.map((item) => ({
+      ...item,
+      totalRevenue: item.totalRevenue / 100, // Convert from cents
+    }));
   };
 
-  const totalRevenueByPlan = revenueByPlan.starter + revenueByPlan.professional + revenueByPlan.enterprise;
+  const totalRevenueByPlan = getRevenueByPlanForDisplay().reduce((sum, item) => sum + item.totalRevenue, 0);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-violet-600" />
+          <p className="text-gray-600">Loading billing data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !billingData) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Card className="max-w-md">
+          <CardContent className="pt-6 text-center">
+            <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Failed to Load Billing Data</h3>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <Button onClick={fetchBillingData}>Retry</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (!billingData) {
+    return null;
+  }
+
+  const stats = billingData.statistics;
 
   return (
     <div className="space-y-8">
@@ -331,7 +523,11 @@ export default function MinistryBillingPage() {
             <Lock className="w-3 h-3 mr-1" />
             View Only
           </Badge>
-          <Button variant="outline">
+          <Button variant="outline" onClick={fetchBillingData} disabled={isLoading}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+          <Button variant="outline" onClick={handleExportReport}>
             <Download className="w-4 h-4 mr-2" />
             Export Report
           </Button>
@@ -349,10 +545,15 @@ export default function MinistryBillingPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">
-              {formatCurrency(billingData.monthlyRecurring)}
+              {formatCurrency(stats.monthlyRecurring / 100)}
             </div>
-            <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
-              <TrendingUp className="w-3 h-3" /> +{billingData.revenueChange}% vs last month
+            <p className={`text-xs mt-1 flex items-center gap-1 ${stats.revenueChange >= 0 ? "text-green-600" : "text-red-600"}`}>
+              {stats.revenueChange >= 0 ? (
+                <TrendingUp className="w-3 h-3" />
+              ) : (
+                <TrendingDown className="w-3 h-3" />
+              )}
+              {stats.revenueChange >= 0 ? "+" : ""}{stats.revenueChange}% vs last month
             </p>
           </CardContent>
         </Card>
@@ -366,7 +567,7 @@ export default function MinistryBillingPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">
-              {billingData.activeSubscriptions}
+              {stats.activeSubscriptions}
             </div>
             <p className="text-xs text-gray-500 mt-1">Schools subscribed</p>
           </CardContent>
@@ -381,7 +582,7 @@ export default function MinistryBillingPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">
-              {billingData.newSubscriptionsThisMonth}
+              {stats.newSubscriptionsThisMonth}
             </div>
             <p className="text-xs text-gray-500 mt-1">New subscriptions</p>
           </CardContent>
@@ -390,15 +591,15 @@ export default function MinistryBillingPage() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4" />
-              Revenue Growth
+              <Receipt className="w-4 h-4" />
+              Pending Invoices
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              +{billingData.revenueChange}%
+            <div className="text-2xl font-bold text-gray-900">
+              {stats.pendingInvoices}
             </div>
-            <p className="text-xs text-gray-500 mt-1">vs last month</p>
+            <p className="text-xs text-gray-500 mt-1">{stats.overdueInvoices} overdue</p>
           </CardContent>
         </Card>
       </div>
@@ -413,25 +614,24 @@ export default function MinistryBillingPage() {
           </CardHeader>
           <CardContent>
             <div className="h-64 flex items-end justify-between gap-2">
-              {monthlyRevenue.map((month, index) => {
-                const maxValue = Math.max(...monthlyRevenue.map(m => m.revenue));
-                const height = (month.revenue / maxValue) * 100;
-                const isCurrentMonth = index === monthlyRevenue.length - 1;
+              {billingData.monthlyRevenue.map((month, index) => {
+                const maxValue = Math.max(...billingData.monthlyRevenue.map((m) => m.revenue));
+                const height = maxValue > 0 ? (month.revenue / maxValue) * 100 : 0;
+                const isCurrentMonth = index === billingData.monthlyRevenue.length - 1;
                 return (
                   <div key={month.month} className="flex-1 flex flex-col items-center gap-2">
                     <div className="w-full relative group">
                       <div
                         className="w-full rounded-t transition-all duration-300 hover:opacity-80"
                         style={{
-                          height: `${height}%`,
+                          height: `${Math.max(height, 4)}%`,
                           background: isCurrentMonth
                             ? "linear-gradient(135deg, rgb(139 92 246) 0%, rgb(124 58 237) 100%)"
                             : "linear-gradient(135deg, rgb(167 139 250) 0%, rgb(147 51 234) 100%)",
-                          minHeight: "4px",
                         }}
                       />
-                      <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
-                        {formatCurrency(month.revenue)}
+                      <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-10">
+                        {formatCurrency(month.revenue / 100)}
                       </div>
                     </div>
                     <span className="text-xs text-gray-500">{month.month}</span>
@@ -450,33 +650,31 @@ export default function MinistryBillingPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {[
-                { name: "Enterprise", amount: revenueByPlan.enterprise, color: "rgb(124 58 237)", percent: (revenueByPlan.enterprise / totalRevenueByPlan) * 100 },
-                { name: "Professional", amount: revenueByPlan.professional, color: "rgb(139 92 246)", percent: (revenueByPlan.professional / totalRevenueByPlan) * 100 },
-                { name: "Starter", amount: revenueByPlan.starter, color: "rgb(167 139 250)", percent: (revenueByPlan.starter / totalRevenueByPlan) * 100 },
-              ].map((plan) => (
-                <div key={plan.name} className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium text-gray-700">{plan.name}</span>
-                    <div className="flex items-center gap-3">
-                      <span className="text-gray-500">{plan.percent.toFixed(0)}%</span>
-                      <span className="font-semibold text-gray-900">{formatCurrency(plan.amount)}</span>
+              {getRevenueByPlanForDisplay()
+                .sort((a, b) => b.totalRevenue - a.totalRevenue)
+                .map((plan) => (
+                  <div key={plan.planName} className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium text-gray-700">{plan.planName}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-gray-500">{plan.percentage}%</span>
+                        <span className="font-semibold text-gray-900">{formatCurrency(plan.totalRevenue)}</span>
+                      </div>
                     </div>
+                    <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{
+                          width: `${plan.percentage}%`,
+                          background: "linear-gradient(135deg, rgb(139 92 246) 0%, rgb(124 58 237) 100%)",
+                        }}
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      {plan.subscriptionCount} school{plan.subscriptionCount !== 1 ? "s" : ""}
+                    </p>
                   </div>
-                  <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{
-                        width: `${plan.percent}%`,
-                        background: plan.color,
-                      }}
-                    />
-                  </div>
-                  <p className="text-xs text-gray-500">
-                    {formatCurrency(subscriptionPlans.find(p => p.name.toLowerCase() === plan.name.toLowerCase())?.price || 0)} / year
-                  </p>
-                </div>
-              ))}
+                ))}
             </div>
             <div className="mt-4 pt-4 border-t border-gray-200">
               <div className="flex items-center justify-between">
@@ -504,53 +702,42 @@ export default function MinistryBillingPage() {
         </CardHeader>
         <CardContent>
           <div className="grid md:grid-cols-3 gap-6">
-            {subscriptionPlans.map((plan) => (
-              <div
-                key={plan.id}
-                className={`rounded-xl border-2 p-6 relative ${
-                  plan.popular
-                    ? "border-violet-400 shadow-md"
-                    : "border-gray-200"
-                }`}
-              >
-                {plan.popular && (
-                  <div
-                    className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-white text-xs font-semibold"
-                    style={{
-                      background: "linear-gradient(135deg, rgb(139 92 246) 0%, rgb(124 58 237) 100%)",
-                    }}
-                  >
-                    Most Popular
+            {getRevenueByPlanForDisplay().map((planData, index) => {
+              const price = Math.round(planData.totalRevenue / Math.max(planData.subscriptionCount, 1));
+              const colors = [
+                "rgb(167 139 250)", // Starter
+                "rgb(139 92 246)",  // Professional
+                "rgb(124 58 237)",  // Enterprise
+              ];
+              const color = colors[index % colors.length];
+
+              return (
+                <div
+                  key={planData.planName}
+                  className="rounded-xl border-2 p-6 relative border-violet-200"
+                  style={{ borderColor: color }}
+                >
+                  <div className="text-center mb-6">
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">
+                      {planData.planName}
+                    </h3>
+                    <div className="flex items-baseline justify-center gap-1">
+                      <span className="text-3xl font-bold text-gray-900">
+                        {formatCurrency(price)}
+                      </span>
+                      <span className="text-gray-500">/year</span>
+                    </div>
+                    <p className="text-sm text-gray-500 mt-2">
+                      {planData.subscriptionCount} school{planData.subscriptionCount !== 1 ? "s" : ""} subscribed
+                    </p>
                   </div>
-                )}
-                <div className="text-center mb-6">
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">
-                    {plan.name}
-                  </h3>
-                  <div className="flex items-baseline justify-center gap-1">
-                    <span className="text-3xl font-bold text-gray-900">
-                      {formatCurrency(plan.price, plan.currency)}
-                    </span>
-                    <span className="text-gray-500">/year</span>
+                  <div className="px-4 py-2 bg-gray-100 rounded-lg text-center text-sm text-gray-600">
+                    <Lock className="w-4 h-4 inline mr-1" />
+                    Cannot modify plans
                   </div>
-                  <p className="text-sm text-gray-500 mt-2">
-                    Up to {plan.maxStudents === -1 ? "Unlimited" : plan.maxStudents} students
-                  </p>
                 </div>
-                <ul className="space-y-3 mb-6">
-                  {plan.features.map((feature, index) => (
-                    <li key={index} className="flex items-start gap-2 text-sm">
-                      <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                      <span className="text-gray-700">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                <div className="px-4 py-2 bg-gray-100 rounded-lg text-center text-sm text-gray-600">
-                  <Lock className="w-4 h-4 inline mr-1" />
-                  Cannot modify plans
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>
@@ -575,9 +762,11 @@ export default function MinistryBillingPage() {
               className="px-4 py-3 rounded-lg border border-gray-300 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 outline-none"
             >
               <option value="">All Plans</option>
-              <option value="starter">Starter</option>
-              <option value="professional">Professional</option>
-              <option value="enterprise">Enterprise</option>
+              {billingData.revenueByPlan.map((plan) => (
+                <option key={plan.planName} value={plan.planName.toLowerCase()}>
+                  {plan.planName}
+                </option>
+              ))}
             </select>
             <select
               value={statusFilter}
@@ -586,8 +775,9 @@ export default function MinistryBillingPage() {
             >
               <option value="">All Statuses</option>
               <option value="active">Active</option>
-              <option value="trial">Trial</option>
+              <option value="trialing">Trial</option>
               <option value="past_due">Past Due</option>
+              <option value="canceled">Canceled</option>
             </select>
           </div>
         </CardContent>
@@ -610,64 +800,80 @@ export default function MinistryBillingPage() {
                   <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Plan</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Monthly Fee</th>
                   <th className="text-center py-3 px-4 font-medium text-gray-600 text-sm">Status</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Start Date</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Students</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Teachers</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Next Billing</th>
+                  <th className="text-right py-3 px-4 font-medium text-gray-600 text-sm">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredSubscriptions.map((sub) => (
-                  <tr key={sub.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-semibold"
-                          style={{
-                            background: "linear-gradient(135deg, rgb(139 92 246) 0%, rgb(124 58 237) 100%)",
-                          }}
-                        >
-                          {sub.schoolName.substring(0, 2).toUpperCase()}
-                        </div>
-                        <span className="font-medium text-gray-900">{sub.schoolName}</span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <Badge
-                        variant="outline"
-                        className="capitalize"
-                        style={{
-                          borderColor: "rgb(139 92 246)",
-                          color: "rgb(124 58 237)",
-                        }}
-                      >
-                        {sub.plan}
-                      </Badge>
-                    </td>
-                    <td className="py-4 px-4 text-gray-900">
-                      {formatCurrency(sub.planPrice / 12)}/mo
-                    </td>
-                    <td className="py-4 px-4 text-center">{getStatusBadge(sub.status)}</td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Calendar className="w-4 h-4" />
-                        {new Date(sub.startDate).toLocaleDateString("en-BT", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Calendar className="w-4 h-4" />
-                        {new Date(sub.renewalDate).toLocaleDateString("en-BT", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                      </div>
+                {filteredSubscriptions.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-8 text-center text-gray-500">
+                      No subscriptions found matching your filters
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredSubscriptions.map((sub) => (
+                    <tr key={sub.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-semibold"
+                            style={{
+                              background: "linear-gradient(135deg, rgb(139 92 246) 0%, rgb(124 58 237) 100%)",
+                            }}
+                          >
+                            {sub.schoolName.substring(0, 2).toUpperCase()}
+                          </div>
+                          <span className="font-medium text-gray-900">{sub.schoolName}</span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <Badge
+                          variant="outline"
+                          className="capitalize"
+                          style={{
+                            borderColor: "rgb(139 92 246)",
+                            color: "rgb(124 58 237)",
+                          }}
+                        >
+                          {sub.plan}
+                        </Badge>
+                      </td>
+                      <td className="py-4 px-4 text-gray-900">
+                        {formatCurrency(sub.planPrice / 12)}/mo
+                      </td>
+                      <td className="py-4 px-4 text-center">{getStatusBadge(sub.status)}</td>
+                      <td className="py-4 px-4 text-gray-900">{sub.students}</td>
+                      <td className="py-4 px-4 text-gray-900">{sub.teachers}</td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Calendar className="w-4 h-4" />
+                          {formatDate(sub.renewalDate)}
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-violet-50 hover:text-violet-600"
+                            title="Generate Invoice"
+                            onClick={() => handleGenerateInvoice(sub.id, sub.schoolName)}
+                            disabled={isGeneratingInvoice || sub.status === "canceled"}
+                          >
+                            {isGeneratingInvoice ? (
+                              <RefreshCw className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <FileText className="w-4 h-4" />
+                            )}
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -703,59 +909,62 @@ export default function MinistryBillingPage() {
                 </tr>
               </thead>
               <tbody>
-                {invoices.map((invoice) => (
-                  <tr key={invoice.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-4 px-4">
-                      <span className="font-mono text-sm font-medium text-gray-900">
-                        {invoice.id}
-                      </span>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="w-4 h-4 text-gray-400" />
-                        <span className="text-gray-900">{invoice.school}</span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4">
-                      <Badge variant="outline" className="capitalize text-xs">
-                        {invoice.plan}
-                      </Badge>
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Calendar className="w-4 h-4" />
-                        {new Date(invoice.dueDate).toLocaleDateString("en-BT", {
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </div>
-                    </td>
-                    <td className="py-4 px-4 text-center">{getStatusBadge(invoice.status)}</td>
-                    <td className="py-4 px-4 text-right font-semibold text-gray-900">
-                      {formatCurrency(invoice.amount, invoice.currency)}
-                    </td>
-                    <td className="py-4 px-4">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 hover:bg-violet-50 hover:text-violet-600"
-                          title="View Invoice"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 hover:bg-violet-50 hover:text-violet-600"
-                          title="Download Invoice"
-                        >
-                          <Download className="w-4 h-4" />
-                        </Button>
-                      </div>
+                {billingData.invoices.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-gray-500">
+                      No invoices found
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  billingData.invoices.map((invoice) => (
+                    <tr key={invoice.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-4 px-4">
+                        <span className="font-mono text-sm font-medium text-gray-900">
+                          {invoice.invoiceNumber}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="w-4 h-4 text-gray-400" />
+                          <span className="text-gray-900">{invoice.school}</span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <Badge variant="outline" className="capitalize text-xs">
+                          {invoice.plan}
+                        </Badge>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Calendar className="w-4 h-4" />
+                          {formatDate(invoice.dueDate)}
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 text-center">{getStatusBadge(invoice.status)}</td>
+                      <td className="py-4 px-4 text-right font-semibold text-gray-900">
+                        {formatCurrency(invoice.amount / 100, invoice.currency)}
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:bg-violet-50 hover:text-violet-600"
+                            title="Download Invoice"
+                            onClick={() => handleDownloadInvoice(invoice)}
+                            disabled={isGeneratingInvoice}
+                          >
+                            {isGeneratingInvoice && selectedInvoice?.id === invoice.id ? (
+                              <RefreshCw className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Download className="w-4 h-4" />
+                            )}
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -777,48 +986,36 @@ export default function MinistryBillingPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                <CheckCircle className="w-5 h-5 text-green-600" />
+          {billingData.paymentMethods.map((method) => (
+            <div
+              key={method.id}
+              className={`flex items-center justify-between p-4 rounded-lg ${method.isActive ? "bg-gray-50" : "bg-gray-100 opacity-60"}`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${method.isActive ? "bg-green-100" : "bg-gray-200"}`}>
+                  {method.isActive ? (
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                  ) : (
+                    <Clock className="w-5 h-5 text-gray-400" />
+                  )}
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900">{method.provider}</p>
+                  <p className="text-sm text-gray-500">{method.displayInfo}</p>
+                </div>
               </div>
-              <div>
-                <p className="font-medium text-gray-900">RMA Payment Gateway</p>
-                <p className="text-sm text-gray-500">Bhutan&apos;s national payment gateway</p>
-              </div>
-            </div>
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-              Active
-            </Badge>
-          </div>
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                <CheckCircle className="w-5 h-5 text-green-600" />
-              </div>
-              <div>
-                <p className="font-medium text-gray-900">Stripe</p>
-                <p className="text-sm text-gray-500">International payments</p>
-              </div>
-            </div>
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-              Active
-            </Badge>
-          </div>
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg opacity-60">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center">
-                <Clock className="w-5 h-5 text-gray-400" />
-              </div>
-              <div>
-                <p className="font-medium text-gray-900">PayPal</p>
-                <p className="text-sm text-gray-500">Global payments (not configured)</p>
+              <div className="flex items-center gap-3">
+                {method.isDefault && (
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                    Default
+                  </Badge>
+                )}
+                <Badge variant="outline" className={method.isActive ? "bg-green-50 text-green-700 border-green-200" : "bg-gray-50 text-gray-500 border-gray-200"}>
+                  {method.isActive ? "Active" : "Inactive"}
+                </Badge>
               </div>
             </div>
-            <Badge variant="outline" className="bg-gray-50 text-gray-500 border-gray-200">
-              Inactive
-            </Badge>
-          </div>
+          ))}
         </CardContent>
       </Card>
 
@@ -842,7 +1039,7 @@ export default function MinistryBillingPage() {
               <p className="font-medium text-gray-900">GST Rate</p>
               <p className="text-sm text-gray-500">Goods and Services Tax (Bhutan)</p>
             </div>
-            <span className="text-lg font-bold text-gray-900">7%</span>
+            <span className="text-lg font-bold text-gray-900">{billingData.currency.gstRate}%</span>
           </div>
           <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
             <div>
@@ -855,6 +1052,11 @@ export default function MinistryBillingPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Data Last Updated */}
+      <div className="text-center text-sm text-gray-500">
+        Last updated: {formatDate(billingData.generatedAt)}
+      </div>
     </div>
   );
 }

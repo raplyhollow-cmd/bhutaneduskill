@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,12 +31,12 @@ export async function GET(request: NextRequest) {
 
     if (!user) {
       // User not in database yet - needs setup
-      console.log("[Set Role] User not found in database, needs setup");
+      logger.debug("User not found in database, needs setup", { clerkUserId: userId });
       return NextResponse.json({ userType: null, needsSetup: true });
     }
 
-    console.log("[Set Role] User found:", {
-      id: user.id,
+    logger.debug("User found in database", {
+      userId: user.id,
       type: user.type,
       onboardingComplete: user.onboardingComplete,
     });
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
     // If user has a type, let them in (they were either created by admin or completed setup)
     // The onboardingComplete field caused timing issues, so we rely on type presence instead
     if (user.type) {
-      console.log("[Set Role] User has type, allowing access:", user.type);
+      logger.debug("User has type, allowing access", { type: user.type, userId: user.id });
       const response = NextResponse.json({
         userType: user.type,
         needsSetup: false,
@@ -60,18 +61,19 @@ export async function GET(request: NextRequest) {
     }
 
     // If no type, they need setup
-    console.log("[Set Role] User has no type, needs setup");
+    logger.debug("User has no type, needs setup", { userId: user.id });
     return NextResponse.json({
       userType: null,
       needsSetup: true
     });
   } catch (error) {
-    console.error("Error getting user role:", error);
+    logger.error(error, { route: "/api/auth/set-role", method: "GET" });
     return NextResponse.json({ error: "Failed to get user role" }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
+  let userType: string | undefined;
   try {
     const { userId } = await auth();
 
@@ -80,7 +82,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { userType } = body;
+    userType = body.userType;
 
     if (!userType || !["student", "teacher", "parent", "counselor", "admin"].includes(userType)) {
       return NextResponse.json({ error: "Invalid user type" }, { status: 400 });
@@ -99,7 +101,7 @@ export async function POST(request: NextRequest) {
 
     return response;
   } catch (error) {
-    console.error("Error setting user role:", error);
+    logger.error(error, { route: "/api/auth/set-role", method: "POST", userType });
     return NextResponse.json({ error: "Failed to set user role" }, { status: 500 });
   }
 }

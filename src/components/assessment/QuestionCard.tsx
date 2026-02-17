@@ -9,7 +9,7 @@ interface QuestionCardProps {
   category?: string;
   categoryName?: string;
   children: ReactNode;
-  selectedValue?: any;
+  selectedValue?: string | number | boolean;
 }
 
 export function QuestionCard({

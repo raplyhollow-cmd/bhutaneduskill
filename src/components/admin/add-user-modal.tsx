@@ -80,9 +80,10 @@ export function AddUserModal({ open, onClose, onSuccess }: AddUserModalProps) {
       } else {
         setError(responseData.error || "Failed to create user");
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("[ADD USER] Error:", err);
-      setError(err.message || "Network error. Please try again.");
+      const errorMessage = err instanceof Error ? err.message : "Network error. Please try again.";
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

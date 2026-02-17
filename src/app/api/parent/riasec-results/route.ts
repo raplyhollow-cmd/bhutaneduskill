@@ -1,0 +1,72 @@
+import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { db } from "@/lib/db";
+import { riasecResults, users } from "@/lib/db/schema";
+import { eq, desc } from "drizzle-orm";
+
+/**
+ * GET /api/parent/riasec-results?childId={id}
+ *
+ * Get RIASEC assessment results for a specific child (parent's child)
+ * Parents can only view RIASEC results for their own children
+ */
+export async function GET(request: NextRequest) {
+  const authResult = await requireAuth(["parent"]);
+  if ("error" in authResult) {
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+  }
+
+  const { user } = authResult;
+
+  try {
+    const { searchParams } = new URL(request.url);
+    const childId = searchParams.get("childId");
+
+    if (!childId) {
+      return NextResponse.json({ error: "Child ID is required" }, { status: 400 });
+    }
+
+    // Verify the child belongs to this parent
+    const [childCheck] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, childId))
+      .limit(1);
+
+    if (!childCheck) {
+      return NextResponse.json({ error: "Child not found" }, { status: 404 });
+    }
+
+    if (childCheck.parentId !== user.id) {
+      return NextResponse.json(
+        { error: "You are not authorized to view this child's data" },
+        { status: 403 }
+      );
+    }
+
+    // Fetch RIASEC results for the child
+    const [result] = await db
+      .select()
+      .from(riasecResults)
+      .where(eq(riasecResults.userId, childId))
+      .orderBy(desc(riasecResults.completedAt))
+      .limit(1);
+
+    if (!result) {
+      return NextResponse.json({
+        result: null,
+        message: "No RIASEC results found for this child",
+      });
+    }
+
+    return NextResponse.json({
+      result,
+    });
+  } catch (error) {
+    console.error("Error fetching RIASEC results:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch RIASEC results", result: null },
+      { status: 500 }
+    );
+  }
+}

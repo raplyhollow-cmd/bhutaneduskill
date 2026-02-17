@@ -44,19 +44,19 @@ export async function GET(request: NextRequest) {
     const sortOrder = searchParams.get("sortOrder") || "desc";
 
     // Build where conditions
-    const conditions: any[] = [];
+    const conditions: Array<ReturnType<typeof eq>> = [];
 
     if (status) {
-      conditions.push(eq(notifications.status, status as any));
+      conditions.push(eq(notifications.status, status as unknown as typeof notifications.status));
     }
     if (type) {
-      conditions.push(eq(notifications.type, type as any));
+      conditions.push(eq(notifications.type, type as unknown as typeof notifications.type));
     }
     if (priority) {
-      conditions.push(eq(notifications.priority, priority as any));
+      conditions.push(eq(notifications.priority, priority as unknown as typeof notifications.priority));
     }
     if (targetAudience) {
-      conditions.push(eq(notifications.targetAudience, targetAudience as any));
+      conditions.push(eq(notifications.targetAudience, targetAudience as unknown as typeof notifications.targetAudience));
     }
     if (search) {
       conditions.push(
@@ -154,14 +154,15 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil(total / limit),
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.apiError(error, {
       route: "/api/admin/notifications",
       method: "GET",
       userId,
     });
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: "Failed to fetch notifications", details: error.message },
+      { error: "Failed to fetch notifications", details: errorMessage },
       { status: 500 }
     );
   }
@@ -348,14 +349,15 @@ export async function POST(request: NextRequest) {
         ? "Notification scheduled successfully"
         : "Notification created successfully. Use the send endpoint to deliver it.",
     }, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.apiError(error, {
       route: "/api/admin/notifications",
       method: "POST",
       userId,
     });
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: "Failed to create notification", details: error.message },
+      { error: "Failed to create notification", details: errorMessage },
       { status: 500 }
     );
   }

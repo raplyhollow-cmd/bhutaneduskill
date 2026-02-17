@@ -9,16 +9,19 @@ import { CAREERS_DATABASE } from "@/lib/tenant";
 // POST /api/assessments - Save assessment results
 export async function POST(req: NextRequest) {
   try {
-    // Authenticate - any authenticated user can create assessments for themselves
-    const authResult = await requireAuth();
+    // Authenticate - only students, teachers, admins, and school-admins can create assessments
+    const authResult = await requireAuth(['student', 'teacher', 'admin', 'school-admin']);
     if ('error' in authResult) {
       return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
     const { user, userId } = authResult;
 
     // Check RBAC permission for creating assessments
-    const permCheck = await requirePermission(userId, "assessments.create");
-    if (permCheck) return permCheck;
+    // Students can create assessments for themselves without special permission
+    if (user.type !== "student") {
+      const permCheck = await requirePermission(userId, "assessments.create");
+      if (permCheck) return permCheck;
+    }
 
     const body = await req.json();
     const { type = "riasec", answers, results } = body;
@@ -148,16 +151,19 @@ export async function POST(req: NextRequest) {
 // GET /api/assessments - Get user's assessments
 export async function GET(req: NextRequest) {
   try {
-    // Authenticate - any authenticated user can read their own assessments
-    const authResult = await requireAuth();
+    // Authenticate - only students, teachers, admins, and school-admins can read assessments
+    const authResult = await requireAuth(['student', 'teacher', 'admin', 'school-admin']);
     if ('error' in authResult) {
       return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
-    const { userId } = authResult;
+    const { userId, user } = authResult;
 
     // Check RBAC permission for reading assessments
-    const permCheck = await requirePermission(userId, "assessments.read");
-    if (permCheck) return permCheck;
+    // Students can read their own assessments without special permission
+    if (user.type !== "student") {
+      const permCheck = await requirePermission(userId, "assessments.read");
+      if (permCheck) return permCheck;
+    }
 
     const userAssessments = await db.query.assessments.findMany({
       where: (assessments, { eq }) => eq(assessments.userId, userId),

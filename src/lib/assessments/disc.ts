@@ -255,8 +255,11 @@ function getDISCProfile(
   const profile =
     profiles[primaryType] || profiles[primaryType[0] as keyof typeof profiles] || profiles.D;
 
+  const DISCPrimaryTypes = ["D", "I", "S", "C", "DI", "DS", "DC", "IS", "IC", "SC"] as const;
+  type DISCPrimaryType = typeof DISCPrimaryTypes[number];
+
   return {
-    primaryType: primaryType as any,
+    primaryType: (primaryType as string) as DISCPrimaryType,
     dominance,
     influence,
     steadiness,

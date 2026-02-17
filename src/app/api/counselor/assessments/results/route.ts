@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { users, assessments, assessmentSubmissions, schools } from "@/lib/db/schema";
 import { eq, and, desc, inArray } from "drizzle-orm";
@@ -14,28 +15,29 @@ import { eq, and, desc, inArray } from "drizzle-orm";
  */
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['counselor', 'admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId, user } = authResult;
 
     const { searchParams } = new URL(request.url);
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = parseInt(searchParams.get("offset") || "0");
     const assessmentType = searchParams.get("type"); // riasec, mbti, etc.
 
-    // Get current counselor user
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || currentUser.type !== "counselor") {
-      return NextResponse.json({ error: "Forbidden - Counselors only" }, { status: 403 });
-    }
+    // Get current counselor user (already fetched by requireAuth)
+    const currentUser = user;
 
     // Get counselor's school
+    // Admins can view all schools, counselors only their own
+    let targetSchoolId = currentUser.schoolId || "";
+    if (currentUser.type === "admin" && searchParams.get("schoolId")) {
+      targetSchoolId = searchParams.get("schoolId") || "";
+    }
+
     const counselorSchool = await db.query.schools.findFirst({
-      where: eq(schools.id, currentUser.schoolId || ""),
+      where: eq(schools.id, targetSchoolId),
     });
 
     if (!counselorSchool) {
@@ -153,7 +155,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Counselor assessment results fetch error:", error);
+    logger.apiError(error, { route: "/api/counselor/assessments/results", method: "GET" });
     return NextResponse.json({ error: "Failed to fetch assessment results", results: [] }, { status: 500 });
   }
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { fileStorage, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -13,10 +13,13 @@ interface Params {
 // GET /api/files/[id] - Download file or get file metadata
 export async function GET(request: NextRequest, { params }: Params) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Authentication check with role-based access (parents can download their child's documents)
+    const authResult = await requireAuth(['admin', 'school-admin', 'teacher', 'student', 'parent']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+
+    const { userId, user } = authResult;
 
     const { searchParams } = new URL(request.url);
     const download = searchParams.get("download") === "true";
@@ -31,16 +34,8 @@ export async function GET(request: NextRequest, { params }: Params) {
     }
 
     // Check access permissions
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
     // Allow if: public, same school, or uploader
-    if (!file.isPublic && (file as any).schoolId !== currentUser.schoolId && (file as any).uploadedBy !== currentUser.id) {
+    if (!file.isPublic && (file as any).schoolId !== user.schoolId && (file as any).uploadedBy !== userId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -82,18 +77,13 @@ export async function GET(request: NextRequest, { params }: Params) {
 // DELETE /api/files/[id] - Delete file
 export async function DELETE(request: NextRequest, { params }: Params) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Authentication check with role-based access (parents can download their child's documents)
+    const authResult = await requireAuth(['admin', 'school-admin', 'teacher', 'student', 'parent']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
+    const { userId, user } = authResult;
 
     const { id } = await params;
     const file = await db.query.fileStorage.findFirst({
@@ -105,7 +95,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     }
 
     // Only uploader or admin can delete
-    if ((file as any).uploadedBy !== currentUser.id && currentUser.type !== "admin") {
+    if ((file as any).uploadedBy !== userId && user.type !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

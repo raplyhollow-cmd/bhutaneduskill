@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { users, wizardProgress } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
 
     if (userRecord.length === 0) {
       // User doesn't exist - create them
-      console.log("[Parent Setup] Creating new user for clerkUserId:", user.id);
+      logger.info("Creating new parent user", { clerkUserId: user.id });
 
       const newUserId = `user-${Date.now()}`;
       const firstName = user.firstName || "";
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest) {
 
       dbUser = (await db.select().from(users).where(eq(users.id, newUserId)).limit(1))[0];
 
-      console.log("[Parent Setup] Created new user:", dbUser.id);
+      logger.info("Created new parent user", { userId: dbUser.id });
     } else {
       dbUser = userRecord[0];
     }
@@ -100,7 +101,7 @@ export async function POST(request: NextRequest) {
         .limit(1);
     } catch (error) {
       // wizard_progress table doesn't exist - skip progress tracking
-      console.warn("[Parent Setup] wizard_progress table not available, skipping progress tracking");
+      logger.warn("wizard_progress table not available, skipping progress tracking");
     }
 
     if (existingProgress.length > 0) {
@@ -114,7 +115,7 @@ export async function POST(request: NextRequest) {
           })
           .where(eq(wizardProgress.id, existingProgress[0].id));
       } catch (error) {
-        console.warn("[Parent Setup] Could not update wizard_progress:", error);
+        logger.warn("Could not update wizard_progress", { error });
       }
     } else {
       try {
@@ -130,7 +131,7 @@ export async function POST(request: NextRequest) {
           updatedAt: new Date(),
         });
       } catch (error) {
-        console.warn("[Parent Setup] Could not insert wizard_progress:", error);
+        logger.warn("Could not insert wizard_progress", { error });
       }
     }
 
@@ -154,12 +155,12 @@ export async function POST(request: NextRequest) {
         .update(users)
         .set({ onboardingComplete: true })
         .where(eq(users.id, dbUser.id));
-      console.log("[Parent Setup] Marked onboarding as complete for user:", dbUser.id);
+      logger.info("Marked onboarding as complete for parent", { userId: dbUser.id });
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error in parent setup:", error);
+    logger.error(error, { route: "/api/setup/parent", method: "POST" });
     return NextResponse.json(
       { error: "Failed to process setup" },
       { status: 500 }

@@ -25,6 +25,212 @@ export interface ReportConfig {
   allowedRoles: string[];
 }
 
+// ============================================================================
+// TYPE DEFINITIONS
+// ============================================================================
+
+interface StudentProfileData {
+  student: {
+    id: string;
+    name: string | null;
+    email: string | null;
+    type: string;
+    grade: string | null;
+    schoolId: string | null;
+    createdAt: Date | null;
+  };
+  summary: {
+    totalAssessments: number;
+    completedAssessments: number;
+    topCareerMatches: Array<{ career: string | null; matchScore: number }>;
+    currentCareerPlan: string | null;
+  };
+  personalityProfile: {
+    riasec: {
+      hollandCode: string | null;
+      traits: Record<string, number> | null;
+    } | null;
+    mbti: {
+      type: string | null;
+      traits: Record<string, number> | null;
+    } | null;
+    disc: {
+      type: string | null;
+      traits: Record<string, number> | null;
+    } | null;
+  };
+  careerMatches: Array<{
+    career: string | null;
+    riasecCode: string | null;
+    matchScore: number;
+    matchReason: string | null;
+  }>;
+  careerPlan: {
+    targetCareer: string | null;
+    currentPhase: string | null;
+    shortTermGoals: string[] | null;
+    longTermGoals: string[] | null;
+    milestones: Array<{ completed: boolean }> | null;
+    status: string | null;
+  } | null;
+  academicPerformance: Array<{
+    examType: string | null;
+    examYear: number | null;
+    totalPercentage: number | null;
+    division: string | null;
+  }>;
+}
+
+interface ClassSummaryData {
+  class: {
+    id: string;
+    name: string | null;
+    grade: string | number | null;
+    section: string | null;
+    teacherId: string | null;
+  };
+  summary: {
+    totalStudents: number;
+    studentsWithAssessments: number;
+    studentsWithoutAssessments: number;
+  };
+  students: Array<{
+    id: string;
+    name: string | null;
+    grade: string | number | null;
+    assessmentsCompleted: number;
+    totalAssessments: number;
+    hollandCode: string | null;
+    latestExamResult: {
+      examType: string | null;
+      examYear: number | null;
+    } | null;
+  }>;
+}
+
+interface AssessmentAnalyticsData {
+  assessmentTypeId: string;
+  period: { from: string | undefined; to: string | undefined };
+  totalResults: number;
+  hollandCodeDistribution: Record<string, number>;
+  traitAverages: {
+    realistic: number;
+    investigative: number;
+    artistic: number;
+    social: number;
+    enterprising: number;
+    conventional: number;
+  };
+  topHollandCodes: Array<{ code: string; count: number }>;
+}
+
+interface CareerOutcomesData {
+  period: string | undefined;
+  totalCareerMatches: number;
+  activeCareerPlans: number;
+  topCareers: Array<{ career: string; count: number }>;
+  phaseDistribution: {
+    self_assessment: number;
+    career_exploration: number;
+    goal_setting: number;
+    planning: number;
+    implementation: number;
+    review: number;
+  };
+}
+
+interface SchoolPerformanceData {
+  schools: Array<{
+    schoolId: string;
+    totalStudents: number;
+    assessmentCompletions: number;
+    completionRate: number;
+  }>;
+}
+
+interface MyProgressData {
+  user: {
+    name: string | null;
+    grade: string | null;
+  };
+  assessments: {
+    completed: number;
+    inProgress: number;
+    total: number;
+  };
+  personalityProfile: {
+    hollandCode: string | null;
+    traits: Record<string, number> | null;
+  };
+  topCareerMatches: Array<{ career: string | null; matchScore: number }>;
+  careerPlan: {
+    targetCareer: string | null;
+    currentPhase: string | null;
+    milestonesCompleted: number;
+    totalMilestones: number;
+  } | null;
+  academicResults: Array<{
+    examType: string | null;
+    year: number | null;
+    percentage: number | null;
+    division: string | null;
+  }>;
+}
+
+type ReportData = StudentProfileData | ClassSummaryData | AssessmentAnalyticsData | CareerOutcomesData | SchoolPerformanceData | MyProgressData;
+
+interface RiasecResult {
+  id?: string;
+  userId?: string;
+  hollandCode: string | null;
+  realistic?: number;
+  investigative?: number;
+  artistic?: number;
+  social?: number;
+  enterprising?: number;
+  conventional?: number;
+  traits?: Record<string, number> | string[];
+  scores?: Record<string, number>;
+  primaryHollandCode?: string;
+  secondaryHollandCode?: string;
+  createdAt?: Date;
+  completedAt?: Date;
+}
+
+interface MbtiResult {
+  personalityType: string | null;
+  traits?: Record<string, number>;
+}
+
+interface DiscResult {
+  discType?: string;
+  traits?: Record<string, number>;
+}
+
+interface ExamResult {
+  examType: string | null;
+  examYear: number | null;
+  totalPercentage?: number;
+  percentage?: number;
+  division?: string;
+}
+
+interface CareerPlanData {
+  targetCareer: string | null;
+  currentPhase?: string;
+  shortTermGoals: string[] | null;
+  longTermGoals: string[] | null;
+  milestones: Array<{ completed: boolean }> | null;
+  status: string | null;
+}
+
+interface ClassData {
+  name?: string;
+  grade: string | number | null;
+  section: string | null;
+  teacherId?: string | null;
+}
+
 const availableReports: ReportConfig[] = [
   {
     id: "student-profile",
@@ -145,7 +351,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate the report based on type
-    let reportData: any;
+    let reportData: ReportData;
 
     switch (reportId) {
       case "student-profile":
@@ -231,7 +437,7 @@ export async function POST(request: NextRequest) {
 // REPORT GENERATORS
 // ============================================================================
 
-async function generateStudentProfileReport(userId: string, currentUser: any) {
+async function generateStudentProfileReport(userId: string, currentUser: { type: string; schoolId?: string | null }): Promise<StudentProfileData> {
   const user = await db.query.users.findFirst({
     where: eq(users.id, userId),
   });
@@ -249,17 +455,17 @@ async function generateStudentProfileReport(userId: string, currentUser: any) {
   const riasecResult = await db.query.riasecResults.findFirst({
     where: eq(riasecResults.userId, userId),
     orderBy: desc(riasecResults.createdAt),
-  });
+  }) as RiasecResult | null;
 
   const mbtiResult = await db.query.mbtiResults.findFirst({
     where: eq(mbtiResults.userId, userId),
     orderBy: desc(mbtiResults.createdAt),
-  });
+  }) as MbtiResult | null;
 
   const discResult = await db.query.discResults.findFirst({
     where: eq(discResults.userId, userId),
     orderBy: desc(discResults.createdAt),
-  });
+  }) as DiscResult | null;
 
   // Get career matches (need to join through assessments since careerMatches doesn't have userId)
   const careerMatchesData = await db
@@ -317,15 +523,15 @@ async function generateStudentProfileReport(userId: string, currentUser: any) {
     personalityProfile: {
       riasec: riasecResult ? {
         hollandCode: riasecResult.hollandCode,
-        traits: (riasecResult as any).traits,
+        traits: Array.isArray(riasecResult.traits) ? undefined : riasecResult.traits || undefined,
       } : null,
       mbti: mbtiResult ? {
         type: mbtiResult.personalityType,
-        traits: (mbtiResult as any).traits,
+        traits: (mbtiResult as MbtiResult).traits || null,
       } : null,
       disc: discResult ? {
-        type: (discResult as any).discType,
-        traits: (discResult as any).traits,
+        type: (discResult as DiscResult).discType || null,
+        traits: (discResult as DiscResult).traits || null,
       } : null,
     },
     careerMatches: careerMatchesData.map((m) => ({
@@ -336,7 +542,7 @@ async function generateStudentProfileReport(userId: string, currentUser: any) {
     })),
     careerPlan: careerPlanData ? {
       targetCareer: careerPlanData.targetCareer,
-      currentPhase: (careerPlanData as any).currentPhase,
+      currentPhase: (careerPlanData as CareerPlanData).currentPhase || null,
       shortTermGoals: careerPlanData.shortTermGoals,
       longTermGoals: careerPlanData.longTermGoals,
       milestones: careerPlanData.milestones,
@@ -345,13 +551,13 @@ async function generateStudentProfileReport(userId: string, currentUser: any) {
     academicPerformance: examResultsData.map((r) => ({
       examType: r.examType,
       examYear: r.examYear,
-      totalPercentage: (r as any).totalPercentage || r.percentage,
-      division: (r as any).division,
+      totalPercentage: (r as ExamResult).totalPercentage || r.percentage || null,
+      division: (r as ExamResult).division || null,
     })),
   };
 }
 
-async function generateClassSummaryReport(classId: string, currentUser: any) {
+async function generateClassSummaryReport(classId: string, currentUser: { type: string; schoolId?: string | null }): Promise<ClassSummaryData> {
   const classData = await db.query.classes.findFirst({
     where: eq(classes.id, classId),
   });
@@ -376,7 +582,7 @@ async function generateClassSummaryReport(classId: string, currentUser: any) {
 
       const riasecResult = await db.query.riasecResults.findFirst({
         where: eq(riasecResults.userId, student.id),
-      });
+      }) as RiasecResult | null;
 
       const studentExamResults = await db.query.examResults.findMany({
         where: eq(examResults.userId, student.id),
@@ -397,10 +603,10 @@ async function generateClassSummaryReport(classId: string, currentUser: any) {
   return {
     class: {
       id: classData.id,
-      name: (classData as any).name,
+      name: (classData as ClassData).name || null,
       grade: classData.grade,
       section: classData.section,
-      teacherId: (classData as any).teacherId,
+      teacherId: (classData as ClassData).teacherId || null,
     },
     summary: {
       totalStudents: studentSummaries.length,
@@ -411,7 +617,7 @@ async function generateClassSummaryReport(classId: string, currentUser: any) {
   };
 }
 
-async function generateAssessmentAnalyticsReport(parameters: any, currentUser: any) {
+async function generateAssessmentAnalyticsReport(parameters: { assessmentType?: string; dateFrom?: string; dateTo?: string; groupBy?: string }, currentUser: { type: string }): Promise<AssessmentAnalyticsData> {
   const { assessmentType, dateFrom, dateTo, groupBy } = parameters;
 
   let baseQuery = db.select().from(riasecResults);
@@ -421,7 +627,7 @@ async function generateAssessmentAnalyticsReport(parameters: any, currentUser: a
     // Add date filter
   }
 
-  const results = await baseQuery as any[];
+  const results = await baseQuery as RiasecResult[];
 
   // Calculate statistics
   const hollandCodes: Record<string, number> = {};
@@ -468,7 +674,7 @@ async function generateAssessmentAnalyticsReport(parameters: any, currentUser: a
   };
 }
 
-async function generateCareerOutcomesReport(parameters: any, currentUser: any) {
+async function generateCareerOutcomesReport(parameters: { schoolId?: string; grade?: string; year?: string }, currentUser: { type: string; schoolId?: string | null }): Promise<CareerOutcomesData> {
   const { schoolId, grade } = parameters;
 
   let matchesQuery = db.select().from(careerMatches);
@@ -482,8 +688,8 @@ async function generateCareerOutcomesReport(parameters: any, currentUser: any) {
     // Would apply user filter here
   }
 
-  const matches = await matchesQuery as any[];
-  const plans = await plansQuery as any[];
+  const matches = await matchesQuery as Array<{ careerId: string }>;
+  const plans = await plansQuery as Array<{ status: string; currentPhase?: string }>;
 
   // Aggregate by career
   const careerCounts: Record<string, number> = {};
@@ -511,12 +717,16 @@ async function generateCareerOutcomesReport(parameters: any, currentUser: any) {
   };
 }
 
-async function generateSchoolPerformanceReport(parameters: any, currentUser: any) {
+async function generateSchoolPerformanceReport(parameters: Record<string, unknown>, currentUser: { type: string }): Promise<SchoolPerformanceData> {
   const schools = await db.query.users.findMany({
     where: (users, { isNotNull }) => isNotNull(users.schoolId),
   });
 
-  const schoolStats: Record<string, any> = {};
+  const schoolStats: Record<string, {
+    schoolId: string;
+    totalStudents: number;
+    assessmentCompletions: number;
+  }> = {};
 
   for (const user of schools) {
     const schoolId = user.schoolId;
@@ -551,14 +761,14 @@ async function generateSchoolPerformanceReport(parameters: any, currentUser: any
   };
 }
 
-async function generateMyProgressReport(user: any) {
+async function generateMyProgressReport(user: { id: string; name: string | null; grade: string | null }): Promise<MyProgressData> {
   const allAssessments = await db.query.assessments.findMany({
     where: eq(assessments.userId, user.id),
   });
 
   const riasecResult = await db.query.riasecResults.findFirst({
     where: eq(riasecResults.userId, user.id),
-  });
+  }) as RiasecResult | null;
 
   // Get career matches through join (careerMatches doesn't have userId)
   const careerMatchesData = await db
@@ -598,7 +808,7 @@ async function generateMyProgressReport(user: any) {
     },
     personalityProfile: {
       hollandCode: riasecResult?.hollandCode,
-      traits: (riasecResult as any)?.traits,
+      traits: Array.isArray(riasecResult?.traits) ? undefined : riasecResult?.traits,
     },
     topCareerMatches: careerMatchesData.map((m) => ({
       career: m.career?.name,
@@ -606,15 +816,15 @@ async function generateMyProgressReport(user: any) {
     })),
     careerPlan: careerPlan ? {
       targetCareer: careerPlan.targetCareer,
-      currentPhase: (careerPlan as any).currentPhase,
-      milestonesCompleted: Array.isArray(careerPlan.milestones) ? careerPlan.milestones.filter((m: any) => m.completed).length : 0,
+      currentPhase: (careerPlan as CareerPlanData).currentPhase || null,
+      milestonesCompleted: Array.isArray(careerPlan.milestones) ? careerPlan.milestones.filter((m: { completed: boolean }) => m.completed).length : 0,
       totalMilestones: Array.isArray(careerPlan.milestones) ? careerPlan.milestones.length : 0,
     } : null,
     academicResults: examResultsData.map((r) => ({
       examType: r.examType,
       year: r.examYear,
-      percentage: (r as any).totalPercentage || r.percentage,
-      division: (r as any).division,
+      percentage: (r as ExamResult).totalPercentage || r.percentage || null,
+      division: (r as ExamResult).division || null,
     })),
   };
 }
@@ -623,7 +833,7 @@ async function generateMyProgressReport(user: any) {
 // FORMAT HELPERS
 // ============================================================================
 
-function jsonToCSV(data: any): string {
+function jsonToCSV(data: ReportData): string {
   if (Array.isArray(data) && data.length > 0) {
     const headers = Object.keys(data[0]);
     const rows = data.map((obj) =>
@@ -634,8 +844,8 @@ function jsonToCSV(data: any): string {
   return JSON.stringify(data);
 }
 
-function jsonToXML(data: any, rootName: string): string {
-  const objToXML = (obj: any, indent = 0): string => {
+function jsonToXML(data: ReportData, rootName: string): string {
+  const objToXML = (obj: unknown, indent = 0): string => {
     const spaces = "  ".repeat(indent);
     if (Array.isArray(obj)) {
       return obj.map((item) => objToXML(item, indent)).join("\n");

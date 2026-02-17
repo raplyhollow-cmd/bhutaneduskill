@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { users, wizardProgress } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   try {
@@ -79,7 +80,7 @@ export async function POST(request: NextRequest) {
         .limit(1);
     } catch (error) {
       // wizard_progress table doesn't exist - skip progress tracking
-      console.warn("[Counselor Setup] wizard_progress table not available, skipping progress tracking");
+      logger.warn("wizard_progress table not available, skipping progress tracking");
     }
 
     if (existingProgress.length > 0) {
@@ -93,7 +94,7 @@ export async function POST(request: NextRequest) {
           })
           .where(eq(wizardProgress.id, existingProgress[0].id));
       } catch (error) {
-        console.warn("[Counselor Setup] Could not update wizard_progress:", error);
+        logger.warn("Could not update wizard_progress", { error });
       }
     } else {
       try {
@@ -109,7 +110,7 @@ export async function POST(request: NextRequest) {
           updatedAt: new Date(),
         });
       } catch (error) {
-        console.warn("[Counselor Setup] Could not insert wizard_progress:", error);
+        logger.warn("Could not insert wizard_progress", { error });
       }
     }
 
@@ -128,7 +129,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error in counselor setup:", error);
+    logger.error(error, { route: "/api/setup/counselor", method: "POST" });
     return NextResponse.json(
       { error: "Failed to process setup" },
       { status: 500 }

@@ -6,20 +6,21 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { users, schools } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['admin', 'teacher', 'school-admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId, user } = authResult;
 
     const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
+      where: eq(users.id, userId),
       with: {
         school: true,
       parent: {

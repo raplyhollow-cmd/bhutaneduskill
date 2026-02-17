@@ -7,20 +7,22 @@
  * - Track intervention progress
  * - Outcome recording
  * - Follow-up scheduling
+ * - Progress notes
  */
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import {
   AlertCircle,
   Plus,
   Search,
-  Filter,
   Users,
   TrendingUp,
   Calendar,
@@ -28,178 +30,121 @@ import {
   Clock,
   Target,
   MessageSquare,
-  User,
   GraduationCap,
   MapPin,
   ChevronLeft,
   ChevronRight,
   Eye,
   Edit,
-  MoreVertical,
   Loader2,
+  X,
+  Save,
+  RefreshCw,
 } from "lucide-react";
-import Link from "next/link";
 
-// Mock intervention data
-const mockInterventions = [
-  {
-    id: "INT001",
-    studentId: "STU001",
-    studentName: "Tashi Dorji",
-    grade: 12,
-    school: "Thimphu Higher Secondary School",
-    type: "academic",
-    category: "Grade Improvement",
-    priority: "high",
-    status: "active",
-    startDate: "2024-02-01",
-    targetDate: "2024-03-15",
-    progress: 65,
-    description: "Struggling with Mathematics - needs extra support in calculus and algebra",
-    goals: [
-      { id: 1, text: "Complete weekly math tutoring sessions", status: "completed" },
-      { id: 2, text: "Submit all homework assignments on time", status: "in_progress" },
-      { id: 3, text: "Achieve 70% or higher in next exam", status: "pending" },
-    ],
-    notes: "Student showing improvement in recent quizzes",
-    followUpDate: "2024-02-15",
-  },
-  {
-    id: "INT002",
-    studentId: "STU002",
-    studentName: "Karma Wangmo",
-    grade: 10,
-    school: "Yangchenphug Higher Secondary School",
-    type: "behavioral",
-    category: "Attendance Issues",
-    priority: "medium",
-    status: "active",
-    startDate: "2024-01-28",
-    targetDate: "2024-03-01",
-    progress: 40,
-    description: "Frequent absences - needs attendance monitoring and support",
-    goals: [
-      { id: 1, text: "Attend school for 2 consecutive weeks", status: "completed" },
-      { id: 2, text: "Meet with counselor to discuss barriers", status: "completed" },
-      { id: 3, text: "Maintain 90% attendance for one month", status: "in_progress" },
-    ],
-    notes: "Family issues identified - providing family counseling support",
-    followUpDate: "2024-02-12",
-  },
-  {
-    id: "INT003",
-    studentId: "STU003",
-    studentName: "Pema Lhamo",
-    grade: 11,
-    school: "Moiyul Goenpa HSS",
-    type: "personal",
-    category: "Social Adjustment",
-    priority: "low",
-    status: "monitoring",
-    startDate: "2024-01-15",
-    targetDate: "2024-02-28",
-    progress: 80,
-    description: "Difficulty adjusting to new school environment - peer connection support",
-    goals: [
-      { id: 1, text: "Join at least one extracurricular activity", status: "completed" },
-      { id: 2, text: "Participate in group counseling sessions", status: "completed" },
-      { id: 3, text: "Report improved social connections", status: "completed" },
-    ],
-    notes: "Significant improvement - student now has peer group",
-    followUpDate: "2024-02-20",
-  },
-  {
-    id: "INT004",
-    studentId: "STU004",
-    studentName: "Dorji Wangchuk",
-    grade: 12,
-    school: "Pelkhil HSS",
-    type: "career",
-    category: "Career Planning",
-    priority: "high",
-    status: "active",
-    startDate: "2024-02-05",
-    targetDate: "2024-03-30",
-    progress: 25,
-    description: "Undecided on career path - needs career exploration and assessment",
-    goals: [
-      { id: 1, text: "Complete RIASEC assessment", status: "completed" },
-      { id: 2, text: "Research top 3 career matches", status: "in_progress" },
-      { id: 3, text: "Create career action plan", status: "pending" },
-    ],
-    notes: "Student shows strong interest in engineering fields",
-    followUpDate: "2024-02-18",
-  },
-  {
-    id: "INT005",
-    studentId: "STU005",
-    studentName: "Sonam Yangdon",
-    grade: 10,
-    school: "Rigsum HSS",
-    type: "academic",
-    category: "Exam Preparation",
-    priority: "high",
-    status: "active",
-    startDate: "2024-02-08",
-    targetDate: "2024-03-15",
-    progress: 30,
-    description: "Preparing for board exams - needs study skills and time management support",
-    goals: [
-      { id: 1, text: "Create study schedule", status: "completed" },
-      { id: 2, text: "Complete practice tests", status: "in_progress" },
-      { id: 3, text: "Review weak subjects with teachers", status: "pending" },
-    ],
-    notes: "Student motivated and following schedule well",
-    followUpDate: "2024-02-14",
-  },
-  {
-    id: "INT006",
-    studentId: "STU006",
-    studentName: "Karma Tshering",
-    grade: 11,
-    school: "Thimphu HSS",
-    type: "behavioral",
-    category: "Motivation",
-    priority: "medium",
-    status: "completed",
-    startDate: "2024-01-10",
-    targetDate: "2024-02-10",
-    progress: 100,
-    description: "Low motivation and engagement - mentoring and goal-setting intervention",
-    goals: [
-      { id: 1, text: "Identify personal interests and strengths", status: "completed" },
-      { id: 2, text: "Set academic and personal goals", status: "completed" },
-      { id: 3, text: "Connect with peer mentor", status: "completed" },
-    ],
-    notes: "Successfully completed - student now engaged in school activities",
-    followUpDate: "2024-02-10",
-    outcome: "Successful - student showing sustained improvement",
-  },
-];
+// ============================================================================
+// TYPES
+// ============================================================================
 
-const typeOptions = ["All", "Academic", "Behavioral", "Personal", "Career"];
-const priorityOptions = ["All", "High", "Medium", "Low"];
-const statusOptions = ["All", "Active", "Monitoring", "Completed"];
+type InterventionType = "academic" | "behavioral" | "personal" | "career" | "social";
+type InterventionPriority = "low" | "medium" | "high" | "urgent";
+type InterventionStatus = "planned" | "active" | "monitoring" | "completed" | "cancelled";
+type OutcomeRating = "successful" | "partially_successful" | "unsuccessful";
+
+interface InterventionGoal {
+  id: string;
+  text: string;
+  status: "pending" | "in_progress" | "completed";
+  targetDate?: string;
+}
+
+interface ProgressNote {
+  id: string;
+  content: string;
+  createdBy: string;
+  createdAt: string;
+  progressUpdate?: number;
+  statusChange?: string;
+  milestoneReached?: boolean;
+  milestoneDescription?: string;
+}
+
+interface Intervention {
+  id: string;
+  studentId: string;
+  studentName: string;
+  grade?: number | null;
+  school: string;
+  type: InterventionType;
+  category: string;
+  priority: InterventionPriority;
+  status: InterventionStatus;
+  startDate: string;
+  targetDate: string;
+  followUpDate?: string | null;
+  progress: number;
+  description: string;
+  goals: InterventionGoal[];
+  notes: ProgressNote[];
+  outcome?: string | null;
+  outcomeRating?: OutcomeRating | null;
+  tags?: string[];
+  counselorId: string;
+}
+
+interface InterventionStats {
+  totalInterventions: number;
+  activeInterventions: number;
+  highPriorityCount: number;
+  completedThisMonth: number;
+}
+
+interface Student {
+  id: string;
+  name: string;
+  firstName?: string;
+  lastName?: string;
+  classGrade?: number | null;
+  school?: string;
+}
+
+// ============================================================================
+// COMPONENTS
+// ============================================================================
 
 export default function CounselorInterventionsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState("All");
   const [selectedPriority, setSelectedPriority] = useState("All");
   const [selectedStatus, setSelectedStatus] = useState("All");
+
+  // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [selectedIntervention, setSelectedIntervention] = useState<any>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [showUpdateProgressModal, setShowUpdateProgressModal] = useState(false);
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
 
   // Data states
-  const [interventions, setInterventions] = useState<any[]>([]);
-  const [stats, setStats] = useState<any>(null);
+  const [interventions, setInterventions] = useState<Intervention[]>([]);
+  const [stats, setStats] = useState<InterventionStats | null>(null);
+  const [selectedIntervention, setSelectedIntervention] = useState<Intervention | null>(null);
+  const [students, setStudents] = useState<Student[]>([]);
+
+  // Loading states
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const hasFetchedData = useRef(false);
 
   // Fetch data on mount
   useEffect(() => {
+    if (hasFetchedData.current) return;
+    hasFetchedData.current = true;
     fetchInterventionsData();
+    fetchStudents();
   }, []);
 
   const fetchInterventionsData = async () => {
@@ -212,9 +157,13 @@ export default function CounselorInterventionsPage() {
         throw new Error("Failed to fetch interventions data");
       }
 
-      const data = await response.json();
-      setInterventions(data.interventions || []);
-      setStats(data.stats || null);
+      const result = await response.json();
+      if (result.success) {
+        setInterventions(result.data.interventions || []);
+        setStats(result.data.stats || null);
+      } else {
+        throw new Error(result.error || "Failed to fetch interventions");
+      }
     } catch (err) {
       console.error("Error fetching interventions:", err);
       setError("Failed to load interventions. Please try again.");
@@ -227,6 +176,20 @@ export default function CounselorInterventionsPage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchStudents = async () => {
+    try {
+      const response = await fetch("/api/counselor/students");
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data?.students) {
+          setStudents(result.data.students);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching students:", err);
     }
   };
 
@@ -249,43 +212,69 @@ export default function CounselorInterventionsPage() {
   const totalPages = Math.ceil(filteredInterventions.length / itemsPerPage);
   const paginatedInterventions = filteredInterventions.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  const getTypeBadge = (type: string) => {
-    const styles = {
+  const getTypeBadge = (type: InterventionType) => {
+    const styles: Record<InterventionType, string> = {
       academic: "bg-blue-100 text-blue-700 border-blue-200",
       behavioral: "bg-orange-100 text-orange-700 border-orange-200",
       personal: "bg-purple-100 text-purple-700 border-purple-200",
       career: "bg-green-100 text-green-700 border-green-200",
+      social: "bg-pink-100 text-pink-700 border-pink-200",
     };
-    return styles[type as keyof typeof styles] || styles.academic;
+    return styles[type] || styles.academic;
   };
 
-  const getPriorityBadge = (priority: string) => {
-    const styles = {
+  const getPriorityBadge = (priority: InterventionPriority) => {
+    const styles: Record<InterventionPriority, string> = {
       high: "bg-red-100 text-red-700 border-red-200",
       medium: "bg-yellow-100 text-yellow-700 border-yellow-200",
       low: "bg-gray-100 text-gray-700 border-gray-200",
+      urgent: "bg-red-200 text-red-800 border-red-300",
     };
-    return styles[priority as keyof typeof styles] || styles.medium;
+    return styles[priority] || styles.medium;
   };
 
-  const getStatusBadge = (status: string) => {
-    const styles = {
+  const getStatusBadge = (status: InterventionStatus) => {
+    const styles: Record<InterventionStatus, string> = {
       active: "bg-green-100 text-green-700 border-green-200",
       monitoring: "bg-blue-100 text-blue-700 border-blue-200",
       completed: "bg-gray-100 text-gray-600 border-gray-200",
+      planned: "bg-purple-100 text-purple-700 border-purple-200",
+      cancelled: "bg-red-50 text-red-600 border-red-200",
     };
-    const labels = {
+    const labels: Record<InterventionStatus, string> = {
       active: "Active",
       monitoring: "Monitoring",
       completed: "Completed",
+      planned: "Planned",
+      cancelled: "Cancelled",
     };
-    return { className: styles[status as keyof typeof styles] || styles.active, label: labels[status as keyof typeof labels] || status };
+    return { className: styles[status], label: labels[status] };
   };
 
-  // Stats
-  const activeInterventions = stats?.activeInterventions ?? interventions.filter((i) => i.status === "active").length;
-  const completedThisMonth = stats?.completedThisMonth ?? interventions.filter((i) => i.status === "completed").length;
-  const highPriorityCount = stats?.highPriorityCount ?? interventions.filter((i) => i.priority === "high" && i.status !== "completed").length;
+  const handleViewIntervention = (intervention: Intervention) => {
+    setSelectedIntervention(intervention);
+    setShowDetailModal(true);
+  };
+
+  const handleUpdateProgress = (intervention: Intervention) => {
+    setSelectedIntervention(intervention);
+    setShowUpdateProgressModal(true);
+  };
+
+  const handleCompleteIntervention = (intervention: Intervention) => {
+    setSelectedIntervention(intervention);
+    setShowCompleteModal(true);
+  };
+
+  const handleRefresh = useCallback(() => {
+    hasFetchedData.current = false;
+    fetchInterventionsData();
+  }, []);
+
+  const handleModalSuccess = useCallback(() => {
+    hasFetchedData.current = false;
+    fetchInterventionsData();
+  }, []);
 
   // Loading state
   if (loading) {
@@ -309,14 +298,20 @@ export default function CounselorInterventionsPage() {
             Track and manage student support interventions
           </p>
         </div>
-        <Button
-          className="gap-2"
-          style={{ background: 'linear-gradient(135deg, rgb(168 85 247), rgb(147 51 234))' }}
-          onClick={() => setShowCreateModal(true)}
-        >
-          <Plus className="w-4 h-4" />
-          New Intervention
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleRefresh}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
+          </Button>
+          <Button
+            className="gap-2"
+            style={{ background: 'linear-gradient(135deg, rgb(168 85 247), rgb(147 51 234))' }}
+            onClick={() => setShowCreateModal(true)}
+          >
+            <Plus className="w-4 h-4" />
+            New Intervention
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -342,7 +337,7 @@ export default function CounselorInterventionsPage() {
                 <TrendingUp className="w-6 h-6 text-green-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900">{activeInterventions}</p>
+                <p className="text-2xl font-bold text-gray-900">{stats?.activeInterventions ?? 0}</p>
                 <p className="text-sm text-gray-500">Active Cases</p>
               </div>
             </div>
@@ -356,7 +351,7 @@ export default function CounselorInterventionsPage() {
                 <Target className="w-6 h-6 text-red-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900">{highPriorityCount}</p>
+                <p className="text-2xl font-bold text-gray-900">{stats?.highPriorityCount ?? 0}</p>
                 <p className="text-sm text-gray-500">High Priority</p>
               </div>
             </div>
@@ -370,13 +365,22 @@ export default function CounselorInterventionsPage() {
                 <CheckCircle className="w-6 h-6 text-blue-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900">{completedThisMonth}</p>
-                <p className="text-sm text-gray-500">Completed</p>
+                <p className="text-2xl font-bold text-gray-900">{stats?.completedThisMonth ?? 0}</p>
+                <p className="text-sm text-gray-500">Completed This Month</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Error State */}
+      {error && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <p className="text-red-700">{error}</p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filters */}
       <Card>
@@ -399,7 +403,7 @@ export default function CounselorInterventionsPage() {
               onChange={(e) => setSelectedType(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
             >
-              {typeOptions.map((type) => (
+              {["All", "Academic", "Behavioral", "Personal", "Career", "Social"].map((type) => (
                 <option key={type} value={type}>
                   {type === "All" ? "All Types" : type}
                 </option>
@@ -411,7 +415,7 @@ export default function CounselorInterventionsPage() {
               onChange={(e) => setSelectedPriority(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
             >
-              {priorityOptions.map((priority) => (
+              {["All", "High", "Medium", "Low", "Urgent"].map((priority) => (
                 <option key={priority} value={priority}>
                   {priority === "All" ? "All Priorities" : priority}
                 </option>
@@ -423,7 +427,7 @@ export default function CounselorInterventionsPage() {
               onChange={(e) => setSelectedStatus(e.target.value)}
               className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
             >
-              {statusOptions.map((status) => (
+              {["All", "Active", "Monitoring", "Completed", "Planned"].map((status) => (
                 <option key={status} value={status}>
                   {status === "All" ? "All Status" : status}
                 </option>
@@ -443,7 +447,7 @@ export default function CounselorInterventionsPage() {
               <CardContent className="p-6">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-3">
+                    <div className="flex items-center gap-3 mb-3 flex-wrap">
                       <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold" style={{ background: 'linear-gradient(135deg, rgb(168 85 247), rgb(147 51 234))' }}>
                         {intervention.studentName.split(" ").map((n) => n[0]).join("")}
                       </div>
@@ -465,11 +469,11 @@ export default function CounselorInterventionsPage() {
                     <div className="grid md:grid-cols-2 gap-4 mb-4">
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <GraduationCap className="w-4 h-4" />
-                        <span>Grade {intervention.grade}</span>
+                        <span>Grade {intervention.grade || "N/A"}</span>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
                         <MapPin className="w-4 h-4" />
-                        <span className="truncate">{intervention.school}</span>
+                        <span className="truncate">{intervention.school || "N/A"}</span>
                       </div>
                     </div>
 
@@ -481,7 +485,7 @@ export default function CounselorInterventionsPage() {
                     </div>
 
                     {/* Progress Bar */}
-                    {intervention.status !== "completed" && (
+                    {intervention.status !== "completed" && intervention.status !== "cancelled" && (
                       <div className="mb-4">
                         <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
                           <span>Progress</span>
@@ -500,7 +504,7 @@ export default function CounselorInterventionsPage() {
                     )}
 
                     {/* Dates */}
-                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                    <div className="flex items-center gap-4 text-sm text-gray-500 flex-wrap">
                       <div className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
                         <span>Started: {new Date(intervention.startDate).toLocaleDateString()}</span>
@@ -523,17 +527,31 @@ export default function CounselorInterventionsPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => {
-                        setSelectedIntervention(intervention);
-                        setShowDetailModal(true);
-                      }}
+                      onClick={() => handleViewIntervention(intervention)}
                     >
                       <Eye className="w-4 h-4 mr-1" />
                       View
                     </Button>
-                    <Button variant="ghost" size="icon">
-                      <MoreVertical className="w-4 h-4" />
-                    </Button>
+                    {intervention.status !== "completed" && intervention.status !== "cancelled" && (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleUpdateProgress(intervention)}
+                        >
+                          <Edit className="w-4 h-4 mr-1" />
+                          Update
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleCompleteIntervention(intervention)}
+                        >
+                          <CheckCircle className="w-4 h-4 mr-1" />
+                          Complete
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -579,7 +597,7 @@ export default function CounselorInterventionsPage() {
               <ChevronLeft className="w-4 h-4" />
             </Button>
             {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-              let pageNum;
+              let pageNum: number;
               if (totalPages <= 5) {
                 pageNum = i + 1;
               } else if (currentPage <= 3) {
@@ -614,232 +632,828 @@ export default function CounselorInterventionsPage() {
         </div>
       )}
 
-      {/* Create Intervention Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Create New Intervention</CardTitle>
-                  <CardDescription>Set up a new student intervention plan</CardDescription>
-                </div>
-                <Button variant="ghost" size="sm" onClick={() => setShowCreateModal(false)}>
-                  <XCircle className="w-5 h-5" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Student *</label>
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                  <option value="">Select a student</option>
-                  <option value="STU001">Tashi Dorji - Grade 12</option>
-                  <option value="STU002">Karma Wangmo - Grade 10</option>
-                  <option value="STU003">Pema Lhamo - Grade 11</option>
-                </select>
-              </div>
+      {/* Modals */}
+      <CreateInterventionModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSuccess={handleModalSuccess}
+        students={students}
+      />
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Type *</label>
-                  <select className="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                    <option value="">Select type</option>
-                    <option value="academic">Academic</option>
-                    <option value="behavioral">Behavioral</option>
-                    <option value="personal">Personal</option>
-                    <option value="career">Career</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Priority *</label>
-                  <select className="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                  </select>
-                </div>
-              </div>
+      <DetailModal
+        isOpen={showDetailModal}
+        onClose={() => setShowDetailModal(false)}
+        intervention={selectedIntervention}
+        onUpdate={handleModalSuccess}
+      />
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
-                <Input placeholder="e.g., Grade Improvement, Attendance Issues" />
-              </div>
+      <UpdateProgressModal
+        isOpen={showUpdateProgressModal}
+        onClose={() => setShowUpdateProgressModal(false)}
+        intervention={selectedIntervention}
+        onSuccess={handleModalSuccess}
+      />
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description *</label>
-                <textarea
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg min-h-[100px]"
-                  placeholder="Describe the intervention needed..."
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Start Date *</label>
-                  <Input type="date" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Target Date *</label>
-                  <Input type="date" />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Follow-up Date</label>
-                <Input type="date" />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Initial Goals</label>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <input type="checkbox" className="rounded border-gray-300 text-purple-600" />
-                    <Input placeholder="Enter a goal..." />
-                  </div>
-                  <Button variant="outline" size="sm" className="gap-1">
-                    <Plus className="w-4 h-4" />
-                    Add Goal
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-            <div className="border-t px-6 py-4 flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setShowCreateModal(false)}>
-                Cancel
-              </Button>
-              <Button
-                style={{ background: 'linear-gradient(135deg, rgb(168 85 247), rgb(147 51 234))' }}
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Create Intervention
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* Detail Modal */}
-      {showDetailModal && selectedIntervention && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold" style={{ background: 'linear-gradient(135deg, rgb(168 85 247), rgb(147 51 234))' }}>
-                    {selectedIntervention.studentName.split(" ").map((n: string) => n[0]).join("")}
-                  </div>
-                  <div>
-                    <CardTitle>{selectedIntervention.studentName}</CardTitle>
-                    <CardDescription>{selectedIntervention.id}</CardDescription>
-                  </div>
-                </div>
-                <Button variant="ghost" size="sm" onClick={() => setShowDetailModal(false)}>
-                  <XCircle className="w-5 h-5" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-2">
-                <Badge className={getTypeBadge(selectedIntervention.type)} variant="outline">
-                  {selectedIntervention.type}
-                </Badge>
-                <Badge className={getPriorityBadge(selectedIntervention.priority)} variant="outline">
-                  {selectedIntervention.priority}
-                </Badge>
-                <Badge className={getStatusBadge(selectedIntervention.status).className} variant="outline">
-                  {getStatusBadge(selectedIntervention.status).label}
-                </Badge>
-              </div>
-
-              <div>
-                <h4 className="font-medium text-gray-900 mb-1">Category</h4>
-                <p className="text-gray-600">{selectedIntervention.category}</p>
-              </div>
-
-              <div>
-                <h4 className="font-medium text-gray-900 mb-1">Description</h4>
-                <p className="text-gray-600">{selectedIntervention.description}</p>
-              </div>
-
-              <div>
-                <h4 className="font-medium text-gray-900 mb-2">Goals</h4>
-                <div className="space-y-2">
-                  {selectedIntervention.goals.map((goal: any) => (
-                    <div key={goal.id} className="flex items-start gap-2 p-3 border rounded-lg">
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                        goal.status === "completed" ? "bg-green-500" :
-                        goal.status === "in_progress" ? "bg-blue-500" : "bg-gray-300"
-                      }`}>
-                        {goal.status === "completed" && <CheckCircle className="w-3 h-3 text-white" />}
-                      </div>
-                      <span className={goal.status === "completed" ? "line-through text-gray-400" : "text-gray-700"}>
-                        {goal.text}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {selectedIntervention.notes && (
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-1">Notes</h4>
-                  <p className="text-gray-600">{selectedIntervention.notes}</p>
-                </div>
-              )}
-
-              {selectedIntervention.outcome && (
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-1">Outcome</h4>
-                  <p className="text-gray-600">{selectedIntervention.outcome}</p>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-4 pt-4 border-t">
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-1">Start Date</h4>
-                  <p className="text-gray-600">{new Date(selectedIntervention.startDate).toLocaleDateString()}</p>
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-1">Target Date</h4>
-                  <p className="text-gray-600">{new Date(selectedIntervention.targetDate).toLocaleDateString()}</p>
-                </div>
-              </div>
-            </CardContent>
-            <div className="border-t px-6 py-4 flex justify-between">
-              <Button variant="outline">
-                <Edit className="w-4 h-4 mr-2" />
-                Update Progress
-              </Button>
-              <Button
-                style={{ background: 'linear-gradient(135deg, rgb(168 85 247), rgb(147 51 234))' }}
-              >
-                <MessageSquare className="w-4 h-4 mr-2" />
-                Add Note
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
+      <CompleteInterventionModal
+        isOpen={showCompleteModal}
+        onClose={() => setShowCompleteModal(false)}
+        intervention={selectedIntervention}
+        onSuccess={handleModalSuccess}
+      />
     </div>
   );
 }
 
-function XCircle({ className }: { className?: string }) {
+// ============================================================================
+// CREATE INTERVENTION MODAL COMPONENT
+// ============================================================================
+
+interface CreateInterventionModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  students: Student[];
+}
+
+function CreateInterventionModal({ isOpen, onClose, onSuccess, students }: CreateInterventionModalProps) {
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [formData, setFormData] = useState({
+    studentId: "",
+    type: "academic" as InterventionType,
+    category: "",
+    priority: "medium" as InterventionPriority,
+    description: "",
+    startDate: new Date().toISOString().split("T")[0],
+    targetDate: "",
+    followUpDate: "",
+    goals: [] as Array<{ id: string; text: string; status: "pending" }>,
+  });
+
+  const [newGoalText, setNewGoalText] = useState("");
+
+  if (!isOpen) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/counselor/interventions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...formData,
+          goals: formData.goals.filter(g => g.text.trim()),
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to create intervention");
+      }
+
+      onSuccess();
+      onClose();
+      // Reset form
+      setFormData({
+        studentId: "",
+        type: "academic",
+        category: "",
+        priority: "medium",
+        description: "",
+        startDate: new Date().toISOString().split("T")[0],
+        targetDate: "",
+        followUpDate: "",
+        goals: [],
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create intervention");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const addGoal = () => {
+    if (newGoalText.trim()) {
+      setFormData({
+        ...formData,
+        goals: [...formData.goals, { id: `goal_${Date.now()}`, text: newGoalText.trim(), status: "pending" as const }],
+      });
+      setNewGoalText("");
+    }
+  };
+
+  const removeGoal = (goalId: string) => {
+    setFormData({
+      ...formData,
+      goals: formData.goals.filter(g => g.id !== goalId),
+    });
+  };
+
   return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-    >
-      <circle cx="12" cy="12" r="10" />
-      <path d="m15 9-6 6" />
-      <path d="m9 9 6 6" />
-    </svg>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <Card className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Create New Intervention</CardTitle>
+              <CardDescription>Set up a new student intervention plan</CardDescription>
+            </div>
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="w-5 h-5" />
+            </Button>
+          </div>
+        </CardHeader>
+        <form onSubmit={handleSubmit}>
+          <CardContent className="space-y-4">
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                {error}
+              </div>
+            )}
+
+            <div>
+              <Label htmlFor="student">Student *</Label>
+              <select
+                id="student"
+                required
+                value={formData.studentId}
+                onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              >
+                <option value="">Select a student</option>
+                {students.map((student) => (
+                  <option key={student.id} value={student.id}>
+                    {student.name} - Grade {student.classGrade || "N/A"}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="type">Type *</Label>
+                <select
+                  id="type"
+                  required
+                  value={formData.type}
+                  onChange={(e) => setFormData({ ...formData, type: e.target.value as InterventionType })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                >
+                  <option value="academic">Academic</option>
+                  <option value="behavioral">Behavioral</option>
+                  <option value="personal">Personal</option>
+                  <option value="career">Career</option>
+                  <option value="social">Social</option>
+                </select>
+              </div>
+              <div>
+                <Label htmlFor="priority">Priority *</Label>
+                <select
+                  id="priority"
+                  value={formData.priority}
+                  onChange={(e) => setFormData({ ...formData, priority: e.target.value as InterventionPriority })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="category">Category *</Label>
+              <Input
+                id="category"
+                required
+                placeholder="e.g., Grade Improvement, Attendance Issues"
+                value={formData.category}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="description">Description *</Label>
+              <Textarea
+                id="description"
+                required
+                placeholder="Describe the intervention needed..."
+                className="min-h-[100px]"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="startDate">Start Date *</Label>
+                <Input
+                  id="startDate"
+                  type="date"
+                  required
+                  value={formData.startDate}
+                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                />
+              </div>
+              <div>
+                <Label htmlFor="targetDate">Target Date *</Label>
+                <Input
+                  id="targetDate"
+                  type="date"
+                  required
+                  value={formData.targetDate}
+                  onChange={(e) => setFormData({ ...formData, targetDate: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="followUpDate">Follow-up Date</Label>
+              <Input
+                id="followUpDate"
+                type="date"
+                value={formData.followUpDate}
+                onChange={(e) => setFormData({ ...formData, followUpDate: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <Label>Initial Goals</Label>
+              <div className="space-y-2 mt-2">
+                {formData.goals.map((goal) => (
+                  <div key={goal.id} className="flex items-center gap-2 p-2 border rounded-lg">
+                    <span className="flex-1 text-sm">{goal.text}</span>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => removeGoal(goal.id)}>
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="Enter a goal..."
+                    value={newGoalText}
+                    onChange={(e) => setNewGoalText(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addGoal())}
+                  />
+                  <Button type="button" variant="outline" onClick={addGoal}>
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+          <div className="border-t px-6 py-4 flex justify-end gap-3">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={submitting}
+              style={{ background: 'linear-gradient(135deg, rgb(168 85 247), rgb(147 51 234))' }}
+            >
+              {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
+              Create Intervention
+            </Button>
+          </div>
+        </form>
+      </Card>
+    </div>
   );
 }
+
+// ============================================================================
+// DETAIL MODAL COMPONENT
+// ============================================================================
+
+interface DetailModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  intervention: Intervention | null;
+  onUpdate: () => void;
+}
+
+function DetailModal({ isOpen, onClose, intervention, onUpdate }: DetailModalProps) {
+  if (!isOpen || !intervention) return null;
+
+  const statusBadge = (
+    { status: intervention.status as InterventionStatus } as { status: InterventionStatus }
+  );
+  const getTypeBadge = (type: InterventionType) => {
+    const styles: Record<InterventionType, string> = {
+      academic: "bg-blue-100 text-blue-700 border-blue-200",
+      behavioral: "bg-orange-100 text-orange-700 border-orange-200",
+      personal: "bg-purple-100 text-purple-700 border-purple-200",
+      career: "bg-green-100 text-green-700 border-green-200",
+      social: "bg-pink-100 text-pink-700 border-pink-200",
+    };
+    return styles[type] || styles.academic;
+  };
+  const getPriorityBadge = (priority: InterventionPriority) => {
+    const styles: Record<InterventionPriority, string> = {
+      high: "bg-red-100 text-red-700 border-red-200",
+      medium: "bg-yellow-100 text-yellow-700 border-yellow-200",
+      low: "bg-gray-100 text-gray-700 border-gray-200",
+      urgent: "bg-red-200 text-red-800 border-red-300",
+    };
+    return styles[priority] || styles.medium;
+  };
+  const getStatusBadge = (status: InterventionStatus) => {
+    const styles: Record<InterventionStatus, string> = {
+      active: "bg-green-100 text-green-700 border-green-200",
+      monitoring: "bg-blue-100 text-blue-700 border-blue-200",
+      completed: "bg-gray-100 text-gray-600 border-gray-200",
+      planned: "bg-purple-100 text-purple-700 border-purple-200",
+      cancelled: "bg-red-50 text-red-600 border-red-200",
+    };
+    const labels: Record<InterventionStatus, string> = {
+      active: "Active",
+      monitoring: "Monitoring",
+      completed: "Completed",
+      planned: "Planned",
+      cancelled: "Cancelled",
+    };
+    return { className: styles[status], label: labels[status] };
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <Card className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center text-white font-semibold" style={{ background: 'linear-gradient(135deg, rgb(168 85 247), rgb(147 51 234))' }}>
+                {intervention.studentName.split(" ").map((n: string) => n[0]).join("")}
+              </div>
+              <div>
+                <CardTitle>{intervention.studentName}</CardTitle>
+                <CardDescription>{intervention.id}</CardDescription>
+              </div>
+            </div>
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="w-5 h-5" />
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-2 flex-wrap">
+            <Badge className={getTypeBadge(intervention.type)} variant="outline">
+              {intervention.type}
+            </Badge>
+            <Badge className={getPriorityBadge(intervention.priority)} variant="outline">
+              {intervention.priority}
+            </Badge>
+            <Badge className={getStatusBadge(intervention.status).className} variant="outline">
+              {getStatusBadge(intervention.status).label}
+            </Badge>
+          </div>
+
+          <div>
+            <h4 className="font-medium text-gray-900 mb-1">Category</h4>
+            <p className="text-gray-600">{intervention.category}</p>
+          </div>
+
+          <div>
+            <h4 className="font-medium text-gray-900 mb-1">Description</h4>
+            <p className="text-gray-600">{intervention.description}</p>
+          </div>
+
+          <div>
+            <h4 className="font-medium text-gray-900 mb-2">Goals</h4>
+            <div className="space-y-2">
+              {intervention.goals.map((goal) => (
+                <div key={goal.id} className="flex items-start gap-2 p-3 border rounded-lg">
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                    goal.status === "completed" ? "bg-green-500" :
+                    goal.status === "in_progress" ? "bg-blue-500" : "bg-gray-300"
+                  }`}>
+                    {goal.status === "completed" && <CheckCircle className="w-3 h-3 text-white" />}
+                  </div>
+                  <span className={goal.status === "completed" ? "line-through text-gray-400" : "text-gray-700"}>
+                    {goal.text}
+                  </span>
+                </div>
+              ))}
+              {intervention.goals.length === 0 && (
+                <p className="text-sm text-gray-500">No goals set yet.</p>
+              )}
+            </div>
+          </div>
+
+          {intervention.notes && intervention.notes.length > 0 && (
+            <div>
+              <h4 className="font-medium text-gray-900 mb-2">Progress Notes</h4>
+              <div className="space-y-2">
+                {intervention.notes.map((note) => (
+                  <div key={note.id} className="p-3 bg-gray-50 rounded-lg">
+                    <p className="text-sm text-gray-700">{note.content}</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {new Date(note.createdAt).toLocaleDateString()} at {new Date(note.createdAt).toLocaleTimeString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {intervention.outcome && (
+            <div>
+              <h4 className="font-medium text-gray-900 mb-1">Outcome</h4>
+              <p className="text-gray-600">{intervention.outcome}</p>
+              {intervention.outcomeRating && (
+                <Badge className="mt-2" variant="outline">
+                  {intervention.outcomeRating === "successful" ? "Successful" :
+                   intervention.outcomeRating === "partially_successful" ? "Partially Successful" : "Unsuccessful"}
+                </Badge>
+              )}
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+            <div>
+              <h4 className="font-medium text-gray-900 mb-1">Start Date</h4>
+              <p className="text-gray-600">{new Date(intervention.startDate).toLocaleDateString()}</p>
+            </div>
+            <div>
+              <h4 className="font-medium text-gray-900 mb-1">Target Date</h4>
+              <p className="text-gray-600">{new Date(intervention.targetDate).toLocaleDateString()}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ============================================================================
+// UPDATE PROGRESS MODAL COMPONENT
+// ============================================================================
+
+interface UpdateProgressModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  intervention: Intervention | null;
+  onSuccess: () => void;
+}
+
+function UpdateProgressModal({ isOpen, onClose, intervention, onSuccess }: UpdateProgressModalProps) {
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [formData, setFormData] = useState({
+    status: intervention?.status || "active",
+    progress: intervention?.progress || 0,
+    note: "",
+    milestoneReached: false,
+    milestoneDescription: "",
+  });
+
+  useEffect(() => {
+    if (intervention) {
+      setFormData({
+        status: intervention.status,
+        progress: intervention.progress,
+        note: "",
+        milestoneReached: false,
+        milestoneDescription: "",
+      });
+    }
+  }, [intervention]);
+
+  if (!isOpen || !intervention) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      // Update intervention
+      const updateResponse = await fetch(`/api/counselor/interventions/${intervention.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: formData.status,
+          progress: formData.progress,
+        }),
+      });
+
+      if (!updateResponse.ok) {
+        throw new Error("Failed to update intervention");
+      }
+
+      // Add note if provided
+      if (formData.note.trim()) {
+        await fetch(`/api/counselor/interventions/${intervention.id}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content: formData.note,
+            progressUpdate: formData.progress,
+            statusChange: formData.status !== intervention.status ? formData.status : undefined,
+            milestoneReached: formData.milestoneReached,
+            milestoneDescription: formData.milestoneDescription,
+          }),
+        });
+      }
+
+      onSuccess();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update progress");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleGoalToggle = (goalId: string, currentStatus: string) => {
+    const newStatus = currentStatus === "completed" ? "in_progress" : "completed";
+    const updatedGoals = intervention.goals.map(g =>
+      g.id === goalId ? { ...g, status: newStatus as "pending" | "in_progress" | "completed" } : g
+    );
+
+    // Calculate progress based on completed goals
+    const completedGoals = updatedGoals.filter(g => g.status === "completed").length;
+    const newProgress = updatedGoals.length > 0 ? Math.round((completedGoals / updatedGoals.length) * 100) : 0;
+
+    setFormData({ ...formData, progress: newProgress });
+
+    // Update intervention goals via PATCH
+    fetch(`/api/counselor/interventions/${intervention.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ goals: updatedGoals }),
+    }).then(() => {
+      // Update local intervention object
+      intervention.goals = updatedGoals;
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <Card className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Update Progress</CardTitle>
+              <CardDescription>{intervention.studentName} - {intervention.category}</CardDescription>
+            </div>
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="w-5 h-5" />
+            </Button>
+          </div>
+        </CardHeader>
+        <form onSubmit={handleSubmit}>
+          <CardContent className="space-y-4">
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                {error}
+              </div>
+            )}
+
+            {/* Goals */}
+            <div>
+              <Label>Goals</Label>
+              <div className="space-y-2 mt-2">
+                {intervention.goals.map((goal) => (
+                  <label key={goal.id} className="flex items-start gap-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50">
+                    <input
+                      type="checkbox"
+                      checked={goal.status === "completed"}
+                      onChange={() => handleGoalToggle(goal.id, goal.status)}
+                      className="mt-1"
+                    />
+                    <span className={goal.status === "completed" ? "line-through text-gray-400" : "text-gray-700"}>
+                      {goal.text}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="progress">Progress: {formData.progress}%</Label>
+              <input
+                id="progress"
+                type="range"
+                min="0"
+                max="100"
+                value={formData.progress}
+                onChange={(e) => setFormData({ ...formData, progress: parseInt(e.target.value) })}
+                className="w-full"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="status">Status</Label>
+              <select
+                id="status"
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value as InterventionStatus })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              >
+                <option value="planned">Planned</option>
+                <option value="active">Active</option>
+                <option value="monitoring">Monitoring</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+
+            <div>
+              <Label htmlFor="note">Progress Note</Label>
+              <Textarea
+                id="note"
+                placeholder="Add a progress note..."
+                className="min-h-[80px]"
+                value={formData.note}
+                onChange={(e) => setFormData({ ...formData, note: e.target.value })}
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="milestone"
+                checked={formData.milestoneReached}
+                onChange={(e) => setFormData({ ...formData, milestoneReached: e.target.checked })}
+              />
+              <Label htmlFor="milestone">Milestone Reached</Label>
+            </div>
+
+            {formData.milestoneReached && (
+              <div>
+                <Label htmlFor="milestoneDesc">Milestone Description</Label>
+                <Input
+                  id="milestoneDesc"
+                  placeholder="Describe the milestone..."
+                  value={formData.milestoneDescription}
+                  onChange={(e) => setFormData({ ...formData, milestoneDescription: e.target.value })}
+                />
+              </div>
+            )}
+          </CardContent>
+          <div className="border-t px-6 py-4 flex justify-end gap-3">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={submitting}
+              style={{ background: 'linear-gradient(135deg, rgb(168 85 247), rgb(147 51 234))' }}
+            >
+              {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+              Save Update
+            </Button>
+          </div>
+        </form>
+      </Card>
+    </div>
+  );
+}
+
+// ============================================================================
+// COMPLETE INTERVENTION MODAL COMPONENT
+// ============================================================================
+
+interface CompleteInterventionModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  intervention: Intervention | null;
+  onSuccess: () => void;
+}
+
+function CompleteInterventionModal({ isOpen, onClose, intervention, onSuccess }: CompleteInterventionModalProps) {
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [formData, setFormData] = useState({
+    outcome: "",
+    outcomeRating: "" as OutcomeRating | "",
+  });
+
+  useEffect(() => {
+    if (intervention) {
+      setFormData({
+        outcome: intervention.outcome || "",
+        outcomeRating: intervention.outcomeRating || "",
+      });
+    }
+  }, [intervention]);
+
+  if (!isOpen || !intervention) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/counselor/interventions/${intervention.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "completed",
+          outcome: formData.outcome,
+          outcomeRating: formData.outcomeRating,
+          progress: 100,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to complete intervention");
+      }
+
+      onSuccess();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to complete intervention");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <Card className="max-w-lg w-full">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Complete Intervention</CardTitle>
+              <CardDescription>{intervention.studentName} - {intervention.category}</CardDescription>
+            </div>
+            <Button variant="ghost" size="icon" onClick={onClose}>
+              <X className="w-5 h-5" />
+            </Button>
+          </div>
+        </CardHeader>
+        <form onSubmit={handleSubmit}>
+          <CardContent className="space-y-4">
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                {error}
+              </div>
+            )}
+
+            <div>
+              <Label htmlFor="outcomeRating">Outcome Rating *</Label>
+              <select
+                id="outcomeRating"
+                required
+                value={formData.outcomeRating}
+                onChange={(e) => setFormData({ ...formData, outcomeRating: e.target.value as OutcomeRating })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              >
+                <option value="">Select rating...</option>
+                <option value="successful">Successful</option>
+                <option value="partially_successful">Partially Successful</option>
+                <option value="unsuccessful">Unsuccessful</option>
+              </select>
+            </div>
+
+            <div>
+              <Label htmlFor="outcome">Outcome Description *</Label>
+              <Textarea
+                id="outcome"
+                required
+                placeholder="Describe the outcome of this intervention..."
+                className="min-h-[120px]"
+                value={formData.outcome}
+                onChange={(e) => setFormData({ ...formData, outcome: e.target.value })}
+              />
+            </div>
+          </CardContent>
+          <div className="border-t px-6 py-4 flex justify-end gap-3">
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={submitting}
+              style={{ background: 'linear-gradient(135deg, rgb(168 85 247), rgb(147 51 234))' }}
+            >
+              {submitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+              Complete Intervention
+            </Button>
+          </div>
+        </form>
+      </Card>
+    </div>
+  );
+}
+
+// ============================================================================
+// EXPORT MODAL COMPONENTS FOR USE IN MAIN COMPONENT
+// ============================================================================
+
+export {
+  CreateInterventionModal,
+  DetailModal,
+  UpdateProgressModal,
+  CompleteInterventionModal,
+};

@@ -135,7 +135,7 @@ export function AddScholarshipModal({ open, onClose, onSuccess }: AddScholarship
 
             <div>
               <Label htmlFor="scholarshipType">Coverage Type *</Label>
-              <Select value={scholarshipType} onValueChange={(value: any) => setScholarshipType(value)}>
+              <Select value={scholarshipType} onValueChange={(value: "full" | "partial") => setScholarshipType(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

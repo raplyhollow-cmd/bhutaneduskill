@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 
 // ============================================================================
 // ANNOUNCEMENTS API
@@ -18,10 +18,12 @@ import { auth } from "@clerk/nextjs/server";
  * - offset: pagination offset
  */
 export async function GET(request: NextRequest) {
-  const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Auth: admin, school-admin, teacher can read announcements
+  const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
+  if ('error' in authResult) {
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
   }
+  const { userId, user } = authResult;
 
   try {
     const { searchParams } = new URL(request.url);
@@ -152,10 +154,12 @@ export async function GET(request: NextRequest) {
  * - attachments?: Array<{ name, url, type, size }>
  */
 export async function POST(request: NextRequest) {
-  const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Auth: admin, school-admin, teacher can create announcements
+  const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
+  if ('error' in authResult) {
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
   }
+  const { userId } = authResult;
 
   try {
     const body = await request.json();

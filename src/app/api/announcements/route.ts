@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { announcements as announcements, users, classes } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
@@ -23,11 +23,14 @@ export interface CreateAnnouncementInput {
 
 // GET /api/announcements - Fetch announcements
 export async function GET(request: NextRequest) {
+  // Auth: admin, school-admin, teacher can read announcements
+  const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
+  if ('error' in authResult) {
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+  }
+
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { userId } = authResult;
 
     const currentUser = await db.query.users.findFirst({
       where: eq(users.clerkUserId, userId),
@@ -67,11 +70,14 @@ export async function GET(request: NextRequest) {
 
 // POST /api/announcements - Create announcement
 export async function POST(request: NextRequest) {
+  // Auth: admin, school-admin, teacher can create announcements
+  const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
+  if ('error' in authResult) {
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+  }
+
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { userId } = authResult;
 
     const currentUser = await db.query.users.findFirst({
       where: eq(users.clerkUserId, userId),
@@ -115,11 +121,14 @@ export async function POST(request: NextRequest) {
 
 // DELETE /api/announcements/[id] - Delete announcement (handled separately in [id]/route.ts)
 export async function DELETE(request: NextRequest) {
+  // Auth: admin, school-admin, teacher can delete announcements
+  const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
+  if ('error' in authResult) {
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+  }
+
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { userId } = authResult;
 
     const { searchParams } = new URL(request.url);
     const announcementId = searchParams.get("id");

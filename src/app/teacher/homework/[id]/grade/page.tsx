@@ -141,7 +141,7 @@ export default function GradeHomeworkPage() {
   }
 
   // Convert homework questions to the format expected by GradingPanel
-  const questions: HomeworkQuestion[] = (homework.questions || []).map((q: any) => ({
+  const questions: HomeworkQuestion[] = (homework.questions || []).map((q: HomeworkQuestion) => ({
     id: q.id,
     type: q.type,
     question: q.question,
@@ -154,13 +154,11 @@ export default function GradeHomeworkPage() {
   }));
 
   // Convert submissions to the format expected by GradingPanel
-  const formattedSubmissions: StudentSubmission[] = submissions.map((s: any) => ({
+  const formattedSubmissions: StudentSubmission[] = submissions.map((s: StudentSubmission) => ({
     id: s.id,
     studentId: s.studentId,
-    studentName: s.student?.firstName
-      ? `${s.student.firstName} ${s.student.lastName || ""}`.trim()
-      : s.student?.email || "Unknown Student",
-    studentEmail: s.student?.email,
+    studentName: s.studentName,
+    studentEmail: s.studentEmail,
     answers: s.answers || [],
     submittedAt: s.submittedAt,
     metadata: s.metadata,

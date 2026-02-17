@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { feeStructures, users } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
@@ -24,22 +24,17 @@ const feeStructureSchema = z.object({
 // GET /api/school-admin/fees/structures - List fee structures
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['admin', 'school-admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId, user } = authResult;
 
     const { searchParams } = new URL(request.url);
     const grade = searchParams.get("grade");
     const academicYear = searchParams.get("academicYear");
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || currentUser.type !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const currentUser = user;
 
     let conditions = [eq(feeStructures.schoolId, currentUser.schoolId)];
     // Note: feeStructures might not have schoolId in all queries, adjust as needed
@@ -58,21 +53,16 @@ export async function GET(request: NextRequest) {
 // POST /api/school-admin/fees/structures - Create fee structure
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['admin', 'school-admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId, user } = authResult;
 
     const body = await request.json();
     const validatedData = feeStructureSchema.parse(body);
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || currentUser.type !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const currentUser = user;
 
     // Transform fees data to match schema
     const transformedFees = validatedData.fees.map(fee => ({

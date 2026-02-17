@@ -8,11 +8,25 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { updateScholarship } from "@/app/admin/content/actions";
 
+interface Scholarship {
+  id: string;
+  name: string;
+  provider: string;
+  type: string;
+  scholarshipType?: "full" | "partial";
+  amount?: string;
+  coveragePercentage?: number | string;
+  eligibility?: string;
+  applicationOpenDate?: Date | string;
+  applicationCloseDate?: Date | string;
+  academicYear?: string;
+}
+
 interface EditScholarshipModalProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  scholarship: any;
+  scholarship: Scholarship | null;
 }
 
 export function EditScholarshipModal({ open, onClose, onSuccess, scholarship }: EditScholarshipModalProps) {
@@ -148,7 +162,7 @@ export function EditScholarshipModal({ open, onClose, onSuccess, scholarship }: 
 
             <div>
               <Label htmlFor="edit-scholarshipType">Coverage Type *</Label>
-              <Select value={scholarshipType} onValueChange={(value: any) => setScholarshipType(value)}>
+              <Select value={scholarshipType} onValueChange={(value: "full" | "partial") => setScholarshipType(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

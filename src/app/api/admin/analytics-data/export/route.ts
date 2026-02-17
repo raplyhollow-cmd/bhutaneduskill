@@ -161,17 +161,19 @@ export async function GET(req: Request) {
     const data = analyticsData.data;
 
     // Filter sections if specified
-    let filteredData = data;
+    let filteredData: AnalyticsData;
     if (includeSections && includeSections.length > 0) {
       filteredData = {
-        schoolEngagement: includeSections.includes("schoolEngagement") ? data.schoolEngagement : null as any,
-        userGrowth: includeSections.includes("userGrowth") ? data.userGrowth : null as any,
-        careerInterests: includeSections.includes("careerInterests") ? data.careerInterests : null as any,
-        assessmentCompletion: includeSections.includes("assessmentCompletion") ? data.assessmentCompletion : null as any,
-        academicPerformance: includeSections.includes("academicPerformance") ? data.academicPerformance : null as any,
-        revenue: includeSections.includes("revenue") ? data.revenue : null as any,
+        schoolEngagement: includeSections.includes("schoolEngagement") ? data.schoolEngagement : null as SchoolEngagementMetrics | null,
+        userGrowth: includeSections.includes("userGrowth") ? data.userGrowth : null as UserGrowthTrends | null,
+        careerInterests: includeSections.includes("careerInterests") ? data.careerInterests : null as CareerInterestsDistribution | null,
+        assessmentCompletion: includeSections.includes("assessmentCompletion") ? data.assessmentCompletion : null as AssessmentCompletionMetrics | null,
+        academicPerformance: includeSections.includes("academicPerformance") ? data.academicPerformance : null as AcademicPerformanceMetrics | null,
+        revenue: includeSections.includes("revenue") ? data.revenue : null as RevenueMetrics | null,
         generatedAt: data.generatedAt,
       };
+    } else {
+      filteredData = data;
     }
 
     // Export based on format
@@ -192,7 +194,7 @@ export async function GET(req: Request) {
         );
     }
 
-  } catch (error) {
+  } catch (error: unknown) {
     logger.apiError(error, { route: "/api/admin/analytics-data/export", method: "GET" });
     return NextResponse.json(
       { error: "Failed to export analytics data", status: 500 } satisfies ApiErrorResponse,

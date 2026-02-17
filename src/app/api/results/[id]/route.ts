@@ -1,18 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { users, examResults } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { requireAuth, canAccessSchool } from "@/lib/db/tenant";
+import { canAccessSchool } from "@/lib/db/tenant";
+import { logger } from "@/lib/logger";
 
 // GET /api/results/[id] - Get single exam result
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  let id: string | undefined;
   try {
-    const { id } = await params;
-    const currentUser = await requireAuth();
+    const resolvedParams = await params;
+    id = resolvedParams.id;
+
+    const authResult = await requireAuth(['student', 'teacher', 'admin', 'school-admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+    }
+
+    const currentUser = authResult.user;
 
     const result = await db.query.examResults.findFirst({
       where: eq(examResults.id, id),
@@ -41,11 +50,11 @@ export async function GET(
     }
 
     return NextResponse.json({ result });
-  } catch (error: any) {
-    if (error.message === "Unauthorized") {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    console.error("Result fetch error:", error);
+    logger.error(error, { route: "/api/results/[id]", method: "GET", id });
     return NextResponse.json({ error: "Failed to fetch result" }, { status: 500 });
   }
 }
@@ -55,9 +64,17 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  let id: string | undefined;
   try {
-    const { id } = await params;
-    const currentUser = await requireAuth();
+    const resolvedParams = await params;
+    id = resolvedParams.id;
+
+    const authResult = await requireAuth(['teacher', 'admin', 'school-admin', 'counselor']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+    }
+
+    const currentUser = authResult.user;
 
     const existingResult = await db.query.examResults.findFirst({
       where: eq(examResults.id, id),
@@ -87,8 +104,8 @@ export async function PUT(
 
     // Recalculate total percentage and division
     const totalPercentage = Math.round(
-      subjects.reduce((sum: number, s: any) => sum + s.marks, 0) /
-        subjects.reduce((sum: number, s: any) => sum + s.totalMarks, 0) * 100
+      subjects.reduce((sum: number, s: { marks: number }) => sum + s.marks, 0) /
+        subjects.reduce((sum: number, s: { totalMarks: number }) => sum + s.totalMarks, 0) * 100
     );
 
     let division = "Third";
@@ -110,11 +127,11 @@ export async function PUT(
       .returning();
 
     return NextResponse.json({ success: true, result: updatedResult });
-  } catch (error: any) {
-    if (error.message === "Unauthorized") {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    console.error("Result update error:", error);
+    logger.error(error, { route: "/api/results/[id]", method: "PUT", id });
     return NextResponse.json({ error: "Failed to update result" }, { status: 500 });
   }
 }
@@ -124,9 +141,17 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  let id: string | undefined;
   try {
-    const { id } = await params;
-    const currentUser = await requireAuth();
+    const resolvedParams = await params;
+    id = resolvedParams.id;
+
+    const authResult = await requireAuth(['admin', 'counselor']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+    }
+
+    const currentUser = authResult.user;
 
     const existingResult = await db.query.examResults.findFirst({
       where: eq(examResults.id, id),
@@ -154,11 +179,11 @@ export async function DELETE(
     await db.delete(examResults).where(eq(examResults.id, id));
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    if (error.message === "Unauthorized") {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    console.error("Result delete error:", error);
+    logger.error(error, { route: "/api/results/[id]", method: "DELETE", id });
     return NextResponse.json({ error: "Failed to delete result" }, { status: 500 });
   }
 }
@@ -168,9 +193,17 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  let id: string | undefined;
   try {
-    const { id } = await params;
-    const currentUser = await requireAuth();
+    const resolvedParams = await params;
+    id = resolvedParams.id;
+
+    const authResult = await requireAuth(['admin', 'counselor']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+    }
+
+    const currentUser = authResult.user;
 
     const existingResult = await db.query.examResults.findFirst({
       where: eq(examResults.id, id),
@@ -204,11 +237,11 @@ export async function PATCH(
       .returning();
 
     return NextResponse.json({ success: true, result: updatedResult });
-  } catch (error: any) {
-    if (error.message === "Unauthorized") {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.message === "Unauthorized") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    console.error("Result verification error:", error);
+    logger.error(error, { route: "/api/results/[id]", method: "PATCH", id });
     return NextResponse.json({ error: "Failed to verify result" }, { status: 500 });
   }
 }

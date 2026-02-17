@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "next-themes";
 import { ToastProvider } from "@/components/ui/toast";
+import { UnifiedAIAssistant } from "@/components/ai/unified-ai-assistant";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -31,9 +32,14 @@ export default function RootLayout({
   if (!publishableKey) {
     return (
       <html lang="en" suppressHydrationWarning>
-        <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <body
+          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        >
           <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
             <ToastProvider>{children}</ToastProvider>
+            <div className="fixed bottom-6 right-6 z-50">
+              <UnifiedAIAssistant />
+            </div>
           </ThemeProvider>
         </body>
       </html>
@@ -48,6 +54,9 @@ export default function RootLayout({
         >
           <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
             <ToastProvider>{children}</ToastProvider>
+            <div className="fixed bottom-6 right-6 z-50">
+              <UnifiedAIAssistant />
+            </div>
           </ThemeProvider>
         </body>
       </html>

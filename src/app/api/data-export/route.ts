@@ -21,11 +21,88 @@ import {
 } from "@/lib/data-export";
 
 // ============================================================================
+// TYPE DEFINITIONS
+// ============================================================================
+
+type UserRole = "admin" | "school-admin" | "teacher" | "student" | "parent" | "counselor";
+
+interface UserRecord {
+  id: string;
+  clerkUserId: string;
+  name: string | null;
+  email: string | null;
+  type: UserRole;
+  schoolId: string | null;
+  tenantId: string | null;
+  grade: string | null;
+  settings: Record<string, unknown> | null;
+}
+
+interface AssessmentRecord {
+  id: string;
+  userId: string;
+  type: string;
+  status: string;
+  createdAt: Date;
+}
+
+interface RiasecResultRecord {
+  id: string;
+  userId: string;
+  hollandCode: string | null;
+  createdAt: Date;
+}
+
+interface CareerMatchRecord {
+  id: string;
+  assessmentId: string;
+  careerId: string;
+  matchScore: number;
+  recommendationText: string | null;
+  isTopMatch: boolean | null;
+  createdAt: Date;
+  userId: string;
+}
+
+interface CareerPlanRecord {
+  id: string;
+  userId: string;
+  targetCareer: string | null;
+  currentPhase?: string;
+  status: string | null;
+  milestones: Array<{ completed: boolean }> | null;
+  shortTermGoals: string[] | null;
+  longTermGoals: string[] | null;
+}
+
+interface ExamResultRecord {
+  id: string;
+  userId: string;
+  examType: string | null;
+  examYear: number | null;
+  totalPercentage?: number;
+  percentage?: number;
+  division?: string;
+}
+
+type DataSourceRecord = UserRecord | AssessmentRecord | RiasecResultRecord | CareerMatchRecord | CareerPlanRecord | ExamResultRecord;
+
+interface ExportBody {
+  dataSource: keyof typeof dataSources;
+  format?: string;
+  fields?: string[];
+  filters?: Record<string, unknown>;
+  limit?: number;
+  offset?: number;
+  anonymize?: boolean;
+}
+
+// ============================================================================
 // GET - List available data sources and templates
 // ============================================================================
 
 export async function GET(request: NextRequest) {
-  const authResult = await requireAuth();
+  const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
   if ('error' in authResult) {
     return NextResponse.json({ error: authResult.error }, { status: authResult.status });
   }
@@ -84,7 +161,8 @@ export async function GET(request: NextRequest) {
       sources: Object.keys(dataSources),
       templates: reportTemplates.length,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.error("Data export GET error:", error);
     return NextResponse.json({ error: "Failed to fetch export info" }, { status: 500 });
   }
@@ -95,14 +173,14 @@ export async function GET(request: NextRequest) {
 // ============================================================================
 
 export async function POST(request: NextRequest) {
-  const authResult = await requireAuth();
+  const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
   if ('error' in authResult) {
     return NextResponse.json({ error: authResult.error }, { status: authResult.status });
   }
 
   const { user } = authResult;
 
-  const body = await request.json();
+  const body = await request.json() as ExportBody;
   const { dataSource, format = "json", fields, filters, limit, offset, anonymize } = body;
 
   try {
@@ -115,7 +193,7 @@ export async function POST(request: NextRequest) {
     const exportFormat = format as ExportFormat;
 
     // Fetch data based on source type
-    let data: any[] = [];
+    let data: DataSourceRecord[] = [];
     let totalRecords = 0;
 
     // Apply tenant/school filtering for non-admin users
@@ -127,9 +205,9 @@ export async function POST(request: NextRequest) {
       case "users": {
         let query = db.select().from(users);
         if (!isAdmin && userSchoolId) {
-          query = query.where(eq(users.schoolId, userSchoolId)) as any;
+          query = query.where(eq(users.schoolId, userSchoolId)) as typeof query;
         }
-        data = await query.limit(limit || 1000).offset(offset || 0) as any[];
+        data = await query.limit(limit || 1000).offset(offset || 0) as DataSourceRecord[];
         break;
       }
 
@@ -143,20 +221,20 @@ export async function POST(request: NextRequest) {
             // This would need an 'in' clause - simplified for now
           }
         }
-        data = await query.limit(limit || 1000).offset(offset || 0).orderBy(desc(assessments.createdAt)) as any[];
+        data = await query.limit(limit || 1000).offset(offset || 0).orderBy(desc(assessments.createdAt)) as DataSourceRecord[];
         break;
       }
 
       case "riasecResults": {
         let query = db.select().from(riasecResults);
-        if (!isAdmin && user(user as any).type === "student") {
-          query = query.where(eq(riasecResults.userId, user.id)) as any;
+        if (!isAdmin && user.type === "student") {
+          query = query.where(eq(riasecResults.userId, user.id)) as typeof query;
         } else if (!isAdmin && userSchoolId) {
           const schoolUsers = await db.select().from(users).where(eq(users.schoolId, userSchoolId));
           const userIds = schoolUsers.map((u) => u.id);
           // Filter by user IDs
         }
-        data = await query.limit(limit || 1000).offset(offset || 0).orderBy(desc(riasecResults.createdAt)) as any[];
+        data = await query.limit(limit || 1000).offset(offset || 0).orderBy(desc(riasecResults.createdAt)) as DataSourceRecord[];
         break;
       }
 
@@ -173,49 +251,49 @@ export async function POST(request: NextRequest) {
           userId: assessments.userId,
         }).from(careerMatches).innerJoin(assessments, eq(careerMatches.assessmentId, assessments.id));
 
-        if (!isAdmin && user(user as any).type === "student") {
-          query = query.where(eq(assessments.userId, user.id)) as any;
+        if (!isAdmin && user.type === "student") {
+          query = query.where(eq(assessments.userId, user.id)) as typeof query;
         }
-        data = await query.limit(limit || 1000).offset(offset || 0) as any[];
+        data = await query.limit(limit || 1000).offset(offset || 0) as DataSourceRecord[];
         break;
       }
 
       case "careerPlans": {
         let query = db.select().from(careerPlans);
-        if (!isAdmin && user(user as any).type === "student") {
-          query = query.where(eq(careerPlans.userId, user.id)) as any;
+        if (!isAdmin && user.type === "student") {
+          query = query.where(eq(careerPlans.userId, user.id)) as typeof query;
         }
-        data = await query.limit(limit || 1000).offset(offset || 0) as any[];
+        data = await query.limit(limit || 1000).offset(offset || 0) as DataSourceRecord[];
         break;
       }
 
       case "examResults": {
         let query = db.select().from(examResults);
-        if (!isAdmin && user(user as any).type === "student") {
-          query = query.where(eq(examResults.userId, user.id)) as any;
+        if (!isAdmin && user.type === "student") {
+          query = query.where(eq(examResults.userId, user.id)) as typeof query;
         }
-        data = await query.limit(limit || 1000).offset(offset || 0).orderBy(desc(examResults.examYear)) as any[];
+        data = await query.limit(limit || 1000).offset(offset || 0).orderBy(desc(examResults.examYear)) as DataSourceRecord[];
         break;
       }
 
       // Journal entries are stored in user.settings - need special handling
       case "journalEntries": {
-        let targetUsers: any[] = [];
+        let targetUsers: UserRecord[] = [];
 
-        if (user(user as any).type === "student" || isAdmin) {
-          targetUsers = user(user as any).type === "student"
-            ? [user]
-            : await db.select().from(users).limit(limit || 100);
+        if (user.type === "student" || isAdmin) {
+          targetUsers = user.type === "student"
+            ? [user as UserRecord]
+            : await db.select().from(users).limit(limit || 100) as UserRecord[];
         }
 
         for (const targetUser of targetUsers) {
-          const settings = (targetUser.settings as any) || {};
-          const entries = settings.journalEntries || [];
+          const settings = (targetUser.settings as Record<string, unknown> | null) || {};
+          const entries = (settings.journalEntries as Array<Record<string, unknown>>) || [];
           for (const entry of entries) {
             data.push({
               ...entry,
               userId: targetUser.id,
-            });
+            } as unknown as DataSourceRecord);
           }
         }
         break;
@@ -233,16 +311,16 @@ export async function POST(request: NextRequest) {
       exportFields = source.fields.filter((f) => fields.includes(f.key));
       // Map data to only include requested fields
       data = data.map((item) => {
-        const filtered: any = {};
+        const filtered: Record<string, unknown> = {};
         fields.forEach((key: string) => {
           const keys = key.split(".");
-          let value = item;
+          let value: unknown = item;
           for (const k of keys) {
-            value = value?.[k];
+            value = (value as Record<string, unknown>)?.[k];
           }
           filtered[key] = value;
         });
-        return filtered;
+        return filtered as unknown as DataSourceRecord;
       });
     }
 
@@ -311,9 +389,10 @@ export async function POST(request: NextRequest) {
       },
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.error("Data export POST error:", error);
-    return NextResponse.json({ error: "Export failed", details: error.message }, { status: 500 });
+    return NextResponse.json({ error: "Export failed", details: errorMessage }, { status: 500 });
   }
 }
 

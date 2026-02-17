@@ -8,6 +8,7 @@ import { ArrowRight, Compass, Mountain, Sparkles as SparklesIcon } from "lucide-
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import * as THREE from "three";
+import { ErrorBoundary } from "@/components/error/error-boundary";
 
 // Floating particles - reduced
 function FloatingParticles() {
@@ -102,6 +103,26 @@ export function Hero3D() {
   }, []);
 
   return (
+    <ErrorBoundary
+      fallback={
+        <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-b from-orange-50 via-white to-orange-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+            <div className="text-center">
+              <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-gray-900 dark:text-white leading-tight mb-6">
+                <span className="block">From Class 10</span>
+                <span className="block bg-gradient-to-r from-orange-600 via-red-600 to-orange-600 bg-clip-text text-transparent">
+                  Confusion
+                </span>
+                <span className="block">to Career Clarity</span>
+              </h1>
+              <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-xl mx-auto">
+                AI-powered career guidance that illuminates your path.
+              </p>
+            </div>
+          </div>
+        </section>
+      }
+    >
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-b from-orange-50 via-white to-orange-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
       {/* Static background gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-orange-100/20 via-transparent to-red-100/20 dark:from-orange-950/10 dark:via-transparent dark:to-red-950/10" />
@@ -280,5 +301,6 @@ export function Hero3D() {
         </div>
       </motion.div>
     </section>
+    </ErrorBoundary>
   );
 }

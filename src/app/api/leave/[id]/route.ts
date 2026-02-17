@@ -5,23 +5,42 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
+import { requireAuth } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
 import { leaveRequests, users } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
+type LeaveAction = "approve" | "reject" | "cancel";
+type LeaveStatus = "pending" | "approved" | "rejected" | "cancelled";
+
+interface PatchRequestBody {
+  action: LeaveAction;
+  rejectionReason?: string;
+  substituteTeacherId?: string;
+  leaveHandoverNotes?: string;
+}
+
+/**
+ * PATCH /api/leave/[id]
+ * Update a leave request (approve, reject, cancel)
+ */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['student', 'teacher', 'admin', 'school-admin']);
+    if ('error' in authResult) {
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status }
+      );
     }
+    const { userId } = authResult;
 
     const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
+      where: eq(users.id, userId),
       columns: { id: true, type: true, role: true, firstName: true, lastName: true },
     });
 
@@ -29,36 +48,29 @@ export async function PATCH(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Check if user can approve/reject
-    const canApprove = currentUser.role === "school_admin" || currentUser.role === "admin";
+    const isAdmin = currentUser.role === "school_admin" || currentUser.role === "admin";
 
-    // Await params and get the leave request ID
+    // Get the leave request ID
     const { id } = await params;
 
     // Get the leave request
     const leaveRequest = await db.query.leaveRequests.findFirst({
       where: eq(leaveRequests.id, id),
-      with: {
-        applicant: {
-          columns: { id: true, firstName: true, lastName: true, email: true },
-        },
-      },
     });
 
     if (!leaveRequest) {
       return NextResponse.json({ error: "Leave request not found" }, { status: 404 });
     }
 
-    // Check ownership for cancellation
     const isOwner = leaveRequest.applicantId === currentUser.id;
 
-    const body = await request.json();
+    const body = await request.json() as PatchRequestBody;
     const { action, rejectionReason, substituteTeacherId, leaveHandoverNotes } = body;
 
     // Handle different actions
     switch (action) {
-      case "approve":
-        if (!canApprove) {
+      case "approve": {
+        if (!isAdmin) {
           return NextResponse.json(
             { error: "You don't have permission to approve leave requests" },
             { status: 403 }
@@ -76,13 +88,22 @@ export async function PATCH(
           })
           .where(eq(leaveRequests.id, id));
 
+        logger.info("Leave request approved", {
+          route: "/api/leave/[id]",
+          method: "PATCH",
+          userId,
+          leaveId: id,
+          applicantId: leaveRequest.applicantId,
+        });
+
         return NextResponse.json({
           success: true,
           message: "Leave request approved",
         });
+      }
 
-      case "reject":
-        if (!canApprove) {
+      case "reject": {
+        if (!isAdmin) {
           return NextResponse.json(
             { error: "You don't have permission to reject leave requests" },
             { status: 403 }
@@ -106,13 +127,23 @@ export async function PATCH(
           })
           .where(eq(leaveRequests.id, id));
 
+        logger.info("Leave request rejected", {
+          route: "/api/leave/[id]",
+          method: "PATCH",
+          userId,
+          leaveId: id,
+          applicantId: leaveRequest.applicantId,
+          reason: rejectionReason,
+        });
+
         return NextResponse.json({
           success: true,
           message: "Leave request rejected",
         });
+      }
 
-      case "cancel":
-        if (!isOwner && !canApprove) {
+      case "cancel": {
+        if (!isOwner && !isAdmin) {
           return NextResponse.json(
             { error: "You don't have permission to cancel this leave request" },
             { status: 403 }
@@ -134,10 +165,18 @@ export async function PATCH(
           })
           .where(eq(leaveRequests.id, id));
 
+        logger.info("Leave request cancelled", {
+          route: "/api/leave/[id]",
+          method: "PATCH",
+          userId,
+          leaveId: id,
+        });
+
         return NextResponse.json({
           success: true,
           message: "Leave request cancelled",
         });
+      }
 
       default:
         return NextResponse.json(
@@ -146,7 +185,7 @@ export async function PATCH(
         );
     }
   } catch (error) {
-    console.error("Error updating leave request:", error);
+    logger.apiError(error, { route: "/api/leave/[id]", method: "PATCH" });
     return NextResponse.json(
       { error: "Failed to update leave request" },
       { status: 500 }
@@ -154,18 +193,26 @@ export async function PATCH(
   }
 }
 
+/**
+ * DELETE /api/leave/[id]
+ * Delete a leave request (only pending or rejected)
+ */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['student', 'teacher', 'admin', 'school-admin']);
+    if ('error' in authResult) {
+      return NextResponse.json(
+        { error: authResult.error },
+        { status: authResult.status }
+      );
     }
+    const { userId } = authResult;
 
     const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
+      where: eq(users.id, userId),
       columns: { id: true, role: true },
     });
 
@@ -173,7 +220,9 @@ export async function DELETE(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Await params and get the leave request ID
+    const isAdmin = currentUser.role === "school_admin" || currentUser.role === "admin";
+
+    // Get the leave request ID
     const { id } = await params;
 
     // Get the leave request
@@ -187,7 +236,6 @@ export async function DELETE(
 
     // Check ownership or admin
     const isOwner = leaveRequest.applicantId === currentUser.id;
-    const isAdmin = currentUser.role === "school_admin" || currentUser.role === "admin";
 
     if (!isOwner && !isAdmin) {
       return NextResponse.json(
@@ -207,12 +255,19 @@ export async function DELETE(
     await db.delete(leaveRequests)
       .where(eq(leaveRequests.id, id));
 
+    logger.info("Leave request deleted", {
+      route: "/api/leave/[id]",
+      method: "DELETE",
+      userId,
+      leaveId: id,
+    });
+
     return NextResponse.json({
       success: true,
       message: "Leave request deleted",
     });
   } catch (error) {
-    console.error("Error deleting leave request:", error);
+    logger.apiError(error, { route: "/api/leave/[id]", method: "DELETE" });
     return NextResponse.json(
       { error: "Failed to delete leave request" },
       { status: 500 }

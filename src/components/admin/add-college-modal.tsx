@@ -211,7 +211,7 @@ export function AddCollegeModal({ open, onClose, onSuccess }: AddCollegeModalPro
           {isBhutanCollege && (
             <div>
               <Label htmlFor="bhutanCollegeType">Bhutan College Type</Label>
-              <Select value={bhutanCollegeType} onValueChange={(value: any) => setBhutanCollegeType(value)}>
+              <Select value={bhutanCollegeType} onValueChange={(value: "rub" | "private" | "international") => setBhutanCollegeType(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

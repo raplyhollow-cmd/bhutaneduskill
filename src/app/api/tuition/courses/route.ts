@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
-import { tuitionCourses, tutors, users, tuitionCategories } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { tuitionCourses, tutors, users, tuitionCategories, tuitionEnrollments } from "@/lib/db/schema";
+import { eq, desc, and } from "drizzle-orm";
 import { z } from "zod";
 
 const courseSchema = z.object({
@@ -27,8 +27,8 @@ const courseSchema = z.object({
     day: z.string(),
     startTime: z.string(),
     endTime: z.string(),
-    startDate: z.string(),
-    endDate: z.string(),
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
   })).optional(),
   lessons: z.array(z.object({
     id: z.string(),
@@ -41,12 +41,21 @@ const courseSchema = z.object({
   price: z.number(),
   discountPrice: z.number().optional(),
   discountValidUntil: z.string().optional(),
+  status: z.enum(["draft", "published", "archived"]).optional(),
+  meetingLink: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  requirements: z.array(z.string()).optional(),
+  prerequisites: z.array(z.string()).optional(),
 });
 
 // GET /api/tuition/courses - List all courses
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
+    const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+    }
+    const { userId } = authResult;
 
     const { searchParams } = new URL(request.url);
     const subject = searchParams.get("subject");
@@ -54,33 +63,73 @@ export async function GET(request: NextRequest) {
     const gradeLevel = searchParams.get("gradeLevel");
     const district = searchParams.get("district");
     const status = searchParams.get("status"); // published, draft
+    const schoolId = searchParams.get("schoolId");
 
-    let conditions = [];
+    // Build conditions for school filtering
+    const conditions = [];
 
-    if (status === "published") {
-      // Filter by published status
+    if (schoolId) {
+      conditions.push(eq(tuitionCourses.schoolId, schoolId));
     }
 
-    const courses = await db.query.tuitionCourses.findMany({
-      with: {
-        tutor: {
-          with: {
-            user: {
-              columns: {
-                firstName: true,
-                lastName: true,
-                profilePicture: true,
-              },
-            },
-          },
-        },
-        category: true,
-      },
+    if (status && status !== "all") {
+      conditions.push(eq(tuitionCourses.status, status));
+    }
+
+    // Get courses with tutor info
+    const coursesList = await db.query.tuitionCourses.findMany({
+      where: conditions.length > 0 ? and(...conditions) : undefined,
       orderBy: [desc(tuitionCourses.createdAt)],
     });
 
+    // Fetch tutor information for each course
+    const coursesWithTutors = await Promise.all(
+      coursesList.map(async (course) => {
+        let tutorName: string | null = null;
+        let tutorDisplayId: string | null = null;
+        let enrollmentCount = 0;
+
+        // Get tutor info from tutors table
+        if (course.tutorId) {
+          const tutorRecord = await db.query.tutors.findFirst({
+            where: eq(tutors.userId, course.tutorId),
+            with: {
+              user: {
+                columns: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  profilePicture: true,
+                },
+              },
+            },
+          });
+
+          if (tutorRecord) {
+            const userArray = tutorRecord.user as unknown as { id: string; firstName: string | null; lastName: string | null; profilePicture: string | null }[] | undefined;
+            const user = userArray?.[0];
+            tutorName = user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || null : null;
+            tutorDisplayId = tutorRecord.id;
+          }
+        }
+
+        // Get enrollment count
+        const enrollmentCountResult = await db.query.tuitionEnrollments.findMany({
+          where: eq(tuitionEnrollments, course.id),
+        });
+        enrollmentCount = enrollmentCountResult.length;
+
+        return {
+          ...course,
+          tutorName,
+          tutorDisplayId,
+          enrollmentCount,
+        };
+      })
+    );
+
     // Filter results
-    let filtered = courses;
+    let filtered = coursesWithTutors;
 
     if (type) {
       filtered = filtered.filter(c => c.type === type);
@@ -91,7 +140,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (district && type === "physical") {
-      filtered = filtered.filter(c => {
+      filtered = filtered.filter((c: typeof coursesWithTutors[0]) => {
         // location is a string, need to parse it as JSON to access district
         try {
           const locationData = c.location ? JSON.parse(c.location as string) : {};
@@ -117,34 +166,45 @@ export async function GET(request: NextRequest) {
 // POST /api/tuition/courses - Create course
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId, user } = authResult;
 
     const body = await request.json();
     const validatedData = courseSchema.parse(body);
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    // Verify tutor exists and belongs to user
+    // Verify tutor exists and get the user ID
     const tutor = await db.query.tutors.findFirst({
       where: eq(tutors.id, validatedData.tutorId),
+      with: {
+        user: true,
+      },
     });
 
-    if (!tutor || tutor.userId !== currentUser.id) {
-      return NextResponse.json({ error: "Invalid tutor" }, { status: 400 });
+    if (!tutor) {
+      return NextResponse.json({ error: "Tutor not found" }, { status: 404 });
     }
 
+    // Extract user from the relation array
+    const userArray = tutor.user as unknown as { id: string }[] | undefined;
+    const tutorUser = userArray?.[0];
+    if (!tutorUser) {
+      return NextResponse.json({ error: "Tutor user not found" }, { status: 404 });
+    }
+
+    // Get school ID from current user
+    const currentUserData = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+      columns: { schoolId: true },
+    });
+
+    const courseId = `course_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+
     const [newCourse] = await db.insert(tuitionCourses).values({
-      id: `course_${Date.now()}`,
-      tutorId: validatedData.tutorId,
+      id: courseId,
+      tutorId: tutorUser.id, // Store the user ID, not the tutor record ID
       title: validatedData.title,
       description: validatedData.description || "",
       category: validatedData.categoryId || "subject",
@@ -162,13 +222,14 @@ export async function POST(request: NextRequest) {
       schedule: validatedData.schedule || [],
       mode: validatedData.type.startsWith("online") ? "online" : "in_person",
       location: validatedData.location ? JSON.stringify(validatedData.location) : null,
-      meetingLink: (validatedData as any).meetingLink || null,
+      meetingLink: validatedData.meetingLink || null,
       thumbnail: validatedData.thumbnail || "/placeholder.png",
-      tags: (validatedData as any).tags || [],
-      requirements: (validatedData as any).requirements || [],
-      prerequisites: (validatedData as any).prerequisites || [],
+      tags: validatedData.tags || [],
+      requirements: validatedData.requirements || [],
+      prerequisites: validatedData.prerequisites || [],
       type: validatedData.type,
-      status: "draft",
+      status: validatedData.status || "draft",
+      schoolId: currentUserData?.schoolId || null,
       isActive: true,
       createdAt: new Date(),
       updatedAt: new Date(),

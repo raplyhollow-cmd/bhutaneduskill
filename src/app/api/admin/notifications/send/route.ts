@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
       .where(eq(notifications.id, body.notificationId));
 
     // Get target users
-    let targetUsers: any[] = [];
+    let targetUsers: Array<Record<string, unknown>> = [];
 
     if (notification.targetAudience === "specific") {
       // Parse target user IDs
@@ -173,7 +173,7 @@ export async function POST(request: NextRequest) {
       .from(userNotificationSettings)
       .where(inArray(
         userNotificationSettings.userId,
-        targetUsers.map((u) => u.id)
+        targetUsers.map((u) => u.id as string)
       ));
 
     const settingsMap = new Map(
@@ -191,7 +191,7 @@ export async function POST(request: NextRequest) {
       createdAt: Date;
       updatedAt: Date;
     }> = targetUsers.map((user) => {
-      const settings = settingsMap.get(user.id);
+      const settings = settingsMap.get(user.id as string);
       const shouldDeliverInApp = settings?.inAppEnabled !== false;
 
       // Check if user's notification type is enabled
@@ -207,7 +207,7 @@ export async function POST(request: NextRequest) {
       return {
         id: `delivery-${nanoid()}`,
         notificationId: body.notificationId,
-        userId: user.id,
+        userId: user.id as string,
         status: shouldDeliver ? "delivered" : "pending",
         deliveredAt: shouldDeliver ? new Date() : null,
         deliveryMethod: "in_app",
@@ -271,12 +271,13 @@ export async function POST(request: NextRequest) {
         deliveredUsers: deliveryRecords.filter((d) => d.status === "delivered").length,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.apiError(error, {
       route: "/api/admin/notifications/send",
       method: "POST",
       userId,
     });
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
 
     // Try to mark notification as failed
     try {
@@ -295,7 +296,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: "Failed to send notification", details: error.message },
+      { error: "Failed to send notification", details: errorMessage },
       { status: 500 }
     );
   }
@@ -380,14 +381,15 @@ export async function BATCH_SEND(request: NextRequest) {
       message: `Batch send completed: ${successCount} succeeded, ${failureCount} failed`,
       data: results,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.apiError(error, {
       route: "/api/admin/notifications/send/batch",
       method: "POST",
       userId,
     });
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: "Failed to send batch notifications", details: error.message },
+      { error: "Failed to send batch notifications", details: errorMessage },
       { status: 500 }
     );
   }

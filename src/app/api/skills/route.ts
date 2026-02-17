@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
+import { requireAuth } from "@/lib/auth-utils";
 import { eq } from "drizzle-orm";
 
 // Skills categories with levels
@@ -19,18 +19,14 @@ const SKILL_CATEGORIES = {
 // GET /api/skills - Get user's skills progress
 export async function GET(req: NextRequest) {
   try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['student']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
 
-    // Get user's profile
-    const userProfile = await db.query.users.findFirst({
-      where: (users, { eq }) => eq(users.clerkUserId, userId),
-    });
+    const { user } = authResult;
 
-    const userSkills = userProfile?.settings?.skills || {};
+    const userSkills = user?.settings?.skills || {};
 
     return NextResponse.json({
       skills: SKILL_CATEGORIES,
@@ -48,24 +44,15 @@ export async function GET(req: NextRequest) {
 // POST /api/skills - Update user's skills progress
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['student']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
 
+    const { user } = authResult;
     const { skill, level, action } = await req.json();
 
-    // Get user's profile
-    const userProfile = await db.query.users.findFirst({
-      where: (users, { eq }) => eq(users.clerkUserId, userId),
-    });
-
-    if (!userProfile) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    const currentSkills = (userProfile.settings as any)?.skills || {};
+    const currentSkills = (user?.settings as any)?.skills || {};
     const currentLevel = currentSkills[skill] || 0;
 
     let newLevel = currentLevel;
@@ -83,10 +70,10 @@ export async function POST(req: NextRequest) {
     await db
       .update(users)
       .set({
-        settings: { ...(userProfile.settings as any), skills: currentSkills },
+        settings: { ...(user?.settings as any), skills: currentSkills },
         updatedAt: new Date(),
       })
-      .where(eq(users.id, userProfile.id));
+      .where(eq(users.id, user.id));
 
     return NextResponse.json({
       success: true,

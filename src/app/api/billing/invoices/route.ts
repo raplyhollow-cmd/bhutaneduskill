@@ -20,8 +20,7 @@ export async function GET(req: NextRequest) {
     if ("error" in authResult) {
       return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
-    // Type assertion: after error check, authResult is guaranteed to have userId
-    const { userId } = authResult as { userId: string; user: any };
+    const { userId } = authResult;
 
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
@@ -144,10 +143,11 @@ export async function GET(req: NextRequest) {
         total: totalCount[0]?.count || 0,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Failed to fetch invoices";
     console.error("Error fetching invoices:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to fetch invoices" },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }
@@ -159,8 +159,7 @@ export async function POST(req: NextRequest) {
     if ("error" in authResult) {
       return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
-    // Type assertion: after error check, authResult is guaranteed to have userId
-    const { userId } = authResult as { userId: string; user: any };
+    const { userId } = authResult;
     const body = await req.json();
 
     const { subscriptionId, amount, taxAmount = 0, discountAmount = 0, dueDays = 30, notes, lineItems } = body;
@@ -253,10 +252,11 @@ export async function POST(req: NextRequest) {
       data: created[0],
       message: "Invoice generated successfully",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Failed to create invoice";
     console.error("Error creating invoice:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to create invoice" },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }
@@ -268,8 +268,7 @@ export async function PATCH(req: NextRequest) {
     if ("error" in authResult) {
       return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
-    // Type assertion: after error check, authResult is guaranteed to have userId
-    const { userId } = authResult as { userId: string; user: any };
+    const { userId } = authResult;
     const body = await req.json();
 
     const { invoiceId, action, status, paymentMethod, paymentDetails } = body;
@@ -346,10 +345,11 @@ export async function PATCH(req: NextRequest) {
       { success: false, error: "No valid action provided" },
       { status: 400 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Failed to update invoice";
     console.error("Error updating invoice:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to update invoice" },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }
@@ -361,8 +361,7 @@ export async function DELETE(req: NextRequest) {
     if ("error" in authResult) {
       return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
-    // Type assertion: after error check, authResult is guaranteed to have userId
-    const { userId } = authResult as { userId: string; user: any };
+    const { userId } = authResult;
     const { searchParams } = new URL(req.url);
     const invoiceId = searchParams.get("invoiceId");
 
@@ -385,10 +384,11 @@ export async function DELETE(req: NextRequest) {
       success: true,
       message: "Invoice cancelled successfully",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Failed to cancel invoice";
     console.error("Error cancelling invoice:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to cancel invoice" },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

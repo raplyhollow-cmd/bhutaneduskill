@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 
 // ============================================================================
 // INDIVIDUAL ANNOUNCEMENT API
@@ -15,10 +15,12 @@ type RouteContext = {
  * Fetch a single announcement by ID
  */
 export async function GET(request: NextRequest, context: RouteContext) {
-  const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Auth: admin, school-admin, teacher can read announcements
+  const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
+  if ('error' in authResult) {
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
   }
+  const { userId } = authResult;
 
   try {
     const { id } = await context.params;
@@ -102,10 +104,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
  * Update an announcement
  */
 export async function PATCH(request: NextRequest, context: RouteContext) {
-  const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Auth: admin, school-admin, teacher can update announcements
+  const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
+  if ('error' in authResult) {
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
   }
+  const { userId } = authResult;
 
   try {
     const { id } = await context.params;
@@ -195,10 +199,12 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
  * Delete an announcement
  */
 export async function DELETE(request: NextRequest, context: RouteContext) {
-  const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // Auth: admin, school-admin, teacher can delete announcements
+  const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
+  if ('error' in authResult) {
+    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
   }
+  const { userId } = authResult;
 
   try {
     const { id } = await context.params;

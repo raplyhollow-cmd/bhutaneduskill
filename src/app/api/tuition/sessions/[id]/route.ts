@@ -1,8 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { liveSessions, users, tutors } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { logger } from "@/lib/logger";
+
+// ============================================================================
+// TYPE DEFINITIONS
+// ============================================================================
+
+interface LiveSession {
+  id: string;
+  tutorId: string;
+  meetingLink?: string | null;
+  status?: string | null;
+  maxParticipants?: number | null;
+  currentParticipants?: number | null;
+  startTime?: string | null;
+  endTime?: string | null;
+  scheduledStart?: string | null;
+  scheduledEnd?: string | null;
+}
+
+interface Tutor {
+  id: string;
+  userId?: string;
+}
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -10,13 +33,15 @@ interface Params {
 
 // GET /api/tuition/sessions/[id] - Get session details
 export async function GET(request: NextRequest, { params }: Params) {
+  let id: string | undefined;
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
 
-    const { id } = await params;
+    const resolvedParams = await params;
+    id = resolvedParams.id;
     const session = await db.query.liveSessions.findFirst({
       where: eq(liveSessions.id, id),
     });
@@ -27,28 +52,23 @@ export async function GET(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({ session });
   } catch (error) {
-    console.error("Session get error:", error);
+    logger.error(error, { route: "/api/tuition/sessions/[id]", method: "GET", id });
     return NextResponse.json({ error: "Failed to get session" }, { status: 500 });
   }
 }
 
 // POST /api/tuition/sessions/[id]/join - Generate join link
 export async function POST(request: NextRequest, { params }: Params) {
+  let id: string | undefined;
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { user: currentUser } = authResult;
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    const { id } = await params;
+    const resolvedParams = await params;
+    id = resolvedParams.id;
     const session = await db.query.liveSessions.findFirst({
       where: eq(liveSessions.id, id),
     });
@@ -57,7 +77,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
-    if ((session as any).status !== "scheduled") {
+    if ((session as LiveSession & { status?: string }).status !== "scheduled") {
       return NextResponse.json({ error: "Session is not available" }, { status: 400 });
     }
 
@@ -75,35 +95,30 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({
       meetingLink: session.meetingLink,
-      meetingPassword: (session as any).meetingPassword,
-      platform: (session as any).platform,
-      scheduledDate: (session as any).scheduledDate,
+      meetingPassword: (session as LiveSession & { meetingPassword?: string }).meetingPassword,
+      platform: (session as LiveSession & { platform?: string }).platform,
+      scheduledDate: (session as LiveSession & { scheduledDate?: string }).scheduledDate,
       startTime: session.startTime,
-      endTime: (session as any).endTime,
+      endTime: (session as LiveSession & { endTime?: string }).endTime,
     });
   } catch (error) {
-    console.error("Session join error:", error);
+    logger.error(error, { route: "/api/tuition/sessions/[id]", method: "POST", id, action: "join" });
     return NextResponse.json({ error: "Failed to join session" }, { status: 500 });
   }
 }
 
 // PUT /api/tuition/sessions/[id]/start - Start session
 export async function PUT(request: NextRequest, { params }: Params) {
+  let id: string | undefined;
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { user: currentUser } = authResult;
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    const { id } = await params;
+    const resolvedParams = await params;
+    id = resolvedParams.id;
     const session = await db.query.liveSessions.findFirst({
       where: eq(liveSessions.id, id),
     });
@@ -117,7 +132,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
       where: eq(tutors.id, session.tutorId),
     });
 
-    if (!tutor || (tutor as any).userId !== currentUser.id) {
+    if (!tutor || (tutor as Tutor & { userId?: string }).userId !== currentUser.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -132,28 +147,23 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({ session: updated });
   } catch (error) {
-    console.error("Session start error:", error);
+    logger.error(error, { route: "/api/tuition/sessions/[id]", method: "PUT", id, action: "start" });
     return NextResponse.json({ error: "Failed to start session" }, { status: 500 });
   }
 }
 
 // PATCH /api/tuition/sessions/[id]/end - End session
 export async function PATCH(request: NextRequest, { params }: Params) {
+  let id: string | undefined;
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { user: currentUser } = authResult;
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    const { id } = await params;
+    const resolvedParams = await params;
+    id = resolvedParams.id;
     const session = await db.query.liveSessions.findFirst({
       where: eq(liveSessions.id, id),
     });
@@ -167,7 +177,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       where: eq(tutors.id, session.tutorId),
     });
 
-    if (!tutor || (tutor as any).userId !== currentUser.id) {
+    if (!tutor || (tutor as Tutor & { userId?: string }).userId !== currentUser.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -182,28 +192,23 @@ export async function PATCH(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({ session: updated });
   } catch (error) {
-    console.error("Session end error:", error);
+    logger.error(error, { route: "/api/tuition/sessions/[id]", method: "PATCH", id, action: "end" });
     return NextResponse.json({ error: "Failed to end session" }, { status: 500 });
   }
 }
 
 // DELETE /api/tuition/sessions/[id] - Cancel session
 export async function DELETE(request: NextRequest, { params }: Params) {
+  let id: string | undefined;
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { user: currentUser } = authResult;
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    const { id } = await params;
+    const resolvedParams = await params;
+    id = resolvedParams.id;
     const session = await db.query.liveSessions.findFirst({
       where: eq(liveSessions.id, id),
     });
@@ -217,7 +222,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
       where: eq(tutors.id, session.tutorId),
     });
 
-    if (!tutor || (tutor as any).userId !== currentUser.id) {
+    if (!tutor || (tutor as Tutor & { userId?: string }).userId !== currentUser.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -227,7 +232,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
 
     return NextResponse.json({ session: deleted });
   } catch (error) {
-    console.error("Session delete error:", error);
+    logger.error(error, { route: "/api/tuition/sessions/[id]", method: "DELETE", id });
     return NextResponse.json({ error: "Failed to delete session" }, { status: 500 });
   }
 }

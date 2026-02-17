@@ -1,10 +1,13 @@
 /**
- * PLATFORM ADMIN - COUNSELORS MANAGEMENT
+ * PLATFORM ADMIN - COUNSELORS MANAGEMENT (Client Component)
  *
  * Multi-tenant counselor management page for platform administrators.
  * View, verify, and manage all counselors across all schools.
  */
 
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +16,6 @@ import {
   UserCheck,
   Search,
   Filter,
-  MoreVertical,
   Edit,
   Trash2,
   Eye,
@@ -31,134 +33,187 @@ import {
   GraduationCap,
   FileText,
   MessageSquare,
-  Award,
+  Loader2,
+  CheckCircle2,
+  X,
   Plus,
 } from "lucide-react";
-import Link from "next/link";
-import { db } from "@/lib/db";
-import { users, schools, tenants, counselorAssignments, counselorNotes, careerPlans } from "@/lib/db/schema";
-import { desc, eq, sql, and, count, isNull } from "drizzle-orm";
-import { redirect } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
+import { AddCounselorModal } from "@/components/admin/add-counselor-modal";
+import { EditCounselorModal } from "@/components/admin/edit-counselor-modal";
+import {
+  verifyCounselor,
+  deleteCounselor,
+} from "@/app/admin/counselors/actions";
 
-// Helper function to get counselor stats
-async function getCounselorStats(counselorId: string) {
-  const [assignedSchools, totalNotes] = await Promise.all([
-    db
-      .select({ count: count() })
-      .from(counselorAssignments)
-      .where(eq(counselorAssignments.counselorId, counselorId)),
-    db.select({ count: count() }).from(counselorNotes).where(eq(counselorNotes.counselorId, counselorId)),
-    // TODO: activePlans query needs careerPlans.counselorId field which doesn't exist
-    // db.select({ count: count() }).from(careerPlans).where(and(eq(careerPlans.counselorId, counselorId), eq(careerPlans.status, "active"))),
-  ]);
-
-  return {
-    assignedSchools: assignedSchools[0]?.count || 0,
-    totalNotes: totalNotes[0]?.count || 0,
-    activePlans: 0, // TODO: fix when careerPlans schema is updated
+interface CounselorData {
+  id: string;
+  name: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string | null;
+  schoolId: string | null;
+  schoolName: string | null;
+  emailVerified: boolean;
+  lastLogin: string | null;
+  type: string;
+  createdAt: Date | string | null;
+  stats: {
+    assignedSchools: number;
+    totalNotes: number;
+    activePlans: number;
   };
+  assignments: Array<{
+    schoolId: string;
+    schoolName: string;
+    schoolCode: string;
+  }>;
 }
 
-async function getAllCounselors(limit = 100) {
-  return await db
-    .select({
-      id: users.id,
-      name: users.name,
-      firstName: users.firstName,
-      lastName: users.lastName,
-      email: users.email,
-      phone: users.phone,
-      schoolId: users.schoolId,
-      createdAt: users.createdAt,
-      lastLogin: users.lastLogin,
-      emailVerified: users.emailVerified,
-      schoolName: schools.name,
-      schoolCode: schools.code,
-      tenantName: tenants.name,
-    })
-    .from(users)
-    .leftJoin(schools, eq(users.schoolId, schools.id))
-    .leftJoin(tenants, eq(users.schoolId, tenants.id)) // Using schoolId to join tenants
-    .where(eq(users.type, "counselor"))
-    .orderBy(desc(users.createdAt))
-    .limit(limit);
-}
+export default function AdminCounselorsPage() {
+  const [loading, setLoading] = useState(true);
+  const [counselors, setCounselors] = useState<CounselorData[]>([]);
+  const [filteredCounselors, setFilteredCounselors] = useState<CounselorData[]>([]);
+  const [uniqueSchools, setUniqueSchools] = useState<any[]>([]);
 
-async function getCounselorSchoolAssignments(counselorId: string) {
-  const assignments = await db
-    .select({
-      schoolId: counselorAssignments.schoolId,
-      academicYear: counselorAssignments.academicYear,
-      schoolName: schools.name,
-      schoolCode: schools.code,
-    })
-    .from(counselorAssignments)
-    .leftJoin(schools, eq(counselorAssignments.schoolId, schools.id))
-    .where(eq(counselorAssignments.counselorId, counselorId));
+  // Filter states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [schoolFilter, setSchoolFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
 
-  return assignments;
-}
+  // Modal states
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingCounselor, setEditingCounselor] = useState<CounselorData | null>(null);
+  const [viewingCounselor, setViewingCounselor] = useState<CounselorData | null>(null);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [deletingCounselor, setDeletingCounselor] = useState<CounselorData | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isVerifying, setIsVerifying] = useState<string | null>(null);
 
-export default async function AdminCounselorsPage({
-  searchParams,
-}: {
-  searchParams: { school?: string; status?: string; search?: string };
-}) {
-  const { userId } = await auth();
-
-  if (!userId) {
-    redirect("/sign-in");
-  }
-
-  // Get filter values
-  const schoolFilter = searchParams.school || "all";
-  const statusFilter = searchParams.status || "all";
-  const searchQuery = searchParams.search || "";
-
-  // Get all counselors
-  let allCounselors = await getAllCounselors(200);
+  // Fetch counselors on mount
+  useEffect(() => {
+    fetchCounselors();
+  }, []);
 
   // Apply filters
-  if (searchQuery) {
-    allCounselors = allCounselors.filter(
-      (counselor) =>
- (counselor as any).firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (counselor as any).lastName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        counselor.email?.toLowerCase().includes(searchQuery.toLowerCase())
+  useEffect(() => {
+    let filtered = [...counselors];
+
+    if (searchQuery) {
+      filtered = filtered.filter(
+        (counselor) =>
+          counselor.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          counselor.lastName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          counselor.email?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    if (schoolFilter !== "all") {
+      filtered = filtered.filter((c) => c.schoolId === schoolFilter);
+    }
+
+    if (statusFilter === "verified") {
+      filtered = filtered.filter((c) => c.emailVerified);
+    } else if (statusFilter === "pending") {
+      filtered = filtered.filter((c) => !c.emailVerified);
+    }
+
+    setFilteredCounselors(filtered);
+  }, [counselors, searchQuery, schoolFilter, statusFilter]);
+
+  const fetchCounselors = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch("/api/admin/users?role=counselor&limit=200");
+      if (!response.ok) throw new Error("Failed to fetch counselors");
+
+      const data = await response.json();
+      const counselorsData: CounselorData[] = data.data || [];
+
+      // Enrich with stats and assignments (for now using mock stats)
+      const enriched = counselorsData.map((c: any) => ({
+        ...c,
+        stats: {
+          assignedSchools: 0,
+          totalNotes: 0,
+          activePlans: 0,
+        },
+        assignments: [],
+      }));
+
+      setCounselors(enriched);
+      setFilteredCounselors(enriched);
+
+      // Get unique schools
+      const uniqueSchoolsMap = new Map(
+        enriched.filter((c: CounselorData) => c.schoolName).map((c: CounselorData) => [c.schoolId as string, c])
+      );
+      const schools = Array.from(uniqueSchoolsMap.values());
+      setUniqueSchools(schools);
+    } catch (error) {
+      console.error("Failed to fetch counselors:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleViewCounselor = (counselor: CounselorData) => {
+    setViewingCounselor(counselor);
+    setIsViewDialogOpen(true);
+  };
+
+  const handleEditCounselor = (counselor: CounselorData) => {
+    setEditingCounselor(counselor);
+    setIsEditModalOpen(true);
+  };
+
+  const handleVerifyCounselor = async (counselor: CounselorData) => {
+    setIsVerifying(counselor.id);
+    try {
+      await verifyCounselor(counselor.id);
+      // Refresh counselors list
+      await fetchCounselors();
+    } catch (error: any) {
+      alert(error.message || "Failed to verify counselor");
+    } finally {
+      setIsVerifying(null);
+    }
+  };
+
+  const handleDeleteCounselor = (counselor: CounselorData) => {
+    setDeletingCounselor(counselor);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDeleteCounselor = async () => {
+    if (!deletingCounselor) return;
+
+    try {
+      await deleteCounselor(deletingCounselor.id);
+      setIsDeleteDialogOpen(false);
+      setDeletingCounselor(null);
+      await fetchCounselors();
+    } catch (error: any) {
+      alert(error.message || "Failed to delete counselor");
+    }
+  };
+
+  // Calculate stats
+  const totalCounselors = filteredCounselors.length;
+  const verifiedCounselors = filteredCounselors.filter((c) => c.emailVerified).length;
+  const pendingCounselors = filteredCounselors.filter((c) => !c.emailVerified).length;
+  const totalActivePlans = filteredCounselors.reduce((sum, c) => sum + (c.stats?.activePlans || 0), 0);
+  const totalNotes = filteredCounselors.reduce((sum, c) => sum + (c.stats?.totalNotes || 0), 0);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+        <p className="ml-3 text-gray-600">Loading counselors...</p>
+      </div>
     );
   }
-
-  if (schoolFilter !== "all") {
-    allCounselors = allCounselors.filter((counselor) => counselor.schoolId === schoolFilter);
-  }
-
-  if (statusFilter === "verified") {
-    allCounselors = allCounselors.filter((counselor) => (counselor as any).emailVerified);
-  } else if (statusFilter === "pending") {
-    allCounselors = allCounselors.filter((counselor) => !(counselor as any).emailVerified);
-  }
-
-  // Get stats and assignments for each counselor
-  const counselorsWithData = await Promise.all(
-    allCounselors.map(async (counselor) => ({
-      ...counselor,
-      stats: await getCounselorStats(counselor.id),
-      assignments: await getCounselorSchoolAssignments(counselor.id),
-    }))
-  );
-
-  // Get unique schools for filter
-  const uniqueSchools = Array.from(
-    new Map(allCounselors.filter((c: any) => c.schoolName).map((c: any) => [c.schoolId, c])).values()
-  );
-
-  // Calculate platform-wide stats
-  const totalCounselors = counselorsWithData.length;
-  const verifiedCounselors = counselorsWithData.filter((c) => c.emailVerified).length;
-  const pendingCounselors = counselorsWithData.filter((c) => !c.emailVerified).length;
-  const totalActivePlans = counselorsWithData.reduce((sum, c) => sum + c.stats.activePlans, 0);
-  const totalNotes = counselorsWithData.reduce((sum, c) => sum + c.stats.totalNotes, 0);
 
   return (
     <div className="space-y-8">
@@ -176,6 +231,7 @@ export default async function AdminCounselorsPage({
             Advanced Filters
           </Button>
           <Button
+            onClick={() => setIsAddModalOpen(true)}
             style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
             className="text-white"
           >
@@ -209,7 +265,7 @@ export default async function AdminCounselorsPage({
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-green-600">{verifiedCounselors}</div>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500">
               {((verifiedCounselors / totalCounselors) * 100).toFixed(1)}% verified
             </p>
           </CardContent>
@@ -224,7 +280,7 @@ export default async function AdminCounselorsPage({
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-yellow-600">{pendingCounselors}</div>
-            <p className="text-xs text-gray-500 mt-1">Awaiting verification</p>
+            <p className="text-xs text-gray-500">Awaiting verification</p>
           </CardContent>
         </Card>
 
@@ -237,7 +293,7 @@ export default async function AdminCounselorsPage({
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-gray-900">{totalActivePlans}</div>
-            <p className="text-xs text-gray-500 mt-1">Career plans active</p>
+            <p className="text-xs text-gray-500">Career plans active</p>
           </CardContent>
         </Card>
 
@@ -250,7 +306,7 @@ export default async function AdminCounselorsPage({
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-gray-900">{totalNotes}</div>
-            <p className="text-xs text-gray-500 mt-1">Counselor notes</p>
+            <p className="text-xs text-gray-500">Counselor notes</p>
           </CardContent>
         </Card>
       </div>
@@ -263,16 +319,16 @@ export default async function AdminCounselorsPage({
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
-                name="search"
                 placeholder="Search counselors by name or email..."
-                defaultValue={searchQuery}
-                className="w-full pl-10 pr-4 py-3 min-h-[44px] rounded-lg border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 outline-none"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 min-h-[44px] rounded-lg border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none"
               />
             </div>
             <select
-              name="school"
-              defaultValue={schoolFilter}
-              className="px-4 py-3 min-h-[44px] rounded-lg border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 outline-none bg-white"
+              value={schoolFilter}
+              onChange={(e) => setSchoolFilter(e.target.value)}
+              className="px-4 py-3 min-h-[44px] rounded-lg border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none bg-white"
             >
               <option value="all">All Schools</option>
               {uniqueSchools.map((school: any) => (
@@ -282,57 +338,17 @@ export default async function AdminCounselorsPage({
               ))}
             </select>
             <select
-              name="status"
-              defaultValue={statusFilter}
-              className="px-4 py-3 min-h-[44px] rounded-lg border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 outline-none bg-white"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-4 py-3 min-h-[44px] rounded-lg border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none bg-white"
             >
               <option value="all">All Status</option>
               <option value="verified">Verified</option>
               <option value="pending">Pending Verification</option>
             </select>
-            <Button
-              style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
-              className="text-white min-h-[44px]"
-            >
-              Apply Filters
-            </Button>
           </div>
         </CardContent>
       </Card>
-
-      {/* Active Filters Display */}
-      {(schoolFilter !== "all" || statusFilter !== "all" || searchQuery) && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm text-gray-600">Active filters:</span>
-          {schoolFilter !== "all" && (
-            <Badge
-              variant="outline"
-              className="px-3 py-1"
-              style={{ borderColor: "rgb(236 72 153)", color: "rgb(219 39 119)" }}
-            >
-              School: {(uniqueSchools as any[]).find((s: any) => s.schoolId === schoolFilter)?.schoolName}
-            </Badge>
-          )}
-          {statusFilter !== "all" && (
-            <Badge
-              variant="outline"
-              className="px-3 py-1"
-              style={{ borderColor: "rgb(236 72 153)", color: "rgb(219 39 119)" }}
-            >
-              Status: {statusFilter}
-            </Badge>
-          )}
-          {searchQuery && (
-            <Badge
-              variant="outline"
-              className="px-3 py-1"
-              style={{ borderColor: "rgb(236 72 153)", color: "rgb(219 39 119)" }}
-            >
-              Search: "{searchQuery}"
-            </Badge>
-          )}
-        </div>
-      )}
 
       {/* Counselors Table */}
       <Card>
@@ -341,17 +357,8 @@ export default async function AdminCounselorsPage({
             <div>
               <CardTitle>All Counselors</CardTitle>
               <CardDescription>
-                {counselorsWithData.length} counselors across {uniqueSchools.length} schools
+                {filteredCounselors.length} counselors across {uniqueSchools.length} schools
               </CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="min-h-[36px]">
-                <TrendingUp className="w-4 h-4 mr-2" />
-                Export Report
-              </Button>
-              <Button variant="outline" size="sm" className="min-h-[36px]">
-                Bulk Assign
-              </Button>
             </div>
           </div>
         </CardHeader>
@@ -370,7 +377,7 @@ export default async function AdminCounselorsPage({
                 </tr>
               </thead>
               <tbody>
-                {counselorsWithData.length === 0 ? (
+                {filteredCounselors.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="text-center py-12">
                       <div className="flex flex-col items-center gap-4">
@@ -385,7 +392,7 @@ export default async function AdminCounselorsPage({
                     </td>
                   </tr>
                 ) : (
-                  counselorsWithData.map((counselor) => (
+                  filteredCounselors.map((counselor) => (
                     <tr key={counselor.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="py-4 px-4">
                         <div className="flex items-start gap-3">
@@ -398,7 +405,7 @@ export default async function AdminCounselorsPage({
                           </div>
                           <div>
                             <p className="font-medium text-gray-900">
-                              {(counselor as any).firstName} {(counselor as any).lastName}
+                              {counselor.firstName} {counselor.lastName}
                             </p>
                             <p className="text-sm text-gray-500">{counselor.email || "No email"}</p>
                             {counselor.phone && (
@@ -412,25 +419,15 @@ export default async function AdminCounselorsPage({
                       </td>
                       <td className="py-4 px-4">
                         <div className="space-y-2">
-                          {counselor.assignments.length > 0 ? (
-                            counselor.assignments.map((assignment) => (
+                          {counselor.assignments && counselor.assignments.length > 0 ? (
+                            counselor.assignments.map((assignment: any) => (
                               <div key={assignment.schoolId} className="flex items-center gap-2">
                                 <Building2 className="w-3 h-3 text-gray-400" />
                                 <span className="text-sm text-gray-700">{assignment.schoolName}</span>
-                                {(assignment as any).isPrimary && (
-                                  <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
-                                    Primary
-                                  </Badge>
-                                )}
                               </div>
                             ))
                           ) : (
                             <span className="text-sm text-gray-400">No assignments</span>
-                          )}
-                          {counselor.stats.assignedSchools > counselor.assignments.length && (
-                            <p className="text-xs text-gray-500">
-                              +{counselor.stats.assignedSchools - counselor.assignments.length} more
-                            </p>
                           )}
                         </div>
                       </td>
@@ -447,21 +444,21 @@ export default async function AdminCounselorsPage({
                         </span>
                       </td>
                       <td className="py-4 px-4">
-                        {(counselor as any).lastLogin ? (
+                        {counselor.lastLogin ? (
                           <div className="text-sm text-gray-600">
-                            {new Date((counselor as any).lastLogin).toLocaleDateString()}
+                            {new Date(counselor.lastLogin).toLocaleDateString()}
                           </div>
                         ) : (
                           <span className="text-sm text-gray-400">Never</span>
                         )}
                       </td>
                       <td className="py-4 px-4 text-center">
-                        {!(counselor as any).emailVerified ? (
+                        {!counselor.emailVerified ? (
                           <Badge className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs">
                             <Clock className="w-3 h-3 mr-1" />
                             Pending
                           </Badge>
-                        ) : (counselor as any).lastLogin ? (
+                        ) : counselor.lastLogin ? (
                           <Badge className="bg-green-50 text-green-700 border-green-200 text-xs">
                             <CheckCircle className="w-3 h-3 mr-1" />
                             Active
@@ -480,6 +477,7 @@ export default async function AdminCounselorsPage({
                             size="icon"
                             className="h-8 w-8 hover:bg-pink-50 hover:text-pink-600"
                             title="View details"
+                            onClick={() => handleViewCounselor(counselor)}
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
@@ -488,6 +486,7 @@ export default async function AdminCounselorsPage({
                             size="icon"
                             className="h-8 w-8 hover:bg-pink-50 hover:text-pink-600"
                             title="Edit counselor"
+                            onClick={() => handleEditCounselor(counselor)}
                           >
                             <Edit className="w-4 h-4" />
                           </Button>
@@ -499,14 +498,16 @@ export default async function AdminCounselorsPage({
                           >
                             <Building2 className="w-4 h-4" />
                           </Button>
-                          {!(counselor as any).emailVerified && (
+                          {!counselor.emailVerified && (
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 hover:bg-green-50 hover:text-green-600"
                               title="Verify counselor"
+                              onClick={() => handleVerifyCounselor(counselor)}
+                              disabled={isVerifying === counselor.id}
                             >
-                              <ShieldCheck className="w-4 h-4" />
+                              <ShieldCheck className={`w-4 h-4 ${isVerifying === counselor.id ? 'animate-spin' : ''}`} />
                             </Button>
                           )}
                           <Button
@@ -514,6 +515,7 @@ export default async function AdminCounselorsPage({
                             size="icon"
                             className="h-8 w-8 hover:bg-red-50 hover:text-red-600"
                             title="Delete counselor"
+                            onClick={() => handleDeleteCounselor(counselor)}
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -525,35 +527,6 @@ export default async function AdminCounselorsPage({
               </tbody>
             </table>
           </div>
-
-          {/* Pagination */}
-          {counselorsWithData.length > 0 && (
-            <div className="flex items-center justify-between mt-6 pt-6 border-t border-gray-200">
-              <p className="text-sm text-gray-500">
-                Showing 1-{counselorsWithData.length} of {totalCounselors} counselors
-              </p>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" disabled className="min-h-[36px]">
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="min-h-[36px]"
-                  style={{
-                    background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)",
-                    color: "white",
-                    border: "none",
-                  }}
-                >
-                  1
-                </Button>
-                <Button variant="outline" size="sm" className="min-h-[36px]">
-                  Next
-                </Button>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
 
@@ -571,7 +544,7 @@ export default async function AdminCounselorsPage({
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {counselorsWithData
+              {filteredCounselors
                 .filter((c) => !c.emailVerified)
                 .slice(0, 5)
                 .map((counselor) => (
@@ -595,15 +568,20 @@ export default async function AdminCounselorsPage({
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" className="min-h-[36px]">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewCounselor(counselor)}
+                      >
                         Review
                       </Button>
                       <Button
                         size="sm"
-                        className="min-h-[36px]"
                         style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
+                        onClick={() => handleVerifyCounselor(counselor)}
+                        disabled={isVerifying === counselor.id}
                       >
-                        <ShieldCheck className="w-4 h-4 mr-2" />
+                        <ShieldCheck className={`w-4 h-4 mr-2 ${isVerifying === counselor.id ? 'animate-spin' : ''}`} />
                         Verify
                       </Button>
                     </div>
@@ -626,8 +604,8 @@ export default async function AdminCounselorsPage({
         <CardContent>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {uniqueSchools.slice(0, 6).map((school: any) => {
-              const schoolCounselors = counselorsWithData.filter((c) =>
-                c.assignments.some((a) => a.schoolId === school.schoolId)
+              const schoolCounselors = filteredCounselors.filter((c) =>
+                c.assignments?.some((a: any) => a.schoolId === school.schoolId)
               );
               return (
                 <div key={school.schoolId} className="p-4 bg-gray-50 rounded-lg">
@@ -648,9 +626,9 @@ export default async function AdminCounselorsPage({
                     </Badge>
                   </div>
                   <div className="flex flex-wrap gap-1">
-                    {schoolCounselors.map((counselor) => (
-                      <Badge key={counselor.id} variant="outline" className="text-xs bg-purple-50">
-                        {counselor.firstName} {counselor.lastName?.[0]}.
+                    {schoolCounselors.map((c) => (
+                      <Badge key={c.id} variant="outline" className="text-xs bg-purple-50">
+                        {c.firstName} {c.lastName?.[0]}.
                       </Badge>
                     ))}
                   </div>
@@ -670,9 +648,9 @@ export default async function AdminCounselorsPage({
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {counselorsWithData
-                .sort((a, b) => b.stats.activePlans - a.stats.activePlans)
-                .filter((c) => c.stats.activePlans > 0)
+              {filteredCounselors
+                .sort((a, b) => (b.stats?.activePlans || 0) - (a.stats?.activePlans || 0))
+                .filter((c) => c.stats?.activePlans > 0)
                 .slice(0, 5)
                 .map((counselor, index) => (
                   <div key={counselor.id} className="flex items-center gap-4">
@@ -694,23 +672,14 @@ export default async function AdminCounselorsPage({
                         <span className="font-medium text-gray-900">
                           {counselor.firstName} {counselor.lastName}
                         </span>
-                        <span className="text-sm text-gray-500">{counselor.stats.activePlans} plans</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className="h-2 rounded-full"
-                          style={{
-                            width: `${(counselor.stats.activePlans / (counselorsWithData[0]?.stats.activePlans || 1)) * 100}%`,
-                            background: "linear-gradient(90deg, rgb(168 85 247) 0%, rgb(147 51 234) 100%)",
-                          }}
-                        />
+                        <span className="text-sm text-gray-500">{counselor.stats?.activePlans || 0} plans</span>
                       </div>
                     </div>
                   </div>
                 ))}
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
@@ -719,8 +688,8 @@ export default async function AdminCounselorsPage({
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {counselorsWithData
-                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+              {filteredCounselors
+                .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
                 .slice(0, 5)
                 .map((counselor) => (
                   <div key={counselor.id} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
@@ -736,10 +705,10 @@ export default async function AdminCounselorsPage({
                         {counselor.firstName} {counselor.lastName}
                       </p>
                       <p className="text-sm text-gray-500">
-                        {counselor.schoolName} • {counselor.stats.assignedSchools} school(s)
+                        {counselor.schoolName} • {counselor.stats?.assignedSchools || 0} school(s)
                       </p>
                     </div>
-                    {!(counselor as any).emailVerified ? (
+                    {!counselor.emailVerified ? (
                       <Badge className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs">
                         <Clock className="w-3 h-3 mr-1" />
                         Pending
@@ -784,6 +753,180 @@ export default async function AdminCounselorsPage({
           </div>
         </CardContent>
       </Card>
+
+      {/* Add Counselor Modal */}
+      <AddCounselorModal
+        open={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSuccess={fetchCounselors}
+      />
+
+      {/* Edit Counselor Modal */}
+      <EditCounselorModal
+        open={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingCounselor(null);
+        }}
+        onSuccess={fetchCounselors}
+        counselor={editingCounselor}
+      />
+
+      {/* View Counselor Dialog */}
+      {isViewDialogOpen && viewingCounselor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h2 className="text-xl font-bold text-gray-900">Counselor Details</h2>
+              <button
+                onClick={() => setIsViewDialogOpen(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-6">
+              {/* Profile Header */}
+              <div className="flex items-center gap-4">
+                <div
+                  className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold"
+                  style={{ background: "linear-gradient(135deg, rgb(168 85 247) 0%, rgb(147 51 234) 100%)" }}
+                >
+                  {viewingCounselor.firstName?.[0]}
+                  {viewingCounselor.lastName?.[0]}
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {viewingCounselor.firstName} {viewingCounselor.lastName}
+                  </h3>
+                  <p className="text-gray-500">{viewingCounselor.email}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    {!viewingCounselor.emailVerified ? (
+                      <Badge className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs">
+                        <Clock className="w-3 h-3 mr-1" />
+                        Pending Verification
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-green-50 text-green-700 border-green-200 text-xs">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        Verified
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Details Grid */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <Mail className="w-4 h-4" />
+                    Email
+                  </div>
+                  <p className="font-medium">{viewingCounselor.email}</p>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <Phone className="w-4 h-4" />
+                    Phone
+                  </div>
+                  <p className="font-medium">{viewingCounselor.phone || "N/A"}</p>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <Building2 className="w-4 h-4" />
+                    School
+                  </div>
+                  <p className="font-medium">{viewingCounselor.schoolName || "Unassigned"}</p>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <Calendar className="w-4 h-4" />
+                    Joined
+                  </div>
+                  <p className="font-medium">
+                    {viewingCounselor.createdAt ? new Date(viewingCounselor.createdAt).toLocaleDateString() : "N/A"}
+                  </p>
+                </div>
+              </div>
+
+              {/* Assignments */}
+              {viewingCounselor.assignments && viewingCounselor.assignments.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="font-medium text-gray-900">School Assignments</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {viewingCounselor.assignments.map((assignment: any) => (
+                      <Badge key={assignment.schoolId} variant="outline">
+                        {assignment.schoolName}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end gap-3 p-6 border-t bg-gray-50">
+              <Button
+                variant="outline"
+                onClick={() => setIsViewDialogOpen(false)}
+              >
+                Close
+              </Button>
+              {!viewingCounselor.emailVerified && (
+                <Button
+                  style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
+                  className="text-white"
+                  onClick={() => {
+                    setIsViewDialogOpen(false);
+                    handleVerifyCounselor(viewingCounselor);
+                  }}
+                  disabled={isVerifying === viewingCounselor.id}
+                >
+                  <ShieldCheck className={`w-4 h-4 mr-2 ${isVerifying === viewingCounselor.id ? 'animate-spin' : ''}`} />
+                  Verify Counselor
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {isDeleteDialogOpen && deletingCounselor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                <Trash2 className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Delete Counselor?</h3>
+                <p className="text-sm text-gray-500">This action cannot be undone</p>
+              </div>
+            </div>
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to delete <strong>{deletingCounselor.firstName} {deletingCounselor.lastName}</strong>?
+              This will remove the counselor from the system and all associated data.
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsDeleteDialogOpen(false);
+                  setDeletingCounselor(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="bg-red-600 hover:bg-red-700 text-white"
+                onClick={confirmDeleteCounselor}
+              >
+                Delete Counselor
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -47,11 +47,11 @@ import {
 
 interface LeaveRequest {
   id: string;
-  leaveType: string;
+  type: string;
   reason: string;
-  fromDate: string;
-  toDate: string;
-  numberOfDays: number;
+  startDate: string;
+  endDate: string;
+  numberOfDays?: number;
   status: "pending" | "approved" | "rejected" | "cancelled";
   createdAt: string;
   approvedAt?: string;
@@ -131,7 +131,14 @@ export default function TeacherLeavePage() {
         ]);
         const leaveData = await leaveRes.json();
         const teachersData = await teachersRes.json();
-        setLeaveRequests(leaveData.leaveRequests || []);
+        // Map API response (type, startDate, endDate) to page state (leaveType, fromDate, toDate)
+        const mappedRequests = (leaveData.leaveRequests || []).map((req: LeaveRequest) => ({
+          ...req,
+          leaveType: req.type,
+          fromDate: req.startDate,
+          toDate: req.endDate,
+        }));
+        setLeaveRequests(mappedRequests);
         setTeachers(teachersData.teachers || []);
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -157,10 +164,10 @@ export default function TeacherLeavePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          leaveType,
+          type: leaveType,
           reason,
-          fromDate,
-          toDate,
+          startDate: fromDate,
+          endDate: toDate,
           substituteTeacherId,
           leaveHandoverNotes,
         }),
@@ -418,7 +425,15 @@ export default function TeacherLeavePage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              {leaveRequests.reduce((total, req) => total + (req.status === "approved" ? req.numberOfDays : 0), 0)} days
+              {leaveRequests.reduce((total, req) => {
+                if (req.status !== "approved") return total;
+                const days = req.numberOfDays || (() => {
+                  const start = new Date((req as any).fromDate || req.startDate);
+                  const end = new Date((req as any).toDate || req.endDate);
+                  return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                })();
+                return total + days;
+              }, 0)} days
             </div>
           </CardContent>
         </Card>
@@ -452,7 +467,18 @@ export default function TeacherLeavePage() {
               {leaveRequests.map((request) => {
                 const statusConfig = STATUS_CONFIG[request.status];
                 const StatusIcon = statusConfig.icon;
-                const leaveTypeInfo = LEAVE_TYPES.find(t => t.value === request.leaveType);
+                // Use request.type if available (API response), otherwise request.leaveType (for form-created items)
+                const typeValue = (request as any).type || (request as any).leaveType || request.type;
+                const leaveTypeInfo = LEAVE_TYPES.find(t => t.value === typeValue);
+                // Calculate days if not provided
+                const numberOfDays = request.numberOfDays || (() => {
+                  const start = new Date(request.startDate);
+                  const end = new Date(request.endDate);
+                  return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                })();
+                // Use mapped fields if available
+                const displayFromDate = (request as any).fromDate || request.startDate;
+                const displayToDate = (request as any).toDate || request.endDate;
 
                 return (
                   <div
@@ -481,12 +507,12 @@ export default function TeacherLeavePage() {
                           <div className="flex items-center gap-1">
                             <Calendar className="w-4 h-4" />
                             <span>
-                              {formatDate(request.fromDate)} - {formatDate(request.toDate)}
+                              {formatDate(displayFromDate)} - {formatDate(displayToDate)}
                             </span>
                           </div>
                           <div className="flex items-center gap-1">
                             <Clock className="w-4 h-4" />
-                            <span>{request.numberOfDays} day{request.numberOfDays > 1 ? "s" : ""}</span>
+                            <span>{numberOfDays} day{numberOfDays > 1 ? "s" : ""}</span>
                           </div>
                           {request.substituteTeacher && (
                             <div className="flex items-center gap-1 text-blue-600">

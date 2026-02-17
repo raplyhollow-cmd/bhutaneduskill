@@ -24,6 +24,19 @@ import { requireAuth } from "@/lib/auth-utils";
 // TYPES
 // ============================================================================
 
+interface UserWithSchool {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  phone: string | null;
+  classGrade: number | null;
+  section: string | null;
+  school?: {
+    name: string;
+  }[];
+}
+
 export interface CounselorStudentData {
   id: string;
   name: string;
@@ -197,6 +210,8 @@ export async function getCounselorStudents(counselorId: string | null): Promise<
         // Format last session (placeholder for now)
         const lastSession = "Not available";
 
+        const studentWithSchool = student as UserWithSchool;
+        const schoolName = studentWithSchool.school?.[0]?.name || null;
         return {
           id: student.id,
           name: `${student.firstName} ${student.lastName || ""}`.trim(),
@@ -204,7 +219,7 @@ export async function getCounselorStudents(counselorId: string | null): Promise<
           phone: student.phone,
           grade: student.classGrade || null,
           section: student.section || null,
-          school: (student.school as any)?.[0]?.name || null,
+          school: schoolName,
           counselorId,
           assessmentStatus:
             completedAssessments > 0
@@ -303,13 +318,15 @@ export async function getCounselorNotes(
           // Use defaults
         }
 
+        const studentWithSchool = student as UserWithSchool | undefined;
+        const schoolName = studentWithSchool?.school?.[0]?.name || null;
         return {
           id: note.id,
           counselorId: note.counselorId,
           studentId: note.studentId,
           studentName: student ? `${student.firstName} ${student.lastName || ""}`.trim() : "Unknown",
           grade: student?.classGrade || null,
-          school: (student?.school as any)?.[0]?.name || null,
+          school: schoolName,
           category,
           note: note.note.replace(/\[category:[^\]]+\]|\[sensitive\]|\[tags:[^\]]+\]/g, "").trim(),
           isPrivate: !!note.isPrivate,

@@ -31,10 +31,18 @@ interface Homework {
   questions: Question[];
 }
 
+export type HomeworkAnswer = string | string[] | boolean | number;
+
+export interface HomeworkSubmissionMetadata {
+  submittedAt?: Date;
+  timeSpent?: number;
+  attemptNumber?: number;
+}
+
 interface HomeworkSubmissionProps {
   homework: Homework;
-  onSaveDraft?: (answers: Record<string, any>) => void;
-  onSubmit?: (answers: Record<string, any>, metadata: any) => void;
+  onSaveDraft?: (answers: Record<string, HomeworkAnswer>) => void;
+  onSubmit?: (answers: Record<string, HomeworkAnswer>, metadata: HomeworkSubmissionMetadata | null) => void;
   onSaveLater?: () => void;
 }
 

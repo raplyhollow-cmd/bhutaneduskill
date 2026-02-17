@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -7,14 +7,14 @@ import { eq } from "drizzle-orm";
 // GET /api/saved-careers - Get user's saved careers
 export async function GET(req: NextRequest) {
   try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['student']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId } = authResult;
 
     const userProfile = await db.query.users.findFirst({
-      where: (users, { eq }) => eq(users.clerkUserId, userId),
+      where: (users, { eq }) => eq(users.id, userId),
     });
 
     const settings = (userProfile?.settings as any) || {};
@@ -30,17 +30,17 @@ export async function GET(req: NextRequest) {
 // POST /api/saved-careers - Save or unsave a career
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['student']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId } = authResult;
 
     const body = await req.json();
     const { careerId, action } = body; // action: 'save' or 'unsave'
 
     const userProfile = await db.query.users.findFirst({
-      where: (users, { eq }) => eq(users.clerkUserId, userId),
+      where: (users, { eq }) => eq(users.id, userId),
     });
 
     if (!userProfile) {

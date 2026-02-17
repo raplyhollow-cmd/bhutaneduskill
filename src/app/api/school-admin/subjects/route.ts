@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { subjects, users } from "@/lib/db/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { z } from "zod";
+import { requireAuth } from "@/lib/auth-utils";
 
 const subjectSchema = z.object({
   code: z.string().min(1),
@@ -18,26 +18,19 @@ const subjectSchema = z.object({
 // GET /api/school-admin/subjects - List subjects
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['admin', 'school-admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId, user } = authResult;
 
     const { searchParams } = new URL(request.url);
     const grade = searchParams.get("grade");
     const isActive = searchParams.get("isActive");
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || !["admin", "teacher"].includes(currentUser.type)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
     let conditions = [];
-    if (currentUser.type === "teacher") {
-      conditions.push(eq(subjects.schoolId, currentUser.schoolId));
+    if (user.schoolId) {
+      conditions.push(eq(subjects.schoolId, user.schoolId));
     }
 
     if (isActive === "true") {
@@ -65,21 +58,14 @@ export async function GET(request: NextRequest) {
 // POST /api/school-admin/subjects - Create subject
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['admin', 'school-admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId, user } = authResult;
 
     const body = await request.json();
     const validatedData = subjectSchema.parse(body);
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser || !["admin", "teacher"].includes(currentUser.type)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
     // Check for duplicate code
     const existing = await db.query.subjects.findFirst({
@@ -92,7 +78,7 @@ export async function POST(request: NextRequest) {
 
     const [newSubject] = await db.insert(subjects).values({
       id: `subj_${Date.now()}`,
-      schoolId: currentUser.schoolId,
+      schoolId: user.schoolId,
       code: validatedData.code,
       name: validatedData.name,
       nameDzongkha: (validatedData as any).nameDzongkha,

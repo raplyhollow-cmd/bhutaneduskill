@@ -7,11 +7,27 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { updateCollege } from "@/app/admin/content/actions";
 
+interface College {
+  id: string;
+  name: string;
+  slug: string;
+  location: string;
+  website?: string;
+  type: string;
+  dzongkhag?: string;
+  isBhutanCollege?: boolean;
+  bhutanCollegeType?: "rub" | "private" | "international";
+  acceptanceRate?: number | string;
+  avgSAT?: number | string;
+  avgACT?: number | string;
+  requiredGPA?: string;
+}
+
 interface EditCollegeModalProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  college: any;
+  college: College | null;
 }
 
 export function EditCollegeModal({ open, onClose, onSuccess, college }: EditCollegeModalProps) {
@@ -218,7 +234,7 @@ export function EditCollegeModal({ open, onClose, onSuccess, college }: EditColl
           {isBhutanCollege && (
             <div>
               <Label htmlFor="edit-bhutanCollegeType">Bhutan College Type</Label>
-              <Select value={bhutanCollegeType} onValueChange={(value: any) => setBhutanCollegeType(value)}>
+              <Select value={bhutanCollegeType} onValueChange={(value: "rub" | "private" | "international") => setBhutanCollegeType(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

@@ -120,9 +120,9 @@ export default function AdminCollegesPage() {
     setIsSubmitting(true);
     try {
       const url = isEdit
-        ? `/api/admin/content/colleges/${editingCollege?.id}`
+        ? `/api/admin/content/colleges?id=${editingCollege?.id}`
         : "/api/admin/content/colleges";
-      const method = isEdit ? "PATCH" : "POST";
+      const method = isEdit ? "PUT" : "POST";
 
       const response = await fetch(url, {
         method,
@@ -153,7 +153,7 @@ export default function AdminCollegesPage() {
     if (!deletingId) return;
 
     try {
-      const response = await fetch(`/api/admin/content/colleges/${deletingId}`, {
+      const response = await fetch(`/api/admin/content/colleges?id=${deletingId}`, {
         method: "DELETE",
       });
 

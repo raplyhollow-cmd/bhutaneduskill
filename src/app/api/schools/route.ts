@@ -5,6 +5,7 @@ import { schools, users } from "@/lib/db/schema";
 import { eq, like, or, desc } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth-utils";
 import { requirePermission } from "@/lib/rbac";
+import { logger } from "@/lib/logger";
 
 // GET /api/schools - Get schools
 export async function GET(request: NextRequest) {
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ schools: schoolList });
   } catch (error) {
-    console.error("Schools fetch error:", error);
+    logger.error(error, { route: "/api/schools", method: "GET" });
     return NextResponse.json({ error: "Failed to fetch schools" }, { status: 500 });
   }
 }
@@ -63,19 +64,18 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const authResult = await requireAuth(["admin"]);
-    console.log("[SCHOOLS POST] authResult:", authResult);
 
     if ("error" in authResult) {
-      console.log("[SCHOOLS POST] Auth error:", authResult.error);
+      logger.security("unauthorized_school_creation_attempt", { error: authResult.error });
       return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
     const { user, userId } = authResult;
-    console.log("[SCHOOLS POST] User:", userId, "Type:", user.type);
+    logger.debug("School creation auth check", { userId, userType: user?.type });
 
     // Check schools.create permission
-    console.log("[SCHOOLS POST] Checking schools.create permission for userId:", userId);
+    logger.debug("Checking schools.create permission", { userId });
     const permCheck = await requirePermission(userId, "schools.create");
-    console.log("[SCHOOLS POST] Permission check result:", permCheck ? "DENIED" : "GRANTED");
+    logger.debug("Permission check result", { granted: !permCheck });
     if (permCheck) return permCheck;
 
     const body = await request.json();
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ school: newSchool }, { status: 201 });
   } catch (error) {
-    console.error("School creation error:", error);
+    logger.error(error, { route: "/api/schools", method: "POST" });
     return NextResponse.json({ error: "Failed to create school" }, { status: 500 });
   }
 }

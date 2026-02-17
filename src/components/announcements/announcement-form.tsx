@@ -31,6 +31,8 @@ export interface AnnouncementFormData {
   category?: string;
   publishDate?: string;
   expiryDate?: string;
+  isPublished?: boolean;
+  isPinned?: boolean;
   attachments?: Array<{
     name: string;
     url: string;
@@ -40,9 +42,9 @@ export interface AnnouncementFormData {
 }
 
 interface AnnouncementFormProps {
-  onSubmit: (data: any) => Promise<{ success: boolean; error?: string }>;
+  onSubmit: (data: AnnouncementFormData) => Promise<{ success: boolean; error?: string }>;
   onCancel: () => void;
-  initialData?: any;
+  initialData?: Partial<AnnouncementFormData>;
   isSubmitting?: boolean;
 }
 
@@ -55,8 +57,8 @@ export function AnnouncementForm({
   const [title, setTitle] = useState(initialData?.title || "");
   const [content, setContent] = useState(initialData?.content || "");
   const [excerpt, setExcerpt] = useState(initialData?.excerpt || "");
-  const [priority, setPriority] = useState(initialData?.priority || "normal");
-  const [targetAudience, setTargetAudience] = useState(initialData?.targetAudience || "all");
+  const [priority, setPriority] = useState<"low" | "normal" | "high" | "urgent">(initialData?.priority || "normal");
+  const [targetAudience, setTargetAudience] = useState<"all" | "students" | "teachers" | "parents" | "staff" | "counselor">(initialData?.targetAudience || "all");
   const [category, setCategory] = useState(initialData?.category || "");
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -118,7 +120,7 @@ export function AnnouncementForm({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <Label htmlFor="priority">Priority</Label>
-          <Select value={priority} onValueChange={setPriority}>
+          <Select value={priority} onValueChange={(value) => setPriority(value as "low" | "normal" | "high" | "urgent")}>
             <SelectTrigger id="priority">
               <SelectValue placeholder="Select priority" />
             </SelectTrigger>
@@ -133,7 +135,7 @@ export function AnnouncementForm({
 
         <div>
           <Label htmlFor="audience">Target Audience</Label>
-          <Select value={targetAudience} onValueChange={setTargetAudience}>
+          <Select value={targetAudience} onValueChange={(value) => setTargetAudience(value as "all" | "students" | "teachers" | "parents" | "staff" | "counselor")}>
             <SelectTrigger id="audience">
               <SelectValue placeholder="Select audience" />
             </SelectTrigger>

@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { fetchDashboardStats, fetchClasses, fetchAttendanceRecords } from "../_actions";
-import { AIInsightCard } from "@/components/ai/ai-insight-card";
+import { AIInsightsSection } from "@/components/school-admin/ai-insights-section";
 
 export default async function SchoolAdminDashboardPage() {
   // Fetch real data from database
@@ -245,36 +245,17 @@ export default async function SchoolAdminDashboardPage() {
         </Card>
       </div>
 
-      {/* AI Insights Section */}
-      <div className="grid md:grid-cols-3 gap-4">
-        <AIInsightCard
-          type="warning"
-          title="Pending Actions Alert"
-          message={`${schoolStats.pendingAttendance} classes need attendance marked and ${schoolStats.pendingFees} students have pending fees. Address these to maintain accurate records.`}
-          actions={[
-            { label: "Mark Attendance", href: "/school-admin/attendance" },
-            { label: "View Fees", href: "/school-admin/fees" },
-          ]}
-        />
-
-        <AIInsightCard
-          type="success"
-          title="School Performance Strong"
-          message={`Revenue of Nu. ${(schoolStats.totalRevenue / 1000).toFixed(0)}K collected this month. ${schoolStats.totalStudents} students enrolled with ${schoolStats.totalTeachers} teachers active.`}
-          actions={[
-            { label: "View Reports", href: "/school-admin/reports" },
-          ]}
-        />
-
-        <AIInsightCard
-          type="tip"
-          title="AI Suggestion"
-          message="Teacher-to-student ratio is optimal. Consider introducing AI-powered analytics for tracking student progress and early intervention."
-          actions={[
-            { label: "Explore Features", href: "/school-admin/analytics" },
-          ]}
-        />
-      </div>
+      {/* AI Insights Section - Dynamic */}
+      <AIInsightsSection
+        stats={{
+          pendingFees: schoolStats.pendingFees,
+          pendingAttendance: schoolStats.pendingAttendance,
+          totalStudents: schoolStats.totalStudents,
+          totalTeachers: schoolStats.totalTeachers,
+          totalRevenue: schoolStats.totalRevenue,
+          totalClasses: schoolStats.totalClasses,
+        }}
+      />
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Today's Classes & Attendance */}

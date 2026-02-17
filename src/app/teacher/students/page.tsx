@@ -4,7 +4,7 @@
  */
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Users,
   Search,
@@ -30,6 +37,8 @@ import {
   Filter,
   Download,
   Loader2,
+  User,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -58,6 +67,9 @@ interface Student {
     total: number;
   };
   enrolledAt?: string;
+  parentGuardianName?: string | null;
+  parentGuardianPhone?: string | null;
+  parentGuardianEmail?: string | null;
 }
 
 interface StudentWithAttention extends Student {
@@ -84,6 +96,9 @@ export default function TeacherStudentsPage() {
   const [selectedClass, setSelectedClass] = useState<string>("all");
   const [selectedSubject, setSelectedSubject] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"name" | "class" | "attendance">("name");
+  const [selectedStudent, setSelectedStudent] = useState<StudentWithAttention | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch data
   useEffect(() => {
@@ -101,15 +116,20 @@ export default function TeacherStudentsPage() {
         const data = await response.json();
 
         // Process API data to match our interface
-        const apiClasses: ClassData[] = (data.studentsByClass || []).map((cls: any) => ({
+        const apiClasses: ClassData[] = (data.studentsByClass || []).map((cls: {
+          classId: string;
+          className: string;
+          grade: number;
+          section: string;
+        }) => ({
           id: cls.classId,
           name: cls.className,
           grade: cls.grade,
           section: cls.section,
-          subject: undefined, // Will be populated if subject info is available
+          subject: undefined,
         }));
 
-        const apiStudents: StudentWithAttention[] = (data.students || []).map((s: any) => {
+        const apiStudents: StudentWithAttention[] = (data.students || []).map((s: Student) => {
           // Calculate needsAttention based on attendance and homework
           const attendanceRate = s.attendanceSummary?.percentage ?? 100;
           const homeworkCompletion = s.homeworkSummary?.total > 0
@@ -179,6 +199,39 @@ export default function TeacherStudentsPage() {
     setFilteredStudents(filtered);
   }, [students, searchQuery, selectedClass, sortBy]);
 
+  // Export to CSV
+  const handleExport = async () => {
+    try {
+      setIsExporting(true);
+      const headers = ["Name", "Email", "Class", "Roll Number", "Attendance %", "Homework %", "Guardian Name", "Guardian Phone", "Guardian Email"];
+      const rows = filteredStudents.map((s) => [
+        `${s.firstName} ${s.lastName}`,
+        s.email || "",
+        s.className,
+        s.rollNumber || "",
+        String(s.attendanceRate || 0),
+        String(s.homeworkCompletion || 0),
+        s.parentGuardianName || "",
+        s.parentGuardianPhone || "",
+        s.parentGuardianEmail || "",
+      ]);
+
+      const csvContent = [headers, ...rows]
+        .map((row) => row.map((cell) => `"${cell}"`).join(","))
+        .join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `students_export_${new Date().toISOString().split("T")[0]}.csv`;
+      link.click();
+    } catch (err) {
+      console.error("Export error:", err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   // Stats
   const totalStudents = students.length;
   const needsAttentionCount = students.filter((s) => s.needsAttention).length;
@@ -198,8 +251,14 @@ export default function TeacherStudentsPage() {
         </div>
         <Button
           style={{ background: "linear-gradient(135deg, rgb(59 130 246) 0%, rgb(37 99 235) 100%)" }}
+          onClick={handleExport}
+          disabled={isExporting || filteredStudents.length === 0}
         >
-          <Download className="w-4 h-4 mr-2" />
+          {isExporting ? (
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          ) : (
+            <Download className="w-4 h-4 mr-2" />
+          )}
           Export List
         </Button>
       </div>
@@ -311,7 +370,7 @@ export default function TeacherStudentsPage() {
             )}
 
             {/* Sort */}
-            <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+            <Select value={sortBy} onValueChange={(v: "name" | "class" | "attendance") => setSortBy(v)}>
               <SelectTrigger className="w-full lg:w-[180px] h-11">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
@@ -446,10 +505,16 @@ export default function TeacherStudentsPage() {
                           <span className="truncate max-w-[200px]">{student.email}</span>
                         </div>
                       )}
+                      {student.parentGuardianPhone && (
+                        <div className="flex items-center gap-1.5 text-sm text-gray-600">
+                          <Phone className="w-3.5 h-3.5" />
+                          <span>Guardian: {student.parentGuardianPhone}</span>
+                        </div>
+                      )}
                       <div className="flex items-center gap-1.5 text-sm text-gray-600">
                         <GraduationCap className="w-3.5 h-3.5" />
                         <span>
-                          {student.homeworkSummary?.total ?? 0} homework submitted
+                          {student.homeworkSummary?.graded ?? 0}/{student.homeworkSummary?.total ?? 0} homework graded
                         </span>
                       </div>
 
@@ -462,7 +527,8 @@ export default function TeacherStudentsPage() {
                         </Link>
                         <Button
                           size="sm"
-                          style={{ background: "linear-gradient(135deg, rgb(59 130 246) 0%, rgb(37 99 235) 100%)" }}
+                          variant="outline"
+                          onClick={() => setSelectedStudent(student)}
                         >
                           <Mail className="w-4 h-4 mr-1" />
                           Contact
@@ -476,6 +542,110 @@ export default function TeacherStudentsPage() {
           ))}
         </div>
       )}
+
+      {/* Contact Dialog */}
+      <Dialog open={selectedStudent !== null} onOpenChange={(open) => !open && setSelectedStudent(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <User className="w-5 h-5" />
+              Contact Information
+            </DialogTitle>
+            <DialogDescription>
+              Student and guardian contact details for {selectedStudent?.firstName} {selectedStudent?.lastName}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedStudent && (
+            <div className="space-y-4 pt-4">
+              {/* Student Info */}
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <p className="text-xs text-gray-500 mb-2">Student</p>
+                <p className="font-medium text-gray-900">{selectedStudent.firstName} {selectedStudent.lastName}</p>
+                <div className="flex flex-wrap gap-4 mt-3">
+                  {selectedStudent.email && (
+                    <a
+                      href={`mailto:${selectedStudent.email}`}
+                      className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                      {selectedStudent.email}
+                    </a>
+                  )}
+                  {selectedStudent.rollNumber && (
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <span className="text-gray-400">ID:</span>
+                      {selectedStudent.rollNumber}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Guardian Info */}
+              {(selectedStudent.parentGuardianName || selectedStudent.parentGuardianPhone || selectedStudent.parentGuardianEmail) && (
+                <div className="p-4 bg-blue-50 rounded-lg">
+                  <p className="text-xs text-gray-500 mb-2">Parent / Guardian</p>
+                  {selectedStudent.parentGuardianName && (
+                    <p className="font-medium text-gray-900">{selectedStudent.parentGuardianName}</p>
+                  )}
+                  <div className="flex flex-wrap gap-4 mt-3">
+                    {selectedStudent.parentGuardianPhone && (
+                      <a
+                        href={`tel:${selectedStudent.parentGuardianPhone}`}
+                        className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
+                      >
+                        <Phone className="w-3.5 h-3.5" />
+                        {selectedStudent.parentGuardianPhone}
+                      </a>
+                    )}
+                    {selectedStudent.parentGuardianEmail && (
+                      <a
+                        href={`mailto:${selectedStudent.parentGuardianEmail}`}
+                        className="flex items-center gap-2 text-sm text-blue-600 hover:underline"
+                      >
+                        <Mail className="w-3.5 h-3.5" />
+                        {selectedStudent.parentGuardianEmail}
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Class Info */}
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">Class:</span>
+                <Badge variant="outline">{selectedStudent.className}</Badge>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2 pt-2">
+                {selectedStudent.email && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => window.location.href = `mailto:${selectedStudent.email}`}
+                  >
+                    <Mail className="w-4 h-4 mr-2" />
+                    Email Student
+                  </Button>
+                )}
+                {selectedStudent.parentGuardianEmail && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => window.location.href = `mailto:${selectedStudent.parentGuardianEmail}`}
+                  >
+                    <Mail className="w-4 h-4 mr-2" />
+                    Email Guardian
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

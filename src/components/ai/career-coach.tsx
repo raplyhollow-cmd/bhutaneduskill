@@ -14,6 +14,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { ErrorBoundary } from "@/components/error/error-boundary";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -174,37 +175,40 @@ export function AICareerCoach({
   // Floating chat bubble for non-embedded mode
   if (!embedded && !isExpanded) {
     return (
-      <div className={cn("fixed bottom-6 right-6 z-50", className)}>
-        <Button
-          onClick={() => setIsExpanded(true)}
-          size="lg"
-          style={{
-            background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)',
-            border: 'none',
-            boxShadow: '0 4px 14px rgba(0, 0, 0.15)'
-          }}
-          className="rounded-full h-16 w-16 hover:scale-105 transition-transform animate-pulse-slow"
-        >
-          <Bot className="w-7 h-7 text-white" />
-        </Button>
-        <Badge className="absolute -top-1 -right-1 text-white px-2 py-0 text-xs shadow-md" style={{ backgroundColor: 'rgb(239 68 68)' }}>
-          AI
-        </Badge>
-      </div>
+      <ErrorBoundary>
+        <div className={cn("relative", className)}>
+          <Button
+            onClick={() => setIsExpanded(true)}
+            size="lg"
+            style={{
+              background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)',
+              border: 'none',
+              boxShadow: '0 4px 14px rgba(0, 0, 0.15)'
+            }}
+            className="rounded-full h-14 w-14 hover:scale-105 transition-transform animate-pulse-slow"
+          >
+            <Bot className="w-6 h-6 text-white" />
+          </Button>
+          <Badge className="absolute -top-1 -right-1 text-white px-2 py-0 text-xs shadow-md" style={{ backgroundColor: 'rgb(239 68 68)' }}>
+            Career
+          </Badge>
+        </div>
+      </ErrorBoundary>
     );
   }
 
   return (
-    <Card
-      className={cn(
-        "shadow-xl border-orange-200 bg-white",
-        !embedded && "fixed bottom-6 right-6 w-96 max-h-[600px] flex flex-col z-50",
-        isMinimized && "h-14",
-        className
-      )}
-    >
-      {/* Header */}
-      <CardHeader
+    <ErrorBoundary>
+      <Card
+        className={cn(
+          "shadow-xl border-orange-200 bg-white",
+          !embedded && "w-80 max-h-[500px] flex flex-col",
+          isMinimized && "h-14",
+          className
+        )}
+      >
+        {/* Header */}
+        <CardHeader
         className="text-white p-4 space-y-0"
         style={{ background: 'linear-gradient(to right, rgb(249 115 22), rgb(194 65 12))' }}
       >
@@ -313,6 +317,7 @@ export function AICareerCoach({
         </>
       )}
     </Card>
+    </ErrorBoundary>
   );
 }
 

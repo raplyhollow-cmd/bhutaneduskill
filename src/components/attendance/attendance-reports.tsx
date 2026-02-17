@@ -30,6 +30,7 @@ export interface AttendanceSummary {
   late: number;
   excused: number;
   percentage: number;
+  alertLevel?: "critical" | "warning" | "none";
 }
 
 export interface DailyAttendance {

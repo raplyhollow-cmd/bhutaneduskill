@@ -37,6 +37,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { AddUserModal } from "@/components/admin/add-user-modal";
+import { EditTeacherModal } from "@/components/admin/edit-teacher-modal";
 
 // Helper function to parse subjects field (stored as JSON string in DB)
 function parseSubjects(subjects: string | null | undefined): string[] {
@@ -69,6 +70,8 @@ export default function AdminTeachersPage() {
   const [deletingTeacher, setDeletingTeacher] = useState<any | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isVerifying, setIsVerifying] = useState<string | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingTeacher, setEditingTeacher] = useState<any | null>(null);
 
   // Fetch teachers from API
   const fetchTeachers = useCallback(async () => {
@@ -112,6 +115,12 @@ export default function AdminTeachersPage() {
   const handleViewTeacher = (teacher: any) => {
     setViewingTeacher(teacher);
     setIsViewDialogOpen(true);
+  };
+
+  // Handle edit teacher
+  const handleEditTeacher = (teacher: any) => {
+    setEditingTeacher(teacher);
+    setIsEditModalOpen(true);
   };
 
   // Handle verify teacher
@@ -627,13 +636,12 @@ export default function AdminTeachersPage() {
                             >
                               <Eye className="w-4 h-4" />
                             </Button>
-                            {/* Edit button - TODO: Implement edit modal */}
                             <Button
                               variant="ghost"
                               size="icon"
                               className="h-8 w-8 hover:bg-pink-50 hover:text-pink-600"
                               title="Edit teacher"
-                              onClick={() => console.log('Edit teacher', teacher)}
+                              onClick={() => handleEditTeacher(teacher)}
                             >
                               <Edit className="w-4 h-4" />
                             </Button>
@@ -1041,6 +1049,14 @@ export default function AdminTeachersPage() {
           </div>
         </div>
       )}
+
+      {/* Edit Teacher Modal */}
+      <EditTeacherModal
+        open={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSuccess={fetchTeachers}
+        teacher={editingTeacher}
+      />
     </div>
   );
 }

@@ -1,24 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
+import type { ApiSuccess, ApiErrorResponse } from "@/types";
 import { db } from "@/lib/db";
 import { scholarships, users, assessments, riasecResults } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 
 // GET /api/student/content/scholarships/matched - Get matched scholarships
 export async function GET(request: NextRequest) {
+  const authResult = await requireAuth(['student', 'admin']);
+  if ('error' in authResult) {
+    return NextResponse.json(
+      { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
+      { status: authResult.status }
+    );
+  }
+
+  const { userId } = authResult;
+
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
+      where: eq(users.id, userId),
     });
-
-    if (!currentUser || currentUser.type !== "student") {
-      return NextResponse.json({ error: "Forbidden - Students only" }, { status: 403 });
-    }
 
     // Get all scholarships
     const allScholarships = await db.query.scholarships.findMany({
@@ -27,7 +30,7 @@ export async function GET(request: NextRequest) {
 
     // Get student's RIASEC results if available
     const riasecResult = await db.query.riasecResults.findFirst({
-      where: eq(riasecResults.userId, currentUser.id),
+      where: eq(riasecResults.userId, userId),
       orderBy: [riasecResults.createdAt],
     });
 
@@ -101,7 +104,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ scholarships: scoredScholarships });
   } catch (error) {
-    console.error("Matched scholarships fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch matched scholarships" }, { status: 500 });
+    logger.apiError(error, { route: "/api/student/content/scholarships/matched", method: "GET", userId });
+    return NextResponse.json(
+      { error: "Failed to fetch matched scholarships", status: 500 } satisfies ApiErrorResponse,
+      { status: 500 }
+    );
   }
 }

@@ -1,35 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
-import { assessmentSubmissions, users, assessments } from "@/lib/db/schema";
+import { assessmentSubmissions, users } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 
 // GET /api/assessment-submissions - Get submissions
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['student', 'teacher', 'admin', 'school-admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId, user } = authResult;
 
     const { searchParams } = new URL(request.url);
     const assessmentId = searchParams.get("assessmentId");
     const userId_param = searchParams.get("userId");
     const assignedBy = searchParams.get("assignedBy");
     const status = searchParams.get("status");
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    // Only admin, counselor, and teachers can view submissions
-    if (!["admin", "counselor", "teacher"].includes(currentUser.type)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
 
     const conditions = [];
     if (assessmentId) {
@@ -45,9 +33,14 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(assessmentSubmissions.status, status));
     }
 
+    // Students can only see their own submissions
+    if (user.type === "student") {
+      conditions.push(eq(assessmentSubmissions.userId, userId));
+    }
+
     // Teachers can only see submissions they assigned
-    if (currentUser.type === "teacher") {
-      conditions.push(eq(assessmentSubmissions.assignedBy, currentUser.id));
+    if (user.type === "teacher") {
+      conditions.push(eq(assessmentSubmissions.assignedBy, userId));
     }
 
     let submissions: any[];
@@ -72,24 +65,17 @@ export async function GET(request: NextRequest) {
 // POST /api/assessment-submissions - Create submission
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['student', 'teacher', 'admin', 'school-admin']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { userId, user } = authResult;
 
     const body = await request.json();
     const { assessmentId, userId: targetUserId, assignedBy } = body;
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    // Only admin, counselor, and teachers can assign assessments
-    if (!["admin", "counselor", "teacher"].includes(currentUser.type)) {
+    // Only teachers and admins can assign assessments to others
+    if (user.type === "student") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -99,7 +85,7 @@ export async function POST(request: NextRequest) {
         id: `sub_${Date.now()}`,
         assessmentId,
         userId: targetUserId,
-        assignedBy: assignedBy || currentUser.id,
+        assignedBy: assignedBy || userId,
         status: "pending",
         ipAddress: request.headers.get("x-forwarded-for") || "unknown",
         createdAt: new Date(),

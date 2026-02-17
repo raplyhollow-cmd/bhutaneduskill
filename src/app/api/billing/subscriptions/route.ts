@@ -159,10 +159,11 @@ export async function GET(req: NextRequest) {
         overduePayments: revenueStats[0]?.pastDueCount || 0,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Failed to fetch subscriptions";
     console.error("Error fetching subscriptions:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to fetch subscriptions" },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }
@@ -265,10 +266,11 @@ export async function POST(req: NextRequest) {
       success: true,
       data: created[0],
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Failed to create subscription";
     console.error("Error creating subscription:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to create subscription" },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }
@@ -356,10 +358,11 @@ export async function PATCH(req: NextRequest) {
       success: true,
       message: "Subscription updated successfully",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Failed to update subscription";
     console.error("Error updating subscription:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to update subscription" },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }
@@ -395,10 +398,11 @@ export async function DELETE(req: NextRequest) {
       success: true,
       message: "Subscription canceled successfully",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Failed to cancel subscription";
     console.error("Error canceling subscription:", error);
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to cancel subscription" },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }

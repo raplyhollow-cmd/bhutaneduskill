@@ -8,11 +8,24 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { updateAssessmentType } from "@/app/admin/assessments/actions";
 
+interface AssessmentType {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  targetAudience: string;
+  targetGrade?: number;
+  duration?: number;
+  totalQuestions?: number;
+  passingScore?: number;
+  isActive?: boolean;
+}
+
 interface EditAssessmentTypeModalProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  assessmentType: any;
+  assessmentType: AssessmentType | null;
 }
 
 export function EditAssessmentTypeModal({ open, onClose, onSuccess, assessmentType }: EditAssessmentTypeModalProps) {

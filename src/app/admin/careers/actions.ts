@@ -12,6 +12,7 @@ import { careers } from "@/lib/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
 
 /**
  * Get all careers from the database
@@ -36,7 +37,7 @@ export async function getCareers(limit = 500) {
       isActive: !!career.isActive,
     }));
   } catch (error) {
-    console.error("Failed to fetch careers:", error);
+    logger.error(error, { action: "getCareers", userId });
     throw new Error("Failed to fetch careers");
   }
 }
@@ -66,7 +67,7 @@ export async function getCareerById(id: string) {
       isActive: !!career.isActive,
     };
   } catch (error) {
-    console.error("Failed to fetch career:", error);
+    logger.error(error, { action: "getCareerById", id, userId });
     throw new Error("Failed to fetch career");
   }
 }
@@ -135,7 +136,7 @@ export async function createCareer(data: {
 
     return newCareer;
   } catch (error) {
-    console.error("Failed to create career:", error);
+    logger.error(error, { action: "createCareer", userId });
     throw new Error("Failed to create career");
   }
 }
@@ -206,7 +207,7 @@ export async function updateCareer(
       isActive: !!updatedCareer.isActive,
     };
   } catch (error) {
-    console.error("Failed to update career:", error);
+    logger.error(error, { action: "updateCareer", id, userId });
     throw new Error("Failed to update career");
   }
 }
@@ -236,7 +237,7 @@ export async function deleteCareer(id: string) {
 
     return deletedCareer;
   } catch (error) {
-    console.error("Failed to delete career:", error);
+    logger.error(error, { action: "deleteCareer", id, userId });
     throw new Error("Failed to delete career");
   }
 }
@@ -268,7 +269,7 @@ export async function bulkUpdateDemand(
 
     return { success: true, count: ids.length };
   } catch (error) {
-    console.error("Failed to bulk update careers:", error);
+    logger.error(error, { action: "bulkUpdateDemand", userId });
     throw new Error("Failed to bulk update careers");
   }
 }
@@ -293,7 +294,7 @@ export async function bulkDeleteCareers(ids: string[]) {
 
     return { success: true, count: ids.length };
   } catch (error) {
-    console.error("Failed to bulk delete careers:", error);
+    logger.error(error, { action: "bulkDeleteCareers", userId });
     throw new Error("Failed to bulk delete careers");
   }
 }
@@ -328,7 +329,7 @@ export async function searchCareers(query: string, limit = 20) {
       isActive: !!career.isActive,
     }));
   } catch (error) {
-    console.error("Failed to search careers:", error);
+    logger.error(error, { action: "searchCareers", query, userId });
     throw new Error("Failed to search careers");
   }
 }
@@ -356,7 +357,7 @@ export async function getCareersByRIASEC(riasecCode: string, limit = 50) {
       isActive: !!career.isActive,
     }));
   } catch (error) {
-    console.error("Failed to fetch careers by RIASEC:", error);
+    logger.error(error, { action: "getCareersByRIASEC", riasecCode, userId });
     throw new Error("Failed to fetch careers by RIASEC");
   }
 }
@@ -384,7 +385,7 @@ export async function getBhutanCareers(limit = 100) {
       isActive: !!career.isActive,
     }));
   } catch (error) {
-    console.error("Failed to fetch Bhutan careers:", error);
+    logger.error(error, { action: "getBhutanCareers", userId });
     throw new Error("Failed to fetch Bhutan careers");
   }
 }
@@ -447,7 +448,7 @@ export async function importCareers(
 
     return { success: true, count: results.length, careers: results };
   } catch (error) {
-    console.error("Failed to import careers:", error);
+    logger.error(error, { action: "importCareers", userId });
     throw new Error("Failed to import careers");
   }
 }

@@ -98,14 +98,15 @@ export async function GET(
         recentDeliveries,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.apiError(error, {
       route: `/api/admin/notifications/${notificationId}`,
       method: "GET",
       userId,
     });
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: "Failed to fetch notification", details: error.message },
+      { error: "Failed to fetch notification", details: errorMessage },
       { status: 500 }
     );
   }
@@ -168,7 +169,7 @@ export async function PATCH(
     const body: UpdateNotificationRequest = await request.json();
 
     // Build update object
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       updatedAt: new Date(),
     };
 
@@ -244,14 +245,15 @@ export async function PATCH(
       data: updated[0],
       message: "Notification updated successfully",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.apiError(error, {
       route: `/api/admin/notifications/${notificationId}`,
       method: "PATCH",
       userId,
     });
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: "Failed to update notification", details: error.message },
+      { error: "Failed to update notification", details: errorMessage },
       { status: 500 }
     );
   }
@@ -307,14 +309,15 @@ export async function DELETE(
     return NextResponse.json({
       message: "Notification deleted successfully",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.apiError(error, {
       route: `/api/admin/notifications/${notificationId}`,
       method: "DELETE",
       userId,
     });
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
     return NextResponse.json(
-      { error: "Failed to delete notification", details: error.message },
+      { error: "Failed to delete notification", details: errorMessage },
       { status: 500 }
     );
   }

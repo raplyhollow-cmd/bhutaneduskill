@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { liveSessions, tutors, users } from "@/lib/db/schema";
 import { eq, desc, and } from "drizzle-orm";
@@ -17,12 +17,18 @@ const sessionSchema = z.object({
   platform: z.enum(["zoom", "google_meet", "teams", "in_app"]),
   maxParticipants: z.number().optional(),
   pricePerStudent: z.number().optional(),
+  notes: z.string().optional(),
 });
+
+type SessionData = z.infer<typeof sessionSchema>;
 
 // GET /api/tuition/sessions - List upcoming sessions
 export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth();
+    const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+    }
 
     const { searchParams } = new URL(request.url);
     const tutorId = searchParams.get("tutorId");
@@ -66,21 +72,14 @@ export async function GET(request: NextRequest) {
 // POST /api/tuition/sessions - Schedule live session
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
+    if ('error' in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+    const { user: currentUser } = authResult;
 
     const body = await request.json();
     const validatedData = sessionSchema.parse(body);
-
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
 
     // Get tutor profile
     const tutor = await db.query.tutors.findFirst({
@@ -108,7 +107,7 @@ export async function POST(request: NextRequest) {
       maxParticipants: validatedData.maxParticipants,
       currentParticipants: 0,
       status: "scheduled",
-      notes: (validatedData as any).notes,
+      notes: validatedData.notes,
       createdAt: new Date(),
       updatedAt: new Date(),
     }).returning();

@@ -10,6 +10,32 @@ import Link from "next/link";
 
 import { CAREER_PHASES } from "@/lib/assessments";
 
+interface CareerGoal {
+  id: string;
+  title: string;
+  status: "completed" | "in_progress" | "pending";
+  targetDate?: string;
+}
+
+interface CareerMilestone {
+  id: string;
+  title: string;
+  status: "completed" | "in_progress" | "pending";
+  targetDate?: string;
+}
+
+interface CareerPlan {
+  id: string;
+  userId: string;
+  targetCareer: string;
+  currentPhase: "self_assessment" | "career_exploration" | "goal_setting" | "planning" | "implementation" | "review";
+  shortTermGoals?: CareerGoal[];
+  longTermGoals?: CareerGoal[];
+  milestones?: CareerMilestone[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 const PHASE_ICONS = {
   self_assessment: <CheckCircle2 className="w-6 h-6" />,
   career_exploration: <Compass className="w-6 h-6" />,
@@ -41,7 +67,7 @@ const mockPlan = {
 };
 
 export default function CareerPlanPage() {
-  const [plans, setPlans] = useState<any[]>([]);
+  const [plans, setPlans] = useState<CareerPlan[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -145,7 +171,7 @@ export default function CareerPlanPage() {
         </div>
 
         <div className="space-y-4">
-          {plans.map((p) => (
+          {plans.map((p: CareerPlan) => (
             <Card key={p.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => window.location.href = `/dashboard/plan/${p.id}`}>
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
@@ -167,9 +193,9 @@ export default function CareerPlanPage() {
   const activePlan = plans[0];
 
   // Calculate progress for goals
-  const shortTermCompleted = activePlan?.shortTermGoals?.filter((g: any) => g.status === "completed").length || 0;
-  const longTermCompleted = activePlan?.longTermGoals?.filter((g: any) => g.status === "completed").length || 0;
-  const milestonesCompleted = activePlan?.milestones?.filter((m: any) => m.status === "completed").length || 0;
+  const shortTermCompleted = activePlan?.shortTermGoals?.filter((g: CareerGoal) => g.status === "completed").length || 0;
+  const longTermCompleted = activePlan?.longTermGoals?.filter((g: CareerGoal) => g.status === "completed").length || 0;
+  const milestonesCompleted = activePlan?.milestones?.filter((m: CareerMilestone) => m.status === "completed").length || 0;
 
   const getPhaseStatusColor = (status: string) => {
     switch (status) {
@@ -296,7 +322,7 @@ export default function CareerPlanPage() {
         <CardContent>
           <div className="space-y-3">
             {activePlan?.shortTermGoals?.length > 0 ? (
-              activePlan.shortTermGoals.map((goal: any) => (
+              activePlan.shortTermGoals.map((goal: CareerGoal) => (
                 <div key={goal.id} className="flex items-center gap-4 p-3 rounded-lg bg-gray-50">
                   <div className={`w-4 h-4 rounded-full ${getGoalStatusColor(goal.status)}`} />
                   <span className={`flex-1 ${goal.status === "completed" ? "line-through text-gray-400" : ""}`}>
@@ -323,7 +349,7 @@ export default function CareerPlanPage() {
         <CardContent>
           <div className="space-y-3">
             {activePlan?.longTermGoals?.length > 0 ? (
-              activePlan.longTermGoals.map((goal: any) => (
+              activePlan.longTermGoals.map((goal: CareerGoal) => (
                 <div key={goal.id} className="flex items-center gap-4 p-3 rounded-lg bg-gray-50">
                   <div className={`w-4 h-4 rounded-full ${getGoalStatusColor(goal.status)}`} />
                   <span className={`flex-1 ${goal.status === "completed" ? "line-through text-gray-400" : ""}`}>
@@ -350,7 +376,7 @@ export default function CareerPlanPage() {
         <CardContent>
           <div className="space-y-3">
             {activePlan?.milestones?.length > 0 ? (
-              activePlan.milestones.map((milestone: any) => (
+              activePlan.milestones.map((milestone: CareerMilestone) => (
                 <div key={milestone.id} className="flex items-center gap-4 p-3 rounded-lg bg-blue-50 border border-blue-200">
                   <Flag className="w-5 h-5 text-blue-600" />
                   <span className={`flex-1 ${milestone.status === "completed" ? "line-through text-gray-400" : ""}`}>
@@ -418,8 +444,8 @@ export default function CareerPlanPage() {
               </div>
               <div className="p-4 bg-blue-50 rounded-lg">
                 <div className="text-2xl font-bold text-blue-600">
-                  {(activePlan?.shortTermGoals?.filter((g: any) => g.status === "in_progress").length || 0) +
-                   (activePlan?.longTermGoals?.filter((g: any) => g.status === "in_progress").length || 0)}
+                  {(activePlan?.shortTermGoals?.filter((g: CareerGoal) => g.status === "in_progress").length || 0) +
+                   (activePlan?.longTermGoals?.filter((g: CareerGoal) => g.status === "in_progress").length || 0)}
                 </div>
                 <div className="text-sm text-gray-600">In Progress</div>
               </div>

@@ -9,6 +9,16 @@
 // MBTI EVALUATION
 // ============================================================================
 
+export interface MBTIQuestionData {
+  dimension: "EI" | "SN" | "TF" | "JP";
+  direction?: 1 | -1;
+}
+
+export interface MBTIQuestion {
+  id: string;
+  questionData?: MBTIQuestionData;
+}
+
 export interface MBTIAnswer {
   questionId: string;
   answer: number; // 1-5 Likert scale
@@ -43,7 +53,7 @@ const mbtiProfiles: Record<string, Omit<MBTIResult, "eiScore" | "snScore" | "tfS
   ENTJ: { type: "ENTJ", description: "The Commander: Bold, imaginative and strong-willed leaders.", traits: ["Bold", "Strategic", "Leader"] },
 };
 
-export function evaluateMBTI(answers: MBTIAnswer[], questions: any[]): MBTIResult {
+export function evaluateMBTI(answers: MBTIAnswer[], questions: MBTIQuestion[]): MBTIResult {
   // Initialize dimension scores
   const dimensionScores = { EI: 0, SN: 0, TF: 0, JP: 0 };
   const dimensionCounts = { EI: 0, SN: 0, TF: 0, JP: 0 };
@@ -141,6 +151,15 @@ function getMBTITraits(type: string): string[] {
 // DISC EVALUATION
 // ============================================================================
 
+export interface DISCQuestionData {
+  dimension: "D" | "I" | "S" | "C";
+}
+
+export interface DISCEvaluationQuestion {
+  id: string;
+  questionData?: DISCQuestionData;
+}
+
 export interface DISCAnswer {
   questionId: string;
   most: number; // 1-4 rating
@@ -157,7 +176,7 @@ export interface DISCResult {
   traits: string[];
 }
 
-export function evaluateDISC(answers: DISCAnswer[], questions: any[]): DISCResult {
+export function evaluateDISC(answers: DISCAnswer[], questions: DISCEvaluationQuestion[]): DISCResult {
   const scores = { D: 0, I: 0, S: 0, C: 0 };
 
   const questionMap = new Map(questions.map((q) => [q.id, q]));
@@ -240,6 +259,17 @@ function getDISCTraits(type: string): string[] {
 // WORK VALUES EVALUATION
 // ============================================================================
 
+export type WorkValueCategory = "achievement" | "independence" | "recognition" | "relationships" | "support" | "workingConditions";
+
+export interface WorkValuesQuestionData {
+  valueCategory?: WorkValueCategory;
+}
+
+export interface WorkValuesEvaluationQuestion {
+  id: string;
+  questionData?: WorkValuesQuestionData;
+}
+
 export interface WorkValuesAnswer {
   questionId: string;
   answer: number; // 1-5 Likert scale
@@ -251,7 +281,7 @@ export interface WorkValuesResult {
   description: string;
 }
 
-export function evaluateWorkValues(answers: WorkValuesAnswer[], questions: any[]): WorkValuesResult {
+export function evaluateWorkValues(answers: WorkValuesAnswer[], questions: WorkValuesEvaluationQuestion[]): WorkValuesResult {
   const valueScores: Record<string, number> = {
     achievement: 0,
     independence: 0,
@@ -321,6 +351,17 @@ function getWorkValuesDescription(topValues: string[]): string {
 // LEARNING STYLES (VARK) EVALUATION
 // ============================================================================
 
+export type LearningStyleCategory = "visual" | "auditory" | "read_write" | "kinesthetic";
+
+export interface LearningStylesQuestionData {
+  style?: LearningStyleCategory;
+}
+
+export interface LearningStylesEvaluationQuestion {
+  id: string;
+  questionData?: LearningStylesQuestionData;
+}
+
 export interface LearningStylesAnswer {
   questionId: string;
   answer: number; // 1-5 Likert scale
@@ -336,7 +377,7 @@ export interface LearningStylesResult {
   description: string;
 }
 
-export function evaluateLearningStyles(answers: LearningStylesAnswer[], questions: any[]): LearningStylesResult {
+export function evaluateLearningStyles(answers: LearningStylesAnswer[], questions: LearningStylesEvaluationQuestion[]): LearningStylesResult {
   const styleScores = { visual: 0, auditory: 0, read_write: 0, kinesthetic: 0 };
   const styleCounts = { visual: 0, auditory: 0, read_write: 0, kinesthetic: 0 };
 
@@ -397,6 +438,17 @@ function getLearningStyleDescription(dominant: string, secondary?: string): stri
 // CAREER INTEREST EVALUATION
 // ============================================================================
 
+export type CareerInterestCategory = "technology" | "helping" | "arts" | "leadership" | "analytical" | "outdoors";
+
+export interface CareerInterestQuestionData {
+  category?: CareerInterestCategory;
+}
+
+export interface CareerInterestEvaluationQuestion {
+  id: string;
+  questionData?: CareerInterestQuestionData;
+}
+
 export interface CareerInterestAnswer {
   questionId: string;
   answer: number; // 1-5 Likert scale
@@ -409,7 +461,7 @@ export interface CareerInterestResult {
   careerSuggestions: string[];
 }
 
-export function evaluateCareerInterest(answers: CareerInterestAnswer[], questions: any[]): CareerInterestResult {
+export function evaluateCareerInterest(answers: CareerInterestAnswer[], questions: CareerInterestEvaluationQuestion[]): CareerInterestResult {
   const categoryScores: Record<string, number> = {
     technology: 0,
     helping: 0,
@@ -498,6 +550,18 @@ function getCareerSuggestions(categories: string[]): string[] {
 // APTITUDE EVALUATION
 // ============================================================================
 
+export type AptitudeSubtype = "verbal" | "numerical" | "spatial";
+
+export interface AptitudeQuestionData {
+  subtype?: AptitudeSubtype;
+}
+
+export interface AptitudeQuestion {
+  id: string;
+  options?: string[];
+  questionData?: AptitudeQuestionData;
+}
+
 export interface AptitudeAnswer {
   questionId: string;
   answer: string; // Selected option
@@ -514,7 +578,7 @@ export interface AptitudeResult {
   strengths: string[];
 }
 
-export function evaluateAptitude(answers: AptitudeAnswer[], questions: any[]): AptitudeResult {
+export function evaluateAptitude(answers: AptitudeAnswer[], questions: AptitudeQuestion[]): AptitudeResult {
   let correct = 0;
   let verbal = 0;
   let verbalCount = 0;
@@ -581,6 +645,17 @@ function getAptitudeStrengths(verbal: number, numerical: number, spatial: number
 // CORE SKILLS EVALUATION
 // ============================================================================
 
+export type SkillCategory = "communication" | "problem_solving" | "teamwork" | "critical_thinking" | "time_management";
+
+export interface SkillQuestionData {
+  skill?: SkillCategory;
+}
+
+export interface SkillEvaluationQuestion {
+  id: string;
+  questionData?: SkillQuestionData;
+}
+
 export interface SkillAnswer {
   questionId: string;
   answer: number; // 1-5 Likert scale
@@ -594,7 +669,7 @@ export interface SkillResult {
   recommendations: string[];
 }
 
-export function evaluateCoreSkills(answers: SkillAnswer[], questions: any[]): SkillResult {
+export function evaluateCoreSkills(answers: SkillAnswer[], questions: SkillEvaluationQuestion[]): SkillResult {
   const skillScores: Record<string, number> = {
     communication: 0,
     problem_solving: 0,

@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 
 // GET /api/journal - Get user's journal entries
 export async function GET(req: NextRequest) {
-  const authResult = await requireAuth();
+  const authResult = await requireAuth(['student']);
   if ('error' in authResult) {
     return NextResponse.json({ error: authResult.error }, { status: authResult.status });
   }
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
 
 // POST /api/journal - Create a new journal entry
 export async function POST(req: NextRequest) {
-  const authResult = await requireAuth();
+  const authResult = await requireAuth(['student']);
   if ('error' in authResult) {
     return NextResponse.json({ error: authResult.error }, { status: authResult.status });
   }

@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { RichTextEditor, VideoEmbedder } from "@/components/learning/rich-text-editor";
 import {
   Plus,
   Trash2,
@@ -25,6 +26,9 @@ import {
   ChevronDown,
   ChevronUp,
   Upload,
+  HelpCircle,
+  Code,
+  FileQuestion,
 } from "lucide-react";
 
 export interface ModuleContent {
@@ -36,6 +40,26 @@ export interface ModuleContent {
   fileUrl?: string;
   duration?: number; // in minutes
   order: number;
+  // Quiz-specific properties
+  quizData?: QuizData;
+}
+
+export interface QuizData {
+  questions: QuizQuestion[];
+  passingScore: number;
+  timeLimit?: number; // in minutes
+  shuffleQuestions: boolean;
+  showResults: "immediate" | "after_completion" | "never";
+}
+
+export interface QuizQuestion {
+  id: string;
+  type: "multiple_choice" | "true_false" | "short_answer";
+  question: string;
+  options?: string[];
+  correctAnswer: string | number;
+  points: number;
+  explanation?: string;
 }
 
 export interface ModuleLesson {
@@ -71,8 +95,8 @@ const contentTypeConfig = {
   video: { label: "Video", icon: Video, color: "text-purple-600" },
   image: { label: "Image", icon: Image, color: "text-blue-600" },
   document: { label: "Document", icon: FileText, color: "text-green-600" },
-  quiz: { label: "Quiz", icon: BookOpen, color: "text-yellow-600" },
-  assignment: { label: "Assignment", icon: FileText, color: "text-red-600" },
+  quiz: { label: "Quiz", icon: HelpCircle, color: "text-yellow-600" },
+  assignment: { label: "Assignment", icon: FileQuestion, color: "text-red-600" },
   link: { label: "External Link", icon: LinkIcon, color: "text-indigo-600" },
 };
 
@@ -443,6 +467,7 @@ interface ContentItemProps {
 function ContentItem({ content, onUpdate, onDelete }: ContentItemProps) {
   const config = contentTypeConfig[content.type];
   const Icon = config.icon;
+  const [showQuizEditor, setShowQuizEditor] = useState(false);
 
   return (
     <div className="flex items-start gap-3 p-3 bg-muted rounded-lg">
@@ -458,19 +483,18 @@ function ContentItem({ content, onUpdate, onDelete }: ContentItemProps) {
         />
 
         {content.type === "text" && (
-          <Textarea
+          <RichTextEditor
             value={content.content || ""}
-            onChange={(e) => onUpdate({ content: e.target.value })}
-            placeholder="Enter text content..."
-            rows={3}
+            onChange={(value) => onUpdate({ content: value })}
+            placeholder="Enter text content with formatting..."
+            minHeight="120px"
           />
         )}
 
         {content.type === "video" && (
-          <Input
-            value={content.url || ""}
-            onChange={(e) => onUpdate({ url: e.target.value })}
-            placeholder="Video URL (YouTube, Vimeo, etc.)"
+          <VideoEmbedder
+            url={content.url || ""}
+            onChange={(embedUrl) => onUpdate({ url: embedUrl })}
           />
         )}
 
@@ -497,11 +521,22 @@ function ContentItem({ content, onUpdate, onDelete }: ContentItemProps) {
         )}
 
         {content.type === "quiz" && (
-          <Input
-            value={content.url || ""}
-            onChange={(e) => onUpdate({ url: e.target.value })}
-            placeholder="Quiz ID"
-          />
+          <div className="space-y-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowQuizEditor(!showQuizEditor)}
+            >
+              <Code className="w-4 h-4 mr-1" />
+              {showQuizEditor ? "Hide" : "Edit"} Quiz Questions
+            </Button>
+            {showQuizEditor && (
+              <QuizEditor
+                quizData={content.quizData}
+                onChange={(quizData) => onUpdate({ quizData })}
+              />
+            )}
+          </div>
         )}
 
         {(content.type === "video" || content.type === "document") && (
@@ -518,6 +553,241 @@ function ContentItem({ content, onUpdate, onDelete }: ContentItemProps) {
       <Button variant="ghost" size="icon-xs" onClick={onDelete}>
         <Trash2 className="w-4 h-4 text-destructive" />
       </Button>
+    </div>
+  );
+}
+
+// ============================================================================
+// QUIZ EDITOR COMPONENT
+// ============================================================================
+
+interface QuizEditorProps {
+  quizData?: QuizData;
+  onChange: (quizData: QuizData) => void;
+}
+
+function QuizEditor({ quizData, onChange }: QuizEditorProps) {
+  const [data, setData] = useState<QuizData>(
+    quizData || {
+      questions: [],
+      passingScore: 70,
+      shuffleQuestions: false,
+      showResults: "immediate",
+    }
+  );
+
+  const updateData = (updates: Partial<QuizData>) => {
+    const updated = { ...data, ...updates };
+    setData(updated);
+    onChange(updated);
+  };
+
+  const addQuestion = () => {
+    const newQuestion: QuizQuestion = {
+      id: `q_${Date.now()}`,
+      type: "multiple_choice",
+      question: "",
+      options: ["", "", "", ""],
+      correctAnswer: 0,
+      points: 1,
+    };
+    updateData({ questions: [...data.questions, newQuestion] });
+  };
+
+  const updateQuestion = (index: number, updates: Partial<QuizQuestion>) => {
+    const updated = [...data.questions];
+    updated[index] = { ...updated[index], ...updates };
+    updateData({ questions: updated });
+  };
+
+  const deleteQuestion = (index: number) => {
+    updateData({ questions: data.questions.filter((_, i) => i !== index) });
+  };
+
+  return (
+    <div className="space-y-4 border rounded-lg p-4 bg-background">
+      {/* Quiz Settings */}
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <label className="text-sm font-medium">Passing Score (%)</label>
+          <Input
+            type="number"
+            min="0"
+            max="100"
+            value={data.passingScore}
+            onChange={(e) => updateData({ passingScore: parseInt(e.target.value) || 0 })}
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium">Time Limit (minutes)</label>
+          <Input
+            type="number"
+            min="1"
+            value={data.timeLimit || ""}
+            onChange={(e) => updateData({ timeLimit: parseInt(e.target.value) || undefined })}
+            placeholder="No limit"
+          />
+        </div>
+        <div>
+          <label className="text-sm font-medium">Show Results</label>
+          <select
+            className="w-full border rounded-md px-3 py-2"
+            value={data.showResults}
+            onChange={(e) => updateData({ showResults: e.target.value as QuizData["showResults"] })}
+          >
+            <option value="immediate">Immediate</option>
+            <option value="after_completion">After Completion</option>
+            <option value="never">Never</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          id="shuffle"
+          checked={data.shuffleQuestions}
+          onChange={(e) => updateData({ shuffleQuestions: e.target.checked })}
+        />
+        <label htmlFor="shuffle" className="text-sm">Shuffle question order</label>
+      </div>
+
+      {/* Questions */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h4 className="font-medium">Questions ({data.questions.length})</h4>
+          <Button size="sm" onClick={addQuestion}>
+            <Plus className="w-4 h-4 mr-1" />
+            Add Question
+          </Button>
+        </div>
+
+        {data.questions.map((q, idx) => (
+          <QuestionEditor
+            key={q.id}
+            question={q}
+            index={idx}
+            onUpdate={(updates) => updateQuestion(idx, updates)}
+            onDelete={() => deleteQuestion(idx)}
+          />
+        ))}
+
+        {data.questions.length === 0 && (
+          <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
+            No questions yet. Add your first question to get started.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface QuestionEditorProps {
+  question: QuizQuestion;
+  index: number;
+  onUpdate: (updates: Partial<QuizQuestion>) => void;
+  onDelete: () => void;
+}
+
+function QuestionEditor({ question, index, onUpdate, onDelete }: QuestionEditorProps) {
+  return (
+    <div className="border rounded-lg p-4 space-y-3">
+      <div className="flex items-start justify-between">
+        <span className="text-sm font-medium text-muted-foreground">Question {index + 1}</span>
+        <div className="flex items-center gap-2">
+          <select
+            className="text-xs border rounded px-2 py-1"
+            value={question.type}
+            onChange={(e) => onUpdate({ type: e.target.value as QuizQuestion["type"] })}
+          >
+            <option value="multiple_choice">Multiple Choice</option>
+            <option value="true_false">True / False</option>
+            <option value="short_answer">Short Answer</option>
+          </select>
+          <Button variant="ghost" size="icon-xs" onClick={onDelete}>
+            <Trash2 className="w-4 h-4 text-destructive" />
+          </Button>
+        </div>
+      </div>
+
+      <Textarea
+        value={question.question}
+        onChange={(e) => onUpdate({ question: e.target.value })}
+        placeholder="Enter your question..."
+        rows={2}
+      />
+
+      <div className="flex gap-4">
+        <div className="flex-1">
+          <label className="text-xs font-medium">Points</label>
+          <Input
+            type="number"
+            min="1"
+            value={question.points}
+            onChange={(e) => onUpdate({ points: parseInt(e.target.value) || 1 })}
+          />
+        </div>
+
+        {question.type === "multiple_choice" && (
+          <div className="flex-1">
+            <label className="text-xs font-medium">Correct Option</label>
+            <select
+              className="w-full border rounded-md px-3 py-2"
+              value={question.correctAnswer as number}
+              onChange={(e) => onUpdate({ correctAnswer: parseInt(e.target.value) })}
+            >
+              {question.options?.map((_, idx) => (
+                <option key={idx} value={idx}>Option {idx + 1}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {question.type === "true_false" && (
+          <div className="flex-1">
+            <label className="text-xs font-medium">Correct Answer</label>
+            <select
+              className="w-full border rounded-md px-3 py-2"
+              value={question.correctAnswer as string}
+              onChange={(e) => onUpdate({ correctAnswer: e.target.value })}
+            >
+              <option value="true">True</option>
+              <option value="false">False</option>
+            </select>
+          </div>
+        )}
+      </div>
+
+      {question.type === "multiple_choice" && question.options && (
+        <div className="space-y-2">
+          <label className="text-xs font-medium">Options</label>
+          {question.options.map((option, idx) => (
+            <div key={idx} className="flex gap-2 items-center">
+              <span className="text-xs text-muted-foreground w-16">Option {idx + 1}</span>
+              <Input
+                value={option}
+                onChange={(e) => {
+                  const newOptions = [...question.options!];
+                  newOptions[idx] = e.target.value;
+                  onUpdate({ options: newOptions });
+                }}
+                placeholder={`Option ${idx + 1}`}
+                className={question.correctAnswer === idx ? "border-green-500" : ""}
+              />
+              {question.correctAnswer === idx && (
+                <span className="text-xs text-green-600">(Correct)</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Textarea
+        value={question.explanation || ""}
+        onChange={(e) => onUpdate({ explanation: e.target.value })}
+        placeholder="Explanation (shown after answering)..."
+        rows={2}
+      />
     </div>
   );
 }

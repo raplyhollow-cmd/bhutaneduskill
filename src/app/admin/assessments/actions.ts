@@ -12,6 +12,7 @@ import { assessmentTypes, assessments, assessmentSubmissions, assessmentResults,
 import { eq, desc, and, like, sql, asc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
 
 // ============================================================================
 // ASSESSMENT TYPES ACTIONS
@@ -39,7 +40,7 @@ export async function getAssessmentTypes(limit = 500) {
       isActive: !!type.isActive,
     }));
   } catch (error) {
-    console.error("Failed to fetch assessment types:", error);
+    logger.error(error, { action: "getAssessmentTypes", userId });
     throw new Error("Failed to fetch assessment types");
   }
 }
@@ -68,7 +69,7 @@ export async function getAssessmentTypeById(id: string) {
       isActive: !!assessmentType.isActive,
     };
   } catch (error) {
-    console.error("Failed to fetch assessment type:", error);
+    logger.error(error, { action: "getAssessmentTypeById", id, userId });
     throw new Error("Failed to fetch assessment type");
   }
 }
@@ -124,7 +125,7 @@ export async function createAssessmentType(data: {
 
     return newType;
   } catch (error) {
-    console.error("Failed to create assessment type:", error);
+    logger.error(error, { action: "createAssessmentType", userId });
     throw new Error("Failed to create assessment type");
   }
 }
@@ -184,7 +185,7 @@ export async function updateAssessmentType(
       isActive: !!updatedType.isActive,
     };
   } catch (error) {
-    console.error("Failed to update assessment type:", error);
+    logger.error(error, { action: "updateAssessmentType", id, userId });
     throw new Error("Failed to update assessment type");
   }
 }
@@ -213,7 +214,7 @@ export async function deleteAssessmentType(id: string) {
 
     return deletedType;
   } catch (error) {
-    console.error("Failed to delete assessment type:", error);
+    logger.error(error, { action: "deleteAssessmentType", id, userId });
     throw new Error("Failed to delete assessment type");
   }
 }
@@ -276,7 +277,7 @@ export async function getAssessments(filters?: {
       isActive: !!assessment.isActive,
     }));
   } catch (error) {
-    console.error("Failed to fetch assessments:", error);
+    logger.error(error, { action: "getAssessments", userId });
     throw new Error("Failed to fetch assessments");
   }
 }
@@ -309,7 +310,7 @@ export async function getAssessmentById(id: string) {
       isActive: !!assessment.isActive,
     };
   } catch (error) {
-    console.error("Failed to fetch assessment:", error);
+    logger.error(error, { action: "getAssessmentById", id, userId });
     throw new Error("Failed to fetch assessment");
   }
 }
@@ -362,7 +363,7 @@ export async function createAssessment(data: {
 
     return newAssessment;
   } catch (error) {
-    console.error("Failed to create assessment:", error);
+    logger.error(error, { action: "createAssessment", userId });
     throw new Error("Failed to create assessment");
   }
 }
@@ -424,7 +425,7 @@ export async function updateAssessment(
       isActive: !!updatedAssessment.isActive,
     };
   } catch (error) {
-    console.error("Failed to update assessment:", error);
+    logger.error(error, { action: "updateAssessment", id, userId });
     throw new Error("Failed to update assessment");
   }
 }
@@ -453,7 +454,7 @@ export async function deleteAssessment(id: string) {
 
     return deletedAssessment;
   } catch (error) {
-    console.error("Failed to delete assessment:", error);
+    logger.error(error, { action: "deleteAssessment", id, userId });
     throw new Error("Failed to delete assessment");
   }
 }
@@ -533,7 +534,7 @@ export async function getAssessmentResults(filters?: {
       user,
     }));
   } catch (error) {
-    console.error("Failed to fetch assessment results:", error);
+    logger.error(error, { action: "getAssessmentResults", userId });
     throw new Error("Failed to fetch assessment results");
   }
 }
@@ -570,7 +571,7 @@ export async function getAssessmentSubmissions(assessmentId: string) {
       user,
     }));
   } catch (error) {
-    console.error("Failed to fetch assessment submissions:", error);
+    logger.error(error, { action: "getAssessmentSubmissions", assessmentId, userId });
     throw new Error("Failed to fetch assessment submissions");
   }
 }
@@ -667,7 +668,7 @@ export async function getAssessmentStats() {
       }, {} as Record<string, number>),
     };
   } catch (error) {
-    console.error("Failed to fetch assessment stats:", error);
+    logger.error(error, { action: "getAssessmentStats", userId });
     throw new Error("Failed to fetch assessment stats");
   }
 }
@@ -700,7 +701,7 @@ export async function searchAssessmentTypes(query: string, limit = 20) {
       isActive: !!type.isActive,
     }));
   } catch (error) {
-    console.error("Failed to search assessment types:", error);
+    logger.error(error, { action: "searchAssessmentTypes", query, userId });
     throw new Error("Failed to search assessment types");
   }
 }
@@ -731,7 +732,7 @@ export async function getAssessmentQuestions(assessmentTypeId: string) {
       isActive: !!q.isActive,
     }));
   } catch (error) {
-    console.error("Failed to fetch assessment questions:", error);
+    logger.error(error, { action: "getAssessmentQuestions", assessmentTypeId, userId });
     throw new Error("Failed to fetch assessment questions");
   }
 }
@@ -762,7 +763,7 @@ export async function getQuestionById(questionId: string) {
       isActive: !!question.isActive,
     };
   } catch (error) {
-    console.error("Failed to fetch question:", error);
+    logger.error(error, { action: "getQuestionById", questionId, userId });
     throw new Error("Failed to fetch question");
   }
 }
@@ -820,7 +821,7 @@ export async function createAssessmentQuestion(data: {
 
     return newQuestion;
   } catch (error) {
-    console.error("Failed to create question:", error);
+    logger.error(error, { action: "createAssessmentQuestion", userId });
     throw new Error("Failed to create question");
   }
 }
@@ -876,7 +877,7 @@ export async function updateAssessmentQuestion(
       isActive: !!updatedQuestion.isActive,
     };
   } catch (error) {
-    console.error("Failed to update question:", error);
+    logger.error(error, { action: "updateAssessmentQuestion", questionId, userId });
     throw new Error("Failed to update question");
   }
 }
@@ -905,7 +906,7 @@ export async function deleteAssessmentQuestion(questionId: string) {
 
     return deletedQuestion;
   } catch (error) {
-    console.error("Failed to delete question:", error);
+    logger.error(error, { action: "deleteAssessmentQuestion", questionId, userId });
     throw new Error("Failed to delete question");
   }
 }
@@ -961,7 +962,7 @@ export async function bulkCreateQuestions(
 
     return createdQuestions;
   } catch (error) {
-    console.error("Failed to bulk create questions:", error);
+    logger.error(error, { action: "bulkCreateQuestions", assessmentTypeId, questionsCount: questions.length, userId });
     throw new Error("Failed to bulk create questions");
   }
 }

@@ -34,6 +34,7 @@ import {
   TrendingUp,
   Megaphone,
   Shield,
+  Package,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -97,7 +98,7 @@ const navigationItems = {
     { name: "Resources", href: "/counselor/resources", icon: BookOpen },
   ],
   admin: [
-    { name: "Dashboard", href: "/admin/dashboard", icon: Home },
+    { name: "Dashboard", href: "/admin", icon: Home },
     { name: "Schools", href: "/admin/schools", icon: Building2 },
     { name: "Users", href: "/admin/users", icon: Users },
     { name: "Teachers", href: "/admin/teachers", icon: GraduationCap },
@@ -125,6 +126,7 @@ const navigationItems = {
     { name: "Results", href: "/school-admin/results", icon: BarChart3 },
     { name: "Fees", href: "/school-admin/fees", icon: Briefcase },
     { name: "Tuition", href: "/school-admin/tuition", icon: Award },
+    { name: "Inventory", href: "/school-admin/inventory", icon: Package },
     { name: "Counselors", href: "/school-admin/counselors", icon: MessageSquare },
     { name: "Announcements", href: "/school-admin/announcements", icon: Megaphone },
     { name: "Reports", href: "/school-admin/reports", icon: BarChart3 },

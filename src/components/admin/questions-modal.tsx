@@ -29,17 +29,32 @@ import {
   bulkCreateQuestions,
 } from "@/app/admin/assessments/actions";
 
+interface AssessmentType {
+  id: string;
+  name: string;
+  category?: string;
+}
+
 interface QuestionsModalProps {
   open: boolean;
   onClose: () => void;
-  assessmentType: any;
+  assessmentType: AssessmentType | null;
   onSuccess: () => void;
+}
+
+interface QuestionData {
+  type?: string;
+  min?: number;
+  max?: number;
+  dimensions?: string[];
+  categories?: string[];
+  [key: string]: string | number | string[] | undefined;
 }
 
 interface Question {
   id?: string;
   questionText: string;
-  questionData?: any;
+  questionData?: QuestionData;
   options?: string[];
   correctAnswer?: string;
   points: number;
@@ -231,7 +246,7 @@ export function QuestionsModal({ open, onClose, assessmentType, onSuccess }: Que
     setNewQuestion({ ...newQuestion, options: updated });
   };
 
-  const updateQuestionField = (index: number, field: keyof Question, value: any) => {
+  const updateQuestionField = (index: number, field: keyof Question, value: Question[keyof Question] | QuestionData) => {
     const updated = [...questions];
     updated[index] = { ...updated[index], [field]: value };
     setQuestions(updated);
