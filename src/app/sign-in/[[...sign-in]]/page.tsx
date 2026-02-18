@@ -26,9 +26,7 @@ export default function SignInPage() {
         <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-xl p-8 border border-gray-200 dark:border-gray-800">
           <SignIn
             signUpUrl="/sign-up"
-            redirectUrl="/setup/unified"
-            afterSignInUrl="/setup/unified"
-            fallbackRedirectUrl="/setup/unified"
+            fallbackRedirectUrl="/"
           />
         </div>
 

@@ -26,9 +26,7 @@ export default function SignUpPage() {
         <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-xl p-8 border border-gray-200 dark:border-gray-800">
           <SignUp
             signInUrl="/sign-in"
-            redirectUrl="/setup/unified"
-            afterSignUpUrl="/setup/unified"
-            fallbackRedirectUrl="/setup/unified"
+            fallbackRedirectUrl="/"
           />
         </div>
 

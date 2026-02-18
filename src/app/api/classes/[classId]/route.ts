@@ -6,13 +6,13 @@ import { db } from "@/lib/db";
 import { classes } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
-// GET /api/classes/[id] - Get single class
+// GET /api/classes/[classId] - Get single class
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ classId: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { classId } = await params;
 
     const authResult = await requireAuth(['admin', 'school-admin', 'teacher', 'counselor', 'student']);
     if ('error' in authResult) {
@@ -26,7 +26,7 @@ export async function GET(
     if (permCheck) return permCheck;
 
     const classData = await db.query.classes.findFirst({
-      where: eq(classes.id, id),
+      where: eq(classes.id, classId),
       with: {
         teacher: true,
         school: true,
@@ -44,13 +44,13 @@ export async function GET(
   }
 }
 
-// PUT /api/classes/[id] - Update class
+// PUT /api/classes/[classId] - Update class
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ classId: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { classId } = await params;
 
     const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
     if ('error' in authResult) {
@@ -67,7 +67,7 @@ export async function PUT(
 
     // Check permissions - must be admin or class teacher
     const classData = await db.query.classes.findFirst({
-      where: eq(classes.id, id),
+      where: eq(classes.id, classId),
     });
 
     if (!classData) {
@@ -81,7 +81,7 @@ export async function PUT(
     const [updatedClass] = await db
       .update(classes)
       .set({ ...body, updatedAt: new Date() })
-      .where(eq(classes.id, id))
+      .where(eq(classes.id, classId))
       .returning();
 
     return NextResponse.json({ class: updatedClass });
@@ -91,13 +91,13 @@ export async function PUT(
   }
 }
 
-// DELETE /api/classes/[id] - Delete class
+// DELETE /api/classes/[classId] - Delete class
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ classId: string }> }
 ) {
   try {
-    const { id } = await params;
+    const { classId } = await params;
 
     const authResult = await requireAuth(['admin']);
     if ('error' in authResult) {
@@ -110,7 +110,7 @@ export async function DELETE(
     const permCheck = await requirePermission(userId, "classes.delete");
     if (permCheck) return permCheck;
 
-    await db.delete(classes).where(eq(classes.id, id));
+    await db.delete(classes).where(eq(classes.id, classId));
 
     return NextResponse.json({ success: true });
   } catch (error) {

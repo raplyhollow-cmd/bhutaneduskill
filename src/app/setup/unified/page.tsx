@@ -162,8 +162,8 @@ export default function UnifiedSetupWizard() {
             ministry: "/ministry",
           };
           const redirectPath = redirectMap[userType] || "/setup/unified";
-          // Use window.location.href for full page navigation that clears state
-          window.location.href = redirectPath;
+          // Use router.push for Next.js navigation (more reliable than window.location.href)
+          router.push(redirectPath);
         }
       })
       .catch(() => {
@@ -173,7 +173,7 @@ export default function UnifiedSetupWizard() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [router]);
 
 
   // Common form fields

@@ -17,6 +17,12 @@ const isProtectedRoute = createRouteMatcher([
   "/portal(.*)",
 ]);
 
+// Routes that should trigger intelligent routing via cookie
+const shouldIntelligentRoute = createRouteMatcher([
+  "/",
+  "/route",
+]);
+
 // ============================================================================
 // CORS CONFIGURATION
 // ============================================================================
@@ -103,6 +109,32 @@ export default clerkMiddleware(async (auth, request) => {
   );
 
   // ============================================================================
+  // Cookie-based Intelligent Routing (for root and /route)
+  // ============================================================================
+  // Check if user has a userType cookie and redirect accordingly
+  // This avoids API calls during build time which caused Vercel timeouts
+  if (userId && shouldIntelligentRoute(request)) {
+    const userTypeCookie = request.cookies.get("userType")?.value;
+    if (userTypeCookie) {
+      // User has a userType cookie - redirect to their portal
+      const portalMap: Record<string, string> = {
+        student: "/student",
+        teacher: "/teacher",
+        parent: "/parent",
+        counselor: "/counselor",
+        "school-admin": "/school-admin",
+        admin: "/admin",
+        ministry: "/ministry",
+      };
+      const redirectPath = portalMap[userTypeCookie];
+      if (redirectPath && request.nextUrl.pathname !== redirectPath) {
+        return NextResponse.redirect(new URL(redirectPath, request.url));
+      }
+    }
+    // If no userType cookie, let the page handle routing (via /api/auth/set-role)
+  }
+
+  // ============================================================================
   // Authentication Check (protected routes only)
   // ============================================================================
   if (isProtectedRoute(request)) {
@@ -113,7 +145,6 @@ export default clerkMiddleware(async (auth, request) => {
   }
 
   // For all routes, return the response with headers
-  // Note: Intelligent routing moved to client-side (dashboard page) to prevent Vercel timeouts
   return response;
 });
 
