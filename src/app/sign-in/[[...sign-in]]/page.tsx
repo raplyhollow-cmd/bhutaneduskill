@@ -1,14 +1,9 @@
 "use client";
 
-import { SignIn, useSignIn } from "@clerk/nextjs";
+import { SignIn } from "@clerk/nextjs";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 
 export default function SignInPage() {
-  const searchParams = useSearchParams();
-  // Use "/" as default - middleware will intelligently route to appropriate portal
-  const redirectUrl = searchParams.get("redirect") || "/";
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-orange-50 via-white to-orange-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 py-12 px-4">
       {/* Background pattern */}
@@ -30,7 +25,10 @@ export default function SignInPage() {
         {/* Sign In Form */}
         <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-xl p-8 border border-gray-200 dark:border-gray-800">
           <SignIn
-            fallbackRedirectUrl={redirectUrl}
+            signUpUrl="/sign-up"
+            redirectUrl="/setup/unified"
+            afterSignInUrl="/setup/unified"
+            fallbackRedirectUrl="/setup/unified"
           />
         </div>
 
@@ -44,8 +42,6 @@ export default function SignInPage() {
 
         {/* Help Links */}
         <div className="mt-8 flex justify-center gap-6 text-sm">
-          {/* Clerk's SignIn component has built-in forgot password functionality */}
-          {/* Link removed to avoid 404 - users can use Clerk's built-in flow */}
           <Link href="/contact" className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors">
             Need help?
           </Link>

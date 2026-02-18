@@ -2,13 +2,8 @@
 
 import { SignUp } from "@clerk/nextjs";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 
 export default function SignUpPage() {
-  const searchParams = useSearchParams();
-  // Use "/" as default - middleware will intelligently route to appropriate portal
-  const redirectUrl = searchParams.get("redirect") || "/";
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-orange-50 via-white to-orange-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950 py-12 px-4">
       {/* Background pattern */}
@@ -30,7 +25,10 @@ export default function SignUpPage() {
         {/* Sign Up Form */}
         <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-xl p-8 border border-gray-200 dark:border-gray-800">
           <SignUp
-            fallbackRedirectUrl={redirectUrl}
+            signInUrl="/sign-in"
+            redirectUrl="/setup/unified"
+            afterSignUpUrl="/setup/unified"
+            fallbackRedirectUrl="/setup/unified"
           />
         </div>
 
