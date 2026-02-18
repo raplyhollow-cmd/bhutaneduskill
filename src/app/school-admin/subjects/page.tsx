@@ -14,9 +14,10 @@ import { fetchSubjects } from "../_actions";
 export default async function SchoolAdminSubjectsPage({
   searchParams,
 }: {
-  searchParams: { search?: string };
+  searchParams: Promise<{ search?: string }>;
 }) {
-  const search = searchParams.search || "";
+  const params = await searchParams;
+  const search = params.search || "";
 
   // Fetch subjects from database
   const result = await fetchSubjects({

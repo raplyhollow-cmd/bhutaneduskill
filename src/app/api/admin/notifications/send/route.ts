@@ -303,97 +303,14 @@ export async function POST(request: NextRequest) {
 }
 
 // ============================================================================
-// POST /batch - Send multiple notifications at once
+// Note: Batch send functionality moved to /api/admin/notifications/send/batch/route.ts
+// to avoid Next.js route handler export conflicts
 // ============================================================================
 
-interface BatchSendRequest {
-  notificationIds: string[];
-}
+// Removed BATCH_SEND export - Next.js route handlers only allow standard HTTP method exports
+// (GET, POST, PATCH, DELETE, PUT, HEAD, OPTIONS)
+// For batch sending, use the dedicated route at /api/admin/notifications/send/batch
 
-export async function BATCH_SEND(request: NextRequest) {
-  const authResult = await requireAuth(["admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
-
-  const { userId } = authResult;
-
-  try {
-    const body: BatchSendRequest = await request.json();
-
-    if (!body.notificationIds || body.notificationIds.length === 0) {
-      return NextResponse.json(
-        { error: "Notification IDs are required" },
-        { status: 400 }
-      );
-    }
-
-    // Limit batch size
-    if (body.notificationIds.length > 10) {
-      return NextResponse.json(
-        { error: "Cannot send more than 10 notifications at once" },
-        { status: 400 }
-      );
-    }
-
-    const results = [];
-
-    // Send each notification
-    for (const notificationId of body.notificationIds) {
-      try {
-        // Mark as sending
-        await db
-          .update(notifications)
-          .set({
-            status: "sending",
-            sentAt: new Date(),
-            updatedAt: new Date(),
-          })
-          .where(eq(notifications.id, notificationId));
-
-        // TODO: Add actual sending logic here (similar to main POST endpoint)
-
-        results.push({
-          notificationId,
-          success: true,
-          message: "Notification queued for sending",
-        });
-      } catch (error: any) {
-        results.push({
-          notificationId,
-          success: false,
-          error: error.message,
-        });
-      }
-    }
-
-    const successCount = results.filter((r) => r.success).length;
-    const failureCount = results.filter((r) => !r.success).length;
-
-    logger.info("Batch send completed", {
-      userId,
-      total: body.notificationIds.length,
-      successCount,
-      failureCount,
-    });
-
-    return NextResponse.json({
-      message: `Batch send completed: ${successCount} succeeded, ${failureCount} failed`,
-      data: results,
-    });
-  } catch (error: unknown) {
-    logger.apiError(error, {
-      route: "/api/admin/notifications/send/batch",
-      method: "POST",
-      userId,
-    });
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json(
-      { error: "Failed to send batch notifications", details: errorMessage },
-      { status: 500 }
-    );
-  }
-}
-
-// Export batch send as named export for route handling
-export { BATCH_SEND as POST_BATCH };
+/* Batch send implementation - moved to separate route file:
+   See: src/app/api/admin/notifications/send/batch/route.ts
+*/

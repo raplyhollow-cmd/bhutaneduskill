@@ -10,9 +10,10 @@ import { getHomeworkList } from "@/lib/api/school-admin";
 export default async function SchoolAdminHomeworkPage({
   searchParams,
 }: {
-  searchParams: { page?: string; search?: string };
+  searchParams: Promise<{ page?: string; search?: string }>;
 }) {
-  const search = searchParams.search || "";
+  const params = await searchParams;
+  const search = params.search || "";
 
   // Fetch initial data from database
   const initialData = await getHomeworkList(null, {

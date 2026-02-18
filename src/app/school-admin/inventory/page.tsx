@@ -37,21 +37,22 @@ import { InventoryClient } from "./inventory-client";
 export default async function SchoolAdminInventoryPage({
   searchParams,
 }: {
-  searchParams: {
+  searchParams: Promise<{
     page?: string;
     search?: string;
     categoryId?: string;
     itemType?: string;
     status?: string;
     lowStock?: string;
-  };
+  }>;
 }) {
-  const page = parseInt(searchParams.page || "1");
-  const search = searchParams.search || "";
-  const categoryId = searchParams.categoryId || "";
-  const itemType = searchParams.itemType || "";
-  const status = searchParams.status || "";
-  const lowStock = searchParams.lowStock === "true";
+  const params = await searchParams;
+  const page = parseInt(params.page || "1");
+  const search = params.search || "";
+  const categoryId = params.categoryId || "";
+  const itemType = params.itemType || "";
+  const status = params.status || "";
+  const lowStock = params.lowStock === "true";
 
   // Fetch all data in parallel
   const [statsResult, itemsResult, alertsResult, transactionsResult, categoriesResult] =

@@ -18,9 +18,10 @@ import { getCurrentSchoolId } from "@/lib/api/school-admin";
 export default async function SchoolAdminResultsPage({
   searchParams,
 }: {
-  searchParams: { search?: string };
+  searchParams: Promise<{ search?: string }>;
 }) {
-  const search = searchParams.search || "";
+  const params = await searchParams;
+  const search = params.search || "";
 
   // Get initial data from database
   let initialResults: any[] = [];

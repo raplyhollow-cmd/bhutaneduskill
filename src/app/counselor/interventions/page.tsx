@@ -1450,12 +1450,6 @@ function CompleteInterventionModal({ isOpen, onClose, intervention, onSuccess }:
 }
 
 // ============================================================================
-// EXPORT MODAL COMPONENTS FOR USE IN MAIN COMPONENT
-// ============================================================================
-
-export {
-  CreateInterventionModal,
-  DetailModal,
-  UpdateProgressModal,
-  CompleteInterventionModal,
-};
+// MODAL COMPONENTS - Internal to this page only
+// Moved to separate component files to avoid Next.js page export conflicts
+// See: src/components/counselor/

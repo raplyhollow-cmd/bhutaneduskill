@@ -1,5 +1,3 @@
-    "use server";
-
 import { Suspense } from "react";
 import { fetchAnnouncements } from "../_actions";
 import type { AnnouncementFormData } from "@/components/announcements";
@@ -7,9 +5,9 @@ import { revalidatePath } from "next/cache";
 import { AnnouncementManagerWrapper } from "./announcement-manager-wrapper";
 
 interface PageProps {
-  searchParams: {
+  searchParams: Promise<{
     edit?: string;
-  };
+  }>;
 }
 
 export default async function AnnouncementsPage({ searchParams }: PageProps) {

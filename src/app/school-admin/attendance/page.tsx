@@ -24,12 +24,13 @@ export const dynamic = 'force-dynamic';
 export default async function SchoolAdminAttendancePage({
   searchParams,
 }: {
-  searchParams: { date?: string; class?: string; status?: string };
+  searchParams: Promise<{ date?: string; class?: string; status?: string }>;
 }) {
   // Get filter values from URL
-  const selectedDate = searchParams.date || new Date().toISOString().split("T")[0];
-  const selectedClass = searchParams.class || "All";
-  const selectedStatus = searchParams.status || "All";
+  const params = await searchParams;
+  const selectedDate = params.date || new Date().toISOString().split("T")[0];
+  const selectedClass = params.class || "All";
+  const selectedStatus = params.status || "All";
 
   // Fetch initial attendance records
   const result = await getAttendanceRecords(null, {

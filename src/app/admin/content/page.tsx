@@ -181,7 +181,7 @@ import { ContentActions } from "./content-actions";
 export default async function AdminContentPage({
   searchParams,
 }: {
-  searchParams: { type?: string; tab?: string };
+  searchParams: Promise<{ type?: string; tab?: string }>;
 }) {
   const { userId } = await auth();
 
@@ -189,7 +189,8 @@ export default async function AdminContentPage({
     redirect("/sign-in");
   }
 
-  const activeTab = searchParams.tab || "all";
+  const params = await searchParams;
+  const activeTab = params.tab || "all";
   const stats = await getContentStats();
   const recentContent = await getRecentContent();
   const topCareers = await getTopCareers();

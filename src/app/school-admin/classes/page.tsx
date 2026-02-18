@@ -40,13 +40,14 @@ const statusOptions = ["All", "Active", "Inactive"];
 export default async function SchoolAdminClassesPage({
   searchParams,
 }: {
-  searchParams: { page?: string; search?: string; grade?: string; section?: string; status?: string };
+  searchParams: Promise<{ page?: string; search?: string; grade?: string; section?: string; status?: string }>;
 }) {
-  const page = parseInt(searchParams.page || "1");
-  const search = searchParams.search || "";
-  const grade = searchParams.grade || "All";
-  const section = searchParams.section || "All";
-  const status = searchParams.status || "All";
+  const params = await searchParams;
+  const page = parseInt(params.page || "1");
+  const search = params.search || "";
+  const grade = params.grade || "All";
+  const section = params.section || "All";
+  const status = params.status || "All";
 
   // Fetch classes from database
   const result = await fetchClasses({

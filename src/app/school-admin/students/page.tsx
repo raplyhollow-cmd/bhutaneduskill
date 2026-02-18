@@ -42,14 +42,15 @@ const feeStatusOptions = ["All", "Paid", "Partial", "Pending"];
 export default async function SchoolAdminStudentsPage({
   searchParams,
 }: {
-  searchParams: { page?: string; search?: string; grade?: string; section?: string; status?: string; feeStatus?: string };
+  searchParams: Promise<{ page?: string; search?: string; grade?: string; section?: string; status?: string; feeStatus?: string }>;
 }) {
-  const page = parseInt(searchParams.page || "1");
-  const search = searchParams.search || "";
-  const grade = searchParams.grade || "All";
-  const section = searchParams.section || "All";
-  const status = searchParams.status || "All";
-  const feeStatus = searchParams.feeStatus || "All";
+  const params = await searchParams;
+  const page = parseInt(params.page || "1");
+  const search = params.search || "";
+  const grade = params.grade || "All";
+  const section = params.section || "All";
+  const status = params.status || "All";
+  const feeStatus = params.feeStatus || "All";
 
   // Note: Since this is a server component, we'll pass initial data
   // The client component will handle filtering with server actions
