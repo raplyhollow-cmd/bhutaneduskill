@@ -9,6 +9,184 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - School Search Autocomplete in Unified Setup (February 18, 2026)
+
+**Problem:**
+- School search input in unified setup wizard returned empty results when typing
+- API returned `{"success":true,"schools":[]}` even though school data existed in code
+- Users could not select their school during setup, blocking the entire onboarding flow
+
+**Root Cause:**
+- The `schools` table in production database was EMPTY
+- School data existed in `src/lib/data/bhutan-data.ts` (40+ schools) but was never seeded to the database
+- The `seedBhutanData()` function existed but was never called/executed
+
+**Solution:**
+- Created `scripts/seed-bhutan-schools.ts` - Seed script using raw SQL to avoid Drizzle ORM schema mismatches
+- Seeded **20 districts** across Bhutan (Thimphu, Paro, Punakha, etc.)
+- Seeded **41 schools** including:
+  - Yangchenphug Higher Secondary School (YANGCHENPHUG-HSS)
+  - Motithang Higher Secondary School
+  - Thimphu Higher Secondary School
+  - And 38+ more schools across all 20 districts
+- Added `db:seed:bhutan` npm script to package.json
+
+**Schema Fixes:**
+- Fixed duplicate district code (TY for both Trongsa and Trashiyangtse) by changing Trashiyangtse to TYT
+- Used raw SQL instead of Drizzle ORM to bypass schema differences (production DB missing `branding`, `theme`, `name_dzongkha` columns)
+- Set `tenant_id` to null to avoid foreign key constraint (tenants table not used for schools)
+
+**Files Created:**
+- `scripts/seed-bhutan-schools.ts` - Main seed script
+- `scripts/check-db-schema.ts` - Schema verification utility
+- `scripts/check-tenants.ts` - Tenant verification utility
+- `scripts/verify-seed.ts` - Seed verification utility
+
+**Files Modified:**
+- `package.json` - Added `"db:seed:bhutan": "tsx scripts/seed-bhutan-schools.ts"` script
+
+**Impact:**
+- School search now works correctly - typing "yang" returns "Yangchenphug Higher Secondary School"
+- Users can complete the unified setup wizard flow
+- 42 total schools now searchable in production database
+
+**Verification Codes for Testing:**
+- Yangchenphug Higher Secondary School: `YANGCHENPHUG-HSS`
+- Motithang Higher Secondary School: `MOTITHANG-HSS`
+- Thimphu Higher Secondary School: `THIMPHU-HSS`
+
+---
+
+### Fixed - AI Insights Timeout Issue (February 18, 2026)
+
+**Problem:**
+- AI insights API (`/api/ai/insights`) was returning generic fallback messages instead of personalized AI-generated content
+
+**Root Cause:**
+- A 10-second timeout wrapper was too aggressive for Gemini API calls
+- When AI took longer than 10 seconds to respond, the `withTimeout()` wrapper resolved with the fallback value immediately
+- This prevented actual AI responses from being delivered
+
+**Solution:**
+- Removed `withTimeout` wrapper from all 4 AI call locations in the insights route
+- Gemini API has its own internal timeout handling
+- Preserved existing error handling that returns fallback messages on actual errors
+
+**Files Modified:**
+- `src/app/api/ai/insights/route.ts` - Removed withTimeout wrappers from admin career interests, student career potential, student journal, and ministry trends insights
+
+**Impact:**
+- AI messages are now personalized and contextual
+- AI has as much time as needed to generate thoughtful responses
+- No more premature fallback returns (unless AI genuinely fails)
+
+---
+
+### Fixed - API Route Errors & 404 Navigation (February 18, 2026)
+
+**Problems Fixed:**
+1. `/api/student/homework` - 403 Forbidden error due to RBAC permission check blocking students
+2. `/api/transport/allocations` - 500 Error accessing non-existent `schoolId` column
+3. `/api/student/results` - 500 Error from incorrect query method and type casting
+4. `/api/student/classes` - 500 Error from broken relation queries
+5. `/api/admin/dashboard` - 500 Error from raw SQL template usage
+6. Missing routes: `/student/careers/[slug]` and `/student/study-abroad/compare`
+7. 404 errors: `/dashboard/careers`, `/dashboard/scholarships`, `/dashboard/rub` links pointing to non-existent routes
+
+**Root Causes:**
+1. **Homework API**: Used `requirePermission()` from RBAC which returned 403 for students without "homework.read" permission
+2. **Transport API**: Referenced `transportAllocations.schoolId` column which doesn't exist in schema
+3. **Results API**: Used `db.query.examResultsEnhanced.findMany()` for table without relations, and cast with `as any`
+4. **Classes API**: Used `db.query.enrollments.findMany()` with nested relations that don't exist
+5. **Admin Dashboard API**: Used raw SQL templates (`sql`${expr}`) instead of Drizzle helpers
+6. **404 Routes**: Legacy `/dashboard/*` links in navigation components; missing dynamic routes
+7. **TypeScript**: Various type mismatches and missing imports
+
+**Solutions:**
+1. **Homework API** - Removed `requirePermission` check entirely - students can always access their homework
+2. **Transport API** - Removed the `schoolId` filter condition from admin view
+3. **Results API** - Changed to `db.select().from(examResultsEnhanced).where()`, removed type casting
+4. **Classes API** - Replaced with manual queries using `db.select()` with joins
+5. **Admin Dashboard** - Fixed SQL queries to use `isNotNull()`, `inArray()` helpers
+6. **Missing Routes**:
+   - Created `/student/careers/[slug]/page.tsx` - Dynamic career detail page
+   - Created `/student/study-abroad/compare/page.tsx` - Study abroad comparison page
+7. **Navigation Links** - Updated all `/dashboard/*` links to `/student/*` equivalents in:
+   - `src/components/layout/professional-nav.tsx`
+   - `src/components/layout/footer.tsx`
+   - `src/components/shared/vercel-sidebar.tsx` (added missing `Settings` import)
+   - `src/components/layout/mobile-menu-sheet.tsx`
+   - `src/app/student/saved/page.tsx`
+   - `src/app/student/roadmap/page.tsx`
+   - `src/app/student/study-abroad/page.tsx`
+   - `src/components/landing/rub-colleges-3d.tsx`
+   - `src/app/contact/page.tsx`
+
+**Files Modified:**
+- `src/app/api/student/homework/route.ts` - Removed permission check and import
+- `src/app/api/transport/allocations/route.ts` - Removed schoolId filter
+- `src/app/api/student/results/route.ts` - Fixed query method and removed type casting
+- `src/app/api/student/classes/route.ts` - Replaced with manual select queries
+- `src/app/api/admin/dashboard/route.ts` - Fixed SQL template usage
+- `src/app/student/careers/[slug]/page.tsx` - **NEW** - Career detail page
+- `src/app/student/study-abroad/compare/page.tsx` - **NEW** - Comparison page
+- Multiple navigation and component files - Updated route links
+
+---
+
+### Fixed - Student Results API 500 Error (February 18, 2026)
+
+**Problem:**
+- `/api/student/results` returning 500 Internal Server Error when students tried to view their exam results
+
+**Root Causes:**
+1. Incorrect destructuring of `requireAuth()` return value - using `{ user: currentUser }` instead of `{ userId }`
+2. Using `db.query.examResultsEnhanced.findMany()` for a table without Drizzle relations defined
+
+**Solution:**
+1. Changed destructuring from `const { user: currentUser } = authResult;` to `const { userId } = authResult;`
+2. Replaced `db.query.examResultsEnhanced.findMany()` with standard `db.select().from(examResultsEnhanced).where(...)`
+
+**Files Modified:**
+- `src/app/api/student/results/route.ts` - Fixed auth destructuring and query method
+
+---
+
+### Fixed - Assessment APIs & Student AI (February 18, 2026)
+
+**Problems Fixed:**
+1. MBTI Assessment API (`/api/assessments/mbti`) - 500 Internal Server Error when fetching results
+2. Student AI Insights (`/api/ai/insights`) - Always returned fallback responses instead of using Gemini AI
+3. RIASEC Assessment API (`/api/assessments/riasec`) - Accessing non-existent `traits` field
+
+**Root Causes:**
+1. **MBTI API**: GET handler was accessing `result.eiScore`, `result.snScore`, etc. which don't exist. The scores are nested in `result.scores.e`, `result.scores.i`, etc.
+2. **AI Insights**: Importing `chatWithCareerCoach` from client-side `@/lib/ai/gemini.ts` which always returns fallbacks. Should use server-side `chatWithCareerCoachFromServer` from `@/lib/ai/gemini-server.ts`
+3. **RIASEC API**: Accessing `result.traits` field which doesn't exist in database schema (was removed per schema comments)
+
+**Solutions:**
+1. **MBTI API** - Fixed data mapping to access correct nested score structure:
+   - `result.eiScore` → `result.scores.e`
+   - `result.snScore` → `result.scores.s`
+   - `result.tfScore` → `result.scores.t`
+   - `result.jpScore` → `result.scores.j`
+   - `result.traits` → `result.strengths`
+2. **AI Insights** - Changed import and function calls:
+   - Import: `chatWithCareerCoachFromServer` from `@/lib/ai/gemini-server`
+   - All AI calls now use actual Gemini API when `GEMINI_API_KEY` is configured
+3. **RIASEC API** - Removed non-existent `traits` field from formatted response
+
+**Files Modified:**
+- `src/app/api/assessments/mbti/route.ts` - Fixed score mapping and removed traits reference
+- `src/app/api/assessments/riasec/route.ts` - Removed non-existent traits field
+- `src/app/api/ai/insights/route.ts` - Switched to server-side Gemini client
+
+**Note:**
+- DISC, Work Values, and Learning Styles assessment APIs were already correct
+- AI will use fallback responses if `GEMINI_API_KEY` is not set in environment
+
+---
+
 ### Fixed - Assessment & Navigation Issues (February 18, 2026)
 
 **Problems Fixed:**

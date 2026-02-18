@@ -18,7 +18,8 @@
     "db:push:prod": "drizzle-kit push --config=drizzle.config.prod.ts",
     "db:studio": "drizzle-kit studio",
     "migrate:neon": "tsx scripts/migrate-sqlite-to-neon.ts",
-    "db:seed": "tsx src/lib/db/seed.ts"
+    "db:seed": "tsx src/lib/db/seed.ts",
+    "db:seed:bhutan": "tsx scripts/seed-bhutan-schools.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.37.3",

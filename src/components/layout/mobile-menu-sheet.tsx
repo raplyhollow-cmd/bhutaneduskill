@@ -16,7 +16,7 @@ const menuSections = [
     title: "Explore",
     items: [
       { name: "Home", href: "/", icon: Home },
-      { name: "Careers", href: "/dashboard/careers", icon: Compass },
+      { name: "Careers", href: "/student/careers", icon: Compass },
       { name: "About", href: "/about", icon: User },
       { name: "Contact", href: "/contact", icon: MessageSquare },
     ],

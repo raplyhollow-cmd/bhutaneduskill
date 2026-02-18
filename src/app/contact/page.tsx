@@ -493,9 +493,9 @@ export default function ContactPage() {
               <h4 className="font-semibold mb-4 text-gray-900 dark:text-white">Product</h4>
               <ul className="space-y-2 text-sm">
                 {[
-                  { name: "Career Explorer", href: "/dashboard/careers" },
+                  { name: "Career Explorer", href: "/student/careers" },
                   { name: "Assessments", href: "/dashboard/assessment" },
-                  { name: "Scholarships", href: "/dashboard/scholarships" },
+                  { name: "Scholarships", href: "/student/scholarships" },
                   { name: "Study Abroad", href: "/dashboard/study-abroad" },
                 ].map((link) => (
                   <li key={link.name}>

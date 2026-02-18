@@ -12,10 +12,10 @@ import { logger } from "@/lib/logger";
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
-import { chatWithCareerCoach } from "@/lib/ai/gemini";
+import { chatWithCareerCoachFromServer, type AIContext } from "@/lib/ai/gemini-server";
 import { db } from "@/lib/db";
-import { users, schools, assessments, careerMatches, riasecResults, mbtiResults, classes, enrollments, attendance, homework, homeworkSubmissions, assessmentSubmissions } from "@/lib/db/schema";
-import { eq, and, desc, count, sql, inArray, gte, lte } from "drizzle-orm";
+import { users, riasecResults, mbtiResults } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { safeTrackAIInteraction, AI_FEATURE_IDS } from "@/lib/ai/track-interaction";
 
 interface InsightRequest {
@@ -27,10 +27,6 @@ interface InsightRequest {
     schools?: Array<{ completion?: number }>;
     careerInterests?: Array<{ career?: string; percentage?: number }>;
   };
-}
-
-interface SchoolWithCompletion {
-  completion?: number;
 }
 
 interface AIInsight {
@@ -59,7 +55,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!user) {
-      logger.apiError(new Error("[AI Insights] User not found"), { route: "/api/ai/insights", method: "GET", userId });
+      logger.apiError(new Error("[AI Insights] User not found"), { route: "/api/ai/insights", method: "POST", userId });
       return NextResponse.json(
         { error: "User not found", insights: [] },
         { status: 404 }
@@ -227,7 +223,7 @@ async function generateAdminInsights(
     let enhancedMessage = `AI analysis shows ${topCareer} and ${secondCareer} as top career interests. Consider partnering with relevant RUB colleges for workshops.`;
 
     try {
-      const aiResponse = await chatWithCareerCoach(
+      const aiResponse = await chatWithCareerCoachFromServer(
         `As platform admin, what strategic partnerships should we pursue given that ${topCareer} and ${secondCareer} are the top career interests among ${totalStudents} students?`,
         {
           userName: "Admin",
@@ -647,7 +643,7 @@ async function generateStudentInsights(
     let enhancedMessage = `Based on your ${riasecCode ? `${riasecCode} profile` : "assessments"}, you have ${careerMatches} career match${careerMatches > 1 ? "es" : ""}. ${riasecCode ? getHollandDescription(riasecCode) : ""}`;
 
     try {
-      const aiResponse = await chatWithCareerCoach(aiContext, {
+      const aiResponse = await chatWithCareerCoachFromServer(aiContext, {
         userName,
         userRole: "student",
         completedAssessments: assessmentsCompleted,
@@ -683,7 +679,7 @@ async function generateStudentInsights(
     try {
       const journalContext = `As a supportive counselor for a student named ${userName} who has written ${journalEntryCount} journal entries${riasecCode ? ` and has a ${riasecCode} personality type` : ""}. What encouraging insight would you give them about their journaling practice and emotional growth? Keep it brief and positive (under 100 words).`;
 
-      const aiResponse = await chatWithCareerCoach(journalContext, {
+      const aiResponse = await chatWithCareerCoachFromServer(journalContext, {
         userName,
         userRole: "student",
         mbtiType: mbtiType,
@@ -867,7 +863,7 @@ async function generateMinistryInsights(
 
     // Try AI enhancement
     try {
-      const aiResponse = await chatWithCareerCoach(
+      const aiResponse = await chatWithCareerCoachFromServer(
         `As Ministry of Education advisor, what policy recommendations would you make given that ${topCareer} and ${secondCareer} are the top career interests among ${totalStudents} students across ${totalSchools} schools? Consider curriculum development and industry partnerships.`,
         {
           userName: user.firstName || "Ministry Official",

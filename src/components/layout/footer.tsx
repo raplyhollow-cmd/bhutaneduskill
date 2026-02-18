@@ -25,10 +25,10 @@ const footerSections = {
     logo: "BE",
   },
   products: [
-    { name: "Career Explorer", href: "/dashboard/careers" },
-    { name: "Assessments", href: "/dashboard/assessment" },
-    { name: "Scholarships", href: "/dashboard/scholarships" },
-    { name: "Study Abroad", href: "/dashboard/study-abroad" },
+    { name: "Career Explorer", href: "/student/careers" },
+    { name: "Assessments", href: "/student/assessment" },
+    { name: "Scholarships", href: "/student/scholarships" },
+    { name: "Study Abroad", href: "/student/study-abroad" },
   ],
   portals: [
     { name: "Student Portal", href: "/student" },

@@ -48,7 +48,7 @@ function ProgramCategory({ category, index }: { category: typeof categories[0]; 
       transition={{ delay: index * 0.1, duration: 0.4 }}
       className="group"
     >
-      <Link href="/dashboard/rub" className="block">
+      <Link href="/student/rub" className="block">
         <div className="p-5 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700 hover:shadow-lg transition-all duration-300">
           <div className={`inline-flex p-2.5 rounded-lg bg-gradient-to-br ${category.color} mb-3 group-hover:scale-110 transition-transform duration-300`}>
             <Icon className="w-5 h-5 text-white" strokeWidth={2} />
@@ -188,7 +188,7 @@ export function RUBCollegesSection() {
               </div>
             </div>
             <Link
-              href="/dashboard/rub"
+              href="/student/rub"
               className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl font-semibold hover:from-orange-700 hover:to-red-700 hover:shadow-lg hover:shadow-orange-500/30 hover:-translate-y-0.5 transition-all duration-300 whitespace-nowrap"
             >
               Explore All Colleges

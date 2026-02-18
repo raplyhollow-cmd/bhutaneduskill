@@ -260,7 +260,6 @@ import {
   GraduationCap,
   ClipboardList,
   TrendingUp,
-  Settings,
   School,
   UserCheck,
   MessageSquare,
@@ -276,6 +275,7 @@ import {
   Building2,
   Database,
   DollarSign,
+  Settings,
 } from "lucide-react";
 
 // Student navigation
@@ -284,10 +284,10 @@ export const StudentNavItems: NavItem[] = [
   { label: "Classes", href: "/student/classes", icon: BookOpen },
   { label: "Homework", href: "/student/homework", icon: ClipboardList },
   { label: "Results", href: "/student/results", icon: TrendingUp },
-  { label: "Career Plan", href: "/dashboard/plan", icon: Target },
-  { label: "Careers", href: "/dashboard/careers", icon: Briefcase },
-  { label: "RUB Colleges", href: "/dashboard/rub", icon: GraduationCap },
-  { label: "Scholarships", href: "/dashboard/scholarships", icon: Award },
+  { label: "Career Plan", href: "/student/plan", icon: Target },
+  { label: "Careers", href: "/student/careers", icon: Briefcase },
+  { label: "RUB Colleges", href: "/student/rub", icon: GraduationCap },
+  { label: "Scholarships", href: "/student/scholarships", icon: Award },
 ];
 
 // Teacher navigation

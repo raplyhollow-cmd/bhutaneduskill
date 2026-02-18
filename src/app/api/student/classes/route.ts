@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { users, classes, enrollments, subjects, homework, attendance } from "@/lib/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 
 /**
  * GET /api/student/classes - Get student's enrolled classes
@@ -23,50 +23,76 @@ export async function GET(request: NextRequest) {
 
   try {
     // Get student's enrollments
-    const studentEnrollmentsData = await db.query.enrollments.findMany({
-      where: eq(enrollments.studentId, currentUser.id),
-      with: {
-        class: {
-          with: {
-            teacher: true,
-            subject: true,
-          },
-        },
-      },
-      orderBy: [desc(enrollments.createdAt)],
-    });
+    const studentEnrollmentsData = await db
+      .select()
+      .from(enrollments)
+      .where(eq(enrollments.studentId, currentUser.id))
+      .orderBy(desc(enrollments.createdAt));
 
     if (!studentEnrollmentsData || studentEnrollmentsData.length === 0) {
       return NextResponse.json({ classes: [] });
     }
 
+    // Get all class IDs
+    const classIds = studentEnrollmentsData.map(e => e.classId);
+
+    // Get class details
+    const classData = await db
+      .select()
+      .from(classes)
+      .where(inArray(classes.id, classIds));
+
+    // Get teacher IDs from classes
+    const teacherIds = classData
+      .map(c => c.teacherId)
+      .filter((id): id is string => id !== null && id !== undefined);
+
+    // Get teacher details
+    const teachersData = teacherIds.length > 0
+      ? await db
+          .select()
+          .from(users)
+          .where(inArray(users.id, teacherIds))
+      : [];
+
+    const teacherMap = new Map(teachersData.map(t => [t.id, t]));
+
     // Enrich with additional data
     const enrichedClasses = await Promise.all(
       studentEnrollmentsData.map(async (enrollmentItem) => {
-        const cls = enrollmentItem.class as any;
+        const cls = classData.find(c => c.id === enrollmentItem.classId);
         if (!cls) return null;
 
+        const teacher = cls.teacherId ? teacherMap.get(cls.teacherId) : null;
+
         // Get classmates count (students in same class)
-        const classmatesData = await db.query.enrollments.findMany({
-          where: eq(enrollments.classId, cls.id),
-        });
+        const classmatesData = await db
+          .select()
+          .from(enrollments)
+          .where(eq(enrollments.classId, cls.id));
 
         // Get pending homework count
-        const pendingHomeworkData = await db.query.homework.findMany({
-          where: and(
-            eq(homework.classId, cls.id),
-            eq(homework.isPublished, true)
-          ),
-        });
+        const pendingHomeworkData = await db
+          .select()
+          .from(homework)
+          .where(
+            and(
+              eq(homework.classId, cls.id),
+              eq(homework.isPublished, true)
+            )
+          );
 
         // Get recent attendance (last 30 days)
-        const recentAttendanceData = await db.query.attendance.findMany({
-          where: and(
-            eq(attendance.studentId, currentUser.id),
-            eq(attendance.classId, cls.id)
-          ),
-          limit: 30,
-        });
+        const recentAttendanceData = await db
+          .select()
+          .from(attendance)
+          .where(
+            and(
+              eq(attendance.studentId, currentUser.id),
+              eq(attendance.classId, cls.id)
+            )
+          )
+          .limit(30);
 
         // Calculate attendance summary
         const presentDays = recentAttendanceData.filter((a) => a.status === "present").length;
@@ -82,15 +108,10 @@ export async function GET(request: NextRequest) {
           grade: cls.grade,
           section: cls.section,
           academicYear: cls.academicYear,
-          teacher: cls.teacher ? {
-            id: cls.teacher.id,
-            name: `${(cls.teacher as any).firstName} ${(cls.teacher as any).lastName || ""}`.trim(),
-            email: cls.teacher.email,
-          } : null,
-          subject: cls.subject ? {
-            id: cls.subject.id,
-            name: cls.subject.name,
-            code: cls.subject.code,
+          teacher: teacher ? {
+            id: teacher.id,
+            name: `${teacher.firstName || ""} ${teacher.lastName || ""}`.trim(),
+            email: teacher.email || "",
           } : null,
           students: classmatesData.length,
           pendingHomework: pendingHomeworkData.length,

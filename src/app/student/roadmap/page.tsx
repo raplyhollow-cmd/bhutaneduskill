@@ -517,7 +517,7 @@ export default function RoadmapPage() {
                         Scholarship Opportunities:
                       </p>
                       <Button size="sm" variant="outline" asChild>
-                        <Link href="/dashboard/scholarships">
+                        <Link href="/student/scholarships">
                           View Scholarships
                           <ArrowRight className="w-4 h-4 ml-2" />
                         </Link>

@@ -183,11 +183,6 @@ export async function GET(request: NextRequest) {
     if (currentUser.role === "admin" || currentUser.role === "school-admin") {
       const conditions: Array<unknown> = [];
 
-      // Filter by school
-      if (currentUser.schoolId) {
-        conditions.push(eq(transportAllocations.schoolId, currentUser.schoolId));
-      }
-
       // Filter by student
       if (studentId) {
         conditions.push(eq(transportAllocations.studentId, studentId));

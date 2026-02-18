@@ -13,6 +13,11 @@ import { LogOut } from "lucide-react";
  * This page should only be accessed if someone navigates here directly.
  */
 export default function SignOutPage() {
+  // During build time, Clerk provider may not be available
+  if (typeof window === "undefined") {
+    return null;
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-white to-blue-50">
       <div className="text-center p-8">

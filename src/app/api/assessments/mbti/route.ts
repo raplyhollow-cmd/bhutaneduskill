@@ -3,8 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { requirePermission } from "@/lib/rbac";
 import { db } from "@/lib/db";
-import { users, assessments, mbtiResults } from "@/lib/db/schema";
+import { assessments, mbtiResults } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
+import type { MBTIResult } from "@/lib/db/schema";
 
 export async function POST(request: NextRequest) {
   try {
@@ -67,7 +68,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, assessmentId: assessment.id });
   } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
+    logger.apiError(error, { route: "/api/assessments/mbti", method: "POST" });
     return NextResponse.json({ error: "Failed to save assessment" }, { status: 500 });
   }
 }
@@ -109,7 +110,7 @@ export async function GET(request: NextRequest) {
     // Build query conditions
     const conditions = targetUserId ? eq(mbtiResults.userId, targetUserId) : undefined;
 
-    let results;
+    let results: MBTIResult[];
     if (conditions) {
       results = await db.query.mbtiResults.findMany({
         where: conditions,
@@ -124,27 +125,27 @@ export async function GET(request: NextRequest) {
     }
 
     // Format results to match expected schema
-    const formattedResults = results.map((result) => ({
+    const formattedResults = results.map((result: MBTIResult) => ({
       ...result,
       personalityType: result.personalityType || "INTJ",
       scores: {
-        e: result.eiScore ? Math.round((100 + result.eiScore) / 2) : 50,
-        i: result.eiScore ? Math.round((100 - result.eiScore) / 2) : 50,
-        s: result.snScore ? Math.round((100 + result.snScore) / 2) : 50,
-        n: result.snScore ? Math.round((100 - result.snScore) / 2) : 50,
-        t: result.tfScore ? Math.round((100 + result.tfScore) / 2) : 50,
-        f: result.tfScore ? Math.round((100 - result.tfScore) / 2) : 50,
-        j: result.jpScore ? Math.round((100 + result.jpScore) / 2) : 50,
-        p: result.jpScore ? Math.round((100 - result.jpScore) / 2) : 50,
+        e: result.scores?.e ?? 50,
+        i: result.scores?.i ?? 50,
+        s: result.scores?.s ?? 50,
+        n: result.scores?.n ?? 50,
+        t: result.scores?.t ?? 50,
+        f: result.scores?.f ?? 50,
+        j: result.scores?.j ?? 50,
+        p: result.scores?.p ?? 50,
       },
-      strengths: result.traits as string[] || [],
-      weaknesses: [],
-      recommendedCareers: result.recommendedCareers as string[] || [],
+      strengths: Array.isArray(result.strengths) ? result.strengths : [],
+      weaknesses: Array.isArray(result.weaknesses) ? result.weaknesses : [],
+      recommendedCareers: Array.isArray(result.recommendedCareers) ? result.recommendedCareers : [],
     }));
 
     return NextResponse.json({ results: formattedResults });
   } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
+    logger.apiError(error, { route: "/api/assessments/mbti", method: "GET" });
     return NextResponse.json({ error: "Failed to fetch results", results: [] }, { status: 500 });
   }
 }

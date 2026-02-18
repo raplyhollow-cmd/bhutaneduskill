@@ -2,7 +2,7 @@ import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
-import { users, examResultsEnhanced } from "@/lib/db/schema";
+import { examResultsEnhanced } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 
 /**
@@ -19,14 +19,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: authResult.error }, { status: authResult.status });
   }
 
-  const { user: currentUser } = authResult;
+  const { userId } = authResult;
 
   try {
-    // Get exam results
-    const results = await db.query.examResultsEnhanced.findMany({
-      where: eq(examResultsEnhanced.studentId, currentUser.id),
-      orderBy: [desc(examResultsEnhanced.examYear), desc(examResultsEnhanced.createdAt)],
-    });
+    // Get exam results - use select() instead of query since examResultsEnhanced has no relations defined
+    const results = await db
+      .select()
+      .from(examResultsEnhanced)
+      .where(eq(examResultsEnhanced.studentId, userId))
+      .orderBy(desc(examResultsEnhanced.examYear), desc(examResultsEnhanced.createdAt));
 
     if (!results || results.length === 0) {
       return NextResponse.json({ results: [], summary: null });
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
     // Calculate aggregate summary
     const totalExams = results.length;
     const latestResult = results[0];
-    const averagePercentage = results.reduce((sum, r) => sum + ((r as any).overallPercentage || 0), 0) / results.length;
+    const averagePercentage = results.reduce((sum, r) => sum + (r.overallPercentage || 0), 0) / results.length;
 
     // Find best and worst performance
     const bestResult = results.reduce((best, current) =>

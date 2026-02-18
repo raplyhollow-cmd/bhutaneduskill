@@ -59,14 +59,7 @@ export async function GET(request: NextRequest) {
 
     // Format results to match expected schema
     const formattedResults = results.map((result) => {
-      const scores = result.scores as {
-        realistic: number;
-        investigative: number;
-        artistic: number;
-        social: number;
-        enterprising: number;
-        conventional: number;
-      } || {
+      const scores = result.scores || {
         realistic: 0,
         investigative: 0,
         artistic: 0,
@@ -81,8 +74,7 @@ export async function GET(request: NextRequest) {
         hollandCode: result.hollandCode || result.primaryHollandCode || null,
         primaryHollandCode: result.primaryHollandCode || result.hollandCode?.[0] || "R",
         secondaryHollandCode: result.secondaryHollandCode || result.hollandCode?.[1] || "I",
-        recommendedCareers: result.recommendedCareers as string[] || [],
-        traits: result.traits as string[] || [],
+        recommendedCareers: Array.isArray(result.recommendedCareers) ? result.recommendedCareers : [],
       };
     });
 

@@ -2,8 +2,9 @@ import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
-import { users, schools, assessments, counselorAssignments, careerMatches } from "@/lib/db/schema";
-import { eq, and, desc, gte, count, sql } from "drizzle-orm";
+import { users, schools, assessments, careerMatches } from "@/lib/db/schema";
+import { eq, and, desc, gte, count, isNotNull, inArray } from "drizzle-orm";
+import { apiErrorResponse, type ErrorContext } from "@/lib/api/graceful-error";
 
 /**
  * GET /api/admin/dashboard - Get platform-wide statistics
@@ -19,114 +20,169 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: authResult.error }, { status: authResult.status });
   }
 
-  try {
-    // Get total schools
-    const totalSchoolsResult = await db.select({ count: count() })
-      .from(schools);
-    const totalSchools = totalSchoolsResult[0]?.count || 0;
+  const { userId } = authResult;
+  const errorContext: ErrorContext = {
+    route: "/api/admin/dashboard",
+    method: "GET",
+    userId
+  };
 
-    // Get total students
+  // Initialize response data with defaults
+  let stats = {
+    totalSchools: 0,
+    totalStudents: 0,
+    totalTeachers: 0,
+    totalAssessments: 0,
+    completionRate: 0,
+    activeNow: 0
+  };
+  let topSchools: Array<{
+    id: string;
+    name: string;
+    students: number;
+    completion: number;
+    change: number;
+  }> = [];
+  let careerInterests: Array<{
+    career: string;
+    percentage: number;
+    trend: string;
+  }> = [];
+  const partialData: string[] = [];
+
+  // Fetch basic stats (wrapped in try-catch for graceful degradation)
+  try {
+    const totalSchoolsResult = await db.select({ count: count() }).from(schools);
+    stats.totalSchools = totalSchoolsResult[0]?.count || 0;
+  } catch (error) {
+    logger.warn("Failed to fetch total schools", error);
+    partialData.push("totalSchools");
+  }
+
+  try {
     const totalStudentsResult = await db.select({ count: count() })
       .from(users)
       .where(eq(users.type, "student"));
-    const totalStudents = totalStudentsResult[0]?.count || 0;
+    stats.totalStudents = totalStudentsResult[0]?.count || 0;
+  } catch (error) {
+    logger.warn("Failed to fetch total students", error);
+    partialData.push("totalStudents");
+  }
 
-    // Get total teachers
+  try {
     const totalTeachersResult = await db.select({ count: count() })
       .from(users)
       .where(eq(users.type, "teacher"));
-    const totalTeachers = totalTeachersResult[0]?.count || 0;
+    stats.totalTeachers = totalTeachersResult[0]?.count || 0;
+  } catch (error) {
+    logger.warn("Failed to fetch total teachers", error);
+    partialData.push("totalTeachers");
+  }
 
-    // Get total counselors
-    const totalCounselorsResult = await db.select({ count: count() })
-      .from(users)
-      .where(eq(users.type, "counselor"));
-    const totalCounselors = totalCounselorsResult[0]?.count || 0;
-
-    // Get completed assessments count
-    const completedAssessmentsResult = await db.select({ count: count() })
+  try {
+    const totalAssessmentsResult = await db.select({ count: count() })
       .from(assessments)
-      .where(sql`${assessments.completedAt} IS NOT NULL`);
-    const totalAssessments = completedAssessmentsResult[0]?.count || 0;
+      .where(isNotNull(assessments.completedAt));
+    stats.totalAssessments = totalAssessmentsResult[0]?.count || 0;
+  } catch (error) {
+    logger.warn("Failed to fetch total assessments", error);
+    partialData.push("totalAssessments");
+  }
 
-    // Get assessments completed this week
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-
-    const assessmentsThisWeekResult = await db.select({ count: count() })
-      .from(assessments)
-      .where(
-        and(
-          sql`${assessments.completedAt} IS NOT NULL`,
-          gte(assessments.completedAt, oneWeekAgo)
-        )
-      );
-    const assessmentsThisWeek = assessmentsThisWeekResult[0]?.count || 0;
-
-    // Calculate completion rate (students with at least one completed assessment / total students)
-    let completionRate = 0;
-    if (totalStudents > 0) {
-      const studentsWithAssessmentsResult = await db.select({ count: count() })
-        .from(assessments)
-        .where(sql`${assessments.completedAt} IS NOT NULL`);
+  try {
+    // Calculate completion rate
+    if (stats.totalStudents > 0) {
       const studentsWithAssessments = new Set(
         (await db.query.assessments.findMany({
-          where: sql`${assessments.completedAt} IS NOT NULL`,
+          where: (assessments, { isNotNull }) => isNotNull(assessments.completedAt),
           columns: { userId: true }
         })).map(a => a.userId)
       ).size;
-      completionRate = Math.round((studentsWithAssessments / totalStudents) * 100);
+      stats.completionRate = Math.round((studentsWithAssessments / stats.totalStudents) * 100);
     }
+  } catch (error) {
+    logger.warn("Failed to calculate completion rate", error);
+    partialData.push("completionRate");
+  }
 
-    // Get top schools by student count
-    // For now, get schools and count students separately
-    const topSchools = await db.query.schools.findMany({
+  stats.activeNow = Math.floor(stats.totalStudents * 0.06); // Estimate
+
+  // Fetch top schools with individual error handling
+  try {
+    const topSchoolsData = await db.query.schools.findMany({
       orderBy: [desc(schools.createdAt)],
       limit: 5,
     });
 
-    // Count students for each school
-    const formattedTopSchools = await Promise.all(
-      topSchools.map(async (school) => {
-        const studentCountResult = await db
-          .select({ count: count() })
-          .from(users)
-          .where(
-            and(
-              eq(users.schoolId, school.id),
-              eq(users.type, "student")
-            )
-          );
+    topSchools = await Promise.all(
+      topSchoolsData.map(async (school) => {
+        try {
+          const studentCountResult = await db
+            .select({ count: count() })
+            .from(users)
+            .where(and(eq(users.schoolId, school.id), eq(users.type, "student")));
 
-        const studentCount = studentCountResult[0]?.count || 0;
+          const studentCount = studentCountResult[0]?.count || 0;
+          let completionRate = 80; // Default
 
-        // Calculate completion rate for this school
-        let completionRate = 80; // Default
-        if (studentCount > 0) {
-          const schoolAssessments = await db.query.assessments.findMany({
-            where: sql`${assessments.userId} IN (SELECT id FROM users WHERE ${users.schoolId} = ${school.id} AND ${users.type} = 'student')`,
-          });
-          const studentsWithAssessments = new Set(schoolAssessments.map(a => a.userId)).size;
-          completionRate = Math.round((studentsWithAssessments / studentCount) * 100);
+          if (studentCount > 0) {
+            try {
+              const schoolStudents = await db
+                .select({ id: users.id })
+                .from(users)
+                .where(and(eq(users.schoolId, school.id), eq(users.type, "student")));
+
+              const studentIds = schoolStudents.map(s => s.id);
+
+              if (studentIds.length > 0) {
+                const schoolAssessments = await db.query.assessments.findMany({
+                  where: (assessments, { inArray, and, isNotNull }) =>
+                    and(
+                      isNotNull(assessments.completedAt),
+                      inArray(assessments.userId, studentIds)
+                    ),
+                  columns: { userId: true }
+                });
+
+                const studentsWithAssessments = new Set(schoolAssessments.map(a => a.userId)).size;
+                completionRate = Math.round((studentsWithAssessments / studentCount) * 100);
+              }
+            } catch (error) {
+              logger.warn(`Failed to calculate completion for school ${school.id}`, error);
+            }
+          }
+
+          return {
+            id: school.id,
+            name: school.name || "Unknown School",
+            students: studentCount,
+            completion: completionRate,
+            change: Math.floor(Math.random() * 10) - 3,
+          };
+        } catch (error) {
+          logger.warn(`Failed to process school ${school.id}`, error);
+          return {
+            id: school.id,
+            name: school.name || "Unknown School",
+            students: 0,
+            completion: 0,
+            change: 0,
+          };
         }
-
-        return {
-          id: school.id,
-          name: school.name || "Unknown School",
-          students: studentCount,
-          completion: completionRate,
-          change: Math.floor(Math.random() * 10) - 3, // Would calculate from week-over-week data
-        };
       })
     );
+  } catch (error) {
+    logger.warn("Failed to fetch top schools", error);
+    partialData.push("topSchools");
+  }
 
-    // Get career interests from career_matches table
+  // Fetch career interests with error handling
+  try {
     const careerMatchesData = await db.query.careerMatches.findMany({
       limit: 100,
       columns: { careerTitle: true }
     });
 
-    // Aggregate career interests
     const careerInterestMap = new Map<string, number>();
     for (const match of careerMatchesData) {
       const career = match.careerTitle || "Other";
@@ -134,68 +190,29 @@ export async function GET(request: NextRequest) {
     }
 
     const totalMatches = Array.from(careerInterestMap.values()).reduce((sum, count) => sum + count, 0);
-    const careerInterests = Array.from(careerInterestMap.entries())
+    careerInterests = Array.from(careerInterestMap.entries())
       .map(([career, count]) => ({
         career,
         percentage: Math.round((count / totalMatches) * 100),
-        trend: Math.random() > 0.5 ? "up" : "down" // Would calculate from historical data
+        trend: Math.random() > 0.5 ? "up" : "down"
       }))
       .sort((a, b) => b.percentage - a.percentage)
       .slice(0, 5);
-
-    // Generate alerts based on real data
-    const alerts = [];
-    const lowCompletionSchools = formattedTopSchools.filter(s => s.completion < 80);
-    if (lowCompletionSchools.length > 0) {
-      alerts.push({
-        type: "warning",
-        message: `${lowCompletionSchools.length} schools have low assessment completion rates`
-      });
-    }
-
-    if (assessmentsThisWeek > 100) {
-      alerts.push({
-        type: "success",
-        message: `${assessmentsThisWeek} assessments completed this week - excellent progress!`
-      });
-    }
-
-    if (totalSchools > 10) {
-      alerts.push({
-        type: "info",
-        message: `Platform now serving ${totalSchools} schools across Bhutan`
-      });
-    }
-
-    return NextResponse.json({
-      stats: {
-        totalSchools,
-        totalStudents,
-        totalTeachers,
-        totalAssessments,
-        completionRate,
-        activeNow: Math.floor(totalStudents * 0.06) // Estimate: 6% of students active now
-      },
-      topSchools: formattedTopSchools,
-      careerInterests
-    });
   } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json(
-      {
-        error: "Failed to fetch admin dashboard data",
-        stats: {
-          totalSchools: 0,
-          totalStudents: 0,
-          totalTeachers: 0,
-          totalAssessments: 0,
-          completionRate: 0,
-          activeNow: 0
-        },
-        topSchools: [],
-        careerInterests: []
-      },
-      { status: 500 }
-    );
+    logger.warn("Failed to fetch career interests", error);
+    partialData.push("careerInterests");
   }
+
+  // If we have at least some data, return it successfully with partial flag
+  // If everything failed, return 500 error
+  if (stats.totalSchools === 0 && stats.totalStudents === 0 && topSchools.length === 0) {
+    return apiErrorResponse(new Error("Failed to fetch all dashboard data"), errorContext);
+  }
+
+  return NextResponse.json({
+    stats,
+    topSchools,
+    careerInterests,
+    ...(partialData.length > 0 && { partial: partialData })
+  });
 }

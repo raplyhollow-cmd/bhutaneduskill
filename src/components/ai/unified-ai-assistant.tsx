@@ -20,6 +20,12 @@ import { useUser } from "@clerk/nextjs";
 type UserRole = "student" | "teacher" | "parent" | "counselor" | "school-admin" | "admin" | "ministry";
 
 export function UnifiedAIAssistant() {
+  // During build time, Clerk hooks may not be available
+  // Check if we're in a browser environment
+  if (typeof window === "undefined") {
+    return null;
+  }
+
   const { isLoaded, isSignedIn, user } = useUser();
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [userName, setUserName] = useState<string>("User");

@@ -105,13 +105,13 @@ export default function SavedPage() {
           </p>
           <div className="flex gap-4 justify-center">
             <Button asChild>
-              <Link href="/dashboard/careers">
+              <Link href="/student/careers">
                 <TrendingUp className="w-4 h-4 mr-2" />
                 Browse Careers
               </Link>
             </Button>
             <Button variant="outline" asChild>
-              <Link href="/dashboard/scholarships">
+              <Link href="/student/scholarships">
                 <Award className="w-4 h-4 mr-2" />
                 Browse Scholarships
               </Link>
@@ -202,7 +202,7 @@ export default function SavedPage() {
               <div className="flex gap-2">
                 {type === "career" ? (
                   <Button size="sm" className="flex-1" asChild>
-                    <Link href={`/dashboard/careers/${item.slug}`}>
+                    <Link href={`/student/careers/${item.slug}`}>
                       View Details
                       <ExternalLink className="w-4 h-4 ml-2" />
                     </Link>
@@ -232,7 +232,7 @@ export default function SavedPage() {
           </CardHeader>
           <CardContent>
             <Button variant="secondary" size="lg" asChild>
-              <Link href="/dashboard/study-abroad/compare">
+              <Link href="/student/study-abroad/compare">
                 Compare Study Abroad Options
                 <TrendingUp className="w-4 h-4 ml-2" />
               </Link>

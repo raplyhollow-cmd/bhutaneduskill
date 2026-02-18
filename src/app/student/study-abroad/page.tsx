@@ -182,7 +182,7 @@ export default function StudyAbroadPage() {
             </p>
           </div>
           <Button variant="outline" asChild>
-            <Link href="/dashboard/rub">
+            <Link href="/student/rub">
               View All RUB Colleges
               <ArrowRight className="w-4 h-4 ml-2" />
             </Link>
@@ -217,7 +217,7 @@ export default function StudyAbroadPage() {
                   </ul>
                 </div>
                 <Button size="sm" variant="outline" className="w-full" asChild>
-                  <Link href="/dashboard/rub">
+                  <Link href="/student/rub">
                     Learn More
                   </Link>
                 </Button>
