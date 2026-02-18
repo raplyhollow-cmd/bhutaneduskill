@@ -40,53 +40,74 @@ export async function POST(req: NextRequest) {
     }
 
     // Create assessment record
+    // For career assessments (riasec, mbti, etc.), provide defaults for required academic fields
+    const assessmentId = `assessment-${Date.now()}`;
     const [assessment] = await db
       .insert(assessments)
       .values({
-        ...({
-          id: `assessment-${Date.now()}`,
-          tenantId: user.tenantId,
-        }),
+        id: assessmentId,
         userId: userId,
         type,
         status: "completed",
         answers,
         results,
-        // startedAt: new Date(Date.now() - 300000), // Assume 5 min ago
         completedAt: new Date(),
         createdAt: new Date(),
+        updatedAt: new Date(),
+        // Required fields for academic assessments - use defaults for career assessments
+        title: `${type.toUpperCase()} Career Assessment`,
+        description: `Career assessment to identify interests and match with suitable careers`,
+        dueDate: new Date().toISOString().split('T')[0], // Today's date as due date
+        totalPoints: 100,
+        passingScore: 60,
+        // Optional fields
+        classId: null,
+        assessmentTypeId: null,
       } as any)
       .returning();
 
     // For RIASEC assessments, save to specialized table
     if (type === "riasec" && results.scores) {
       const scores = results.scores;
+      // Handle both short (R, I, A) and long (realistic, investigative) key formats
+      const getScore = (key: string) => {
+        if (scores[key] !== undefined) return scores[key] as number;
+        const shortKeys: Record<string, string> = {
+          realistic: 'r', investigative: 'i', artistic: 'a',
+          social: 's', enterprising: 'e', conventional: 'c'
+        };
+        const shortKey = shortKeys[key];
+        return shortKey && scores[shortKey] !== undefined ? scores[shortKey] as number : 0;
+      };
+
       const sortedTraits = Object.entries(scores)
         .sort(([, a], [, b]) => (b as number) - (a as number))
         .map(([trait]) => trait);
       const hollandCode = sortedTraits.slice(0, 3).join("").toUpperCase();
 
       await db.insert(riasecResults).values({
-        ...({
-          id: `riasec_res_${Date.now()}`,
-          assessmentId: assessment.id,
-        }),
+        id: `riasec_res_${Date.now()}`,
         userId: userId,
-        realistic: scores.realistic || 0,
-        investigative: scores.investigative || 0,
-        artistic: scores.artistic || 0,
-        social: scores.social || 0,
-        enterprising: scores.enterprising || 0,
-        conventional: scores.conventional || 0,
+        scores: {
+          realistic: getScore('realistic'),
+          investigative: getScore('investigative'),
+          artistic: getScore('artistic'),
+          social: getScore('social'),
+          enterprising: getScore('enterprising'),
+          conventional: getScore('conventional'),
+        },
+        primaryHollandCode: sortedTraits[0]?.toUpperCase() || '',
+        secondaryHollandCode: sortedTraits[1]?.toUpperCase() || '',
         hollandCode,
-        traits: results.traits || [],
-        careerSuggestions: results.careerSuggestions || [],
+        recommendedCareers: results.careerSuggestions || [],
+        completedAt: new Date(),
         createdAt: new Date(),
       } as any);
     }
 
     // Calculate career matches based on RIASEC results
     const userScores = results.scores || {};
+    // Client sends lowercase single-letter keys (r, i, a, s, e, c)
     const hollandCode = results.scores ? Object.entries(results.scores as Record<string, number>)
       .sort(([, a], [, b]) => b - a)
       .slice(0, 3)
@@ -99,9 +120,11 @@ export async function POST(req: NextRequest) {
       let count = 0;
 
       // Calculate match based on overlapping RIASEC traits
+      // Both userScores and careerScores use lowercase single-letter keys
       Object.entries(userScores).forEach(([trait, userScore]) => {
-        if (careerScores[trait as keyof typeof careerScores]) {
-          const careerScore = careerScores[trait as keyof typeof careerScores];
+        const lowerTrait = trait.toLowerCase();
+        if (careerScores[lowerTrait as keyof typeof careerScores]) {
+          const careerScore = careerScores[lowerTrait as keyof typeof careerScores];
           // Simple match algorithm
           const diff = Math.abs(
             (userScore as number) - (careerScore as number)
@@ -125,10 +148,8 @@ export async function POST(req: NextRequest) {
     // Save career matches with all required fields
     for (const match of matches) {
       await db.insert(careerMatches).values({
-        ...({
-          id: `match-${Date.now()}-${match.careerId}`,
-          assessmentId: assessment.id,
-        }),
+        id: `match-${Date.now()}-${match.careerId}`,
+        assessmentId: assessmentId,
         studentId: userId,
         careerId: match.careerId,
         careerTitle: match.careerTitle,
@@ -142,7 +163,7 @@ export async function POST(req: NextRequest) {
 
     // Log audit event for assessment completion (don't await - non-blocking)
     logAssessmentResult(
-      assessment.id,
+      assessmentId,
       userId,
       type,
       {
@@ -159,7 +180,7 @@ export async function POST(req: NextRequest) {
       careerMatches: matches,
     });
   } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
+    logger.apiError(error, { route: "/api/assessments", method: "POST" });
     return NextResponse.json(
       { error: "Failed to save assessment" },
       { status: 500 }

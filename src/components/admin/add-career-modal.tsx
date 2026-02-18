@@ -1,6 +1,7 @@
 "use client";
 
 import { logger } from "@/lib/logger";
+import { useToast } from "@/components/ui/toast";
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ interface AddCareerModalProps {
 }
 
 export function AddCareerModal({ open, onClose, onSuccess }: AddCareerModalProps) {
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
   // Form fields
@@ -83,9 +85,19 @@ export function AddCareerModal({ open, onClose, onSuccess }: AddCareerModalProps
       setTypicalSalary("");
       setBhutanDemand("medium");
       setBhutanSpecific(false);
+
+      toast({
+        title: "Career created",
+        description: `"${name}" has been added to the career database.`,
+        variant: "success",
+      });
     } catch (error) {
       logger.error("[ADD CAREER] Error:", error);
-      alert(error instanceof Error ? error.message : "Failed to create career. Please try again.");
+      toast({
+        title: "Failed to create career",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }

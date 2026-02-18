@@ -1,6 +1,7 @@
 "use client";
 
 import { logger } from "@/lib/logger";
+import { useToast } from "@/components/ui/toast";
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ interface EditCareerModalProps {
 }
 
 export function EditCareerModal({ open, onClose, onSuccess, career }: EditCareerModalProps) {
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
   // Form fields
@@ -105,9 +107,19 @@ export function EditCareerModal({ open, onClose, onSuccess, career }: EditCareer
 
       onSuccess();
       onClose();
+
+      toast({
+        title: "Career updated",
+        description: `"${name}" has been updated successfully.`,
+        variant: "success",
+      });
     } catch (error) {
       logger.error("[EDIT CAREER] Error:", error);
-      alert(error instanceof Error ? error.message : "Failed to update career. Please try again.");
+      toast({
+        title: "Failed to update career",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }

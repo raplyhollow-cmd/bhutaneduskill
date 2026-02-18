@@ -15,31 +15,74 @@ import {
   BookOpen,
   ClipboardCheck,
   TrendingUp,
-  TrendingDown,
   Award,
   Filter,
   Download,
   Calendar,
-  Clock,
   ChevronRight,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
+import { logger } from "@/lib/logger";
 
-// Types
+// Types based on database schema
+interface SubjectResult {
+  subjectId: string;
+  subjectName: string;
+  marksObtained: number;
+  maxMarks: number;
+  grade: string;
+  percentage: number;
+}
+
 interface ExamResult {
   id: string;
   examName: string;
-  subject: string;
-  examType: "mid_term" | "final" | "board" | "unit_test";
-  date: string;
+  examType: string;
+  examDate: string;
+  examYear: number;
+  academicYear: string;
+  term: string;
+  subjects?: SubjectResult[];
+  subjectResults?: SubjectResult[];
   totalMarks: number;
-  obtainedMarks: number;
+  maxTotalMarks: number;
+  totalMarksObtained?: number;
   percentage: number;
+  overallPercentage?: number;
   grade: string;
   rank?: number;
-  classAverage: number;
-  term: string;
+  classRank?: number;
+  division?: string;
+  remarks?: string;
+  isVerified: boolean;
+}
+
+interface ExamResultsResponse {
+  results: ExamResult[];
+  summary: {
+    totalExams: number;
+    averagePercentage: number;
+    bestResult: {
+      examName: string;
+      overallPercentage: number;
+      division: string;
+      examYear: number;
+    };
+    worstResult: {
+      examName: string;
+      overallPercentage: number;
+      division: string;
+      examYear: number;
+    };
+    latestResult: {
+      examName: string;
+      overallPercentage: number;
+      division: string;
+      examYear: number;
+    } | null;
+  } | null;
 }
 
 interface HomeworkResult {
@@ -66,76 +109,7 @@ interface AssessmentResult {
 
 type ResultTab = "exams" | "homework" | "assessments";
 
-// Mock data
-const mockExamResults: ExamResult[] = [
-  {
-    id: "ex1",
-    examName: "Mid-Term Examination",
-    subject: "Mathematics",
-    examType: "mid_term",
-    date: "2025-01-15",
-    totalMarks: 100,
-    obtainedMarks: 87,
-    percentage: 87,
-    grade: "A",
-    rank: 3,
-    classAverage: 72,
-    term: "Winter 2024",
-  },
-  {
-    id: "ex2",
-    examName: "Mid-Term Examination",
-    subject: "English",
-    examType: "mid_term",
-    date: "2025-01-18",
-    totalMarks: 100,
-    obtainedMarks: 82,
-    percentage: 82,
-    grade: "A-",
-    classAverage: 75,
-    term: "Winter 2024",
-  },
-  {
-    id: "ex3",
-    examName: "Mid-Term Examination",
-    subject: "Science",
-    examType: "mid_term",
-    date: "2025-01-20",
-    totalMarks: 100,
-    obtainedMarks: 79,
-    percentage: 79,
-    grade: "B+",
-    classAverage: 68,
-    term: "Winter 2024",
-  },
-  {
-    id: "ex4",
-    examName: "Unit Test 3",
-    subject: "Mathematics",
-    examType: "unit_test",
-    date: "2024-12-10",
-    totalMarks: 50,
-    obtainedMarks: 46,
-    percentage: 92,
-    grade: "A+",
-    classAverage: 78,
-    term: "Winter 2024",
-  },
-  {
-    id: "ex5",
-    examName: "BCSE Mock Exam",
-    subject: "General",
-    examType: "board",
-    date: "2024-11-25",
-    totalMarks: 500,
-    obtainedMarks: 412,
-    percentage: 82.4,
-    grade: "A",
-    classAverage: 68,
-    term: "Fall 2024",
-  },
-];
-
+// Mock data for homework and assessments (still using these until APIs are created)
 const mockHomeworkResults: HomeworkResult[] = [
   {
     id: "hw1",
@@ -161,42 +135,6 @@ const mockHomeworkResults: HomeworkResult[] = [
     grade: "A",
     teacherName: "Mr. Dorji",
   },
-  {
-    id: "hw3",
-    title: "Chemical Bonding Worksheet",
-    subject: "Science",
-    submittedDate: "2025-02-08",
-    gradedDate: "2025-02-09",
-    totalPoints: 30,
-    earnedPoints: 27,
-    percentage: 90,
-    grade: "A",
-    teacherName: "Ms. Pema",
-  },
-  {
-    id: "hw4",
-    title: "History: Bhutan's Unification",
-    subject: "History",
-    submittedDate: "2025-02-05",
-    gradedDate: "2025-02-06",
-    totalPoints: 40,
-    earnedPoints: 35,
-    percentage: 87.5,
-    grade: "A",
-    teacherName: "Mr. Tshering",
-  },
-  {
-    id: "hw5",
-    title: "Geography: Map Reading",
-    subject: "Geography",
-    submittedDate: "2025-02-01",
-    gradedDate: "2025-02-02",
-    totalPoints: 25,
-    earnedPoints: 19,
-    percentage: 76,
-    grade: "B",
-    teacherName: "Ms. Deki",
-  },
 ];
 
 const mockAssessmentResults: AssessmentResult[] = [
@@ -216,47 +154,87 @@ const mockAssessmentResults: AssessmentResult[] = [
     result: "INFJ - The Advocate",
     description: "Introverted, Intuitive, Feeling, Judging. You are idealistic, organized, and insightful.",
   },
-  {
-    id: "as3",
-    assessmentName: "DISC Workplace Assessment",
-    assessmentType: "DISC",
-    completedDate: "2025-01-20",
-    result: "Steadiness (S) - Conscientiousness (C)",
-    description: "You are cooperative, reliable, and value accuracy and stability in your work environment.",
-  },
-  {
-    id: "as4",
-    assessmentName: "Learning Styles Inventory",
-    assessmentType: "Learning Styles",
-    completedDate: "2025-01-15",
-    result: "Visual - Kinesthetic",
-    description: "You learn best through seeing and doing. Diagrams, charts, and hands-on activities work best for you.",
-  },
-  {
-    id: "as5",
-    assessmentName: "Work Values Inventory",
-    assessmentType: "Work Values",
-    completedDate: "2025-01-10",
-    result: "Achievement - Independence - Security",
-    description: "You value professional growth, autonomy in decision-making, and job stability.",
-  },
 ];
 
 export default function StudentResultsPage() {
   const [activeTab, setActiveTab] = useState<ResultTab>("exams");
   const [filterType, setFilterType] = useState<string>("all");
+  const [isLoading, setIsLoading] = useState(true);
+  const [examResultsData, setExamResultsData] = useState<ExamResultsResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredExams = mockExamResults.filter(
+  // Fetch exam results from API
+  useEffect(() => {
+    const fetchExamResults = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch("/api/student/results");
+
+        if (!response.ok) {
+          const contentType = response.headers.get("content-type");
+          if (contentType?.includes("application/json")) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || "Failed to fetch results");
+          }
+          throw new Error(`Failed to fetch results (${response.status})`);
+        }
+
+        const data = await response.json() as ExamResultsResponse;
+        setExamResultsData(data);
+      } catch (err) {
+        logger.error("Error fetching exam results:", err);
+        setError(err instanceof Error ? err.message : "Failed to fetch results");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchExamResults();
+  }, []);
+
+  // Flatten subject results into individual exam records for display
+  const flattenedExamResults: ExamResult[] = [];
+  if (examResultsData?.results) {
+    for (const exam of examResultsData.results) {
+      const subjects = exam.subjects || exam.subjectResults || [];
+      if (subjects.length > 0) {
+        // Create a record for each subject
+        for (const subject of subjects) {
+          flattenedExamResults.push({
+            id: `${exam.id}-${subject.subjectId}`,
+            examName: exam.examName,
+            examType: exam.examType,
+            examDate: exam.examDate,
+            examYear: exam.examYear,
+            academicYear: exam.academicYear,
+            term: exam.term,
+            totalMarks: subject.maxMarks,
+            maxTotalMarks: exam.maxTotalMarks,
+            percentage: subject.percentage,
+            grade: subject.grade,
+            division: exam.division,
+            rank: exam.rank,
+            classRank: exam.classRank,
+            isVerified: exam.isVerified,
+          });
+        }
+      } else {
+        // No subject breakdown, add the overall exam result
+        flattenedExamResults.push(exam);
+      }
+    }
+  }
+
+  const filteredExams = flattenedExamResults.filter(
     (exam) => filterType === "all" || exam.examType === filterType
   );
 
-  // Calculate stats
-  const examAverage =
-    mockExamResults.reduce((sum, exam) => sum + exam.percentage, 0) / mockExamResults.length;
+  // Calculate stats from real data
+  const examAverage = examResultsData?.summary?.averagePercentage ?? 0;
+  const totalExams = examResultsData?.summary?.totalExams ?? 0;
   const homeworkAverage =
     mockHomeworkResults.reduce((sum, hw) => sum + hw.percentage, 0) / mockHomeworkResults.length;
   const totalAssignments = mockHomeworkResults.length;
-  const aboveAverageCount = mockExamResults.filter((e) => e.percentage >= e.classAverage).length;
 
   const getGradeColor = (grade: string) => {
     if (grade.startsWith("A")) return "bg-green-100 text-green-700 border-green-200";
@@ -295,7 +273,32 @@ export default function StudentResultsPage() {
         <p className="text-gray-600 mt-1">Track your academic performance and achievements</p>
       </div>
 
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-orange-600" />
+          <span className="ml-3 text-gray-600">Loading your results...</span>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && !isLoading && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600" />
+              <div>
+                <p className="font-medium text-red-900">Failed to load results</p>
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Overview Stats */}
+      {!isLoading && !error && (
+        <>
         <div className="grid md:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="pb-3">
@@ -306,7 +309,7 @@ export default function StudentResultsPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-orange-600">{examAverage.toFixed(1)}%</div>
-              <p className="text-xs text-gray-500 mt-1">Across {mockExamResults.length} exams</p>
+              <p className="text-xs text-gray-500 mt-1">Across {totalExams} exam{totalExams !== 1 ? 's' : ''}</p>
             </CardContent>
           </Card>
 
@@ -327,14 +330,16 @@ export default function StudentResultsPage() {
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
                 <TrendingUp className="w-4 h-4" />
-                Above Class Average
+                Best Performance
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                {aboveAverageCount}/{mockExamResults.length}
+                {examResultsData?.summary?.bestResult?.overallPercentage ?? 0}%
               </div>
-              <p className="text-xs text-gray-500 mt-1">Exams above average</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {examResultsData?.summary?.bestResult?.examName ?? 'N/A'}
+              </p>
             </CardContent>
           </Card>
 
@@ -353,31 +358,37 @@ export default function StudentResultsPage() {
         </div>
 
         {/* Performance Summary Banner */}
-        <Card
-          style={{ background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)' }}
-          className="text-white border-0"
-        >
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
-                  <Award className="w-6 h-6" />
+        {examResultsData?.summary && (
+          <Card
+            style={{ background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)' }}
+            className="text-white border-0"
+          >
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                    <Award className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold">
+                      {examAverage >= 75 ? "Great Performance!" : "Keep Working Hard!"}
+                    </h3>
+                    <p className="text-orange-100 text-sm">
+                      You're scoring {examAverage.toFixed(1)}% on average.
+                      {examResultsData.summary.latestResult && (
+                        <> Latest: {examResultsData.summary.latestResult.examName} ({examResultsData.summary.latestResult.overallPercentage}%).</>
+                      )}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-lg font-semibold">Great Performance This Term!</h3>
-                  <p className="text-orange-100 text-sm">
-                    You're scoring {examAverage.toFixed(1)}% on average, {examAverage > 75 ? "above" : "at"} the class average.
-                    Keep up the good work!
-                  </p>
-                </div>
+                <Button variant="secondary" className="bg-white/20 hover:bg-white/30 text-white border-0">
+                  <Download className="w-4 h-4 mr-2" />
+                  Download Report
+                </Button>
               </div>
-              <Button variant="secondary" className="bg-white/20 hover:bg-white/30 text-white border-0">
-                <Download className="w-4 h-4 mr-2" />
-                Download Report
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Tabs */}
         <Card>
@@ -392,7 +403,7 @@ export default function StudentResultsPage() {
                   <FileText className="w-4 h-4 mr-2" />
                   Exam Results
                   <Badge variant="secondary" className="ml-2">
-                    {mockExamResults.length}
+                    {flattenedExamResults.length}
                   </Badge>
                 </Button>
                 <Button
@@ -449,67 +460,62 @@ export default function StudentResultsPage() {
                       <thead>
                         <tr className="border-b">
                           <th className="text-left py-3 px-4 font-medium text-gray-500">Exam</th>
-                          <th className="text-left py-3 px-4 font-medium text-gray-500">Subject</th>
                           <th className="text-left py-3 px-4 font-medium text-gray-500">Date</th>
                           <th className="text-center py-3 px-4 font-medium text-gray-500">Score</th>
                           <th className="text-center py-3 px-4 font-medium text-gray-500">Grade</th>
-                          <th className="text-center py-3 px-4 font-medium text-gray-500">vs Class</th>
+                          <th className="text-center py-3 px-4 font-medium text-gray-500">Rank</th>
                           <th className="text-right py-3 px-4 font-medium text-gray-500">Action</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredExams.map((exam) => {
-                          const vsClass = exam.percentage - exam.classAverage;
-                          return (
-                            <tr key={exam.id} className="border-b hover:bg-gray-50">
-                              <td className="py-3 px-4">
-                                <div>
-                                  <p className="font-medium">{exam.examName}</p>
-                                  <Badge variant="outline" className="text-xs mt-1">
+                        {filteredExams.map((exam) => (
+                          <tr key={exam.id} className="border-b hover:bg-gray-50">
+                            <td className="py-3 px-4">
+                              <div>
+                                <p className="font-medium">{exam.examName}</p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Badge variant="outline" className="text-xs">
                                     {getExamTypeLabel(exam.examType)}
                                   </Badge>
-                                </div>
-                              </td>
-                              <td className="py-3 px-4 text-sm">{exam.subject}</td>
-                              <td className="py-3 px-4 text-sm text-muted-foreground">
-                                {new Date(exam.date).toLocaleDateString()}
-                              </td>
-                              <td className="py-3 px-4 text-center">
-                                <div>
-                                  <p className="font-medium">
-                                    {exam.obtainedMarks}/{exam.totalMarks}
-                                  </p>
-                                  <p className="text-sm text-muted-foreground">{exam.percentage}%</p>
-                                </div>
-                              </td>
-                              <td className="py-3 px-4 text-center">
-                                <Badge className={getGradeBadgeColor(exam.grade)}>{exam.grade}</Badge>
-                              </td>
-                              <td className="py-3 px-4 text-center">
-                                <div className="flex items-center justify-center gap-1">
-                                  {vsClass >= 0 ? (
-                                    <TrendingUp className="w-4 h-4 text-green-500" />
-                                  ) : (
-                                    <TrendingDown className="w-4 h-4 text-red-500" />
+                                  {exam.term && (
+                                    <span className="text-xs text-gray-500">{exam.term}</span>
                                   )}
-                                  <span
-                                    className={`text-sm font-medium ${
-                                      vsClass >= 0 ? "text-green-600" : "text-red-600"
-                                    }`}
-                                  >
-                                    {vsClass > 0 ? "+" : ""}
-                                    {vsClass.toFixed(1)}%
-                                  </span>
+                                  {exam.division && (
+                                    <span className="text-xs text-gray-500">• {exam.division}</span>
+                                  )}
                                 </div>
-                              </td>
-                              <td className="py-3 px-4 text-right">
-                                <Button variant="ghost" size="sm">
-                                  View <ChevronRight className="w-4 h-4 ml-1" />
-                                </Button>
-                              </td>
-                            </tr>
-                          );
-                        })}
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-sm text-muted-foreground">
+                              {exam.examDate ? new Date(exam.examDate).toLocaleDateString() : 'N/A'}
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              <div>
+                                <p className="font-medium">
+                                  {exam.totalMarksObtained ?? exam.percentage}/{exam.maxTotalMarks}
+                                </p>
+                                <p className="text-sm text-muted-foreground">{exam.percentage}%</p>
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              <Badge className={getGradeBadgeColor(exam.grade)}>{exam.grade}</Badge>
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              {exam.classRank ? (
+                                <span className="text-sm font-medium text-gray-700">#{exam.classRank}</span>
+                              ) : exam.rank ? (
+                                <span className="text-sm font-medium text-gray-700">#{exam.rank}</span>
+                              ) : (
+                                <span className="text-sm text-gray-400">—</span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <Button variant="ghost" size="sm">
+                                View <ChevronRight className="w-4 h-4 ml-1" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>
@@ -653,6 +659,8 @@ export default function StudentResultsPage() {
             </div>
           </CardContent>
         </Card>
+        </>
+      )}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { logger } from "@/lib/logger";
+import { useToast } from "@/components/ui/toast";
 /**
  * TEACHER HOMEWORK CREATE PAGE
  * Page for teachers to create new homework assignments
@@ -31,6 +32,7 @@ const mockSubjects = [
 
 export default function CreateHomeworkPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
   const [classes, setClasses] = useState<typeof mockClasses>([]);
   const [subjects, setSubjects] = useState<typeof mockSubjects>([]);
@@ -101,14 +103,27 @@ export default function CreateHomeworkPage() {
 
       if (response.ok) {
         const data = await response.json();
+        toast({
+          title: "Homework created!",
+          description: "Your homework assignment has been created successfully.",
+          variant: "success",
+        });
         router.push(`/teacher/homework`);
       } else {
         const error = await response.json();
-        alert(`Failed to create homework: ${error.error || "Unknown error"}`);
+        toast({
+          title: "Failed to create homework",
+          description: error.error || "Unknown error",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       logger.error("Error creating homework:", error);
-      alert("Failed to create homework. Please try again.");
+      toast({
+        title: "Failed to create homework",
+        description: "Please check your connection and try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsSaving(false);
     }

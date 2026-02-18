@@ -57,7 +57,7 @@ export function ResultsCard({
       {showActions && !actions && (
         <div className="flex flex-wrap gap-4">
           <Button asChild>
-            <Link href="/dashboard/careers">
+            <Link href="/student/careers">
               View Career Matches
               <ArrowRight className="w-4 h-4 ml-2" />
             </Link>

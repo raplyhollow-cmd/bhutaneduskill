@@ -288,8 +288,12 @@ export default function TeacherAttendancePage() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to save attendance");
+        const contentType = response.headers.get("content-type");
+        if (contentType?.includes("application/json")) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to save attendance");
+        }
+        throw new Error(`Failed to save attendance (${response.status})`);
       }
 
       const result = await response.json();

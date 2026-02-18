@@ -89,8 +89,12 @@ export default function StudentCertificatePage() {
       const response = await fetch(`/api/student/modules/${params.id}/certificate`);
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to load certificate");
+        const contentType = response.headers.get("content-type");
+        if (contentType?.includes("application/json")) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to load certificate");
+        }
+        throw new Error(`Failed to load certificate (${response.status})`);
       }
 
       const result: CertificateApiResponse = await response.json();

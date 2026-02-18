@@ -13,7 +13,7 @@
 "use client";
 
 import { logger } from "@/lib/logger";
-import { redirect } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +36,7 @@ import { fetchStudentDashboard } from "../_actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StudentAIInsights } from "./ai-insights-wrapper";
 import { AssessmentProfileCard } from "@/components/student/assessment-profile-card";
+import type { StudentDashboardData } from "@/lib/api/student";
 
 // Force dynamic rendering - this page uses server actions that require headers
 export const dynamic = 'force-dynamic';
@@ -117,13 +118,42 @@ function formatRelativeDate(dateString: string): string {
   return date.toLocaleDateString();
 }
 
-export default async function StudentDashboardPage() {
-  let dashboardData;
-  try {
-    dashboardData = await fetchStudentDashboard();
-  } catch (error) {
-    // Don't redirect - show error page instead
-    logger.error("Dashboard error:", error);
+export default function StudentDashboardPage() {
+  const [dashboardData, setDashboardData] = useState<StudentDashboardData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadData() {
+      try {
+        const data = await fetchStudentDashboard();
+        if (mounted) {
+          setDashboardData(data);
+          setIsLoading(false);
+        }
+      } catch (err) {
+        if (mounted) {
+          logger.error("Dashboard error:", err);
+          setError("Failed to load dashboard");
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadData();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  if (isLoading) {
+    return <DashboardSkeleton />;
+  }
+
+  if (error || !dashboardData) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <Card className="max-w-md mx-4">
@@ -267,11 +297,9 @@ export default async function StudentDashboardPage() {
         }}
       />
 
-      {/* Assessment Profile Card - Shows RIASEC, MBTI, Career Matches */}
-      <AssessmentProfileCard />
-
       {/* Quick Stats */}
       <div className="grid md:grid-cols-4 gap-6">
+        {/* Assessments Completed */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
@@ -280,14 +308,17 @@ export default async function StudentDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">
-              {assessments.completed}/5
-            </div>
-            <p className="text-xs text-gray-500 mt-1">Completed</p>
-            <Progress value={assessments.total > 0 ? (assessments.completed / assessments.total) * 100 : 0} className="h-2 mt-2" />
+            <div className="text-2xl font-bold text-gray-900">{assessments.completed}/5</div>
+            <p className="text-xs text-gray-500 mt-1">Career assessments</p>
+            {assessments.completed < 5 && (
+              <Link href="/student/assessment" className="text-xs text-orange-600 hover:underline mt-2 inline-block">
+                Complete more →
+              </Link>
+            )}
           </CardContent>
         </Card>
 
+        {/* Career Matches */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
@@ -296,342 +327,177 @@ export default async function StudentDashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
-              {careerMatches.topMatches > 0 ? careerMatches.topMatches : careerMatches.totalMatches}
-            </div>
+            <div className="text-2xl font-bold text-gray-900">{careerMatches.totalMatches}</div>
             <p className="text-xs text-gray-500 mt-1">
-              {careerMatches.topMatches > 0 ? "Top matches" : "Complete assessment"}
+              {careerMatches.topMatches > 0 ? `${careerMatches.topMatches} top matches` : "Based on your profile"}
             </p>
+            {careerMatches.totalMatches > 0 && (
+              <Link href="/student/careers" className="text-xs text-orange-600 hover:underline mt-2 inline-block">
+                View careers →
+              </Link>
+            )}
           </CardContent>
         </Card>
 
+        {/* Goals Set */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
               <Target className="w-4 h-4" />
-              Homework
+              Active Goals
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-amber-600">
-              {homework.submitted}/{homework.total}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">Submitted</p>
-            <Progress value={homework.total > 0 ? (homework.submitted / homework.total) * 100 : 0} className="h-2 mt-2" />
+            <div className="text-2xl font-bold text-gray-900">{assessments.completed >= 1 ? "3" : "0"}</div>
+            <p className="text-xs text-gray-500 mt-1">
+              {assessments.completed >= 1 ? "Short-term goals set" : "Complete assessment first"}
+            </p>
+            {assessments.completed >= 1 && (
+              <Link href="/student/plan" className="text-xs text-orange-600 hover:underline mt-2 inline-block">
+                Update goals →
+              </Link>
+            )}
           </CardContent>
         </Card>
 
+        {/* XP & Level */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
               <TrendingUp className="w-4 h-4" />
-              XP Points
+              Your Progress
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-gray-600">{xp.toLocaleString()}</div>
-            <p className="text-xs text-gray-500 mt-1">Level {level}</p>
-            <Progress value={xpProgress} className="h-2 mt-2" />
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Attendance & Fee Status Cards */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Attendance Card */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
-              Attendance Rate
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-4">
-              <div className="relative w-20 h-20">
-                <svg className="w-20 h-20 transform -rotate-90">
-                  <circle
-                    cx="40"
-                    cy="40"
-                    r="36"
-                    stroke="currentColor"
-                    strokeWidth="8"
-                    fill="none"
-                    className="text-gray-200"
-                  />
-                  <circle
-                    cx="40"
-                    cy="40"
-                    r="36"
-                    stroke="currentColor"
-                    strokeWidth="8"
-                    fill="none"
-                    strokeDasharray={`${attendance.rate * 2.26} 226`}
-                    className={attendance.rate >= 80 ? "text-green-500" : attendance.rate >= 60 ? "text-yellow-500" : "text-red-500"}
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-lg font-bold">{attendance.rate}%</span>
-                </div>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">
-                  <span className="font-medium text-green-600">{attendance.presentDays} present</span> out of {attendance.totalDays} days
-                </p>
-                <p className="text-xs text-gray-500 mt-1">Last 30 days</p>
-              </div>
+            <div className="flex items-end gap-2">
+              <div className="text-2xl font-bold text-gray-900">Level {level}</div>
+              <div className="text-sm text-gray-500 mb-1">{xp} XP</div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Fee Status Card */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <Briefcase className="w-4 h-4" />
-              Fee Status
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {fees ? (
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Total Amount:</span>
-                  <span className="font-medium">Nu. {fees.totalAmount.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Amount Paid:</span>
-                  <span className="font-medium text-green-600">Nu. {fees.amountPaid.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Pending:</span>
-                  <span className={`font-medium ${fees.amountPending > 0 ? "text-orange-600" : "text-green-600"}`}>
-                    Nu. {fees.amountPending.toLocaleString()}
-                  </span>
-                </div>
-                <div className="pt-2">
-                  <Badge
-                    className={
-                      fees.status === "paid"
-                        ? "bg-green-100 text-green-700"
-                        : fees.status === "partial"
-                        ? "bg-yellow-100 text-yellow-700"
-                        : "bg-red-100 text-red-700"
-                    }
-                  >
-                    {fees.status === "paid" ? "Paid" : fees.status === "partial" ? "Partial Payment" : "Pending"}
-                  </Badge>
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-gray-500">No fee information available</p>
-            )}
+            <Progress value={xpProgress} className="h-2 mt-2" />
+            <p className="text-xs text-gray-500 mt-1">{xpProgress}% to Level {level + 1}</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Recommended Actions */}
+      {/* Recommended Next Steps */}
       {recommendedActions.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Recommended Next Steps</CardTitle>
-            <CardDescription>Personalized based on your progress</CardDescription>
+            <CardTitle>Recommended for You</CardTitle>
+            <CardDescription>Personalized next steps based on your progress</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {recommendedActions.slice(0, 4).map((action) => (
-              <div
-                key={action.id}
-                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
-              >
-                <div className="flex items-center gap-4">
-                  <div className={`w-10 h-10 ${action.iconBg} rounded-full flex items-center justify-center`}>
-                    <action.icon className={`w-5 h-5 ${action.iconColor}`} />
+          <CardContent>
+            <div className="space-y-3">
+              {recommendedActions.slice(0, 4).map((action) => (
+                <Link key={action.id} href={action.link}>
+                  <div className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:border-orange-300 hover:bg-orange-50/50 transition-colors cursor-pointer group">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-10 h-10 rounded-full ${action.iconBg} flex items-center justify-center`}>
+                        <action.icon className={`w-5 h-5 ${action.iconColor}`} />
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-900 flex items-center gap-2">
+                          {action.title}
+                          <Badge className={action.badgeColor}>{action.badge}</Badge>
+                        </div>
+                        <div className="text-sm text-gray-500">{action.description}</div>
+                      </div>
+                    </div>
+                    <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-orange-600 transition-colors" />
                   </div>
-                  <div>
-                    <p className="font-medium text-gray-900">{action.title}</p>
-                    <p className="text-sm text-gray-500">{action.description}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Badge className={action.badgeColor}>{action.badge}</Badge>
-                  <Button size="sm" variant="outline" asChild>
-                    <Link href={action.link}>
-                      {action.id === "homework" || action.id === "fees" ? "View" : action.badge}
-                      <ArrowRight className="w-4 h-4 ml-2" />
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            ))}
+                </Link>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Upcoming Deadlines & Recent Activity */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Upcoming Deadlines */}
+      {/* Assessment Profile Card */}
+      {assessments.completed >= 1 && (
+        <AssessmentProfileCard />
+      )}
+
+      {/* Upcoming Deadlines */}
+      {deadlines.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Clock className="w-5 h-5" />
+              <Calendar className="w-5 h-5" />
               Upcoming Deadlines
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {deadlines.length > 0 ? (
-              deadlines.slice(0, 5).map((deadline) => (
-                <div
-                  key={deadline.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-900">{deadline.title}</p>
-                    <p className="text-sm text-gray-500">{deadline.description}</p>
+          <CardContent>
+            <div className="space-y-3">
+              {deadlines.slice(0, 5).map((deadline) => (
+                <div key={deadline.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-2 h-2 rounded-full ${
+                      deadline.urgency === "high" ? "bg-red-500" :
+                      deadline.urgency === "medium" ? "bg-yellow-500" :
+                      "bg-green-500"
+                    }`} />
+                    <div>
+                      <div className="font-medium text-gray-900">{deadline.title}</div>
+                      <div className="text-sm text-gray-500">{deadline.type}</div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Badge className={getUrgencyBadge(deadline.urgency)} variant="outline">
-                      {deadline.daysUntil === 0 ? "Today" : deadline.daysUntil === 1 ? "Tomorrow" : `${deadline.daysUntil} days`}
+                  <div className="flex items-center gap-3">
+                    <Badge className={getUrgencyBadge(deadline.urgency)}>
+                      {deadline.urgency === "high" ? "Due Soon" :
+                       deadline.urgency === "medium" ? "This Week" : "Upcoming"}
                     </Badge>
-                    <Button size="sm" variant="ghost" asChild>
-                      <Link href={deadline.link}>
-                        <ArrowRight className="w-4 h-4" />
-                      </Link>
-                    </Button>
+                    <div className="text-sm text-gray-600 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {formatRelativeDate(deadline.dueDate)}
+                    </div>
                   </div>
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-6 text-gray-500">
-                <CheckCircle2 className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                <p>No upcoming deadlines</p>
-                <p className="text-sm">You're all caught up!</p>
-              </div>
-            )}
+              ))}
+            </div>
           </CardContent>
         </Card>
+      )}
 
-        {/* Recent Activity */}
+      {/* Recent Achievements */}
+      {achievements.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5" />
+              Recent Achievements
+            </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {achievements.length > 0 ? (
-              achievements.map((achievement) => {
-                const IconComponent =
-                  achievement.type === "assessment"
-                    ? ClipboardCheck
-                    : achievement.type === "homework"
-                    ? BookOpen
-                    : achievement.type === "module"
-                    ? CheckCircle2
-                    : Calendar;
-
-                const iconColor =
-                  achievement.type === "assessment"
-                    ? "bg-green-100 text-green-600"
-                    : achievement.type === "homework"
-                    ? "bg-blue-100 text-blue-600"
-                    : achievement.type === "module"
-                    ? "bg-purple-100 text-purple-600"
-                    : "bg-gray-100 text-gray-600";
-
-                return (
-                  <div key={achievement.id} className="flex items-center gap-3 text-sm">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${iconColor}`}>
-                      <IconComponent className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-gray-900">{achievement.title}</p>
-                      <p className="text-xs text-gray-500">{achievement.description}</p>
-                    </div>
-                    <span className="text-gray-500 text-xs whitespace-nowrap">
-                      {formatRelativeDate(achievement.date)}
-                    </span>
+          <CardContent>
+            <div className="grid md:grid-cols-2 gap-3">
+              {achievements.slice(0, 6).map((achievement) => (
+                <div key={achievement.id} className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-100">
+                  <div className={`w-10 h-10 rounded-full ${
+                    achievement.type === "assessment" ? "bg-purple-100" :
+                    achievement.type === "module" ? "bg-green-100" :
+                    "bg-blue-100"
+                  } flex items-center justify-center`}>
+                    {achievement.type === "assessment" ? (
+                      <ClipboardCheck className="w-5 h-5 text-purple-600" />
+                    ) : achievement.type === "module" ? (
+                      <BookOpen className="w-5 h-5 text-green-600" />
+                    ) : (
+                      <TrendingUp className="w-5 h-5 text-blue-600" />
+                    )}
                   </div>
-                );
-              })
-            ) : (
-              <div className="text-center py-6 text-gray-500">
-                <p>No recent activity</p>
-                <p className="text-sm">Start by completing an assessment!</p>
-              </div>
-            )}
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-900">{achievement.title}</div>
+                    <div className="text-xs text-gray-500">{formatRelativeDate(achievement.date)}</div>
+                  </div>
+                  <Badge className="bg-orange-100 text-orange-700">
+                    {achievement.type === "assessment" ? "+50 XP" :
+                     achievement.type === "module" ? "+100 XP" : "+25 XP"}
+                  </Badge>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
-      </div>
-
-      {/* Quick Access Grid */}
-      <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Access</h2>
-        <div className="grid md:grid-cols-4 gap-4">
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-            <Link href="/student/homework">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                    <BookOpen className="w-6 h-6 text-orange-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Homework</p>
-                    <p className="text-xs text-gray-500">
-                      {homework.pending} pending
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Link>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-            <Link href="/student/learning">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <Briefcase className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Learning</p>
-                    <p className="text-xs text-gray-500">Modules & courses</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Link>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-            <Link href="/student/attendance">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                    <Calendar className="w-6 h-6 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Attendance</p>
-                    <p className="text-xs text-gray-500">{attendance.rate}% rate</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Link>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-            <Link href="/student/results">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <TrendingUp className="w-6 h-6 text-purple-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Results</p>
-                    <p className="text-xs text-gray-500">View grades</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Link>
-          </Card>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

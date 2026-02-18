@@ -7,13 +7,13 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Settings,
-  LogOut,
   Menu,
   X,
   GraduationCap,
   User,
   ChevronDown,
+  Settings,
+  LogOut,
 } from "lucide-react";
 import { PORTAL_CONFIG, MOBILE_SETTINGS, type PortalType } from "@/config/portal-config";
 import { useAuth } from "@clerk/nextjs";
@@ -49,21 +49,10 @@ export function UniversalMobileSidebar({
 }: UniversalMobileSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { signOut } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isSigningOut, setIsSigningOut] = useState(false);
 
   const config = PORTAL_CONFIG[portalType];
   const settings = MOBILE_SETTINGS;
-
-  // Handle sign out - use Clerk's signOut directly to avoid redirect loop
-  const handleSignOut = async () => {
-    if (isSigningOut) return;
-    setIsSigningOut(true);
-    setIsMobileMenuOpen(false);
-    // Call Clerk's signOut directly with redirect
-    await signOut({ redirectUrl: '/' });
-  };
 
   // Close mobile menu when screen size changes to desktop
   useEffect(() => {
@@ -311,55 +300,11 @@ export function UniversalMobileSidebar({
             </ul>
           </nav>
 
-          {/* Footer Actions */}
-          <motion.div
+          {/* Footer - spacer for safe area */}
+          <div
             className="p-4 border-t border-white/20"
             style={{ paddingBottom: `calc(1rem + ${settings.safeAreas.bottom})` }}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.4 }}
-            role="group"
-            aria-label="Account actions"
-          >
-            <Link
-              href={`/${portalType}/settings`}
-              className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-white hover:bg-white/10 transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-white focus:ring-inset min-h-[44px]"
-              aria-label="Go to settings page"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              <motion.div
-                whileHover={{ scale: 1.1, rotate: 5 }}
-                whileTap={{ scale: 0.95 }}
-                transition={{ type: "spring", stiffness: 300 }}
-                aria-hidden="true"
-              >
-                <Settings className="w-5 h-5 text-white" />
-              </motion.div>
-              <span className="font-medium text-white">Settings</span>
-            </Link>
-            <motion.button
-              className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-white hover:bg-white/10 transition-all duration-200 mt-1 group focus:outline-none focus:ring-2 focus:ring-white focus:ring-inset min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed"
-              onClick={handleSignOut}
-              disabled={isSigningOut}
-              whileHover={{ x: 4 }}
-              whileTap={{ scale: 0.98 }}
-              aria-label="Sign out of your account"
-              type="button"
-            >
-              <motion.div
-                whileHover={{ scale: 1.1, rotate: -5 }}
-                whileTap={{ scale: 0.95 }}
-                transition={{ type: "spring", stiffness: 300 }}
-                aria-hidden="true"
-                animate={isSigningOut ? { rotate: 360, opacity: 0.5 } : {}}
-              >
-                <LogOut className="w-5 h-5 text-white" />
-              </motion.div>
-              <span className="font-medium text-white">
-                {isSigningOut ? "Signing out..." : "Sign Out"}
-              </span>
-            </motion.button>
-          </motion.div>
+          />
         </div>
       </aside>
     </>

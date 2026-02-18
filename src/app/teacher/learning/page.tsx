@@ -289,8 +289,12 @@ export default function TeacherLearningPage() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to save module");
+        const contentType = response.headers.get("content-type");
+        if (contentType?.includes("application/json")) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to save module");
+        }
+        throw new Error(`Failed to save module (${response.status})`);
       }
 
       // Refresh modules and go back to list
@@ -321,8 +325,12 @@ export default function TeacherLearningPage() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to delete module");
+        const contentType = response.headers.get("content-type");
+        if (contentType?.includes("application/json")) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to delete module");
+        }
+        throw new Error(`Failed to delete module (${response.status})`);
       }
 
       setDeleteDialog({ isOpen: false, moduleId: "" });

@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "NODE_OPTIONS='--max-old-space-size=4096' next dev --turbo",
+    "dev": "next dev --turbo",
     "dev:webpack": "next dev",
     "build": "next build",
-    "build:fast": "NODE_OPTIONS=--max-old-space-size=4096 next build",
+    "build:fast": "next build",
     "start": "next start",
     "lint": "eslint",
     "scan:errors": "tsx scripts/scan-build-errors.ts",

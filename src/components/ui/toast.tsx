@@ -300,6 +300,7 @@ type ToastPosition =
   | "bottom-left"
   | "top-center"
   | "bottom-center"
+  | "footer-center"
 
 interface ToasterProps {
   position?: ToastPosition
@@ -313,6 +314,7 @@ const positionStyles: Record<ToastPosition, string> = {
   "bottom-right": "bottom-0 right-0 flex-col",
   "bottom-left": "bottom-0 left-0 flex-col",
   "bottom-center": "bottom-0 left-1/2 -translate-x-1/2 flex-col sm:max-w-[360px]",
+  "footer-center": "bottom-6 left-1/2 -translate-x-1/2 flex-col items-center sm:max-w-[420px]",
 }
 
 function Toaster({ position = "bottom-right", className }: ToasterProps) {
@@ -322,7 +324,7 @@ function Toaster({ position = "bottom-right", className }: ToasterProps) {
     <div
       data-slot="toaster"
       className={cn(
-        "fixed z-[100] flex max-h-screen w-full flex-col gap-2 p-4 sm:max-w-[420px]",
+        "fixed z-[100] flex max-h-screen w-full flex-col gap-2 p-4",
         positionStyles[position],
         className
       )}
@@ -413,6 +415,200 @@ function ToastAction({ className, altText = "Action", children, ...props }: Toas
 }
 
 // =============================================================================
+// CLERK-STYLE FOOTER TOAST
+// =============================================================================
+
+interface ClerkStyleToastProps {
+  message: string
+  variant?: "default" | "success" | "error"
+  actions?: Array<{
+    label: string
+    onClick: () => void
+    variant?: "default" | "primary" | "danger"
+  }>
+  onDismiss?: () => void
+}
+
+const clerkToastStyles = {
+  container: cn(
+    "mx-auto flex min-h-10 w-fit min-w-[21.25rem] items-center gap-2 rounded-lg p-2 pl-3 text-white shadow-lg transition-all duration-300"
+  ),
+  variants: {
+    default: "bg-gradient-to-b from-gray-700 to-gray-800 border border-gray-600",
+    success: "bg-gradient-to-b from-green-600 to-green-700 border border-green-500",
+    error: "bg-gradient-to-b from-red-600 to-red-700 border border-red-500",
+  }
+}
+
+const clerkButtonStyles = {
+  base: "inline-flex min-w-fit shrink-0 select-none transition rounded-[0.375rem] text-sm font-medium",
+  variants: {
+    default: "bg-gray-600 hover:bg-gray-500 text-white",
+    primary: "bg-blue-600 hover:bg-blue-500 text-white",
+    danger: "bg-red-700 hover:bg-red-600 text-white",
+  }
+}
+
+export function ClerkStyleFooterToast({
+  message,
+  variant = "default",
+  actions = [],
+  onDismiss,
+}: ClerkStyleToastProps) {
+  return (
+    <div
+      className={cn(
+        clerkToastStyles.container,
+        clerkToastStyles.variants[variant]
+      )}
+      style={{
+        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.1), inset 0 2px 0 rgba(255,255,255,0.12), 0 16px 36px -6px rgba(0,0,0,0.36), 0 6px 16px -2px rgba(0,0,0,0.2)"
+      }}
+    >
+      {/* Status Icon */}
+      <div className="flex shrink-0 items-center justify-center">
+        {variant === "error" && (
+          <svg
+            className="w-4 h-4"
+            viewBox="0 0 20 20"
+            fill="none"
+            aria-hidden="true"
+          >
+            <circle
+              cx="10"
+              cy="10"
+              r="8"
+              fill="var(--icon-fill, rgba(255,255,255,0.15))"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            />
+            <path
+              d="M10 11V13"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+            <path
+              d="M10 7.01V7"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
+        )}
+        {variant === "success" && (
+          <svg
+            className="w-4 h-4"
+            viewBox="0 0 20 20"
+            fill="none"
+            aria-hidden="true"
+          >
+            <circle
+              cx="10"
+              cy="10"
+              r="8"
+              fill="var(--icon-fill, rgba(255,255,255,0.15))"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            />
+            <path
+              d="M7 10L9 12L13 8"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        )}
+        {variant === "default" && (
+          <svg
+            className="w-4 h-4"
+            viewBox="0 0 20 20"
+            fill="none"
+            aria-hidden="true"
+          >
+            <circle
+              cx="10"
+              cy="10"
+              r="8"
+              fill="var(--icon-fill, rgba(255,255,255,0.15))"
+              stroke="currentColor"
+              strokeWidth="1.5"
+            />
+            <path
+              d="M10 6V14M6 10H14"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
+        )}
+      </div>
+
+      {/* Message */}
+      <div className="flex-1 pr-2 text-sm">
+        {message}
+      </div>
+
+      {/* Actions */}
+      {actions.length > 0 && (
+        <div className="flex shrink-0 items-center gap-2">
+          {actions.map((action, index) => (
+            <button
+              key={index}
+              onClick={() => {
+                action.onClick()
+                onDismiss?.()
+              }}
+              className={cn(
+                clerkButtonStyles.base,
+                clerkButtonStyles.variants[action.variant || "default"],
+                "px-3 py-1.5"
+              )}
+            >
+              {action.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Dismiss Button */}
+      {onDismiss && (
+        <button
+          onClick={onDismiss}
+          className="min-w-[32px] min-h-[32px] inline-flex shrink-0 items-center justify-center rounded transition-opacity hover:bg-white/10 opacity-70 hover:opacity-100"
+          aria-label="Close notification"
+        >
+          <X className="w-3 h-3" />
+        </button>
+      )}
+    </div>
+  )
+}
+
+// =============================================================================
+// FOOTER TOASTER (Clerk-style container)
+// =============================================================================
+
+export function FooterToaster({ toasts, onDismiss }: { toasts: Array<Omit<Toast, 'id'> & { id: string }>, onDismiss: (id: string) => void }) {
+  if (toasts.length === 0) return null
+
+  return (
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-2 px-4">
+      {toasts.map((toast) => (
+        <ClerkStyleFooterToast
+          key={toast.id}
+          message={toast.description || toast.title || ""}
+          variant={toast.variant === "destructive" ? "error" : toast.variant === "success" ? "success" : "default"}
+          actions={toast.action ? [{ label: toast.action.label, onClick: toast.action.onClick }] : []}
+          onDismiss={() => onDismiss(toast.id)}
+        />
+      ))}
+    </div>
+  )
+}
+
+// =============================================================================
 // TOAST VIEWPORT (alias for Toaster)
 // =============================================================================
 
@@ -431,4 +627,4 @@ export {
   ToastAction,
 }
 
-export type { ToastItemProps, ToasterProps, ToastPosition }
+export type { ToastItemProps, ToasterProps, ToastPosition, ClerkStyleToastProps }

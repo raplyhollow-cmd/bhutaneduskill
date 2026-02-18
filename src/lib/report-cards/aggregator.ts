@@ -206,7 +206,7 @@ export async function aggregateReportCardData(
 
   // Format subjects with teacher names
   const subjectsWithTeachers: ReportCardSubject[] = await Promise.all(
-    (examResult.subjectResults || []).map(async (subject) => {
+    (examResult.subjects || []).map(async (subject) => {
       // TODO: Get teacher info from class-subject assignments
       // For now, return N/A for teacher name
       return {

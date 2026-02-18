@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
     const aggregateGrade = calculateGrade(aggregatePercentage);
 
     // Format results for report card
-    const formattedResults = (resultsData[0]?.subjectResults || []).map((result: any) => ({
+    const formattedResults = (resultsData[0]?.subjects || []).map((result: any) => ({
       subject: result.subjectName || "N/A",
       grade: result.grade || calculateGrade(result.marksObtained, result.maxMarks || 100),
       marks: result.marksObtained || 0,

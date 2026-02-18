@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { calculateMBTI, getMBTIQuestions } from "@/lib/assessments";
 import type { MBTIInput, MBTIResult } from "@/lib/assessments";
-import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowRight, CheckCircle2, ClipboardCheck } from "lucide-react";
 import Link from "next/link";
 
 const QUESTIONS = getMBTIQuestions();
@@ -255,14 +255,23 @@ export default function MBTIAssessmentPage() {
 
         {/* Actions */}
         <div className="flex flex-wrap gap-4">
-          <Button asChild>
-            <Link href="/dashboard/careers">
+          <Button variant="outline" onClick={restartAssessment}>
+            Retake Assessment
+          </Button>
+          <Button
+            asChild
+            style={{ background: "linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)" }}
+          >
+            <Link href="/student/careers">
               View Career Matches
               <ArrowRight className="w-4 h-4 ml-2" />
             </Link>
           </Button>
-          <Button variant="outline" onClick={restartAssessment}>
-            Retake Assessment
+          <Button variant="outline" asChild>
+            <Link href="/student/assessment">
+              More Assessments
+              <ClipboardCheck className="w-4 h-4 ml-2" />
+            </Link>
           </Button>
         </div>
       </div>

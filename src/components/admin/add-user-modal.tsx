@@ -1,6 +1,7 @@
 "use client";
 
 import { logger } from "@/lib/logger";
+import { useToast } from "@/components/ui/toast";
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ const userTypes = [
 ];
 
 export function AddUserModal({ open, onClose, onSuccess }: AddUserModalProps) {
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -79,13 +81,29 @@ export function AddUserModal({ open, onClose, onSuccess }: AddUserModalProps) {
         setType("student");
         setRole("");
         setSchoolId("");
+        setError(null);
+        toast({
+          title: "User created",
+          description: `${firstName} ${lastName} has been added successfully.`,
+          variant: "success",
+        });
       } else {
         setError(responseData.error || "Failed to create user");
+        toast({
+          title: "Failed to create user",
+          description: responseData.error || "Unknown error",
+          variant: "destructive",
+        });
       }
     } catch (err) {
       logger.error("[ADD USER] Error:", err);
       const errorMessage = err instanceof Error ? err.message : "Network error. Please try again.";
       setError(errorMessage);
+      toast({
+        title: "Network error",
+        description: "Please check your connection and try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }

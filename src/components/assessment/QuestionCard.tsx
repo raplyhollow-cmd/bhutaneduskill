@@ -2,6 +2,7 @@
 
 import { ReactNode } from "react";
 import { CheckCircle2 } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface QuestionCardProps {
   question: string;
@@ -9,7 +10,6 @@ interface QuestionCardProps {
   category?: string;
   categoryName?: string;
   children: ReactNode;
-  selectedValue?: string | number | boolean;
 }
 
 export function QuestionCard({
@@ -18,23 +18,26 @@ export function QuestionCard({
   category,
   categoryName,
   children,
-  selectedValue,
 }: QuestionCardProps) {
   return (
     <div className="space-y-6">
-      {/* Category Badge */}
+      {/* Category Badge - Premium Gradient */}
       {category && categoryName && (
-        <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm font-medium">
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="inline-flex items-center px-4 py-1.5 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm font-semibold shadow-md"
+        >
           {categoryName} ({category})
-        </div>
+        </motion.div>
       )}
 
-      {/* Question Text */}
-      <h2 className="text-xl font-semibold text-gray-900">{question}</h2>
+      {/* Question Text - Premium Typography */}
+      <h2 className="text-2xl font-bold text-gray-900 leading-tight">{question}</h2>
 
       {/* Description */}
       {description && (
-        <p className="text-gray-600">{description}</p>
+        <p className="text-gray-600 text-lg">{description}</p>
       )}
 
       {/* Options */}
@@ -52,31 +55,80 @@ interface OptionButtonProps {
 
 export function OptionButton({ label, isSelected, onClick, icon }: OptionButtonProps) {
   return (
-    <button
+    <motion.button
       onClick={onClick}
+      whileHover={{ scale: 1.01, y: -2 }}
+      whileTap={{ scale: 0.99 }}
       className={`
-        w-full text-left p-4 rounded-lg border-2 transition-all
-        flex items-center gap-3
+        w-full text-left p-5 rounded-xl border-2 transition-all relative overflow-hidden
+        flex items-center gap-4 shadow-sm
         ${
           isSelected
-            ? "border-blue-500 bg-blue-50 text-blue-900"
-            : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+            ? "border-orange-400 bg-gradient-to-r from-orange-50 to-orange-100/50 shadow-lg shadow-orange-200/50"
+            : "border-gray-200 bg-white hover:border-orange-300 hover:bg-orange-50/30 hover:shadow-md"
         }
       `}
     >
-      <div
+      {/* Shimmer effect for selected state */}
+      {isSelected && (
+        <motion.div
+          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent"
+          initial={{ x: "-100%" }}
+          animate={{ x: "200%" }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+        />
+      )}
+
+      {/* Radio indicator */}
+      <motion.div
         className={`
-          w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0
+          w-7 h-7 rounded-full border-3 flex items-center justify-center flex-shrink-0 relative z-10
           ${
-            isSelected ? "border-blue-500 bg-blue-500" : "border-gray-300"
+            isSelected
+              ? "border-orange-500 bg-orange-500 shadow-inner"
+              : "border-gray-300 bg-white"
           }
         `}
+        animate={isSelected ? { scale: [1, 1.1, 1] } : {}}
+        transition={{ duration: 0.3 }}
       >
-        {isSelected && <CheckCircle2 className="w-4 h-4 text-white" />}
-      </div>
-      {icon && <span className="flex-shrink-0">{icon}</span>}
-      <span className="font-medium">{label}</span>
-    </button>
+        {isSelected && (
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+          >
+            <CheckCircle2 className="w-5 h-5 text-white" />
+          </motion.div>
+        )}
+      </motion.div>
+
+      {/* Icon if provided */}
+      {icon && (
+        <span className="flex-shrink-0 relative z-10">{icon}</span>
+      )}
+
+      {/* Label */}
+      <span className={`
+        font-medium text-lg relative z-10
+        ${isSelected ? "text-orange-900" : "text-gray-700"}
+      `}>
+        {label}
+      </span>
+
+      {/* Checkmark indicator for selected state */}
+      {isSelected && (
+        <motion.div
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="ml-auto relative z-10"
+        >
+          <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center">
+            <CheckCircle2 className="w-4 h-4 text-white" />
+          </div>
+        </motion.div>
+      )}
+    </motion.button>
   );
 }
 
@@ -89,19 +141,33 @@ interface LikertOptionProps {
 
 export function LikertOption({ value, label, isSelected, onClick }: LikertOptionProps) {
   return (
-    <button
+    <motion.button
       onClick={() => onClick(value)}
+      whileHover={{ scale: 1.05, y: -3 }}
+      whileTap={{ scale: 0.95 }}
       className={`
-        flex-1 py-3 px-4 rounded-lg border-2 transition-all text-center
+        flex-1 py-4 px-4 rounded-xl border-2 transition-all text-center shadow-sm relative overflow-hidden
         ${
           isSelected
-            ? "border-blue-500 bg-blue-500 text-white"
-            : "border-gray-200 hover:border-gray-300 hover:bg-gray-50"
+            ? "border-orange-400 bg-gradient-to-br from-orange-400 to-orange-500 text-white shadow-lg shadow-orange-200/50"
+            : "border-gray-200 bg-white hover:border-orange-300 hover:bg-orange-50/50"
         }
       `}
     >
-      <div className="text-2xl font-bold mb-1">{value}</div>
-      <div className="text-xs">{label}</div>
-    </button>
+      {isSelected && (
+        <motion.div
+          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+          initial={{ x: "-100%" }}
+          animate={{ x: "200%" }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+        />
+      )}
+      <div className={`text-3xl font-bold mb-1 relative z-10 ${isSelected ? "text-white" : "text-gray-900"}`}>
+        {value}
+      </div>
+      <div className={`text-xs font-medium relative z-10 ${isSelected ? "text-orange-100" : "text-gray-600"}`}>
+        {label}
+      </div>
+    </motion.button>
   );
 }

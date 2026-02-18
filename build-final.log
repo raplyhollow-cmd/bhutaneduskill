@@ -1,0 +1,28 @@
+
+> career-guidance@0.1.0 build
+> next build
+
+   ▲ Next.js 15.5.12
+   - Environments: .env
+   - Experiments (use with caution):
+     · cpus: 2
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 77s
+   Linting and checking validity of types ...
+ ⨯ ESLint: Cannot find module 'D:\VS STUDIO PROJECT\bhutaneduskill\node_modules\eslint-config-next\core-web-vitals' imported from D:\VS STUDIO PROJECT\bhutaneduskill\eslint.config.mjs Did you mean to import "eslint-config-next/core-web-vitals.js"?
+Failed to compile.
+
+.next/types/app/counselor/interventions/page.ts:12:13
+Type error: Type 'OmitWithTag<typeof import("D:/VS STUDIO PROJECT/bhutaneduskill/src/app/counselor/interventions/page"), "default" | "config" | "generateStaticParams" | "revalidate" | "dynamic" | "dynamicParams" | ... 8 more ... | "experimental_ppr", "">' does not satisfy the constraint '{ [x: string]: never; }'.
+  Property 'CreateInterventionModal' is incompatible with index signature.
+    Type '({ isOpen, onClose, onSuccess, students }: CreateInterventionModalProps) => Element' is not assignable to type 'never'.
+
+[0m [90m 10 |[39m
+ [90m 11 |[39m [90m// Check that the entry is a valid entry[39m
+[31m[1m>[22m[39m[90m 12 |[39m checkFields[33m<[39m[33mDiff[39m[33m<[39m{
+ [90m    |[39m             [31m[1m^[22m[39m
+ [90m 13 |[39m   [36mdefault[39m[33m:[39m [33mFunction[39m
+ [90m 14 |[39m   config[33m?[39m[33m:[39m {}
+ [90m 15 |[39m   generateStaticParams[33m?[39m[33m:[39m [33mFunction[39m[0m
+Next.js build worker exited with code: 1 and signal: null

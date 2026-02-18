@@ -1,6 +1,7 @@
 "use client";
 
 import { logger } from "@/lib/logger";
+import { useToast } from "@/components/ui/toast";
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ interface AddSchoolModalProps {
 }
 
 export function AddSchoolModal({ open, onClose, onSuccess }: AddSchoolModalProps) {
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
   // Form fields
@@ -70,12 +72,25 @@ export function AddSchoolModal({ open, onClose, onSuccess }: AddSchoolModalProps
         setAddress("");
         setContactEmail("");
         setContactPhone("");
+        toast({
+          title: "School created",
+          description: `"${name}" has been added successfully.`,
+          variant: "success",
+        });
       } else {
-        alert(responseData.error || "Failed to create school");
+        toast({
+          title: "Failed to create school",
+          description: responseData.error || "Unknown error",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       logger.error("[ADD SCHOOL] Error:", error);
-      alert("Network error. Please try again.");
+      toast({
+        title: "Network error",
+        description: "Please check your connection and try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }

@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { assessments, users } from "@/lib/db/schema";
-import { eq, count, and, sql } from "drizzle-orm";
+import { eq, count, and } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+import { parseJsonArray } from "@/lib/db/json-helpers";
 
 /**
  * Student Onboarding Status API
@@ -21,23 +22,6 @@ import { logger } from "@/lib/logger";
  */
 export async function GET(request: NextRequest) {
   try {
-    // Apply rate limiting
-    const rateLimitResult = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3003'}/api/rate-limit/check`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ endpoint: 'onboarding-status' })
-      }
-    ).catch(() => null);
-
-    if (rateLimitResult && !rateLimitResult.ok) {
-      return NextResponse.json(
-        { error: "Too many requests. Please try again later." },
-        { status: 429 }
-      );
-    }
-
     const authResult = await requireAuth(['student']);
     if ('error' in authResult) {
       return NextResponse.json({ error: authResult.error }, { status: authResult.status || 401 });
@@ -74,11 +58,13 @@ export async function GET(request: NextRequest) {
       .where(eq(users.id, userId))
       .limit(1);
 
+    // Safely parse interests (JSON field) and check goals (TEXT field)
+    const interests = parseJsonArray<string>(user?.interests as string | string[] | null | undefined);
+    const goals = user?.goals || "";
+
     const profileComplete = !!(
-      user?.interests &&
-      user?.interests.length > 0 &&
-      user?.goals &&
-      user?.goals.length > 0 &&
+      interests.length > 0 &&
+      goals.length > 0 &&
       user?.grade &&
       user?.grade > 0
     );

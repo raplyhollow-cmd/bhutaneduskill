@@ -45,14 +45,23 @@ export async function POST(request: NextRequest) {
     // Create MBTI result record
     await db.insert(mbtiResults).values({
       id: `mbti_res_${Date.now()}`,
-      assessmentId: assessment.id,
       userId: userId,
-      eiScore: results.eiScore,
-      snScore: results.snScore,
-      tfScore: results.tfScore,
-      jpScore: results.jpScore,
       personalityType: results.type,
-      traits: results.traits,
+      scores: {
+        e: results.eiScore ? Math.round((100 + results.eiScore) / 2) : 50,
+        i: results.eiScore ? Math.round((100 - results.eiScore) / 2) : 50,
+        s: results.snScore ? Math.round((100 + results.snScore) / 2) : 50,
+        n: results.snScore ? Math.round((100 - results.snScore) / 2) : 50,
+        t: results.tfScore ? Math.round((100 + results.tfScore) / 2) : 50,
+        f: results.tfScore ? Math.round((100 - results.tfScore) / 2) : 50,
+        j: results.jpScore ? Math.round((100 + results.jpScore) / 2) : 50,
+        p: results.jpScore ? Math.round((100 - results.jpScore) / 2) : 50,
+      },
+      description: results.description || `Your MBTI personality type is ${results.type}`,
+      strengths: results.strengths || results.traits || [],
+      weaknesses: results.weaknesses || [],
+      recommendedCareers: results.careerSuggestions || [],
+      completedAt: new Date(),
       createdAt: new Date(),
     } as any);
 

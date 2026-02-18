@@ -60,13 +60,16 @@ export async function GET(request: NextRequest) {
     // Format results to match expected schema
     const formattedResults = results.map((result) => ({
       ...result,
-      scores: {
-        d: result.dominance || 0,
-        i: result.influence || 0,
-        s: result.steadiness || 0,
-        c: result.conscientiousness || 0,
+      // Map database schema to expected format
+      dominance: result.scores?.d || 0,
+      influence: result.scores?.i || 0,
+      steadiness: result.scores?.s || 0,
+      conscientiousness: result.scores?.c || 0,
+      primaryType: result.dominantStyle || "D",
+      traits: {
+        strengths: result.strengths || [],
+        weaknesses: result.weaknesses || [],
       },
-      dominantStyle: result.discType || result.dominanceStyle || "D",
     }));
 
     return NextResponse.json({ results: formattedResults });
@@ -113,16 +116,21 @@ export async function POST(request: NextRequest) {
 
     await db.insert(discResults).values({
       id: `disc_res_${Date.now()}`,
-      assessmentId: assessment.id,
       userId: userId,
-      dominance: results.dominance,
-      influence: results.influence,
-      steadiness: results.steadiness,
-      conscientiousness: results.conscientiousness,
-      discType: results.primaryType,
-      traits: results.traits,
+      dominantStyle: results.primaryType || "D",
+      scores: {
+        d: results.dominance || 0,
+        i: results.influence || 0,
+        s: results.steadiness || 0,
+        c: results.conscientiousness || 0,
+      },
+      description: results.description || "DISC personality assessment result",
+      strengths: results.strengths || [],
+      weaknesses: results.weaknesses || [],
+      recommendedCareers: results.recommendedCareers || [],
+      completedAt: new Date(),
       createdAt: new Date(),
-    } as any);
+    });
 
     return NextResponse.json({ success: true, assessmentId: assessment.id });
   } catch (error) {

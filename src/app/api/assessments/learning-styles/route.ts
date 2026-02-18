@@ -60,11 +60,11 @@ export async function GET(request: NextRequest) {
     // Format results to match expected schema
     const formattedResults = results.map((result) => ({
       ...result,
-      visualScore: result.visualScore || result.visual || 0,
-      auditoryScore: result.auditoryScore || result.auditory || 0,
-      kinestheticScore: result.kinestheticScore || result.kinesthetic || 0,
-      dominantStyle: result.dominantStyle || "visual",
-      recommendations: result.recommendations as string[] || [],
+      // Map database schema to expected format
+      visual: result.visualScore || 0,
+      auditory: result.auditoryScore || 0,
+      kinesthetic: result.kinestheticScore || 0,
+      readWrite: 0, // Not stored in database, default value
     }));
 
     return NextResponse.json({ results: formattedResults });
@@ -111,16 +111,15 @@ export async function POST(request: NextRequest) {
 
     await db.insert(learningStylesResults).values({
       id: `ls_res_${Date.now()}`,
-      assessmentId: assessment.id,
       userId: userId,
-      visual: results.visual,
-      auditory: results.auditory,
-      readWrite: results.readWrite,
-      kinesthetic: results.kinesthetic,
-      dominantStyle: results.dominantStyle,
-      recommendations: results.recommendations,
+      visualScore: results.visual || 0,
+      auditoryScore: results.auditory || 0,
+      kinestheticScore: results.kinesthetic || 0,
+      dominantStyle: results.dominantStyle || "visual",
+      recommendations: results.recommendations || [],
+      completedAt: new Date(),
       createdAt: new Date(),
-    } as any);
+    });
 
     return NextResponse.json({ success: true, assessmentId: assessment.id });
   } catch (error) {

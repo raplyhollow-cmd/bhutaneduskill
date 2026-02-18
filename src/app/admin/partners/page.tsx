@@ -238,8 +238,12 @@ export default function AdminPartnersPage() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to update partner");
+        const contentType = response.headers.get("content-type");
+        if (contentType?.includes("application/json")) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to update partner");
+        }
+        throw new Error(`Failed to update partner (${response.status})`);
       }
 
       // Reset and close modal

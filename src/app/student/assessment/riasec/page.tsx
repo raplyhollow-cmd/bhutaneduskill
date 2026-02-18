@@ -370,6 +370,12 @@ export default function AssessmentPage() {
             </Link>
           </Button>
           <Button variant="outline" asChild>
+            <Link href="/student/assessment">
+              More Assessments
+              <ClipboardCheck className="w-4 h-4 ml-2" />
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
             <Link href="/student/monetize">
               See Earning Opportunities
             </Link>

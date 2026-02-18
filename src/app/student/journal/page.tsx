@@ -1,6 +1,7 @@
 "use client";
 
 import { logger } from "@/lib/logger";
+import { useToast } from "@/components/ui/toast";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +21,11 @@ import {
   Trash2,
   Edit,
   Search,
+  Sparkles,
+  Loader2,
+  Tags,
+  Wand2,
+  Shuffle,
 } from "lucide-react";
 
 type JournalEntry = {
@@ -65,6 +71,7 @@ const SUGGESTED_TAGS = [
 ];
 
 export default function JournalPage() {
+  const { toast } = useToast();
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const [isWriting, setIsWriting] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<JournalEntry | null>(null);
@@ -80,6 +87,13 @@ export default function JournalPage() {
 
   const [currentPrompt, setCurrentPrompt] = useState("");
 
+  // AI Feature States
+  const [isAiLoading, setIsAiLoading] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
+  const [aiTags, setAiTags] = useState<string[]>([]);
+  const [aiFeedback, setAiFeedback] = useState("");
+
   useEffect(() => {
     loadEntries();
   }, []);
@@ -93,6 +107,11 @@ export default function JournalPage() {
       }
     } catch (error) {
       logger.error("Failed to load entries:", error);
+      toast({
+        title: "Failed to load entries",
+        description: "Please try refreshing the page",
+        variant: "destructive",
+      });
     }
   };
 
@@ -108,26 +127,103 @@ export default function JournalPage() {
       });
 
       if (response.ok) {
+        // Get AI feedback for the saved entry
+        if (newEntry.content && newEntry.mood) {
+          try {
+            const feedbackResponse = await fetch("/api/journal/ai-insights", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "feedback",
+                entry: {
+                  title: newEntry.title,
+                  content: newEntry.content,
+                  mood: newEntry.mood,
+                },
+              }),
+            });
+
+            if (feedbackResponse.ok) {
+              const feedbackData = await feedbackResponse.json();
+              setAiFeedback(feedbackData.feedback || "");
+            }
+          } catch (error) {
+            logger.error("Failed to get AI feedback:", error);
+          }
+        }
+
         loadEntries();
         resetForm();
+
+        toast({
+          title: "Entry saved!",
+          description: "Your journal entry has been saved successfully.",
+          variant: "success",
+        });
+
+        // Show AI feedback if available
+        if (aiFeedback) {
+          setTimeout(() => {
+            toast({
+              title: "✨ AI Reflection",
+              description: aiFeedback,
+              variant: "default",
+            });
+          }, 1500);
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        toast({
+          title: "Failed to save",
+          description: errorData.error || "Something went wrong",
+          variant: "destructive",
+        });
       }
     } catch (error) {
       logger.error("Failed to save entry:", error);
+      toast({
+        title: "Failed to save",
+        description: "Please check your connection and try again",
+        variant: "destructive",
+      });
     }
   };
 
   const deleteEntry = async (id: string) => {
     try {
-      await fetch(`/api/journal/${id}`, { method: "DELETE" });
-      loadEntries();
+      const response = await fetch(`/api/journal/${id}`, { method: "DELETE" });
+
+      if (response.ok) {
+        loadEntries();
+        toast({
+          title: "Entry deleted",
+          description: "Your journal entry has been deleted.",
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Failed to delete",
+          description: "Could not delete the entry",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       logger.error("Failed to delete entry:", error);
+      toast({
+        title: "Failed to delete",
+        description: "Please check your connection and try again",
+        variant: "destructive",
+      });
     }
   };
 
   const resetForm = () => {
     setNewEntry({ title: "", content: "", mood: "", tags: [] });
     setCurrentPrompt("");
+    setAiPrompt("");
+    setAiSuggestions([]);
+    setAiTags([]);
+    setAiFeedback("");
     setIsWriting(false);
   };
 
@@ -143,6 +239,116 @@ export default function JournalPage() {
     const prompt = PROMPTS[Math.floor(Math.random() * PROMPTS.length)];
     setCurrentPrompt(prompt);
     setNewEntry({ ...newEntry, title: prompt.substring(0, 30) + "..." });
+  };
+
+  // AI: Generate personalized prompt
+  const getAIPrompt = async () => {
+    setIsAiLoading(true);
+    try {
+      const response = await fetch("/api/journal/ai-insights", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "prompt",
+          context: {
+            pastTopics: entries.slice(-5).flatMap((e) => e.tags),
+            interests: entries.flatMap((e) => e.tags),
+          },
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAiPrompt(data.prompt || "");
+        setCurrentPrompt(data.prompt || "");
+        setNewEntry({ ...newEntry, title: data.prompt?.substring(0, 30) + "..." || "" });
+      }
+    } catch (error) {
+      logger.error("Failed to get AI prompt:", error);
+      toast({
+        title: "AI unavailable",
+        description: "Using a random prompt instead",
+        variant: "default",
+      });
+      getRandomPrompt();
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  // AI: Get writing suggestions
+  const getAISuggestions = async () => {
+    if (!newEntry.content || newEntry.content.length < 20) {
+      toast({
+        title: "Write more first",
+        description: "Add a few more sentences to get AI suggestions",
+        variant: "default",
+      });
+      return;
+    }
+
+    setIsAiLoading(true);
+    try {
+      const response = await fetch("/api/journal/ai-insights", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "suggestions",
+          entry: { content: newEntry.content },
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAiSuggestions(data.suggestions || []);
+      }
+    } catch (error) {
+      logger.error("Failed to get AI suggestions:", error);
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  // AI: Suggest tags based on content
+  const getAITags = async () => {
+    if (!newEntry.content || newEntry.content.length < 20) {
+      toast({
+        title: "Write more first",
+        description: "Add a few more sentences to get AI tag suggestions",
+        variant: "default",
+      });
+      return;
+    }
+
+    setIsAiLoading(true);
+    try {
+      const response = await fetch("/api/journal/ai-insights", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "tags",
+          entry: { content: newEntry.content },
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const suggestedTags = data.tags || [];
+        setAiTags(suggestedTags);
+        // Auto-select first 3 suggested tags if not already selected
+        const newTags = [...newEntry.tags];
+        suggestedTags.slice(0, 3).forEach((tag: string) => {
+          if (!newTags.includes(tag) && newTags.length < 5) {
+            newTags.push(tag);
+          }
+        });
+        setNewEntry({ ...newEntry, tags: newTags });
+      }
+    } catch (error) {
+      logger.error("Failed to get AI tags:", error);
+    } finally {
+      setIsAiLoading(false);
+    }
   };
 
   const filteredEntries = entries.filter((entry) => {
@@ -192,13 +398,36 @@ export default function JournalPage() {
                 <Lightbulb className="w-4 h-4 inline mr-2" />
                 Need inspiration? Try a prompt:
               </p>
-              {!currentPrompt ? (
-                <Button size="sm" variant="outline" onClick={getRandomPrompt}>
-                  Get Random Prompt
-                </Button>
-              ) : (
-                <p className="text-sm text-blue-800">"{currentPrompt}"</p>
-              )}
+              <div className="flex flex-wrap gap-2">
+                {!currentPrompt ? (
+                  <>
+                    <Button size="sm" variant="outline" onClick={getRandomPrompt}>
+                      <Shuffle className="w-3 h-3 mr-1" />
+                      Random Prompt
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={getAIPrompt} disabled={isAiLoading}>
+                      {isAiLoading ? (
+                        <>
+                          <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                          AI Thinking...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-3 h-3 mr-1" />
+                          AI Personalized Prompt
+                        </>
+                      )}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-blue-800 flex-1">"{currentPrompt}"</p>
+                    <Button size="sm" variant="ghost" onClick={() => setCurrentPrompt("")}>
+                      <Edit className="w-3 h-3" />
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
 
             {/* Title */}
@@ -213,7 +442,28 @@ export default function JournalPage() {
 
             {/* Content */}
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-2 block">Your Thoughts</label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium text-gray-700">Your Thoughts</label>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={getAISuggestions}
+                  disabled={isAiLoading || !newEntry.content}
+                  className="text-purple-600 hover:text-purple-700"
+                >
+                  {isAiLoading ? (
+                    <>
+                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                      Thinking...
+                    </>
+                  ) : (
+                    <>
+                      <Wand2 className="w-3 h-3 mr-1" />
+                      Get AI Suggestions
+                    </>
+                  )}
+                </Button>
+              </div>
               <Textarea
                 value={newEntry.content}
                 onChange={(e) => setNewEntry({ ...newEntry, content: e.target.value })}
@@ -221,6 +471,24 @@ export default function JournalPage() {
                 rows={8}
                 className="resize-none"
               />
+
+              {/* AI Writing Suggestions */}
+              {aiSuggestions.length > 0 && (
+                <div className="mt-3 p-3 bg-purple-50 rounded-lg border border-purple-100">
+                  <p className="text-sm font-medium text-purple-900 mb-2">
+                    <Sparkles className="w-4 h-4 inline mr-1" />
+                    Suggestions to deepen your reflection:
+                  </p>
+                  <ul className="text-sm text-purple-800 space-y-1">
+                    {aiSuggestions.map((suggestion, idx) => (
+                      <li key={idx} className="flex items-start">
+                        <span className="mr-2">•</span>
+                        <span>{suggestion}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
 
             {/* Mood Selection */}
@@ -246,10 +514,51 @@ export default function JournalPage() {
 
             {/* Tags */}
             <div>
-              <label className="text-sm font-medium text-gray-700 mb-3 block">
-                Tags ({newEntry.tags.length}/5)
-              </label>
-              <div className="flex flex-wrap gap-2 mb-3">
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-medium text-gray-700">
+                  Tags ({newEntry.tags.length}/5)
+                </label>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={getAITags}
+                  disabled={isAiLoading || !newEntry.content}
+                  className="text-purple-600 hover:text-purple-700"
+                >
+                  {isAiLoading ? (
+                    <>
+                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                      AI Tagging...
+                    </>
+                  ) : (
+                    <>
+                      <Tags className="w-3 h-3 mr-1" />
+                      AI Suggest Tags
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* AI Suggested Tags */}
+              {aiTags.length > 0 && (
+                <div className="mb-3 p-2 bg-purple-50 rounded-lg">
+                  <p className="text-xs text-purple-700 mb-1">AI suggested:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {aiTags.map((tag) => (
+                      <Badge
+                        key={tag}
+                        variant={newEntry.tags.includes(tag) ? "default" : "outline"}
+                        className="cursor-pointer text-xs"
+                        onClick={() => toggleTag(tag)}
+                      >
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-2">
                 {SUGGESTED_TAGS.map((tag) => (
                   <button
                     key={tag}

@@ -9,6 +9,211 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Assessment & Navigation Issues (February 18, 2026)
+
+**Problems Fixed:**
+1. Syntax error in `riasec/page.tsx` - malformed `useState` type annotation
+2. POST `/api/assessments` returning 500 errors - data format mismatch
+3. `/api/student/onboarding/status` returning 429 errors - broken rate-limit check
+
+**Solutions:**
+1. Fixed `useState<"next" | "prev">("next")` to proper syntax
+2. Updated `/api/assessments` to handle both short (r, i, a, s, e, c) and long (realistic, investigative) RIASEC key formats
+3. Added fallback for `results.dominantTraits || results.traits`
+4. Removed non-functional rate-limit check from onboarding status API
+
+**Files Modified:**
+- `src/app/student/assessment/riasec/page.tsx` - Fixed syntax error
+- `src/app/api/assessments/route.ts` - Fixed data format handling
+- `src/app/api/student/onboarding/status/route.ts` - Removed broken rate-limit check
+
+---
+
+### Added - Clerk-Style Categorized Sidebar Navigation (February 18, 2026)
+
+**Features:**
+- All portal sidebars now use collapsible category-based navigation
+- Each portal type has logically organized menu categories
+- Smooth expand/collapse animations with rotating chevron icons
+- Categories auto-expand when navigating to pages within them
+- Visual separators between categories
+
+**Portal Categories:**
+- **Student**: Overview, Academics, Career Planning, Higher Education, School & Fees, Communication
+- **Teacher**: Overview, Teaching, Classroom Management, Other
+- **Parent**: Overview, My Children, Health & Activities, Communication
+- **Counselor**: Overview, Student Support, Records
+- **Admin**: Overview, Platform Management, Content, Settings
+- **School Admin**: Overview, People, Academics, Administration, Reports, Health
+
+**Styling:**
+- Category headers: uppercase, small text, muted color
+- Chevron icon rotates 180° when category is expanded
+- Items indented with left margin
+- Border separators between categories
+
+**Files Modified:**
+- `src/components/shared/portal-sidebar.tsx` - Complete redesign with categorized navigation for all portals
+
+---
+
+### Fixed - Assessment Saving & Career Navigation (February 18, 2026)
+
+**Problems:**
+1. POST error to `/dashboard/careers` (404) after completing assessment
+2. Assessments not saving to database - dashboard showed 0 assessments completed
+3. No easy way to navigate to other assessments after completing one
+
+**Root Causes:**
+1. Legacy route `/dashboard/careers` in `ResultsCard.tsx` component - correct route is `/student/careers`
+2. `assessments` table has required fields (`title`, `description`, `dueDate`, `totalPoints`, `passingScore`, `updatedAt`) that were not provided when saving career assessments
+3. Missing button to access assessment catalog from results page
+
+**Solutions:**
+1. Updated `ResultsCard.tsx` to use `/student/careers` instead of `/dashboard/careers`
+2. Fixed `/api/assessments` POST endpoint to include all required fields with appropriate defaults for career assessments:
+   - `title`: Assessment type name (e.g., "RIASEC Career Assessment")
+   - `description`: Standard career assessment description
+   - `dueDate`: Current date
+   - `totalPoints`: 100
+   - `passingScore`: 60
+   - `updatedAt`: Current timestamp
+3. Added "More Assessments" button on RIASEC results page linking to `/student/assessment`
+
+**Files Modified:**
+- `src/components/assessment/ResultsCard.tsx` - Fixed careers link
+- `src/app/student/assessment/riasec/page.tsx` - Added "More Assessments" button
+- `src/app/api/assessments/route.ts` - Added required fields to assessment insert
+
+---
+
+### Added - Clerk-Style Unsaved Changes Modal (February 18, 2026)
+
+**Features:**
+- Added `UnsavedChangesModal` component - Clerk-style bottom-center modal that appears immediately when form changes are detected
+- Modal shows "Unsaved changes" with warning icon and "Reset" / "Save" action buttons
+- 3D-style gradient buttons matching Clerk.com aesthetic (red for Reset, orange for Save)
+- Added backdrop blur effect behind modal for polish
+- Navigation guard - browser shows "Leave site?" warning when trying to close tab/navigate away with unsaved changes
+
+**Form Change Tracking:**
+- Tracks all form field changes in Student Settings page
+- Stores original values on load and compares against current values
+- Modal appears immediately (no delay) when any field differs from original
+- Reset button reverts all fields to original values
+- Save button saves changes and updates original values
+
+**Styling:**
+- Position: `fixed bottom-8 left-1/2` (bottom-center)
+- Min-width: 340px (21.25rem)
+- Dark gradient background with inset shadows for 3D effect
+- Buttons with gradient overlays and shadow effects
+
+**Files Modified:**
+- `src/components/forms/unsaved-changes-modal.tsx` - New modal component
+- `src/app/student/settings/page.tsx` - Added change tracking and modal integration
+
+---
+
+### Added - Real Exam Results Data (February 18, 2026)
+
+**Features:**
+- Student Results page now fetches real exam results from database instead of mock data
+- Added loading state with spinner while fetching data
+- Added error state with user-friendly error messages
+- Updated stats cards to show real exam average, best performance, and total exams
+- Updated performance summary banner to use real data from API
+- Flattened subject results for display (exams with multiple subjects shown as individual rows)
+
+**API Integration:**
+- Fetches from `/api/student/results` endpoint
+- Uses existing `exam_results_enhanced` database table
+- Shows exam name, type, date, score, grade, rank, and division
+
+**Files Modified:**
+- `src/app/student/results/page.tsx` - Updated to use real database data
+
+---
+
+### Added - Clerk-Style UI Components (February 18, 2026)
+
+**Features:**
+- Added `ClerkStyleFooterToast` component - Modern dark gradient toast notifications that appear at bottom-center of screen
+- Added `FooterToaster` container component for footer-positioned toasts
+- Added `variant="clerk"` prop to `UserButton` component for Clerk-style profile dropdown
+- Updated student settings page to use toast notifications instead of inline error messages
+
+**Styling:**
+- Dark gradient backgrounds matching Clerk.com aesthetic
+- Inset shadow effects for depth
+- Status icons (error/success/info)
+- Action buttons support
+- Auto-dismiss with X button
+- Smooth spring animations (120ms transition)
+- "Secured by Career Compass" footer in user dropdown
+
+**Files Modified:**
+- `src/components/ui/toast.tsx` - New toast components
+- `src/components/ui/user-button.tsx` - New clerk variant
+- `src/app/student/settings/page.tsx` - Toast integration
+
+---
+
+### Fixed - Build Errors (February 18, 2026)
+
+**Problem:** TypeScript compilation failing with 7 errors related to missing imports and schema columns.
+
+**Root Cause:**
+- `Settings` icon not imported in `portal-sidebar.tsx`
+- `branding` and `theme` columns commented out in `schools` table schema but still being used by `school-branding.ts`
+
+**Solution:**
+- Added `Settings` to lucide-react imports in `portal-sidebar.tsx`
+- Restored `branding` and `theme` columns to `schools` table in schema
+
+**Files Modified:**
+- `src/components/shared/portal-sidebar.tsx`
+- `src/lib/db/schema.ts`
+
+---
+
+### Fixed - JSON Parsing Error in API Response Handlers (February 18, 2026)
+
+**Problem:** `SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON` when API requests failed.
+
+**Root Cause:**
+- When API requests failed (authentication errors, role restrictions, middleware redirects), the server returned HTML error pages instead of JSON
+- Client code attempted to parse HTML as JSON, causing syntax errors
+
+**Solution:**
+- Added content-type validation before parsing JSON responses
+- Graceful fallback to generic error messages when non-JSON responses are received
+
+**Files Modified:** 10 files, 12 locations
+- `src/app/student/settings/page.tsx` (2 fixes: upload, save)
+- `src/app/admin/partners/[id]/page.tsx`
+- `src/app/admin/partners/page.tsx`
+- `src/app/admin/notifications/page.tsx` (2 fixes)
+- `src/app/teacher/learning/page.tsx` (2 fixes)
+- `src/app/teacher/attendance/page.tsx`
+- `src/app/student/modules/page.tsx`
+- `src/app/student/learning/[id]/certificate/page.tsx`
+- `src/app/student/homework/[id]/feedback/page.tsx`
+
+**Safe Pattern Applied:**
+```tsx
+if (!response.ok) {
+  const contentType = response.headers.get("content-type");
+  if (contentType?.includes("application/json")) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || "Failed to ...");
+  }
+  throw new Error(`Failed to ... (${response.status})`);
+}
+```
+
+---
+
 ### Fixed - Portal Access & Build Issues (February 18, 2026)
 
 **Problem:** Users could not access portals after sign-in due to redirect loop between sign-in page, setup wizard, and portal layouts.

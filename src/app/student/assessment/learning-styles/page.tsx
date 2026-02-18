@@ -8,8 +8,9 @@ import { ResultsCard, ScoreBar, TraitCard } from "@/components/assessment";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { calculateLearningStyles, getLearningStylesQuestions } from "@/lib/assessments";
 import type { LearningStylesInput, LearningStylesResult } from "@/lib/assessments";
-import { Eye, Ear, BookOpen, Activity } from "lucide-react";
+import { Eye, Ear, BookOpen, Activity, ArrowRight, ClipboardCheck } from "lucide-react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 const QUESTIONS = getLearningStylesQuestions();
 
@@ -31,6 +32,12 @@ export default function LearningStylesPage() {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<LearningStylesInput>({});
   const [result, setResult] = useState<LearningStylesResult | null>(null);
+
+  const restartAssessment = () => {
+    setAnswers({});
+    setCurrentQuestion(0);
+    setResult(null);
+  };
 
   const handleAnswer = (value: "visual" | "auditory" | "read_write" | "kinesthetic") => {
     const newAnswers = { ...answers, [QUESTIONS[currentQuestion].id]: value };
@@ -95,13 +102,24 @@ export default function LearningStylesPage() {
           items={result.recommendations.teachingMethods}
         />
 
-        <div className="flex gap-4">
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg"
-          >
+        <div className="flex flex-wrap gap-4">
+          <Button variant="outline" onClick={restartAssessment}>
             Retake Assessment
-          </button>
+          </Button>
+          <Button
+            asChild
+            style={{ background: "linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)" }}
+          >
+            <Link href="/student/careers">
+              View Career Matches <ArrowRight className="w-4 h-4 ml-2" />
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/student/assessment">
+              More Assessments
+              <ClipboardCheck className="w-4 h-4 ml-2" />
+            </Link>
+          </Button>
         </div>
       </ResultsCard>
     );

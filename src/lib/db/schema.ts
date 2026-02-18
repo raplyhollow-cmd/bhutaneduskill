@@ -1215,14 +1215,7 @@ export const examResultsEnhanced = pgTable("exam_results_enhanced", {
     grade: string;
     percentage: number;
   }>>(),
-  subjectResults: json("subject_results").$type<Array<{
-    subjectId: string;
-    subjectName: string;
-    marksObtained: number;
-    maxMarks: number;
-    grade: string;
-    percentage: number;
-  }>>(),
+  // subjectResults removed - doesn't exist in actual database (use subjects instead)
   overallPercentage: integer("overall_percentage"),
   totalMarks: integer("total_marks").notNull(),
   maxTotalMarks: integer("max_total_marks").notNull(),
@@ -1235,7 +1228,7 @@ export const examResultsEnhanced = pgTable("exam_results_enhanced", {
   classRank: integer("class_rank"),
   remarks: text("remarks"),
   division: text("division"),
-  traits: json("traits").$type<string[]>(),
+  // traits removed - doesn't exist in actual database
   isVerified: boolean("is_verified").default(false), // Whether results are verified
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
@@ -1372,7 +1365,7 @@ export const riasecResults = pgTable("riasec_results", {
   secondaryHollandCode: text("secondary_holland_code").notNull(),
   hollandCode: text("holland_code"), // The 3-letter RIASEC code
   recommendedCareers: json("recommended_careers").$type<string[]>().notNull(),
-  traits: json("traits").$type<string[]>(), // Personality traits based on results
+  // traits column removed - doesn't exist in actual database
   completedAt: timestamp("completed_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
 });

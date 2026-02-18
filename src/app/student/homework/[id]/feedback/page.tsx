@@ -110,8 +110,12 @@ export default function StudentHomeworkFeedbackPage() {
       const response = await fetch(`/api/student/homework/${params.id}/feedback`);
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to load homework feedback");
+        const contentType = response.headers.get("content-type");
+        if (contentType?.includes("application/json")) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to load homework feedback");
+        }
+        throw new Error(`Failed to load homework feedback (${response.status})`);
       }
 
       const result: HomeworkFeedbackResponse = await response.json();

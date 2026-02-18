@@ -1,6 +1,7 @@
 "use client";
 
 import { logger } from "@/lib/logger";
+import { useToast } from "@/components/ui/toast";
 /**
  * TEACHER HOMEWORK GRADING PAGE
  * Page for viewing homework submissions and grading student work
@@ -41,6 +42,7 @@ interface HomeworkDetails {
 export default function GradeHomeworkPage() {
   const params = useParams();
   const router = useRouter();
+  const { toast } = useToast();
   const homeworkId = params.id as string;
 
   const [homework, setHomework] = useState<HomeworkDetails | null>(null);
@@ -97,12 +99,25 @@ export default function GradeHomeworkPage() {
       if (response.ok) {
         // Refresh submissions to get updated data
         await fetchSubmissions();
+        toast({
+          title: "Grades saved",
+          description: "Student grades have been saved successfully.",
+          variant: "success",
+        });
       } else {
-        alert("Failed to save grades. Please try again.");
+        toast({
+          title: "Failed to save grades",
+          description: "Please try again.",
+          variant: "destructive",
+        });
       }
     } catch (err) {
       logger.error("Error saving grades:", err);
-      alert("Failed to save grades. Please try again.");
+      toast({
+        title: "Failed to save grades",
+        description: "Please check your connection and try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -111,11 +126,19 @@ export default function GradeHomeworkPage() {
     try {
       // In production, this would call an API to release grades to students
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      alert(`Grades released for ${submissionIds.length} students`);
+      toast({
+        title: "Grades released",
+        description: `Grades have been released to ${submissionIds.length} student(s).`,
+        variant: "success",
+      });
       await fetchSubmissions();
     } catch (err) {
       logger.error("Error releasing grades:", err);
-      alert("Failed to release grades. Please try again.");
+      toast({
+        title: "Failed to release grades",
+        description: "Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setIsReleasing(false);
     }

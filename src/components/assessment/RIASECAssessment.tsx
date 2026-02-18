@@ -6,7 +6,7 @@ import { useState } from "react";
 import { AssessmentContainer, OptionButton } from "@/components/assessment";
 import { ResultsCard, ScoreBar, SuggestionCard } from "@/components/assessment";
 import { calculateRIASEC, type RIASECResult } from "@/lib/riasec";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ClipboardCheck } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,12 @@ export function RIASECAssessment({ title, description, questions, assessmentType
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [result, setResult] = useState<RIASECResult | null>(null);
+
+  const restartAssessment = () => {
+    setAnswers({});
+    setCurrentQuestion(0);
+    setResult(null);
+  };
 
   const handleAnswer = (value: number) => {
     const newAnswers = { ...answers, [questions[currentQuestion].id]: value };
@@ -95,14 +101,23 @@ export function RIASECAssessment({ title, description, questions, assessmentType
         </Card>
 
         <div className="flex flex-wrap gap-4">
-          <Button asChild>
-            <Link href="/dashboard/careers">
+          <Button variant="outline" onClick={restartAssessment}>
+            Retake Assessment
+          </Button>
+          <Button
+            asChild
+            style={{ background: "linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)" }}
+          >
+            <Link href="/student/careers">
               View Career Matches
               <ArrowRight className="w-4 h-4 ml-2" />
             </Link>
           </Button>
-          <Button variant="outline" onClick={() => window.location.reload()}>
-            Retake Assessment
+          <Button variant="outline" asChild>
+            <Link href="/student/assessment">
+              More Assessments
+              <ClipboardCheck className="w-4 h-4 ml-2" />
+            </Link>
           </Button>
         </div>
       </ResultsCard>

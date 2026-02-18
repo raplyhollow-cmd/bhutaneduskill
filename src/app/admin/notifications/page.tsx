@@ -240,8 +240,12 @@ export default function AdminNotificationsPage() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to delete notification");
+        const contentType = response.headers.get("content-type");
+        if (contentType?.includes("application/json")) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to delete notification");
+        }
+        throw new Error(`Failed to delete notification (${response.status})`);
       }
 
       // Refresh notifications
@@ -272,8 +276,12 @@ export default function AdminNotificationsPage() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to send notification");
+        const contentType = response.headers.get("content-type");
+        if (contentType?.includes("application/json")) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to send notification");
+        }
+        throw new Error(`Failed to send notification (${response.status})`);
       }
 
       // Refresh notifications

@@ -109,12 +109,13 @@ export async function POST(request: NextRequest) {
 
     await db.insert(workValuesResults).values({
       id: `wv_res_${Date.now()}`,
-      assessmentId: assessment.id,
       userId: userId,
-      valueData: results.values,
-      topValues: results.topValues,
+      topValues: results.topValues || [],
+      description: results.description || "Your work values profile",
+      recommendedCareers: results.recommendedCareers || [],
+      completedAt: new Date(),
       createdAt: new Date(),
-    } as any);
+    });
 
     return NextResponse.json({ success: true, assessmentId: assessment.id });
   } catch (error) {

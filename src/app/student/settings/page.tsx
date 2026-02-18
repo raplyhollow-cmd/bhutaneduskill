@@ -13,7 +13,7 @@ import { logger } from "@/lib/logger";
  */
 
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,8 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import { useToast } from "@/components/ui/toast";
+import { UnsavedChangesModal } from "@/components/forms/unsaved-changes-modal";
 
 // Types for our data structures
 type UserProfile = {
@@ -80,12 +82,17 @@ type SettingsData = {
 };
 
 export default function StudentSettingsPage() {
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [settings, setSettings] = useState<SettingsData | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+
+  // Unsaved changes tracking
+  const [hasChanges, setHasChanges] = useState(false);
+  const originalValues = useRef<Record<string, unknown>>({});
 
   // Form state
   const [firstName, setFirstName] = useState("");
@@ -113,6 +120,42 @@ export default function StudentSettingsPage() {
   const [inAppReminders, setInAppReminders] = useState(true);
   const [quietHoursStart, setQuietHoursStart] = useState("22:00");
   const [quietHoursEnd, setQuietHoursEnd] = useState("07:00");
+
+  // Helper to check if current values differ from original
+  const checkForChanges = () => {
+    const currentValues: Record<string, unknown> = {
+      firstName,
+      lastName,
+      bio,
+      phone,
+      dateOfBirth,
+      gender,
+      address,
+      city,
+      state,
+      postalCode,
+      country,
+      interests,
+      goals,
+      emailEnabled,
+      emailAnnouncements,
+      emailAlerts,
+      emailReminders,
+      inAppEnabled,
+      inAppAnnouncements,
+      inAppAlerts,
+      inAppReminders,
+      quietHoursStart,
+      quietHoursEnd,
+    };
+
+    // Check if any value differs from original
+    const hasChanged = Object.keys(currentValues).some((key) => {
+      return currentValues[key] !== originalValues.current[key];
+    });
+
+    setHasChanges(hasChanged);
+  };
 
   // Fetch settings on mount
   useEffect(() => {
@@ -154,6 +197,33 @@ export default function StudentSettingsPage() {
         setInAppReminders(notifications.inAppReminders ?? true);
         setQuietHoursStart(notifications.quietHoursStart || "22:00");
         setQuietHoursEnd(notifications.quietHoursEnd || "07:00");
+
+        // Store original values for change detection
+        originalValues.current = {
+          firstName: profile.firstName || "",
+          lastName: profile.lastName || "",
+          bio: profile.bio || "",
+          phone: profile.phone || "",
+          dateOfBirth: profile.dateOfBirth || "",
+          gender: profile.gender || "",
+          address: profile.address || "",
+          city: profile.city || "",
+          state: profile.state || "",
+          postalCode: profile.postalCode || "",
+          country: profile.country || "Bhutan",
+          interests: Array.isArray(profile.interests) ? profile.interests.join(", ") : "",
+          goals: profile.goals || "",
+          emailEnabled: notifications.emailEnabled ?? true,
+          emailAnnouncements: notifications.emailAnnouncements ?? true,
+          emailAlerts: notifications.emailAlerts ?? true,
+          emailReminders: notifications.emailReminders ?? true,
+          inAppEnabled: notifications.inAppEnabled ?? true,
+          inAppAnnouncements: notifications.inAppAnnouncements ?? true,
+          inAppAlerts: notifications.inAppAlerts ?? true,
+          inAppReminders: notifications.inAppReminders ?? true,
+          quietHoursStart: notifications.quietHoursStart || "22:00",
+          quietHoursEnd: notifications.quietHoursEnd || "07:00",
+        };
       } catch (error) {
         logger.error("Failed to fetch settings:", error);
         setSaveError("Failed to load settings. Please refresh the page.");
@@ -164,6 +234,19 @@ export default function StudentSettingsPage() {
 
     fetchSettings();
   }, []);
+
+  // Navigation guard - warn before leaving with unsaved changes
+  useEffect(() => {
+    if (!hasChanges) return;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasChanges]);
 
   // Handle profile picture upload
   const handleProfilePictureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -200,8 +283,12 @@ export default function StudentSettingsPage() {
       setUploadProgress(70);
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to upload image");
+        const contentType = response.headers.get("content-type");
+        if (contentType?.includes("application/json")) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to upload image");
+        }
+        throw new Error(`Failed to upload image (${response.status})`);
       }
 
       const data = await response.json();
@@ -210,14 +297,22 @@ export default function StudentSettingsPage() {
       setUploadProgress(90);
 
       // Update settings with new profile image
-      await saveSettings({ profileImage: imageUrl });
+      await saveSettingsInternal({ profileImage: imageUrl });
 
       setUploadProgress(100);
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
+      toast({
+        title: "Photo uploaded",
+        description: "Your profile picture has been updated.",
+        variant: "success",
+      });
     } catch (error) {
       logger.error("Upload error:", error);
-      setSaveError(error instanceof Error ? error.message : "Failed to upload profile picture");
+      const errorMessage = error instanceof Error ? error.message : "Failed to upload profile picture";
+      toast({
+        title: "Upload failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setIsSaving(false);
       setUploadProgress(0);
@@ -260,8 +355,146 @@ export default function StudentSettingsPage() {
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || "Failed to save settings");
+      // Check if response is JSON before parsing
+      const contentType = response.headers.get("content-type");
+      if (contentType?.includes("application/json")) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to save settings");
+      }
+      // If not JSON (e.g., HTML error page), throw generic error
+      throw new Error(`Failed to save settings (${response.status})`);
+    }
+
+    // Update original values after successful save
+    originalValues.current = {
+      firstName,
+      lastName,
+      phone,
+      bio,
+      dateOfBirth,
+      gender,
+      address,
+      city,
+      state,
+      postalCode,
+      country,
+      interests,
+      goals,
+      emailEnabled,
+      emailAnnouncements,
+      emailAlerts,
+      emailReminders,
+      inAppEnabled,
+      inAppAnnouncements,
+      inAppAlerts,
+      inAppReminders,
+      quietHoursStart,
+      quietHoursEnd,
+    };
+    setHasChanges(false);
+
+    return await response.json();
+  };
+
+  // Handle Reset from modal - revert to original values
+  const handleReset = () => {
+    const orig = originalValues.current;
+    setFirstName(orig.firstName as string);
+    setLastName(orig.lastName as string);
+    setBio(orig.bio as string);
+    setPhone(orig.phone as string);
+    setDateOfBirth(orig.dateOfBirth as string);
+    setGender(orig.gender as string);
+    setAddress(orig.address as string);
+    setCity(orig.city as string);
+    setState(orig.state as string);
+    setPostalCode(orig.postalCode as string);
+    setCountry(orig.country as string);
+    setInterests(orig.interests as string);
+    setGoals(orig.goals as string);
+    setEmailEnabled(orig.emailEnabled as boolean);
+    setEmailAnnouncements(orig.emailAnnouncements as boolean);
+    setEmailAlerts(orig.emailAlerts as boolean);
+    setEmailReminders(orig.emailReminders as boolean);
+    setInAppEnabled(orig.inAppEnabled as boolean);
+    setInAppAnnouncements(orig.inAppAnnouncements as boolean);
+    setInAppAlerts(orig.inAppAlerts as boolean);
+    setInAppReminders(orig.inAppReminders as boolean);
+    setQuietHoursStart(orig.quietHoursStart as string);
+    setQuietHoursEnd(orig.quietHoursEnd as string);
+    setHasChanges(false);
+  };
+
+  // Handle Save from modal
+  const handleModalSave = async () => {
+    setIsSaving(true);
+    setSaveError(null);
+    setSaveSuccess(false);
+
+    try {
+      await saveSettings();
+      toast({
+        title: "Settings saved",
+        description: "Your profile has been updated successfully.",
+        variant: "success",
+      });
+    } catch (error) {
+      logger.error("Save error:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to save settings";
+      toast({
+        title: "Save failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Original saveSettings for profile picture (kept for backward compatibility)
+  const saveSettingsInternal = async (additionalData: Record<string, unknown> = {}) => {
+    const updateData = {
+      firstName,
+      lastName,
+      phone,
+      bio,
+      dateOfBirth,
+      gender,
+      address,
+      city,
+      state,
+      postalCode,
+      country,
+      interests: interests.split(",").map((i) => i.trim()).filter(Boolean),
+      goals,
+      emailEnabled,
+      emailAnnouncements,
+      emailAlerts,
+      emailReminders,
+      inAppEnabled,
+      inAppAnnouncements,
+      inAppAlerts,
+      inAppReminders,
+      quietHoursStart,
+      quietHoursEnd,
+      ...additionalData,
+    };
+
+    const response = await fetch("/api/student/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updateData),
+    });
+
+    if (!response.ok) {
+      // Check if response is JSON before parsing
+      const contentType = response.headers.get("content-type");
+      if (contentType?.includes("application/json")) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to save settings");
+      }
+      // If not JSON (e.g., HTML error page), throw generic error
+      throw new Error(`Failed to save settings (${response.status})`);
     }
 
     return await response.json();
@@ -276,11 +509,19 @@ export default function StudentSettingsPage() {
 
     try {
       await saveSettings();
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
+      toast({
+        title: "Settings saved",
+        description: "Your profile has been updated successfully.",
+        variant: "success",
+      });
     } catch (error) {
       logger.error("Save error:", error);
-      setSaveError(error instanceof Error ? error.message : "Failed to save settings");
+      const errorMessage = error instanceof Error ? error.message : "Failed to save settings";
+      toast({
+        title: "Save failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setIsSaving(false);
     }
@@ -324,20 +565,6 @@ export default function StudentSettingsPage() {
           Manage your profile and preferences
         </p>
       </div>
-
-      {/* Success/Error Messages */}
-      {saveSuccess && (
-        <div className="flex items-center gap-2 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-          <Check className="w-5 h-5 text-green-600 dark:text-green-400" />
-          <p className="text-green-700 dark:text-green-300">Settings saved successfully!</p>
-        </div>
-      )}
-      {saveError && (
-        <div className="flex items-center gap-2 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <X className="w-5 h-5 text-red-600 dark:text-red-400" />
-          <p className="text-red-700 dark:text-red-300">{saveError}</p>
-        </div>
-      )}
 
       <form onSubmit={handleSubmit}>
         {/* Profile Settings */}
@@ -396,7 +623,10 @@ export default function StudentSettingsPage() {
                 <Input
                   id="firstName"
                   value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
+                  onChange={(e) => {
+                    setFirstName(e.target.value);
+                    checkForChanges();
+                  }}
                   placeholder="Your first name"
                 />
               </div>
@@ -405,7 +635,10 @@ export default function StudentSettingsPage() {
                 <Input
                   id="lastName"
                   value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
+                  onChange={(e) => {
+                    setLastName(e.target.value);
+                    checkForChanges();
+                  }}
                   placeholder="Your last name"
                 />
               </div>
@@ -417,7 +650,10 @@ export default function StudentSettingsPage() {
               <Textarea
                 id="bio"
                 value={bio}
-                onChange={(e) => setBio(e.target.value)}
+                onChange={(e) => {
+                  setBio(e.target.value);
+                  checkForChanges();
+                }}
                 placeholder="Tell us about yourself, your interests, and career goals..."
                 rows={3}
                 className="resize-none"
@@ -432,7 +668,10 @@ export default function StudentSettingsPage() {
                   id="dateOfBirth"
                   type="date"
                   value={dateOfBirth}
-                  onChange={(e) => setDateOfBirth(e.target.value)}
+                  onChange={(e) => {
+                    setDateOfBirth(e.target.value);
+                    checkForChanges();
+                  }}
                 />
               </div>
               <div className="space-y-2">
@@ -440,7 +679,10 @@ export default function StudentSettingsPage() {
                 <select
                   id="gender"
                   value={gender}
-                  onChange={(e) => setGender(e.target.value)}
+                  onChange={(e) => {
+                    setGender(e.target.value);
+                    checkForChanges();
+                  }}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <option value="">Select</option>
@@ -456,7 +698,10 @@ export default function StudentSettingsPage() {
                   id="phone"
                   type="tel"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => {
+                    setPhone(e.target.value);
+                    checkForChanges();
+                  }}
                   placeholder="+975 17 00 00 00"
                 />
               </div>
@@ -469,7 +714,10 @@ export default function StudentSettingsPage() {
                 <Input
                   id="address"
                   value={address}
-                  onChange={(e) => setAddress(e.target.value)}
+                  onChange={(e) => {
+                    setAddress(e.target.value);
+                    checkForChanges();
+                  }}
                   placeholder="Street address"
                 />
               </div>
@@ -479,7 +727,10 @@ export default function StudentSettingsPage() {
                   <Input
                     id="city"
                     value={city}
-                    onChange={(e) => setCity(e.target.value)}
+                    onChange={(e) => {
+                      setCity(e.target.value);
+                      checkForChanges();
+                    }}
                     placeholder="Thimphu"
                   />
                 </div>
@@ -488,7 +739,10 @@ export default function StudentSettingsPage() {
                   <Input
                     id="state"
                     value={state}
-                    onChange={(e) => setState(e.target.value)}
+                    onChange={(e) => {
+                      setState(e.target.value);
+                      checkForChanges();
+                    }}
                     placeholder="Thimphu"
                   />
                 </div>
@@ -497,7 +751,10 @@ export default function StudentSettingsPage() {
                   <Input
                     id="postalCode"
                     value={postalCode}
-                    onChange={(e) => setPostalCode(e.target.value)}
+                    onChange={(e) => {
+                      setPostalCode(e.target.value);
+                      checkForChanges();
+                    }}
                     placeholder="11001"
                   />
                 </div>
@@ -511,7 +768,10 @@ export default function StudentSettingsPage() {
                 <Input
                   id="interests"
                   value={interests}
-                  onChange={(e) => setInterests(e.target.value)}
+                  onChange={(e) => {
+                    setInterests(e.target.value);
+                    checkForChanges();
+                  }}
                   placeholder="Science, Sports, Music..."
                 />
                 <p className="text-xs text-gray-500">Separate with commas</p>
@@ -521,7 +781,10 @@ export default function StudentSettingsPage() {
                 <Textarea
                   id="goals"
                   value={goals}
-                  onChange={(e) => setGoals(e.target.value)}
+                  onChange={(e) => {
+                    setGoals(e.target.value);
+                    checkForChanges();
+                  }}
                   placeholder="What do you want to become?"
                   rows={1}
                   className="resize-none"
@@ -572,7 +835,10 @@ export default function StudentSettingsPage() {
                 </div>
                 <Switch
                   checked={emailEnabled}
-                  onCheckedChange={setEmailEnabled}
+                  onCheckedChange={(checked) => {
+                    setEmailEnabled(checked);
+                    checkForChanges();
+                  }}
                 />
               </div>
               {emailEnabled && (
@@ -584,7 +850,10 @@ export default function StudentSettingsPage() {
                     </div>
                     <Switch
                       checked={emailAnnouncements}
-                      onCheckedChange={setEmailAnnouncements}
+                      onCheckedChange={(checked) => {
+                        setEmailAnnouncements(checked);
+                        checkForChanges();
+                      }}
                       size="sm"
                     />
                   </div>
@@ -595,7 +864,10 @@ export default function StudentSettingsPage() {
                     </div>
                     <Switch
                       checked={emailAlerts}
-                      onCheckedChange={setEmailAlerts}
+                      onCheckedChange={(checked) => {
+                        setEmailAlerts(checked);
+                        checkForChanges();
+                      }}
                       size="sm"
                     />
                   </div>
@@ -606,7 +878,10 @@ export default function StudentSettingsPage() {
                     </div>
                     <Switch
                       checked={emailReminders}
-                      onCheckedChange={setEmailReminders}
+                      onCheckedChange={(checked) => {
+                        setEmailReminders(checked);
+                        checkForChanges();
+                      }}
                       size="sm"
                     />
                   </div>
@@ -623,7 +898,10 @@ export default function StudentSettingsPage() {
                 </div>
                 <Switch
                   checked={inAppEnabled}
-                  onCheckedChange={setInAppEnabled}
+                  onCheckedChange={(checked) => {
+                    setInAppEnabled(checked);
+                    checkForChanges();
+                  }}
                 />
               </div>
               {inAppEnabled && (
@@ -635,7 +913,10 @@ export default function StudentSettingsPage() {
                     </div>
                     <Switch
                       checked={inAppAnnouncements}
-                      onCheckedChange={setInAppAnnouncements}
+                      onCheckedChange={(checked) => {
+                        setInAppAnnouncements(checked);
+                        checkForChanges();
+                      }}
                       size="sm"
                     />
                   </div>
@@ -646,7 +927,10 @@ export default function StudentSettingsPage() {
                     </div>
                     <Switch
                       checked={inAppAlerts}
-                      onCheckedChange={setInAppAlerts}
+                      onCheckedChange={(checked) => {
+                        setInAppAlerts(checked);
+                        checkForChanges();
+                      }}
                       size="sm"
                     />
                   </div>
@@ -657,7 +941,10 @@ export default function StudentSettingsPage() {
                     </div>
                     <Switch
                       checked={inAppReminders}
-                      onCheckedChange={setInAppReminders}
+                      onCheckedChange={(checked) => {
+                        setInAppReminders(checked);
+                        checkForChanges();
+                      }}
                       size="sm"
                     />
                   </div>
@@ -678,7 +965,10 @@ export default function StudentSettingsPage() {
                     id="quietHoursStart"
                     type="time"
                     value={quietHoursStart}
-                    onChange={(e) => setQuietHoursStart(e.target.value)}
+                    onChange={(e) => {
+                      setQuietHoursStart(e.target.value);
+                      checkForChanges();
+                    }}
                   />
                 </div>
                 <div className="space-y-2">
@@ -687,7 +977,10 @@ export default function StudentSettingsPage() {
                     id="quietHoursEnd"
                     type="time"
                     value={quietHoursEnd}
-                    onChange={(e) => setQuietHoursEnd(e.target.value)}
+                    onChange={(e) => {
+                      setQuietHoursEnd(e.target.value);
+                      checkForChanges();
+                    }}
                   />
                 </div>
               </div>
@@ -791,6 +1084,14 @@ export default function StudentSettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Clerk-style Unsaved Changes Modal */}
+      <UnsavedChangesModal
+        isOpen={hasChanges}
+        isSaving={isSaving}
+        onReset={handleReset}
+        onSave={handleModalSave}
+      />
     </div>
   );
 }
