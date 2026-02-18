@@ -24,7 +24,7 @@ export function parseJsonArray<T = string>(field: string | T[] | null | undefine
  * @param field - The field value (string, object, or null/undefined)
  * @returns Parsed object or empty object on error
  */
-export function parseJsonObject<T = Record<string, any>>(field: string | T | null | undefined): T {
+export function parseJsonObject<T = Record<string, unknown>>(field: string | T | null | undefined): T {
   if (!field) return {} as T;
   try {
     return typeof field === "string" ? JSON.parse(field) : field;
@@ -38,7 +38,7 @@ export function parseJsonObject<T = Record<string, any>>(field: string | T | nul
  * @param value - The value to stringify
  * @returns JSON string or empty string on error
  */
-export function stringifyJson(value: any): string {
+export function stringifyJson(value: unknown): string {
   if (!value) return "";
   try {
     return JSON.stringify(value);

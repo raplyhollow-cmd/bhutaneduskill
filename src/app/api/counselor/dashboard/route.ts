@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     // Get school assignments for this counselor
     const assignments = await db.query.counselorAssignments.findMany({
       where: and(
-        eq(counselorAssignments.counselorId, currentUser.id),
+        eq(counselorAssignments.counselorId, currentUser.id as string),
         eq(counselorAssignments.isActive, true)
       ),
       columns: { schoolId: true },

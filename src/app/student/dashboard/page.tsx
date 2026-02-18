@@ -35,6 +35,7 @@ import Link from "next/link";
 import { fetchStudentDashboard } from "../_actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StudentAIInsights } from "./ai-insights-wrapper";
+import { AssessmentProfileCard } from "@/components/student/assessment-profile-card";
 
 // Force dynamic rendering - this page uses server actions that require headers
 export const dynamic = 'force-dynamic';
@@ -168,7 +169,7 @@ export default async function StudentDashboardPage() {
       iconColor: "text-orange-600",
       badge: assessments.completed === 0 ? "Start Here" : "Recommended",
       badgeColor: "bg-orange-100 text-orange-700",
-      link: "/dashboard/assessment",
+      link: "/student/assessment",
     });
   }
 
@@ -265,6 +266,9 @@ export default async function StudentDashboardPage() {
           fees,
         }}
       />
+
+      {/* Assessment Profile Card - Shows RIASEC, MBTI, Career Matches */}
+      <AssessmentProfileCard />
 
       {/* Quick Stats */}
       <div className="grid md:grid-cols-4 gap-6">

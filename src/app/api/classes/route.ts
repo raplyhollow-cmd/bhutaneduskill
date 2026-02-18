@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
 
     // Teachers can only see their own classes
     if (currentUser.type === "teacher") {
-      conditions.push(eq(classes.teacherId, currentUser.id));
+      conditions.push(eq(classes.teacherId, currentUser.id as string));
     }
 
     let classList: any[];

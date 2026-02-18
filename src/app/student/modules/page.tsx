@@ -8,7 +8,6 @@ import { logger } from "@/lib/logger";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { PortalHeader } from "@/components/shared/portal-sidebar";
 import { ModuleViewer, type LearningModule as ViewerLearningModule } from "@/components/learning";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -431,13 +430,8 @@ export default function StudentModulesPage() {
   // Render viewer
   if (view === "viewer" && loadingModule) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <PortalHeader userType="student" userName="Student" title="Loading Module..." />
-        <div className="lg:ml-64 p-6">
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
-        </div>
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -454,43 +448,40 @@ export default function StudentModulesPage() {
     }));
 
     return (
-      <div className="min-h-screen bg-gray-50">
-        <PortalHeader
-          userType="student"
-          userName="Student"
-          title={selectedModule.title}
-        />
-        <div className="lg:ml-64 p-6">
-          <div className="mb-4">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setView("browse");
-                setSelectedModule(null);
-              }}
-            >
-              Back to Modules
-            </Button>
-          </div>
-
-          <ModuleViewer
-            module={selectedModule}
-            progress={progressData}
-            onUpdateProgress={handleProgressUpdate}
-            onComplete={handleModuleComplete}
-          />
+      <div className="space-y-6">
+        <div className="mb-4">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setView("browse");
+              setSelectedModule(null);
+            }}
+          >
+            Back to Modules
+          </Button>
         </div>
+
+        <ModuleViewer
+          module={selectedModule}
+          progress={progressData}
+          onUpdateProgress={handleProgressUpdate}
+          onComplete={handleModuleComplete}
+        />
       </div>
     );
   }
 
   // Render module list
   return (
-    <div className="min-h-screen bg-gray-50">
-      <PortalHeader userType="student" userName="Student" title="Learning Modules" />
-      <div className="lg:ml-64 p-6">
-        {/* View Toggle and Search */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">Learning Modules</h1>
+        <p className="text-gray-600 mt-1">Browse and enroll in interactive learning modules</p>
+      </div>
+
+      {/* View Toggle and Search */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex gap-2">
             <Button
               variant={view === "browse" ? "default" : "outline"}
@@ -617,7 +608,6 @@ export default function StudentModulesPage() {
             ))}
           </div>
         )}
-      </div>
     </div>
   );
 }

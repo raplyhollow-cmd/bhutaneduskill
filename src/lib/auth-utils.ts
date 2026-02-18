@@ -8,7 +8,7 @@ import { logger } from "@/lib/logger";
  */
 
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
+import { users, type User } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 // ============================================================================
@@ -450,7 +450,7 @@ export function logAuthEvent(
  * @returns Object with user and userId on success, or NextResponse error on failure
  */
 export async function requireAuth(allowedRoles?: string[]): Promise<
-  | { user: any; userId: string }
+  | { user: User; userId: string }
   | { error: string; status: number }
 > {
   const { auth } = await import("@clerk/nextjs/server");

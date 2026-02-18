@@ -391,7 +391,7 @@ export async function POST(request: NextRequest) {
     try {
       const prompt = buildWellnessPrompt({
         ...body,
-        userName: user?.firstName || user?.name || "Student",
+        userName: (user?.firstName as string) || (user?.name as string) || "Student",
       });
 
       const aiResponse = await chatWithGemini(prompt, MOOD_TRACKER_SYSTEM);

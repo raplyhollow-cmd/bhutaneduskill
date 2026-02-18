@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     }
 
     const counselorSchool = await db.query.schools.findFirst({
-      where: eq(schools.id, targetSchoolId),
+      where: eq(schools.id, targetSchoolId as string),
     });
 
     if (!counselorSchool) {

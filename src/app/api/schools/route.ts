@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { schools, users } from "@/lib/db/schema";
 import { eq, like, or, desc } from "drizzle-orm";

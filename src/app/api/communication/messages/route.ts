@@ -447,7 +447,7 @@ export async function POST(req: NextRequest) {
       id: messageId,
       conversationId,
       senderId: userId,
-      senderType: user.type,
+      senderType: user.type as string,
       content: body.content.trim(),
       messageType,
       attachments: body.attachments || null,

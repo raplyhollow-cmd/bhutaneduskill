@@ -11,6 +11,10 @@ import { nanoid } from "nanoid";
  *
  * Handles the setup of Ministry users during registration.
  * Creates a user with type="ministry" if not exists.
+ *
+ * Note: This route intentionally uses Clerk's auth() directly instead of requireAuth()
+ * because it's called during the setup wizard for users who may not exist in the database yet.
+ * The setup wizard pattern requires: 1) Clerk auth (user exists in Clerk) 2) Check database 3) Create if not exists
  */
 
 export async function POST(request: NextRequest) {

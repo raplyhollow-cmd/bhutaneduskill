@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
     };
 
     return NextResponse.json({ defaulters: defaulterList, summary });
-  } catch (error) {
+  } catch (error: unknown) {
     logger.error("Defaulters fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch defaulters" }, { status: 500 });
   }

@@ -6,11 +6,12 @@
  */
 
 import { redirect } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { schools, tenants, districts, users } from "@/lib/db/schema";
 import { desc, count, eq, and } from "drizzle-orm";
 import { SchoolsClient } from "./schools-client";
+import { logger } from "@/lib/logger";
 
 // Helper function to get school stats
 async function getSchoolStats(schoolId: string) {
@@ -32,11 +33,14 @@ async function getSchoolStats(schoolId: string) {
 }
 
 export default async function AdminSchoolsPage() {
-  const { userId } = await auth();
+  const authResult = await requireAuth(['admin']);
 
-  if (!userId) {
+  if ('error' in authResult) {
+    logger.security("unauthorized_admin_schools_access_attempt", { error: authResult.error });
     redirect("/sign-in");
   }
+
+  const { userId, user } = authResult;
 
   // Fetch all schools with their tenant and district info
   const allSchools = await db
@@ -54,6 +58,7 @@ export default async function AdminSchoolsPage() {
       tenantName: tenants.name,
       districtId: schools.districtId,
       districtName: districts.name,
+      isActive: schools.isActive,
     })
     .from(schools)
     .leftJoin(tenants, eq(schools.tenantId, tenants.id))

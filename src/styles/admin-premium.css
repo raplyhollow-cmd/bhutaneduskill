@@ -1,0 +1,174 @@
+/**
+ * Premium Admin Design Tokens
+ * Based on Vercel/Clerk design patterns
+ */
+
+:root {
+  /* ==============================
+     TRANSITION DURATIONS (EXACT)
+     ============================== */
+  --transition-instant: 75ms;   /* Button press feedback */
+  --transition-fast: 150ms;     /* Hover states */
+  --transition-normal: 200ms;   /* Page transitions */
+  --transition-slow: 300ms;     /* Skeleton loading */
+
+  /* ==============================
+     EASING FUNCTIONS (EXACT)
+     ============================== */
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ==============================
+     SHADOW PROGRESSION (EXACT)
+     ============================== */
+  --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+  /* ==============================
+     BORDER RADIUS
+     ============================== */
+  --radius-xs: 0.25rem;   /* 4px */
+  --radius-sm: 0.375rem;  /* 6px */
+  --radius-md: 0.5rem;    /* 8px */
+  --radius-lg: 0.75rem;   /* 12px */
+  --radius-xl: 1rem;      /* Hash 16px */
+
+  /* ==============================
+     TRANSFORM VALUES
+     ============================== */
+  --hover-lift: -2px;     /* translateY(-2px) for hover lift */
+  --press-scale: 0.95;    /* scale(0.95) for button press */
+
+  /* ==============================
+     PREMIUM GRAY SCALE
+     ============================== */
+  --gray-50: #fafafa;
+  --gray-100: #f4f4f5;
+  --gray-200: #e4e4e7;
+  --gray-300: #d4d4d8;
+  --gray-400: #a1a1aa;
+  --gray-500: #71717a;
+  --gray-600: #52525b;
+  --gray-700: #3f3f46;
+  --gray-800: #27272a;
+  --gray-900: #18181b;
+
+  /* ==============================
+     ADMIN PORTAL ACCENTS
+     ============================== */
+  --accent-primary: rgb(236, 72, 153);      /* Pink-500 */
+  --accent-hover: rgb(219, 39, 119);        /* Pink-600 */
+  --accent-light: rgb(244, 214, 232);       /* Pink-100 */
+  --accent-glow: rgba(236, 72, 153, 0.15);
+}
+
+/* ==============================
+   UTILITY CLASSES
+   ============================== */
+
+.premium-card {
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--gray-200);
+  background: white;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-normal) var(--ease-out);
+}
+
+.premium-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: var(--gray-300);
+  transform: translateY(var(--hover-lift));
+}
+
+.premium-button {
+  transition: all var(--transition-fast) var(--ease-out);
+}
+
+.premium-button:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(var(--hover-lift));
+}
+
+.premium-button:active {
+  transform: scale(var(--press-scale));
+  box-shadow: var(--shadow-sm);
+}
+
+/* ==============================
+   TABLE ROW HOVER
+   ============================== */
+.premium-table-row {
+  transition: background-color var(--transition-fast) var(--ease-out);
+}
+
+.premium-table-row:hover {
+  background-color: var(--gray-50);
+}
+
+/* ==============================
+   SKELETON SHIMMER
+   ============================== */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--gray-100) 0%,
+    var(--gray-200) 50%,
+    var(--gray-100) 100%
+  );
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* ==============================
+   LIVE BADGE PULSE
+   ============================== */
+@keyframes pulse-dot {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.live-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* ==============================
+   PAGE TRANSITION
+   ============================== */
+.page-enter {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity var(--transition-normal) var(--ease-out),
+              transform var(--transition-normal) var(--ease-out);
+}
+
+.page-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.page-exit-active {
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: opacity var(--transition-normal) var(--ease-out),
+              transform var(--transition-normal) var(--ease-out);
+}

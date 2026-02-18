@@ -14,7 +14,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { chatWithCareerCoach } from "@/lib/ai/gemini";
 import { db } from "@/lib/db";
-import { users, schools, assessments, careerMatches, riasecResults, classes, enrollments, attendance, homework, homeworkSubmissions, assessmentSubmissions } from "@/lib/db/schema";
+import { users, schools, assessments, careerMatches, riasecResults, mbtiResults, classes, enrollments, attendance, homework, homeworkSubmissions, assessmentSubmissions } from "@/lib/db/schema";
 import { eq, and, desc, count, sql, inArray, gte, lte } from "drizzle-orm";
 import { safeTrackAIInteraction, AI_FEATURE_IDS } from "@/lib/ai/track-interaction";
 
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate insights based on role
-    const insights = await generateInsights(userRole, contextData, user);
+    const insights = await generateInsights(userRole, contextData, user, userId);
 
     // Track AI interaction (non-blocking)
     safeTrackAIInteraction({
@@ -102,12 +102,41 @@ export async function POST(request: NextRequest) {
       generatedAt: new Date().toISOString(),
     });
   } catch (error: unknown) {
-    logger.apiError(error, { route: "/", method: "GET" });
+    logger.apiError(error, { route: "/api/ai/insights", method: "POST" });
     return NextResponse.json(
       { error: "Failed to generate insights", insights: [] },
       { status: 500 }
     );
   }
+}
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+/**
+ * Get description for Holland Code (RIASEC)
+ */
+function getHollandDescription(code: string): string {
+  const descriptions: Record<string, string> = {
+    R: "practical, hands-on work with tools",
+    I: "scientific inquiry and research",
+    A: "creative expression and design",
+    S: "helping and teaching others",
+    E: "leadership and business ventures",
+    C: "organization and data management",
+    RI: "technical problem-solving",
+    RA: "practical creativity",
+    RIS: "technical service to others",
+    IA: "scientific creativity",
+    IS: "research that helps people",
+    AS: "creative support for others",
+    AE: "creative entrepreneurship",
+    SA: "supportive creativity",
+    SE: "helpful leadership",
+    EC: "organized leadership",
+  };
+  return descriptions[code] || "unique interests and abilities";
 }
 
 // ============================================================================
@@ -117,7 +146,8 @@ export async function POST(request: NextRequest) {
 async function generateInsights(
   userRole: string,
   contextData: InsightRequest["contextData"],
-  user: { type: string; firstName: string | null; lastName: string | null }
+  user: { type: string; firstName: string | null; lastName: string | null },
+  userId?: string
 ): Promise<AIInsight[]> {
   switch (userRole) {
     case "admin":
@@ -136,7 +166,7 @@ async function generateInsights(
       return await generateParentInsights(contextData, user);
 
     case "student":
-      return await generateStudentInsights(contextData, user);
+      return await generateStudentInsights(contextData, user, userId);
 
     case "ministry":
       return await generateMinistryInsights(contextData, user);
@@ -209,8 +239,11 @@ async function generateAdminInsights(
       if (!aiResponse.fallback) {
         enhancedMessage = aiResponse.message;
       }
-    } catch (error) {
-      // Use fallback message
+    } catch (error: unknown) {
+      // Use fallback message if AI call fails
+      if (error instanceof Error) {
+        logger.debug("AI enhancement failed, using fallback message:", error.message);
+      }
     }
 
     insights.push({
@@ -420,13 +453,91 @@ async function generateParentInsights(
 // STUDENT INSIGHTS
 // ============================================================================
 
-async function generateStudentInsights(
+/**
+ * Basic student insights (fallback when userId not available)
+ */
+function generateBasicStudentInsights(
   contextData: InsightRequest["contextData"],
   user: { firstName: string | null; lastName: string | null }
+): AIInsight[] {
+  const insights: AIInsight[] = [];
+  const stats = contextData?.stats || {};
+  const userName = user.firstName || "Student";
+
+  const assessmentsCompleted = (stats.assessmentsCompleted as number) || (stats.completedAssessments as number) || 0;
+  const homeworkPending = (stats.homeworkPending as number) || (stats.pendingHomework as number) || 0;
+  const attendanceRate = (stats.attendanceRate as number) || (stats.attendance as number) || 0;
+
+  // Assessment insight
+  if (assessmentsCompleted === 0) {
+    insights.push({
+      type: "tip",
+      title: "Start Your Career Discovery",
+      message: `Hi ${userName}! Complete your first career assessment to discover your strengths and find career paths that match your personality.`,
+      actions: [{ label: "Take RIASEC Assessment", href: "/student/assessment/riasec" }],
+    });
+  } else if (assessmentsCompleted < 3) {
+    insights.push({
+      type: "info",
+      title: "More Assessments Available",
+      message: `You've completed ${assessmentsCompleted} assessment${assessmentsCompleted > 1 ? "s" : ""}. Complete more to get better career matches!`,
+      actions: [{ label: "Continue Assessments", href: "/student/assessment" }],
+    });
+  }
+
+  // Homework insight
+  if (homeworkPending > 0) {
+    insights.push({
+      type: homeworkPending > 3 ? "warning" : "info",
+      title: `${homeworkPending} Homework Assignment${homeworkPending > 1 ? "s" : ""} Pending`,
+      message: homeworkPending > 3
+        ? `You have ${homeworkPending} pending assignments. Prioritize completing them this weekend.`
+        : `You have ${homeworkPending} pending assignment${homeworkPending > 1 ? "s" : ""}. Stay on track!`,
+      actions: [{ label: "View Homework", href: "/student/homework" }],
+    });
+  }
+
+  // Attendance insight
+  if (attendanceRate < 75) {
+    insights.push({
+      type: "warning",
+      title: "Attendance Needs Attention",
+      message: `Your attendance is ${attendanceRate}%. Regular attendance is crucial for academic success.`,
+      actions: [{ label: "View Attendance", href: "/student/attendance" }],
+    });
+  } else if (attendanceRate >= 85) {
+    insights.push({
+      type: "success",
+      title: "Excellent Attendance!",
+      message: `Your ${attendanceRate}% attendance shows great dedication. Keep it up!`,
+      actions: [{ label: "View Calendar", href: "/student/attendance" }],
+    });
+  }
+
+  // Journal suggestion
+  insights.push({
+    type: "tip",
+    title: "Start Journaling",
+    message: "Begin a journaling practice to track your thoughts, feelings, and goals. AI will analyze your entries to provide personalized emotional insights.",
+    actions: [{ label: "Start Journal", href: "/student/journal/new" }],
+  });
+
+  return insights;
+}
+
+async function generateStudentInsights(
+  contextData: InsightRequest["contextData"],
+  user: { firstName: string | null; lastName: string | null },
+  userId?: string // Added userId parameter
 ): Promise<AIInsight[]> {
   const insights: AIInsight[] = [];
   const stats = contextData?.stats || {};
   const userName = user.firstName || "Student";
+
+  // If no userId provided, return basic insights
+  if (!userId) {
+    return generateBasicStudentInsights(contextData, user);
+  }
 
   // Get student stats
   const assessmentsCompleted = (stats.assessmentsCompleted as number) || (stats.completedAssessments as number) || 0;
@@ -434,6 +545,64 @@ async function generateStudentInsights(
   const attendanceRate = (stats.attendanceRate as number) || (stats.attendance as number) || 0;
   const careerMatches = (stats.careerMatches as number) || (stats.topMatches as number) || 0;
   const averageScore = (stats.averageScore as number) || 0;
+
+  // Fetch additional data for AI enhancement
+  let riasecCode: string | null = null;
+  let mbtiType: string | null = null;
+  let journalEntryCount = 0;
+  let recentJournalMood: string | null = null;
+  let userInterests: string[] = [];
+  let userGoals: string[] = [];
+
+  try {
+    // Get RIASEC result
+    const riasecResult = await db
+      .select({ hollandCode: riasecResults.hollandCode })
+      .from(riasecResults)
+      .where(eq(riasecResults.userId, userId))
+      .limit(1);
+
+    if (riasecResult.length > 0) {
+      riasecCode = riasecResult[0].hollandCode;
+    }
+
+    // Get MBTI result
+    const mbtiResult = await db
+      .select({ personalityType: mbtiResults.personalityType })
+      .from(mbtiResults)
+      .where(eq(mbtiResults.userId, userId))
+      .limit(1);
+
+    if (mbtiResult.length > 0) {
+      mbtiType = mbtiResult[0].personalityType;
+    }
+
+    // Get journal stats (for emotional insights)
+    // TODO: Fix journalEntries table reference
+    // const journalStats = await db
+    //   .select({ count: count() })
+    //   .from(journalEntries)
+    //   .innerJoin(journals, eq(journalEntries.journalId, journals.id))
+    //   .where(eq(journals.userId, userId))
+    //   .limit(1);
+
+    journalEntryCount = 0; // Temporarily set to 0
+
+    // Get user interests and goals
+    const userProfile = await db
+      .select({ interests: users.interests, goals: users.goals })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (userProfile.length > 0) {
+      userInterests = (userProfile[0].interests as string[]) || [];
+      userGoals = (userProfile[0].goals as string[]) || [];
+    }
+  } catch (error) {
+    logger.debug("Failed to fetch additional student data for AI insights:", error);
+    // Continue with basic insights
+  }
 
   // Insight 1: Career Discovery (based on assessments)
   if (assessmentsCompleted === 0) {
@@ -456,25 +625,43 @@ async function generateStudentInsights(
       ],
     });
   } else if (careerMatches > 0) {
+    // Build AI context with assessment data
+    let aiContext = `As a career coach for a student named ${userName} who has completed ${assessmentsCompleted} assessments and has ${careerMatches} career matches.`;
+
+    if (riasecCode) {
+      aiContext += ` Their Holland Code is ${riasecCode}, indicating ${getHollandDescription(riasecCode)}.`;
+    }
+    if (mbtiType) {
+      aiContext += ` Their MBTI personality type is ${mbtiType}.`;
+    }
+    if (userInterests.length > 0) {
+      aiContext += ` Their interests include: ${userInterests.slice(0, 3).join(", ")}.`;
+    }
+    if (userGoals.length > 0) {
+      aiContext += ` Their goals include: ${userGoals[0]}.`;
+    }
+
+    aiContext += " What personalized career guidance would you give them? Keep it brief and encouraging.";
+
     // Try AI-enhanced career insight
-    let enhancedMessage = `Based on your assessments, you have ${careerMatches} career match${careerMatches > 1 ? "es" : ""}. Explore your top matches to learn more about suitable careers.`;
+    let enhancedMessage = `Based on your ${riasecCode ? `${riasecCode} profile` : "assessments"}, you have ${careerMatches} career match${careerMatches > 1 ? "es" : ""}. ${riasecCode ? getHollandDescription(riasecCode) : ""}`;
 
     try {
-      const { chatWithCareerCoach } = await import("@/lib/ai/gemini");
-      const aiResponse = await chatWithCareerCoach(
-        `As a career coach for a student named ${userName} who has ${assessmentsCompleted} completed assessments and ${careerMatches} career matches, what personalized career guidance would you give them? Keep it brief and encouraging.`,
-        {
-          userName,
-          userRole: "student",
-          completedAssessments: assessmentsCompleted,
-        }
-      );
+      const aiResponse = await chatWithCareerCoach(aiContext, {
+        userName,
+        userRole: "student",
+        completedAssessments: assessmentsCompleted,
+        hollandCode: riasecCode,
+        mbtiType: mbtiType,
+      });
 
       if (!aiResponse.fallback) {
         enhancedMessage = aiResponse.message;
       }
-    } catch (error) {
-      // Use fallback message
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        logger.debug("AI enhancement failed, using fallback message:", error.message);
+      }
     }
 
     insights.push({
@@ -484,6 +671,56 @@ async function generateStudentInsights(
       actions: [
         { label: "View Career Matches", href: "/student/careers" },
         { label: "Explore Colleges", href: "/student/rub" },
+      ],
+    });
+  }
+
+  // Insight 1.5: Journal-Based Emotional Insight (NEW)
+  if (journalEntryCount >= 3) {
+    let journalMessage = `You've written ${journalEntryCount} journal entries. Reflecting on your thoughts and feelings is a great habit for emotional awareness!`;
+
+    // Try AI analysis of journal patterns
+    try {
+      const journalContext = `As a supportive counselor for a student named ${userName} who has written ${journalEntryCount} journal entries${riasecCode ? ` and has a ${riasecCode} personality type` : ""}. What encouraging insight would you give them about their journaling practice and emotional growth? Keep it brief and positive (under 100 words).`;
+
+      const aiResponse = await chatWithCareerCoach(journalContext, {
+        userName,
+        userRole: "student",
+        mbtiType: mbtiType,
+      });
+
+      if (!aiResponse.fallback) {
+        journalMessage = aiResponse.message;
+      }
+    } catch (error) {
+      logger.debug("Journal AI analysis failed, using fallback:", error);
+    }
+
+    insights.push({
+      type: "success",
+      title: "Your Journal Journey",
+      message: journalMessage,
+      actions: [
+        { label: "View Journal", href: "/student/journal" },
+        { label: "Write Entry", href: "/student/journal/new" },
+      ],
+    });
+  } else if (journalEntryCount > 0 && journalEntryCount < 3) {
+    insights.push({
+      type: "info",
+      title: "Keep Journaling!",
+      message: `You've started journaling (${journalEntryCount} entry${journalEntryCount > 1 ? "s" : ""} so far). Write 2-3 more entries to unlock AI-powered emotional insights based on your reflections.`,
+      actions: [
+        { label: "Write Entry", href: "/student/journal/new" },
+      ],
+    });
+  } else {
+    insights.push({
+      type: "tip",
+      title: "Start Journaling",
+      message: "Begin a journaling practice to track your thoughts, feelings, and goals. AI will analyze your entries to provide personalized emotional insights.",
+      actions: [
+        { label: "Start Journal", href: "/student/journal/new" },
       ],
     });
   }
@@ -642,8 +879,11 @@ async function generateMinistryInsights(
       if (!aiResponse.fallback) {
         enhancedMessage = aiResponse.message;
       }
-    } catch (error) {
-      // Use fallback message
+    } catch (error: unknown) {
+      // Use fallback message if AI call fails
+      if (error instanceof Error) {
+        logger.debug("AI enhancement failed, using fallback message:", error.message);
+      }
     }
 
     insights.push({

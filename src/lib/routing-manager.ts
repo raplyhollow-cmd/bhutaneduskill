@@ -38,6 +38,7 @@ import {
   Fingerprint,
   CreditCard,
   GraduationCap as GraduationCapIcon,
+  HeartPulse,
 } from "lucide-react";
 
 // ============================================================================
@@ -49,7 +50,7 @@ export type UserRole = "student" | "teacher" | "parent" | "counselor" | "admin" 
 export interface RouteConfig {
   path: string;
   label: string;
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   description?: string;
   badge?: string;
   requiresAuth: boolean;
@@ -67,7 +68,7 @@ export interface PortalConfig {
     primary: string;
     gradient: string;
     gradientInline: string;
-    icon: any;
+    icon: React.ComponentType<{ className?: string }>;
   };
   routes: RouteConfig[];
 }
@@ -201,6 +202,14 @@ export const portalConfigs: Record<UserRole, PortalConfig> = {
         requiresAuth: true,
         allowedRoles: ["student"],
         dataExportable: true,
+      },
+      {
+        path: "/student/medical",
+        label: "Medical Records",
+        icon: HeartPulse,
+        description: "View medical history and vaccinations",
+        requiresAuth: true,
+        allowedRoles: ["student"],
       },
       {
         path: "/student/journal",
@@ -396,6 +405,14 @@ export const portalConfigs: Record<UserRole, PortalConfig> = {
         requiresAuth: true,
         allowedRoles: ["parent"],
         dataExportable: true,
+      },
+      {
+        path: "/parent/medical",
+        label: "Medical Records",
+        icon: HeartPulse,
+        description: "View your child's medical history",
+        requiresAuth: true,
+        allowedRoles: ["parent"],
       },
       {
         path: "/parent/messages",
@@ -683,6 +700,15 @@ export const portalConfigs: Record<UserRole, PortalConfig> = {
         label: "Counselors",
         icon: UserCheck,
         description: "Manage counselors",
+        requiresAuth: true,
+        allowedRoles: ["school-admin", "admin"],
+        dataExportable: true,
+      },
+      {
+        path: "/school-admin/infirmary",
+        label: "Infirmary",
+        icon: HeartPulse,
+        description: "Medical records and health management",
         requiresAuth: true,
         allowedRoles: ["school-admin", "admin"],
         dataExportable: true,

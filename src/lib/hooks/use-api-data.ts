@@ -16,7 +16,7 @@ interface ApiDataState<T> {
 
 interface UseApiDataOptions<T> {
   fetchFn: () => Promise<T>;
-  deps?: any[];
+  deps?: unknown[];
   enabled?: boolean;
   fallbackData?: T;
 }

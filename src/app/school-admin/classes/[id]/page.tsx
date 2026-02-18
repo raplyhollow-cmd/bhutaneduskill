@@ -42,6 +42,7 @@ import {
   Download,
 } from "lucide-react";
 import Link from "next/link";
+import { ClassDetailClient } from "@/components/school-admin/class-detail-client";
 
 interface ClassDetailPageProps {
   params: Promise<{ id: string }>;
@@ -101,11 +102,15 @@ interface HomeworkItem {
 
 interface ClassInfo {
   id: string;
+  name?: string | null;
   grade: number;
   section: string;
-  academicYear: string;
-  teacherId: string;
-  schoolId: string;
+  academicYear?: string | null;
+  teacherId?: string | null;
+  schoolId?: string | null;
+  roomNumber?: string | null;
+  capacity?: number | null;
+  homeroomTeacherId?: string | null;
 }
 
 async function getClassData(classId: string) {
@@ -233,28 +238,23 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
   );
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/school-admin/classes">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Classes
-            </Link>
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Grade {classInfo.grade} - Section {classInfo.section}</h1>
-            <p className="text-gray-500">Class ID: {classInfo.id} | Academic Year: {classInfo.academicYear}</p>
+    <ClassDetailClient classData={classInfo}>
+      <div className="space-y-6 pb-20">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/school-admin/classes">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Classes
+              </Link>
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Grade {classInfo.grade} - Section {classInfo.section}</h1>
+              <p className="text-gray-500">Class ID: {classInfo.id} | Academic Year: {classInfo.academicYear}</p>
+            </div>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline">
-            <Edit className="w-4 h-4 mr-2" />
-            Edit Class
-          </Button>
-        </div>
-      </div>
 
       {/* Quick Stats */}
       <div className="grid md:grid-cols-4 gap-4">
@@ -728,5 +728,6 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
         </CardContent>
       </Card>
     </div>
+    </ClassDetailClient>
   );
 }

@@ -308,7 +308,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Create notification
-    const notificationId = `notif-${nanoid()}`;
+    const notificationId: string = `notif-${nanoid()}`;
+    const senderName: string = (user.name as string) ||
+      ((user.firstName as string) && (user.lastName as string) ? `${user.firstName} ${user.lastName}` : "Admin");
+    const senderRole: string = (user.type as string) || "admin";
+
     const notification = await db
       .insert(notifications)
       .values({
@@ -323,8 +327,8 @@ export async function POST(request: NextRequest) {
         priority: body.priority || "normal",
         status,
         senderId: userId,
-        senderName: user.name || user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : "Admin",
-        senderRole: user.type || "admin",
+        senderName: senderName,
+        senderRole: senderRole,
         scheduledFor,
         actionUrl: body.actionUrl || null,
         actionLabel: body.actionLabel || null,

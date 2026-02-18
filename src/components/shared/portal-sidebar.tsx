@@ -35,8 +35,11 @@ import {
   Megaphone,
   Shield,
   Package,
+  CalendarClock,
+  HeartPulse,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@clerk/nextjs";
 
 interface SidebarProps {
   userType: "student" | "teacher" | "parent" | "counselor" | "admin" | "school-admin" | "ministry";
@@ -55,6 +58,7 @@ const navigationItems = {
     { name: "Progress", href: "/student/progress", icon: TrendingUp },
     { name: "Fees", href: "/student/fees", icon: DollarSign },
     { name: "Tuition", href: "/student/tuition", icon: GraduationCap },
+    { name: "Medical", href: "/student/medical", icon: HeartPulse },
     { name: "Announcements", href: "/student/announcements", icon: Megaphone },
     { name: "Assessments", href: "/dashboard/assessment", icon: ClipboardList },
     { name: "Career Matches", href: "/dashboard/careers", icon: Briefcase },
@@ -73,6 +77,7 @@ const navigationItems = {
     { name: "Homework", href: "/teacher/homework", icon: ClipboardList },
     { name: "Learning", href: "/teacher/learning", icon: Video },
     { name: "Attendance", href: "/teacher/attendance", icon: CheckCircle },
+    { name: "Leave", href: "/teacher/leave", icon: CalendarClock },
     { name: "Assessments", href: "/teacher/assessments", icon: ClipboardList },
     { name: "Reports", href: "/teacher/reports", icon: BarChart3 },
     { name: "Schedule", href: "/teacher/schedule", icon: Calendar },
@@ -81,6 +86,7 @@ const navigationItems = {
   parent: [
     { name: "Dashboard", href: "/parent/dashboard", icon: Home },
     { name: "My Children", href: "/parent/children", icon: Users },
+    { name: "Medical", href: "/parent/medical", icon: HeartPulse },
     { name: "Progress", href: "/parent/progress", icon: BarChart3 },
     { name: "Careers", href: "/parent/careers", icon: Briefcase },
     { name: "Assessments", href: "/parent/assessments", icon: ClipboardList },
@@ -123,10 +129,12 @@ const navigationItems = {
     { name: "Timetable", href: "/school-admin/timetable", icon: Calendar },
     { name: "Attendance", href: "/school-admin/attendance", icon: CheckCircle },
     { name: "Homework", href: "/school-admin/homework", icon: ClipboardList },
+    { name: "Leave Approvals", href: "/school-admin/leave-approvals", icon: CalendarClock },
     { name: "Results", href: "/school-admin/results", icon: BarChart3 },
     { name: "Fees", href: "/school-admin/fees", icon: Briefcase },
     { name: "Tuition", href: "/school-admin/tuition", icon: Award },
     { name: "Inventory", href: "/school-admin/inventory", icon: Package },
+    { name: "Infirmary", href: "/school-admin/infirmary", icon: HeartPulse },
     { name: "Counselors", href: "/school-admin/counselors", icon: MessageSquare },
     { name: "Announcements", href: "/school-admin/announcements", icon: Megaphone },
     { name: "Reports", href: "/school-admin/reports", icon: BarChart3 },
@@ -187,16 +195,17 @@ const portalNames = {
 export function PortalSidebar({ userType, userName, userImage }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const { signOut } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
 
-  // Handle sign out - navigate to sign-out page which uses Clerk's SignedOut component
-  const handleSignOut = () => {
+  // Handle sign out - use Clerk's signOut directly to avoid redirect loop
+  const handleSignOut = async () => {
     if (isSigningOut) return;
     setIsSigningOut(true);
     setIsMobileMenuOpen(false);
-    // Navigate to sign-out page which properly signs out with Clerk
-    router.push('/sign-out');
+    // Call Clerk's signOut directly with redirect
+    await signOut({ redirectUrl: '/' });
   };
 
   // Close mobile menu when screen size changes to desktop

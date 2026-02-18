@@ -19,6 +19,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { AddSchoolModal } from "@/components/admin/add-school-modal";
+import { EditSchoolModal } from "@/components/admin/edit-school-modal";
 
 interface School {
   id: string;
@@ -34,6 +35,7 @@ interface School {
   tenantName: string;
   districtId: string;
   districtName: string;
+  isActive?: boolean;
   stats: {
     students: number;
     teachers: number;
@@ -60,10 +62,22 @@ export function SchoolsClient({
 }: SchoolsClientProps) {
   const router = useRouter();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingSchool, setEditingSchool] = useState<School | null>(null);
 
   const handleModalSuccess = () => {
     // Refresh the page to show the new school
     router.refresh();
+  };
+
+  const handleEditClick = (school: School) => {
+    setEditingSchool(school);
+    setIsEditModalOpen(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
+    setEditingSchool(null);
   };
 
   return (
@@ -333,6 +347,7 @@ export function SchoolsClient({
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 hover:bg-pink-50 hover:text-pink-600"
+                            onClick={() => router.push(`/admin/schools/${school.id}`)}
                           >
                             <Eye className="w-4 h-4" />
                           </Button>
@@ -340,6 +355,7 @@ export function SchoolsClient({
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 hover:bg-pink-50 hover:text-pink-600"
+                            onClick={() => handleEditClick(school)}
                           >
                             <Edit className="w-4 h-4" />
                           </Button>
@@ -452,6 +468,14 @@ export function SchoolsClient({
         open={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onSuccess={handleModalSuccess}
+      />
+
+      {/* Edit School Modal */}
+      <EditSchoolModal
+        open={isEditModalOpen}
+        onClose={handleCloseEditModal}
+        onSuccess={handleModalSuccess}
+        school={editingSchool}
       />
     </div>
   );

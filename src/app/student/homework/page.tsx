@@ -7,7 +7,6 @@ import { logger } from "@/lib/logger";
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { PortalHeader } from "@/components/shared/portal-sidebar";
 import { HomeworkSubmission, type HomeworkAnswer, type HomeworkSubmissionMetadata } from "@/components/homework";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -222,9 +221,7 @@ export default function StudentHomeworkPage() {
 
   if (viewSubmission) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <PortalHeader userType="student" userName="Student" title="Submission Details" />
-
+      <div className="space-y-6">
         {notification && (
           <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 ${
             notification.type === "success" ? "bg-green-500 text-white" : "bg-red-500 text-white"
@@ -233,7 +230,7 @@ export default function StudentHomeworkPage() {
           </div>
         )}
 
-        <div className="lg:ml-64 p-6 max-w-4xl mx-auto">
+        <div className="max-w-4xl">
           <div className="mb-4">
             <Button variant="outline" onClick={() => setViewSubmission(null)}>
               ← Back to Homework
@@ -362,9 +359,7 @@ export default function StudentHomeworkPage() {
     };
 
     return (
-      <div className="min-h-screen bg-gray-50">
-        <PortalHeader userType="student" userName="Student" title={selectedHomework.title} />
-
+      <div className="space-y-6">
         {/* Notification */}
         {notification && (
           <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg flex items-center gap-2 ${
@@ -374,7 +369,7 @@ export default function StudentHomeworkPage() {
           </div>
         )}
 
-        <div className="lg:ml-64 p-6">
+        <div>
           <div className="mb-4">
             <Button variant="outline" onClick={() => setSelectedHomework(null)} disabled={submitting}>
               ← Back to Homework
@@ -412,8 +407,12 @@ export default function StudentHomeworkPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <PortalHeader userType="student" userName="Student" title="My Homework" />
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">My Homework</h1>
+        <p className="text-gray-600 mt-1">View and submit your homework assignments</p>
+      </div>
 
       {/* Notification */}
       {notification && (
@@ -424,9 +423,7 @@ export default function StudentHomeworkPage() {
         </div>
       )}
 
-      <div className="lg:ml-64 p-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold mb-4">My Homework</h1>
+      <div>
 
           {/* Filters */}
           <div className="flex flex-wrap gap-4">
@@ -597,6 +594,5 @@ export default function StudentHomeworkPage() {
           </div>
         )}
       </div>
-    </div>
   );
 }

@@ -12,8 +12,19 @@ import {
   Menu,
   X,
   GraduationCap,
+  User,
+  ChevronDown,
 } from "lucide-react";
 import { PORTAL_CONFIG, MOBILE_SETTINGS, type PortalType } from "@/config/portal-config";
+import { useAuth } from "@clerk/nextjs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface UniversalMobileSidebarProps {
   portalType: PortalType;
@@ -38,18 +49,20 @@ export function UniversalMobileSidebar({
 }: UniversalMobileSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const { signOut } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   const config = PORTAL_CONFIG[portalType];
   const settings = MOBILE_SETTINGS;
 
-  // Handle sign out
-  const handleSignOut = () => {
+  // Handle sign out - use Clerk's signOut directly to avoid redirect loop
+  const handleSignOut = async () => {
     if (isSigningOut) return;
     setIsSigningOut(true);
     setIsMobileMenuOpen(false);
-    router.push('/sign-out');
+    // Call Clerk's signOut directly with redirect
+    await signOut({ redirectUrl: '/' });
   };
 
   // Close mobile menu when screen size changes to desktop
@@ -357,6 +370,7 @@ export function UniversalMobileSidebar({
  * Universal Portal Header Component
  *
  * Consistent header across all portals with portal-specific branding
+ * Includes profile dropdown menu with settings and sign out options
  */
 export function UniversalPortalHeader({
   portalType,
@@ -370,6 +384,11 @@ export function UniversalPortalHeader({
   subtitle?: string;
 }) {
   const config = PORTAL_CONFIG[portalType];
+  const { signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut({ redirectUrl: '/' });
+  };
 
   return (
     <header className="bg-white/95 backdrop-blur-md border-b border-gray-200 sticky top-0 z-30 shadow-sm">
@@ -401,31 +420,68 @@ export function UniversalPortalHeader({
               </Button>
             </motion.div>
 
-            {/* User menu */}
+            {/* User dropdown menu */}
             {userName && (
-              <motion.div
-                className="flex items-center gap-3"
-                whileHover={{ scale: 1.02 }}
-                transition={{ type: "spring", stiffness: 300 }}
-              >
-                <div className="text-right hidden sm:block">
-                  <p className="font-medium text-gray-900">{userName}</p>
-                  <p className="text-xs text-gray-600 capitalize">
-                    {portalType.replace("-", " ")}
-                  </p>
-                </div>
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold shadow-md min-h-[40px] min-w-[40px]"
-                  style={{ background: config.gradient }}
-                >
-                  {userName
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .toUpperCase()
-                    .slice(0, 2)}
-                </div>
-              </motion.div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <motion.button
+                    className="flex items-center gap-3 focus:outline-none"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    transition={{ type: "spring", stiffness: 300 }}
+                  >
+                    <div className="text-right hidden sm:block">
+                      <p className="font-medium text-gray-900">{userName}</p>
+                      <p className="text-xs text-gray-600 capitalize">
+                        {portalType.replace("-", " ")}
+                      </p>
+                    </div>
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold shadow-md min-h-[40px] min-w-[40px]"
+                      style={{ background: config.gradient }}
+                    >
+                      {userName
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .toUpperCase()
+                        .slice(0, 2)}
+                    </div>
+                    <ChevronDown className="w-4 h-4 text-gray-500 hidden sm:block" />
+                  </motion.button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel>
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{userName}</p>
+                      <p className="text-xs leading-none text-muted-foreground capitalize">
+                        {portalType.replace("-", " ")}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <a href={`/${portalType}/settings`} className="flex items-center gap-2 cursor-pointer">
+                      <User className="w-4 h-4" />
+                      <span>Profile</span>
+                    </a>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <a href={`/${portalType}/settings`} className="flex items-center gap-2 cursor-pointer">
+                      <Settings className="w-4 h-4" />
+                      <span>Settings</span>
+                    </a>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={handleSignOut}
+                    className="text-red-600 focus:text-red-600 cursor-pointer"
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    <span>Sign Out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </motion.div>
         </div>

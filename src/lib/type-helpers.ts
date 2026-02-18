@@ -153,7 +153,7 @@ export const pushIfDefined = (
  *   { loading: <div>Loading...</div> }
  * );
  */
-export function createClientComponent<T extends ComponentType<any>>(
+export function createClientComponent<T extends ComponentType<Record<string, unknown>>>(
   importFn: () => Promise<{ default: T }>,
   options?: {
     loading?: React.ReactNode;

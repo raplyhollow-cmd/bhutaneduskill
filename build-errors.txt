@@ -1,22 +1,4 @@
-
-> career-guidance@0.1.0 build
-> next build
-
-▲ Next.js 16.1.6 (Turbopack)
-- Environments: .env.local, .env
-- Experiments (use with caution):
-  · cpus: 2
-
-⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
-  Creating an optimized production build ...
-✓ Compiled successfully in 55s
-  Running TypeScript ...
-Failed to compile.
-
-./src/components/reports/index.ts:1:10
-Type error: Module '"./report-card"' has no exported member 'ReportCard'.
-
-[0m[31m[1m>[22m[39m[90m 1 |[39m [36mexport[39m { [33mReportCard[39m[33m,[39m [33mReportCardGenerator[39m[33m,[39m type [33mReportCardData[39m[33m,[39m type [33mStudentResult[39m } [36mfrom[39m [32m"./report-card"[39m[33m;[39m
- [90m   |[39m          [31m[1m^[22m[39m
- [90m 2 |[39m[0m
-Next.js build worker exited with code: 1 and signal: null
+src/lib/branding/school-branding.ts(216,9): error TS2322: Type 'string' is not assignable to type 'SQL<unknown> | PgColumn<ColumnBaseConfig<ColumnDataType, string>, {}, {}> | Record<string, unknown>'.
+src/lib/data-export/import.ts(8,35): error TS2305: Module '"@/lib/db/schema"' has no exported member 'students'.
+src/lib/data-export/import.ts(190,35): error TS2339: Property 'academicYear' does not exist on type 'PgTableWithColumns<{ name: "attendance"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "attendance"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; notNull: true; hasDefault: false; ... 6 more ...; generated: undefined; }, {}, {}>; ... 11 more ...; updatedAt: PgCol...'.
+src/lib/data-export/import.ts(212,38): error TS2339: Property 'schoolId' does not exist on type 'PgTableWithColumns<{ name: "exam_results_enhanced"; schema: undefined; columns: { id: PgColumn<{ name: "id"; tableName: "exam_results_enhanced"; dataType: "string"; columnType: "PgText"; data: string; driverParam: string; ... 8 more ...; generated: undefined; }, {}, {}>; ... 25 more ...; updatedAt: PgColumn<...>; };...'.

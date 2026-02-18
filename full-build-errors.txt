@@ -1,0 +1,56 @@
+
+> career-guidance@0.1.0 build
+> next build
+
+▲ Next.js 16.1.6 (Turbopack)
+- Environments: .env
+- Experiments (use with caution):
+  · cpus: 2
+
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+  Creating an optimized production build ...
+
+> Build error occurred
+Error: Turbopack build failed with 3 errors:
+./src/app/student/homework/page.tsx:597:6
+Parsing ecmascript source code failed
+[0m [90m 595 |[39m         )}
+ [90m 596 |[39m       [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+[31m[1m>[22m[39m[90m 597 |[39m     [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+ [90m     |[39m      [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 598 |[39m   )[33m;[39m
+ [90m 599 |[39m }
+ [90m 600 |[39m[0m
+
+Unterminated regexp literal
+
+
+./src/app/student/learning/[id]/certificate/page.tsx:393:6
+Parsing ecmascript source code failed
+[0m [90m 391 |[39m         )}
+ [90m 392 |[39m       [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+[31m[1m>[22m[39m[90m 393 |[39m     [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+ [90m     |[39m      [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 394 |[39m   )[33m;[39m
+ [90m 395 |[39m }
+ [90m 396 |[39m[0m
+
+Unterminated regexp literal
+
+
+./src/app/student/results/page.tsx:657:6
+Parsing ecmascript source code failed
+[0m [90m 655 |[39m         [33m<[39m[33m/[39m[33mCard[39m[33m>[39m
+ [90m 656 |[39m       [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+[31m[1m>[22m[39m[90m 657 |[39m     [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+ [90m     |[39m      [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+ [90m 658 |[39m   )[33m;[39m
+ [90m 659 |[39m }
+ [90m 660 |[39m[0m
+
+Unterminated regexp literal
+
+
+    at <unknown> (./src/app/student/homework/page.tsx:597:6)
+    at <unknown> (./src/app/student/learning/[id]/certificate/page.tsx:393:6)
+    at <unknown> (./src/app/student/results/page.tsx:657:6)

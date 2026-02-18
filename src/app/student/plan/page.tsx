@@ -6,7 +6,6 @@
  */
 
 import { useState } from "react";
-import { PortalHeader } from "@/components/shared/portal-sidebar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -265,10 +264,8 @@ function StudentPlanPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <PortalHeader userType="student" userName="Student" title="My Career Plan" />
-      <div className="lg:ml-64 p-6">
-        {/* Header Banner */}
+    <div className="space-y-6">
+      {/* Header Banner */}
         <Card className="mb-6" style={{ background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)' }}>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between text-white">
@@ -366,7 +363,7 @@ function StudentPlanPage() {
                     <CardTitle>Top Career Matches</CardTitle>
                     <CardDescription>Based on your assessment results</CardDescription>
                   </div>
-                  <Link href="/dashboard/careers">
+                  <Link href="/student/careers">
                     <Button variant="outline" size="sm">View All</Button>
                   </Link>
                 </div>
@@ -424,7 +421,7 @@ function StudentPlanPage() {
                     </div>
                   ))}
                 </div>
-                <Link href="/dashboard/skills">
+                <Link href="/student/skills">
                   <Button variant="outline" className="w-full mt-4">
                     View All Skills
                     <ArrowRight className="w-4 h-4 ml-2" />
@@ -473,13 +470,13 @@ function StudentPlanPage() {
                         ))}
                       </div>
                     </div>
-                    <Link href="/dashboard/assessment/riasec">
+                    <Link href="/student/assessment/riasec">
                       <Button variant="outline" size="sm" className="w-full">View Full Results</Button>
                     </Link>
                   </CardContent>
                 ) : (
                   <CardContent>
-                    <Link href="/dashboard/assessment/riasec">
+                    <Link href="/student/assessment/riasec">
                       <Button className="w-full">Take Assessment</Button>
                     </Link>
                   </CardContent>
@@ -511,13 +508,13 @@ function StudentPlanPage() {
                         </Badge>
                       ))}
                     </div>
-                    <Link href="/dashboard/assessment/mbti">
+                    <Link href="/student/assessment/mbti">
                       <Button variant="outline" size="sm" className="w-full">View Full Results</Button>
                     </Link>
                   </CardContent>
                 ) : (
                   <CardContent>
-                    <Link href="/dashboard/assessment/mbti">
+                    <Link href="/student/assessment/mbti">
                       <Button className="w-full">Take Assessment</Button>
                     </Link>
                   </CardContent>
@@ -534,7 +531,7 @@ function StudentPlanPage() {
                   <CardDescription>Discover your behavioral style</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Link href="/dashboard/assessment/disc">
+                  <Link href="/student/assessment/disc">
                     <Button className="w-full">Take Assessment</Button>
                   </Link>
                 </CardContent>
@@ -546,7 +543,7 @@ function StudentPlanPage() {
                   <Brain className="w-12 h-12 text-gray-300 mb-3" />
                   <h3 className="font-semibold text-gray-900">More Assessments</h3>
                   <p className="text-sm text-gray-500 mb-4">Explore additional assessments</p>
-                  <Link href="/dashboard/assessment">
+                  <Link href="/student/assessment">
                     <Button variant="outline" size="sm">Browse All</Button>
                   </Link>
                 </CardContent>
@@ -717,7 +714,6 @@ function StudentPlanPage() {
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
     </div>
   );
 }

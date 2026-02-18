@@ -27,7 +27,7 @@ export interface Question {
 
 export interface StudentAnswer {
   questionId: string;
-  answer: string | number | Array<any>; // Can be various types
+  answer: string | number | Array<unknown>; // Can be various types
   timeSpent?: number; // Seconds
   timestamp?: string;
 }

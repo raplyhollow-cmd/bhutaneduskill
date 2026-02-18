@@ -134,7 +134,7 @@ export async function GET(req: Request) {
     const schoolId = url.searchParams.get("schoolId");
 
     // If user is school-admin, use their school ID
-    const targetSchoolId = user.type === 'school-admin' ? user.schoolId : schoolId;
+    const targetSchoolId: string | null = user.type === 'school-admin' ? (user.schoolId as string | null) : schoolId;
 
     if (!targetSchoolId) {
       return NextResponse.json(

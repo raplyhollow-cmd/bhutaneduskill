@@ -51,7 +51,11 @@
       "Bash(grep:*)",
       "Bash(python3:*)",
       "Bash(npx next build:*)",
-      "Bash(npx eslint:*)"
+      "Bash(npx eslint:*)",
+      "Bash(awk:*)",
+      "Bash(tr:*)",
+      "Bash(wc:*)",
+      "Bash(cut:*)"
     ]
   }
 }

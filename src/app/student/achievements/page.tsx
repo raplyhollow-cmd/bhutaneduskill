@@ -7,7 +7,6 @@
 
 import { useState } from "react";
 import React from "react";
-import { PortalHeader } from "@/components/shared/portal-sidebar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -281,10 +280,8 @@ export default function StudentAchievementsPage() {
   const totalXPReward = mockAchievements.filter((a) => a.isUnlocked).reduce((sum, a) => sum + a.xpReward, 0);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <PortalHeader userType="student" userName="Student" title="Achievements" />
-      <div className="lg:ml-64 p-6">
-        {/* XP & Level Overview */}
+    <div className="space-y-6">
+      {/* XP & Level Overview */}
         <Card
           className="mb-6 overflow-hidden"
           style={{ background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)' }}
@@ -576,7 +573,6 @@ export default function StudentAchievementsPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
     </div>
   );
 }

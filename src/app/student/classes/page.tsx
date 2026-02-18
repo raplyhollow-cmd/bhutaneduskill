@@ -7,7 +7,6 @@ import { logger } from "@/lib/logger";
  */
 
 import { useState, useEffect } from "react";
-import { PortalHeader } from "@/components/shared/portal-sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -115,14 +114,12 @@ export default function StudentClassesPage() {
 
   if (selectedClass) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <PortalHeader userType="student" userName="Student" title={selectedClass.name} subtitle={`${selectedClass.name} - Class ${selectedClass.section}`} />
-        <div className="lg:ml-64 p-6">
-          <Button variant="outline" onClick={() => setSelectedClass(null)} className="mb-6">
-            ← Back to My Classes
-          </Button>
+      <div className="space-y-6">
+        <Button variant="outline" onClick={() => setSelectedClass(null)}>
+          ← Back to My Classes
+        </Button>
 
-          <div className="grid lg:grid-cols-3 gap-6">
+        <div className="grid lg:grid-cols-3 gap-6">
             {/* Main Info */}
             <div className="lg:col-span-2 space-y-6">
               {/* Class Header Card */}
@@ -279,15 +276,18 @@ export default function StudentClassesPage() {
             </div>
           </div>
         </div>
-      </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <PortalHeader userType="student" userName="Student" title="My Classes" />
-      <div className="lg:ml-64 p-6">
-        {/* Error State */}
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">My Classes</h1>
+        <p className="text-gray-600 mt-1">View all your enrolled classes</p>
+      </div>
+
+      {/* Error State */}
         {error && (
           <Card className="mb-6 border-red-200 bg-red-50">
             <CardContent className="pt-6">
@@ -435,7 +435,6 @@ export default function StudentClassesPage() {
             </div>
           </>
         )}
-      </div>
     </div>
   );
 }

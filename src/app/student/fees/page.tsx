@@ -5,7 +5,6 @@
  * View fee structure and payment history
  */
 
-import { PortalHeader } from "@/components/shared/portal-sidebar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -116,10 +115,8 @@ export default function StudentFeesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <PortalHeader userType="student" userName="Student" title="My Fees" />
-      <div className="lg:ml-64 p-6">
-        {/* Summary Cards */}
+    <div className="space-y-6">
+      {/* Summary Cards */}
         <div className="grid grid-cols-4 gap-4 mb-6">
           <Card>
             <CardContent className="pt-6">
@@ -274,7 +271,6 @@ export default function StudentFeesPage() {
             </CardContent>
           </Card>
         </div>
-      </div>
     </div>
   );
 }

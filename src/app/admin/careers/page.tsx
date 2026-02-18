@@ -515,7 +515,7 @@ export default function AdminCareersPage() {
                               </div>
                               <div>
                                 <Link
-                                  href={`/dashboard/careers/${career.slug}`}
+                                  href={`/admin/careers/${career.id}`}
                                   className="font-medium text-gray-900 hover:text-pink-600 transition-colors"
                                 >
                                   {career.name}

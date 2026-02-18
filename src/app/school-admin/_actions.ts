@@ -659,3 +659,1170 @@ export async function togglePinAnnouncement(id: string) {
     };
   }
 }
+
+// ============================================================================
+// CLASS MANAGEMENT ACTIONS
+// ============================================================================
+
+export interface ClassFormData {
+  name: string;
+  grade: number;
+  section: string;
+  roomNumber?: string;
+  capacity?: number;
+  homeroomTeacherId?: string;
+  subjectTeacherIds?: string[];
+  academicYear?: string;
+}
+
+export interface ClassDetail {
+  id: string;
+  name: string;
+  grade: number;
+  section: string;
+  roomNumber: string | null;
+  capacity: number | null;
+  homeroomTeacherId: string | null;
+  homeroomTeacherName: string;
+  classTeacherId: string | null;
+  classTeacherName: string;
+  teacherId: string | null;
+  academicYear: string | null;
+  students: unknown;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Get a single class by ID
+ */
+export async function fetchClassById(id: string): Promise<ClassDetail | null> {
+  const schoolId = await getCachedSchoolId();
+
+  if (!schoolId) {
+    return null;
+  }
+
+  try {
+    const { db } = await import("@/lib/db");
+    const { classes: classesTable } = await import("@/lib/db/schema");
+    const { eq, and } = await import("drizzle-orm");
+
+    const [classRecord] = await db
+      .select()
+      .from(classesTable)
+      .where(and(eq(classesTable.id, id), eq(classesTable.schoolId, schoolId)))
+      .limit(1);
+
+    return (classRecord as ClassDetail) || null;
+  } catch (error) {
+    logger.error("Failed to fetch class:", error);
+    return null;
+  }
+}
+
+/**
+ * Get teachers for selection dropdown
+ */
+export async function fetchTeachersForSelection() {
+  const schoolId = await getCachedSchoolId();
+
+  if (!schoolId) {
+    return { teachers: [] };
+  }
+
+  try {
+    const { db } = await import("@/lib/db");
+    const { users: usersTable } = await import("@/lib/db/schema");
+    const { eq } = await import("drizzle-orm");
+
+    const teachers = await db
+      .select({
+        id: usersTable.id,
+        firstName: usersTable.firstName,
+        lastName: usersTable.lastName,
+        email: usersTable.email,
+        employeeId: usersTable.employeeId,
+      })
+      .from(usersTable)
+      .where(eq(usersTable.type, "teacher"))
+      .orderBy(usersTable.firstName);
+
+    return { teachers };
+  } catch (error) {
+    logger.error("Failed to fetch teachers:", error);
+    return { teachers: [] };
+  }
+}
+
+/**
+ * Create a new class
+ */
+export async function createClass(data: ClassFormData) {
+  const schoolId = await getCachedSchoolId();
+
+  if (!schoolId) {
+    return { success: false, error: "School not found" };
+  }
+
+  try {
+    const { db } = await import("@/lib/db");
+    const { classes: classesTable, users: usersTable, teacherAssignments } = await import("@/lib/db/schema");
+    const { nanoid } = await import("nanoid");
+    const { eq } = await import("drizzle-orm");
+
+    // Get homeroom teacher name if provided
+    let homeroomTeacherName = "Not Assigned";
+    if (data.homeroomTeacherId) {
+      const [teacher] = await db
+        .select({ firstName: usersTable.firstName, lastName: usersTable.lastName })
+        .from(usersTable)
+        .where(eq(usersTable.id, data.homeroomTeacherId))
+        .limit(1);
+
+      if (teacher) {
+        homeroomTeacherName = `${teacher.firstName || ""} ${teacher.lastName || ""}`.trim();
+      }
+    }
+
+    // Generate class ID
+    const classId = `class-${nanoid()}`;
+
+    // Get current academic year (September to August pattern)
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const academicYear = data.academicYear || (
+      now.getMonth() >= 8
+        ? `${currentYear}-${currentYear + 1}`
+        : `${currentYear - 1}-${currentYear}`
+    );
+
+    // Insert the class
+    const [newClass] = await db
+      .insert(classesTable)
+      .values({
+        id: classId,
+        schoolId,
+        name: data.name || `Class ${data.grade} - ${data.section}`,
+        grade: data.grade,
+        section: data.section,
+        roomNumber: data.roomNumber || `Room ${data.grade}0${data.section === "A" ? "1" : data.section === "B" ? "2" : "3"}`,
+        capacity: data.capacity || 40,
+        homeroomTeacherId: data.homeroomTeacherId || null,
+        homeroomTeacherName,
+        classTeacherId: data.homeroomTeacherId || null,
+        classTeacherName: homeroomTeacherName,
+        teacherId: data.homeroomTeacherId || null,
+        academicYear,
+        students: [],
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+
+    // Create teacher assignments if homeroom teacher is specified
+    if (data.homeroomTeacherId) {
+      await db.insert(teacherAssignments).values({
+        id: `ta-${nanoid()}`,
+        teacherId: data.homeroomTeacherId,
+        classId,
+        subjectId: null, // Homeroom teacher doesn't have a specific subject
+        academicYear,
+        role: "homeroom",
+        isPrimary: true,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+    }
+
+    // Create subject teacher assignments if provided
+    if (data.subjectTeacherIds && data.subjectTeacherIds.length > 0) {
+      const assignments = data.subjectTeacherIds.map((teacherId) => ({
+        id: `ta-${nanoid()}`,
+        teacherId,
+        classId,
+        subjectId: null, // Subject ID would need to be specified separately
+        academicYear,
+        role: "subject_teacher",
+        isPrimary: false,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }));
+
+      await db.insert(teacherAssignments).values(assignments);
+    }
+
+    logger.info("Class created successfully", { classId, schoolId });
+
+    return { success: true, class: newClass };
+  } catch (error) {
+    logger.error("Failed to create class:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to create class",
+    };
+  }
+}
+
+/**
+ * Update an existing class
+ */
+export async function updateClass(id: string, data: Partial<ClassFormData>) {
+  const schoolId = await getCachedSchoolId();
+
+  if (!schoolId) {
+    return { success: false, error: "School not found" };
+  }
+
+  try {
+    const { db } = await import("@/lib/db");
+    const { classes: classesTable, users: usersTable } = await import("@/lib/db/schema");
+    const { eq, and } = await import("drizzle-orm");
+
+    // Check if class exists and belongs to school
+    const existing = await db
+      .select()
+      .from(classesTable)
+      .where(and(eq(classesTable.id, id), eq(classesTable.schoolId, schoolId)))
+      .limit(1);
+
+    if (!existing.length) {
+      return { success: false, error: "Class not found" };
+    }
+
+    // Build update object
+    const updateData: Record<string, any> = {
+      updatedAt: new Date(),
+    };
+
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.grade !== undefined) updateData.grade = data.grade;
+    if (data.section !== undefined) updateData.section = data.section;
+    if (data.roomNumber !== undefined) updateData.roomNumber = data.roomNumber;
+    if (data.capacity !== undefined) updateData.capacity = data.capacity;
+    if (data.academicYear !== undefined) updateData.academicYear = data.academicYear;
+
+    // Update homeroom teacher if changed
+    if (data.homeroomTeacherId !== undefined) {
+      let homeroomTeacherName = "Not Assigned";
+      if (data.homeroomTeacherId) {
+        const [teacher] = await db
+          .select({ firstName: usersTable.firstName, lastName: usersTable.lastName })
+          .from(usersTable)
+          .where(eq(usersTable.id, data.homeroomTeacherId))
+          .limit(1);
+
+        if (teacher) {
+          homeroomTeacherName = `${teacher.firstName || ""} ${teacher.lastName || ""}`.trim();
+        }
+      }
+
+      updateData.homeroomTeacherId = data.homeroomTeacherId;
+      updateData.homeroomTeacherName = homeroomTeacherName;
+      updateData.classTeacherId = data.homeroomTeacherId;
+      updateData.classTeacherName = homeroomTeacherName;
+      updateData.teacherId = data.homeroomTeacherId;
+    }
+
+    const [updated] = await db
+      .update(classesTable)
+      .set(updateData)
+      .where(and(eq(classesTable.id, id), eq(classesTable.schoolId, schoolId)))
+      .returning();
+
+    logger.info("Class updated successfully", { classId: id, schoolId });
+
+    return { success: true, class: updated };
+  } catch (error) {
+    logger.error("Failed to update class:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to update class",
+    };
+  }
+}
+
+/**
+ * Delete a class
+ */
+export async function deleteClass(id: string) {
+  const schoolId = await getCachedSchoolId();
+
+  if (!schoolId) {
+    return { success: false, error: "School not found" };
+  }
+
+  try {
+    const { db } = await import("@/lib/db");
+    const { classes: classesTable, enrollments } = await import("@/lib/db/schema");
+    const { eq, and, count } = await import("drizzle-orm");
+
+    // Check if class exists and belongs to school
+    const existing = await db
+      .select()
+      .from(classesTable)
+      .where(and(eq(classesTable.id, id), eq(classesTable.schoolId, schoolId)))
+      .limit(1);
+
+    if (!existing.length) {
+      return { success: false, error: "Class not found" };
+    }
+
+    // Check if class has enrolled students
+    const enrolledStudents = await db
+      .select({ count: count() })
+      .from(enrollments)
+      .where(and(eq(enrollments.classId, id), eq(enrollments.status, "active")));
+
+    if (enrolledStudents.length > 0 && (enrolledStudents[0]?.count ?? 0) > 0) {
+      return {
+        success: false,
+        error: `Cannot delete class with ${enrolledStudents[0]?.count ?? 0} enrolled students. Please unenroll students first.`,
+      };
+    }
+
+    // Delete the class
+    await db
+      .delete(classesTable)
+      .where(and(eq(classesTable.id, id), eq(classesTable.schoolId, schoolId)));
+
+    logger.info("Class deleted successfully", { classId: id, schoolId });
+
+    return { success: true };
+  } catch (error) {
+    logger.error("Failed to delete class:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete class",
+    };
+  }
+}
+
+/**
+ * Get subjects for a specific grade
+ */
+export async function fetchSubjectsByGrade(grade: number) {
+  const schoolId = await getCachedSchoolId();
+
+  if (!schoolId) {
+    return { subjects: [] };
+  }
+
+  try {
+    const { db } = await import("@/lib/db");
+    const { subjects: subjectsTable } = await import("@/lib/db/schema");
+    const { eq, and } = await import("drizzle-orm");
+
+    const gradeSubjects = await db
+      .select()
+      .from(subjectsTable)
+      .where(and(eq(subjectsTable.schoolId, schoolId), eq(subjectsTable.grade, grade)))
+      .orderBy(subjectsTable.name);
+
+    return { subjects: gradeSubjects };
+  } catch (error) {
+    logger.error("Failed to fetch subjects by grade:", error);
+    return { subjects: [] };
+  }
+}
+
+// ============================================================================
+// INVENTORY ACTIONS
+// ============================================================================
+
+export interface InventoryItemData {
+  id: string;
+  name: string;
+  description: string | null;
+  sku: string | null;
+  barcode: string | null;
+  categoryId: string;
+  categoryName: string | null;
+  itemType: string;
+  quantity: number;
+  minimumStock: number | null;
+  unit: string;
+  location: string | null;
+  condition: string;
+  status: string;
+  assignedTo: string | null;
+  purchasePrice: number | null;
+  currentValue: number | null;
+  isLowStock: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface InventoryStats {
+  totalItems: number;
+  lowStockItems: number;
+  outOfStockItems: number;
+  totalValue: number;
+  categories: number;
+  vendors: number;
+  pendingOrders: number;
+  recentTransactions: number;
+}
+
+/**
+ * Fetch inventory statistics for dashboard
+ */
+export async function fetchInventoryStats(): Promise<InventoryStats> {
+  const schoolId = await getCachedSchoolId();
+
+  if (!schoolId) {
+    return {
+      totalItems: 0,
+      lowStockItems: 0,
+      outOfStockItems: 0,
+      totalValue: 0,
+      categories: 0,
+      vendors: 0,
+      pendingOrders: 0,
+      recentTransactions: 0,
+    };
+  }
+
+  try {
+    const { db } = await import("@/lib/db");
+    const {
+      inventoryItems: itemsTable,
+      inventoryCategories: categoriesTable,
+      inventoryVendors: vendorsTable,
+      purchaseOrders: ordersTable,
+      inventoryTransactions: transactionsTable,
+    } = await import("@/lib/db/schema");
+    const { eq, sql, count, desc, gte, and } = await import("drizzle-orm");
+
+    // Get total items and low stock count
+    const [itemStats] = await db
+      .select({
+        total: count(),
+        lowStock: count(sql`CASE WHEN quantity <= COALESCE(minimum_stock, 10) THEN 1 END`),
+        outOfStock: count(sql`CASE WHEN quantity = 0 THEN 1 END`),
+        totalValue: sql<number>`COALESCE(SUM(current_value), 0)`,
+      })
+      .from(itemsTable)
+      .where(eq(itemsTable.schoolId, schoolId));
+
+    // Get categories count
+    const [categoryCount] = await db
+      .select({ value: count() })
+      .from(categoriesTable)
+      .where(eq(categoriesTable.schoolId, schoolId));
+
+    // Get vendors count
+    const [vendorCount] = await db
+      .select({ value: count() })
+      .from(vendorsTable)
+      .where(eq(vendorsTable.schoolId, schoolId));
+
+    // Get pending orders count
+    const [pendingOrders] = await db
+      .select({ value: count() })
+      .from(ordersTable)
+      .where(and(eq(ordersTable.schoolId, schoolId), eq(ordersTable.status, "pending")));
+
+    // Get recent transactions (last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const [recentTransactions] = await db
+      .select({ value: count() })
+      .from(transactionsTable)
+      .where(
+        and(
+          eq(transactionsTable.schoolId, schoolId),
+          gte(transactionsTable.createdAt, sevenDaysAgo)
+        )
+      );
+
+    return {
+      totalItems: itemStats.total || 0,
+      lowStockItems: itemStats.lowStock || 0,
+      outOfStockItems: itemStats.outOfStock || 0,
+      totalValue: Number(itemStats.totalValue) || 0,
+      categories: categoryCount.value || 0,
+      vendors: vendorCount.value || 0,
+      pendingOrders: pendingOrders.value || 0,
+      recentTransactions: recentTransactions.value || 0,
+    };
+  } catch (error) {
+    logger.error("Failed to fetch inventory stats:", error);
+    return {
+      totalItems: 0,
+      lowStockItems: 0,
+      outOfStockItems: 0,
+      totalValue: 0,
+      categories: 0,
+      vendors: 0,
+      pendingOrders: 0,
+      recentTransactions: 0,
+    };
+  }
+}
+
+/**
+ * Fetch inventory items with filters
+ */
+export async function fetchInventoryItems(options: {
+  search?: string;
+  categoryId?: string;
+  itemType?: string;
+  status?: string;
+  condition?: string;
+  lowStock?: boolean;
+  location?: string;
+  limit?: number;
+  offset?: number;
+} = {}): Promise<{ items: InventoryItemData[]; total: number }> {
+  const schoolId = await getCachedSchoolId();
+
+  if (!schoolId) {
+    return { items: [], total: 0 };
+  }
+
+  try {
+    const { db } = await import("@/lib/db");
+    const {
+      inventoryItems: itemsTable,
+      inventoryCategories: categoriesTable,
+    } = await import("@/lib/db/schema");
+    const { eq, and, desc, like, sql, or, count } = await import("drizzle-orm");
+
+    // Build conditions
+    const conditions: any[] = [eq(itemsTable.schoolId, schoolId)];
+
+    if (options.search) {
+      const searchConditions = [
+        like(itemsTable.name, `%${options.search}%`),
+      ];
+      // SKU and description can be null, so use isNotNull from drizzle if needed
+      searchConditions.push(
+        sql`${itemsTable.sku} LIKE ${`%${options.search}%`}`
+      );
+      searchConditions.push(
+        sql`${itemsTable.description} LIKE ${`%${options.search}%`}`
+      );
+      conditions.push(or(...searchConditions));
+    }
+
+    if (options.categoryId) {
+      conditions.push(eq(itemsTable.categoryId, options.categoryId));
+    }
+
+    if (options.itemType) {
+      conditions.push(eq(itemsTable.itemType, options.itemType));
+    }
+
+    if (options.status) {
+      conditions.push(eq(itemsTable.status, options.status));
+    }
+
+    if (options.condition) {
+      conditions.push(eq(itemsTable.condition, options.condition));
+    }
+
+    if (options.location) {
+      conditions.push(
+        sql`${itemsTable.location} LIKE ${`%${options.location}%`}`
+      );
+    }
+
+    if (options.lowStock) {
+      conditions.push(
+        sql`${itemsTable.quantity} <= COALESCE(${itemsTable.minimumStock}, 10)`
+      );
+    }
+
+    // Get total count
+    const [{ value: total }] = await db
+      .select({ value: count() })
+      .from(itemsTable)
+      .where(conditions.length > 1 ? and(...conditions) : conditions[0]);
+
+    // Fetch items
+    const limit = options.limit || 20;
+    const offset = options.offset || 0;
+
+    const items = await db
+      .select({
+        id: itemsTable.id,
+        name: itemsTable.name,
+        description: itemsTable.description,
+        sku: itemsTable.sku,
+        barcode: itemsTable.barcode,
+        categoryId: itemsTable.categoryId,
+        categoryName: categoriesTable.name,
+        itemType: itemsTable.itemType,
+        quantity: itemsTable.quantity,
+        minimumStock: itemsTable.minimumStock,
+        unit: itemsTable.unit,
+        location: itemsTable.location,
+        condition: itemsTable.condition,
+        status: itemsTable.status,
+        assignedTo: itemsTable.assignedTo,
+        purchasePrice: itemsTable.purchasePrice,
+        currentValue: itemsTable.currentValue,
+        createdAt: itemsTable.createdAt,
+        updatedAt: itemsTable.updatedAt,
+      })
+      .from(itemsTable)
+      .leftJoin(categoriesTable, eq(itemsTable.categoryId, categoriesTable.id))
+      .where(conditions.length > 1 ? and(...conditions) : conditions[0])
+      .orderBy(desc(itemsTable.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    // Add low stock flag
+    const itemsWithLowStock = items.map((item) => ({
+      ...item,
+      isLowStock: item.quantity <= (item.minimumStock || 10),
+    }));
+
+    return {
+      items: itemsWithLowStock,
+      total: total || 0,
+    };
+  } catch (error) {
+    logger.error("Failed to fetch inventory items:", error);
+    return { items: [], total: 0 };
+  }
+}
+
+/**
+ * Fetch low stock alerts
+ */
+export async function fetchLowStockAlerts() {
+  const schoolId = await getCachedSchoolId();
+
+  if (!schoolId) {
+    return { alerts: [] };
+  }
+
+  try {
+    const { db } = await import("@/lib/db");
+    const { inventoryAlerts: alertsTable } = await import("@/lib/db/schema");
+    const { eq, and, desc } = await import("drizzle-orm");
+
+    const alerts = await db
+      .select()
+      .from(alertsTable)
+      .where(
+        and(
+          eq(alertsTable.schoolId, schoolId),
+          eq(alertsTable.alertType, "low_stock"),
+          eq(alertsTable.status, "active")
+        )
+      )
+      .orderBy(desc(alertsTable.severity), desc(alertsTable.createdAt))
+      .limit(10);
+
+    return { alerts };
+  } catch (error) {
+    logger.error("Failed to fetch low stock alerts:", error);
+    return { alerts: [] };
+  }
+}
+
+/**
+ * Fetch recent transactions
+ */
+export async function fetchRecentTransactions(limit: number = 10) {
+  const schoolId = await getCachedSchoolId();
+
+  if (!schoolId) {
+    return { transactions: [] };
+  }
+
+  try {
+    const { db } = await import("@/lib/db");
+    const {
+      inventoryTransactions: transactionsTable,
+      inventoryItems: itemsTable,
+    } = await import("@/lib/db/schema");
+    const { eq, desc } = await import("drizzle-orm");
+
+    const transactions = await db
+      .select({
+        id: transactionsTable.id,
+        itemId: transactionsTable.itemId,
+        itemName: itemsTable.name,
+        transactionType: transactionsTable.transactionType,
+        transactionDate: transactionsTable.transactionDate,
+        quantity: transactionsTable.quantity,
+        balanceAfter: transactionsTable.balanceAfter,
+        performedBy: transactionsTable.performedBy,
+        reason: transactionsTable.reason,
+        createdAt: transactionsTable.createdAt,
+      })
+      .from(transactionsTable)
+      .leftJoin(itemsTable, eq(transactionsTable.itemId, itemsTable.id))
+      .where(eq(transactionsTable.schoolId, schoolId))
+      .orderBy(desc(transactionsTable.createdAt))
+      .limit(limit);
+
+    return { transactions };
+  } catch (error) {
+    logger.error("Failed to fetch recent transactions:", error);
+    return { transactions: [] };
+  }
+}
+
+/**
+ * Fetch inventory categories
+ */
+export async function fetchInventoryCategories() {
+  const schoolId = await getCachedSchoolId();
+
+  if (!schoolId) {
+    return { categories: [] };
+  }
+
+  try {
+    const { db } = await import("@/lib/db");
+    const { inventoryCategories: categoriesTable } = await import("@/lib/db/schema");
+    const { eq, sql, or } = await import("drizzle-orm");
+
+    const categories = await db
+      .select()
+      .from(categoriesTable)
+      .where(
+        or(
+          eq(categoriesTable.schoolId, schoolId),
+          sql`${categoriesTable.schoolId} = ''`
+        )
+      )
+      .orderBy(sql`COALESCE(display_order, 0)`, categoriesTable.name);
+
+    return { categories };
+  } catch (error) {
+    logger.error("Failed to fetch inventory categories:", error);
+    return { categories: [] };
+  }
+}
+
+/**
+ * Create new inventory item
+ */
+export async function createInventoryItem(data: {
+  name: string;
+  description?: string;
+  categoryId: string;
+  itemType: string;
+  quantity?: number;
+  unit?: string;
+  location?: string;
+  minimumStock?: number;
+  purchasePrice?: number;
+}) {
+  const schoolId = await getCachedSchoolId();
+
+  if (!schoolId) {
+    return { success: false, error: "School not found" };
+  }
+
+  try {
+    const { db } = await import("@/lib/db");
+    const {
+      inventoryItems: itemsTable,
+      inventoryCategories: categoriesTable,
+      inventoryTransactions: transactionsTable,
+    } = await import("@/lib/db/schema");
+    const { eq } = await import("drizzle-orm");
+
+    // Check if category exists
+    const [category] = await db
+      .select()
+      .from(categoriesTable)
+      .where(eq(categoriesTable.id, data.categoryId))
+      .limit(1);
+
+    if (!category) {
+      return { success: false, error: "Category not found" };
+    }
+
+    // Generate SKU
+    const sku = `${category.code || "INV"}-${Date.now().toString().slice(-6)}`;
+    const itemId = `item-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+
+    const now = new Date();
+
+    const [newItem] = await db
+      .insert(itemsTable)
+      .values({
+        id: itemId,
+        schoolId,
+        name: data.name,
+        description: data.description || null,
+        sku,
+        barcode: null,
+        qrCode: null,
+        categoryId: data.categoryId,
+        itemType: data.itemType,
+        isFixedAsset: false,
+        assetTag: null,
+        serialNumber: null,
+        purchaseDate: null,
+        purchasePrice: data.purchasePrice || null,
+        currentValue: data.purchasePrice || null,
+        depreciation: null,
+        manufacturer: null,
+        model: null,
+        year: null,
+        specifications: null,
+        location: data.location || null,
+        buildingId: null,
+        roomId: null,
+        shelf: null,
+        rack: null,
+        bin: null,
+        quantity: data.quantity || 0,
+        minimumStock: data.minimumStock ?? category.alertThreshold ?? 10,
+        maximumStock: null,
+        reorderLevel: null,
+        reorderQuantity: null,
+        unit: data.unit || "pieces",
+        condition: "new",
+        status: "available",
+        assignedTo: null,
+        assignedDate: null,
+        assignedUntil: null,
+        lastMaintenanceDate: null,
+        nextMaintenanceDate: null,
+        warrantyExpiry: null,
+        photoUrls: null,
+        notes: null,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+
+    // Create initial transaction if quantity > 0
+    if (data.quantity && data.quantity > 0) {
+      await db.insert(transactionsTable).values({
+        id: `txn-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+        schoolId,
+        itemId,
+        transactionType: "purchase",
+        transactionDate: now.toISOString().split("T")[0],
+        quantity: data.quantity,
+        balanceAfter: data.quantity,
+        unitPrice: data.purchasePrice || null,
+        totalValue: data.purchasePrice ? data.quantity * data.purchasePrice : null,
+        referenceNumber: null,
+        referenceType: "initial_stock",
+        sourceLocation: null,
+        destinationLocation: data.location || null,
+        performedBy: null,
+        authorizedBy: null,
+        reason: "Initial stock entry",
+        documentUrls: null,
+        createdAt: now,
+      });
+    }
+
+    logger.info("Inventory item created", { itemId, schoolId });
+
+    return { success: true, item: newItem };
+  } catch (error) {
+    logger.error("Failed to create inventory item:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to create inventory item",
+    };
+  }
+}
+
+/**
+ * Update inventory item
+ */
+export async function updateInventoryItem(
+  id: string,
+  data: {
+    name?: string;
+    description?: string;
+    location?: string;
+    quantity?: number;
+    minimumStock?: number;
+    unit?: string;
+    condition?: string;
+    status?: string;
+    notes?: string;
+  }
+) {
+  const schoolId = await getCachedSchoolId();
+
+  if (!schoolId) {
+    return { success: false, error: "School not found" };
+  }
+
+  try {
+    const { db } = await import("@/lib/db");
+    const { inventoryItems: itemsTable } = await import("@/lib/db/schema");
+    const { eq, and } = await import("drizzle-orm");
+
+    // Check if item exists
+    const [existing] = await db
+      .select()
+      .from(itemsTable)
+      .where(and(eq(itemsTable.id, id), eq(itemsTable.schoolId, schoolId)))
+      .limit(1);
+
+    if (!existing) {
+      return { success: false, error: "Item not found" };
+    }
+
+    // Build update object
+    const updateData: Record<string, unknown> = {
+      updatedAt: new Date(),
+    };
+
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.description !== undefined) updateData.description = data.description;
+    if (data.location !== undefined) updateData.location = data.location;
+    if (data.quantity !== undefined) updateData.quantity = data.quantity;
+    if (data.minimumStock !== undefined) updateData.minimumStock = data.minimumStock;
+    if (data.unit !== undefined) updateData.unit = data.unit;
+    if (data.condition !== undefined) updateData.condition = data.condition;
+    if (data.status !== undefined) updateData.status = data.status;
+    if (data.notes !== undefined) updateData.notes = data.notes;
+
+    const [updated] = await db
+      .update(itemsTable)
+      .set(updateData)
+      .where(and(eq(itemsTable.id, id), eq(itemsTable.schoolId, schoolId)))
+      .returning();
+
+    logger.info("Inventory item updated", { itemId: id, schoolId });
+
+    return { success: true, item: updated };
+  } catch (error) {
+    logger.error("Failed to update inventory item:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to update inventory item",
+    };
+  }
+}
+
+/**
+ * Delete inventory item
+ */
+export async function deleteInventoryItem(id: string) {
+  const schoolId = await getCachedSchoolId();
+
+  if (!schoolId) {
+    return { success: false, error: "School not found" };
+  }
+
+  try {
+    const { db } = await import("@/lib/db");
+    const { inventoryItems: itemsTable } = await import("@/lib/db/schema");
+    const { eq, and } = await import("drizzle-orm");
+
+    // Check if item exists
+    const [existing] = await db
+      .select()
+      .from(itemsTable)
+      .where(and(eq(itemsTable.id, id), eq(itemsTable.schoolId, schoolId)))
+      .limit(1);
+
+    if (!existing) {
+      return { success: false, error: "Item not found" };
+    }
+
+    // Check if item is assigned
+    if (existing.assignedTo) {
+      return {
+        success: false,
+        error: "Cannot delete item that is currently assigned. Please return it first.",
+      };
+    }
+
+    await db
+      .delete(itemsTable)
+      .where(and(eq(itemsTable.id, id), eq(itemsTable.schoolId, schoolId)));
+
+    logger.info("Inventory item deleted", { itemId: id, schoolId });
+
+    return { success: true };
+  } catch (error) {
+    logger.error("Failed to delete inventory item:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete inventory item",
+    };
+  }
+}
+
+/**
+ * Create inventory transaction (issue/return)
+ */
+export async function createInventoryTransaction(data: {
+  itemId: string;
+  transactionType: string;
+  quantity: number;
+  reason?: string;
+  destinationLocation?: string;
+  issuedTo?: string;
+  issuedToName?: string;
+}) {
+  const schoolId = await getCachedSchoolId();
+
+  if (!schoolId) {
+    return { success: false, error: "School not found" };
+  }
+
+  try {
+    const { db } = await import("@/lib/db");
+    const {
+      inventoryItems: itemsTable,
+      inventoryTransactions: transactionsTable,
+      inventoryAlerts: alertsTable,
+      inventoryCategories: categoriesTable,
+    } = await import("@/lib/db/schema");
+    const { eq, and } = await import("drizzle-orm");
+
+    // Get current item
+    const [item] = await db
+      .select()
+      .from(itemsTable)
+      .where(and(eq(itemsTable.id, data.itemId), eq(itemsTable.schoolId, schoolId)))
+      .limit(1);
+
+    if (!item) {
+      return { success: false, error: "Item not found" };
+    }
+
+    // Calculate quantity change
+    const outgoingTypes = ["issue", "sale", "damage", "loss", "disposal"];
+    const quantityChange = outgoingTypes.includes(data.transactionType)
+      ? -Math.abs(data.quantity)
+      : Math.abs(data.quantity);
+
+    const newQuantity = item.quantity + quantityChange;
+
+    // Check sufficient stock for outgoing
+    if (newQuantity < 0) {
+      return {
+        success: false,
+        error: `Insufficient stock. Current: ${item.quantity}, Requested: ${Math.abs(
+          data.quantity
+        )}`,
+      };
+    }
+
+    const now = new Date();
+
+    // Create transaction
+    const transactionId = `txn-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+
+    await db.insert(transactionsTable).values({
+      id: transactionId,
+      schoolId,
+      itemId: data.itemId,
+      transactionType: data.transactionType,
+      transactionDate: now.toISOString().split("T")[0],
+      quantity: quantityChange,
+      balanceAfter: newQuantity,
+      unitPrice: null,
+      totalValue: null,
+      referenceNumber: null,
+      referenceType: null,
+      sourceLocation: item.location,
+      destinationLocation: data.destinationLocation || data.issuedToName || null,
+      performedBy: null,
+      authorizedBy: null,
+      reason: data.reason || null,
+      documentUrls: null,
+      createdAt: now,
+    });
+
+    // Update item quantity and assignment
+    const updateData: Record<string, unknown> = {
+      quantity: newQuantity,
+      updatedAt: now,
+    };
+
+    if (data.transactionType === "issue" && data.issuedTo) {
+      updateData.assignedTo = data.issuedTo;
+      updateData.assignedDate = now.toISOString().split("T")[0];
+      updateData.status = "in_use";
+    } else if (data.transactionType === "return") {
+      updateData.assignedTo = null;
+      updateData.assignedDate = null;
+      updateData.assignedUntil = null;
+      updateData.status = "available";
+    }
+
+    await db
+      .update(itemsTable)
+      .set(updateData)
+      .where(eq(itemsTable.id, data.itemId));
+
+    // Check for low stock alert
+    const [category] = await db
+      .select()
+      .from(categoriesTable)
+      .where(eq(categoriesTable.id, item.categoryId))
+      .limit(1);
+
+    const minimumStock = item.minimumStock ?? category?.alertThreshold ?? 10;
+    const isLowStock = newQuantity <= minimumStock;
+
+    if (isLowStock) {
+      // Check if alert already exists
+      const [existingAlert] = await db
+        .select()
+        .from(alertsTable)
+        .where(
+          and(
+            eq(alertsTable.itemId, data.itemId),
+            eq(alertsTable.alertType, "low_stock"),
+            eq(alertsTable.status, "active")
+          )
+        )
+        .limit(1);
+
+      if (!existingAlert) {
+        await db.insert(alertsTable).values({
+          id: `alert-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
+          schoolId,
+          alertType: "low_stock",
+          severity: newQuantity <= minimumStock / 2 ? "critical" : "warning",
+          itemId: data.itemId,
+          itemName: item.name,
+          title: `Low Stock: ${item.name}`,
+          message: `Item "${item.name}" is running low on stock. Current: ${newQuantity}, Minimum: ${minimumStock}`,
+          status: "active",
+          notificationSent: false,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    }
+
+    logger.info("Inventory transaction created", {
+      transactionId,
+      transactionType: data.transactionType,
+      quantityChange,
+    });
+
+    return {
+      success: true,
+      newQuantity,
+      lowStockAlert: isLowStock,
+    };
+  } catch (error) {
+    logger.error("Failed to create inventory transaction:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to create transaction",
+    };
+  }
+}

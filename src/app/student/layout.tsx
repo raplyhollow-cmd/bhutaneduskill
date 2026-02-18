@@ -4,6 +4,7 @@ import { logger } from "@/lib/logger";
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { UniversalMobileSidebar, UniversalPortalHeader } from "@/components/mobile/universal-mobile-sidebar";
+import { AssessmentOnboardingModal } from "@/components/student/assessment-onboarding-modal";
 
 /**
  * Student Portal Layout
@@ -24,7 +25,9 @@ export default function StudentLayout({
   const [userType, setUserType] = useState<"student" | "teacher" | "parent" | "counselor" | "admin" | "school-admin" | "ministry" | null>(null);
   const [userName, setUserName] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [showAssessmentModal, setShowAssessmentModal] = useState(false);
   const hasFetched = useRef(false);
+  const hasCheckedOnboarding = useRef(false);
 
   useEffect(() => {
     // Prevent multiple simultaneous fetch calls
@@ -65,6 +68,9 @@ export default function StudentLayout({
           setUserName("Student");
         }
         setIsLoading(false);
+
+        // Check if student needs assessment onboarding (after user is loaded)
+        checkAssessmentOnboarding();
       })
       .catch((error) => {
         logger.error("API fetch failed:", error);
@@ -72,6 +78,25 @@ export default function StudentLayout({
         router.push("/setup/unified");
       });
   }, [router]);
+
+  // Check if student needs assessment onboarding
+  const checkAssessmentOnboarding = async () => {
+    if (hasCheckedOnboarding.current) return;
+    hasCheckedOnboarding.current = true;
+
+    try {
+      const response = await fetch("/api/student/onboarding/status");
+      if (response.ok) {
+        const data = await response.json();
+        // Show modal only for first-time students (haven't completed required assessments)
+        if (data.isFirstTime) {
+          setShowAssessmentModal(true);
+        }
+      }
+    } catch (error) {
+      logger.error("Failed to check assessment onboarding status", error);
+    }
+  };
 
   // Loading state - Uses 100dvh to fix iOS Safari address bar bug
   if (isLoading) {
@@ -93,6 +118,17 @@ export default function StudentLayout({
         <UniversalPortalHeader portalType={userType || "student"} userName={userName} />
         <main className="p-6">{children}</main>
       </div>
+
+      {/* Assessment Onboarding Modal - Shows for new students */}
+      <AssessmentOnboardingModal
+        isOpen={showAssessmentModal}
+        onClose={() => setShowAssessmentModal(false)}
+        onComplete={() => {
+          setShowAssessmentModal(false);
+          // Optionally refresh the page to show updated dashboard
+          router.refresh();
+        }}
+      />
     </div>
   );
 }

@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 
     // Parents can only see their own consent records
     if (user.type === "parent") {
-      conditions.push(eq(consentRecords.parentId, user.id));
+      conditions.push(eq(consentRecords.parentId, user.id as string));
     }
 
     let records: any[];

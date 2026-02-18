@@ -20,6 +20,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { AIInsightCard } from "@/components/ai/ai-insight-card";
+import { PremiumCard } from "@/components/admin/premium-card";
+import { PageWrapper } from "@/components/admin/page-wrapper";
+import { LiveBadge } from "@/components/admin/live-badge";
+import { useAdminStats } from "@/hooks/use-realtime-stats";
 import { useState, useEffect } from "react";
 
 interface AdminStats {
@@ -163,28 +167,61 @@ export default function AdminDashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="space-y-8">
-        <Card>
-          <CardContent className="flex items-center justify-center py-16">
-            <Loader2 className="w-8 h-8 animate-spin text-gray-600" />
-            <p className="ml-3 text-gray-600">Loading dashboard...</p>
-          </CardContent>
-        </Card>
-      </div>
+      <PageWrapper>
+        <div className="space-y-6">
+          {/* Header skeleton */}
+          <div className="flex items-center gap-4">
+            <div className="h-8 bg-gray-200 rounded w-48 animate-pulse" />
+            <div className="flex-1 space-y-2">
+              <div className="h-8 bg-gray-200 rounded w-64 animate-pulse" />
+              <div className="h-4 bg-gray-200 rounded w-48 animate-pulse" />
+            </div>
+          </div>
+
+          {/* Stats skeleton */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="p-6 border border-gray-200 rounded-lg">
+                <div className="h-4 bg-gray-200 rounded w-20 mb-2 animate-pulse" />
+                <div className="h-8 bg-gray-200 rounded w-16 mb-1 animate-pulse" />
+                <div className="h-3 bg-gray-200 rounded w-24 animate-pulse" />
+              </div>
+            ))}
+          </div>
+
+          {/* AI Insights skeleton */}
+          <div className="grid md:grid-cols-3 gap-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="p-6 border border-gray-200 rounded-lg">
+                <div className="h-5 bg-gray-200 rounded w-32 mb-4 animate-pulse" />
+                <div className="h-4 bg-gray-200 rounded w-full mb-2 animate-pulse" />
+                <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </PageWrapper>
     );
   }
 
+  // Use real-time stats hook
+  const { data: liveStats, isLoading: isStatsLoading } = useAdminStats();
+  const { data: realtimeStats } = liveStats || {};
+
   return (
-    <div className="space-y-8">
+    <PageWrapper>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Admin Dashboard
           </h1>
-          <p className="text-gray-600">
-            Platform-wide overview and management
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-gray-600">
+              Platform-wide overview and management
+            </p>
+            <LiveBadge />
+          </div>
         </div>
         <div className="flex gap-3">
           <Button variant="outline">
@@ -284,64 +321,87 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/* Stats Grid */}
-      <div className="grid md:grid-cols-3 lg:grid-cols-6 gap-6">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <Building2 className="w-4 h-4" />
-              Schools
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900">
-              {stats.totalSchools}
-            </div>
-            <p className="text-xs text-green-600 mt-1">
-              <ArrowUp className="w-3 h-3 inline" /> +2 this month
-            </p>
-          </CardContent>
-        </Card>
+      {/* Stats Grid - Using PremiumCard with hover effects */}
+      <div className="grid md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <PremiumCard className="p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Building2 className="w-4 h-4 text-gray-500" />
+            <span className="text-sm font-medium text-gray-500">Schools</span>
+          </div>
+          <div className="text-2xl font-semibold text-gray-900">
+            {realtimeStats.schools || stats.totalSchools}
+          </div>
+          <p className="text-xs text-green-600 mt-1">
+            <ArrowUp className="w-3 h-3 inline" /> {realtimeStats.trends?.schools || "+2 this month"}
+          </p>
+        </PremiumCard>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Students
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900">
-              {stats.totalStudents}
-            </div>
-            <p className="text-xs text-green-600 mt-1">
-              <ArrowUp className="w-3 h-3 inline" /> +156 this month
-            </p>
-          </CardContent>
-        </Card>
+        <PremiumCard className="p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Users className="w-4 h-4 text-gray-500" />
+            <span className="text-sm font-medium text-gray-500">Students</span>
+          </div>
+          <div className="text-2xl font-semibold text-gray-900">
+            {realtimeStats.students || stats.totalStudents}
+          </div>
+          <p className="text-xs text-green-600 mt-1">
+            <ArrowUp className="w-3 h-3 inline" /> {realtimeStats.trends?.students || "+156 this month"}
+          </p>
+        </PremiumCard>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <GraduationCap className="w-4 h-4" />
-              Teachers
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900">
-              {stats.totalTeachers}
-            </div>
-            <p className="text-xs text-green-600 mt-1">
-              <ArrowUp className="w-3 h-3 inline" /> +8 this month
-            </p>
-          </CardContent>
-        </Card>
+        <PremiumCard className="p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <GraduationCap className="w-4 h-4 text-gray-500" />
+            <span className="text-sm font-medium text-gray-500">Teachers</span>
+          </div>
+          <div className="text-2xl font-semibold text-gray-900">
+            {realtimeStats.teachers || stats.totalTeachers}
+          </div>
+          <p className="text-xs text-green-600 mt-1">
+            <ArrowUp className="w-3 h-3 inline" /> {realtimeStats.trends?.teachers || "+8 this month"}
+          </p>
+        </PremiumCard>
+
+        <PremiumCard className="p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <FileText className="w-4 h-4 text-gray-500" />
+            <span className="text-sm font-medium text-gray-500">Assessments</span>
+          </div>
+          <div className="text-2xl font-semibold text-gray-900">
+            {realtimeStats.assessments || stats.totalAssessments}
+          </div>
+          <p className="text-xs text-gray-500 mt-1">Total completed</p>
+        </PremiumCard>
+
+        <PremiumCard className="p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <TrendingUp className="w-4 h-4 text-gray-500" />
+            <span className="text-sm font-medium text-gray-500">Completion</span>
+          </div>
+          <div className="text-2xl font-semibold text-gray-900">
+            {realtimeStats.completionRate || stats.completionRate}%
+          </div>
+          <p className="text-xs text-green-600 mt-1">
+            <ArrowUp className="w-3 h-3 inline" /> {realtimeStats.trends?.completion || "+5% from last month"}
+          </p>
+        </PremiumCard>
+
+        <PremiumCard className="p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Activity className="w-4 h-4 text-gray-500" />
+            <span className="text-sm font-medium text-gray-500">Active Now</span>
+          </div>
+          <div className="text-2xl font-semibold text-green-600">
+            {realtimeStats.activeNow || stats.activeNow}
+          </div>
+          <p className="text-xs text-gray-500 mt-1">Currently online</p>
+        </PremiumCard>
 
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
               <FileText className="w-4 h-4" />
-              Assessments
+              Total Assessments
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -549,6 +609,6 @@ export default function AdminDashboardPage() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </PageWrapper>
   );
 }

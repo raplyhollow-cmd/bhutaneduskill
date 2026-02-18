@@ -6,7 +6,6 @@
  */
 
 import { useState } from "react";
-import { PortalHeader } from "@/components/shared/portal-sidebar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -372,10 +371,8 @@ function StudentRUBPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <PortalHeader userType="student" userName="Student" title="RUB Colleges" subtitle="Royal University of Bhutan" />
-      <div className="lg:ml-64 p-6">
-        {/* Application Status Banner */}
+    <div className="space-y-6">
+      {/* Application Status Banner */}
         <Card className="mb-6" style={{ background: mockApplicationStatus.hasApplication ? 'linear-gradient(135deg, rgb(34 197 94) 0%, rgb(22 163 74) 100%)' : 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)' }}>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between text-white">
@@ -887,7 +884,7 @@ function StudentRUBPage() {
                       <FileText className="w-5 h-5 mr-2" />
                       Start New Application
                     </Button>
-                    <Link href="/dashboard/scholarships">
+                    <Link href="/student/scholarships">
                       <Button size="lg" variant="outline" className="min-h-[48px]">
                         <Award className="w-5 h-5 mr-2" />
                         View Scholarships
@@ -919,7 +916,6 @@ function StudentRUBPage() {
             )}
           </div>
         )}
-      </div>
     </div>
   );
 }

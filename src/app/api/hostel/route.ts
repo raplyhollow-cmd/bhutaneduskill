@@ -398,8 +398,8 @@ export async function GET(request: NextRequest) {
         schoolId: currentUser.schoolId,
       },
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
+  } catch (error: unknown) {
+    logger.apiError(error, { route: "/api/hostel", method: "GET" });
     return NextResponse.json(
       { error: "Failed to fetch hostel data" } as ApiErrorResponse,
       { status: 500 }
@@ -1111,8 +1111,8 @@ export async function POST(request: NextRequest) {
       { error: "Invalid action" } as ApiErrorResponse,
       { status: 400 }
     );
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
+  } catch (error: unknown) {
+    logger.apiError(error, { route: "/api/hostel", method: "POST" });
     return NextResponse.json(
       { error: "Failed to process request" } as ApiErrorResponse,
       { status: 500 }
@@ -1212,8 +1212,8 @@ export async function PATCH(request: NextRequest) {
       { error: "Invalid action" } as ApiErrorResponse,
       { status: 400 }
     );
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
+  } catch (error: unknown) {
+    logger.apiError(error, { route: "/api/hostel", method: "PATCH" });
     return NextResponse.json(
       { error: "Failed to update record" } as ApiErrorResponse,
       { status: 500 }
@@ -1268,8 +1268,8 @@ export async function DELETE(request: NextRequest) {
       { error: "Invalid action" } as ApiErrorResponse,
       { status: 400 }
     );
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
+  } catch (error: unknown) {
+    logger.apiError(error, { route: "/api/hostel", method: "DELETE" });
     return NextResponse.json(
       { error: "Failed to delete record" } as ApiErrorResponse,
       { status: 500 }

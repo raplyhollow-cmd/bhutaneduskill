@@ -481,7 +481,7 @@ export default async function StudentProgressPage() {
                 <Link href="/student/homework">View Homework</Link>
               </Button>
               <Button className="text-white" style={{ background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)' }} asChild>
-                <Link href="/dashboard/assessment">Take Assessment</Link>
+                <Link href="/student/assessment">Take Assessment</Link>
               </Button>
             </div>
           </CardContent>

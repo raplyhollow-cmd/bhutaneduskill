@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
 
   // Counselors can only see their own notes (unless admin)
   if (currentUser.type === "counselor") {
-    conditions.push(eq(counselorNotes.counselorId, currentUser.id));
+    conditions.push(eq(counselorNotes.counselorId, currentUser.id as string));
   }
 
   let notes: any[];
@@ -63,9 +63,9 @@ export async function POST(request: NextRequest) {
   const [newNote] = await db
     .insert(counselorNotes)
     .values({
-      id: `note_${Date.now()}`,
-      counselorId: currentUser.id,
-      studentId,
+      id: `note_${Date.now()}` as string,
+      counselorId: currentUser.id as string,
+      studentId: studentId as string,
       noteType, // "session" | "observation" | "intervention" | "follow_up"
       title: title || `Counseling Note - ${new Date().toLocaleDateString()}`,
       note,

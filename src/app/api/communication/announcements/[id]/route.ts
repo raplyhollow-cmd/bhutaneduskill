@@ -1,6 +1,9 @@
 import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
+import { db } from "@/lib/db";
+import { announcements, users, announcementReads } from "@/lib/db/schema";
+import { eq, and, sql } from "drizzle-orm";
 
 // ============================================================================
 // INDIVIDUAL ANNOUNCEMENT API
@@ -23,13 +26,9 @@ export async function GET(request: NextRequest, context: RouteContext) {
   }
   const { userId } = authResult;
 
+  const { id } = await context.params;
+
   try {
-    const { id } = await context.params;
-
-    const { db } = await import("@/lib/db");
-    const { announcements: announcementsTable, users, announcementReads } = await import("@/lib/db/schema");
-    const { eq, and } = await import("drizzle-orm");
-
     // Get user's school
     const [user] = await db
       .select({ schoolId: users.schoolId })
@@ -44,11 +43,11 @@ export async function GET(request: NextRequest, context: RouteContext) {
     // Fetch announcement
     const [announcement] = await db
       .select()
-      .from(announcementsTable)
+      .from(announcements)
       .where(
         and(
-          eq(announcementsTable.id, id),
-          eq(announcementsTable.schoolId, user.schoolId || "")
+          eq(announcements.id, id),
+          eq(announcements.schoolId, user.schoolId || "")
         )
       )
       .limit(1);
@@ -72,9 +71,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     // Mark as read if not already
     if (!readRecord && announcement.isPublished) {
       await db.insert(announcementReads).values({
-        ...({
-          id: `ar_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        }),
+        id: `ar_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
         announcementId: id,
         userId,
         readAt: new Date(),
@@ -82,16 +79,16 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
       // Increment view count
       await db
-        .update(announcementsTable)
+        .update(announcements)
         .set({
-          viewCount: sql`${announcementsTable.viewCount} + 1`,
+          viewCount: sql`${announcements.viewCount} + 1`,
         })
-        .where(eq(announcementsTable.id, id));
+        .where(eq(announcements.id, id));
     }
 
     return NextResponse.json({ announcement });
   } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
+    logger.apiError(error, { route: "/[id]", method: "GET" });
     return NextResponse.json(
       { error: "Failed to fetch announcement" },
       { status: 500 }
@@ -112,14 +109,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   }
   const { userId } = authResult;
 
-  try {
-    const { id } = await context.params;
-    const body = await request.json();
+  const { id } = await context.params;
 
-    const { db } = await import("@/lib/db");
-    const { announcements: announcementsTable, users } = await import("@/lib/db/schema");
-    const { eq, and } = await import("drizzle-orm");
-    const { sql } = await import("drizzle-orm");
+  try {
+    const body = await request.json();
 
     // Get user's school and role
     const [user] = await db
@@ -135,11 +128,11 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     // Check if user can edit (school admin or author)
     const [existing] = await db
       .select()
-      .from(announcementsTable)
+      .from(announcements)
       .where(
         and(
-          eq(announcementsTable.id, id),
-          eq(announcementsTable.schoolId, user.schoolId)
+          eq(announcements.id, id),
+          eq(announcements.schoolId, user.schoolId)
         )
       )
       .limit(1);
@@ -179,14 +172,14 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     const [updated] = await db
-      .update(announcementsTable)
+      .update(announcements)
       .set(updateData)
-      .where(eq(announcementsTable.id, id))
+      .where(eq(announcements.id, id))
       .returning();
 
     return NextResponse.json({ success: true, announcement: updated });
   } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
+    logger.apiError(error, { route: "/[id]", method: "PATCH" });
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to update announcement" },
       { status: 500 }
@@ -207,13 +200,9 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
   }
   const { userId } = authResult;
 
+  const { id } = await context.params;
+
   try {
-    const { id } = await context.params;
-
-    const { db } = await import("@/lib/db");
-    const { announcements: announcementsTable, users } = await import("@/lib/db/schema");
-    const { eq, and } = await import("drizzle-orm");
-
     // Get user's school and role
     const [user] = await db
       .select({ schoolId: users.schoolId, role: users.role })
@@ -228,11 +217,11 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     // Check if announcement exists and user has permission
     const [existing] = await db
       .select()
-      .from(announcementsTable)
+      .from(announcements)
       .where(
         and(
-          eq(announcementsTable.id, id),
-          eq(announcementsTable.schoolId, user.schoolId)
+          eq(announcements.id, id),
+          eq(announcements.schoolId, user.schoolId)
         )
       )
       .limit(1);
@@ -249,17 +238,15 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
     // Delete announcement
     await db
-      .delete(announcementsTable)
-      .where(eq(announcementsTable.id, id));
+      .delete(announcements)
+      .where(eq(announcements.id, id));
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
+    logger.apiError(error, { route: "/[id]", method: "DELETE" });
     return NextResponse.json(
       { error: "Failed to delete announcement" },
       { status: 500 }
     );
   }
 }
-
-import { sql } from "drizzle-orm";

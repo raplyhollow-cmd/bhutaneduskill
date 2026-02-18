@@ -128,17 +128,17 @@ export async function POST(
     }
 
     // Create response
-    const responseId = `response-${nanoid()}`;
-    const userName = user.name || "Support Agent";
+    const responseId: string = `response-${nanoid()}`;
+    const userName: string = (user.name as string) || "Support Agent";
 
     const [newResponse] = await db
       .insert(supportTicketResponses)
       .values({
-        id: responseId,
-        ticketId,
-        userId,
-        userRole,
-        userName,
+        id: responseId as string,
+        ticketId: ticketId as string,
+        userId: userId as string,
+        userRole: userRole as string,
+        userName: userName as string,
         message: message.trim(),
         isInternal,
         attachments,

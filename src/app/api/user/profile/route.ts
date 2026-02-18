@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -8,7 +8,11 @@ import { logger } from "@/lib/logger";
 // GET /api/user/profile - Get user profile
 export async function GET(req: NextRequest) {
   try {
-    const { userId } = await auth();
+    const authResult = await requireAuth();
+    if ("error" in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+    }
+    const { userId } = authResult;
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -39,7 +43,11 @@ export async function GET(req: NextRequest) {
 // POST /api/user/profile - Create or update user profile
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = await auth();
+    const authResult = await requireAuth();
+    if ("error" in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+    }
+    const { userId } = authResult;
 
     if (!userId) {
       logger.security("unauthorized_access_attempt", { route: "/api/user/profile", method: "POST" });

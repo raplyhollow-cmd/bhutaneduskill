@@ -34,9 +34,31 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+interface ScholarshipData {
+  id: string;
+  name: string;
+  code: string;
+  type: string;
+  provider: string;
+  providerName: string;
+  coveragePercentage: number;
+  coversTuition: boolean;
+  coversHostel: boolean;
+  coversBooks: boolean;
+  coversLiving: boolean;
+  minPercentage: number;
+  annualIncomeLimit: number;
+  duration: string;
+  applicationOpenDate: string;
+  applicationCloseDate: string;
+  description: string;
+  termsAndConditions: string;
+  isActive: boolean;
+}
+
 export default function AdminScholarshipsPage() {
-  const [scholarships, setScholarships] = useState<any[]>([]);
-  const [filteredScholarships, setFilteredScholarships] = useState<any[]>([]);
+  const [scholarships, setScholarships] = useState<ScholarshipData[]>([]);
+  const [filteredScholarships, setFilteredScholarships] = useState<ScholarshipData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -48,7 +70,7 @@ export default function AdminScholarshipsPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [editingScholarship, setEditingScholarship] = useState<any>(null);
+  const [editingScholarship, setEditingScholarship] = useState<ScholarshipData | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -171,7 +193,7 @@ export default function AdminScholarshipsPage() {
     }
   };
 
-  const openEditModal = (scholarship: any) => {
+  const openEditModal = (scholarship: ScholarshipData) => {
     setEditingScholarship(scholarship);
     setFormData({
       name: scholarship.name || "",
@@ -562,7 +584,7 @@ export default function AdminScholarshipsPage() {
                   <Label htmlFor="type">Scholarship Type *</Label>
                   <Select
                     value={formData.type}
-                    onValueChange={(value: any) => setFormData({ ...formData, type: value })}
+                    onValueChange={(value: string) => setFormData({ ...formData, type: value })}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -822,7 +844,7 @@ export default function AdminScholarshipsPage() {
                   <Label htmlFor="edit-type">Scholarship Type *</Label>
                   <Select
                     value={formData.type}
-                    onValueChange={(value: any) => setFormData({ ...formData, type: value })}
+                    onValueChange={(value: string) => setFormData({ ...formData, type: value })}
                   >
                     <SelectTrigger>
                       <SelectValue />

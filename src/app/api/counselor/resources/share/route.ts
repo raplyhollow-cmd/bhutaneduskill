@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
     const [notification] = await db
       .insert(notifications)
       .values({
-        id: notificationId,
+        id: notificationId as string,
         title: "New Resource Shared",
         message: message || `A new resource "${resource[0].title}" has been shared with you.`,
         type: "announcement",
@@ -88,8 +88,8 @@ export async function POST(request: NextRequest) {
         targetUserIds: JSON.stringify(studentIds),
         priority: "normal",
         status: "sent",
-        senderId: userId,
-        senderName: user.name || "Counselor",
+        senderId: userId as string,
+        senderName: (user.name as string) || "Counselor",
         senderRole: "counselor",
         actionUrl: resourceUrl,
         actionLabel: "View Resource",

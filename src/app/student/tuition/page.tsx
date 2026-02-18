@@ -6,7 +6,6 @@
  */
 
 import { useState } from "react";
-import { PortalHeader } from "@/components/shared/portal-sidebar";
 import { TutorProfileCard, CourseCard } from "@/components/tuition";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -136,12 +135,10 @@ export default function StudentTuitionPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <PortalHeader userType="student" userName="Student" title="Tuition Marketplace" />
-      <div className="lg:ml-64 p-6">
-        {/* Header */}
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold mb-4">Find Tutors & Courses</h2>
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h2 className="text-xl font-semibold mb-4">Find Tutors & Courses</h2>
 
           {/* Search */}
           <div className="flex items-center gap-4">
@@ -219,7 +216,6 @@ export default function StudentTuitionPage() {
             ))}
           </div>
         )}
-      </div>
     </div>
   );
 }

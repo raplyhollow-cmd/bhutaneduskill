@@ -1,6 +1,9 @@
 import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
+import { db } from "@/lib/db";
+import { announcements, users } from "@/lib/db/schema";
+import { eq, and, desc, or, sql, count } from "drizzle-orm";
 
 // ============================================================================
 // ANNOUNCEMENTS API
@@ -35,58 +38,54 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = parseInt(searchParams.get("offset") || "0");
 
-    const { db } = await import("@/lib/db");
-    const { announcements: announcementsTable, users } = await import("@/lib/db/schema");
-    const { eq, and, desc, or, sql, count } = await import("drizzle-orm");
-
     // Get current user info to determine school and role
-    const [user] = await db
+    const [userInfo] = await db
       .select({ schoolId: users.schoolId, type: users.type })
       .from(users)
       .where(eq(users.id, userId))
       .limit(1);
 
-    if (!user) {
+    if (!userInfo) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const effectiveSchoolId = schoolId || user.schoolId;
+    const effectiveSchoolId = schoolId || userInfo.schoolId;
     if (!effectiveSchoolId) {
       return NextResponse.json({ announcements: [], total: 0 });
     }
 
     // Build conditions
     const conditions = [
-      eq(announcementsTable.schoolId, effectiveSchoolId),
-      eq(announcementsTable.isArchived, false),
+      eq(announcements.schoolId, effectiveSchoolId),
+      eq(announcements.isArchived, false),
     ];
 
     if (isPublished !== undefined) {
-      conditions.push(eq(announcementsTable.isPublished, isPublished));
+      conditions.push(eq(announcements.isPublished, isPublished));
     }
 
     if (isPinned !== undefined) {
-      conditions.push(eq(announcementsTable.isPinned, isPinned));
+      conditions.push(eq(announcements.isPinned, isPinned));
     }
 
     if (priority) {
-      conditions.push(eq(announcementsTable.priority, priority as "low" | "normal" | "high" | "urgent"));
+      conditions.push(eq(announcements.priority, priority as "low" | "normal" | "high" | "urgent"));
     }
 
     // Filter by audience based on user type
     const audienceConditions = [
-      eq(announcementsTable.targetAudience, "all"),
+      eq(announcements.targetAudience, "all"),
     ];
-    if (user.type === "student") {
-      audienceConditions.push(eq(announcementsTable.targetAudience, "students"));
-    } else if (user.type === "teacher") {
-      audienceConditions.push(eq(announcementsTable.targetAudience, "teachers"));
-    } else if (user.type === "parent") {
-      audienceConditions.push(eq(announcementsTable.targetAudience, "parents"));
-    } else if (user.type === "counselor") {
-      audienceConditions.push(eq(announcementsTable.targetAudience, "counselor"));
-    } else if (user.type === "admin") {
-      audienceConditions.push(eq(announcementsTable.targetAudience, "staff"));
+    if (userInfo.type === "student") {
+      audienceConditions.push(eq(announcements.targetAudience, "students"));
+    } else if (userInfo.type === "teacher") {
+      audienceConditions.push(eq(announcements.targetAudience, "teachers"));
+    } else if (userInfo.type === "parent") {
+      audienceConditions.push(eq(announcements.targetAudience, "parents"));
+    } else if (userInfo.type === "counselor") {
+      audienceConditions.push(eq(announcements.targetAudience, "counselor"));
+    } else if (userInfo.type === "admin") {
+      audienceConditions.push(eq(announcements.targetAudience, "staff"));
     }
     const audienceFilter = or(...audienceConditions);
     if (audienceFilter) {
@@ -96,8 +95,8 @@ export async function GET(request: NextRequest) {
     // Exclude expired announcements
     const now = new Date().toISOString();
     const expiryFilter = or(
-      sql`${announcementsTable.expiryDate} IS NULL`,
-      sql`${announcementsTable.expiryDate} > ${now}`
+      sql`${announcements.expiryDate} IS NULL`,
+      sql`${announcements.expiryDate} > ${now}`
     );
     if (expiryFilter) {
       conditions.push(expiryFilter);
@@ -106,15 +105,15 @@ export async function GET(request: NextRequest) {
     // Get total count
     const [{ value: total }] = await db
       .select({ value: count() })
-      .from(announcementsTable)
+      .from(announcements)
       .where(and(...conditions));
 
     // Fetch announcements
     const results = await db
       .select()
-      .from(announcementsTable)
+      .from(announcements)
       .where(and(...conditions))
-      .orderBy(desc(announcementsTable.isPinned), desc(announcementsTable.createdAt))
+      .orderBy(desc(announcements.isPinned), desc(announcements.createdAt))
       .limit(limit)
       .offset(offset);
 
@@ -173,33 +172,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { db } = await import("@/lib/db");
-    const { announcements: announcementsTable, users } = await import("@/lib/db/schema");
-    const { eq } = await import("drizzle-orm");
-
     // Get user info
-    const [user] = await db
+    const [userInfo] = await db
       .select({ schoolId: users.schoolId, firstName: users.firstName, lastName: users.lastName, role: users.role })
       .from(users)
       .where(eq(users.id, userId))
       .limit(1);
 
-    if (!user || !user.schoolId) {
+    if (!userInfo || !userInfo.schoolId) {
       return NextResponse.json({ error: "School not found" }, { status: 404 });
     }
 
-    const authorName = `${user.firstName} ${user.lastName || ""}`.trim();
+    const authorName = `${userInfo.firstName} ${userInfo.lastName || ""}`.trim();
     const now = new Date();
 
     const [announcement] = await db
-      .insert(announcementsTable)
+      .insert(announcements)
       .values({
-        id: `ann_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        schoolId: user.schoolId,
+        id: `ann_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+        schoolId: userInfo.schoolId,
         tenantId: "", // Will be set by trigger or default
         authorId: userId,
         authorName,
-        authorRole: user.role || "school_admin",
+        authorRole: userInfo.role || "school_admin",
         title: body.title,
         content: body.content,
         excerpt: body.excerpt || null,
@@ -224,7 +219,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, announcement }, { status: 201 });
   } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
+    logger.apiError(error, { route: "/", method: "POST" });
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to create announcement" },
       { status: 500 }

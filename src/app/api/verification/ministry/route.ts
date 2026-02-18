@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { tenants, users, schools } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
@@ -105,14 +105,14 @@ async function storeFile(file: File, prefix: string): Promise<string> {
 // GET: Fetch verification status
 export async function GET(req: NextRequest) {
   try {
-    const { userId } = await auth();
-
-    if (!userId) {
+    const authResult = await requireAuth(["admin"]);
+    if ("error" in authResult) {
       return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 }
+        { success: false, error: authResult.error },
+        { status: authResult.status === 401 ? 401 : 403 }
       );
     }
+    const { userId, user } = authResult;
 
     const { searchParams } = new URL(req.url);
     const verificationId = searchParams.get("id");
@@ -125,20 +125,6 @@ export async function GET(req: NextRequest) {
         return NextResponse.json(
           { success: false, error: "Verification request not found" },
           { status: 404 }
-        );
-      }
-
-      // Only allow access to own requests or admins
-      const isAdminUser = await db
-        .select()
-        .from(users)
-        .where(eq(users.clerkUserId, userId))
-        .limit(1);
-
-      if (isAdminUser.length === 0 || isAdminUser[0].type !== "admin") {
-        return NextResponse.json(
-          { success: false, error: "Forbidden" },
-          { status: 403 }
         );
       }
 
@@ -155,19 +141,7 @@ export async function GET(req: NextRequest) {
         },
       });
     } else {
-      // List all verification requests (admin only)
-      const user = await db
-        .select()
-        .from(users)
-        .where(eq(users.clerkUserId, userId))
-        .limit(1);
-
-      if (user.length === 0 || user[0].type !== "admin") {
-        return NextResponse.json(
-          { success: false, error: "Forbidden - Admin access required" },
-          { status: 403 }
-        );
-      }
+      // List all verification requests (admin only) - already verified by requireAuth above
 
       const requests = Array.from(verificationRequests.values()).sort(
         (a, b) => b.submittedAt.getTime() - a.submittedAt.getTime()
@@ -190,14 +164,14 @@ export async function GET(req: NextRequest) {
 // POST: Create new verification request
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = await auth();
-
-    if (!userId) {
+    const authResult = await requireAuth();
+    if ("error" in authResult) {
       return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 }
+        { success: false, error: authResult.error },
+        { status: authResult.status }
       );
     }
+    const { userId } = authResult;
 
     const formData = await req.formData();
     const ministryDataJson = formData.get("ministryData") as string;
@@ -325,28 +299,14 @@ export async function POST(req: NextRequest) {
 // PATCH: Update verification request (upload additional documents or admin action)
 export async function PATCH(req: NextRequest) {
   try {
-    const { userId } = await auth();
-
-    if (!userId) {
+    const authResult = await requireAuth(["admin"]);
+    if ("error" in authResult) {
       return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 }
+        { success: false, error: authResult.error },
+        { status: authResult.status === 401 ? 401 : 403 }
       );
     }
-
-    // Verify admin access
-    const user = await db
-      .select()
-      .from(users)
-      .where(eq(users.clerkUserId, userId))
-      .limit(1);
-
-    if (user.length === 0 || user[0].type !== "admin") {
-      return NextResponse.json(
-        { success: false, error: "Forbidden - Admin access required" },
-        { status: 403 }
-      );
-    }
+    const { userId } = authResult;
 
     const body = await req.json();
     const { verificationId, action, notes } = body;
@@ -509,28 +469,14 @@ export async function PATCH(req: NextRequest) {
 // DELETE: Remove verification request
 export async function DELETE(req: NextRequest) {
   try {
-    const { userId } = await auth();
-
-    if (!userId) {
+    const authResult = await requireAuth(["admin"]);
+    if ("error" in authResult) {
       return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 }
+        { success: false, error: authResult.error },
+        { status: authResult.status === 401 ? 401 : 403 }
       );
     }
-
-    // Verify admin access
-    const user = await db
-      .select()
-      .from(users)
-      .where(eq(users.clerkUserId, userId))
-      .limit(1);
-
-    if (user.length === 0 || user[0].type !== "admin") {
-      return NextResponse.json(
-        { success: false, error: "Forbidden - Admin access required" },
-        { status: 403 }
-      );
-    }
+    const { userId } = authResult;
 
     const { searchParams } = new URL(req.url);
     const verificationId = searchParams.get("id");

@@ -24,7 +24,6 @@ import {
   ChevronRight,
   AlertCircle,
 } from "lucide-react";
-import { PortalHeader } from "@/components/shared/portal-sidebar";
 import Link from "next/link";
 
 // Types
@@ -289,10 +288,14 @@ export default function StudentResultsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <PortalHeader userType="student" userName="Student" title="My Results" />
-      <div className="lg:ml-64 p-6 space-y-6">
-        {/* Overview Stats */}
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900">My Results</h1>
+        <p className="text-gray-600 mt-1">Track your academic performance and achievements</p>
+      </div>
+
+      {/* Overview Stats */}
         <div className="grid md:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="pb-3">
@@ -581,7 +584,7 @@ export default function StudentResultsPage() {
                   <div className="text-center py-12">
                     <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-muted-foreground">No assessment results found</p>
-                    <Link href="/dashboard/assessment">
+                    <Link href="/student/assessment">
                       <Button className="mt-4">Take an Assessment</Button>
                     </Link>
                   </div>
@@ -607,7 +610,7 @@ export default function StudentResultsPage() {
                               </div>
                               <p className="text-sm text-gray-600">{assessment.description}</p>
                             </div>
-                            <Link href={`/dashboard/results/${assessment.id}`}>
+                            <Link href={`/student/results/${assessment.id}`}>
                               <Button variant="outline" size="sm">
                                 View Details
                                 <ChevronRight className="w-4 h-4 ml-2" />
@@ -631,7 +634,7 @@ export default function StudentResultsPage() {
           </CardHeader>
           <CardContent>
             <div className="grid md:grid-cols-3 gap-4">
-              <Link href="/dashboard/assessment" className="block">
+              <Link href="/student/assessment" className="block">
                 <Button variant="outline" className="w-full justify-start">
                   <ClipboardCheck className="w-4 h-4 mr-2" />
                   Take New Assessment
@@ -650,7 +653,6 @@ export default function StudentResultsPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
     </div>
   );
 }

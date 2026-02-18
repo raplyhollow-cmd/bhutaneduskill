@@ -6,6 +6,36 @@ import { tutors, users, tuitionCategories } from "@/lib/db/schema";
 import { eq, desc, like, or } from "drizzle-orm";
 import { z } from "zod";
 
+// ============================================================================
+// TYPE DEFINITIONS
+// ============================================================================
+
+interface AvailableSlot {
+  day: string;
+  startTime: string;
+  endTime: string;
+}
+
+interface AvailabilityItem {
+  day: string;
+  slots: Array<{ start: string; end: string }>;
+}
+
+interface SubjectInput {
+  id?: string;
+  name?: string;
+  proficiency?: string;
+}
+
+interface LocationData {
+  city?: string;
+  district?: string;
+}
+
+interface BankAccountData {
+  accountNumber?: string;
+}
+
 const tutorSchema = z.object({
   teacherId: z.string().optional(), // For school-admin adding a teacher as tutor
   bio: z.string().optional(),
@@ -187,7 +217,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({ tutors: transformedTutors });
-  } catch (error) {
+  } catch (error: unknown) {
     logger.error("Tutors fetch error:", error);
     return NextResponse.json({ error: "Failed to fetch tutors" }, { status: 500 });
   }
@@ -235,12 +265,12 @@ export async function POST(request: NextRequest) {
     const availabilityArray = (validatedData.availableDays || []).map((day: string) => ({
       day,
       slots: (validatedData.availableSlots || [])
-        .filter((s: any) => s.day === day)
-        .map((s: any) => ({
+        .filter((s: AvailableSlot) => s.day === day)
+        .map((s: AvailableSlot) => ({
           start: s.startTime,
           end: s.endTime,
         })),
-    })).filter((a: any) => a.slots.length > 0);
+    })).filter((a: AvailabilityItem) => a.slots.length > 0);
 
     // Determine teaching mode based on rates
     const hasOnlineRate = validatedData.hourlyRateOnline && validatedData.hourlyRateOnline > 0;
@@ -254,15 +284,20 @@ export async function POST(request: NextRequest) {
 
     const tutorId = `tutor_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
-    const [newTutor] = await db.insert(tutors).values({
+    const newTutorResult = await db.insert(tutors).values({
       id: tutorId,
       userId: targetUserId,
       bio: validatedData.bio || "",
-      subjects: (validatedData.subjects || []).map((s: any) => ({
-        subjectId: s.id || s,
-        subjectName: s.name || s,
-        proficiency: s.proficiency || "intermediate",
-      })),
+      subjects: (validatedData.subjects || []).map((s: SubjectInput | string): { subjectId: string; subjectName: string; proficiency: string } => {
+        const subjectId = typeof s === 'string' ? s : (typeof s.id === 'string' ? s.id : String(s.id));
+        const subjectName = typeof s === 'string' ? s : (typeof s.name === 'string' ? s.name : String(s.name));
+        const proficiency = typeof s === 'string' ? 'intermediate' : (typeof s.proficiency === 'string' ? s.proficiency : 'intermediate');
+        return {
+          subjectId,
+          subjectName,
+          proficiency,
+        };
+      }),
       qualifications: validatedData.qualifications || [],
       experience: validatedData.experience || 0,
       hourlyRate: validatedData.hourlyRatePhysical || validatedData.hourlyRateOnline || 500,
@@ -270,22 +305,24 @@ export async function POST(request: NextRequest) {
       currency: "BTN",
       availability: availabilityArray,
       teachingMode,
-      location: (validatedData.location as any)?.city || null,
-      district: (validatedData.location as any)?.district || null,
+      location: (validatedData.location as LocationData | undefined)?.city || null,
+      district: (validatedData.location as LocationData | undefined)?.district || null,
       department: "",
       gradeLevels: validatedData.gradeLevels || [],
       averageRating: 0,
       totalReviews: 0,
       totalStudents: 0,
       isVerified: false,
-      verificationDocument: (validatedData.bankAccount as any)?.accountNumber || "",
+      verificationDocument: (validatedData.bankAccount as BankAccountData | undefined)?.accountNumber || "",
       isActive: true,
       createdAt: new Date(),
       updatedAt: new Date(),
     }).returning();
 
+    const newTutor = Array.isArray(newTutorResult) ? newTutorResult[0] : newTutorResult;
+
     return NextResponse.json({ tutor: newTutor }, { status: 201 });
-  } catch (error) {
+  } catch (error: unknown) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: "Validation failed", details: error.issues }, { status: 400 });
     }

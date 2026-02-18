@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
       examDates,
       goals,
       preferredStudyTime,
-      userName: user?.name || "Student",
+      userName: (user?.name as string) || "Student",
     });
 
     // Call Gemini AI
