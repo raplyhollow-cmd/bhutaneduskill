@@ -9,6 +9,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Portal Access & Build Issues (February 18, 2026)
+
+**Problem:** Users could not access portals after sign-in due to redirect loop between sign-in page, setup wizard, and portal layouts.
+
+**Root Cause:**
+- Commit 6875c65 removed intelligent routing from middleware (to prevent Vercel timeouts)
+- Commit 09bfa93 changed sign-in to redirect directly to `/setup/unified` (bypassing home page routing)
+- This created a broken flow where users bounced between setup and portal pages
+
+**Solution:**
+- Reverted sign-in redirect from `/setup/unified` back to `/` (home page)
+- Home page now properly routes users: needs setup → `/setup/unified`, existing users → their portal
+- Fixed redirect loop issue
+
+**Next.js 15 Compatibility Fixes:**
+- Fixed `searchParams` to use `Promise<>` type in 8+ page files (school-admin announcements, attendance, classes, homework, inventory, results, students, subjects)
+- Removed non-standard route handler exports (`BATCH_SEND`, `POST_receive`, `POST_bulkIssue`, `POST_bulkReturn`, `UNREAD_COUNT`)
+- Removed modal component exports from page files (counselor/interventions)
+- Build now succeeds: **375 routes compiled successfully**
+
+**Files Modified:** 17 files
+- `src/app/sign-in/[[...sign-in]]/page.tsx`
+- `src/app/page.tsx`
+- `src/app/admin/content/page.tsx`
+- `src/app/api/admin/notifications/send/route.ts`
+- `src/app/api/inventory/alerts/route.ts`
+- `src/app/api/inventory/procurement/route.ts`
+- `src/app/api/inventory/transactions/route.ts`
+- `src/app/api/notifications/my-notifications/route.ts`
+- `src/app/counselor/interventions/page.tsx`
+- `src/app/school-admin/*/page.tsx` (8 files)
+- `tsconfig.json`
+
+---
+
 ### Added - Phase 3: ALL REMAINING FEATURES COMPLETE (February 18, 2026) 🎉
 
 **🚀 MILESTONE: 8 PORTALS, 98% VISION COMPLETE**
