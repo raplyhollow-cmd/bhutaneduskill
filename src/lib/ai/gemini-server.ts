@@ -71,7 +71,11 @@ export interface AIContext {
   topCareer?: string | null;
   careerMatchScore?: number | null;
   completedAssessments?: number;
-  recentGrades?: number[];
+  recentGrades?: number;
+  // Journal-related fields for personalized AI responses
+  recentJournalTopics?: string;
+  journalEntryCount?: number;
+  recentMoods?: string;
 }
 
 export interface ChatResponse {
@@ -214,8 +218,17 @@ function buildCareerCoachContext(context: AIContext): string {
     parts.push(`Assessments Completed: ${context.completedAssessments}`);
   }
 
-  if (context.recentGrades && context.recentGrades.length > 0) {
-    parts.push(`Recent Grades: ${context.recentGrades.join(", ")}`);
+  // Journal context for AI
+  if (context.recentJournalTopics) {
+    parts.push(`Recent Journal Topics: ${context.recentJournalTopics}`);
+  }
+
+  if (context.journalEntryCount !== undefined && context.journalEntryCount > 0) {
+    parts.push(`Journal Entries: ${context.journalEntryCount} total`);
+  }
+
+  if (context.recentMoods) {
+    parts.push(`Recent Moods: ${context.recentMoods}`);
   }
 
   return parts.length > 0 ? "\n\nSTUDENT CONTEXT:\n" + parts.join("\n") : "";

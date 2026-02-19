@@ -25,7 +25,7 @@ interface UserRecord {
   section: string | null;
   schoolId: string | null;
   dateOfBirth: string | null;
-  profilePicture: string | null;
+  profileImage: string | null;
   type: string;
 }
 
@@ -157,7 +157,7 @@ export interface StudentInfo {
   classId: string | null;
   schoolId: string | null;
   dateOfBirth: string | null;
-  profilePicture: string | null;
+  profileImage: string | null;
 }
 
 export interface HomeworkSummary {
@@ -286,7 +286,7 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
     classId: enrollment?.classId || null,
     schoolId: userRecord.schoolId,
     dateOfBirth: userRecord.dateOfBirth,
-    profilePicture: userRecord.profilePicture,
+    profileImage: userRecord.profileImage,
   };
 
   // 2. Get homework summary
@@ -540,17 +540,22 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
   });
 
   // 8. Get career match summary
+  // CRITICAL FIX: Filter by BOTH assessmentId AND studentId to prevent data leakage
   const [careerMatchCount] = await db
     .select({ count: count() })
     .from(careerMatches)
-    .where(eq(careerMatches.assessmentId, latestAssessment?.id || ""));
+    .where(and(
+      eq(careerMatches.assessmentId, latestAssessment?.id || ""),
+      eq(careerMatches.studentId, studentId) // CRITICAL: Prevents seeing other students' matches
+    ));
 
   const [topMatchCount] = await db
     .select({ count: count() })
     .from(careerMatches)
     .where(and(
       eq(careerMatches.assessmentId, latestAssessment?.id || ""),
-eq(careerMatches.isTopMatch, true)
+      eq(careerMatches.studentId, studentId), // CRITICAL: Prevents seeing other students' matches
+      eq(careerMatches.isTopMatch, true)
     ));
 
   const careerMatchSummary: CareerMatchSummary = {
@@ -694,7 +699,7 @@ export async function getStudentProgressData(): Promise<StudentProgressData> {
     classId: enrollment?.classId || null,
     schoolId: userRecord.schoolId,
     dateOfBirth: userRecord.dateOfBirth,
-    profilePicture: userRecord.profilePicture,
+    profileImage: userRecord.profileImage,
   };
 
   // Get attendance records (last 30 days)

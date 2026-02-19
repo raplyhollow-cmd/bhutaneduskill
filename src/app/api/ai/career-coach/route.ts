@@ -10,7 +10,7 @@ import { logger } from "@/lib/logger";
 
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
-import { desc } from "drizzle-orm";
+import { desc, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { users, riasecResults, mbtiResults, careerMatches, assessments, careerPlans } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -109,14 +109,15 @@ export async function POST(request: NextRequest) {
     );
 
     // Query 5: Get career matches
+    // FIXED: Now gets matches from ALL assessments, not just the first one
     const assessmentIds = userAssessments.map(a => a.id);
     let matches: typeof careerMatches.$inferSelect[] = [];
     if (assessmentIds.length > 0) {
       matches = await safeQuery(
         () => db.query.careerMatches.findMany({
-            where: eq(careerMatches.assessmentId, assessmentIds[0]),
+            where: inArray(careerMatches.assessmentId, assessmentIds),
             orderBy: desc(careerMatches.matchScore),
-            limit: 5,
+            limit: 10, // Increased limit to get more career options
           }),
         [],
         "career matches"
@@ -132,10 +133,31 @@ export async function POST(request: NextRequest) {
       "career plan"
     );
 
+    // Query 7: Get recent journal entries for AI context
+    // Journal entries are stored in users.settings.journalEntries
+    const journalEntries = await safeQuery(
+      () => {
+        const settings = (userProfile?.settings as any) || {};
+        return settings.journalEntries || [];
+      },
+      [],
+      "journal entries"
+    );
+
+    // Get recent journal entries (last 7 days, max 5)
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const recentJournals = journalEntries
+      .filter((e: any) => {
+        const entryDate = new Date(e.date);
+        return entryDate >= weekAgo;
+      })
+      .slice(-5);
+
     // Calculate completed assessments count
     const completedAssessments = userAssessments.filter((a) => a.status === "completed");
 
-    // Build context for AI
+    // Build context for AI - now includes journal data
     const aiContext: AIContext = {
       userName: userProfile?.name || "Student",
       userRole: userProfile?.role || "student",
@@ -144,6 +166,10 @@ export async function POST(request: NextRequest) {
       topCareer: matches[0]?.careerTitle || null,
       careerMatchScore: matches[0]?.matchScore || null,
       completedAssessments: completedAssessments.length,
+      // Add journal context for AI
+      recentJournalTopics: recentJournals.map((j: any) => j.title).join(", "),
+      journalEntryCount: journalEntries.length,
+      recentMoods: recentJournals.map((j: any) => j.mood).filter(Boolean).join(", "),
     };
 
     // Convert conversation history format

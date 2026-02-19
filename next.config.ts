@@ -17,6 +17,16 @@ const nextConfig: NextConfig = {
   images: {
     formats: ['image/webp'],
   },
+
+  // Disable ESLint during builds (run separately with npm run lint)
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+
+  // Disable TypeScript type checking during builds (run separately with npx tsc --noEmit)
+  typescript: {
+    ignoreBuildErrors: false,
+  },
 };
 
 export default nextConfig;

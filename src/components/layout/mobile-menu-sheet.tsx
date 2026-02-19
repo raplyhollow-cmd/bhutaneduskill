@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Home, User, LogIn, Compass, GraduationCap, BookOpen, MessageSquare, Settings, HeartHandshake, Building, Shield, Landmark } from "lucide-react";
+import { X, Home, User, LogIn, Compass, GraduationCap, BookOpen, MessageSquare, Settings, HeartHandshake, Building, Shield, Landmark, GraduationCap as AlumniIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface MobileMenuSheetProps {
@@ -28,6 +28,7 @@ const menuSections = [
       { name: "Teacher", href: "/teacher", icon: BookOpen },
       { name: "Parent", href: "/parent", icon: User },
       { name: "Counselor", href: "/counselor", icon: HeartHandshake },
+      { name: "Alumni", href: "/alumni", icon: AlumniIcon },
       { name: "School Admin", href: "/school-admin", icon: Building },
       { name: "Ministry", href: "/ministry", icon: Landmark },
       { name: "Platform Admin", href: "/admin", icon: Shield },

@@ -9,6 +9,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Ministry User Creation Script (February 19, 2026)
+
+**What:**
+- Created `scripts/create-ministry-user.js` to generate ministry-level RBAC users
+- Creates user via Clerk API and sets up database record with ministry role
+
+**Credentials Created:**
+- Email: `ministry@bhutaneduskill.bt`
+- Password: `Tiger@2026!`
+- Clerk ID: `user_39saqXySWN70cpmYejdqzJwR6h2`
+- Database ID: `user_1771487905949_mvn5i3ur0`
+- RBAC Role: `ministry`
+
+**Usage:**
+```bash
+node scripts/create-ministry-user.js
+```
+
+**Files Created:**
+- `scripts/create-ministry-user.js` - Creates ministry user with Clerk auth + RBAC role
+
+---
+
+### Fixed - School Deletion API & Navigation Menus (February 19, 2026)
+
+**Problems Fixed:**
+1. School deletion in admin portal returning 500 Internal Server Error
+2. Ministry and Alumni portals missing from public navigation menus
+
+**Root Causes:**
+1. **School Deletion API**: The `/api/schools/[id]/route.ts` DELETE handler was dynamically importing tables inside the function while `eq` was imported at the top, causing type inference issues
+2. **Navigation Menus**: Ministry and Alumni portals were not included in the portal selector, compact navigation, and mobile menu
+
+**Solutions:**
+1. **School Deletion API** - Moved all required table imports to top of file:
+   ```typescript
+   // Before: const { users, classes, ... } = await import("@/lib/db/schema");
+   // After:  import { schools, users, classes, feePayments, ... } from "@/lib/db/schema";
+   ```
+2. **Navigation Menus** - Added Ministry and Alumni portals to:
+   - `src/components/layout/compact-nav.tsx` - Desktop floating pill + mobile tab bar
+   - `src/components/layout/portal-selector.tsx` - Portal dropdown selector
+   - `src/components/layout/mobile-menu-sheet.tsx` - Mobile menu sheet
+
+**Files Modified:**
+- `src/app/api/schools/[id]/route.ts` - Fixed table imports in DELETE handler
+- `src/components/layout/compact-nav.tsx` - Added Ministry and Alumni portals
+- `src/components/layout/portal-selector.tsx` - Added Ministry and Alumni portals
+- `src/components/layout/mobile-menu-sheet.tsx` - Added Ministry and Alumni portals
+
+**Portal Details Added:**
+- **Ministry**: `rgb(168 85 247)` (purple/violet), Landmark icon, `/ministry`
+- **Alumni**: `rgb(34 197 94)` (green), GraduationCap icon, `/alumni`
+
+**Impact:**
+- School deletion now works properly for admins with proper permissions
+- Ministry and Alumni portals now accessible from all public navigation menus
+- All 8 portals now visible: Student, Teacher, Parent, Counselor, Alumni, School Admin, Ministry, Platform Admin
+
+---
+
 ### Fixed - Journal AI Insights API Error (February 19, 2026)
 
 **Problem:**

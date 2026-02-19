@@ -36,6 +36,21 @@ export async function POST(req: NextRequest) {
     const settings = (user?.settings as any) || {};
     const entries = settings.journalEntries || [];
 
+    // DAILY LIMIT: Check if user already has an entry for today
+    const today = new Date().toISOString().split('T')[0];
+    const existingToday = entries.find((e: any) => {
+      const entryDate = new Date(e.date).toISOString().split('T')[0];
+      return entryDate === today;
+    });
+
+    if (existingToday) {
+      return NextResponse.json({
+        success: false,
+        error: "You can only write one journal entry per day. Come back tomorrow!",
+        existingEntry: existingToday
+      }, { status: 400 });
+    }
+
     const newEntry = {
       id: `journal-${Date.now()}`,
       date: date || new Date().toISOString(),
@@ -57,7 +72,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true, entry: newEntry });
   } catch (error: any) {
-    logger.apiError(error, { route: "/", method: "GET" });
+    logger.apiError(error, { route: "/api/journal", method: "POST" });
     return NextResponse.json({ error: "Failed to save entry" }, { status: 500 });
   }
 }

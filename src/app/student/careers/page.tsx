@@ -1,25 +1,61 @@
 "use client";
 
 import { logger } from "@/lib/logger";
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CAREERS_DATABASE, STUDY_ABROAD_REQUIREMENTS } from "@/lib/tenant";
-import { Search, TrendingUp, GraduationCap, Globe, DollarSign, Building, ArrowRight, Bookmark } from "lucide-react";
+import { Search, TrendingUp, GraduationCap, ArrowRight, Bookmark, Sparkles, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
+interface CareerMatch {
+  id: string;
+  careerId: string;
+  careerTitle: string;
+  matchScore: number;
+  matchReason: string;
+  isTopMatch: boolean;
+  assessmentType: string;
+}
+
+interface CareerMatchesResponse {
+  hasAssessments: boolean;
+  assessmentCount: number;
+  careerMatches: CareerMatch[];
+  hollandCode: string | null;
+  studentName: string;
+  message?: string;
+}
+
 export default function CareersPage() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [savedCareers, setSavedCareers] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [careerData, setCareerData] = useState<CareerMatchesResponse | null>(null);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
+    loadCareerMatches();
     loadSavedCareers();
   }, []);
+
+  const loadCareerMatches = async () => {
+    try {
+      setLoading(true);
+      setHasError(false);
+      const response = await fetch("/api/student/career-matches");
+      if (response.ok) {
+        const data = await response.json();
+        setCareerData(data);
+      }
+    } catch (error) {
+      logger.error("Failed to load career matches:", error);
+      setHasError(true);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadSavedCareers = async () => {
     try {
@@ -30,8 +66,6 @@ export default function CareersPage() {
       }
     } catch (error) {
       logger.error("Failed to load saved careers:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -58,54 +92,155 @@ export default function CareersPage() {
     }
   };
 
-  // Filter careers based on search and category
-  const filteredCareers = CAREERS_DATABASE.filter((career) => {
-    const matchesSearch =
-      career.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      career.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      career.skills.some((skill) =>
-        skill.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+  // Filter career matches based on search
+  const filteredCareers = careerData?.careerMatches.filter((match) => {
+    if (!searchTerm) return true;
+    const searchLower = searchTerm.toLowerCase();
+    return (
+      match.careerTitle.toLowerCase().includes(searchLower) ||
+      match.matchReason?.toLowerCase().includes(searchLower) ||
+      match.assessmentType.toLowerCase().includes(searchLower)
+    );
+  }) || [];
 
-    return matchesSearch;
-  });
-
-  const getDemandColor = (demand: string) => {
-    switch (demand) {
-      case "very-high":
-        return "bg-green-100 text-green-800";
-      case "high":
-        return "bg-blue-100 text-blue-800";
-      case "medium":
-        return "bg-yellow-100 text-yellow-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
+  const getMatchScoreColor = (score: number) => {
+    if (score >= 80) return "bg-green-100 text-green-800 border-green-200";
+    if (score >= 60) return "bg-blue-100 text-blue-800 border-blue-200";
+    return "bg-yellow-100 text-yellow-800 border-yellow-200";
   };
 
-  const getDemandLabel = (demand: string) => {
-    switch (demand) {
-      case "very-high":
-        return "Very High Demand";
-      case "high":
-        return "High Demand";
-      case "medium":
-        return "Medium Demand";
-      default:
-        return "Emerging";
-    }
+  const getMatchScoreLabel = (score: number) => {
+    if (score >= 80) return "Excellent Match";
+    if (score >= 60) return "Good Match";
+    return "Potential Match";
   };
 
+  // Loading state
+  if (loading) {
+    return (
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Career Explorer
+          </h1>
+          <p className="text-gray-600">
+            Discover careers that match your skills and interests
+          </p>
+        </div>
+        <div className="grid md:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="animate-pulse">
+              <CardContent className="pt-6">
+                <div className="h-8 bg-gray-200 rounded w-1/2 mb-2"></div>
+                <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (hasError) {
+    return (
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Career Explorer
+          </h1>
+        </div>
+        <Card className="p-12 text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <p className="text-gray-700 font-medium mb-2">Unable to load career matches</p>
+          <p className="text-gray-500 mb-4">There was an error loading your personalized career recommendations.</p>
+          <Button onClick={loadCareerMatches}>Try Again</Button>
+        </Card>
+      </div>
+    );
+  }
+
+  // No assessments completed state
+  if (!careerData?.hasAssessments) {
+    return (
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Career Explorer
+          </h1>
+          <p className="text-gray-600">
+            Discover careers that match your skills and interests
+          </p>
+        </div>
+        <Card className="p-12 text-center bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200">
+          <Sparkles className="w-16 h-16 text-orange-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            Complete Assessments to See Your Career Matches
+          </h2>
+          <p className="text-gray-600 mb-6 max-w-md mx-auto">
+            Take our career assessments (RIASEC, MBTI, Work Values) to get personalized career recommendations based on your unique personality and interests.
+          </p>
+          <Button asChild className="bg-orange-500 hover:bg-orange-600">
+            <Link href="/student/assessments">
+              Start Assessments
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Link>
+          </Button>
+        </Card>
+
+        {/* Show general career categories as preview */}
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Career Categories</h2>
+          <div className="grid md:grid-cols-4 gap-4">
+            {[
+              { name: "STEM", icon: "🔬", color: "from-blue-50 to-cyan-50" },
+              { name: "Healthcare", icon: "🏥", color: "from-red-50 to-pink-50" },
+              { name: "Business", icon: "💼", color: "from-amber-50 to-yellow-50" },
+              { name: "Arts", icon: "🎨", color: "from-purple-50 to-violet-50" },
+              { name: "Education", icon: "📚", color: "from-green-50 to-emerald-50" },
+              { name: "Agriculture", icon: "🌾", color: "from-lime-50 to-green-50" },
+              { name: "Technology", icon: "💻", color: "from-indigo-50 to-blue-50" },
+              { name: "Public Service", icon: "🏛️", color: "from-slate-50 to-gray-50" },
+            ].map((category) => (
+              <Card key={category.name} className={`hover:shadow-md transition-shadow bg-gradient-to-br ${category.color}`}>
+                <CardContent className="pt-6 text-center">
+                  <div className="text-3xl mb-2">{category.icon}</div>
+                  <p className="font-medium text-gray-800">{category.name}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Has career matches - show personalized results
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Career Explorer
-        </h1>
-        <p className="text-gray-600">
-          Discover careers that match your skills and interests
-        </p>
+      {/* Header with Holland Code */}
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Your Career Matches
+          </h1>
+          <p className="text-gray-600">
+            Personalized career recommendations based on your assessments
+          </p>
+          {careerData.hollandCode && (
+            <div className="mt-3 flex items-center gap-2">
+              <span className="text-sm text-gray-500">Your Holland Code:</span>
+              <Badge variant="outline" className="text-sm font-mono bg-orange-50 text-orange-700 border-orange-200">
+                {careerData.hollandCode}
+              </Badge>
+            </div>
+          )}
+        </div>
+        <Button variant="outline" asChild>
+          <Link href="/student/assessments">
+            Retake Assessments
+          </Link>
+        </Button>
       </div>
 
       {/* Search */}
@@ -115,10 +250,10 @@ export default function CareersPage() {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Search careers, skills, or interests..."
+              placeholder="Search your career matches..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-12 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
             />
           </div>
         </CardContent>
@@ -129,13 +264,29 @@ export default function CareersPage() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-500">
-              Careers Available
+              Assessments Completed
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
               <span className="text-2xl font-bold text-gray-900">
-                {CAREERS_DATABASE.length}
+                {careerData.assessmentCount}
+              </span>
+              <Sparkles className="w-5 h-5 text-orange-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-gray-500">
+              Your Career Matches
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <span className="text-2xl font-bold text-gray-900">
+                {careerData.careerMatches.length}
               </span>
               <TrendingUp className="w-5 h-5 text-blue-500" />
             </div>
@@ -145,127 +296,92 @@ export default function CareersPage() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-500">
-              In High Demand
+              Top Matches
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between">
               <span className="text-2xl font-bold text-gray-900">
-                {CAREERS_DATABASE.filter((c) => c.demandOutlook === "high" || c.demandOutlook === "very-high").length}
+                {careerData.careerMatches.filter(m => m.isTopMatch).length}
               </span>
               <TrendingUp className="w-5 h-5 text-green-500" />
             </div>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              Study Abroad Options
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <span className="text-2xl font-bold text-gray-900">
-                {CAREERS_DATABASE.filter((c) => c.studyAbroad).length}
-              </span>
-              <Globe className="w-5 h-5 text-purple-500" />
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
-      {/* Career Cards */}
+      {/* Career Match Cards */}
       <div className="grid md:grid-cols-2 gap-6">
-        {filteredCareers.map((career) => (
-          <Card key={career.id} className="hover:shadow-lg transition-shadow">
+        {filteredCareers.map((match) => (
+          <Card key={match.id} className={cn(
+            "hover:shadow-lg transition-shadow",
+            match.isTopMatch && "border-orange-300 bg-gradient-to-br from-orange-50/50 to-white"
+          )}>
             <CardHeader>
               <div className="flex items-start justify-between">
-                <div>
-                  <CardTitle className="text-xl">{career.name}</CardTitle>
-                  <CardDescription className="mt-1">{career.description}</CardDescription>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <CardTitle className="text-xl">{match.careerTitle}</CardTitle>
+                    {match.isTopMatch && (
+                      <Badge className="bg-orange-500 text-white shrink-0">
+                        Top Match
+                      </Badge>
+                    )}
+                  </div>
+                  <CardDescription className="mt-1">
+                    Based on: {match.assessmentType}
+                  </CardDescription>
                 </div>
-                <Badge className={getDemandColor(career.demandOutlook)}>
-                  {getDemandLabel(career.demandOutlook)}
+                <Badge className={cn("shrink-0", getMatchScoreColor(match.matchScore))}>
+                  {match.matchScore}% Match
                 </Badge>
               </div>
               <div className="flex items-center gap-2 mt-2">
-                <Badge variant="outline">RIASEC: {career.riasecCode}</Badge>
-                {career.bhutanSpecific && (
-                  <Badge variant="secondary" className="bg-blue-50 text-blue-700">
-                    🇧🇹 In-Demand in Bhutan
-                  </Badge>
-                )}
+                <Badge variant="outline" className="text-xs">
+                  {getMatchScoreLabel(match.matchScore)}
+                </Badge>
               </div>
             </CardHeader>
 
             <CardContent className="space-y-4">
-              {/* Salary */}
-              <div className="flex items-center gap-2 text-sm">
-                <DollarSign className="w-4 h-4 text-gray-500" />
-                <span className="text-gray-600">Salary Range:</span>
-                <span className="font-semibold text-gray-900">{career.salaryRange}</span>
-              </div>
-
-              {/* Skills */}
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Key Skills:</h4>
-                <div className="flex flex-wrap gap-2">
-                  {career.skills.map((skill) => (
-                    <Badge key={skill} variant="secondary" className="text-xs">
-                      {skill}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-
-              {/* Education Path */}
-              <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Education Path:</h4>
-                <ul className="space-y-1">
-                  {career.educationPath.map((step, index) => (
-                    <li key={index} className="text-sm text-gray-600 flex items-start gap-2">
-                      <span className="text-blue-500">{index + 1}.</span>
-                      <span>{step}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Study Abroad */}
-              {career.studyAbroad && (
-                <div className="pt-3 border-t">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                    <Globe className="w-4 h-4" />
-                    Study Abroad Opportunities:
-                  </h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    {Object.entries(career.studyAbroad).map(([country, level]) => (
-                      <Badge key={country} variant="outline" className="justify-start">
-                        {country === "australia" && "🇦🇺 Australia"}
-                        {country === "new-zealand" && "🇳🇿 New Zealand"}
-                        {country === "usa" && "🇺🇸 USA"}
-                        {country === "singapore" && "🇸🇬 Singapore"}
-                        {level === "very-high" && " ⭐⭐⭐"}
-                        {level === "high" && " ⭐⭐"}
-                        {level === "medium" && " ⭐"}
-                      </Badge>
-                    ))}
-                  </div>
+              {/* Match Reason */}
+              {match.matchReason && (
+                <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                  <p className="text-sm text-blue-900">
+                    <span className="font-medium">Why this matches you:</span> {match.matchReason}
+                  </p>
                 </div>
               )}
+
+              {/* Match Score Bar */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-sm font-medium text-gray-700">Match Score</span>
+                  <span className="text-sm font-bold text-gray-900">{match.matchScore}%</span>
+                </div>
+                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className={cn(
+                      "h-full rounded-full transition-all",
+                      match.matchScore >= 80 ? "bg-green-500" :
+                      match.matchScore >= 60 ? "bg-blue-500" : "bg-yellow-500"
+                    )}
+                    style={{ width: `${match.matchScore}%` }}
+                  />
+                </div>
+              </div>
 
               {/* Actions */}
               <div className="flex gap-2 pt-3">
                 <Button
                   size="sm"
-                  variant={savedCareers.includes(career.id) ? "default" : "outline"}
-                  onClick={() => toggleSaveCareer(career.id)}
+                  variant={savedCareers.includes(match.careerId) ? "default" : "outline"}
+                  onClick={() => toggleSaveCareer(match.careerId)}
                   disabled={loading}
                   className="min-w-[100px]"
                 >
-                  <Bookmark className={cn("w-4 h-4 mr-2", savedCareers.includes(career.id) && "fill-current")} />
-                  {savedCareers.includes(career.id) ? "Saved" : "Save"}
+                  <Bookmark className={cn("w-4 h-4 mr-2", savedCareers.includes(match.careerId) && "fill-current")} />
+                  {savedCareers.includes(match.careerId) ? "Saved" : "Save"}
                 </Button>
                 <Button size="sm" variant="outline" className="flex-1" asChild>
                   <Link href="/student/skills">
@@ -274,7 +390,7 @@ export default function CareersPage() {
                   </Link>
                 </Button>
                 <Button size="sm" className="flex-1" asChild>
-                  <Link href={`/student/careers/${career.slug}`}>
+                  <Link href={`/student/careers/${match.careerId}`}>
                     View Details
                     <ArrowRight className="w-4 h-4 ml-2" />
                   </Link>
@@ -285,7 +401,7 @@ export default function CareersPage() {
         ))}
       </div>
 
-      {filteredCareers.length === 0 && (
+      {filteredCareers.length === 0 && careerData.careerMatches.length > 0 && (
         <Card className="p-12 text-center">
           <p className="text-gray-500 mb-4">No careers found matching your search.</p>
           <Button variant="outline" onClick={() => setSearchTerm("")}>

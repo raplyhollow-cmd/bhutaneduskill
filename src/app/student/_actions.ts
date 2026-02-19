@@ -20,21 +20,20 @@ import {
   type StudentHomeworkItem,
   type StudentTuitionCourse,
 } from "@/lib/api/student";
-import { cache } from "react";
 
-// Cache the student ID lookup
-const getCachedStudentId = cache(async () => {
-  return await getCurrentStudentId();
-});
+// CRITICAL FIX: Removed React cache() wrapper
+// The cache() function with no arguments causes cross-user data leakage!
+// React's cache() caches results based on function arguments.
+// With no arguments, the result is cached globally across ALL requests.
+// This caused Student B to see Student A's data.
+// getCurrentStudentId() already calls requireAuth() which validates
+// the session on each call, so caching here is both redundant AND harmful.
 
 /**
  * DASHBOARD ACTIONS
  */
 export async function fetchStudentDashboard(): Promise<StudentDashboardData> {
-  const studentId = await getCachedStudentId();
-  if (!studentId) {
-    throw new Error("Student not found or not authenticated");
-  }
+  // Call getStudentDashboardData directly - it handles auth internally
   return getStudentDashboardData();
 }
 
@@ -42,10 +41,7 @@ export async function fetchStudentDashboard(): Promise<StudentDashboardData> {
  * PROGRESS ACTIONS
  */
 export async function fetchStudentProgress(): Promise<StudentProgressData> {
-  const studentId = await getCachedStudentId();
-  if (!studentId) {
-    throw new Error("Student not found or not authenticated");
-  }
+  // Call getStudentProgressData directly - it handles auth internally
   return getStudentProgressData();
 }
 
@@ -56,10 +52,7 @@ export async function fetchStudentHomework(options: {
   status?: "all" | "pending" | "submitted" | "graded";
   limit?: number;
 } = {}): Promise<StudentHomeworkItem[]> {
-  const studentId = await getCachedStudentId();
-  if (!studentId) {
-    throw new Error("Student not found or not authenticated");
-  }
+  // Call getStudentHomework directly - it handles auth internally
   return getStudentHomework(options);
 }
 
@@ -67,10 +60,7 @@ export async function fetchStudentHomework(options: {
  * TUITION ACTIONS
  */
 export async function fetchStudentTuitionCourses(): Promise<StudentTuitionCourse[]> {
-  const studentId = await getCachedStudentId();
-  if (!studentId) {
-    throw new Error("Student not found or not authenticated");
-  }
+  // Call getStudentTuitionCourses directly - it handles auth internally
   return getStudentTuitionCourses();
 }
 
@@ -90,7 +80,7 @@ export async function submitHomework(data: {
     size: number;
   }>;
 }) {
-  const authData = await getCachedStudentId();
+  const authData = await getCurrentStudentId();
   if (!authData) {
     return { success: false, error: "Student not found or not authenticated" };
   }
@@ -171,7 +161,7 @@ export async function submitHomework(data: {
  * Fetch the current student's profile information.
  */
 export async function fetchStudentProfile() {
-  const authData = await getCachedStudentId();
+  const authData = await getCurrentStudentId();
   if (!authData) {
     return null;
   }
@@ -234,7 +224,7 @@ export async function updateStudentProfile(data: {
   profilePicture?: string;
   dateOfBirth?: string;
 }) {
-  const authData = await getCachedStudentId();
+  const authData = await getCurrentStudentId();
   if (!authData) {
     return { success: false, error: "Student not found or not authenticated" };
   }
@@ -282,7 +272,7 @@ export async function selfCheckIn(data: {
     accuracy: number;
   };
 }) {
-  const authData = await getCachedStudentId();
+  const authData = await getCurrentStudentId();
   if (!authData) {
     return { success: false, error: "Student not found or not authenticated" };
   }
@@ -346,7 +336,7 @@ export async function selfCheckIn(data: {
  * Fetch the current student's fee payment status.
  */
 export async function fetchFeeStatus() {
-  const authData = await getCachedStudentId();
+  const authData = await getCurrentStudentId();
   if (!authData) {
     return null;
   }
@@ -433,7 +423,7 @@ export async function fetchStudentAnnouncements(): Promise<{
   announcements: StudentAnnouncementData[];
   pinned: StudentAnnouncementData[];
 }> {
-  const authData = await getCachedStudentId();
+  const authData = await getCurrentStudentId();
   if (!authData) {
     return { announcements: [], pinned: [] };
   }
@@ -555,7 +545,7 @@ export async function fetchStudentAnnouncements(): Promise<{
  * Mark announcement as read
  */
 export async function markAnnouncementAsRead(announcementId: string) {
-  const authData = await getCachedStudentId();
+  const authData = await getCurrentStudentId();
   if (!authData) {
     return { success: false, error: "Student not found" };
   }
