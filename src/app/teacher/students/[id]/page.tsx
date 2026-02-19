@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { requireAuth } from "@/lib/auth-utils";
+import { CrossPortalLinks } from "@/components/shared/cross-portal-links";
 import { db } from "@/lib/db";
 import { users, classes, enrollments, attendance, homeworkSubmissions, homework } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
@@ -388,6 +389,13 @@ export default async function TeacherStudentDetailPage({ params }: PageProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* Cross-Portal Navigation */}
+      <CrossPortalLinks
+        studentId={id}
+        userType="teacher"
+        showLinks={["assessment", "career", "attendance", "homework", "progress", "results"]}
+      />
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Left Column - Personal Info */}

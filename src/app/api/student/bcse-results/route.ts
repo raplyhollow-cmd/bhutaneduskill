@@ -86,7 +86,6 @@ export async function GET(req: NextRequest) {
         student: {
           id: userId,
           name: user?.name,
-          cidNumber: user?.cidNumber,
         },
       },
     });

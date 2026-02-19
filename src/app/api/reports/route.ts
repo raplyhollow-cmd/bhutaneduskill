@@ -762,7 +762,7 @@ async function generateSchoolPerformanceReport(parameters: Record<string, unknow
   };
 }
 
-async function generateMyProgressReport(user: { id: string; name: string | null; grade: string | null }): Promise<MyProgressData> {
+async function generateMyProgressReport(user: { id: string; name: string | null; grade: number | null }): Promise<MyProgressData> {
   const allAssessments = await db.query.assessments.findMany({
     where: eq(assessments.userId, user.id),
   });
@@ -800,7 +800,7 @@ async function generateMyProgressReport(user: { id: string; name: string | null;
   return {
     user: {
       name: user.name,
-      grade: user.grade,
+      grade: user.grade ? String(user.grade) : null,
     },
     assessments: {
       completed: allAssessments.filter((a) => a.status === "completed").length,

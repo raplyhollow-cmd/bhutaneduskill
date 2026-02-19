@@ -8,6 +8,84 @@ import type { User, School } from "@/lib/db/schema";
 import { getIDTemplate, getDefaultValidThru, type IDCardColors } from "./templates";
 import { generateIDVerificationQR, generateIDBarcode, generateCardNumber } from "./qr-generator";
 
+// ============================================================================
+// IMAGE LOADING HELPERS
+// ============================================================================
+
+/**
+ * Load an image from URL and convert to data URL
+ */
+async function loadImageAsDataURL(url: string): Promise<string | null> {
+  if (!url) return null;
+
+  // If already a data URL, return as-is
+  if (url.startsWith("data:")) {
+    return url;
+  }
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      return null;
+    }
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    return null;
+  }
+}
+
+/**
+ * Load and draw image on PDF with aspect ratio preservation
+ */
+async function loadAndDrawImage(
+  pdf: jsPDF,
+  imageUrl: string | undefined,
+  x: number,
+  y: number,
+  maxWidth: number,
+  maxHeight: number
+): Promise<{ width: number; height: number; success: boolean }> {
+  if (!imageUrl) {
+    return { width: 0, height: 0, success: false };
+  }
+
+  const dataUrl = await loadImageAsDataURL(imageUrl);
+  if (!dataUrl) {
+    return { width: 0, height: 0, success: false };
+  }
+
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+
+    const aspectRatio = img.width / img.height;
+    let width = maxWidth;
+    let height = maxWidth / aspectRatio;
+
+    if (height > maxHeight) {
+      height = maxHeight;
+      width = maxHeight * aspectRatio;
+    }
+
+    // Detect image type from data URL
+    const imageType = dataUrl.startsWith("data:image/png") ? "PNG" : "JPEG";
+    pdf.addImage(dataUrl, imageType, x, y, width, height);
+    return { width, height, success: true };
+  } catch (error) {
+    return { width: 0, height: 0, success: false };
+  }
+}
+
 export interface IDCardData {
   // User information
   userId: string;
@@ -107,23 +185,14 @@ async function drawIDCardFront(
 
   // School logo
   const logoUrl = options.customLogo || data.schoolLogo;
-  if (logoUrl) {
-    try {
-      // TODO: Load and add logo image
-      // pdf.addImage(logoUrl, "PNG", 5, yPos + 2, 10, 10);
-    } catch (e) {
-      // Fallback to text if logo fails
-      pdf.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
-      pdf.setFontSize(8);
-      pdf.setFont("helvetica", "bold");
-      pdf.text(data.schoolCode || "SCHOOL", 10, yPos + 6);
-    }
-  } else {
-    // Use school code as logo placeholder
+  const logoResult = await loadAndDrawImage(pdf, logoUrl, 5, yPos - 2, 10, 10);
+
+  if (!logoResult.success) {
+    // Fallback to text if logo fails
     pdf.setTextColor(colors.primary[0], colors.primary[1], colors.primary[2]);
     pdf.setFontSize(8);
     pdf.setFont("helvetica", "bold");
-    pdf.text(data.schoolCode || "SCHOOL", 10, yPos + 6);
+    pdf.text(data.schoolCode || "SCHOOL", 10, yPos + 4);
   }
 
   // School name
@@ -134,16 +203,14 @@ async function drawIDCardFront(
 
   yPos = 12;
 
-  // Photo placeholder
+  // Photo
   const photoX = template.layout.photoPosition === "left" ? 5 : cardWidth - 23;
   const photoY = yPos;
   const photoSize = 18;
 
   if (data.photo) {
-    try {
-      // TODO: Load and add photo
-      // pdf.addImage(data.photo, "JPEG", photoX, photoY, photoSize, photoSize);
-    } catch (e) {
+    const photoResult = await loadAndDrawImage(pdf, data.photo, photoX, photoY, photoSize, photoSize);
+    if (!photoResult.success) {
       drawPhotoPlaceholder(pdf, photoX, photoY, photoSize);
     }
   } else {
@@ -203,30 +270,32 @@ async function drawIDCardFront(
   pdf.setTextColor(colors.accent[0], colors.accent[1], colors.accent[2]);
   pdf.text(`Valid Thru: ${validThru}`, textX, textY);
 
-  // QR Code
+  // QR Code (bottom right corner)
   if (template.layout.showQRCode) {
     try {
       const qrDataUrl = await generateIDVerificationQR(data.userId, data.schoolId);
-      const qrSize = 12;
-      const qrX = cardWidth - qrSize - 3;
-      const qrY = cardHeight - qrSize - 3;
-      // TODO: Add QR code image
-      // pdf.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
+      if (qrDataUrl && !qrDataUrl.includes("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==")) {
+        const qrSize = 12;
+        const qrX = cardWidth - qrSize - 3;
+        const qrY = cardHeight - qrSize - 3;
+        pdf.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
+      }
     } catch (e) {
       console.error("Failed to add QR code:", e);
     }
   }
 
-  // Barcode
+  // Barcode (below QR code or in bottom area)
   if (template.layout.showBarcode) {
     try {
       const barcodeDataUrl = generateIDBarcode(data.userId, idNumber);
-      const barcodeWidth = 25;
-      const barcodeHeight = 6;
-      const barcodeX = cardWidth - barcodeWidth - 3;
-      const barcodeY = cardHeight - barcodeHeight - 3;
-      // TODO: Add barcode image
-      // pdf.addImage(barcodeDataUrl, "PNG", barcodeX, barcodeY, barcodeWidth, barcodeHeight);
+      if (barcodeDataUrl) {
+        const barcodeWidth = 25;
+        const barcodeHeight = 5;
+        // Position barcode - if QR code is shown, place it below; otherwise at bottom
+        const barcodeY = template.layout.showQRCode ? cardHeight - 20 : cardHeight - 8;
+        pdf.addImage(barcodeDataUrl, "PNG", cardWidth - barcodeWidth - 3, barcodeY, barcodeWidth, barcodeHeight);
+      }
     } catch (e) {
       console.error("Failed to add barcode:", e);
     }

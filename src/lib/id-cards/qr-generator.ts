@@ -3,8 +3,12 @@
  * Generate QR codes and barcodes for ID card verification
  */
 
-// Note: These functions are placeholders until qrcode and jsbarcode packages are installed
-// To use: npm install qrcode jsbarcode @types/qrcode
+import QRCode from "qrcode";
+import JsBarcode from "jsbarcode";
+
+// ============================================================================
+// TYPES
+// ============================================================================
 
 export interface QRCodeOptions {
   width?: number;
@@ -22,21 +26,40 @@ export interface BarcodeOptions {
   displayValue?: boolean;
 }
 
+// ============================================================================
+// QR CODE GENERATION
+// ============================================================================
+
 /**
- * Generate QR code as data URL
- * TODO: Install qrcode package: npm install qrcode @types/qrcode
+ * Generate QR code as data URL (base64 PNG)
  */
 export async function generateQRCode(
   data: string,
   options: QRCodeOptions = {}
 ): Promise<string> {
-  // Placeholder - returns a base64 1x1 transparent pixel
-  // In production, use QRCode library
-  return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==";
+  const opts = {
+    width: options.width || 200,
+    margin: options.margin || 2,
+    color: {
+      dark: options.color?.dark || "#000000",
+      light: options.color?.light || "#FFFFFF",
+    },
+    errorCorrectionLevel: "M" as const,
+  };
+
+  try {
+    const dataUrl = await QRCode.toDataURL(data, opts);
+    return dataUrl;
+  } catch (error) {
+    console.error("Failed to generate QR code:", error);
+    // Return a 1x1 transparent pixel as fallback
+    return "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==";
+  }
 }
 
 /**
  * Generate QR code for ID verification
+ * Contains user ID, school ID, and timestamp
  */
 export async function generateIDVerificationQR(
   userId: string,
@@ -49,44 +72,124 @@ export async function generateIDVerificationQR(
   });
 
   return generateQRCode(verificationData, {
-    width: 80,
+    width: 150,
     margin: 1,
   });
 }
 
 /**
- * Generate barcode as SVG
- * TODO: Install jsbarcode package: npm install jsbarcode
+ * Generate QR code as raw buffer (for saving to file)
+ */
+export async function generateQRCodeBuffer(
+  data: string,
+  options: QRCodeOptions = {}
+): Promise<Buffer> {
+  const opts = {
+    width: options.width || 200,
+    margin: options.margin || 2,
+    color: {
+      dark: options.color?.dark || "#000000",
+      light: options.color?.light || "#FFFFFF",
+    },
+    errorCorrectionLevel: "M" as const,
+  };
+
+  try {
+    const buffer = await QRCode.toBuffer(data, opts);
+    return buffer;
+  } catch (error) {
+    console.error("Failed to generate QR code buffer:", error);
+    return Buffer.from("");
+  }
+}
+
+// ============================================================================
+// BARCODE GENERATION
+// ============================================================================
+
+/**
+ * Generate barcode as data URL (base64 PNG)
  */
 export function generateBarcode(
   data: string,
   options: BarcodeOptions = {}
 ): string {
-  // Placeholder - return empty string for now
-  return "";
+  const opts = {
+    format: (options.format || "CODE128") as any,
+    width: options.width || 2,
+    height: options.height || 50,
+    displayValue: options.displayValue !== false,
+    fontSize: 12,
+    margin: 10,
+  };
+
+  try {
+    // Create a canvas element for barcode generation
+    const canvas = document.createElement("canvas");
+    JsBarcode(canvas, data, opts);
+    return canvas.toDataURL("image/png");
+  } catch (error) {
+    console.error("Failed to generate barcode:", error);
+    return "";
+  }
 }
 
 /**
  * Generate barcode for ID card
+ * Combines user ID and card number
  */
 export function generateIDBarcode(userId: string, cardNumber: string): string {
   const barcodeData = `${userId}-${cardNumber}`;
   return generateBarcode(barcodeData, {
     format: "CODE128",
     width: 1.5,
-    height: 20,
+    height: 30,
     displayValue: false,
   });
 }
 
 /**
+ * Generate barcode with custom text value displayed
+ */
+export function generateBarcodeWithText(
+  data: string,
+  displayText: string,
+  options: BarcodeOptions = {}
+): string {
+  const canvas = document.createElement("canvas");
+  const opts = {
+    format: (options.format || "CODE128") as any,
+    width: options.width || 2,
+    height: options.height || 50,
+    displayValue: true,
+    text: displayText,
+    fontSize: 12,
+    margin: 10,
+  };
+
+  try {
+    JsBarcode(canvas, data, opts);
+    return canvas.toDataURL("image/png");
+  } catch (error) {
+    console.error("Failed to generate barcode with text:", error);
+    return "";
+  }
+}
+
+// ============================================================================
+// QR CODE VERIFICATION
+// ============================================================================
+
+/**
  * Verify QR code data
+ * Checks if the QR code is valid and not expired
  */
 export function verifyQRCode(qrData: string): {
   valid: boolean;
   userId?: string;
   schoolId?: string;
   timestamp?: number;
+  age?: number;
 } {
   try {
     const data = JSON.parse(qrData);
@@ -100,7 +203,7 @@ export function verifyQRCode(qrData: string): {
     const maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days in ms
 
     if (qrAge > maxAge) {
-      return { valid: false };
+      return { valid: false, age: qrAge };
     }
 
     return {
@@ -108,18 +211,48 @@ export function verifyQRCode(qrData: string): {
       userId: data.uid,
       schoolId: data.sid,
       timestamp: data.ts,
+      age: qrAge,
     };
   } catch (error) {
     return { valid: false };
   }
 }
 
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
 /**
  * Generate card number from user ID
+ * Creates a formatted card number for display
  */
 export function generateCardNumber(userId: string): string {
   // Take last 8 characters of user ID and format
-  const idPart = userId.slice(-8).toUpperCase();
+  const idPart = userId.replace(/[^a-zA-Z0-9]/g, "").slice(-8).toUpperCase();
   const checksum = userId.length % 10;
   return `${idPart}${checksum}`;
+}
+
+/**
+ * Generate a unique ID card reference number
+ */
+export function generateCardReference(schoolCode: string, userType: string): string {
+  const timestamp = Date.now().toString(36).toUpperCase();
+  const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `${schoolCode}-${userType.substring(0, 2).toUpperCase()}-${timestamp}-${random}`;
+}
+
+/**
+ * Calculate QR code age in days
+ */
+export function getQRAgeDays(timestamp: number): number {
+  const age = Date.now() - timestamp;
+  return Math.floor(age / (24 * 60 * 60 * 1000));
+}
+
+/**
+ * Check if QR code needs renewal (older than 25 days)
+ */
+export function needsQRRenewal(timestamp: number): boolean {
+  return getQRAgeDays(timestamp) > 25;
 }

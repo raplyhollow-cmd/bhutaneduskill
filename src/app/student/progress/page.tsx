@@ -41,6 +41,7 @@ import { fetchStudentProgress } from "../_actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AICareerCoach } from "@/components/ai/career-coach";
 import { cn } from "@/lib/utils";
+import { getHomeworkSubmissionStats } from "@/lib/services/progress.service";
 
 // Loading component
 function ProgressSkeleton() {
@@ -127,8 +128,12 @@ function getAttendanceBadge(status: string): { class: string; label: string } {
 export default async function StudentProgressPage() {
   // Fetch real data from database
   let progressData;
+  let homeworkStats;
   try {
     progressData = await fetchStudentProgress();
+    homeworkStats = await getHomeworkSubmissionStats(
+      (await fetchStudentProgress()).student.id
+    );
   } catch (error) {
     return <ProgressSkeleton />;
   }
@@ -469,6 +474,112 @@ export default async function StudentProgressPage() {
                 </div>
               ))}
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Homework Submission Statistics */}
+      {homeworkStats && homeworkStats.totalSubmissions > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BookOpen className="w-5 h-5" />
+              Homework Submission Statistics
+            </CardTitle>
+            <CardDescription>Your homework submission performance and grading status</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-4 gap-4 mb-6">
+              <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                <p className="text-sm text-green-700 font-medium">On-Time Submissions</p>
+                <p className="text-2xl font-bold text-green-800">
+                  {homeworkStats.onTimeSubmissions}
+                </p>
+                <p className="text-xs text-green-600">
+                  {homeworkStats.totalSubmissions > 0
+                    ? Math.round((homeworkStats.onTimeSubmissions / homeworkStats.totalSubmissions) * 100)
+                    : 0}%
+                </p>
+              </div>
+              <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                <p className="text-sm text-orange-700 font-medium">Late Submissions</p>
+                <p className="text-2xl font-bold text-orange-800">
+                  {homeworkStats.lateSubmissions}
+                </p>
+                <p className="text-xs text-orange-600">
+                  {homeworkStats.totalSubmissions > 0
+                    ? Math.round((homeworkStats.lateSubmissions / homeworkStats.totalSubmissions) * 100)
+                    : 0}%
+                </p>
+              </div>
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <p className="text-sm text-blue-700 font-medium">Graded</p>
+                <p className="text-2xl font-bold text-blue-800">
+                  {homeworkStats.gradedSubmissions}
+                </p>
+                <p className="text-xs text-blue-600">
+                  {homeworkStats.pendingGrading > 0
+                    ? `${homeworkStats.pendingGrading} pending`
+                    : "All graded"}
+                </p>
+              </div>
+              <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                <p className="text-sm text-purple-700 font-medium">Average Score</p>
+                <p className={`text-2xl font-bold ${
+                  homeworkStats.averageScore >= 80 ? "text-green-800" :
+                  homeworkStats.averageScore >= 60 ? "text-yellow-800" :
+                  "text-red-800"
+                }`}>
+                  {homeworkStats.averageScore}%
+                </p>
+                <p className="text-xs text-purple-600">
+                  Range: {homeworkStats.lowestScore}-{homeworkStats.highestScore}
+                </p>
+              </div>
+            </div>
+
+            {homeworkStats.recentSubmissions.length > 0 && (
+              <div>
+                <h4 className="font-medium text-gray-900 mb-3">Recent Submissions</h4>
+                <div className="space-y-2">
+                  {homeworkStats.recentSubmissions.slice(0, 5).map((submission) => (
+                    <div key={submission.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        {submission.isLate ? (
+                          <Clock className="w-4 h-4 text-orange-500" />
+                        ) : (
+                          <CheckCircle2 className="w-4 h-4 text-green-500" />
+                        )}
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">
+                            {submission.homeworkTitle}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(submission.submittedAt).toLocaleDateString()}
+                            {submission.isLate && " • Late"}
+                          </p>
+                        </div>
+                      </div>
+                      {submission.score !== null ? (
+                        <Badge
+                          className={cn(
+                            submission.score >= 80 ? "bg-green-100 text-green-700" :
+                            submission.score >= 60 ? "bg-yellow-100 text-yellow-700" :
+                            "bg-red-100 text-red-700"
+                          )}
+                        >
+                          {submission.score}%
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline">
+                          {submission.status === "submitted" ? "Pending" : submission.status}
+                        </Badge>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

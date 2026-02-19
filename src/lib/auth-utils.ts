@@ -463,7 +463,7 @@ export async function requireAuth(allowedRoles?: string[]): Promise<
   // Get user with role from database
   const user = await db.query.users.findFirst({
     where: eq(users.clerkUserId, userId),
-  });
+  }) as User | null;
 
   if (!user) {
     return { error: "User not found", status: 404 };

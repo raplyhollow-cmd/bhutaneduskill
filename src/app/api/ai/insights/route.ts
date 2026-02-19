@@ -573,16 +573,25 @@ async function generateStudentInsights(
       mbtiType = mbtiResult[0].personalityType;
     }
 
-    // Get journal stats (for emotional insights)
-    // TODO: Fix journalEntries table reference
-    // const journalStats = await db
-    //   .select({ count: count() })
-    //   .from(journalEntries)
-    //   .innerJoin(journals, eq(journalEntries.journalId, journals.id))
-    //   .where(eq(journals.userId, userId))
-    //   .limit(1);
+    // Get journal stats from user.settings (for emotional insights)
+    // Journal entries are stored in users.settings.journalEntries as JSON array
+    const [userWithJournal] = await db
+      .select({ settings: users.settings })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
 
-    journalEntryCount = 0; // Temporarily set to 0
+    const settings = (userWithJournal?.settings as any) || {};
+    const journalEntries = settings.journalEntries || [];
+    journalEntryCount = journalEntries.length;
+
+    // Get recent mood from latest journal entry (if exists)
+    if (journalEntries.length > 0) {
+      const sortedEntries = [...journalEntries].sort((a: any, b: any) =>
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      recentJournalMood = sortedEntries[0]?.mood || null;
+    }
 
     // Get user interests and goals
     const userProfile = await db

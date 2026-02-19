@@ -1,18 +1,14 @@
-"use client";
-
-import { logger } from "@/lib/logger";
 /**
  * TEACHER DASHBOARD
  *
  * Key features:
- * - Real data from API - no more mock values
- * - AI insights for class performance (fetched from /api/ai/insights)
+ * - Real data from database queries - Server Component for performance
+ * - AI insights for class performance
  * - At-risk student alerts
  * - Teaching suggestions
  * - Quick actions for class management
  */
 
-import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,132 +20,53 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
-  DollarSign,
   ArrowRight,
-  Loader2,
 } from "lucide-react";
-import { AIInsightCard } from "@/components/ai/ai-insight-card";
+import { TeacherAIInsights } from "./ai-insights-wrapper";
 import Link from "next/link";
+import { getTeacherDashboardData } from "./_actions";
+import { Skeleton } from "@/components/ui/skeleton";
 
-interface TeacherStats {
-  totalStudents: number;
-  averageAttendance: number;
-  activeClasses: number;
-  pendingHomework: number;
-  assessmentCompletion: number;
-  atRiskStudents?: number;
-  averageScore?: number;
+// Loading component
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-8">
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center">
+          <div className="w-12 h-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mx-auto mb-4" />
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
-interface AIInsight {
-  type: "warning" | "success" | "info" | "tip";
-  title: string;
-  message: string;
-  actions?: Array<{ label: string; href: string }>;
+interface TeacherDashboardProps {
+  params: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-// Client component - dynamic rendering is automatic
-export default function TeacherDashboard() {
-  // Data fetched from API
-  const [stats, setStats] = useState<TeacherStats>({
-    totalStudents: 0,
-    averageAttendance: 0,
-    activeClasses: 0,
-    pendingHomework: 0,
-    assessmentCompletion: 0,
-    atRiskStudents: 0,
-    averageScore: 0,
-  });
-  const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingInsights, setIsLoadingInsights] = useState(true);
+export default async function TeacherDashboardPage({ params }: TeacherDashboardProps) {
+  // Resolve params promise
+  const resolvedParams = await params;
 
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
+  // Fetch dashboard data server-side
+  const dashboardData = await getTeacherDashboardData();
 
-  const loadDashboardData = async () => {
-    try {
-      // Load dashboard stats
-      const response = await fetch("/api/teacher/dashboard");
-      if (response.ok) {
-        const data = await response.json();
-        setStats({
-          totalStudents: data.totalStudents || 0,
-          averageAttendance: data.averageAttendance || 0,
-          activeClasses: data.activeClasses || 0,
-          pendingHomework: data.pendingHomework || 0,
-          assessmentCompletion: data.assessmentCompletion || 0,
-          atRiskStudents: data.atRiskStudents || 0,
-          averageScore: data.averageScore || 0,
-        });
-      }
-
-      // Load AI insights
-      await loadAIInsights();
-    } catch (error) {
-      logger.error("Failed to load dashboard:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loadAIInsights = async () => {
-    try {
-      setIsLoadingInsights(true);
-      const response = await fetch("/api/ai/insights", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userRole: "teacher",
-          contextData: {
-            stats,
-          },
-        }),
-      });
-
-      // Log for debugging
-      logger.debug("[Teacher Dashboard] AI Insights API status:", response.status);
-
-      if (response.ok) {
-        const data = await response.json();
-        logger.debug("[Teacher Dashboard] AI Insights received:", data.insights?.length || 0, "insights");
-        setAiInsights(data.insights || []);
-      } else {
-        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
-        logger.error("[Teacher Dashboard] AI Insights API error:", errorData);
-        setAiInsights([]);
-      }
-    } catch (error) {
-      logger.error("[Teacher Dashboard] Failed to load AI insights:", error);
-      setAiInsights([]);
-    } finally {
-      setIsLoadingInsights(false);
-    }
-  };
-
-  if (isLoading) {
+  if (!dashboardData) {
     return (
       <div className="space-y-8">
-        <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="text-center">
-            <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
-            <p className="text-gray-600">Loading dashboard...</p>
-          </div>
-        </div>
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="py-16 text-center">
+            <AlertTriangle className="w-12 h-12 text-red-600 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-red-900 mb-2">Error Loading Dashboard</h2>
+            <p className="text-red-700">Failed to load dashboard data. Please try refreshing.</p>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
-  // Use AI insights from API, or fallback to static insights if API failed
-  const insightsToShow = aiInsights.length > 0 ? aiInsights : [
-    {
-      type: "info" as const,
-      title: "Dashboard Overview",
-      message: `You have ${stats.totalStudents} students across ${stats.activeClasses} classes. Track attendance and homework to monitor student progress.`,
-      actions: [{ label: "View Students", href: "/teacher/students" }],
-    },
-  ];
+  const { stats, classes, upcomingHomework, recentActivity, needsAttention } = dashboardData;
 
   return (
     <div className="space-y-8">
@@ -163,76 +80,161 @@ export default function TeacherDashboard() {
       <div className="grid md:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500">
+            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+              <Users className="w-4 h-4" />
               Total Students
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">{stats.totalStudents}</div>
+            <p className="text-xs text-gray-500 mt-1">Across all classes</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500">
+            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+              <BookOpen className="w-4 h-4" />
               Active Classes
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">{stats.activeClasses}</div>
+            <p className="text-xs text-gray-500 mt-1">This academic year</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              Pending Homework
+            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              Pending Grading
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">{stats.pendingHomework}</div>
+            <p className="text-xs text-gray-500 mt-1">Submissions to grade</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500">
+            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+              <TrendingUp className="w-4 h-4" />
               Avg Attendance
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">{stats.averageAttendance}%</div>
+            <p className="text-xs text-gray-500 mt-1">This month</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* AI Insights Section - Dynamic from API */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {isLoadingInsights ? (
-          <>
-            <Card>
-              <CardContent className="flex items-center justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="flex items-center justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-              </CardContent>
-            </Card>
-          </>
-        ) : (
-          insightsToShow.map((insight, index) => (
-            <AIInsightCard
-              key={index}
-              type={insight.type}
-              title={insight.title}
-              message={insight.message}
-              actions={insight.actions}
-            />
-          ))
-        )}
-      </div>
+      {/* AI Insights Section - Server Component wrapper */}
+      <TeacherAIInsights dashboardData={dashboardData} />
+
+      {/* Classes Overview */}
+      {classes && classes.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Your Classes</CardTitle>
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/teacher/classes">View All</Link>
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {classes.slice(0, 6).map((cls) => (
+                <Link key={cls.id} href={`/teacher/classes/${cls.id}`}>
+                  <div className="p-4 rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50/50 transition-colors cursor-pointer group">
+                    <div className="font-medium text-gray-900 group-hover:text-blue-600">{cls.name}</div>
+                    <div className="text-sm text-gray-500 mt-1">
+                      Grade {cls.grade} - {cls.section}
+                    </div>
+                    <div className="flex items-center justify-between mt-3">
+                      <Badge className="bg-blue-100 text-blue-700">
+                        {cls.studentCount} students
+                      </Badge>
+                      <div className="text-xs text-gray-500">
+                        {cls.completionRate}% completion
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Upcoming Homework to Grade */}
+      {upcomingHomework && upcomingHomework.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="w-5 h-5" />
+              Pending Grading
+            </CardTitle>
+            <CardDescription>Homework submissions waiting for your review</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {upcomingHomework.slice(0, 5).map((item) => (
+                <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">{item.homeworkTitle}</p>
+                    <p className="text-sm text-gray-500">
+                      {item.studentName} • Submitted {item.submittedAt}
+                    </p>
+                  </div>
+                  <Button size="sm" variant="outline" asChild>
+                    <Link href={`/teacher/homework/${item.homeworkId}/grade`}>
+                      Grade
+                    </Link>
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Students Needing Attention */}
+      {needsAttention && needsAttention.length > 0 && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-amber-900">
+              <AlertTriangle className="w-5 h-5" />
+              Needs Attention
+            </CardTitle>
+            <CardDescription className="text-amber-700">Students who may need extra support</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {needsAttention.slice(0, 5).map((student) => (
+                <div key={student.id} className="flex items-center justify-between p-3 rounded-lg bg-white border border-amber-200">
+                  <div>
+                    <p className="font-medium text-gray-900">{student.name}</p>
+                    <p className="text-sm text-gray-500">
+                      {student.reason} • {student.className}
+                    </p>
+                  </div>
+                  <Badge className={
+                    student.severity === "high" ? "bg-red-100 text-red-700" :
+                    student.severity === "medium" ? "bg-amber-100 text-amber-700" :
+                    "bg-gray-100 text-gray-700"
+                  }>
+                    {student.severity}
+                  </Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Quick Actions */}
       <div className="flex gap-4 flex-wrap">
@@ -248,10 +250,10 @@ export default function TeacherDashboard() {
             Create Homework
           </Link>
         </Button>
-        <Button asChild>
-          <Link href="/teacher/schedule">
-            <Calendar className="w-4 h-4 mr-2" />
-            View Schedule
+        <Button variant="outline" asChild>
+          <Link href="/teacher/assessments">
+            <TrendingUp className="w-4 h-4 mr-2" />
+            Create Assessment
           </Link>
         </Button>
       </div>

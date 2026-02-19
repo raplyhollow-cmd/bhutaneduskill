@@ -1,3 +1,46 @@
+src/app/api/notifications/route.ts(39,13): error TS2339: Property 'userId' does not exist on type '{ user: any; userId: string; } | { error: string; status: number; }'.
+src/app/api/notifications/route.ts(54,9): error TS2353: Object literal may only specify known properties, and 'success' does not exist in type 'ApiSuccess<{ unreadCount: number; }>'.
+src/app/api/notifications/route.ts(71,17): error TS2314: Generic type 'ApiSuccess<T>' requires 1 type argument(s).
+src/app/api/notifications/route.ts(76,9): error TS2353: Object literal may only specify known properties, and 'success' does not exist in type 'ApiErrorResponse'.
+src/app/api/notifications/route.ts(92,13): error TS2339: Property 'userId' does not exist on type '{ user: any; userId: string; } | { error: string; status: number; }'.
+src/app/api/notifications/route.ts(92,21): error TS2339: Property 'user' does not exist on type '{ user: any; userId: string; } | { error: string; status: number; }'.
+src/app/api/notifications/route.ts(100,11): error TS2353: Object literal may only specify known properties, and 'success' does not exist in type 'ApiErrorResponse'.
+src/app/api/notifications/route.ts(135,17): error TS2314: Generic type 'ApiSuccess<T>' requires 1 type argument(s).
+src/app/api/notifications/route.ts(140,9): error TS2353: Object literal may only specify known properties, and 'success' does not exist in type 'ApiErrorResponse'.
+src/app/api/notifications/route.ts(156,13): error TS2339: Property 'userId' does not exist on type '{ user: any; userId: string; } | { error: string; status: number; }'.
+src/app/api/notifications/route.ts(167,9): error TS2353: Object literal may only specify known properties, and 'success' does not exist in type 'ApiSuccess<{ markedAsRead: number; }>'.
+src/app/api/notifications/route.ts(179,13): error TS2353: Object literal may only specify known properties, and 'success' does not exist in type 'ApiErrorResponse'.
+src/app/api/notifications/route.ts(194,19): error TS2314: Generic type 'ApiSuccess<T>' requires 1 type argument(s).
+src/app/api/notifications/route.ts(199,9): error TS2353: Object literal may only specify known properties, and 'success' does not exist in type 'ApiErrorResponse'.
+src/app/api/notifications/route.ts(208,9): error TS2353: Object literal may only specify known properties, and 'success' does not exist in type 'ApiErrorResponse'.
+src/app/api/notifications/route.ts(223,13): error TS2339: Property 'userId' does not exist on type '{ user: any; userId: string; } | { error: string; status: number; }'.
+src/app/api/notifications/route.ts(231,11): error TS2353: Object literal may only specify known properties, and 'success' does not exist in type 'ApiErrorResponse'.
+src/app/api/notifications/route.ts(243,11): error TS2353: Object literal may only specify known properties, and 'success' does not exist in type 'ApiErrorResponse'.
+src/app/api/notifications/route.ts(253,7): error TS2353: Object literal may only specify known properties, and 'success' does not exist in type 'ApiSuccess<{ deleted: boolean; }>'.
+src/app/api/notifications/route.ts(260,9): error TS2353: Object literal may only specify known properties, and 'success' does not exist in type 'ApiErrorResponse'.
+src/app/parent/dashboard/_actions.ts(171,11): error TS2322: Type '{ id: any; firstName: any; lastName: any; classGrade: any; className: any; section: any; attendance: number; homeworkPending: number; recentGrades: { id: string; subject: string | { subjectId: string; ... 4 more ...; percentage: number; }[]; grade: string; date: string; }[]; careerInterests: string[]; feeStatus: { ....' is not assignable to type 'ChildData[]'.
+  Type '{ id: any; firstName: any; lastName: any; classGrade: any; className: any; section: any; attendance: number; homeworkPending: number; recentGrades: { id: string; subject: string | { subjectId: string; ... 4 more ...; percentage: number; }[]; grade: string; date: string; }[]; careerInterests: string[]; feeStatus: { ....' is not assignable to type 'ChildData'.
+    Types of property 'recentGrades' are incompatible.
+      Type '{ id: string; subject: string | { subjectId: string; subjectName: string; marksObtained: number; maxMarks: number; grade: string; percentage: number; }[]; grade: string; date: string; }[]' is not assignable to type '{ id: string; subject: string; grade: string; date: string; }[]'.
+        Type '{ id: string; subject: string | { subjectId: string; subjectName: string; marksObtained: number; maxMarks: number; grade: string; percentage: number; }[]; grade: string; date: string; }' is not assignable to type '{ id: string; subject: string; grade: string; date: string; }'.
+          Types of property 'subject' are incompatible.
+            Type 'string | { subjectId: string; subjectName: string; marksObtained: number; maxMarks: number; grade: string; percentage: number; }[]' is not assignable to type 'string'.
+              Type '{ subjectId: string; subjectName: string; marksObtained: number; maxMarks: number; grade: string; percentage: number; }[]' is not assignable to type 'string'.
+src/app/parent/dashboard/page.tsx(31,53): error TS2300: Duplicate identifier 'params'.
+src/app/parent/dashboard/page.tsx(33,9): error TS2300: Duplicate identifier 'params'.
+src/app/parent/dashboard/page.tsx(74,41): error TS2339: Property 'child' does not exist on type 'Promise<{ [key: string]: string | string[]; }>'.
+src/app/parent/dashboard/page.tsx(75,14): error TS2339: Property 'child' does not exist on type 'Promise<{ [key: string]: string | string[]; }>'.
+src/app/teacher/dashboard/page.tsx(48,54): error TS2300: Duplicate identifier 'params'.
+src/app/teacher/dashboard/page.tsx(50,9): error TS2300: Duplicate identifier 'params'.
+src/components/error/error-boundary.tsx(137,25): error TS2339: Property 'digest' does not exist on type 'ErrorInfo'.
+src/lib/clerk-utils.ts(440,12): error TS2352: Conversion of type 'ClerkApiResponse<{ data: ClerkInvitation[]; }>' to type 'ClerkApiResponse<ClerkInvitation[]>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ data: ClerkInvitation[]; }' is missing the following properties from type 'ClerkInvitation[]': length, pop, push, concat, and 35 more.
+src/lib/clerk-utils.ts(664,19): error TS2339: Property 'value' does not exist on type 'PromiseSettledResult<{ user: CreateClerkUserData; result: ClerkApiResponse<ClerkUser>; }>'.
+  Property 'value' does not exist on type 'PromiseRejectedResult'.
+src/lib/report-cards/aggregator.ts(180,11): error TS2448: Block-scoped variable 'attendance' used before its declaration.
+src/lib/report-cards/aggregator.ts(183,12): error TS2448: Block-scoped variable 'attendance' used before its declaration.
+src/lib/report-cards/aggregator.ts(184,15): error TS2448: Block-scoped variable 'attendance' used before its declaration.
+src/lib/report-cards/aggregator.ts(185,15): error TS2448: Block-scoped variable 'attendance' used before its declaration.
 src/lib/repositories/user.repository.ts(210,13): error TS2488: Type 'any[] | NeonHttpQueryResult<never>' must have a '[Symbol.iterator]()' method that returns an iterator.
 src/lib/services/assessment.service.ts(371,36): error TS2769: No overload matches this call.
   Overload 1 of 2, '(value: { id: string | SQL<unknown> | Placeholder<string, any>; description: string | SQL<unknown> | Placeholder<string, any>; createdAt: SQL<unknown> | Date | Placeholder<...>; ... 13 more ...; results?: SQL<...> | ... 1 more ... | Placeholder<...>; }): PgInsertBase<...>', gave the following error.

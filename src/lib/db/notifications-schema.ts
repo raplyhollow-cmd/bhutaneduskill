@@ -22,6 +22,9 @@ export const notificationTypeEnum = pgEnum("notification_type", [
   "reminder",      // Reminders for deadlines/events
   "system",        // System notifications
   "welcome",       // Welcome messages
+  "homework",      // Homework-related notifications
+  "grade",         // Grade-related notifications
+  "attendance",    // Attendance-related notifications
 ]);
 
 export const notificationPriorityEnum = pgEnum("notification_priority", [

@@ -9,3 +9,12 @@ export {
   ForbiddenError,
   ServerError,
 } from "./error-display";
+
+export {
+  ErrorBoundary,
+  withErrorBoundary,
+  withErrorBoundaryHOC,
+  useErrorTrigger,
+} from "./error-boundary";
+
+export { AppErrorBoundary } from "./app-error-boundary";

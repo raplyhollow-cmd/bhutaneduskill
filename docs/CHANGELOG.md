@@ -9,6 +9,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added - Clerk Webhook for User Synchronization (February 19, 2026)
+
+**What:**
+- Created `/api/clerk/webhook` endpoint for automatic user synchronization
+- Handles `user.created`, `user.updated`, and `user.deleted` events from Clerk
+- Uses Svix library for secure webhook signature verification
+
+**Features:**
+1. **user.created**: Creates placeholder user with `type: "pending"` when Clerk user is created
+2. **user.updated**: Syncs email, name, and profile image changes from Clerk to database
+3. **user.deleted**: Soft deletes user by setting `isActive: false`
+4. Logs all events for debugging and monitoring
+
+**Setup Instructions:**
+1. Go to Clerk Dashboard → Webhooks
+2. Add endpoint: `https://your-domain.com/api/clerk/webhook`
+3. Select events: `user.created`, `user.updated`, `user.deleted`
+4. Copy Signing Secret to `CLERK_WEBHOOK_SECRET` environment variable
+
+**Files Created:**
+- `src/app/api/clerk/webhook/route.ts` - Webhook handler with signature verification
+
+**Dependencies Added:**
+- `svix` - Webhook signature verification library
+
+**Environment Variables:**
+- `CLERK_WEBHOOK_SECRET` - Webhook signing secret from Clerk Dashboard
+
+---
+
 ### Added - Ministry User Creation Script (February 19, 2026)
 
 **What:**

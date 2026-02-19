@@ -14,6 +14,133 @@ export interface GenerateReportCardOptions {
   studentPhotoUrl?: string;
 }
 
+// ============================================================================
+// IMAGE LOADING HELPERS
+// ============================================================================
+
+/**
+ * Load an image from URL and convert to data URL
+ * Handles CORS and loading errors gracefully
+ */
+async function loadImageAsDataURL(url: string): Promise<string | null> {
+  if (!url) return null;
+
+  // If already a data URL, return as-is
+  if (url.startsWith("data:")) {
+    return url;
+  }
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.warn(`Failed to load image: ${url}`);
+      return null;
+    }
+    const blob = await response.blob();
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.warn(`Error loading image from ${url}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Load and draw school logo on the PDF
+ */
+async function loadAndDrawLogo(
+  pdf: jsPDF,
+  logoUrl: string | undefined,
+  x: number,
+  y: number,
+  maxWidth: number,
+  maxHeight: number
+): Promise<{ width: number; height: number }> {
+  if (!logoUrl) {
+    return { width: 0, height: 0 };
+  }
+
+  const dataUrl = await loadImageAsDataURL(logoUrl);
+  if (!dataUrl) {
+    return { width: 0, height: 0 };
+  }
+
+  try {
+    // Get image dimensions to maintain aspect ratio
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+
+    const aspectRatio = img.width / img.height;
+    let width = maxWidth;
+    let height = maxWidth / aspectRatio;
+
+    if (height > maxHeight) {
+      height = maxHeight;
+      width = maxHeight * aspectRatio;
+    }
+
+    pdf.addImage(dataUrl, "PNG", x, y, width, height);
+    return { width, height };
+  } catch (error) {
+    console.warn("Failed to draw logo:", error);
+    return { width: 0, height: 0 };
+  }
+}
+
+/**
+ * Load and draw student photo on the PDF
+ */
+async function loadAndDrawPhoto(
+  pdf: jsPDF,
+  photoUrl: string | undefined,
+  x: number,
+  y: number,
+  maxWidth: number,
+  maxHeight: number
+): Promise<{ width: number; height: number }> {
+  if (!photoUrl) {
+    return { width: 0, height: 0 };
+  }
+
+  const dataUrl = await loadImageAsDataURL(photoUrl);
+  if (!dataUrl) {
+    return { width: 0, height: 0 };
+  }
+
+  try {
+    // Get image dimensions to maintain aspect ratio
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = dataUrl;
+    });
+
+    const aspectRatio = img.width / img.height;
+    let width = maxWidth;
+    let height = maxWidth / aspectRatio;
+
+    if (height > maxHeight) {
+      height = maxHeight;
+      width = maxHeight * aspectRatio;
+    }
+
+    pdf.addImage(dataUrl, "JPEG", x, y, width, height);
+    return { width, height };
+  } catch (error) {
+    console.warn("Failed to draw photo:", error);
+    return { width: 0, height: 0 };
+  }
+}
+
 /**
  * Generate a report card PDF as a Blob
  */
@@ -43,10 +170,10 @@ export async function generateReportCardPDF(
   }
 
   // Draw header
-  drawHeader(pdf, data, pageWidth, colors, options);
+  await drawHeader(pdf, data, pageWidth, colors, options);
 
   // Draw student information
-  let yPos = drawStudentInfo(pdf, data, 50, pageWidth, colors);
+  let yPos = await drawStudentInfo(pdf, data, 50, pageWidth, colors, options);
 
   // Draw attendance summary
   if (template.layout.showAttendance) {
@@ -80,20 +207,19 @@ export async function generateReportCardPDF(
 /**
  * Draw header section with school name and logo
  */
-function drawHeader(
+async function drawHeader(
   pdf: jsPDF,
   data: ReportCardData,
   pageWidth: number,
   colors: Record<string, number[]>,
   options: GenerateReportCardOptions
-): number {
-  let yPos = 15;
+): Promise<number> {
   const template = getTemplate(data.grade);
+  const yPos = 15;
 
-  // School logo (placeholder - in real implementation, load image)
+  // School logo
   if (options.schoolLogoUrl && template.layout.showLogo) {
-    // TODO: Load and draw school logo
-    // pdf.addImage(logoUrl, "PNG", 15, yPos, 25, 25);
+    await loadAndDrawLogo(pdf, options.schoolLogoUrl, 15, yPos, 25, 25);
   }
 
   // School name
@@ -124,31 +250,31 @@ function drawHeader(
 /**
  * Draw student information section
  */
-function drawStudentInfo(
+async function drawStudentInfo(
   pdf: jsPDF,
   data: ReportCardData,
   startY: number,
   pageWidth: number,
-  colors: Record<string, number[]>
-): number {
+  colors: Record<string, number[]>,
+  options: GenerateReportCardOptions
+): Promise<number> {
   let yPos = startY;
 
   // Section background
   pdf.setFillColor(245, 245, 245);
   pdf.roundedRect(15, yPos, pageWidth - 30, 25, 2, 2, "F");
 
-  // Student photo placeholder
-  if (data.photo) {
-    // TODO: Load and draw student photo
-    // pdf.addImage(photoUrl, "PNG", 20, yPos + 2, 20, 20);
+  // Student photo
+  const photoUrl = options.studentPhotoUrl || data.photo;
+  if (photoUrl) {
+    const photoDrawn = await loadAndDrawPhoto(pdf, photoUrl, 18, yPos + 3, 18, 18);
+    if (photoDrawn.width === 0) {
+      // Photo failed to load, show placeholder
+      drawPhotoPlaceholder(pdf, 18, yPos + 3, 18);
+    }
   } else {
     // Photo placeholder box
-    pdf.setDrawColor(200, 200, 200);
-    pdf.setLineWidth(0.5);
-    pdf.rect(18, yPos + 3, 18, 18);
-    pdf.setFontSize(7);
-    pdf.setTextColor(150, 150, 150);
-    pdf.text("Photo", 27, yPos + 13, { align: "center" });
+    drawPhotoPlaceholder(pdf, 18, yPos + 3, 18);
   }
 
   // Student details
@@ -167,6 +293,18 @@ function drawStudentInfo(
   pdf.text(`Date: ${new Date().toLocaleDateString()}`, pageWidth - 70, yPos + 17);
 
   return yPos + 32;
+}
+
+/**
+ * Draw photo placeholder box
+ */
+function drawPhotoPlaceholder(pdf: jsPDF, x: number, y: number, size: number): void {
+  pdf.setDrawColor(200, 200, 200);
+  pdf.setLineWidth(0.5);
+  pdf.rect(x, y, size, size);
+  pdf.setFontSize(7);
+  pdf.setTextColor(150, 150, 150);
+  pdf.text("Photo", x + size / 2, y + size / 2, { align: "center" });
 }
 
 /**

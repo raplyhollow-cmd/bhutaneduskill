@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Get user profile for context
+    // Get user profile for context (including journal entries from settings)
     const [user] = await db
       .select({
         id: users.id,
@@ -89,23 +89,33 @@ export async function GET(req: NextRequest) {
         goals: users.goals,
         firstName: users.firstName,
         lastName: users.lastName,
+        settings: users.settings,
       })
       .from(users)
       .where(eq(users.id, userId))
       .limit(1);
 
-    // Get journal stats for AI analysis context
-    // TODO: Fix journals table reference
-    // const [journalStats] = await db
-    //   .select({
-    //     totalEntries: sql<number>`count(*)`.mapWith(Number),
-    //     lastEntryAt: sql<string>`max(${journals.createdAt})`.mapWith(String),
-    //   })
-    //   .from(journals)
-    //   .where(eq(journals.userId, userId));
+    // Extract journal stats from user.settings
+    // Journal entries are stored in users.settings.journalEntries as JSON array
+    const settings = (user?.settings as any) || {};
+    const journalEntries = settings.journalEntries || [];
 
-    const journalStatsResult = [{ totalEntries: 0, lastEntryAt: null }];
-    const journalStats = journalStatsResult[0] || { totalEntries: 0, lastEntryAt: null };
+    // Calculate journal stats
+    let totalEntries = journalEntries.length;
+    let lastEntryAt: string | null = null;
+
+    if (journalEntries.length > 0) {
+      // Sort entries by date descending to get the most recent
+      const sortedEntries = [...journalEntries].sort((a: any, b: any) =>
+        new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      lastEntryAt = sortedEntries[0].date;
+    }
+
+    const journalStats = {
+      totalEntries,
+      lastEntryAt,
+    };
 
     // Get Holland Code description
     const getHollandCodeDescription = (code: string): string => {

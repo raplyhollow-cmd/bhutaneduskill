@@ -17,12 +17,12 @@ import {
   users,
   schools,
   classes,
-  attendanceRecords,
+  attendance,
   subjects,
   homework,
 } from "@/lib/db/schema";
 import { db } from "@/lib/db";
-import { eq, and, desc, count, sql } from "drizzle-orm";
+import { eq, and, desc, count, sql, gte, lte } from "drizzle-orm";
 import { getTemplateByGrade, getGradeFromPercentage, getGradeRemarks } from "./templates";
 
 export interface ReportCardSubject {
@@ -33,6 +33,16 @@ export interface ReportCardSubject {
   grade: string;
   remarks: string;
   teacherName: string;
+}
+
+export interface TermAttendanceBreakdown {
+  term: string;
+  totalDays: number;
+  presentDays: number;
+  absentDays: number;
+  lateDays: number;
+  excusedDays: number;
+  attendancePercentage: number;
 }
 
 export interface ReportCardData {
@@ -77,7 +87,10 @@ export interface ReportCardData {
   totalDays: number;
   presentDays: number;
   absentDays: number;
+  lateDays: number;
+  excusedDays: number;
   attendancePercentage: number;
+  termAttendanceBreakdown?: TermAttendanceBreakdown[];
 
   // Remarks
   classTeacherRemarks?: string | null;
@@ -151,7 +164,7 @@ export async function aggregateReportCardData(
     classTeacherName = teacher?.name;
   }
 
-  // Fetch attendance for the term
+  // Fetch attendance for the term (including late, excused, sick_leave)
   const termStartDate = getTermStartDate(examResult.term, examResult.academicYear);
   const termEndDate = getTermEndDate(examResult.term, examResult.academicYear);
 
@@ -159,24 +172,39 @@ export async function aggregateReportCardData(
     .select({
       total: count(),
       present: count(sql`CASE WHEN status = 'present' THEN 1 END`),
+      absent: count(sql`CASE WHEN status = 'absent' THEN 1 END`),
+      late: count(sql`CASE WHEN status = 'late' THEN 1 END`),
+      excused: count(sql`CASE WHEN status = 'excused' THEN 1 END`),
+      sickLeave: count(sql`CASE WHEN status = 'sick_leave' THEN 1 END`),
     })
-    .from(attendanceRecords)
+    .from(attendance)
     .where(
       and(
-        eq(attendanceRecords.studentId, studentId),
-        sql`${attendanceRecords.date} >= ${termStartDate}`,
-        sql`${attendanceRecords.date} <= ${termEndDate}`
+        eq(attendance.studentId, studentId),
+        sql`${attendance.date} >= ${termStartDate}`,
+        sql`${attendance.date} <= ${termEndDate}`
       )
     )
     .limit(1);
 
-  const attendance = attendanceData[0];
-  const totalDays = Number(attendance?.total) || 0;
-  const presentDays = Number(attendance?.present) || 0;
-  const absentDays = totalDays - presentDays;
+  const attendanceRecord = attendanceData[0];
+  const totalDays = Number(attendanceRecord?.total) || 0;
+  const presentDays = Number(attendanceRecord?.present) || 0;
+  const absentDays = Number(attendanceRecord?.absent) || 0;
+  const lateDays = Number(attendanceRecord?.late) || 0;
+  const excusedDays = (Number(attendanceRecord?.excused) || 0) + (Number(attendanceRecord?.sickLeave) || 0);
+
+  // Attendance percentage counts present + late + excused as attended
+  const effectivePresentDays = presentDays + lateDays + excusedDays;
   const attendancePercentage = totalDays > 0
-    ? Math.round((presentDays / totalDays) * 100)
+    ? Math.round((effectivePresentDays / totalDays) * 100)
     : 0;
+
+  // Get term-by-term attendance breakdown for the academic year
+  const termAttendanceBreakdown = await getYearAttendanceBreakdown(
+    studentId,
+    examResult.academicYear
+  );
 
   // Calculate ranks if not already in exam results
   let classRank = examResult.classRank;
@@ -257,7 +285,10 @@ export async function aggregateReportCardData(
     totalDays,
     presentDays,
     absentDays,
+    lateDays,
+    excusedDays,
     attendancePercentage,
+    termAttendanceBreakdown,
 
     classTeacherRemarks: examResult.remarks,
     principalRemarks: null, // To be filled by school admin
@@ -304,6 +335,8 @@ export async function createReportCardRecord(
     presentDays: data.presentDays,
     absentDays: data.absentDays,
     attendancePercentage: data.attendancePercentage,
+    // Note: lateDays and excusedDays are stored for reference but not in schema
+    // They can be included in remarks or additional notes if needed
 
     // Remarks
     classTeacherRemarks: data.classTeacherRemarks,
@@ -323,6 +356,70 @@ export async function createReportCardRecord(
     .returning();
 
   return created;
+}
+
+/**
+ * Get year attendance breakdown by term
+ * Returns attendance data for each term in the academic year
+ */
+async function getYearAttendanceBreakdown(
+  studentId: string,
+  academicYear: string
+): Promise<TermAttendanceBreakdown[]> {
+  const terms = [
+    { name: "First Term", startDate: getTermStartDate("First Term", academicYear), endDate: getTermEndDate("First Term", academicYear) },
+    { name: "Second Term", startDate: getTermStartDate("Second Term", academicYear), endDate: getTermEndDate("Second Term", academicYear) },
+    { name: "Third Term", startDate: getTermStartDate("Third Term", academicYear), endDate: getTermEndDate("Third Term", academicYear) },
+    { name: "Final Term", startDate: getTermStartDate("Final Term", academicYear), endDate: getTermEndDate("Final Term", academicYear) },
+  ];
+
+  const breakdown: TermAttendanceBreakdown[] = [];
+
+  for (const term of terms) {
+    const termData = await db
+      .select({
+        total: count(),
+        present: count(sql`CASE WHEN status = 'present' THEN 1 END`),
+        absent: count(sql`CASE WHEN status = 'absent' THEN 1 END`),
+        late: count(sql`CASE WHEN status = 'late' THEN 1 END`),
+        excused: count(sql`CASE WHEN status = 'excused' THEN 1 END`),
+        sickLeave: count(sql`CASE WHEN status = 'sick_leave' THEN 1 END`),
+      })
+      .from(attendance)
+      .where(
+        and(
+          eq(attendance.studentId, studentId),
+          sql`${attendance.date} >= ${term.startDate}`,
+          sql`${attendance.date} <= ${term.endDate}`
+        )
+      )
+      .limit(1);
+
+    const data = termData[0];
+    const total = Number(data?.total) || 0;
+    const present = Number(data?.present) || 0;
+    const absent = Number(data?.absent) || 0;
+    const late = Number(data?.late) || 0;
+    const excused = (Number(data?.excused) || 0) + (Number(data?.sickLeave) || 0);
+
+    const effectivePresent = present + late + excused;
+    const percentage = total > 0 ? Math.round((effectivePresent / total) * 100) : 0;
+
+    // Only include terms that have attendance data
+    if (total > 0) {
+      breakdown.push({
+        term: term.name,
+        totalDays: total,
+        presentDays: present,
+        absentDays: absent,
+        lateDays: late,
+        excusedDays: excused,
+        attendancePercentage: percentage,
+      });
+    }
+  }
+
+  return breakdown;
 }
 
 /**

@@ -35,7 +35,7 @@ interface UserRecord {
   type: UserRole;
   schoolId: string | null;
   tenantId: string | null;
-  grade: string | null;
+  grade: number | null;
   settings: Record<string, unknown> | null;
 }
 

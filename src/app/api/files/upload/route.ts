@@ -15,6 +15,7 @@ import {
   validateFileSize,
 } from "@/lib/file-validation";
 import { checkRateLimitWithConfig, getClientIp, RateLimitPresets, type RateLimitCheckResult } from "@/lib/rate-limit";
+import { scanFile, getScanEngine } from "@/lib/security/virus-scan";
 
 /**
  * Enhanced file upload with security validations
@@ -22,7 +23,7 @@ import { checkRateLimitWithConfig, getClientIp, RateLimitPresets, type RateLimit
  * - File size limits by category
  * - Filename sanitization
  * - Rate limiting
- * - Malware scanning placeholder
+ * - Virus scanning (mock/ClamAV/VirusTotal)
  */
 export async function POST(request: NextRequest) {
   try {
@@ -135,15 +136,51 @@ export async function POST(request: NextRequest) {
     // Save file
     await writeFile(filePath, buffer);
 
-    // TODO: Integrate virus scanning
-    // For now, log for manual review
-    logger.info('[File Upload] File saved, awaiting virus scan:', {
-      fileId: `file_${Date.now()}`,
+    // Virus scan the uploaded file
+    const scanEngine = getScanEngine();
+    logger.info('[File Upload] Starting virus scan', {
       userId: currentUser.id,
       fileName: safeFileName,
-      size: file.size,
-      type: file.type,
+      engine: scanEngine,
     });
+
+    const scanResult = await scanFile(filePath, { engine: scanEngine });
+
+    // Log scan results
+    logger.info('[File Upload] Virus scan completed', {
+      userId: currentUser.id,
+      fileName: safeFileName,
+      isClean: scanResult.isClean,
+      threats: scanResult.threats,
+      engine: scanResult.scanEngine,
+      scanTime: scanResult.scanTime,
+    });
+
+    // Reject infected files
+    if (!scanResult.isClean) {
+      // Delete the infected file
+      try {
+        await unlink(filePath);
+      } catch {
+        // File might already be deleted
+      }
+
+      // Log security event
+      logger.security('[File Upload] Infected file rejected', {
+        userId: currentUser.id,
+        fileName: safeFileName,
+        threats: scanResult.threats,
+        ip: clientIp,
+      });
+
+      return NextResponse.json(
+        {
+          error: "File upload rejected: Security threat detected",
+          details: "The uploaded file contains potential malicious content",
+        },
+        { status: 403, headers }
+      );
+    }
 
     // Create file storage record
     const timestamp = Date.now();
