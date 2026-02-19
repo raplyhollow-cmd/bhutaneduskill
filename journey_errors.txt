@@ -1,0 +1,8 @@
+src/app/student/fees/page.tsx(118,20): error TS2345: Argument of type '{ id: string; totalAmount: number; amountPaid: number; amountPending: number; amountWaived: number; status: string; dueDate: string; recentPayments: { id: string; amount: number; receiptNumber: string; collectedAt: Date; }[]; }' is not assignable to parameter of type 'SetStateAction<FeeData>'.
+  Type '{ id: string; totalAmount: number; amountPaid: number; amountPending: number; amountWaived: number; status: string; dueDate: string; recentPayments: { id: string; amount: number; receiptNumber: string; collectedAt: Date; }[]; }' is not assignable to type 'FeeData'.
+    Types of property 'recentPayments' are incompatible.
+      Type '{ id: string; amount: number; receiptNumber: string; collectedAt: Date; }[]' is not assignable to type 'Payment[]'.
+        Type '{ id: string; amount: number; receiptNumber: string; collectedAt: Date; }' is missing the following properties from type 'Payment': feeName, method, date
+src/components/journey/journey-hero.tsx(35,7): error TS2322: Type 'MotionValue<string>' is not assignable to type 'ReactNode'.
+src/components/journey/stats-parallax.tsx(65,9): error TS2322: Type '{ whileHover: { scale: number; }; className: string; style: { background: string; }; classNameOverride: string; }' is not assignable to type 'IntrinsicAttributes & Omit<HTMLMotionProps<"div">, "ref"> & RefAttributes<HTMLDivElement>'.
+  Property 'classNameOverride' does not exist on type 'IntrinsicAttributes & Omit<HTMLMotionProps<"div">, "ref"> & RefAttributes<HTMLDivElement>'.

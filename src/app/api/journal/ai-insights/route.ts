@@ -52,7 +52,18 @@ export async function POST(request: NextRequest) {
     }
 
     const { userId } = authResult;
-    const body = await request.json() as AIRequest;
+
+    // Safely parse request body
+    let body: AIRequest;
+    try {
+      body = await request.json() as AIRequest;
+    } catch (parseError) {
+      return NextResponse.json(
+        { error: "Invalid request body" },
+        { status: 400 }
+      );
+    }
+
     const { action, entry, context } = body;
 
     // Fetch user context for personalization

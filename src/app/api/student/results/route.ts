@@ -23,11 +23,18 @@ export async function GET(request: NextRequest) {
 
   try {
     // Get exam results - use select() instead of query since examResultsEnhanced has no relations defined
+    // Try both studentId and userId fields since the schema has both
     const results = await db
       .select()
       .from(examResultsEnhanced)
-      .where(eq(examResultsEnhanced.studentId, userId))
+      .where(eq(examResultsEnhanced.userId, userId))
       .orderBy(desc(examResultsEnhanced.examYear), desc(examResultsEnhanced.createdAt));
+
+    logger.info("Student results fetched", {
+      route: "/api/student/results",
+      userId,
+      resultsCount: results.length,
+    });
 
     if (!results || results.length === 0) {
       return NextResponse.json({ results: [], summary: null });

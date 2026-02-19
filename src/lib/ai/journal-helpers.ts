@@ -1,5 +1,5 @@
 import { logger } from "@/lib/logger";
-import { chatWithGemini, type ChatMessage } from "./gemini-server";
+import { getGeminiClient } from "./gemini-server";
 import { JOURNAL_AI_SYSTEM } from "./prompts";
 
 // ============================================================================
@@ -74,7 +74,7 @@ function getFallbackFeedback(): string {
  */
 export async function generatePersonalizedPrompt(context?: JournalContext): Promise<string> {
   try {
-    const client = await import("@/lib/ai/gemini-server").then(m => m.getGeminiClient?.());
+    const client = getGeminiClient();
 
     if (!client) {
       return getFallbackPrompt();
@@ -112,7 +112,7 @@ Return ONLY the prompt text, nothing else.`;
  */
 export async function suggestTags(content: string): Promise<string[]> {
   try {
-    const client = await import("@/lib/ai/gemini-server").then(m => m.getGeminiClient?.());
+    const client = getGeminiClient();
 
     if (!client) {
       return getFallbackTags();
@@ -150,7 +150,7 @@ Do not include any explanation, just the tags.`;
  */
 export async function getWritingSuggestions(content: string): Promise<string[]> {
   try {
-    const client = await import("@/lib/ai/gemini-server").then(m => m.getGeminiClient?.());
+    const client = getGeminiClient();
 
     if (!client) {
       return ["Try to add more details to your entry.", "Reflect on how this makes you feel."];
@@ -189,7 +189,7 @@ export async function generateEntryFeedback(entry: {
   mood: string;
 }): Promise<string> {
   try {
-    const client = await import("@/lib/ai/gemini-server").then(m => m.getGeminiClient?.());
+    const client = getGeminiClient();
 
     if (!client) {
       return getFallbackFeedback();

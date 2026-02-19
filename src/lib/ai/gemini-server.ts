@@ -22,6 +22,11 @@ if (!GEMINI_API_KEY && process.env.NODE_ENV === "production") {
   logger.warn("WARNING: GEMINI_API_KEY not set in production. AI features will use fallback responses.");
 }
 
+// Debug: Log if API key is loaded (in development)
+if (process.env.NODE_ENV === "development") {
+  logger.info("GEMINI_API_KEY status:", GEMINI_API_KEY ? "SET" : "NOT SET");
+}
+
 const generationConfig = {
   temperature: 0.7,
   topK: 40,
@@ -90,8 +95,10 @@ export interface ChatResponse {
  */
 function getGeminiClient() {
   if (!GEMINI_API_KEY) {
+    logger.warn("GEMINI_API_KEY is not set - returning null client");
     return null;
   }
+  logger.debug("Creating Gemini client with API key");
   return new GoogleGenerativeAI(GEMINI_API_KEY);
 }
 
@@ -114,7 +121,7 @@ export async function chatWithGemini(
 
   try {
     const model = client.getGenerativeModel({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-flash", // Use latest available model
       generationConfig,
       safetySettings,
       systemInstruction: systemPrompt || undefined,
@@ -152,7 +159,7 @@ export async function chatWithGeminiWithHistory(
 
   try {
     const model = client.getGenerativeModel({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-flash", // Use latest available model
       generationConfig,
       safetySettings,
       systemInstruction: systemPrompt || undefined,
@@ -284,10 +291,13 @@ export async function chatWithCareerCoachFromServer(
   context: AIContext = {},
   conversationHistory: ChatMessage[] = []
 ): Promise<ChatResponse> {
+  logger.info("chatWithCareerCoachFromServer called", { messageLength: userMessage.length, hasHistory: conversationHistory.length > 0 });
+
   const client = getGeminiClient();
 
   // Fallback if API key not configured
   if (!client) {
+    logger.warn("Gemini client is null - returning fallback response");
     return {
       message: getFallbackResponse(userMessage, context),
       suggestions: getFallbackSuggestions(context),
@@ -295,9 +305,11 @@ export async function chatWithCareerCoachFromServer(
     };
   }
 
+  logger.info("Calling Gemini API for career coach...");
+
   try {
     const model = client.getGenerativeModel({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-flash", // Use latest available model
       generationConfig,
       safetySettings,
       systemInstruction: CAREER_COACH_SYSTEM,
@@ -309,15 +321,22 @@ export async function chatWithCareerCoachFromServer(
 
 Please provide a helpful, encouraging response. If appropriate, include 2-3 follow-up suggestions at the end.`;
 
-    // Start chat with history if provided
-    const chat = model.startChat({
-      history: conversationHistory.map((msg) => ({
-        role: msg.role === "assistant" ? "model" : "user",
-        parts: [{ text: msg.content }],
-      })),
-    });
+    let result;
 
-    const result = await chat.sendMessage(fullPrompt);
+    // If there's conversation history, use startChat with history
+    if (conversationHistory && conversationHistory.length > 0) {
+      const chat = model.startChat({
+        history: conversationHistory.map((msg) => ({
+          role: msg.role === "assistant" ? "model" : "user",
+          parts: [{ text: msg.content }],
+        })),
+      });
+      result = await chat.sendMessage(fullPrompt);
+    } else {
+      // For first message, use generateContent directly
+      result = await model.generateContent(fullPrompt);
+    }
+
     const response = await result.response;
     const aiMessage = response.text();
 

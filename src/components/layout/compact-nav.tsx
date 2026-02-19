@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Compass, Home, User, MoreHorizontal, LogIn, Zap, GraduationCap, BookOpen, Users, HeartHandshake, Building, Shield } from "lucide-react";
+import { Compass, Home, User, MoreHorizontal, LogIn, Zap, GraduationCap, BookOpen, Users, HeartHandshake, Building, Shield, Trophy, Landmark, GraduationCap as AlumniIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PortalSelector } from "./portal-selector";
 import { MobileMenuSheet } from "./mobile-menu-sheet";
@@ -12,6 +12,7 @@ import { MobileMenuSheet } from "./mobile-menu-sheet";
 const navLinks = [
   { name: "Home", href: "/", icon: Home },
   { name: "About", href: "/about", icon: User },
+  { name: "Journey", href: "/journey", icon: Trophy },
 ];
 
 const portals = [
@@ -44,11 +45,25 @@ const portals = [
     description: "Student interventions, sessions, resources"
   },
   {
+    name: "Alumni",
+    href: "/alumni",
+    icon: AlumniIcon,
+    color: "rgb(34 197 94)",
+    description: "Network, mentorship, and career opportunities"
+  },
+  {
     name: "School Admin",
     href: "/school-admin",
     icon: Building,
     color: "rgb(139 92 246)",
     description: "Manage school operations, students, teachers"
+  },
+  {
+    name: "Ministry",
+    href: "/ministry",
+    icon: Landmark,
+    color: "rgb(168 85 247)",
+    description: "National education oversight, analytics, policies"
   },
   {
     name: "Platform Admin",

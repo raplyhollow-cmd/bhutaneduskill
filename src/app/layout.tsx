@@ -26,35 +26,18 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Skip ClerkProvider during build if env vars missing
+  // ClerkProvider always wraps, but the component handles missing auth gracefully
   const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
 
-  if (!publishableKey) {
-    return (
-      <html lang="en" suppressHydrationWarning>
-        <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        >
-          <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-            <ToastProvider>{children}</ToastProvider>
-            <div className="fixed bottom-6 right-6 z-50">
-              <UnifiedAIAssistant />
-            </div>
-          </ThemeProvider>
-        </body>
-      </html>
-    );
-  }
-
   return (
-    <ClerkProvider>
+    <ClerkProvider publishableKey={publishableKey}>
       <html lang="en" suppressHydrationWarning>
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
           <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
             <ToastProvider>{children}</ToastProvider>
-            <div className="fixed bottom-6 right-6 z-50">
+            <div className="fixed bottom-24 right-4 z-[100] md:bottom-6 md:right-6">
               <UnifiedAIAssistant />
             </div>
           </ThemeProvider>

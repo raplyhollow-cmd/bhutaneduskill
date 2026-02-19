@@ -17,6 +17,7 @@ import {
   Edit,
   Trash2,
   CheckCircle,
+  AlertTriangle,
 } from "lucide-react";
 import { AddSchoolModal } from "@/components/admin/add-school-modal";
 import { EditSchoolModal } from "@/components/admin/edit-school-modal";
@@ -64,6 +65,7 @@ export function SchoolsClient({
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingSchool, setEditingSchool] = useState<School | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<School | null>(null);
 
   const handleModalSuccess = () => {
     // Refresh the page to show the new school
@@ -78,6 +80,34 @@ export function SchoolsClient({
   const handleCloseEditModal = () => {
     setIsEditModalOpen(false);
     setEditingSchool(null);
+  };
+
+  const handleDeleteClick = (school: School) => {
+    setDeleteConfirm(school);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteConfirm) return;
+
+    try {
+      const response = await fetch(`/api/schools/${deleteConfirm.id}`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        setDeleteConfirm(null);
+        router.refresh();
+      } else {
+        const data = await response.json();
+        alert(data.error || "Failed to delete school");
+      }
+    } catch (error) {
+      alert("Network error. Please try again.");
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteConfirm(null);
   };
 
   return (
@@ -363,6 +393,7 @@ export function SchoolsClient({
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 hover:bg-red-50 hover:text-red-600"
+                            onClick={() => handleDeleteClick(school)}
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -477,6 +508,58 @@ export function SchoolsClient({
         onSuccess={handleModalSuccess}
         school={editingSchool}
       />
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl max-w-md w-full">
+            <div className="p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                  <AlertTriangle className="w-6 h-6 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Delete School</h3>
+                  <p className="text-sm text-gray-600">This action cannot be undone</p>
+                </div>
+              </div>
+
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                <p className="text-sm text-red-900">
+                  You are about to delete <strong>{deleteConfirm.name}</strong>.
+                </p>
+                <p className="text-sm text-red-700 mt-2">
+                  This will also remove all associated data including students, teachers, and assessments.
+                </p>
+              </div>
+
+              <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                <p className="text-sm text-gray-700">
+                  <strong>Students:</strong> {deleteConfirm.stats.students} •
+                  <strong> Teachers:</strong> {deleteConfirm.stats.teachers}
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={handleDeleteCancel}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteConfirm}
+                  className="flex-1"
+                >
+                  Delete School
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

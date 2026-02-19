@@ -116,22 +116,27 @@ export async function POST(request: NextRequest) {
 
     // Update user details
     if (data.personalDetails) {
+      const fullName = data.personalDetails.fullName || "";
+      const nameParts = fullName.trim().split(" ");
       await db
         .update(users)
         .set({
-          firstName: data.personalDetails.fullName.split(" ")[0],
-          lastName: data.personalDetails.fullName.split(" ").slice(1).join(" "),
-          email: data.personalDetails.email,
-          phone: data.personalDetails.phone,
+          firstName: nameParts[0] || "",
+          lastName: nameParts.slice(1).join(" ") || "",
+          email: data.personalDetails.email || "",
+          phone: data.personalDetails.phone || "",
         })
         .where(eq(users.id, dbUser.id));
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    logger.error(error, { route: "/api/setup/counselor", method: "POST" });
+    logger.error("Counselor setup error:", error);
     return NextResponse.json(
-      { error: "Failed to process setup" },
+      {
+        error: "Failed to process setup",
+        details: error instanceof Error ? error.message : "Unknown error"
+      },
       { status: 500 }
     );
   }

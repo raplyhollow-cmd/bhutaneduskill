@@ -107,38 +107,48 @@ export async function POST(request: NextRequest) {
     const { answers, results, scores, hollandCode } = body;
 
     // Create assessment record
+    // Note: assessments table has required fields for academic assessments,
+    // but personality assessments use dedicated result tables.
+    // We provide minimal values for required fields.
+    const assessmentId = `riasec_${Date.now()}`;
     const [assessment] = await db
       .insert(assessments)
       .values({
-        id: `riasec_${Date.now()}`,
-        tenantId: user.tenantId,
+        id: assessmentId,
+        title: "RIASEC Career Assessment",
+        description: hollandCode ? `Holland Code: ${hollandCode.join("")}` : "RIASEC career interest assessment",
+        dueDate: new Date().toISOString(), // Current date since it's already completed
+        totalPoints: 100,
+        passingScore: 0,
         userId: userId,
         type: "riasec",
         status: "completed",
-        answers,
-        results,
+        // Store answers and results in the results JSON field
+        results: { answers, results, scores, hollandCode } as any,
         startedAt: new Date(),
         completedAt: new Date(),
+        isActive: true,
         createdAt: new Date(),
-      } as any)
+        updatedAt: new Date(),
+      })
       .returning();
 
     // Create RIASEC result record
     const riasecData = {
       id: `riasec_res_${Date.now()}`,
-      assessmentId: assessment.id,
+      assessmentId: assessmentId,
       userId: userId,
-      scores: scores || results?.scores || {},
-      hollandCode: hollandCode || results?.hollandCode || "",
-      primaryHollandCode: hollandCode?.[0] || results?.primaryHollandCode || "R",
-      secondaryHollandCode: hollandCode?.[1] || results?.secondaryHollandCode || "I",
+      scores: scores || results?.scores || {} as any,
+      hollandCode: Array.isArray(hollandCode) ? hollandCode.join("") : (hollandCode || results?.hollandCode || ""),
+      primaryHollandCode: (Array.isArray(hollandCode) ? hollandCode[0] : hollandCode?.[0]) || results?.primaryHollandCode || "R",
+      secondaryHollandCode: (Array.isArray(hollandCode) ? hollandCode[1] : hollandCode?.[1]) || results?.secondaryHollandCode || "I",
       recommendedCareers: results?.recommendedCareers || [],
       traits: results?.traits || [],
       completedAt: new Date(),
       createdAt: new Date(),
     };
 
-    await db.insert(riasecResults).values(riasecData as any);
+    await db.insert(riasecResults).values(riasecData);
 
     return NextResponse.json({ success: true, assessmentId: assessment.id });
   } catch (error) {

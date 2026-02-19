@@ -9,6 +9,74 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - Journal AI Insights API Error (February 19, 2026)
+
+**Problem:**
+- `/api/journal/ai-insights` returning 500 Internal Server Error
+- AI journal features (prompts, tags, suggestions, feedback) not working
+
+**Root Cause:**
+- `journal-helpers.ts` was using incorrect dynamic import pattern
+- Trying to access `getGeminiClient` via `m.getGeminiClient?.()` on module import which doesn't work with named exports
+
+**Solution:**
+- Changed from dynamic import to direct static import:
+  ```typescript
+  // Before: const client = await import("@/lib/ai/gemini-server").then(m => m.getGeminiClient?.());
+  // After:  import { getGeminiClient } from "./gemini-server";
+  ```
+- All 4 AI helper functions now use direct `getGeminiClient()` call
+
+**Files Modified:**
+- `src/lib/ai/journal-helpers.ts` - Changed import pattern and removed dynamic imports from all functions
+
+**Impact:**
+- Journal AI insights now work properly
+- Features restored: personalized prompts, tag suggestions, writing suggestions, entry feedback
+- Falls back gracefully when `GEMINI_API_KEY` is not configured
+
+---
+
+### Fixed - Assessment Result Tables & TypeScript Errors (February 19, 2026)
+
+**Problems Fixed:**
+1. All 5 assessment APIs (MBTI, RIASEC, DISC, Learning Styles, Work Values) - TypeScript errors when inserting `assessmentId` field
+2. Student Plan page - Type errors preventing status updates from "upcoming" to "completed"/"in_progress"
+3. Student Skills page - Import error for non-existent `Flask` icon from lucide-react
+4. Teacher Assistant component - Event handler error using `e.value` instead of `e.target.value`
+
+**Root Causes:**
+1. **Assessment Result Tables**: The `mbtiResults`, `riasecResults`, `discResults`, `workValuesResults`, and `learningStylesResults` tables were missing the `assessmentId` field that links them to the main `assessments` table
+2. **Student Plan Page**: TIMELINE_MILESTONES used `as const` type assertions which locked the status type to only `"upcoming"`, preventing dynamic status changes
+3. **Student Skills Page**: `Flask` icon doesn't exist in lucide-react library
+4. **Teacher Assistant**: Incorrect event handler pattern
+
+**Solutions:**
+1. **Assessment Result Tables** - Added `assessmentId` field to all 5 assessment result tables in schema:
+   ```typescript
+   assessmentId: text("assessment_id").references(() => assessments.id, { onDelete: "cascade" })
+   ```
+2. **Student Plan Page** - Changed from `as const` to explicit union type:
+   ```typescript
+   status: "upcoming" | "in_progress" | "completed" | "not_started"
+   ```
+3. **Student Skills Page** - Replaced `Flask` with `Beaker` icon (exists in lucide-react)
+4. **Teacher Assistant** - Fixed event handler: `e.value` → `e.target.value`
+
+**Files Modified:**
+- `src/lib/db/schema.ts` - Added `assessmentId` field to mbtiResults, riasecResults, discResults, workValuesResults, learningStylesResults
+- `src/app/student/plan/page.tsx` - Fixed TIMELINE_MILESTONES type definition
+- `src/app/student/skills/page.tsx` - Replaced Flask with Beaker icon
+- `src/components/ai/teacher-assistant.tsx` - Fixed event handler
+
+**Impact:**
+- All TypeScript compilation errors resolved
+- Assessments now properly link to their result records via `assessmentId`
+- Student plan timeline status can now be dynamically updated
+- AI Teacher Assistant input now correctly captures user input
+
+---
+
 ### Fixed - School Search Autocomplete in Unified Setup (February 18, 2026)
 
 **Problem:**

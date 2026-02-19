@@ -427,7 +427,13 @@ export async function POST(request: NextRequest) {
     const { userId, user } = authResult;
 
     // Get user's role from user object (returned by requireAuth)
-    const userRole: UserRole = (user.type as UserRole) || "student";
+    // Normalize role names - handle database underscores vs hyphens
+    let rawRole = (user.type as string) || "student";
+    let userRole: UserRole = rawRole as UserRole;
+    // Convert school_admin to school-admin for consistency with ROLE_SYSTEM_PROMPTS keys
+    if (rawRole === "school_admin") {
+      userRole = "school-admin";
+    }
 
     // Parse request body
     const body: PlatformAssistantRequest = await request.json();
@@ -561,7 +567,12 @@ export async function GET(request: NextRequest) {
       }>);
     }
 
-    const userRole: UserRole = (authResult.user.type as UserRole) || "student";
+    // Normalize role names - handle database underscores vs hyphens
+    let rawRole = (authResult.user.type as string) || "student";
+    let userRole: UserRole = rawRole as UserRole;
+    if (rawRole === "school_admin") {
+      userRole = "school-admin";
+    }
 
     return NextResponse.json({
       data: {

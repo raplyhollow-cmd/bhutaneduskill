@@ -1352,6 +1352,7 @@ export type CareerPlan = typeof careerPlans.$inferSelect;
 
 export const riasecResults = pgTable("riasec_results", {
   id: text("id").primaryKey(),
+  assessmentId: text("assessment_id").references(() => assessments.id, { onDelete: "cascade" }),
   userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
   scores: json("scores").$type<{
     realistic: number;
@@ -1378,6 +1379,7 @@ export type RiasecResult = typeof riasecResults.$inferSelect;
 
 export const mbtiResults = pgTable("mbti_results", {
   id: text("id").primaryKey(),
+  assessmentId: text("assessment_id").references(() => assessments.id, { onDelete: "cascade" }),
   userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
   personalityType: text("personality_type").notNull(), // "INTJ", "ENFP", etc.
   scores: json("scores").$type<{
@@ -1406,6 +1408,7 @@ export type MBTIResult = typeof mbtiResults.$inferSelect;
 
 export const discResults = pgTable("disc_results", {
   id: text("id").primaryKey(),
+  assessmentId: text("assessment_id").references(() => assessments.id, { onDelete: "cascade" }),
   userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
   dominantStyle: text("dominant_style").notNull(), // "D" | "I" | "S" | "C"
   scores: json("scores").$type<{
@@ -1430,6 +1433,7 @@ export type DiscResult = typeof discResults.$inferSelect;
 
 export const workValuesResults = pgTable("work_values_results", {
   id: text("id").primaryKey(),
+  assessmentId: text("assessment_id").references(() => assessments.id, { onDelete: "cascade" }),
   userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
   topValues: json("top_values").$type<Array<{
     value: string;
@@ -1449,6 +1453,7 @@ export type WorkValuesResult = typeof workValuesResults.$inferSelect;
 
 export const learningStylesResults = pgTable("learning_styles_results", {
   id: text("id").primaryKey(),
+  assessmentId: text("assessment_id").references(() => assessments.id, { onDelete: "cascade" }),
   userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
   visualScore: integer("visual_score").notNull(),
   auditoryScore: integer("auditory_score").notNull(),

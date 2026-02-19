@@ -6,8 +6,11 @@ import { logger } from "@/lib/logger";
  *
  * This component shows the appropriate AI assistant based on user role:
  * - Students: See Career Coach (orange theme, career-focused)
- * - All others (admin, ministry, teacher, parent, counselor, school-admin): See Platform Assistant (role-themed, full-featured)
+ * - Teachers: See Teacher Assistant (blue theme, teaching-focused)
+ * - Admin, Ministry: See Platform Assistant (pink/purple theme, system-focused)
+ * - Counselor, Parent, School-Admin: See Platform Assistant (role-themed)
  *
+ * Each portal gets a specialized AI assistant for their specific needs.
  * Only ONE bubble is shown at a time.
  */
 
@@ -15,14 +18,20 @@ import { logger } from "@/lib/logger";
 import { useEffect, useState } from "react";
 import { PlatformAssistant } from "@/components/ai/platform-assistant";
 import { AICareerCoach } from "@/components/ai/career-coach";
+import { TeacherAssistant } from "@/components/ai/teacher-assistant";
 import { useUser } from "@clerk/nextjs";
 
 type UserRole = "student" | "teacher" | "parent" | "counselor" | "school-admin" | "admin" | "ministry";
 
 export function UnifiedAIAssistant() {
-  // During build time, Clerk hooks may not be available
-  // Check if we're in a browser environment
+  // During build time or when Clerk is not configured, return null
   if (typeof window === "undefined") {
+    return null;
+  }
+
+  // Check if Clerk is properly configured
+  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  if (!publishableKey) {
     return null;
   }
 
@@ -43,7 +52,12 @@ export function UnifiedAIAssistant() {
       .then((data) => {
         // API returns { profile: { type, name, ... } }
         const profile = data.profile || data;
-        const role = profile.type || "student";
+        // Normalize role names - handle database underscores vs hyphens
+        let role = profile.type || "student";
+        // Convert school_admin to school-admin for consistency
+        if (role === "school_admin") {
+          role = "school-admin";
+        }
         setUserRole(role);
         setUserName(profile.name || user?.firstName || user?.fullName || "User");
       })
@@ -63,11 +77,16 @@ export function UnifiedAIAssistant() {
     return null;
   }
 
-  // Students get Career Coach, everyone else gets Platform Assistant
+  // Show role-specific AI assistant
   if (userRole === "student") {
     return <AICareerCoach />;
   }
 
+  if (userRole === "teacher") {
+    return <TeacherAssistant userName={userName} />;
+  }
+
+  // Admin, Ministry, Counselor, Parent, School-Admin get Platform Assistant
   return (
     <PlatformAssistant
       userName={userName}

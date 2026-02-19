@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { schools } from "@/lib/db/schema";
-import { like } from "drizzle-orm";
+import { ilike } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 
 /**
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
         state: schools.state,
       })
       .from(schools)
-      .where(like(schools.name, `%${name.trim()}%`))
+      .where(ilike(schools.name, `%${name.trim()}%`))
       .limit(10);
 
     logger.info("School search executed", {

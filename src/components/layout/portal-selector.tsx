@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { GraduationCap, BookOpen, Users, HeartHandshake, Building, Shield } from "lucide-react";
+import { GraduationCap, BookOpen, Users, HeartHandshake, Building, Shield, Landmark, GraduationCap as AlumniIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Portal {
@@ -44,11 +44,25 @@ const portals: Portal[] = [
     description: "Student interventions, sessions, resources"
   },
   {
+    name: "Alumni",
+    href: "/alumni",
+    icon: AlumniIcon,
+    color: "rgb(34 197 94)",
+    description: "Network, mentorship, and career opportunities"
+  },
+  {
     name: "School Admin",
     href: "/school-admin",
     icon: Building,
     color: "rgb(139 92 246)",
     description: "Manage school operations, students, teachers"
+  },
+  {
+    name: "Ministry",
+    href: "/ministry",
+    icon: Landmark,
+    color: "rgb(168 85 247)",
+    description: "National education oversight, analytics, policies"
   },
   {
     name: "Platform Admin",

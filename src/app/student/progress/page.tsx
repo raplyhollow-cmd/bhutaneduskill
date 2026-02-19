@@ -8,6 +8,7 @@
  * - Exam results history
  * - Learning module progress
  * - Homework completion rates
+ * - AI-powered insights and recommendations
  *
  * Uses real database data via server actions.
  */
@@ -29,10 +30,17 @@ import {
   Users,
   BarChart3,
   Download,
+  Lightbulb,
+  Target,
+  Brain,
+  Sparkles,
+  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { fetchStudentProgress } from "../_actions";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AICareerCoach } from "@/components/ai/career-coach";
+import { cn } from "@/lib/utils";
 
 // Loading component
 function ProgressSkeleton() {
@@ -487,6 +495,241 @@ export default async function StudentProgressPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* AI-Powered Academic Insights */}
+      <Card className="bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 border-orange-200 overflow-hidden relative">
+        {/* Decorative background elements */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-orange-200/20 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-amber-200/20 to-transparent rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+
+        <CardHeader className="relative">
+          <CardTitle className="flex items-center gap-2 text-orange-900">
+            <Brain className="w-5 h-5" />
+            AI Academic Insights
+          </CardTitle>
+          <CardDescription className="text-orange-700">
+            Personalized recommendations based on your performance
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="relative space-y-4">
+          {/* Performance Summary */}
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className={cn(
+              "p-4 rounded-xl border",
+              gradeAverage >= 80 ? "bg-green-50 border-green-200" :
+              gradeAverage >= 60 ? "bg-yellow-50 border-yellow-200" :
+              gradeAverage >= 40 ? "bg-orange-50 border-orange-200" :
+              "bg-red-50 border-red-200"
+            )}>
+              <div className="flex items-center gap-2 mb-2">
+                <Award className={cn(
+                  "w-5 h-5",
+                  gradeAverage >= 80 ? "text-green-600" :
+                  gradeAverage >= 60 ? "text-yellow-600" :
+                  gradeAverage >= 40 ? "text-orange-600" :
+                  "text-red-600"
+                )} />
+                <span className="font-semibold text-slate-900">Overall Performance</span>
+              </div>
+              <p className={cn(
+                "text-3xl font-bold",
+                gradeAverage >= 80 ? "text-green-600" :
+                gradeAverage >= 60 ? "text-yellow-600" :
+                gradeAverage >= 40 ? "text-orange-600" :
+                "text-red-600"
+              )}>
+                {gradeAverage}%
+              </p>
+              <p className="text-sm text-slate-600 mt-1">
+                {gradeAverage >= 80 ? "Excellent! Keep it up!" :
+                 gradeAverage >= 60 ? "Good progress. Room to grow." :
+                 gradeAverage >= 40 ? "Needs improvement." :
+                 "Requires immediate attention."}
+              </p>
+            </div>
+
+            <div className={cn(
+              "p-4 rounded-xl border",
+              attendance.rate >= 90 ? "bg-green-50 border-green-200" :
+              attendance.rate >= 75 ? "bg-yellow-50 border-yellow-200" :
+              "bg-red-50 border-red-200"
+            )}>
+              <div className="flex items-center gap-2 mb-2">
+                <Calendar className={cn(
+                  "w-5 h-5",
+                  attendance.rate >= 90 ? "text-green-600" :
+                  attendance.rate >= 75 ? "text-yellow-600" :
+                  "text-red-600"
+                )} />
+                <span className="font-semibold text-slate-900">Attendance</span>
+              </div>
+              <p className={cn(
+                "text-3xl font-bold",
+                attendance.rate >= 90 ? "text-green-600" :
+                attendance.rate >= 75 ? "text-yellow-600" :
+                "text-red-600"
+              )}>
+                {attendance.rate}%
+              </p>
+              <p className="text-sm text-slate-600 mt-1">
+                {attendance.rate >= 90 ? "Outstanding attendance!" :
+                 attendance.rate >= 75 ? "Good, but aim higher." :
+                 "Low attendance affects learning."}
+              </p>
+            </div>
+
+            <div className={cn(
+              "p-4 rounded-xl border",
+              homeworkCompletionRate >= 80 ? "bg-green-50 border-green-200" :
+              homeworkCompletionRate >= 50 ? "bg-yellow-50 border-yellow-200" :
+              "bg-red-50 border-red-200"
+            )}>
+              <div className="flex items-center gap-2 mb-2">
+                <BookOpen className={cn(
+                  "w-5 h-5",
+                  homeworkCompletionRate >= 80 ? "text-green-600" :
+                  homeworkCompletionRate >= 50 ? "text-yellow-600" :
+                  "text-red-600"
+                )} />
+                <span className="font-semibold text-slate-900">Homework</span>
+              </div>
+              <p className={cn(
+                "text-3xl font-bold",
+                homeworkCompletionRate >= 80 ? "text-green-600" :
+                homeworkCompletionRate >= 50 ? "text-yellow-600" :
+                "text-red-600"
+              )}>
+                {homeworkCompletionRate}%
+              </p>
+              <p className="text-sm text-slate-600 mt-1">
+                {homeworkCompletionRate >= 80 ? "Great homework habits!" :
+                 homeworkCompletionRate >= 50 ? "Stay consistent." :
+                 "Complete more assignments."}
+              </p>
+            </div>
+          </div>
+
+          {/* AI Recommendations */}
+          <div className="space-y-3">
+            <h4 className="font-semibold text-orange-900 flex items-center gap-2">
+              <Sparkles className="w-4 h-4" />
+              AI Recommendations
+            </h4>
+
+            {gradeAverage < 60 && (
+              <div className="flex items-start gap-3 p-4 bg-white/70 rounded-lg border border-orange-200">
+                <Target className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-slate-900">Focus on Improving Grades</p>
+                  <p className="text-sm text-slate-600">
+                    Your current average is {gradeAverage}%. Consider:
+                  </p>
+                  <ul className="text-sm text-slate-600 mt-2 space-y-1">
+                    <li>• Attend extra help sessions with teachers</li>
+                    <li>• Form study groups with classmates</li>
+                    <li>• Use the AI tutor for difficult subjects</li>
+                    <li>• Complete all homework on time</li>
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {attendance.rate < 80 && (
+              <div className="flex items-start gap-3 p-4 bg-white/70 rounded-lg border border-amber-200">
+                <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-slate-900">Improve Your Attendance</p>
+                  <p className="text-sm text-slate-600">
+                    Your attendance is {attendance.rate}%. Regular attendance is crucial for academic success. Each missed class is a missed learning opportunity.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {homeworkCompletionRate < 70 && subjects.length > 0 && (
+              <div className="flex items-start gap-3 p-4 bg-white/70 rounded-lg border border-blue-200">
+                <BookOpen className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-slate-900">Complete More Homework</p>
+                  <p className="text-sm text-slate-600">
+                    You've completed {homeworkCompletionRate}% of assignments. Homework reinforces what you learn in class and significantly impacts your grades.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {gradeAverage >= 80 && attendance.rate >= 90 && homeworkCompletionRate >= 80 && (
+              <div className="flex items-start gap-3 p-4 bg-white/70 rounded-lg border border-green-200">
+                <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-slate-900">Excellent Work!</p>
+                  <p className="text-sm text-slate-600">
+                    You're performing exceptionally well! Consider:
+                  </p>
+                  <ul className="text-sm text-slate-600 mt-2 space-y-1">
+                    <li>• Help classmates who are struggling</li>
+                    <li>• Explore advanced courses and electives</li>
+                    <li>• Prepare for national competitions</li>
+                    <li>• Take career assessments to plan ahead</li>
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {subjects.length > 0 && (
+              <div className="flex items-start gap-3 p-4 bg-white/70 rounded-lg border border-purple-200">
+                <Lightbulb className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-slate-900">Subject Focus Areas</p>
+                  <p className="text-sm text-slate-600">
+                    {subjects.filter(s => s.averageScore < 60).length > 0
+                      ? `Focus on improving: ${subjects.filter(s => s.averageScore < 60).map(s => s.subject).join(", ")}`
+                      : "You're doing well across all subjects! Keep up the great work."}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Quick Actions */}
+          <div className="flex flex-wrap gap-2 pt-4 border-t border-orange-200">
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/student/assessment">
+                <Brain className="w-4 h-4 mr-2" />
+                Take Career Assessment
+              </Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/student/homework">
+                <BookOpen className="w-4 h-4 mr-2" />
+                View Homework
+              </Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/student/plan">
+                <Target className="w-4 h-4 mr-2" />
+                Update Study Plan
+              </Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* AI Career Coach */}
+      <Card className="border-blue-200 bg-blue-50/30">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-blue-900">
+            <Sparkles className="w-5 h-5" />
+            Ask AI About Your Progress
+          </CardTitle>
+          <CardDescription className="text-blue-700">
+            Get personalized study tips, career guidance, and academic advice
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AICareerCoach />
+        </CardContent>
+      </Card>
     </div>
   );
 }

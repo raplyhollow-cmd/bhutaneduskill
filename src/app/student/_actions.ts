@@ -142,9 +142,7 @@ export async function submitHomework(data: {
       const [newSubmission] = await db
         .insert(homeworkSubmissionsTable)
         .values({
-          ...({
-            id: `SUB-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          }),
+          id: `SUB-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
           homeworkId: data.homeworkId,
           studentId,
           content: { answers: data.answers, textAnswers: data.textAnswers, attachments: data.attachments } as any,
@@ -319,7 +317,7 @@ export async function selfCheckIn(data: {
 
     // Create attendance record
     await db.insert(attendanceTable).values({
-      id: `ATT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `ATT-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
       schoolId,
       classId: data.classId,
       studentId,
@@ -385,9 +383,11 @@ export async function fetchFeeStatus() {
       dueDate: feeData.dueDate,
       recentPayments: recentPayments.map(p => ({
         id: p.id,
-        amount: p.amount,
         receiptNumber: p.receiptNumber,
-        collectedAt: p.collectedAt,
+        feeName: "School Fees",
+        amount: p.amount,
+        method: p.paymentMethod || "other",
+        date: p.collectedAt instanceof Date ? p.collectedAt.toISOString() : p.collectedAt,
       })),
     };
   } catch (error) {
@@ -577,7 +577,7 @@ export async function markAnnouncementAsRead(announcementId: string) {
 
     if (!existing) {
       await db.insert(announcementReads).values({
-        id: `ar_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: `ar_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
         announcementId,
         userId: studentId,
         readAt: new Date(),

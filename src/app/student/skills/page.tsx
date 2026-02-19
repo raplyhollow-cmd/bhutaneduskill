@@ -16,6 +16,9 @@ import {
   Clock,
   Star,
   Filter,
+  Loader2,
+  Users,
+  Beaker,
 } from "lucide-react";
 
 const LEARNING_RESOURCES = {
@@ -137,6 +140,48 @@ const LEARNING_RESOURCES = {
       },
     ],
   },
+  "Leadership": {
+    icon: Users,
+    color: "bg-indigo-100 text-indigo-600",
+    resources: [
+      {
+        title: "Student Leadership Resources",
+        description: "Build leadership skills through practice",
+        url: "https://trustarts.org/education/student-leadership-resources/",
+        type: "free",
+        duration: "ongoing",
+        level: "all",
+      },
+    ],
+  },
+  "Languages": {
+    icon: BookOpen,
+    color: "bg-teal-100 text-teal-600",
+    resources: [
+      {
+        title: "Duolingo",
+        description: "Free language learning with gamification",
+        url: "https://duolingo.com",
+        type: "freemium",
+        duration: "ongoing",
+        level: "all",
+      },
+    ],
+  },
+  "Science": {
+    icon: Beaker,
+    color: "bg-cyan-100 text-cyan-600",
+    resources: [
+      {
+        title: "Khan Academy Science",
+        description: "Physics, Chemistry, Biology lessons",
+        url: "https://khanacademy.org/science",
+        type: "free",
+        duration: "ongoing",
+        level: "all",
+      },
+    ],
+  },
 };
 
 const BHUTAN_TTIS = [
@@ -153,13 +198,53 @@ export default function SkillsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedType, setSelectedType] = useState<ResourceType | "all">("all");
   const [selectedLevel, setSelectedLevel] = useState<LevelType | "all">("all");
-  const [userSkills, setUserSkills] = useState<Record<string, number>>({
-    Programming: 30,
-    Mathematics: 45,
-    Design: 20,
-    Communication: 55,
-    "Problem Solving": 40,
-  });
+  const [userSkills, setUserSkills] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/skills")
+      .then((res) => res.json())
+      .then((data) => {
+        setUserSkills(data.userProgress || {});
+      })
+      .catch(() => {
+        // Use default values if API fails
+        setUserSkills({
+          Programming: 30,
+          Mathematics: 45,
+          Design: 20,
+          Communication: 55,
+          "Problem Solving": 40,
+        });
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
+
+  const handleSkillUpdate = (skill: string, newLevel: number) => {
+    setSaving(skill);
+
+    fetch("/api/skills", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ skill, level: newLevel, action: "set" }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setUserSkills((prev) => ({ ...prev, [skill]: data.level }));
+        }
+      })
+      .catch(() => {
+        // Optimistic update
+        setUserSkills((prev) => ({ ...prev, [skill]: newLevel }));
+      })
+      .finally(() => {
+        setSaving(null);
+      });
+  };
 
   const categories = Object.keys(LEARNING_RESOURCES);
   const allResources = Object.entries(LEARNING_RESOURCES).flatMap(([category, data]) =>
@@ -187,6 +272,17 @@ export default function SkillsPage() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-orange-600" />
+          <p className="text-gray-600">Loading your skills progress...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -210,6 +306,8 @@ export default function SkillsPage() {
           {Object.entries(LEARNING_RESOURCES).map(([name, data]) => {
             const Icon = data.icon;
             const progress = userSkills[name] || 0;
+            const isSaving = saving === name;
+
             return (
               <div key={name}>
                 <div className="flex items-center justify-between mb-2">
@@ -222,6 +320,24 @@ export default function SkillsPage() {
                   <span className="text-sm text-gray-500">{progress}%</span>
                 </div>
                 <Progress value={progress} className="h-2" />
+
+                {/* Quick adjust buttons */}
+                <div className="flex gap-2 mt-2">
+                  {([25, 50, 75, 100] as const).map((value) => (
+                    <button
+                      key={value}
+                      onClick={() => handleSkillUpdate(name, value)}
+                      disabled={isSaving}
+                      className={`text-xs px-2 py-1 rounded transition-colors ${
+                        progress >= value
+                          ? "bg-orange-100 text-orange-700"
+                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      } ${isSaving ? "opacity-50 cursor-not-allowed" : ""}`}
+                    >
+                      {value}%
+                    </button>
+                  ))}
+                </div>
               </div>
             );
           })}

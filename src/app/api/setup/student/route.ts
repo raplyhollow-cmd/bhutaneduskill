@@ -204,9 +204,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    logger.error(error, { route: "/api/setup/student", method: "POST" });
+    logger.error("Student setup error:", error);
     return NextResponse.json(
-      { error: "Failed to process setup", details: error instanceof Error ? error.message : "Unknown error" },
+      {
+        error: "Failed to process setup",
+        details: error instanceof Error ? error.message : "Unknown error"
+      },
       { status: 500 }
     );
   }

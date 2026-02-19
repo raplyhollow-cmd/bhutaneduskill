@@ -15,7 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, CheckCircle2, UserPlus, GraduationCap, Users, BookOpen, School, ChevronRight } from "lucide-react";
+import { Loader2, CheckCircle2, UserPlus, GraduationCap, Users, BookOpen, School, ChevronRight, ArrowRight, Sparkles, MapPin } from "lucide-react";
+import { motion } from "framer-motion";
 
 // Role definitions with colors and icons
 const ROLES = [
@@ -325,12 +326,22 @@ export default function UnifiedSetupWizard() {
       if (response.ok) {
         setCurrentStep((prev) => prev + 1);
       } else {
-        const errorData = await response.json().catch(() => ({}));
-        const errorMsg = errorData.error || errorData.details || "Setup failed. Please try again.";
-        logger.error("Setup API error:", errorData);
+        // Try to get error details from response
+        let errorMsg = `Setup failed (Status: ${response.status})`;
+        try {
+          const errorData = await response.json();
+          errorMsg = errorData.error || errorData.details || errorMsg;
+        } catch (e) {
+          // Response body might not be JSON
+          const text = await response.text().catch(() => "");
+          if (text) errorMsg = `${errorMsg}: ${text}`;
+        }
+        logger.error("Setup API error:", errorMsg);
         setError(errorMsg);
       }
     } catch (err) {
+      const errMsg = err instanceof Error ? err.message : "Unknown error";
+      logger.error("Setup wizard network error:", errMsg);
       setError("Network error. Please try again.");
     } finally {
       setIsLoading(false);
@@ -395,49 +406,77 @@ export default function UnifiedSetupWizard() {
   };
 
   const renderRoleSelection = () => (
-    <div className="space-y-6">
-      <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome to Bhutan EduSkill</h2>
-        <p className="text-gray-600">Select your role to get started with your personalized setup</p>
+    <div className="space-y-8">
+      <div className="text-center space-y-3">
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100">
+          <Sparkles className="w-4 h-4 text-blue-500" />
+          <span className="text-sm font-medium text-blue-700">Welcome to Bhutan EduSkill</span>
+        </div>
+        <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">Choose your role</h2>
+        <p className="text-slate-600 max-w-md mx-auto">Select your role to get started with your personalized onboarding experience</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {ROLES.map((role) => {
+        {ROLES.map((role, index) => {
           const Icon = IconMap[role.icon as keyof typeof IconMap];
           return (
-            <button
+            <motion.button
               key={role.id}
               type="button"
               onClick={() => handleRoleSelect(role)}
-              className="group relative p-6 rounded-xl border-2 border-gray-200 bg-white text-left transition-all hover:shadow-lg hover:-translate-y-1 hover:border-gray-300"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05, duration: 0.3 }}
+              className="group relative p-5 rounded-2xl border-2 border-slate-200 bg-white text-left transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:border-transparent"
+              style={{
+                boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)"
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = role.color;
+                e.currentTarget.style.boxShadow = `0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1), 0 0 0 4px ${role.color}15`;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "rgb(226 232 240)";
+                e.currentTarget.style.boxShadow = "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)";
+              }}
             >
-              {/* Colored accent bar */}
+              {/* Gradient background on hover */}
               <div
-                className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl"
-                style={{ background: `linear-gradient(180deg, ${role.color} 0%, ${role.colorTo} 100%)` }}
+                className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                style={{ background: `linear-gradient(135deg, ${role.color}08 0%, ${role.colorTo}08 100%)` }}
               />
 
-              <div className="flex items-start gap-4">
+              {/* Icon container */}
+              <div className="flex items-start gap-4 relative">
                 <div
-                  className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
+                  className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:rotate-3"
                   style={{ background: `linear-gradient(135deg, ${role.color} 0%, ${role.colorTo} 100%)` }}
                 >
-                  <Icon className="w-6 h-6 text-white" />
+                  <Icon className="w-7 h-7 text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-gray-900 mb-1">{role.name}</h3>
-                  <p className="text-sm text-gray-600 line-clamp-2">{role.description}</p>
+                  <h3 className="font-bold text-slate-900 mb-1 text-lg">{role.name}</h3>
+                  <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed">{role.description}</p>
                 </div>
-                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600 transition-colors flex-shrink-0 mt-1" />
               </div>
-            </button>
+
+              {/* Arrow indicator */}
+              <div className="absolute bottom-4 right-4 w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:translate-x-0 translate-x-2"
+                style={{ backgroundColor: `${role.color}15` }}
+              >
+                <ArrowRight className="w-4 h-4" style={{ color: role.color }} />
+              </div>
+            </motion.button>
           );
         })}
       </div>
 
-      <p className="text-center text-sm text-gray-500">
-        Not sure which role to choose? Contact your school administrator for guidance.
-      </p>
+      <div className="flex items-center justify-center gap-2 text-sm text-slate-500 bg-slate-50 px-4 py-3 rounded-xl border border-slate-200">
+        <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span>Not sure which role to choose? Contact your school administrator for guidance.</span>
+      </div>
     </div>
   );
 
@@ -446,13 +485,18 @@ export default function UnifiedSetupWizard() {
     if (!selectedSchool) {
       return (
         <div className="space-y-6">
-          <div>
-            <h2 className="text-xl font-semibold mb-2">Find Your School</h2>
-            <p className="text-gray-600">
-              {selectedRole?.id === "parent"
-                ? "Search for your child's school to verify and link your account."
-                : "Search for your school by name to verify your enrollment."}
-            </p>
+          <div className="text-center space-y-2">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center mx-auto">
+              <School className="w-8 h-8 text-blue-600" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-slate-900">Find Your School</h2>
+              <p className="text-slate-600 mt-1">
+                {selectedRole?.id === "parent"
+                  ? "Search for your child's school to verify and link your account."
+                  : "Search for your school by name to verify your enrollment."}
+              </p>
+            </div>
           </div>
 
           <SchoolSearchInput onSchoolSelect={setSelectedSchool} />
@@ -465,15 +509,20 @@ export default function UnifiedSetupWizard() {
       return (
         <div className="space-y-6">
           {/* Selected school card */}
-          <Card className="p-4 bg-blue-50 border-blue-200">
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-4 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200"
+          >
             <div className="flex items-center justify-between">
               <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                  <School className="w-5 h-5 text-blue-600" />
+                <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <School className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-blue-900">{selectedSchool.name}</h3>
-                  <p className="text-sm text-blue-700">
+                  <p className="text-sm text-blue-700 flex items-center gap-1 mt-0.5">
+                    <MapPin className="w-3.5 h-3.5" />
                     {selectedSchool.city}
                     {selectedSchool.state && `, ${selectedSchool.state}`}
                   </p>
@@ -488,19 +537,19 @@ export default function UnifiedSetupWizard() {
                   setIsCodeVerified(false);
                   setSchoolCode("");
                 }}
-                className="text-blue-600 hover:text-blue-700 hover:bg-blue-100"
+                className="text-blue-600 hover:text-blue-700 hover:bg-white/50"
               >
                 Change
               </Button>
             </div>
-          </Card>
+          </motion.div>
 
           {/* Verification code input */}
-          <div className="space-y-3">
-            <div>
-              <h3 className="font-medium text-gray-900 mb-1">Enter School Code</h3>
-              <p className="text-sm text-gray-500">
-                Enter your school verification code to confirm your enrollment at {selectedSchool.name}.
+          <div className="space-y-4">
+            <div className="text-center space-y-2">
+              <h3 className="font-semibold text-slate-900">Enter School Code</h3>
+              <p className="text-sm text-slate-600">
+                Enter the verification code for <span className="font-medium text-blue-600">{selectedSchool.name}</span>
               </p>
             </div>
             <VerificationCodeInput
@@ -522,12 +571,19 @@ export default function UnifiedSetupWizard() {
     // State 3: Verified - show success
     return (
       <div className="space-y-6">
-        <Card className="p-4 bg-green-50 border-green-200">
-          <div className="flex items-start gap-3">
-            <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="p-5 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-200"
+        >
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-xl bg-emerald-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-emerald-500/30">
+              <CheckCircle2 className="w-6 h-6 text-white" />
+            </div>
             <div className="flex-1">
-              <h3 className="font-semibold text-green-900">{selectedSchool.name}</h3>
-              <p className="text-sm text-green-700">
+              <h3 className="font-semibold text-emerald-900">{selectedSchool.name}</h3>
+              <p className="text-sm text-emerald-700 flex items-center gap-1 mt-1">
+                <MapPin className="w-3.5 h-3.5" />
                 {selectedSchool.city}
                 {selectedSchool.state && `, ${selectedSchool.state}`}
               </p>
@@ -540,31 +596,40 @@ export default function UnifiedSetupWizard() {
                 setIsCodeVerified(false);
                 setVerifiedSchool(null);
               }}
-              className="text-green-600 hover:text-green-700 hover:bg-green-100"
+              className="text-emerald-600 hover:text-emerald-700 hover:bg-white/50"
             >
               Change
             </Button>
           </div>
-        </Card>
+        </motion.div>
 
-        <div className="flex items-center gap-2 text-sm text-green-700">
-          <CheckCircle2 className="w-4 h-4" />
-          <span>School verified successfully! You can proceed to the next step.</span>
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200"
+        >
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+          <span className="text-sm font-medium text-emerald-700">School verified successfully! You can proceed to the next step.</span>
+        </motion.div>
       </div>
     );
   };
 
   const renderPersonalDetails = () => (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold mb-2">Your Details</h2>
-        <p className="text-gray-600">
-          Tell us about yourself so we can set up your {selectedRole?.name} account.
-        </p>
+      <div className="text-center space-y-2">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center mx-auto">
+          <GraduationCap className="w-8 h-8 text-slate-600" />
+        </div>
+        <div>
+          <h2 className="text-xl font-semibold text-slate-900">Your Details</h2>
+          <p className="text-slate-600 mt-1">
+            Tell us about yourself so we can set up your {selectedRole?.name} account.
+          </p>
+        </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-5 max-w-lg mx-auto">
         <div>
           <Label htmlFor="fullName">Full Name</Label>
           <Input
@@ -1022,71 +1087,132 @@ export default function UnifiedSetupWizard() {
     const features = roleFeatures[selectedRole.id] || roleFeatures.student;
 
     return (
-      <div className="text-center space-y-6 py-8">
-        <div
-          className="w-20 h-20 rounded-full flex items-center justify-center mx-auto"
-          style={{ background: `linear-gradient(135deg, ${selectedRole.color} 0%, ${selectedRole.colorTo} 100%)` }}
+      <div className="text-center space-y-8 py-6">
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", duration: 0.5 }}
+          className="relative"
         >
-          <CheckCircle2 className="w-10 h-10 text-white" />
-        </div>
+          {/* Animated rings */}
+          <motion.div
+            animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute inset-0 rounded-full"
+            style={{ background: `linear-gradient(135deg, ${selectedRole.color} 0%, ${selectedRole.colorTo} 100%)` }}
+          />
+          <motion.div
+            animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0, 0.3] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
+            className="absolute inset-0 rounded-full"
+            style={{ background: `linear-gradient(135deg, ${selectedRole.color} 0%, ${selectedRole.colorTo} 100%)` }}
+          />
 
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          <div
+            className="relative w-24 h-24 rounded-full flex items-center justify-center mx-auto"
+            style={{ background: `linear-gradient(135deg, ${selectedRole.color} 0%, ${selectedRole.colorTo} 100%)` }}
+          >
+            <CheckCircle2 className="w-12 h-12 text-white" />
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">
             Welcome, {fullName}!
           </h2>
-          <p className="text-gray-600">
+          <p className="text-slate-600">
             {selectedRole.id === "school-admin"
               ? `Your account has been linked to ${verifiedSchool?.name || "your school"}.`
               : `Your ${selectedRole.name} account is ready.`}
           </p>
-        </div>
+        </motion.div>
 
-        <Card
-          className={`p-4 ${selectedRole.bgColor} ${selectedRole.borderColor} text-left`}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
         >
-          <h3 className={`font-semibold mb-3`} style={{ color: selectedRole.color }}>
-            {features.title}
-          </h3>
-          <ul className="space-y-2 text-sm" style={{ color: selectedRole.color }}>
-            {features.features.map((feature, i) => (
-              <li key={i}>✓ {feature}</li>
-            ))}
-          </ul>
+          <Card
+            className={`p-5 text-left border-2 ${selectedRole.bgColor} ${selectedRole.borderColor}`}
+          >
+            <h3 className={`font-bold text-lg mb-4 flex items-center gap-2`} style={{ color: selectedRole.color }}>
+              <Sparkles className="w-5 h-5" />
+              {features.title}
+            </h3>
+            <ul className="space-y-3">
+              {features.features.map((feature, i) => (
+                <motion.li
+                  key={i}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.4 + i * 0.05 }}
+                  className="flex items-start gap-3 text-sm"
+                  style={{ color: selectedRole.color }}
+                >
+                  <span className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                    style={{ backgroundColor: `${selectedRole.color}20` }}
+                  >
+                    <CheckCircle2 className="w-3 h-3" style={{ color: selectedRole.color }} />
+                  </span>
+                  {feature}
+                </motion.li>
+              ))}
+            </ul>
 
-          {selectedRole.id === "student" && features.action && features.actionPath && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-4 bg-white"
-              onClick={() => router.push(features.actionPath)}
-            >
-              {features.action}
-            </Button>
-          )}
-        </Card>
+            {selectedRole.id === "student" && features.action && features.actionPath && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4 bg-white"
+                onClick={() => router.push(features.actionPath)}
+              >
+                {features.action}
+              </Button>
+            )}
+          </Card>
+        </motion.div>
 
         {selectedRole.id === "parent" && children.length > 0 && (
-          <div className="text-sm text-gray-500">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 text-slate-600 text-sm"
+          >
+            <Users className="w-4 h-4" />
             {children.length} child{children.length > 1 ? "ren" : ""} linked to your account
-          </div>
+          </motion.div>
         )}
 
-        <Button
-          onClick={completeWizard}
-          size="lg"
-          disabled={isLoading}
-          style={{ background: `linear-gradient(135deg, ${selectedRole.color} 0%, ${selectedRole.colorTo} 100%)` }}
-          className="text-white border-0"
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
         >
-          {isLoading ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Processing...
-            </>
-          ) : (
-            "Go to Dashboard"
-          )}
-        </Button>
+          <Button
+            onClick={completeWizard}
+            size="lg"
+            disabled={isLoading}
+            className="text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300"
+            style={{ background: `linear-gradient(135deg, ${selectedRole.color} 0%, ${selectedRole.colorTo} 100%)` }}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              <>
+                Go to Dashboard
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </>
+            )}
+          </Button>
+        </motion.div>
       </div>
     );
   };
@@ -1106,6 +1232,12 @@ export default function UnifiedSetupWizard() {
     return selectedRole.description;
   };
 
+  // Get step titles for the stepper
+  const getStepTitles = () => {
+    if (!selectedRole) return ["Select Role", "Find School", "Your Details", "Complete"];
+    return steps.map(s => s.title);
+  };
+
   return (
     <WizardContainer
       currentStep={currentStep}
@@ -1113,6 +1245,7 @@ export default function UnifiedSetupWizard() {
       title={getWizardTitle()}
       subtitle={getWizardSubtitle()}
       onExit={() => router.push("/")}
+      stepTitles={getStepTitles()}
     >
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">

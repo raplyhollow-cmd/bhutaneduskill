@@ -116,8 +116,8 @@ export async function POST(request: NextRequest) {
         department: "Administration",
         // Admin specific fields from form if provided
         ...(data.admin?.adminName && {
-          firstName: data.admin.adminName.split(" ")[0],
-          lastName: data.admin.adminName.split(" ").slice(1).join(" "),
+          firstName: data.admin.adminName.split(" ")[0] || "",
+          lastName: data.admin.adminName.split(" ").slice(1).join(" ") || "",
         }),
         ...(data.admin?.adminEmail && { email: data.admin.adminEmail }),
         ...(data.admin?.adminPhone && { phone: data.admin.adminPhone }),
@@ -213,13 +213,15 @@ export async function POST(request: NextRequest) {
         .where(eq(users.id, dbUser.id));
 
       // Update admin details
+      const adminName = data.admin?.adminName || "";
+      const nameParts = adminName.trim().split(" ");
       await db
         .update(users)
         .set({
-          firstName: data.admin.adminName.split(" ")[0],
-          lastName: data.admin.adminName.split(" ").slice(1).join(" "),
-          email: data.admin.adminEmail,
-          phone: data.admin.adminPhone,
+          firstName: nameParts[0] || "",
+          lastName: nameParts.slice(1).join(" ") || "",
+          email: data.admin?.adminEmail || "",
+          phone: data.admin?.adminPhone || "",
         })
         .where(eq(users.id, dbUser.id));
     }
@@ -235,9 +237,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    logger.error(error, { route: "/api/setup/admin", method: "POST" });
+    logger.error("Admin setup error:", error);
     return NextResponse.json(
-      { error: "Failed to process setup" },
+      {
+        error: "Failed to process setup",
+        details: error instanceof Error ? error.message : "Unknown error"
+      },
       { status: 500 }
     );
   }

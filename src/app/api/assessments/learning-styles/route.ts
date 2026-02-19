@@ -93,24 +93,36 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { answers, results } = body;
 
+    // Create assessment record
+    // Note: assessments table has required fields for academic assessments,
+    // but personality assessments use dedicated result tables.
+    // We provide minimal values for required fields.
+    const assessmentId = `ls_${Date.now()}`;
     const [assessment] = await db
       .insert(assessments)
       .values({
-        id: `ls_${Date.now()}`,
-        tenantId: user.tenantId,
+        id: assessmentId,
+        title: "Learning Styles Assessment",
+        description: results.dominantStyle ? `Dominant style: ${results.dominantStyle}` : "Learning styles assessment",
+        dueDate: new Date().toISOString(), // Current date since it's already completed
+        totalPoints: 100,
+        passingScore: 0,
         userId: userId,
         type: "learning-styles",
         status: "completed",
-        answers,
-        results,
+        // Store answers and results in the results JSON field
+        results: { answers, results } as any,
         startedAt: new Date(),
         completedAt: new Date(),
+        isActive: true,
         createdAt: new Date(),
-      } as any)
+        updatedAt: new Date(),
+      })
       .returning();
 
     await db.insert(learningStylesResults).values({
       id: `ls_res_${Date.now()}`,
+      assessmentId: assessmentId,
       userId: userId,
       visualScore: results.visual || 0,
       auditoryScore: results.auditory || 0,

@@ -2,25 +2,23 @@
 > career-guidance@0.1.0 build
 > next build
 
-▲ Next.js 16.1.6 (Turbopack)
-- Environments: .env
-- Experiments (use with caution):
-  · cpus: 2
+   ▲ Next.js 15.5.12
+   - Environments: .env
+   - Experiments (use with caution):
+     · cpus: 2
 
-⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
-  Creating an optimized production build ...
-✓ Compiled successfully in 113s
-  Running TypeScript ...
-Failed to compile.
+   Creating an optimized production build ...
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (187kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+ ✓ Compiled successfully in 2.7min
+   Linting and checking validity of types ...
+ ⨯ ESLint: Cannot find module 'D:\VS STUDIO PROJECT\bhutaneduskill\node_modules\eslint-config-next\core-web-vitals' imported from D:\VS STUDIO PROJECT\bhutaneduskill\eslint.config.mjs Did you mean to import "eslint-config-next/core-web-vitals.js"?
+   Collecting page data ...
+[Error [PageNotFoundError]: Cannot find module for page: /route] {
+  code: 'ENOENT'
+}
+[Error [PageNotFoundError]: Cannot find module for page: /about] {
+  code: 'ENOENT'
+}
 
-./src/app/api/school-admin/branding/route.ts:87:27
-Type error: Cannot find name 'userSchoolId'. Did you mean 'schoolId'?
-
-[0m [90m 85 |[39m     [90m// Verify user belongs to this school (unless admin)[39m
- [90m 86 |[39m     [36mconst[39m [user] [33m=[39m [36mawait[39m db
-[31m[1m>[22m[39m[90m 87 |[39m       [33m.[39mselect({ schoolId[33m:[39m userSchoolId })
- [90m    |[39m                           [31m[1m^[22m[39m
- [90m 88 |[39m       [33m.[39m[36mfrom[39m(schools)
- [90m 89 |[39m       [33m.[39mwhere(eq(schools[33m.[39mid[33m,[39m userId))
- [90m 90 |[39m       [33m.[39mlimit([35m1[39m)[33m;[39m[0m
-Next.js build worker exited with code: 1 and signal: null
+> Build error occurred
+[Error: Failed to collect page data for /about] { type: 'Error' }

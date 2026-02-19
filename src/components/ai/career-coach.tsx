@@ -186,9 +186,9 @@ export function AICareerCoach({
               border: 'none',
               boxShadow: '0 4px 14px rgba(0, 0, 0.15)'
             }}
-            className="rounded-full h-14 w-14 hover:scale-105 transition-transform animate-pulse-slow"
+            className="rounded-full h-16 w-16 hover:scale-105 transition-transform animate-pulse-slow shadow-lg"
           >
-            <Bot className="w-6 h-6 text-white" />
+            <Bot className="w-7 h-7 text-white" />
           </Button>
           <Badge className="absolute -top-1 -right-1 text-white px-2 py-0 text-xs shadow-md" style={{ backgroundColor: 'rgb(239 68 68)' }}>
             Career
@@ -203,7 +203,7 @@ export function AICareerCoach({
       <Card
         className={cn(
           "shadow-xl border-orange-200 bg-white",
-          !embedded && "w-80 max-h-[500px] flex flex-col",
+          !embedded && "w-[calc(100vw-2rem)] h-[70dvh] md:w-96 md:max-w-[500px] md:h-[600px] flex flex-col",
           isMinimized && "h-14",
           className
         )}

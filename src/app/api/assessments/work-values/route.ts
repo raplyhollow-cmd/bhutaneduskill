@@ -91,24 +91,36 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { answers, results } = body;
 
+    // Create assessment record
+    // Note: assessments table has required fields for academic assessments,
+    // but personality assessments use dedicated result tables.
+    // We provide minimal values for required fields.
+    const assessmentId = `wv_${Date.now()}`;
     const [assessment] = await db
       .insert(assessments)
       .values({
-        id: `wv_${Date.now()}`,
-        tenantId: user.tenantId,
+        id: assessmentId,
+        title: "Work Values Assessment",
+        description: "Understanding what matters most in your career",
+        dueDate: new Date().toISOString(), // Current date since it's already completed
+        totalPoints: 100,
+        passingScore: 0,
         userId: userId,
         type: "work-values",
         status: "completed",
-        answers,
-        results,
+        // Store answers and results in the results JSON field
+        results: { answers, results } as any,
         startedAt: new Date(),
         completedAt: new Date(),
+        isActive: true,
         createdAt: new Date(),
-      } as any)
+        updatedAt: new Date(),
+      })
       .returning();
 
     await db.insert(workValuesResults).values({
       id: `wv_res_${Date.now()}`,
+      assessmentId: assessmentId,
       userId: userId,
       topValues: results.topValues || [],
       description: results.description || "Your work values profile",

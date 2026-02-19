@@ -12,23 +12,18 @@ export async function GET(req: NextRequest) {
     if ("error" in authResult) {
       return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
-    const { userId } = authResult;
+    const { user } = authResult;
 
-    if (!userId) {
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Check if user profile exists
-    const userProfile = await db.query.users.findFirst({
-      where: (users, { eq }) => eq(users.clerkUserId, userId),
-    });
-
-    // Transform the profile to include bio from settings and grade display name
-    const transformedProfile = userProfile ? {
-      ...userProfile,
-      bio: (userProfile as any).settings?.bio || "",
-      grade: (userProfile as any).classGrade ? `Class ${(userProfile as any).classGrade}` : "",
-    } : null;
+    // User already fetched from DB by requireAuth, just transform and return
+    const transformedProfile = {
+      ...user,
+      bio: (user as any).settings?.bio || "",
+      grade: (user as any).classGrade ? `Class ${(user as any).classGrade}` : "",
+    };
 
     return NextResponse.json({ profile: transformedProfile });
   } catch (error) {
@@ -47,15 +42,15 @@ export async function POST(req: NextRequest) {
     if ("error" in authResult) {
       return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
-    const { userId } = authResult;
+    const { user } = authResult;
 
-    if (!userId) {
+    if (!user) {
       logger.security("unauthorized_access_attempt", { route: "/api/user/profile", method: "POST" });
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await req.json();
-    logger.info("Updating profile", { userId });
+    logger.info("Updating profile", { userId: user.id });
 
     const {
       firstName,
@@ -69,108 +64,45 @@ export async function POST(req: NextRequest) {
       bio,
     } = body;
 
-    // Check if user already exists
-    const existingUser = await db.query.users.findFirst({
-      where: (users, { eq }) => eq(users.clerkUserId, userId),
-    });
+    // Build update object with only the fields that exist in schema
+    const updateData: Record<string, any> = {
+      updatedAt: new Date(),
+    };
 
-    if (existingUser) {
-      logger.debug("Updating existing user", { userId: existingUser.id });
-
-      // Build update object with only the fields that exist in schema
-      // We use sql to do a partial update, only updating provided fields
-      const updateData: Record<string, any> = {
-        updatedAt: new Date(),
-      };
-
-      // Only update fields that are provided and exist in schema
-      if (typeof firstName === "string") updateData.firstName = firstName.trim();
-      if (typeof lastName === "string") updateData.lastName = lastName.trim();
-      if (typeof email === "string") updateData.email = email.trim();
-      if (typeof dateOfBirth === "string") updateData.dateOfBirth = dateOfBirth;
-      if (typeof grade === "string" && grade) {
-        const gradeNum = parseInt(grade.replace("Class ", "").trim());
-        if (!isNaN(gradeNum) && gradeNum > 0) {
-          updateData.classGrade = gradeNum;
-        }
+    // Only update fields that are provided and exist in schema
+    if (typeof firstName === "string") updateData.firstName = firstName.trim();
+    if (typeof lastName === "string") updateData.lastName = lastName.trim();
+    if (typeof email === "string") updateData.email = email.trim();
+    if (typeof dateOfBirth === "string") updateData.dateOfBirth = dateOfBirth;
+    if (typeof grade === "string" && grade) {
+      const gradeNum = parseInt(grade.replace("Class ", "").trim());
+      if (!isNaN(gradeNum) && gradeNum > 0) {
+        updateData.classGrade = gradeNum;
       }
-      if (typeof school === "string") updateData.school = school.trim();
-      if (Array.isArray(interests)) updateData.interests = interests;
-      if (typeof goals === "string") updateData.goals = goals.trim();
-      if (typeof bio === "string") {
-        const currentSettings = (existingUser as any).settings || {};
-        updateData.settings = { ...currentSettings, bio: bio.trim() };
-      }
-
-      logger.debug("User profile update data", { updateData });
-
-      // Perform the update
-      await db
-        .update(users)
-        .set(updateData)
-        .where(eq(users.id, existingUser.id));
-
-      return NextResponse.json({
-        success: true,
-        profile: { ...existingUser, ...updateData }
-      });
-    } else {
-      logger.info("Creating new user", { clerkUserId: userId });
-
-      // Create new user with minimum required fields
-      const newUserData: any = {
-        id: `user-${Date.now()}`,
-        clerkUserId: userId,
-        type: "student",
-        role: "student",
-        name: `${firstName || ""} ${lastName || ""}`.trim() || "Student",
-        firstName: firstName || "",
-        lastName: lastName || "",
-        email: email || "",
-        phone: "",           // Required but empty for now
-        profileImage: "",    // Required but empty for now
-        gender: "",          // Required but empty for now
-        section: "",         // Required but empty for now
-        rollNumber: "",      // Required but empty for now
-        address: "",         // Required but empty for now
-        city: "",            // Required but empty for now
-        state: "",           // Required but empty for now
-        postalCode: "",      // Required but empty for now
-        country: "Bhutan",   // Required with default
-        parentContact: "",   // Required but empty for now
-        parentPhone: "",     // Required but empty for now
-        emergencyContact: "", // Required but empty for now
-        bloodGroup: "",      // Required but empty for now
-        enrollmentDate: new Date().toISOString(),
-        lastLogin: new Date().toISOString(),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        // Optional fields
-        school: school || "",
-        interests: interests || [],
-        goals: goals || "",
-        settings: bio ? { bio } : {},
-      };
-
-      // Add optional fields if provided
-      if (dateOfBirth) newUserData.dateOfBirth = dateOfBirth;
-      if (grade) {
-        const gradeNum = parseInt(grade.replace("Class ", ""));
-        if (!isNaN(gradeNum)) newUserData.classGrade = gradeNum;
-      }
-
-      logger.debug("Creating user with data", { userId: newUserData.id });
-
-      const result = await db
-        .insert(users)
-        .values(newUserData)
-        .returning();
-
-      const newUser = Array.isArray(result) ? result[0] : result;
-      logger.info("User created successfully", { userId: newUser.id });
-
-      return NextResponse.json({ success: true, profile: newUser });
     }
+    if (typeof school === "string") updateData.school = school.trim();
+    if (Array.isArray(interests)) updateData.interests = interests;
+    if (typeof goals === "string") updateData.goals = goals.trim();
+    if (typeof bio === "string") {
+      const currentSettings = (user as any).settings || {};
+      updateData.settings = { ...currentSettings, bio: bio.trim() };
+    }
+
+    logger.debug("User profile update data", { updateData });
+
+    // Perform the update
+    await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, user.id));
+
+    // Return updated profile
+    const updatedUser = { ...user, ...updateData };
+
+    return NextResponse.json({
+      success: true,
+      profile: updatedUser
+    });
   } catch (error) {
     logger.error(error, { route: "/api/user/profile", method: "POST" });
 

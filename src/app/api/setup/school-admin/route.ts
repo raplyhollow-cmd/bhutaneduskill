@@ -129,13 +129,27 @@ export async function POST(request: NextRequest) {
 
     // Update user details with personal info
     if (data.personalDetails) {
+      const fullName = data.personalDetails.fullName || data.adminName || "";
+      const nameParts = fullName.trim().split(" ");
       await db
         .update(users)
         .set({
-          firstName: data.personalDetails.fullName.split(" ")[0],
-          lastName: data.personalDetails.fullName.split(" ").slice(1).join(" "),
-          email: data.personalDetails.email,
-          phone: data.personalDetails.phone,
+          firstName: nameParts[0] || "",
+          lastName: nameParts.slice(1).join(" ") || "",
+          email: data.personalDetails.email || data.adminEmail || dbUser.email,
+          phone: data.personalDetails.phone || data.adminPhone || "",
+        })
+        .where(eq(users.id, dbUser.id));
+    } else if (data.adminName) {
+      // Handle school-admin specific fields
+      const nameParts = data.adminName.trim().split(" ");
+      await db
+        .update(users)
+        .set({
+          firstName: nameParts[0] || "",
+          lastName: nameParts.slice(1).join(" ") || "",
+          email: data.adminEmail || dbUser.email,
+          phone: data.adminPhone || "",
         })
         .where(eq(users.id, dbUser.id));
     }
@@ -151,9 +165,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    logger.error(error, { route: "/api/setup/school-admin", method: "POST" });
+    logger.error("School-admin setup error:", error);
     return NextResponse.json(
-      { error: "Failed to process setup" },
+      {
+        error: "Failed to process setup",
+        details: error instanceof Error ? error.message : "Unknown error"
+      },
       { status: 500 }
     );
   }

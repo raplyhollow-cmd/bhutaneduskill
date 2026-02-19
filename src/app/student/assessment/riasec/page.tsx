@@ -143,16 +143,25 @@ export default function AssessmentPage() {
   const saveAssessment = async (finalAnswers: Answers, assessmentResult: any) => {
     setIsSaving(true);
     try {
-      const response = await fetch("/api/assessments", {
+      const response = await fetch("/api/assessments/riasec", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          type: "riasec",
           answers: finalAnswers,
           results: assessmentResult,
+          scores: assessmentResult.scores,
+          hollandCode: assessmentResult.hollandCode,
         }),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        logger.error("Failed to save RIASEC assessment", { status: response.status, error: errorData });
+        return null;
+      }
+
       const data = await response.json();
+      logger.info("RIASEC assessment saved successfully");
       return data;
     } catch (error) {
       logger.error("Failed to save assessment:", error);

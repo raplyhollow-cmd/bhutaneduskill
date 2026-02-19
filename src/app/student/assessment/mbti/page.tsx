@@ -48,15 +48,22 @@ export default function MBTIAssessmentPage() {
 
   const saveAssessment = async (finalAnswers: MBTIInput, assessmentResult: MBTIResult) => {
     try {
-      await fetch("/api/assessments/mbti", {
+      const response = await fetch("/api/assessments/mbti", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          type: "mbti",
           answers: finalAnswers,
           results: assessmentResult,
         }),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        logger.error("Failed to save assessment", { status: response.status, error: errorData });
+        // Don't alert the user - let them see their results first
+      } else {
+        logger.info("MBTI assessment saved successfully");
+      }
     } catch (error) {
       logger.error("Failed to save assessment:", error);
     }

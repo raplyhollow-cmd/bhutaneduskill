@@ -98,24 +98,36 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { answers, results } = body;
 
+    // Create assessment record
+    // Note: assessments table has required fields for academic assessments,
+    // but personality assessments use dedicated result tables.
+    // We provide minimal values for required fields.
+    const assessmentId = `disc_${Date.now()}`;
     const [assessment] = await db
       .insert(assessments)
       .values({
-        id: `disc_${Date.now()}`,
-        tenantId: user.tenantId,
+        id: assessmentId,
+        title: "DISC Personality Assessment",
+        description: results.primaryType ? `DISC Type: ${results.primaryType}` : "DISC personality assessment",
+        dueDate: new Date().toISOString(), // Current date since it's already completed
+        totalPoints: 100,
+        passingScore: 0,
         userId: userId,
         type: "disc",
         status: "completed",
-        answers,
-        results,
+        // Store answers and results in the results JSON field
+        results: { answers, results } as any,
         startedAt: new Date(),
         completedAt: new Date(),
+        isActive: true,
         createdAt: new Date(),
-      } as any)
+        updatedAt: new Date(),
+      })
       .returning();
 
     await db.insert(discResults).values({
       id: `disc_res_${Date.now()}`,
+      assessmentId: assessmentId,
       userId: userId,
       dominantStyle: results.primaryType || "D",
       scores: {
@@ -123,7 +135,7 @@ export async function POST(request: NextRequest) {
         i: results.influence || 0,
         s: results.steadiness || 0,
         c: results.conscientiousness || 0,
-      },
+      } as any, // scores is json field
       description: results.description || "DISC personality assessment result",
       strengths: results.strengths || [],
       weaknesses: results.weaknesses || [],
