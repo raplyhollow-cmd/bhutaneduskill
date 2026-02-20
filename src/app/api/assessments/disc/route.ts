@@ -5,6 +5,7 @@ import { requirePermission } from "@/lib/rbac";
 import { db } from "@/lib/db";
 import { users, assessments, discResults } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
+import { calculateCareerMatches } from "@/lib/services/career-matching.service";
 
 /**
  * GET /api/assessments/disc - Get DISC assessment results
@@ -143,6 +144,14 @@ export async function POST(request: NextRequest) {
       completedAt: new Date(),
       createdAt: new Date(),
     });
+
+    // Trigger career matching
+    try {
+      await calculateCareerMatches(userId, "disc", { saveToDatabase: true });
+    } catch (error) {
+      logger.error("Career matching failed", { userId, assessmentId, error });
+      // Don't fail the assessment
+    }
 
     return NextResponse.json({ success: true, assessmentId: assessment.id });
   } catch (error) {

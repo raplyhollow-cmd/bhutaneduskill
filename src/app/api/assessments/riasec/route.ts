@@ -5,6 +5,7 @@ import { requirePermission } from "@/lib/rbac";
 import { db } from "@/lib/db";
 import { users, assessments, riasecResults } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
+import { calculateCareerMatches } from "@/lib/services/career-matching.service";
 
 /**
  * GET /api/assessments/riasec - Get RIASEC assessment results
@@ -149,6 +150,14 @@ export async function POST(request: NextRequest) {
     };
 
     await db.insert(riasecResults).values(riasecData);
+
+    // Trigger career matching
+    try {
+      await calculateCareerMatches(userId, "riasec", { saveToDatabase: true });
+    } catch (error) {
+      logger.error("Career matching failed", { userId, assessmentId, error });
+      // Don't fail the assessment
+    }
 
     return NextResponse.json({ success: true, assessmentId: assessment.id });
   } catch (error) {

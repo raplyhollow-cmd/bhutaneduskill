@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { assessments, mbtiResults } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import type { MBTIResult } from "@/lib/db/schema";
+import { calculateCareerMatches } from "@/lib/services/career-matching.service";
 
 export async function POST(request: NextRequest) {
   try {
@@ -76,6 +77,14 @@ export async function POST(request: NextRequest) {
       completedAt: new Date(),
       createdAt: new Date(),
     });
+
+    // Trigger career matching
+    try {
+      await calculateCareerMatches(userId, "mbti", { saveToDatabase: true });
+    } catch (error) {
+      logger.error("Career matching failed", { userId, assessmentId, error });
+      // Don't fail the assessment
+    }
 
     return NextResponse.json({ success: true, assessmentId: assessment.id });
   } catch (error) {
