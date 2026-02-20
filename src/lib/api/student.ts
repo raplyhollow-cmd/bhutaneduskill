@@ -27,6 +27,7 @@ interface UserRecord {
   dateOfBirth: string | null;
   profileImage: string | null;
   type: string;
+  onboardingStatus?: string | null;
 }
 
 interface AssessmentWithExtras {
@@ -235,6 +236,7 @@ export interface FeeStatus {
 
 export interface StudentDashboardData {
   student: StudentInfo;
+  onboardingStatus?: "pending_enrollment" | "complete" | "rejected";
   homework: HomeworkSummary;
   assessments: AssessmentSummary;
   attendance: AttendanceSummary;
@@ -264,6 +266,80 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
 
   const userRecord = studentRecord as UserRecord;
   const studentName = `${userRecord.firstName} ${userRecord.lastName || ""}`.trim();
+
+  // CRITICAL: Check if student is still pending enrollment
+  const isPendingEnrollment = userRecord.onboardingStatus === "pending_enrollment";
+
+  // If student is pending enrollment, return limited data
+  // They can access assessments, career exploration, journal, goals
+  // But NOT classes, homework, attendance, results (school-specific data)
+  if (isPendingEnrollment) {
+    // Get assessments (available to all students)
+    const studentAssessments = await db.query.assessments.findMany({
+      where: eq(assessments.userId, studentId),
+      orderBy: [desc(assessments.createdAt)],
+      limit: 20,
+    });
+
+    const completedAssessments = studentAssessments.filter((a) => a.status === "completed");
+    const latestAssessment = completedAssessments[0] || null;
+
+    // Get career matches
+    let hollandCode: string | null = null;
+    if (latestAssessment && (latestAssessment as AssessmentWithExtras).type === "riasec") {
+      const riasecResult = await db.query.riasecResults.findFirst({
+        where: eq(riasecResults.userId, studentId),
+        orderBy: [desc(riasecResults.createdAt)],
+      });
+      hollandCode = riasecResult?.hollandCode || null;
+    }
+
+    const [careerMatchCount] = await db
+      .select({ count: count() })
+      .from(careerMatches)
+      .where(eq(careerMatches.studentId, studentId));
+
+    const studentInfo: StudentInfo = {
+      id: studentRecord.id,
+      firstName: userRecord.firstName,
+      lastName: userRecord.lastName,
+      name: studentName,
+      email: userRecord.email,
+      phone: userRecord.phone,
+      classGrade: userRecord.classGrade,
+      section: userRecord.section,
+      className: null,
+      classId: null,
+      schoolId: userRecord.schoolId,
+      dateOfBirth: userRecord.dateOfBirth,
+      profileImage: userRecord.profileImage,
+    };
+
+    return {
+      student: studentInfo,
+      onboardingStatus: "pending_enrollment",
+      homework: { pending: 0, submitted: 0, graded: 0, total: 0 },
+      assessments: {
+        completed: completedAssessments.length,
+        total: studentAssessments.length,
+        latestResult: latestAssessment ? {
+          type: (latestAssessment as AssessmentWithExtras).type,
+          completedAt: latestAssessment.completedAt ? new Date(latestAssessment.completedAt).toISOString() : null,
+        } : null,
+      },
+      attendance: { rate: 0, presentDays: 0, totalDays: 0, thisWeek: { present: 0, total: 0 } },
+      classes: [],
+      achievements: [],
+      deadlines: [],
+      careerMatches: {
+        totalMatches: careerMatchCount?.count || 0,
+        topMatches: 0,
+        topCareer: null,
+        hollandCode,
+      },
+      fees: null,
+    };
+  }
 
   // Get student's class enrollment
   const enrollment = await db.query.enrollments.findFirst({

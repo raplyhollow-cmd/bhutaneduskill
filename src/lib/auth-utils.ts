@@ -493,3 +493,131 @@ export async function authResponse(authResult: Awaited<ReturnType<typeof require
 
   return null; // No error, continue with request
 }
+
+// ============================================================================
+// HIERARCHY HELPERS
+// ============================================================================
+
+/**
+ * Check if a user has authority over another user's data
+ * Based on role hierarchy and school membership
+ *
+ * @param requesterUser - The user making the request
+ * @param targetUser - The user whose data is being accessed
+ * @returns true if requester has authority over target
+ */
+export function hasAuthorityOver(requesterUser: User, targetUser: User): boolean {
+  // Users can always access their own data
+  if (requesterUser.id === targetUser.id) {
+    return true;
+  }
+
+  // Platform admins have authority over everyone
+  if (requesterUser.type === "admin") {
+    return true;
+  }
+
+  // School admins can manage users in their school
+  if (requesterUser.type === "school-admin" && requesterUser.schoolId === targetUser.schoolId) {
+    // School admin can manage students, teachers, counselors in their school
+    const schoolManagedRoles = ["student", "teacher", "counselor", "parent"];
+    return schoolManagedRoles.includes(targetUser.type);
+  }
+
+  // Teachers can view students in their school (for classroom management)
+  if (requesterUser.type === "teacher" && targetUser.type === "student") {
+    return requesterUser.schoolId === targetUser.schoolId;
+  }
+
+  // Counselors can view students in their school
+  if (requesterUser.type === "counselor" && targetUser.type === "student") {
+    return requesterUser.schoolId === targetUser.schoolId;
+  }
+
+  // Parents can view their own children
+  if (requesterUser.type === "parent") {
+    // This would require checking parent-child relationships
+    // For now, return false - this should be implemented with a separate table
+    return false;
+  }
+
+  return false;
+}
+
+/**
+ * Check if a user can access a specific school's data
+ *
+ * @param user - The user making the request
+ * @param schoolId - The school being accessed
+ * @returns true if user can access this school
+ */
+export function canAccessSchool(user: User, schoolId: string): boolean {
+  // Platform admins and ministry can access any school
+  if (["admin", "ministry"].includes(user.type)) {
+    return true;
+  }
+
+  // School users can only access their own school
+  return user.schoolId === schoolId;
+}
+
+/**
+ * Check if a user can approve applications for their school
+ *
+ * @param user - The user making the request
+ * @returns true if user can approve applications
+ */
+export function canApproveApplications(user: User): boolean {
+  return ["admin", "school-admin"].includes(user.type);
+}
+
+/**
+ * Check if a user needs to complete setup before accessing their portal
+ *
+ * @param user - The user to check
+ * @returns true if setup is needed
+ */
+export function needsSetup(user: User): boolean {
+  // Platform admins skip setup
+  if (user.type === "admin") {
+    return false;
+  }
+
+  // Check if user has completed onboarding
+  if (!user.onboardingComplete) {
+    return true;
+  }
+
+  // School admins need to complete school setup if not done
+  if (user.type === "school-admin" && user.schoolId) {
+    // This would require checking the school's setup_complete field
+    // For now, we'll return false since the user's onboarding is complete
+    return false;
+  }
+
+  return false;
+}
+
+/**
+ * Get the redirect path for a user based on their onboarding status
+ *
+ * @param user - The user to check
+ * @returns The path to redirect to for setup, or null if no setup needed
+ */
+export function getSetupRedirectPath(user: User): string | null {
+  if (!needsSetup(user)) {
+    return null;
+  }
+
+  // Map user types to their setup pages
+  const setupPaths: Record<string, string> = {
+    "school-admin": "/setup/school-admin",
+    "teacher": "/setup/teacher",
+    "student": "/setup/student",
+    "parent": "/setup/parent",
+    "counselor": "/setup/counselor",
+    "ministry": "/setup/ministry",
+  };
+
+  return setupPaths[user.type] || "/setup/unified";
+}

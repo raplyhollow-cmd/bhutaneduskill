@@ -183,6 +183,14 @@ async function seedPermissions() {
     // Reports
     { id: "perm_reports_view", name: "View Reports", slug: "reports.view", resource: "reports", action: "read", module: "reports" },
     { id: "perm_reports_generate", name: "Generate Reports", slug: "reports.generate", resource: "reports", action: "create", module: "reports" },
+
+    // Hierarchical Ecosystem - Approval Permissions
+    { id: "perm_schools_approve", name: "Approve Schools", slug: "schools.approve", resource: "schools", action: "approve", module: "schools" },
+    { id: "perm_school_admins_approve", name: "Approve School Admins", slug: "school_admins.approve", resource: "school_admins", action: "approve", module: "schools" },
+    { id: "perm_students_approve", name: "Approve Students", slug: "students.approve", resource: "students", action: "approve", module: "users" },
+    { id: "perm_teachers_approve", name: "Approve Teachers", slug: "teachers.approve", resource: "teachers", action: "approve", module: "users" },
+    { id: "perm_departments_manage", name: "Manage Departments", slug: "departments.manage", resource: "departments", action: "update", module: "schools" },
+    { id: "perm_subscription_view", name: "View Subscriptions", slug: "subscriptions.view", resource: "subscriptions", action: "read", module: "billing" },
   ];
 
   for (const perm of permissions) {
@@ -232,7 +240,7 @@ async function seedRolePermissions() {
   }
   log(`  ✓ Platform Admin: ALL permissions (${platformAdminPerms.length})`, "green");
 
-  // School Admin - Limited permissions
+  // School Admin - Limited permissions + Approval permissions
   const schoolAdminPerms = [
     "perm_school_read",
     "perm_school_update",
@@ -252,6 +260,10 @@ async function seedRolePermissions() {
     "perm_analytics_view",
     "perm_reports_view",
     "perm_reports_generate",
+    // Hierarchical Ecosystem - School admin can approve students and teachers
+    "perm_students_approve",
+    "perm_teachers_approve",
+    "perm_departments_manage",
   ];
 
   for (const permSlug of schoolAdminPerms) {
@@ -268,13 +280,14 @@ async function seedRolePermissions() {
   }
   log(`  ✓ School Admin: ${schoolAdminPerms.length} permissions`, "green");
 
-  // Ministry - Read-only permissions
+  // Ministry - Read-only permissions + Subscription viewing
   const ministryPerms = [
     "perm_school_read",
     "perm_user_read",
     "perm_analytics_view",
     "perm_analytics_export",
     "perm_billing_view",
+    "perm_subscription_view",
     "perm_reports_view",
     "perm_notification_read",
   ];

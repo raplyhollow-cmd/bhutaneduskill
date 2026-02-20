@@ -14,8 +14,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { chatWithCareerCoachFromServer, type AIContext } from "@/lib/ai/gemini-server";
 import { db } from "@/lib/db";
-import { users, riasecResults, mbtiResults } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { users, riasecResults, mbtiResults, assessments, careerMatches as careerMatchesTable } from "@/lib/db/schema";
+import { eq, desc as drizzleDesc } from "drizzle-orm";
 import { safeTrackAIInteraction, AI_FEATURE_IDS } from "@/lib/ai/track-interaction";
 
 interface InsightRequest {
@@ -551,7 +551,7 @@ async function generateStudentInsights(
   let userGoals: string[] = [];
 
   try {
-    // Get RIASEC result
+    // Get RIASEC result from dedicated table
     const riasecResult = await db
       .select({ hollandCode: riasecResults.hollandCode })
       .from(riasecResults)
@@ -562,7 +562,59 @@ async function generateStudentInsights(
       riasecCode = riasecResult[0].hollandCode;
     }
 
-    // Get MBTI result
+    // Fallback 2: Get RIASEC from assessments.results JSON if table is empty
+    if (!riasecCode) {
+      const assessmentResults = await db
+        .select({ results: assessments.results })
+        .from(assessments)
+        .where(eq(assessments.userId, userId))
+        .orderBy(drizzleDesc(assessments.completedAt))
+        .limit(10);
+
+      const riasecAssessment = assessmentResults.find((a: any) =>
+        a.results && typeof a.results === 'object' && 'hollandCode' in (a.results as any)
+      );
+
+      if (riasecAssessment?.results) {
+        const results = riasecAssessment.results as any;
+        riasecCode = results.hollandCode || results?.results?.hollandCode?.[0] || null;
+      }
+    }
+
+    // Fallback 3: Try to get from career_matches (for demo data)
+    if (!riasecCode) {
+      const careerMatchList = await db
+        .select()
+        .from(careerMatchesTable)
+        .where(eq(careerMatchesTable.studentId, userId))
+        .orderBy(drizzleDesc(careerMatchesTable.matchScore))
+        .limit(1);
+
+      if (careerMatchList.length > 0) {
+        const matchReason = (careerMatchList[0] as any).matchReason;
+        if (matchReason) {
+          // Look for Holland Code patterns
+          const hollandPatterns = [
+            { code: "R", names: ["realistic", "practical", "hands-on"] },
+            { code: "I", names: ["investigative", "analytical", "research"] },
+            { code: "A", names: ["artistic", "creative", "creative expression"] },
+            { code: "S", names: ["social", "helping", "teaching"] },
+            { code: "E", names: ["enterprising", "leadership", "business"] },
+            { code: "C", names: ["conventional", "organized", "detail"] }
+          ];
+
+          const found = hollandPatterns.filter(p =>
+            matchReason.toLowerCase().includes(p.names[0])
+          ).map(p => p.code);
+
+          if (found.length > 0) {
+            riasecCode = found.join("") || null;
+          }
+        }
+      }
+    }
+
+    // Get MBTI result from dedicated table
     const mbtiResult = await db
       .select({ personalityType: mbtiResults.personalityType })
       .from(mbtiResults)
@@ -573,15 +625,56 @@ async function generateStudentInsights(
       mbtiType = mbtiResult[0].personalityType;
     }
 
+    // Fallback 2: Get MBTI from assessments.results JSON if table is empty
+    if (!mbtiType) {
+      const assessmentResults = await db
+        .select({ results: assessments.results })
+        .from(assessments)
+        .where(eq(assessments.userId, userId))
+        .orderBy(drizzleDesc(assessments.completedAt))
+        .limit(10);
+
+      const mbtiAssessment = assessmentResults.find((a: any) =>
+        a.results && typeof a.results === 'object' && 'personalityType' in (a.results as any)
+      );
+
+      if (mbtiAssessment?.results) {
+        const results = mbtiAssessment.results as any;
+        mbtiType = results.personalityType || results?.results?.personalityType || null;
+      }
+    }
+
+    // Fallback 3: Try to get from career_matches (for demo data)
+    if (!mbtiType) {
+      const careerMatchList = await db
+        .select()
+        .from(careerMatchesTable)
+        .where(eq(careerMatchesTable.studentId, userId))
+        .orderBy(drizzleDesc(careerMatchesTable.matchScore))
+        .limit(1);
+
+      if (careerMatchList.length > 0) {
+        const matchReason = (careerMatchList[0] as any).matchReason;
+        if (matchReason) {
+          // Look for MBTI patterns like "INTJ" or "ENFP"
+          const mbtiPattern = /\b([A-Z]{4})\b/;
+          const mbtiMatch = matchReason.match(mbtiPattern);
+          if (mbtiMatch) {
+            mbtiType = mbtiMatch[1];
+          }
+        }
+      }
+    }
+
     // Get journal stats from user.settings (for emotional insights)
     // Journal entries are stored in users.settings.journalEntries as JSON array
-    const [userWithJournal] = await db
+    const userWithJournalResult = await db
       .select({ settings: users.settings })
       .from(users)
       .where(eq(users.id, userId))
       .limit(1);
 
-    const settings = (userWithJournal?.settings as any) || {};
+    const settings = (userWithJournalResult?.[0]?.settings as any) || {};
     const journalEntries = settings.journalEntries || [];
     journalEntryCount = journalEntries.length;
 

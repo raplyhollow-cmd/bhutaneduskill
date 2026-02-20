@@ -286,6 +286,32 @@ export default function StudentDashboardPage() {
         </CardContent>
       </Card>
 
+      {/* Pending Enrollment Banner */}
+      {dashboardData.onboardingStatus === "pending_enrollment" && (
+        <Card className="bg-amber-50 border-amber-200">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="p-2 bg-amber-100 rounded-full">
+                <Clock className="h-6 w-6 text-amber-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-amber-900 mb-1">Enrollment Pending</h3>
+                <p className="text-amber-700 text-sm">
+                  Your application is being reviewed by the school administration.
+                  You will be notified once enrolled. In the meantime, you can take
+                  assessments and explore career options.
+                </p>
+              </div>
+              <div className="hidden md:block">
+                <Badge className="bg-amber-200 text-amber-900">
+                  Awaiting Approval
+                </Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* AI Insights Section - Dynamic from API */}
       <StudentAIInsights
         dashboardData={{

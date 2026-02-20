@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { users, schools, schoolAdminApplications } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { applyRateLimit, applyRateLimitAuth, addRateLimitHeaders, checkRateLimitWithConfig, RateLimitPresets } from "@/lib/rate-limit";
 
@@ -23,6 +23,7 @@ export async function GET(request: NextRequest) {
         id: users.id,
         type: users.type,
         onboardingComplete: users.onboardingComplete,
+        onboardingStatus: users.onboardingStatus,
         schoolId: users.schoolId,
         firstName: users.firstName,
         lastName: users.lastName,
@@ -43,10 +44,76 @@ export async function GET(request: NextRequest) {
       userId: user.id,
       type: user.type,
       onboardingComplete: user.onboardingComplete,
+      onboardingStatus: user.onboardingStatus,
     });
 
-    // If user has a type, let them in (they were either created by admin or completed setup)
-    // The onboardingComplete field caused timing issues, so we rely on type presence instead
+    // Platform admins skip all onboarding checks
+    if (user.type === "admin") {
+      logger.debug("Platform admin bypassing setup", { userId: user.id });
+      const response = NextResponse.json({
+        userType: "admin",
+        needsSetup: false,
+        firstName: user.firstName,
+        lastName: user.lastName
+      });
+      response.cookies.set("userType", "admin", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7,
+      });
+      return response;
+    }
+
+    // School admins: check if their application is approved
+    if (user.type === "school-admin" && user.schoolId) {
+      const application = await db
+        .select()
+        .from(schoolAdminApplications)
+        .where(eq(schoolAdminApplications.userId, user.id))
+        .limit(1);
+
+      if (application.length > 0 && application[0].status === "pending_approval") {
+        logger.debug("School admin awaiting approval", { userId: user.id });
+        return NextResponse.json({
+          userType: null,
+          needsSetup: true,
+          awaitingApproval: true,
+        });
+      }
+
+      // Check if school is active and setup complete
+      const schoolRecords = await db
+        .select({
+          subscriptionStatus: schools.subscriptionStatus,
+          setupComplete: schools.setupComplete,
+        })
+        .from(schools)
+        .where(eq(schools.id, user.schoolId))
+        .limit(1);
+
+      if (schoolRecords.length > 0) {
+        const school = schoolRecords[0];
+        if (school.subscriptionStatus !== "active") {
+          logger.debug("School not active", { userId: user.id, schoolId: user.schoolId });
+          return NextResponse.json({
+            userType: null,
+            needsSetup: true,
+            schoolNotActive: true,
+          });
+        }
+        if (!school.setupComplete) {
+          logger.debug("School setup not complete", { userId: user.id, schoolId: user.schoolId });
+          return NextResponse.json({
+            userType: "school-admin",
+            needsSetup: true,
+            schoolSetupIncomplete: true,
+          });
+        }
+      }
+    }
+
+    // If user has a type, let them in
     if (user.type) {
       logger.debug("User has type, allowing access", { type: user.type, userId: user.id });
       const response = NextResponse.json({

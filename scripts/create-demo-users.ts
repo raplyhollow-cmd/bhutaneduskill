@@ -11,7 +11,7 @@
  * 4. Pema Lhamo - Counselor
  * 5. Choki Wangchuk - School Admin
  * 6. Sonam Tshering - Platform Admin
- * 7. Kinzang Wangmo - Ministry (already exists, will skip)
+ * 7. Kinzang Dorji - Ministry
  *
  * Usage: npx tsx scripts/create-demo-users.ts
  */
@@ -150,6 +150,22 @@ const DEMO_USERS = [
     role: "admin",
     gender: "male",
     dateOfBirth: "1982-09-25",
+    city: "Thimphu",
+    state: "Thimphu",
+  },
+  {
+    id: "user-kinzang-dorji",
+    name: "Kinzang Dorji",
+    firstName: "Kinzang",
+    lastName: "Dorji",
+    email: "kinzang.dorji@moe.gov.bt",
+    phone: "+975-17-78901",
+    type: "ministry",
+    role: "ministry",
+    employeeId: "MOE-M-001",
+    department: "Career Guidance Division",
+    gender: "male",
+    dateOfBirth: "1975-04-12",
     city: "Thimphu",
     state: "Thimphu",
   },

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
-import { users, wizardProgress } from "@/lib/db/schema";
+import { users, wizardProgress, studentApplications, notifications, notificationDeliveries } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { logger } from "@/lib/logger";
@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
         enrollmentDate: new Date().toISOString().split('T')[0],
         lastLogin: new Date().toISOString(),
         onboardingComplete: step === "complete",
+        onboardingStatus: "pending_enrollment", // Students start as pending until school admin approves
         createdAt: new Date(),
         updatedAt: new Date(),
         // Optional fields - will be updated from form data
@@ -200,6 +201,45 @@ export async function POST(request: NextRequest) {
         .set({ onboardingComplete: true })
         .where(eq(users.id, dbUser.id));
       logger.info("Marked onboarding as complete for student", { userId: dbUser.id });
+
+      // Create student application record for school admin approval
+      // Only if schoolId is available (from school verification step)
+      if (dbUser.schoolId) {
+        try {
+          const applicationId = `app-${Date.now()}-${nanoid(8)}`;
+          const now = new Date();
+
+          await db.insert(studentApplications).values({
+            id: applicationId,
+            studentId: dbUser.id,
+            schoolId: dbUser.schoolId || null,
+            status: "pending",
+            requestedGrade: dbUser.classGrade || dbUser.grade || null,
+            requestedSection: dbUser.section || null,
+            guardianName: dbUser.parentContact || null,
+            guardianPhone: dbUser.parentPhone || null,
+            guardianEmail: null,
+            previousSchool: null,
+            previousGrade: null,
+            specialNeeds: null,
+            submittedAt: now,
+            reviewedAt: null,
+            reviewedBy: null,
+            rejectionReason: null,
+            notes: null,
+            createdAt: now,
+            updatedAt: now,
+          });
+
+          logger.info("Created student application record", { applicationId, studentId: dbUser.id, schoolId: dbUser.schoolId });
+
+          // Notify school admins about new student application
+          await notifySchoolAdminsAboutNewStudent(dbUser.schoolId, dbUser);
+        } catch (error) {
+          logger.error("Failed to create student application or notify admins", { error });
+          // Don't fail the request if notification fails
+        }
+      }
     }
 
     return NextResponse.json({ success: true });
@@ -212,5 +252,87 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * Notify school admins when a new student applies for enrollment
+ */
+async function notifySchoolAdminsAboutNewStudent(schoolId: string, student: typeof users.$inferSelect) {
+  try {
+    // Get all school admins for this school
+    const schoolAdmins = await db
+      .select()
+      .from(users)
+      .where(eq(users.schoolId, schoolId))
+      .then((admins) => admins.filter((a) => a.type === "school_admin"));
+
+    if (schoolAdmins.length === 0) {
+      logger.warn("No school admins found to notify", { schoolId });
+      return;
+    }
+
+    // Create notification for each school admin
+    const studentName = student.firstName && student.lastName
+      ? `${student.firstName} ${student.lastName}`
+      : student.name;
+    const gradeText = student.classGrade || student.grade
+      ? `Grade ${student.classGrade || student.grade}${student.section ? " " + student.section : ""}`
+      : "Grade not specified";
+
+    // Create a single notification for all school admins
+    const notificationId = `notif-${Date.now()}-${nanoid(8)}`;
+    const now = new Date();
+
+    await db.insert(notifications).values({
+      id: notificationId,
+      title: "New Student Application",
+      message: `${studentName} (${gradeText}) has applied for enrollment and needs your approval.`,
+      type: "alert", // Using alert type for urgent notifications
+      category: "enrollment",
+      targetAudience: "specific",
+      targetUserIds: JSON.stringify(schoolAdmins.map(a => a.id)),
+      priority: "high",
+      status: "sent",
+      senderId: student.id,
+      senderName: studentName,
+      senderRole: "student",
+      actionUrl: "/school-admin/students/pending",
+      actionLabel: "Review Application",
+      sentAt: now,
+      totalRecipients: schoolAdmins.length,
+      deliveredCount: schoolAdmins.length,
+      readCount: 0,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Create delivery records for each admin
+    for (const admin of schoolAdmins) {
+      try {
+        const deliveryId = `delivery-${Date.now()}-${nanoid(8)}`;
+        await db.insert(notificationDeliveries).values({
+          id: deliveryId,
+          notificationId,
+          userId: admin.id,
+          status: "delivered",
+          deliveredAt: now,
+          deliveryMethod: "in_app",
+          createdAt: now,
+          updatedAt: now,
+        });
+        logger.info("Created notification delivery for school admin", { deliveryId, adminId: admin.id });
+      } catch (error) {
+        logger.error("Failed to create notification delivery for admin", { adminId: admin.id, error });
+      }
+    }
+
+    logger.info("Notified school admins about new student application", {
+      schoolId,
+      studentId: student.id,
+      adminsNotified: schoolAdmins.length
+    });
+  } catch (error) {
+    logger.error("Failed to notify school admins", { error });
   }
 }

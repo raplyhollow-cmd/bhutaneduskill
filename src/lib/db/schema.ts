@@ -222,6 +222,7 @@ export const users = pgTable("users", {
   tenantId: text("tenant_id").references(() => tenants.id),
   emailVerified: boolean("email_verified").default(false),
   onboardingComplete: boolean("onboarding_complete").default(false),
+  onboardingStatus: text("onboarding_status").default("pending_enrollment"), // "pending_enrollment" | "complete" | "rejected"
   classGrade: integer("class_grade"),
   parentId: text("parent_id").references(() => users.id),
   isActive: boolean("is_active").default(true),
@@ -260,6 +261,193 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   circulationAsStudent: many(circulation),
   libraryMembers: many(libraryMembers),
   reservations: many(libraryReservations),
+}));
+
+// ============================================================================
+// STUDENT APPLICATIONS TABLE
+// ============================================================================
+
+// Student enrollment applications - tracks students who signed up but pending school approval
+export const studentApplications = pgTable("student_applications", {
+  id: text("id").primaryKey(),
+  studentId: text("student_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }).notNull(),
+  status: text("status").notNull(), // "pending" | "approved" | "rejected"
+  requestedGrade: integer("requested_grade"),
+  requestedSection: text("requested_section"),
+  guardianName: text("guardian_name"),
+  guardianPhone: text("guardian_phone"),
+  guardianEmail: text("guardian_email"),
+  previousSchool: text("previous_school"),
+  previousGrade: integer("previous_grade"),
+  specialNeeds: text("special_notes"), // Any special requirements or notes
+  submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull(),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  reviewedBy: text("reviewed_by").references(() => users.id),
+  rejectionReason: text("rejection_reason"),
+  notes: text("notes"), // Admin notes during review
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  studentIdIdx: index("idx_student_apps_student_id").on(table.studentId),
+  schoolIdIdx: index("idx_student_apps_school_id").on(table.schoolId),
+  statusIdx: index("idx_student_apps_status").on(table.status),
+  schoolStatusIdx: index("idx_student_apps_school_status").on(table.schoolId, table.status),
+}));
+
+export type StudentApplication = typeof studentApplications.$inferSelect;
+
+export const studentApplicationsRelations = relations(studentApplications, ({ one }) => ({
+  student: one(users, {
+    fields: [studentApplications.studentId],
+    references: [users.id],
+  }),
+  school: one(schools, {
+    fields: [studentApplications.schoolId],
+    references: [schools.id],
+  }),
+  reviewer: one(users, {
+    fields: [studentApplications.reviewedBy],
+    references: [users.id],
+  }),
+}));
+
+// ============================================================================
+// SCHOOL ADMIN APPLICATIONS TABLE
+// ============================================================================
+
+/**
+ * School admin applications - tracks users who signed up as school admins
+ * Platform admin reviews and approves after payment verification
+ */
+export const schoolAdminApplications = pgTable("school_admin_applications", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }).notNull(),
+  status: text("status").notNull().default("pending_approval"), // "pending_approval" | "approved" | "rejected"
+  paymentStatus: text("payment_status").notNull().default("pending"), // "pending" | "paid" | "failed"
+  paymentAmount: text("payment_amount"), // Store as text to avoid numeric precision issues
+  paymentDate: timestamp("payment_date", { withTimezone: true }),
+  paymentMethod: text("payment_method"), // "bank_transfer" | "cheque" | "online" | "cash"
+  paymentReference: text("payment_reference"), // Transaction ID / cheque number
+  appliedAt: timestamp("applied_at", { withTimezone: true }).notNull(),
+  reviewedBy: text("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  rejectionReason: text("rejection_reason"),
+  notes: text("notes"), // Admin notes during review
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  userIdIdx: index("idx_school_admin_apps_user_id").on(table.userId),
+  schoolIdIdx: index("idx_school_admin_apps_school_id").on(table.schoolId),
+  statusIdx: index("idx_school_admin_apps_status").on(table.status),
+  paymentStatusIdx: index("idx_school_admin_apps_payment_status").on(table.paymentStatus),
+  schoolStatusIdx: index("idx_school_admin_apps_school_status").on(table.schoolId, table.status),
+}));
+
+export type SchoolAdminApplication = typeof schoolAdminApplications.$inferSelect;
+
+export const schoolAdminApplicationsRelations = relations(schoolAdminApplications, ({ one }) => ({
+  user: one(users, {
+    fields: [schoolAdminApplications.userId],
+    references: [users.id],
+  }),
+  school: one(schools, {
+    fields: [schoolAdminApplications.schoolId],
+    references: [schools.id],
+  }),
+  reviewer: one(users, {
+    fields: [schoolAdminApplications.reviewedBy],
+    references: [users.id],
+  }),
+}));
+
+// ============================================================================
+// TEACHER APPLICATIONS TABLE
+// ============================================================================
+
+/**
+ * Teacher applications - tracks teachers who signed up and await approval
+ */
+export const teacherApplications = pgTable("teacher_applications", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }).notNull(),
+  status: text("status").notNull().default("pending"), // "pending" | "approved" | "rejected"
+  qualifications: text("qualifications"), // JSON string of qualifications
+  experience: integer("experience"), // Years of experience
+  subjects: text("subjects"), // JSON array of subject IDs
+  desiredClasses: text("desired_classes"), // JSON array of class IDs
+  previousSchool: text("previous_school"),
+  specialization: text("specialization"), // Subject specialization
+  appliedAt: timestamp("applied_at", { withTimezone: true }).notNull(),
+  reviewedBy: text("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  rejectionReason: text("rejection_reason"),
+  notes: text("notes"), // Admin notes during review
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  userIdIdx: index("idx_teacher_apps_user_id").on(table.userId),
+  schoolIdIdx: index("idx_teacher_apps_school_id").on(table.schoolId),
+  statusIdx: index("idx_teacher_apps_status").on(table.status),
+  schoolStatusIdx: index("idx_teacher_apps_school_status").on(table.schoolId, table.status),
+}));
+
+export type TeacherApplication = typeof teacherApplications.$inferSelect;
+
+export const teacherApplicationsRelations = relations(teacherApplications, ({ one }) => ({
+  user: one(users, {
+    fields: [teacherApplications.userId],
+    references: [users.id],
+  }),
+  school: one(schools, {
+    fields: [teacherApplications.schoolId],
+    references: [schools.id],
+  }),
+  reviewer: one(users, {
+    fields: [teacherApplications.reviewedBy],
+    references: [users.id],
+  }),
+}));
+
+// ============================================================================
+// DEPARTMENTS TABLE
+// ============================================================================
+
+/**
+ * Academic departments within a school
+ * Organizes subjects and teachers under department heads
+ */
+export const departments = pgTable("departments", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }).notNull(),
+  name: text("name").notNull(),
+  code: text("code").notNull(),
+  headOfDepartment: text("head_of_department").references(() => users.id, { onDelete: "set null" }),
+  description: text("description"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  schoolIdIdx: index("idx_departments_school_id").on(table.schoolId),
+  codeIdx: index("idx_departments_code").on(table.code),
+  schoolCodeIdx: index("idx_departments_school_code").on(table.schoolId, table.code),
+  hodIdx: index("idx_departments_hod").on(table.headOfDepartment),
+  isActiveIdx: index("idx_departments_is_active").on(table.isActive),
+}));
+
+export type Department = typeof departments.$inferSelect;
+
+export const departmentsRelations = relations(departments, ({ one, many }) => ({
+  school: one(schools, {
+    fields: [departments.schoolId],
+    references: [schools.id],
+  }),
+  head: one(users, {
+    fields: [departments.headOfDepartment],
+    references: [users.id],
+  }),
 }));
 
 // ============================================================================
@@ -305,6 +493,12 @@ export const schools = pgTable("schools", {
   // School branding and customization
   branding: json("branding").$type<Record<string, unknown>>(), // Custom branding: logo, colors, theme
   theme: text("theme"), // Selected theme name
+  // Hierarchical Ecosystem - Subscription & Setup Status
+  subscriptionStatus: text("subscription_status").default("pending_payment"), // "pending_payment" | "active" | "suspended" | "cancelled"
+  subscriptionTier: text("subscription_tier"), // "basic" | "standard" | "premium" | "enterprise"
+  activatedAt: timestamp("activated_at", { withTimezone: true }), // When subscription was activated
+  setupComplete: boolean("setup_complete").default(false), // Whether school admin has completed setup wizard
+  setupCompletedAt: timestamp("setup_completed_at", { withTimezone: true }), // When setup was completed
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 }, (table) => ({
@@ -313,6 +507,7 @@ export const schools = pgTable("schools", {
   isActiveIdx: index("idx_schools_is_active").on(table.isActive),
   districtIdIdx: index("idx_schools_district_id").on(table.districtId),
   tenantIdIdx: index("idx_schools_tenant_id").on(table.tenantId),
+  subscriptionStatusIdx: index("idx_schools_subscription_status").on(table.subscriptionStatus),
 }));
 
 export type School = typeof schools.$inferSelect;
@@ -544,16 +739,24 @@ export type Class = typeof classes.$inferSelect;
 export const subjects = pgTable("subjects", {
   id: text("id").primaryKey(),
   schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }),
+  departmentId: text("department_id").references(() => departments.id, { onDelete: "set null" }),
   name: text("name").notNull(),
   nameDzongkha: text("name_dzongkha"), // Dzongkha translation
   code: text("code").unique().notNull(),
   type: text("type").notNull(), // "core" | "elective" | "language" | "additional"
+  subjectType: text("subject_type").default("core"), // "core" | "elective" | "language"
   description: text("description").notNull(),
   grade: integer("grade"),
+  applicableGrades: text("applicable_grades"), // JSON array of applicable grades
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
+}, (table) => ({
+  schoolIdIdx: index("idx_subjects_school_id").on(table.schoolId),
+  departmentIdIdx: index("idx_subjects_department_id").on(table.departmentId),
+  gradeIdx: index("idx_subjects_grade").on(table.grade),
+  isActiveIdx: index("idx_subjects_is_active").on(table.isActive),
+}));
 
 export type Subject = typeof subjects.$inferSelect;
 

@@ -27,6 +27,7 @@ const USERS = {
   dorji: { email: "dorji.wangmo@demo.bt", id: "" },
   pema: { email: "pema.lhamo@demo.bt", id: "" },
   choki: { email: "choki.wangchuk@demo.bt", id: "" },
+  kinzang: { email: "kinzang.dorji@moe.gov.bt", id: "" },
 };
 
 const SCHOOL_CODE = "TMSS";

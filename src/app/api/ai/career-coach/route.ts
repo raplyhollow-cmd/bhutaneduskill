@@ -157,12 +157,69 @@ export async function POST(request: NextRequest) {
     // Calculate completed assessments count
     const completedAssessments = userAssessments.filter((a) => a.status === "completed");
 
+    // Extract Holland Code from multiple sources (in priority order)
+    let hollandCode = riasecResult?.hollandCode || null;
+
+    // Fallback 1: Try assessments.results JSON
+    if (!hollandCode) {
+      const riasecAssessment = userAssessments.find((a) => a.type === "riasec" && a.status === "completed");
+      if (riasecAssessment && riasecAssessment.results) {
+        const results = riasecAssessment.results as any;
+        hollandCode = results.hollandCode || results?.results?.hollandCode?.[0] || null;
+      }
+    }
+
+    // Fallback 2: Extract from career_matches.matchReason (for demo data)
+    if (!hollandCode && matches.length > 0) {
+      const matchReason = matches[0].matchReason || "";
+      // Look for Holland Code patterns like "Investigative" or "I-A-S"
+      const hollandPatterns = [
+        { code: "R", names: ["realistic", "practical", "hands-on"] },
+        { code: "I", names: ["investigative", "analytical", "research"] },
+        { code: "A", names: ["artistic", "creative", "creative expression"] },
+        { code: "S", names: ["social", "helping", "teaching"] },
+        { code: "E", names: ["enterprising", "leadership", "business"] },
+        { code: "C", names: ["conventional", "organized", "detail"] }
+      ];
+
+      const found = hollandPatterns.filter(p =>
+        matchReason.toLowerCase().includes(p.names[0])
+      ).map(p => p.code);
+
+      if (found.length > 0) {
+        hollandCode = found.join("") || null;
+      }
+    }
+
+    // Extract MBTI type from multiple sources (in priority order)
+    let mbtiType = (mbtiResult as any)?.personalityType || null;
+
+    // Fallback 1: Try assessments.results JSON
+    if (!mbtiType) {
+      const mbtiAssessment = userAssessments.find((a) => a.type === "mbti" && a.status === "completed");
+      if (mbtiAssessment && mbtiAssessment.results) {
+        const results = mbtiAssessment.results as any;
+        mbtiType = results.personalityType || results?.mbtiType || null;
+      }
+    }
+
+    // Fallback 2: Extract from career_matches.matchReason (for demo data)
+    if (!mbtiType && matches.length > 0) {
+      const matchReason = matches[0].matchReason || "";
+      // Look for MBTI patterns like "INTJ" or "introverted intuitive"
+      const mbtiPattern = /\b([INTJ]|[INTJ]{4}|[A-Z]{4})\b/i;
+      const mbtiMatch = matchReason.match(mbtiPattern);
+      if (mbtiMatch) {
+        mbtiType = mbtiMatch[1].toUpperCase();
+      }
+    }
+
     // Build context for AI - now includes journal data
     const aiContext: AIContext = {
       userName: userProfile?.name || "Student",
       userRole: userProfile?.role || "student",
-      hollandCode: riasecResult?.hollandCode || null,
-      mbtiType: (mbtiResult as any)?.personalityType || null,
+      hollandCode,
+      mbtiType,
       topCareer: matches[0]?.careerTitle || null,
       careerMatchScore: matches[0]?.matchScore || null,
       completedAssessments: completedAssessments.length,

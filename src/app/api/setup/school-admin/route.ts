@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
-import { users, wizardProgress, schools } from "@/lib/db/schema";
+import { users, wizardProgress, schools, schoolAdminApplications } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { logger } from "@/lib/logger";
@@ -158,9 +158,37 @@ export async function POST(request: NextRequest) {
     if (step === "complete") {
       await db
         .update(users)
-        .set({ onboardingComplete: true })
+        .set({
+          onboardingComplete: false, // Don't mark complete until platform admin approves
+          onboardingStatus: "pending_approval",
+        })
         .where(eq(users.id, dbUser.id));
-      logger.info("Marked onboarding as complete for school-admin", { userId: dbUser.id });
+
+      // Create school admin application for platform admin approval
+      if (dbUser.schoolId) {
+        // Check if application already exists
+        const existingApplication = await db
+          .select()
+          .from(schoolAdminApplications)
+          .where(eq(schoolAdminApplications.userId, dbUser.id))
+          .limit(1);
+
+        if (existingApplication.length === 0) {
+          await db.insert(schoolAdminApplications).values({
+            id: `sa_app_${nanoid()}`,
+            userId: dbUser.id,
+            schoolId: dbUser.schoolId,
+            status: "pending_approval",
+            paymentStatus: "pending", // Payment will be verified by platform admin
+            appliedAt: new Date(),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+          logger.info("Created school admin application", { userId: dbUser.id, schoolId: dbUser.schoolId });
+        }
+      }
+
+      logger.info("School admin setup complete, awaiting approval", { userId: dbUser.id });
     }
 
     return NextResponse.json({ success: true });
