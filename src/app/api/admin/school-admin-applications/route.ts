@@ -68,3 +68,71 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch applications" }, { status: 500 });
   }
 }
+
+// PATCH /api/admin/school-admin-applications/[id] - Update application (e.g., verify payment)
+export async function PATCH(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const authResult = await requireAuth(["admin"]);
+    if ("error" in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+    }
+    const { userId } = authResult;
+
+    const permCheck = await requirePermission(userId, "schools.approve");
+    if (permCheck) return permCheck;
+
+    const params = await context.params;
+    const applicationId = params.id;
+    const body = await request.json();
+
+    // Get the application
+    const applications = await db
+      .select()
+      .from(schoolAdminApplications)
+      .where(eq(schoolAdminApplications.id, applicationId))
+      .limit(1);
+
+    if (applications.length === 0) {
+      return NextResponse.json({ error: "Application not found" }, { status: 404 });
+    }
+
+    const application = applications[0];
+
+    // Build update object
+    const updateData: any = {
+      updatedAt: new Date(),
+    };
+
+    if (body.paymentStatus) updateData.paymentStatus = body.paymentStatus;
+    if (body.paymentAmount !== undefined) updateData.paymentAmount = body.paymentAmount;
+    if (body.paymentDate) updateData.paymentDate = body.paymentDate;
+    if (body.paymentMethod) updateData.paymentMethod = body.paymentMethod;
+    if (body.paymentReference) updateData.paymentReference = body.paymentReference;
+
+    // Update application
+    await db
+      .update(schoolAdminApplications)
+      .set(updateData)
+      .where(eq(schoolAdminApplications.id, applicationId));
+
+    logger.info("School admin application updated", {
+      applicationId,
+      userId,
+      updateData,
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "Application updated successfully",
+    });
+  } catch (error) {
+    logger.apiError(error, {
+      route: "/api/admin/school-admin-applications/[id]",
+      method: "PATCH",
+    });
+    return NextResponse.json({ error: "Failed to update application" }, { status: 500 });
+  }
+}
