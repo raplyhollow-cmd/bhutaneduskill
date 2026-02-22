@@ -1,0 +1,370 @@
+# Bhutan EduSkill - Entity Relationship Diagram (ERD)
+
+**Last Updated:** February 22, 2026
+**Database:** PostgreSQL (Neon)
+**Total Tables:** 145+
+
+---
+
+## Core Entity Relationships
+
+```mermaid
+erDiagram
+    %% CENTRAL USER ENTITY
+    users ||--o{ students : "userId"
+    users ||--o{ teachers : "userId"
+    users ||--o{ parents : "userId"
+    users ||--o{ counselors : "userId"
+    users ||--o{ user_roles : "userId"
+    users ||--o{ studentApplications : "studentId"
+    users ||--o{ schoolAdminApplications : "userId"
+    users ||--o{ teacherApplications : "userId"
+    users ||--o{ aiInteractions : "userId"
+    users ||--o{ assessments : "userId"
+    users ||--o{ attendanceRecords : "studentId"
+    users ||--o{ homeworkSubmissions : "studentId"
+    users ||--o{ careerMatches : "studentId"
+    users ||--o{ feePayments : "studentId"
+    users ||--o{ libraryMembers : "userId"
+    users ||--o{ hostelAllocations : "studentId"
+    users ||--o{ parent_to_student : "parentId"
+    users ||--o{ announcementReads : "userId"
+    users ||--o{ rubApplications : "userId"
+
+    %% SCHOOL/TENANT ENTITY
+    schools ||--o{ users : "schoolId"
+    schools ||--o{ students : "schoolId"
+    schools ||--o{ teachers : "schoolId"
+    schools ||--o{ classes : "schoolId"
+    schools ||--o{ departments : "schoolId"
+    schools ||--o{ subjects : "schoolId"
+    schools ||--o{ subscriptions : "schoolId"
+    schools ||--o{ invoices : "schoolId"
+    schools ||--o{ studentApplications : "schoolId"
+    schools ||--o{ schoolAdminApplications : "schoolId"
+    schools ||--o{ teacherApplications : "schoolId"
+    schools ||--o{ books : "schoolId"
+    schools ||--o{ libraryMembers : "schoolId"
+    schools ||--o{ hostelBuildings : "schoolId"
+    schools ||--o{ vehicles : "schoolId"
+    schools ||--o{ inventoryItems : "schoolId"
+    schools ||--o{ announcements : "schoolId"
+    schools ||--o{ timetableEntries : "schoolId"
+
+    %% DISTRICT ENTITY
+    districts ||--o{ schools : "districtId"
+
+    %% ACADEMIC ENTITIES
+    classes ||--o{ students : "classId"
+    classes ||--o{ homework : "classId"
+    classes ||--o{ attendanceRecords : "classId"
+    classes ||--o{ timetableEntries : "classId"
+
+    subjects ||--o{ classes : "subjectId"
+    subjects ||--o{ homework : "subjectId"
+    subjects ||--o{ teachers : "subjectId"
+
+    departments ||--o{ teachers : "departmentId"
+    departments ||--o{ subjects : "departmentId"
+
+    %% ASSESSMENT & CAREER
+    assessments ||--o{ assessmentResults : "assessmentId"
+    assessments ||--o{ careerMatches : "assessmentId"
+
+    careers ||--o{ careerMatches : "careerId"
+
+    %% LIBRARY
+    books ||--o{ circulation : "bookId"
+    books ||--o{ reservations : "bookId"
+    libraryMembers ||--o{ circulation : "memberId"
+    libraryMembers ||--o{ reservations : "memberId"
+
+    %% HOSTEL
+    hostelBuildings ||--o{ hostelRooms : "buildingId"
+    hostelRooms ||--o{ hostelAllocations : "roomId"
+    hostelAllocations }o--|| students : "studentId"
+
+    %% BILLING
+    subscriptionPlans ||--o{ subscriptions : "planId"
+    discountCodes ||--o{ discountUsages : "discountCodeId"
+
+    %% RBAC
+    roles ||--o{ user_roles : "roleId"
+    permissions ||--o{ role_permissions : "permissionId"
+    roles ||--o{ role_permissions : "roleId"
+```
+
+---
+
+## Table Categories
+
+### 1. Core Identity Tables (7 tables)
+
+| Table | Primary Key | Description |
+|-------|-------------|-------------|
+| `users` | `id` (text) | Central user table - all user types |
+| `students` | `userId` | Student-specific data |
+| `teachers` | `userId` | Teacher-specific data |
+| `parents` | `userId` | Parent-specific data |
+| `counselors` | `userId` | Counselor-specific data |
+| `schools` | `id` (text) | Multi-tenant schools |
+| `districts` | `id` (text) | Geographic districts |
+
+### 2. Application & Approval Tables (4 tables)
+
+| Table | Purpose | Status Values |
+|-------|---------|---------------|
+| `student_applications` | Student enrollment requests | pending/approved/rejected |
+| `school_admin_applications` | School admin applications | pending_approval/approved/rejected |
+| `teacher_applications` | Teacher applications | pending/approved/rejected |
+| `partners` | Platform partners | - |
+
+### 3. Academic Management Tables (15 tables)
+
+| Table | Related To | Description |
+|-------|------------|-------------|
+| `classes` | schools | Class sections |
+| `subjects` | schools/departments | Subject offerings |
+| `departments` | schools | Academic departments |
+| `homework` | classes/subjects | Assignments |
+| `homework_submissions` | homework/students | Submitted work |
+| `assessments` | - | Tests/quizzes |
+| `assessment_results` | assessments/students | Test scores |
+| `attendance_records` | classes/students | Attendance tracking |
+| `exam_results_enhanced` | students | Exam results |
+| `riasec_results` | students | RIASEC career test |
+| `mbti_results` | students | MBTI personality test |
+| `disc_results` | students | DISC assessment |
+| `report_cards` | students | Academic reports |
+| `timetable_entries` | classes/subjects/rooms | Schedule |
+| `time_periods` | - | Academic periods |
+
+### 4. Career & Guidance Tables (8 tables)
+
+| Table | Purpose |
+|-------|---------|
+| `careers` | Career catalog |
+| `career_matches` | Student-career matching |
+| `rub_colleges` | RUB college database |
+| `rub_programs` | RUB programs |
+| `rub_applications` | College applications |
+| `rub_scholarships` | Scholarship database |
+| `roadmap_progress` | Student roadmaps |
+| `intervention_logs` | Counselor interventions |
+
+### 5. Billing & Subscription Tables (11 tables)
+
+| Table | Purpose |
+|-------|---------|
+| `subscription_plans` | Available plans |
+| `subscriptions` | Active subscriptions |
+| `invoices` | Billing invoices |
+| `payment_methods` | Payment options |
+| `payment_transactions` | Payment records |
+| `discount_codes` | Discount codes |
+| `discount_usages` | Code redemption |
+| `usage_records` | Usage tracking |
+| `fee_payments` | Student fee payments |
+| `student_fees` | Fee structure |
+| `tuition_categories` | Tuition types |
+
+### 6. Library Management Tables (10 tables)
+
+| Table | Purpose |
+|-------|---------|
+| `books` | Book catalog |
+| `book_copies` | Individual copies |
+| `circulation` | Checkout tracking |
+| `reservations` | Book holds |
+| `digital_resources` | E-books/resources |
+| `digital_access_log` | Access tracking |
+| `library_members` | Members |
+| `book_reviews` | Reviews |
+| `fine_payments` | Fine payments |
+| `library_settings` | Library config |
+
+### 7. Hostel Management Tables (12 tables)
+
+| Table | Purpose |
+|-------|---------|
+| `hostel_buildings` | Buildings |
+| `hostel_rooms` | Rooms |
+| `hostel_allocations` | Student assignments |
+| `hostel_attendance` | Attendance |
+| `room_inspections` | Room checks |
+| `hostel_leave_requests` | Leave passes |
+| `hostel_complaints` | Issues |
+| `hostel_visitors` | Visitor logs |
+| `hostel_facilities` | Facilities |
+| `hostel_mess` | Dining |
+| `mess_attendance` | Meal tracking |
+| `hostel_fees` | Hostel charges |
+| `hostel_payments` | Payments |
+| `hostel_rules` | Rules |
+
+### 8. Transport Management Tables (8 tables)
+
+| Table | Purpose |
+|-------|---------|
+| `vehicles` | Bus/vehicle info |
+| `drivers` | Driver data |
+| `transport_routes` | Bus routes |
+| `transport_allocations` | Student assignments |
+| `bus_attendance` | Bus attendance |
+| `vehicle_tracking` | GPS tracking |
+| `vehicle_maintenance` | Service records |
+| `transport_incidents` | Accidents |
+
+### 9. Inventory Management Tables (11 tables)
+
+| Table | Purpose |
+|-------|---------|
+| `inventory_items` | Items catalog |
+| `inventory_categories` | Categories |
+| `inventory_vendors` | Suppliers |
+| `purchase_orders` | Orders |
+| `inventory_transactions` | Stock movements |
+| `asset_assignments` | Asset assignments |
+| `asset_maintenance` | Maintenance |
+| `asset_disposal` | Disposal |
+| `stock_adjustments` | Adjustments |
+| `inventory_alerts` | Low stock alerts |
+| `inventory_reports` | Reports |
+| `inventory_settings` | Config |
+
+### 10. Messaging & Communication Tables (6 tables)
+
+| Table | Purpose |
+|-------|---------|
+| `conversations` | Chat threads |
+| `messages` | Chat messages |
+| `announcements` | School announcements |
+| `announcement_reads` | Read receipts |
+| `notification_preferences` | User preferences |
+| `notification_queue` | Pending notifications |
+
+### 11. RBAC & Security Tables (6 tables)
+
+| Table | Purpose |
+|-------|---------|
+| `roles` | Role definitions |
+| `permissions` | Permission definitions |
+| `user_roles` | User-role assignments |
+| `role_permissions` | Role-permission mapping |
+| `component_access` | UI access control |
+| `audit_log` | Action logging |
+
+### 12. AI & Analytics Tables (5 tables)
+
+| Table | Purpose |
+|-------|---------|
+| `ai_interactions` | AI chat logs |
+| `anomaly_alerts` | Anomaly detection |
+| `system_health_metrics` | Health monitoring |
+| `analytics_events` | Event tracking |
+| `data_sources` | External data sources |
+
+### 13. BCSE Integration Tables (8 tables)
+
+| Table | Purpose |
+|-------|---------|
+| `bcse_registrations` | Exam registrations |
+| `bcse_results` | Exam results |
+| `bcse_subject_mapping` | Subject mapping |
+| `bcse_certificates` | Certificates |
+| `bcse_api_config` | API config |
+| `bcse_sync_logs` | Sync history |
+| `bcse_performance_tracking` | Performance data |
+| `bcse_subject_combinations` | Subject combos |
+
+### 14. Additional Tables (25+ tables)
+
+Including: payroll, reports, notifications, tenancy, lesson plans, timetable conflicts, exam schedules, and more.
+
+---
+
+## Key Foreign Key Relationships
+
+### users (Central Entity)
+```sql
+users.id → students.userId
+users.id → teachers.userId
+users.id → parents.userId
+users.id → counselors.userId
+users.id → user_roles.userId
+users.id → studentApplications.studentId
+users.schoolId → schools.id
+users.parentId → users.id (self-reference for parent-child)
+```
+
+### schools (Tenant Root)
+```sql
+schools.id → users.schoolId
+schools.id → students.schoolId
+schools.id → teachers.schoolId
+schools.id → classes.schoolId
+schools.id → subscriptions.schoolId
+schools.id → invoices.schoolId
+schools.districtId → districts.id
+```
+
+### assessments (Career Matching)
+```sql
+assessments.id → assessmentResults.assessmentId
+assessments.userId → users.id
+assessments.id → careerMatches.assessmentId
+careers.id → careerMatches.careerId
+```
+
+### Library
+```sql
+books.id → circulation.bookId
+libraryMembers.id → circulation.memberId
+books.schoolId → schools.id
+```
+
+### RBAC
+```sql
+roles.id → user_roles.roleId
+users.id → user_roles.userId
+permissions.id → role_permissions.permissionId
+roles.id → role_permissions.roleId
+```
+
+---
+
+## Table Index Strategy
+
+### High-Query Columns (Indexed)
+- `users.clerkUserId` - Authentication lookups
+- `users.schoolId` - Tenant filtering
+- `users.type` - Portal routing
+- `users.isActive` - Active user filtering
+- `schools.code` - School code lookup
+- `schools.subscriptionStatus` - Billing queries
+- `assessments.userId` - Student assessments
+- `careerMatches.studentId` - Career recommendations
+- `invoices.schoolId` - Invoice queries
+- `circulation.bookId` - Book tracking
+- `circulation.memberId` - Member tracking
+
+---
+
+## Database Statistics
+
+| Metric | Count |
+|--------|-------|
+| Total Tables | 145+ |
+| Core Tables | 7 |
+| Academic Tables | 15 |
+| Career Tables | 8 |
+| Billing Tables | 11 |
+| Library Tables | 10 |
+| Hostel Tables | 12 |
+| Transport Tables | 8 |
+| Inventory Tables | 11 |
+| Messaging Tables | 6 |
+| RBAC Tables | 6 |
+| AI Tables | 5 |
+| BCSE Tables | 8 |
+| Other Tables | 38+ |

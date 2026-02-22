@@ -18,6 +18,16 @@ const badgeVariants = cva(
           "border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
         ghost: "[a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
         link: "text-primary underline-offset-4 [a&]:hover:underline",
+        // Ceramic design system variants
+        ceramic: "[background-color:rgba(132,107,255,0.1)] [color:var(--ceramic-brand)]",
+        "ceramic-default": "[background-color:var(--ceramic-gray-100)] [color:var(--ceramic-gray-700)]",
+        "ceramic-success": "[background-color:rgba(49,200,84,0.1)] [color:var(--ceramic-green-600)]",
+        "ceramic-error": "[background-color:rgba(247,61,61,0.1)] [color:var(--ceramic-red-600)]",
+        "ceramic-warning": "[background-color:rgba(253,114,36,0.1)] [color:var(--ceramic-orange-600)]",
+        "ceramic-info": "[background-color:rgba(48,127,246,0.1)] [color:var(--ceramic-blue-600)]",
+        "ceramic-solid-brand": "[background-color:var(--ceramic-brand)] [color:var(--ceramic-white)]",
+        "ceramic-solid-success": "[background-color:var(--ceramic-green-600)] [color:var(--ceramic-white)]",
+        "ceramic-solid-error": "[background-color:var(--ceramic-red-600)] [color:var(--ceramic-white)]",
       },
     },
     defaultVariants: {

@@ -1,16 +1,14 @@
 "use client"
 
 import * as React from "react"
-import { cva, type VariantProps } from "class-variance-authority"
-import { X } from "lucide-react"
-
+import { X, Loader2, CheckCircle, AlertCircle, AlertTriangle, Info } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 // =============================================================================
-// TYPES
+// CLERK CERAMIC DESIGN SYSTEM TOAST
 // =============================================================================
 
-export type ToastVariant = "default" | "destructive" | "success"
+export type ToastVariant = "default" | "success" | "error" | "warning" | "loading" | "destructive"
 
 export interface Toast {
   id: string
@@ -20,11 +18,14 @@ export interface Toast {
   duration?: number
   action?: ToastAction
   onDismiss?: () => void
+  showSaveButton?: boolean
+  onSave?: () => void
 }
 
 export interface ToastAction {
   label: string
   onClick: () => void
+  variant?: "default" | "primary" | "danger"
 }
 
 type ToasterContextValue = {
@@ -42,7 +43,6 @@ const ToasterContext = React.createContext<ToasterContextValue | undefined>(unde
 function useToasterContext() {
   const context = React.useContext(ToasterContext)
   if (!context) {
-    // Return a no-op context for SSR
     return {
       toasts: [],
       toast: () => "",
@@ -71,8 +71,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
     setToasts((prev) => [...prev, newToast])
 
-    // Auto-dismiss after duration
-    if (newToast.duration && newToast.duration > 0) {
+    // Auto-dismiss after duration (unless loading/indefinite)
+    if (newToast.duration && newToast.duration > 0 && newToast.variant !== "loading") {
       setTimeout(() => {
         dismiss(id)
       }, newToast.duration)
@@ -94,52 +94,37 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToasterContext.Provider value={value}>
       {children}
-      <Toaster />
+      <CeramicToaster />
     </ToasterContext.Provider>
   )
 }
 
 // =============================================================================
-// TOAST HOOK (Main API - Sonner-compatible)
+// HOOKS
 // =============================================================================
-
-interface ToastOptions {
-  title?: string
-  description?: string
-  variant?: ToastVariant
-  duration?: number
-  action?: ToastAction
-}
 
 export function useToast() {
   const context = useToasterContext()
 
   const toastFn = React.useCallback(
-    (options: ToastOptions): string => {
+    (options: Omit<Toast, "id">): string => {
       return context.toast(options)
     },
     [context.toast]
   )
 
   const success = React.useCallback(
-    (options: Omit<ToastOptions, "variant">): string => {
-      return context.toast({ ...options, variant: "success" })
+    (options: Omit<Toast, "id" | "variant">): string => {
+      return toastFn({ ...options, variant: "success" })
     },
-    [context.toast]
+    [toastFn]
   )
 
   const error = React.useCallback(
-    (options: Omit<ToastOptions, "variant">): string => {
-      return context.toast({ ...options, variant: "destructive" })
+    (options: Omit<Toast, "id" | "variant">): string => {
+      return toastFn({ ...options, variant: "error" })
     },
-    [context.toast]
-  )
-
-  const info = React.useCallback(
-    (options: Omit<ToastOptions, "variant">): string => {
-      return context.toast({ ...options, variant: "default" })
-    },
-    [context.toast]
+    [toastFn]
   )
 
   const dismiss = React.useCallback(
@@ -155,134 +140,103 @@ export function useToast() {
     dismiss,
     success,
     error,
-    info,
   }
 }
 
 // =============================================================================
-// TOAST VARIANTS
+// CLERK CERAMIC DESIGN TOKENS
 // =============================================================================
 
-const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full items-start gap-4 overflow-hidden rounded-xl border p-4 shadow-lg transition-all duration-300",
-  {
-    variants: {
-      variant: {
-        default:
-          "bg-white text-gray-950 border-gray-200 dark:bg-gray-950 dark:text-gray-50 dark:border-gray-800 [&_svg]:text-gray-900 dark:[&_svg]:text-gray-50",
-        destructive:
-          "bg-red-50 text-red-900 border-red-200 dark:bg-red-950/50 dark:text-red-200 dark:border-red-900/50 [&_svg]:text-red-600 dark:[&_svg]:text-red-400",
-        success:
-          "bg-green-50 text-green-900 border-green-200 dark:bg-green-950/50 dark:text-green-200 dark:border-green-900/50 [&_svg]:text-green-600 dark:[&_svg]:text-green-400",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-    },
-  }
-)
-
-// =============================================================================
-// ICONS
-// =============================================================================
-
-const DefaultIcon = () => (
-  <div className="size-5 rounded-full bg-gray-900 dark:bg-gray-100" />
-)
-
-const ErrorIcon = () => (
-  <svg
-    className="size-5 shrink-0"
-    viewBox="0 0 20 20"
-    fill="currentColor"
-    aria-hidden="true"
-  >
-    <path
-      fillRule="evenodd"
-      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z"
-      clipRule="evenodd"
-    />
-  </svg>
-)
-
-const SuccessIcon = () => (
-  <svg
-    className="size-5 shrink-0"
-    viewBox="0 0 20 20"
-    fill="currentColor"
-    aria-hidden="true"
-  >
-    <path
-      fillRule="evenodd"
-      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
-      clipRule="evenodd"
-    />
-  </svg>
-)
-
-const iconByVariant: Record<ToastVariant, React.ReactNode> = {
-  default: <DefaultIcon />,
-  destructive: <ErrorIcon />,
-  success: <SuccessIcon />,
+const ceramicIcons = {
+  success: <CheckCircle className="w-5 h-5" style={{ color: "#31c854" }} />,
+  error: <AlertCircle className="w-5 h-5" style={{ color: "#f73d3d" }} />,
+  warning: <AlertTriangle className="w-5 h-5" style={{ color: "#fd7224" }} />,
+  info: <Info className="w-5 h-5" style={{ color: "#307ff6" }} />,
+  default: <Info className="w-5 h-5" style={{ color: "#90909d" }} />,
+  loading: <Loader2 className="w-5 h-5 animate-spin" style={{ color: "#846bff" }} />,
 }
 
 // =============================================================================
-// TOAST COMPONENT
+// CERAMIC TOAST COMPONENT (Clerk Design System)
 // =============================================================================
 
-interface ToastItemProps
-  extends React.ComponentProps<"div">,
-    VariantProps<typeof toastVariants> {
+interface CeramicToastProps {
   toast: Toast
   onDismiss: (id: string) => void
 }
 
-function Toast({ className, toast, onDismiss, variant, ...props }: ToastItemProps) {
-  const { title, description, action } = toast
+function CeramicToast({ toast, onDismiss }: CeramicToastProps) {
+  const icon = ceramicIcons[toast.variant || "default"]
 
   return (
     <div
-      data-slot="toast"
-      data-state="open"
-      data-variant={toast.variant}
-      className={cn(toastVariants({ variant }), className)}
-      {...props}
+      className="flex items-start gap-3 min-w-[320px] max-w-[420px] p-4 rounded-lg shadow-[0_4px_12px_rgba(0,0,0,0.08)]"
+      style={{
+        background: 'linear-gradient(135deg, rgb(27,27,31) 0%, rgb(21,21,24) 100%)',
+        border: '1px solid rgb(62,62,75)'
+      }}
     >
       {/* Status Icon */}
-      <div className="flex shrink-0 items-center justify-center pt-0.5">
-        {iconByVariant[toast.variant ?? "default"]}
+      <div className="flex-shrink-0 mt-0.5">
+        {icon}
       </div>
 
       {/* Content */}
-      <div className="flex flex-1 flex-col gap-1.5">
-        {title && (
-          <div className="text-sm font-semibold leading-tight tracking-tight">
-            {title}
-          </div>
+      <div className="flex-1 min-w-0 pt-0.5">
+        {toast.title && (
+          <p className="text-sm font-semibold text-white leading-tight">
+            {toast.title}
+          </p>
         )}
-        {description && (
-          <div className="text-sm opacity-90 leading-relaxed">
-            {description}
-          </div>
+        {toast.description && (
+          <p className="text-sm text-gray-300 leading-relaxed mt-1">
+            {toast.description}
+          </p>
         )}
       </div>
 
       {/* Actions */}
-      <div className="flex shrink-0 items-center gap-2">
-        {action && (
+      <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
+        {toast.showSaveButton && toast.onSave && (
           <button
-            onClick={action.onClick}
-            className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-transparent px-3 text-sm font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+            onClick={() => {
+              toast.onSave?.()
+              onDismiss(toast.id)
+            }}
+            className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-md transition-colors"
+            style={{
+              background: 'rgb(62,62,75)',
+              color: 'white',
+              border: '1px solid rgb(93,93,105)'
+            }}
           >
-            {action.label}
+            Save
+          </button>
+        )}
+        {toast.action && (
+          <button
+            onClick={() => {
+              toast.action.onClick()
+              onDismiss(toast.id)
+            }}
+            className={cn(
+              "inline-flex items-center justify-center px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
+              toast.action.variant === "primary"
+                ? "bg-[#846bff] text-white hover:bg-[#6c47ff]"
+                : toast.action.variant === "danger"
+                ? "bg-[#f73d3d] text-white hover:bg-[#e02e2e]"
+                : "bg-transparent text-gray-300 hover:text-white hover:bg-white/10"
+            )}
+          >
+            {toast.action.label}
           </button>
         )}
         <button
           onClick={() => onDismiss(toast.id)}
-          className="min-w-[44px] min-h-[44px] inline-flex shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-black/5 dark:hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
-          aria-label="Close notification"
+          className="flex-shrink-0 p-1 rounded-md hover:bg-white/10 transition-colors text-gray-400 hover:text-white"
+          aria-label="Close"
         >
-          <X className="size-4" />
+          <X className="w-4 h-4" />
         </button>
       </div>
     </div>
@@ -290,341 +244,78 @@ function Toast({ className, toast, onDismiss, variant, ...props }: ToastItemProp
 }
 
 // =============================================================================
-// TOASTER (Viewport)
+// CERAMIC TOASTER (bottom-right position, Clerk style)
 // =============================================================================
 
-type ToastPosition =
-  | "top-right"
-  | "top-left"
-  | "bottom-right"
-  | "bottom-left"
-  | "top-center"
-  | "bottom-center"
-  | "footer-center"
-
-interface ToasterProps {
-  position?: ToastPosition
-  className?: string
-}
-
-const positionStyles: Record<ToastPosition, string> = {
-  "top-right": "top-0 right-0 flex-col-reverse",
-  "top-left": "top-0 left-0 flex-col-reverse",
-  "top-center": "top-0 left-1/2 -translate-x-1/2 flex-col-reverse sm:max-w-[360px]",
-  "bottom-right": "bottom-0 right-0 flex-col",
-  "bottom-left": "bottom-0 left-0 flex-col",
-  "bottom-center": "bottom-0 left-1/2 -translate-x-1/2 flex-col sm:max-w-[360px]",
-  "footer-center": "bottom-6 left-1/2 -translate-x-1/2 flex-col items-center sm:max-w-[420px]",
-}
-
-function Toaster({ position = "bottom-right", className }: ToasterProps) {
+function CeramicToaster() {
   const { toasts, dismiss } = useToasterContext()
 
   return (
-    <div
-      data-slot="toaster"
-      className={cn(
-        "fixed z-[100] flex max-h-screen w-full flex-col gap-2 p-4",
-        positionStyles[position],
-        className
-      )}
-    >
-      {toasts.map((t) => (
-        <Toast
-          key={t.id}
-          toast={t}
-          variant={t.variant}
-          onDismiss={dismiss}
-        />
-      ))}
-    </div>
-  )
-}
-
-// =============================================================================
-// SUB-COMPONENTS (for API compatibility)
-// =============================================================================
-
-export interface ToastTitleProps extends React.ComponentProps<"div"> {
-  children: React.ReactNode
-}
-
-function ToastTitle({ className, children, ...props }: ToastTitleProps) {
-  return (
-    <div
-      data-slot="toast-title"
-      className={cn("text-sm font-semibold leading-none tracking-tight", className)}
-      {...props}
-    >
-      {children}
-    </div>
-  )
-}
-
-export interface ToastDescriptionProps extends React.ComponentProps<"div"> {
-  children: React.ReactNode
-}
-
-function ToastDescription({ className, children, ...props }: ToastDescriptionProps) {
-  return (
-    <div
-      data-slot="toast-description"
-      className={cn("text-sm opacity-90 leading-relaxed", className)}
-      {...props}
-    >
-      {children}
-    </div>
-  )
-}
-
-export interface ToastCloseProps extends React.ComponentProps<"button"> {}
-
-function ToastClose({ className, ...props }: ToastCloseProps) {
-  return (
-    <button
-      data-slot="toast-close"
-      className={cn(
-        "min-w-[44px] min-h-[44px] inline-flex shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
-        className
-      )}
-      aria-label="Close notification"
-      {...props}
-    >
-      <X className="size-4" />
-    </button>
-  )
-}
-
-export interface ToastActionProps extends React.ComponentProps<"button"> {
-  altText?: string
-}
-
-function ToastAction({ className, altText = "Action", children, ...props }: ToastActionProps) {
-  return (
-    <button
-      data-slot="toast-action"
-      className={cn(
-        "inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border border-transparent bg-transparent px-3 text-sm font-medium transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
-        className
-      )}
-      {...props}
-    >
-      {children}
-    </button>
-  )
-}
-
-// =============================================================================
-// CLERK-STYLE FOOTER TOAST
-// =============================================================================
-
-interface ClerkStyleToastProps {
-  message: string
-  variant?: "default" | "success" | "error"
-  actions?: Array<{
-    label: string
-    onClick: () => void
-    variant?: "default" | "primary" | "danger"
-  }>
-  onDismiss?: () => void
-}
-
-const clerkToastStyles = {
-  container: cn(
-    "mx-auto flex min-h-10 w-fit min-w-[21.25rem] items-center gap-2 rounded-lg p-2 pl-3 text-white shadow-lg transition-all duration-300"
-  ),
-  variants: {
-    default: "bg-gradient-to-b from-gray-700 to-gray-800 border border-gray-600",
-    success: "bg-gradient-to-b from-green-600 to-green-700 border border-green-500",
-    error: "bg-gradient-to-b from-red-600 to-red-700 border border-red-500",
-  }
-}
-
-const clerkButtonStyles = {
-  base: "inline-flex min-w-fit shrink-0 select-none transition rounded-[0.375rem] text-sm font-medium",
-  variants: {
-    default: "bg-gray-600 hover:bg-gray-500 text-white",
-    primary: "bg-blue-600 hover:bg-blue-500 text-white",
-    danger: "bg-red-700 hover:bg-red-600 text-white",
-  }
-}
-
-export function ClerkStyleFooterToast({
-  message,
-  variant = "default",
-  actions = [],
-  onDismiss,
-}: ClerkStyleToastProps) {
-  return (
-    <div
-      className={cn(
-        clerkToastStyles.container,
-        clerkToastStyles.variants[variant]
-      )}
-      style={{
-        boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.1), inset 0 2px 0 rgba(255,255,255,0.12), 0 16px 36px -6px rgba(0,0,0,0.36), 0 6px 16px -2px rgba(0,0,0,0.2)"
-      }}
-    >
-      {/* Status Icon */}
-      <div className="flex shrink-0 items-center justify-center">
-        {variant === "error" && (
-          <svg
-            className="w-4 h-4"
-            viewBox="0 0 20 20"
-            fill="none"
-            aria-hidden="true"
-          >
-            <circle
-              cx="10"
-              cy="10"
-              r="8"
-              fill="var(--icon-fill, rgba(255,255,255,0.15))"
-              stroke="currentColor"
-              strokeWidth="1.5"
-            />
-            <path
-              d="M10 11V13"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-            <path
-              d="M10 7.01V7"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
-        )}
-        {variant === "success" && (
-          <svg
-            className="w-4 h-4"
-            viewBox="0 0 20 20"
-            fill="none"
-            aria-hidden="true"
-          >
-            <circle
-              cx="10"
-              cy="10"
-              r="8"
-              fill="var(--icon-fill, rgba(255,255,255,0.15))"
-              stroke="currentColor"
-              strokeWidth="1.5"
-            />
-            <path
-              d="M7 10L9 12L13 8"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        )}
-        {variant === "default" && (
-          <svg
-            className="w-4 h-4"
-            viewBox="0 0 20 20"
-            fill="none"
-            aria-hidden="true"
-          >
-            <circle
-              cx="10"
-              cy="10"
-              r="8"
-              fill="var(--icon-fill, rgba(255,255,255,0.15))"
-              stroke="currentColor"
-              strokeWidth="1.5"
-            />
-            <path
-              d="M10 6V14M6 10H14"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
-          </svg>
-        )}
-      </div>
-
-      {/* Message */}
-      <div className="flex-1 pr-2 text-sm">
-        {message}
-      </div>
-
-      {/* Actions */}
-      {actions.length > 0 && (
-        <div className="flex shrink-0 items-center gap-2">
-          {actions.map((action, index) => (
-            <button
-              key={index}
-              onClick={() => {
-                action.onClick()
-                onDismiss?.()
-              }}
-              className={cn(
-                clerkButtonStyles.base,
-                clerkButtonStyles.variants[action.variant || "default"],
-                "px-3 py-1.5"
-              )}
-            >
-              {action.label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Dismiss Button */}
-      {onDismiss && (
-        <button
-          onClick={onDismiss}
-          className="min-w-[32px] min-h-[32px] inline-flex shrink-0 items-center justify-center rounded transition-opacity hover:bg-white/10 opacity-70 hover:opacity-100"
-          aria-label="Close notification"
-        >
-          <X className="w-3 h-3" />
-        </button>
-      )}
-    </div>
-  )
-}
-
-// =============================================================================
-// FOOTER TOASTER (Clerk-style container)
-// =============================================================================
-
-export function FooterToaster({ toasts, onDismiss }: { toasts: Array<Omit<Toast, 'id'> & { id: string }>, onDismiss: (id: string) => void }) {
-  if (toasts.length === 0) return null
-
-  return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-2 px-4">
+    <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-3 pointer-events-none">
       {toasts.map((toast) => (
-        <ClerkStyleFooterToast
-          key={toast.id}
-          message={toast.description || toast.title || ""}
-          variant={toast.variant === "destructive" ? "error" : toast.variant === "success" ? "success" : "default"}
-          actions={toast.action ? [{ label: toast.action.label, onClick: toast.action.onClick }] : []}
-          onDismiss={() => onDismiss(toast.id)}
-        />
+        <div key={toast.id} className="pointer-events-auto">
+          <CeramicToast toast={toast} onDismiss={dismiss} />
+        </div>
       ))}
     </div>
   )
 }
 
 // =============================================================================
-// TOAST VIEWPORT (alias for Toaster)
+// HELPER HOOKS
 // =============================================================================
 
-export { Toaster as ToastViewport }
+/**
+ * Toast with save option - appears when user makes changes
+ * Shows "Unsaved changes" with Save button
+ */
+export function useUnsavedChangesToast() {
+  const { toast, dismiss } = useToast()
+  const toastIdRef = React.useRef<string | null>(null)
+
+  const showUnsaved = React.useCallback((onSave: () => void) => {
+    // Dismiss existing toast first
+    if (toastIdRef.current) {
+      dismiss(toastIdRef.current)
+    }
+
+    const id = toast({
+      title: "Unsaved changes",
+      description: "You have unsaved changes. Save them before leaving?",
+      variant: "warning",
+      duration: 0, // Manual dismiss
+      showSaveButton: true,
+      onSave,
+    })
+
+    toastIdRef.current = id
+    return id
+  }, [toast, dismiss])
+
+  const hideUnsaved = React.useCallback(() => {
+    if (toastIdRef.current) {
+      dismiss(toastIdRef.current)
+      toastIdRef.current = null
+    }
+  }, [dismiss])
+
+  const showSaved = React.useCallback(() => {
+    hideUnsaved()
+    toast({
+      title: "Changes saved",
+      variant: "success",
+      duration: 2000,
+    })
+  }, [hideUnsaved, toast])
+
+  return { showUnsaved, hideUnsaved, showSaved }
+}
 
 // =============================================================================
 // EXPORTS
 // =============================================================================
 
 export {
-  Toast,
-  toastVariants,
-  ToastTitle,
-  ToastDescription,
-  ToastClose,
-  ToastAction,
+  CeramicToast,
+  CeramicToaster,
 }
-
-export type { ToastItemProps, ToasterProps, ToastPosition, ClerkStyleToastProps }

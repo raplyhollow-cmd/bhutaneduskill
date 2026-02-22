@@ -1,322 +1,460 @@
 /**
- * PARENT DASHBOARD PAGE
+ * PARENT DASHBOARD - Government School Style
  *
- * Server-side dashboard with multi-child selection, progress overview,
- * and AI-powered insights.
+ * A mobile-first "Peace-of-Mind" dashboard for Bhutanese parents.
+ *
+ * Focus areas:
+ * 1. Daily attendance/safety (the most important daily check)
+ * 2. Annual SDF status (once-a-year action)
+ * 3. Teacher feedback (behavior logs)
+ * 4. Quick actions for other features
  */
 
-// Force dynamic rendering because this page uses authentication
-export const dynamic = 'force-dynamic';
+"use client";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Users,
-  BookOpen,
-  GraduationCap,
+  CheckCircle,
+  XCircle,
+  Clock,
   Calendar,
+  MessageSquare,
+  FileText,
+  GraduationCap,
+  Settings,
   Bell,
-  TrendingUp,
-  DollarSign,
-  AlertCircle,
-  Mail,
+  User,
+  ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
-import { ParentChildSelector } from "./child-selector";
-import { ParentAIInsights } from "./ai-insights-wrapper";
-import { getParentDashboardData } from "./_actions";
+import { cn } from "@/lib/utils";
 
-interface ParentDashboardProps {
-  params: Promise<{ [key: string]: string | string[] | undefined }>;
+// Bento grid card components
+interface BentoCardProps {
+  title: string;
+  value?: string | number;
+  subtitle?: string;
+  icon: React.ReactNode;
+  badge?: string;
+  badgeColor?: string;
+  action?: string;
+  actionHref?: string;
+  gradient?: string;
+  onClick?: () => void;
 }
 
-export default async function ParentDashboardPage({ params }: ParentDashboardProps) {
-  // Resolve params promise
-  const resolvedParams = await params;
+function BentoCard({
+  title,
+  value,
+  subtitle,
+  icon,
+  badge,
+  badgeColor,
+  action,
+  actionHref,
+  gradient,
+  onClick,
+}: BentoCardProps) {
+  const cardContent = (
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-xl border border-gray-200 bg-white p-4",
+        "hover:shadow-md transition-all duration-200",
+        "min-h-[120px] flex flex-col justify-between",
+        onClick && "cursor-pointer active:scale-[0.98]"
+      )}
+      onClick={onClick}
+      style={gradient ? { background: gradient } : undefined}
+    >
+      {badge && (
+        <span
+          className={cn(
+            "absolute -top-2 -right-2 px-2 py-0.5 text-xs font-medium rounded-full",
+            badgeColor
+          )}
+        >
+          {badge}
+        </span>
+      )}
 
-  const dashboardData = await getParentDashboardData();
+      <div className="flex items-start justify-between">
+        <div className={cn("flex items-center gap-3", gradient ? "text-white" : "")}>
+          <div
+            className={cn(
+              "w-10 h-10 rounded-lg flex items-center justify-center",
+              gradient ? "bg-white/20" : "bg-gray-100"
+            )}
+          >
+            {icon}
+          </div>
+          <div>
+            <p className={cn("text-xs font-medium uppercase tracking-wider", gradient ? "text-white/80" : "text-gray-500")}>
+              {title}
+            </p>
+            {value && (
+              <p className={cn("text-xl font-bold mt-1", gradient ? "text-white" : "text-gray-900")}>
+                {value}
+              </p>
+            )}
+          </div>
+        </div>
 
-  if (!dashboardData) {
+        {actionHref && (
+          <ChevronRight className={cn("w-5 h-5", gradient ? "text-white/60" : "text-gray-400")} />
+        )}
+      </div>
+
+      {subtitle && (
+        <p className={cn("text-sm mt-2", gradient ? "text-white/90" : "text-gray-600")}>
+          {subtitle}
+        </p>
+      )}
+
+      {action && (
+        <div className="mt-3">
+          <span
+            className={cn(
+              "text-xs font-semibold",
+              gradient ? "text-white" : "text-gray-700"
+            )}
+          >
+            {action}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+
+  if (actionHref && !onClick) {
+    return <Link href={actionHref}>{cardContent}</Link>;
+  }
+
+  return cardContent;
+}
+
+interface Child {
+  id: string;
+  name: string;
+  firstName?: string;
+  lastName?: string;
+  classGrade?: string;
+  section?: string;
+  schoolId?: string;
+}
+
+interface AttendanceData {
+  status: "present" | "absent" | "late" | "excused";
+  checkInTime?: string;
+  date: string;
+  teacher?: string;
+}
+
+interface FeeData {
+  isPaid: boolean;
+  amountPaid?: number;
+  amountPending?: number;
+  totalAmount?: number;
+  sessionYear?: string;
+}
+
+export default function ParentDashboardPage() {
+  const router = useRouter();
+  const [children, setChildren] = useState<Child[]>([]);
+  const [selectedChild, setSelectedChild] = useState<Child | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [attendance, setAttendance] = useState<AttendanceData | null>(null);
+  const [feeStatus, setFeeStatus] = useState<FeeData | null>(null);
+  const [latestFeedback, setLatestFeedback] = useState<{
+    message: string;
+    teacher: string;
+    date: string;
+    type: "merit" | "demerit";
+  } | null>(null);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      // Fetch children
+      const childrenRes = await fetch("/api/parent/children");
+      if (childrenRes.ok) {
+        const childrenData = await childrenRes.json();
+        if (childrenData.children && childrenData.children.length > 0) {
+          setChildren(childrenData.children);
+          setSelectedChild(childrenData.children[0]);
+          await fetchChildData(childrenData.children[0].id);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchChildData = async (childId: string) => {
+    try {
+      // Fetch attendance
+      const attRes = await fetch(`/api/parent/attendance?childId=${childId}&limit=1`);
+      if (attRes.ok) {
+        const attData = await attRes.json();
+        if (attData.attendance && attData.attendance.length > 0) {
+          setAttendance({
+            status: attData.attendance[0].status,
+            checkInTime: attData.attendance[0].checkInTime,
+            date: attData.attendance[0].date,
+          });
+        }
+      }
+
+      // Fetch fees
+      const feeRes = await fetch("/api/parent/fees");
+      if (feeRes.ok) {
+        const feeData = await feeRes.json();
+        if (feeData.data && feeData.data.children && feeData.data.children.length > 0) {
+          const childFees = feeData.data.children[0];
+          setFeeStatus({
+            isPaid: childFees.totalPending === 0,
+            amountPaid: childFees.totalPaid,
+            amountPending: childFees.totalPending,
+            totalAmount: childFees.totalFees,
+          });
+        }
+      }
+
+      // Fetch behavior logs (teacher feedback)
+      // This would be a new API endpoint
+    } catch (error) {
+      console.error("Error fetching child data:", error);
+    }
+  };
+
+  const handleChildChange = (child: Child) => {
+    setSelectedChild(child);
+    fetchChildData(child.id);
+  };
+
+  // Get attendance display
+  const getAttendanceDisplay = () => {
+    if (!attendance) {
+      return {
+        icon: <Clock className="w-6 h-6" />,
+        status: "No Data",
+        statusColor: "text-gray-600",
+        bgColor: "bg-gray-50",
+        message: "No attendance recorded yet",
+      };
+    }
+
+    switch (attendance.status) {
+      case "present":
+        return {
+          icon: <CheckCircle className="w-6 h-6 text-green-600" />,
+          status: "PRESENT",
+          statusColor: "text-green-600",
+          bgColor: "bg-green-50 border-green-200",
+          message: attendance.checkInTime ? `Arrived at ${attendance.checkInTime}` : "In Class",
+        };
+      case "absent":
+        return {
+          icon: <XCircle className="w-6 h-6 text-red-600" />,
+          status: "ABSENT",
+          statusColor: "text-red-600",
+          bgColor: "bg-red-50 border-red-200",
+          message: "Not marked present today",
+        };
+      case "late":
+        return {
+          icon: <Clock className="w-6 h-6 text-yellow-600" />,
+          status: "LATE",
+          statusColor: "text-yellow-600",
+          bgColor: "bg-yellow-50 border-yellow-200",
+          message: attendance.checkInTime ? `Arrived at ${attendance.checkInTime}` : "Arrived late",
+        };
+      default:
+        return {
+          icon: <Clock className="w-6 h-6 text-blue-600" />,
+          status: "EXCUSED",
+          statusColor: "text-blue-600",
+          bgColor: "bg-blue-50 border-blue-200",
+          message: "Excused absence",
+        };
+    }
+  };
+
+  const attendanceDisplay = getAttendanceDisplay();
+  const isGovernmentFee = feeStatus?.totalAmount && feeStatus.totalAmount < 5000; // Rough heuristic
+
+  if (loading) {
     return (
-      <div className="space-y-6">
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="py-16 text-center">
-            <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-red-900 mb-2">Error Loading Dashboard</h2>
-            <p className="text-red-700">Failed to load dashboard data. Please try refreshing.</p>
-          </CardContent>
-        </Card>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="w-8 h-8 border-4 border-gray-400 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
-
-  const { children, stats } = dashboardData;
 
   if (children.length === 0) {
     return (
-      <div className="space-y-6">
+      <div className="max-w-md mx-auto p-6">
         <Card>
-          <CardContent className="py-16 text-center">
-            <Users className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-            <h2 className="text-xl font-bold text-gray-900 mb-2">No Children Found</h2>
-            <p className="text-gray-500 mb-6">
-              You don&apos;t have any children linked to your account yet.
-              Please contact school administration to link your children.
+          <CardContent className="pt-6 text-center">
+            <User className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+            <h2 className="text-xl font-semibold mb-2">No Children Linked</h2>
+            <p className="text-gray-600 mb-4">
+              Please link your children to view their dashboard
             </p>
-            <Link href="/contact">
-              <Button className="bg-gray-600 hover:bg-gray-700">Contact School</Button>
-            </Link>
+            <Button asChild>
+              <Link href="/parent/link-child">Link Child</Link>
+            </Button>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  // Get selected child from URL params or default to first child
-  const selectedChildId = typeof resolvedParams.child === "string"
-    ? resolvedParams.child
-    : children[0]?.id;
-
-  const selectedChild = children.find((c) => c.id === selectedChildId) || children[0];
-
   return (
-    <div className="space-y-6">
-      {/* Welcome Banner */}
-      <Card
-        style={{ background: "linear-gradient(135deg, rgb(107 114 128) 0%, rgb(75 85 99) 100%)" }}
-        className="text-white border-0"
-      >
-        <CardContent className="pt-6">
-          <h1 className="text-3xl font-bold mb-1">
-            Welcome back, {selectedChild.firstName} {selectedChild.lastName}!
-          </h1>
-          <p className="text-gray-200">
-            Here&apos;s what&apos;s happening with {selectedChild.firstName}&apos;s education journey
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Multi-child Selector */}
-      {children.length > 1 && (
-        <ParentChildSelector
-          children={children}
-          selectedChildId={selectedChildId}
-        />
-      )}
-
-      {/* AI Insights Section */}
-      <ParentAIInsights childData={selectedChild} />
-
-      {/* Quick Stats */}
-      <div className="grid md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-gray-500 flex items-center gap-2">
-              <Users className="w-3 h-3" />
-              Children
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900">
-              {stats?.totalChildren || 0}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-gray-500 flex items-center gap-2">
-              <BookOpen className="w-3 h-3" />
-              Class
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900">
-              {selectedChild.classGrade || "-"} - {selectedChild.section || "-"}
-            </div>
-            <p className="text-xs text-gray-500">Current class</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-gray-500 flex items-center gap-2">
-              <TrendingUp className="w-3 h-3" />
-              Attendance
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-green-600">
-              {selectedChild.attendance}%
-            </div>
-            <p className="text-xs text-gray-500">This semester</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-gray-500 flex items-center gap-2">
-              <DollarSign className="w-3 h-3" />
-              Fees
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900">
-              Nu. {selectedChild.feeStatus?.amountPaid || 0}
-            </div>
-            <p className="text-xs text-gray-500">Paid this term</p>
-          </CardContent>
-        </Card>
+    <div className="max-w-4xl mx-auto space-y-6 p-4">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">
+          Welcome back{selectedChild ? `, ${selectedChild.firstName || selectedChild.name.split(" ")[0]}'s parent` : ""}
+        </h1>
+        <p className="text-gray-600">Here's what's happening today</p>
       </div>
 
-      {/* Recent Grades */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Recent Grades</CardTitle>
-            <Button variant="outline" size="sm" asChild>
-              <Link href={`/parent/progress?child=${selectedChildId}`}>View All</Link>
-            </Button>
+      {/* Child Selector (if multiple children) */}
+      {children.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          {children.map((child) => (
+            <button
+              key={child.id}
+              onClick={() => handleChildChange(child)}
+              className={cn(
+                "flex-shrink-0 px-4 py-2 rounded-full border-2 transition-all",
+                selectedChild?.id === child.id
+                  ? "border-gray-600 bg-gray-600 text-white"
+                  : "border-gray-200 hover:border-gray-300"
+              )}
+            >
+              {child.firstName || child.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Primary Bento Grid - Focus on Peace of Mind */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        {/* Safe Arrival - Most Important! */}
+        <div className={cn(
+          "col-span-1 md:col-span-1 rounded-xl p-4 border-2",
+          attendanceDisplay.bgColor
+        )}>
+          <div className="flex items-center gap-2 mb-3">
+            {attendanceDisplay.icon}
+            <span className={cn("text-xs font-bold uppercase", attendanceDisplay.statusColor)}>
+              {attendanceDisplay.status}
+            </span>
           </div>
-        </CardHeader>
-        <CardContent>
-          {selectedChild.recentGrades && selectedChild.recentGrades.length > 0 ? (
-            <div className="space-y-3">
-              {selectedChild.recentGrades.slice(0, 5).map((grade) => {
-                const gradeColorMap: Record<string, string> = {
-                  "A+": "bg-green-100 text-green-700",
-                  "A": "bg-green-100 text-green-700",
-                  "B+": "bg-blue-100 text-blue-700",
-                  "B": "bg-blue-100 text-blue-700",
-                  "C+": "bg-yellow-100 text-yellow-700",
-                  "C": "bg-orange-100 text-orange-700",
-                  "D+": "bg-orange-100 text-orange-700",
-                  "D": "bg-red-100 text-red-700",
-                  "E": "bg-red-100 text-red-700",
-                  "F": "bg-red-100 text-red-700",
-                };
-                const gradeColor = gradeColorMap[grade.grade] || "bg-gray-100 text-gray-700";
-
-                return (
-                  <div
-                    key={grade.id}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                  >
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900">{grade.subject}</p>
-                      <p className="text-sm text-gray-500">{grade.date}</p>
-                    </div>
-                    <Badge className={gradeColor}>
-                      {grade.grade}
-                    </Badge>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-gray-500">
-              No recent grades available
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Fee Status */}
-      {selectedChild.feeStatus?.amountPending && selectedChild.feeStatus.amountPending > 0 && (
-        <Card className="border-amber-200 bg-amber-50">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-amber-900">
-              <Bell className="w-5 h-5" />
-              Fee Payment Reminder
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-amber-800">
-              You have <strong>Nu. {selectedChild.feeStatus.amountPending}</strong> pending for fee payment.
+          <p className="text-sm text-gray-700 font-medium">{attendanceDisplay.message}</p>
+          {selectedChild && (
+            <p className="text-xs text-gray-500 mt-2">
+              {selectedChild.classGrade && `Class ${selectedChild.classGrade}`}
+              {selectedChild.section && `-${selectedChild.section}`}
             </p>
-            <div className="mt-4">
-              <Button style={{ background: "linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)" }} asChild>
-                <Link href={`/parent/fees/pay?child=${selectedChildId}`}>
-                  <DollarSign className="w-4 h-4 mr-2 text-white" />
-                  Pay Fees Online
-                </Link>
+          )}
+        </div>
+
+        {/* Annual Session Fees */}
+        <Link href="/parent/fees/pay" className="col-span-1">
+          <BentoCard
+            title={`${new Date().getFullYear()} Session`}
+            value={feeStatus?.isPaid ? "CLEARED" : "PENDING"}
+            subtitle={
+              feeStatus?.isPaid
+                ? "All fees paid for this session"
+                : `Nu. ${feeStatus?.amountPending?.toLocaleString() || 0} pending`
+            }
+            icon={<span className="text-2xl">💰</span>}
+            badge={feeStatus?.isPaid ? "✓" : "!"}
+            badgeColor={feeStatus?.isPaid ? "bg-green-500 text-white" : "bg-orange-500 text-white"}
+            action="View Details"
+            gradient={feeStatus?.isPaid
+              ? "linear-gradient(135deg, rgb(34 197 94) 0%, rgb(22 163 74) 100%)"
+              : "linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)"
+            }
+          />
+        </Link>
+
+        {/* Latest Teacher Feedback */}
+        <div className="col-span-2 md:col-span-1">
+          <BentoCard
+            title="Latest Feedback"
+            subtitle={latestFeedback?.message || "No recent feedback from teachers"}
+            icon={<MessageSquare className="w-6 h-6 text-purple-600" />}
+            badge={latestFeedback?.type === "merit" ? "⭐" : undefined}
+            badgeColor="bg-yellow-100 text-yellow-700"
+          />
+        </div>
+      </div>
+
+      {/* Quick Actions Grid */}
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">Quick Actions</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <BentoCard
+            title="Attendance"
+            icon={<CheckCircle className="w-5 h-5 text-green-600" />}
+            action="View Full"
+            actionHref="/parent/attendance"
+          />
+
+          <BentoCard
+            title="Progress"
+            icon={<GraduationCap className="w-5 h-5 text-blue-600" />}
+            action="View Grades"
+            actionHref="/parent/progress"
+          />
+
+          <BentoCard
+            title="Messages"
+            icon={<MessageSquare className="w-5 h-5 text-purple-600" />}
+            action="Communicate"
+            actionHref="/parent/messages"
+          />
+
+          <BentoCard
+            title="Homework"
+            icon={<FileText className="w-5 h-5 text-orange-600" />}
+            action="View Tasks"
+            actionHref="/parent/homework"
+          />
+        </div>
+      </div>
+
+      {/* Fee Breakdown Card (if not paid) */}
+      {feeStatus && !feeStatus.isPaid && (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-semibold text-gray-900">Session Fees Pending</h3>
+                <p className="text-sm text-gray-600">
+                  Nu. {feeStatus.amountPending?.toLocaleString() || 0} of {feeStatus.totalAmount?.toLocaleString() || 0} remaining
+                </p>
+              </div>
+              <Button asChild size="sm">
+                <Link href="/parent/fees/pay">Pay Now</Link>
               </Button>
             </div>
           </CardContent>
         </Card>
       )}
-
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Button variant="outline" asChild className="w-full">
-              <Link href={`/parent/messages?child=${selectedChildId}`}>
-                <Mail className="w-4 h-4 mr-2" />
-                Messages
-              </Link>
-            </Button>
-            <Button variant="outline" asChild className="w-full">
-              <Link href={`/parent/schedule?child=${selectedChildId}`}>
-                <Calendar className="w-4 h-4 mr-2" />
-                Schedule
-              </Link>
-            </Button>
-            <Button variant="outline" asChild className="w-full">
-              <Link href={`/parent/progress?child=${selectedChildId}`}>
-                <GraduationCap className="w-4 h-4 mr-2" />
-                Progress
-              </Link>
-            </Button>
-            <Button variant="outline" asChild className="w-full">
-              <Link href={`/parent/fees/pay?child=${selectedChildId}`}>
-                <DollarSign className="w-4 h-4 mr-2" />
-                Fees
-              </Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Upcoming Events */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Upcoming Events</CardTitle>
-          <CardDescription>
-            School events and meetings for {selectedChild.firstName}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
-                <Calendar className="w-5 h-5" />
-              </div>
-              <div className="flex-1">
-                <p className="font-medium text-gray-900">Parent-Teacher Meeting</p>
-                <p className="text-sm text-gray-500">
-                  March 25, 2025 · 3:00 PM
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center text-green-600">
-                <Bell className="w-5 h-5" />
-              </div>
-              <div className="flex-1">
-                <p className="font-medium text-gray-900">Mid-Term Results</p>
-                <p className="text-sm text-gray-500">
-                  Expected: March 30, 2025
-                </p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

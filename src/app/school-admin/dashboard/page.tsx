@@ -1,18 +1,22 @@
 /**
  * SCHOOL ADMIN DASHBOARD
  *
- * Key features:
- * - Quick stats (students, teachers, classes)
- * - Pending actions
- * - Recent activities
- * - Quick access cards
- *
- * Now using real database data via server actions.
+ * Premium Vercel/Ceramic-inspired dashboard with:
+ * - Modern stat cards with trends
+ * - Quick action cards
+ * - Pending applications badge
+ * - Recent announcements section
+ * - Upcoming events section
+ * - Clean, professional ceramic design system
  */
+
+"use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { CeramicCallout } from "@/components/ui/ceramic-callout";
+import { StatsCard, MobileCardGrid } from "@/components/ui/mobile-card";
 import {
   Users,
   UserCheck,
@@ -27,28 +31,58 @@ import {
   Clock,
   Sparkles,
   GraduationCap,
+  Bell,
+  Plus,
+  ClipboardCheck,
 } from "lucide-react";
 import Link from "next/link";
-import { fetchDashboardStats, fetchClasses, fetchAttendanceRecords } from "../_actions";
+import { useEffect, useState } from "react";
+import { fetchDashboardStats, fetchClasses } from "../_actions";
 import { AIInsightsSection } from "@/components/school-admin/ai-insights-section";
+import { CapacityStatusCard } from "@/components/school-admin/capacity-status-card";
+import { UniversalMobileSidebar, UniversalPortalHeader } from "@/components/mobile/universal-mobile-sidebar";
 
-export default async function SchoolAdminDashboardPage() {
-  // Fetch real data from database
-  const [schoolStats, classesData, attendanceData] = await Promise.all([
-    fetchDashboardStats(),
-    fetchClasses({ limit: 10 }),
-    fetchAttendanceRecords({ limit: 10 }),
-  ]);
+export default function SchoolAdminDashboardPage() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [userName, setUserName] = useState("School Admin");
+  const [userImage, setUserImage] = useState<string | undefined>(undefined);
+  const [schoolStats, setSchoolStats] = useState({
+    totalStudents: 0,
+    totalTeachers: 0,
+    totalClasses: 0,
+    pendingAttendance: 0,
+    pendingFees: 0,
+    totalRevenue: 0,
+  });
+  const [classesData, setClassesData] = useState({ classesList: [] });
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [stats, classes] = await Promise.all([
+          fetchDashboardStats(),
+          fetchClasses({ limit: 5 }),
+        ]);
+        setSchoolStats(stats);
+        setClassesData(classes);
+      } catch (error) {
+        console.error("Failed to load dashboard data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    loadData();
+  }, []);
 
   // Transform classes to today's classes format
-  const todayClasses = classesData.classesList.slice(0, 5).map((cls) => ({
+  const todayClasses = (classesData as any).classesList?.slice(0, 5).map((cls: any) => ({
     id: cls.id,
-    name: cls.name,
-    teacher: cls.classTeacher,
-    subject: cls.subjects[0] || "General",
+    name: cls.name || `Class ${cls.grade}`,
+    teacher: cls.classTeacherName || cls.homeroomTeacherName || "Not Assigned",
+    subject: "General",
     time: "9:00 AM",
     attendanceStatus: "completed" as const,
-  }));
+  })) || [];
 
   // Generate pending actions based on stats
   const pendingActions = [
@@ -135,115 +169,161 @@ export default async function SchoolAdminDashboardPage() {
     },
   ];
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Clock className="w-8 h-8 animate-spin text-violet-500 mx-auto mb-2" />
+          <p className="text-sm text-gray-500">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Purple/Indigo gradient for school admin
+  const primaryGradient = "linear-gradient(135deg, rgb(139 92 246) 0%, rgb(124 58 237) 100%)";
+  const primaryLight = "rgb(139 92 246)";
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">School Admin Dashboard</h1>
-          <p className="text-gray-600 mt-1">Manage your school efficiently</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" asChild>
-            <Link href="/school-admin/analytics">
-              <TrendingUp className="w-4 h-4 mr-2" />
-              Analytics
-            </Link>
-          </Button>
-          <Button className="bg-violet-600 hover:bg-violet-700" asChild>
-            <Link href="/school-admin/students">
-              <Sparkles className="w-4 h-4 mr-2" />
-              Quick Actions
-            </Link>
-          </Button>
-        </div>
+    <>
+      {/* Desktop Sidebar - always visible */}
+      <div className="hidden lg:block fixed top-0 left-0 z-40 h-screen">
+        <UniversalMobileSidebar portalType="school-admin" userName={userName} userImage={userImage} />
       </div>
 
-      {/* Stats Grid - Bhutan Colors */}
-      <div className="grid md:grid-cols-6 gap-4">
-        <Card className="premium-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-gray-500 flex items-center gap-2">
-              <Users className="w-3 h-3" />
-              Total Students
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-violet-600">{schoolStats.totalStudents}</div>
-            <p className="text-xs text-violet-600 mt-1">
-              <TrendingUp className="w-3 h-3 inline mr-1" />
-              Enrolled
-            </p>
-          </CardContent>
-        </Card>
+      {/* Mobile Sidebar - slides in/out */}
+      <UniversalMobileSidebar portalType="school-admin" userName={userName} userImage={userImage} />
 
-        <Card className="premium-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-gray-500 flex items-center gap-2">
-              <GraduationCap className="w-3 h-3" />
-              Teachers
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{schoolStats.totalTeachers}</div>
-            <p className="text-xs text-gray-500 mt-1">Active staff</p>
-          </CardContent>
-        </Card>
+      {/* Main Content - with left margin for desktop sidebar */}
+      <div className="lg:ml-64 min-h-screen">
+        {/* Header for mobile */}
+        <div className="lg:hidden">
+          <UniversalPortalHeader
+            portalType="school-admin"
+            userName={userName}
+            title="Dashboard"
+            subtitle="Manage your school effectively"
+          />
+        </div>
 
-        <Card className="premium-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-gray-500 flex items-center gap-2">
-              <BookOpen className="w-3 h-3" />
-              Classes
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-amber-600">{schoolStats.totalClasses}</div>
-            <p className="text-xs text-gray-500 mt-1">This semester</p>
-          </CardContent>
-        </Card>
-
-        <Card className="premium-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-gray-500 flex items-center gap-2">
-              <Calendar className="w-3 h-3" />
-              Attendance
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-600">{schoolStats.pendingAttendance}</div>
-            <p className="text-xs text-orange-600 mt-1">Pending today</p>
-          </CardContent>
-        </Card>
-
-        <Card className="premium-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-gray-500 flex items-center gap-2">
-              <DollarSign className="w-3 h-3" />
-              Fees Pending
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-600">{schoolStats.pendingFees}</div>
-            <p className="text-xs text-orange-600 mt-1">Students</p>
-          </CardContent>
-        </Card>
-
-        <Card className="premium-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs font-medium text-gray-500 flex items-center gap-2">
-              <DollarSign className="w-3 h-3" />
-              Revenue
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-lg font-bold text-violet-600">
-              Nu. {(schoolStats.totalRevenue / 1000).toFixed(0)}K
+        <div className="space-y-6 p-4 lg:p-8">
+          {/* Welcome Banner */}
+      <div className="relative overflow-hidden rounded-2xl p-6 lg:p-8 text-white shadow-lg">
+        <div style={{ background: primaryGradient }} className="absolute inset-0" />
+        <div className="relative z-10">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl lg:text-3xl font-bold mb-2">
+                Welcome to Your Dashboard
+              </h1>
+              <p className="text-white/90 text-sm lg:text-base">
+                Manage your school, students, teachers, and track progress all in one place.
+              </p>
             </div>
-            <p className="text-xs text-gray-500 mt-1">This month</p>
-          </CardContent>
-        </Card>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                className="bg-white/10 hover:bg-white/20 text-white border-white/20"
+                asChild
+              >
+                <Link href="/school-admin/analytics">
+                  <TrendingUp className="w-4 h-4 mr-2" />
+                  View Analytics
+                </Link>
+              </Button>
+              <Button
+                className="bg-white text-violet-700 hover:bg-white/90 shadow-lg"
+                asChild
+              >
+                <Link href="/school-admin/students/create">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Student
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+        {/* Decorative circles */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
       </div>
+
+      {/* Premium Stats Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatsCard
+          title="Total Students"
+          value={schoolStats.totalStudents.toLocaleString()}
+          change={12}
+          changeType="increase"
+          icon={Users}
+          iconColor={primaryLight}
+          iconBackgroundColor="rgb(239 232 251)"
+        />
+        <StatsCard
+          title="Teachers"
+          value={schoolStats.totalTeachers.toString()}
+          change={2}
+          changeType="increase"
+          icon={GraduationCap}
+          iconColor="rgb(59 130 246)"
+          iconBackgroundColor="rgb(219 234 254)"
+        />
+        <StatsCard
+          title="Active Classes"
+          value={schoolStats.totalClasses.toString()}
+          icon={BookOpen}
+          iconColor="rgb(245 158 11)"
+          iconBackgroundColor="rgb(254 243 199)"
+        />
+        <StatsCard
+          title="Attendance Rate"
+          value="92.5%"
+          change={3}
+          changeType="increase"
+          icon={UserCheck}
+          iconColor="rgb(34 197 94)"
+          iconBackgroundColor="rgb(220 252 231)"
+        />
+      </div>
+
+      {/* Seat Capacity Card - Shows billing warnings */}
+      <div className="grid lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-1">
+          <CapacityStatusCard />
+        </div>
+      </div>
+
+      {/* Pending Items - Ceramic Styled */}
+      {(schoolStats.pendingAttendance > 0 || schoolStats.pendingFees > 0) && (
+        <CeramicCallout variant="ceramic-warning" className="border-ceramic-orange-200">
+          <div className="flex items-center gap-2 mb-3">
+            <AlertCircle className="w-5 h-5 text-ceramic-orange-600" />
+            <h3 className="font-semibold text-ceramic-primary">Requires Attention</h3>
+          </div>
+          <div className="flex flex-wrap gap-4">
+            {schoolStats.pendingAttendance > 0 && (
+              <Link href="/school-admin/attendance" className="flex items-center gap-2 px-4 py-2 bg-ceramic-white rounded-lg border border-ceramic-orange-200 hover:border-ceramic-orange-300 transition-colors">
+                <Calendar className="w-4 h-4 text-ceramic-orange-600" />
+                <div>
+                  <p className="text-sm font-medium text-ceramic-primary">{schoolStats.pendingAttendance} classes pending attendance</p>
+                  <p className="text-xs text-ceramic-secondary">Mark attendance now</p>
+                </div>
+                <ArrowRight className="w-4 h-4 text-ceramic-dimmed ml-auto" />
+              </Link>
+            )}
+            {schoolStats.pendingFees > 0 && (
+              <Link href="/school-admin/fees" className="flex items-center gap-2 px-4 py-2 bg-ceramic-white rounded-lg border border-ceramic-orange-200 hover:border-ceramic-orange-300 transition-colors">
+                <DollarSign className="w-4 h-4 text-ceramic-orange-600" />
+                <div>
+                  <p className="text-sm font-medium text-ceramic-primary">{schoolStats.pendingFees} students with pending fees</p>
+                  <p className="text-xs text-ceramic-secondary">Send reminders</p>
+                </div>
+                <ArrowRight className="w-4 h-4 text-ceramic-dimmed ml-auto" />
+              </Link>
+            )}
+          </div>
+        </CeramicCallout>
+      )}
 
       {/* AI Insights Section - Dynamic */}
       <AIInsightsSection
@@ -258,16 +338,16 @@ export default async function SchoolAdminDashboardPage() {
       />
 
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Today's Classes & Attendance */}
+        {/* Today's Classes & Attendance - Ceramic Styled */}
         <div className="lg:col-span-2">
-          <Card>
+          <Card variant="ceramic">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>Active Classes</CardTitle>
                   <CardDescription>View and manage class attendance</CardDescription>
                 </div>
-                <Button variant="outline" size="sm" asChild>
+                <Button variant="ceramic-ghost" size="sm" asChild>
                   <Link href="/school-admin/classes">View All</Link>
                 </Button>
               </div>
@@ -277,35 +357,30 @@ export default async function SchoolAdminDashboardPage() {
                 {todayClasses.length > 0 ? todayClasses.map((cls) => (
                   <div
                     key={cls.id}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                    className="flex items-center justify-between p-4 bg-ceramic-gray-50 rounded-lg hover:bg-ceramic-gray-100 transition-colors dark:bg-ceramic-gray-800 dark:hover:bg-ceramic-gray-700"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-violet-100 rounded-lg flex items-center justify-center">
-                        <BookOpen className="w-5 h-5 text-violet-600" />
+                      <div className="w-10 h-10 bg-ceramic-purple-100 rounded-lg flex items-center justify-center">
+                        <BookOpen className="w-5 h-5 text-ceramic-brand" />
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900">{cls.name}</p>
-                        <p className="text-sm text-gray-500">
+                        <p className="font-medium text-ceramic-primary">{cls.name}</p>
+                        <p className="text-sm text-ceramic-secondary">
                           {cls.teacher} • {cls.subject}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm text-gray-600">{cls.time}</p>
+                      <p className="text-sm text-ceramic-secondary">{cls.time}</p>
                       <Badge
-                        variant="outline"
-                        className={
-                          cls.attendanceStatus === "completed"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-orange-100 text-orange-700"
-                        }
+                        variant={cls.attendanceStatus === "completed" ? "ceramic-success" : "ceramic-warning"}
                       >
                         {cls.attendanceStatus === "completed" ? "Active" : "Pending"}
                       </Badge>
                     </div>
                   </div>
                 )) : (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className="text-center py-8 text-ceramic-secondary">
                     No classes found. Create your first class to get started.
                   </div>
                 )}
@@ -314,36 +389,36 @@ export default async function SchoolAdminDashboardPage() {
           </Card>
         </div>
 
-        {/* Pending Actions */}
+        {/* Pending Actions - Ceramic Styled */}
         <div>
-          <Card className="border-orange-200">
+          <Card variant="ceramic" className="border-ceramic-orange-200">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-orange-500" />
+                <AlertCircle className="w-5 h-5 text-ceramic-orange-600" />
                 Pending Actions
               </CardTitle>
               <CardDescription>Requires your attention</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {pendingActions.map((action) => (
-                <div key={action.id} className="p-3 bg-gray-50 rounded-lg">
+                <div key={action.id} className="p-3 bg-ceramic-gray-50 rounded-lg">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">{action.title}</p>
+                      <p className="text-sm font-medium text-ceramic-primary">{action.title}</p>
                       <Badge
-                        variant="outline"
-                        className={
+                        variant={
                           action.urgency === "high"
-                            ? "bg-red-100 text-red-700 mt-1"
+                            ? "ceramic-error"
                             : action.urgency === "medium"
-                            ? "bg-yellow-100 text-yellow-700 mt-1"
-                            : "bg-gray-100 text-gray-600 mt-1"
+                            ? "ceramic-warning"
+                            : "ceramic-default"
                         }
+                        className="mt-1"
                       >
                         {action.urgency}
                       </Badge>
                     </div>
-                    <Button size="sm" variant="ghost" asChild>
+                    <Button size="sm" variant="ceramic-ghost" asChild>
                       <Link href={action.link}>
                         <ArrowRight className="w-4 h-4" />
                       </Link>
@@ -356,166 +431,101 @@ export default async function SchoolAdminDashboardPage() {
         </div>
       </div>
 
-      {/* Quick Actions Grid */}
+      {/* Quick Actions - Ceramic Styled */}
       <div>
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
-        <div className="grid md:grid-cols-4 gap-4">
-          <Card className="premium-card hover:shadow-lg transition-shadow cursor-pointer">
-            <Link href="/school-admin/students">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-violet-100 rounded-lg flex items-center justify-center">
-                    <Users className="w-6 h-6 text-violet-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Manage Students</p>
-                    <p className="text-xs text-gray-500">Add, edit, enroll</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Link>
-          </Card>
-
-          <Card className="premium-card hover:shadow-lg transition-shadow cursor-pointer">
-            <Link href="/school-admin/teachers">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <GraduationCap className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Manage Teachers</p>
-                    <p className="text-xs text-gray-500">Assign classes, subjects</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Link>
-          </Card>
-
-          <Card className="premium-card hover:shadow-lg transition-shadow cursor-pointer">
-            <Link href="/school-admin/classes">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
-                    <BookOpen className="w-6 h-6 text-amber-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Manage Classes</p>
-                    <p className="text-xs text-gray-500">Create, schedule</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Link>
-          </Card>
-
-          <Card className="premium-card hover:shadow-lg transition-shadow cursor-pointer bg-gradient-to-br from-purple-50 to-pink-50">
-            <Link href="/school-admin/counselors">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                    <UserCheck className="w-6 h-6 text-purple-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Counselors</p>
-                    <p className="text-xs text-gray-500">Assign to students</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Link>
-          </Card>
-
-          <Card className="premium-card hover:shadow-lg transition-shadow cursor-pointer">
-            <Link href="/school-admin/attendance">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                    <Calendar className="w-6 h-6 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Attendance</p>
-                    <p className="text-xs text-gray-500">Mark, view reports</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Link>
-          </Card>
-
-          <Card className="premium-card hover:shadow-lg transition-shadow cursor-pointer">
-            <Link href="/school-admin/fees">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                    <DollarSign className="w-6 h-6 text-yellow-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Fee Management</p>
-                    <p className="text-xs text-gray-500">Track, collect fees</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Link>
-          </Card>
-
-          <Card className="premium-card hover:shadow-lg transition-shadow cursor-pointer">
-            <Link href="/school-admin/results">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <FileText className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Exam Results</p>
-                    <p className="text-xs text-gray-500">Record, publish</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Link>
-          </Card>
-
-          <Card className="premium-card hover:shadow-lg transition-shadow cursor-pointer bg-gradient-to-br from-blue-50 to-purple-50">
-            <Link href="/school-admin/tuition">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <Sparkles className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Tuition Center</p>
-                    <p className="text-xs text-gray-500">Manage tuition</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Link>
-          </Card>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-ceramic-primary">Quick Actions</h2>
         </div>
+        <MobileCardGrid>
+          <Link href="/school-admin/students/create" className="group">
+            <div className="flex items-center gap-3 p-4 rounded-xl border border-ceramic-border bg-ceramic-white hover:border-ceramic-purple-300 hover:shadow-md transition-all dark:bg-ceramic-gray-800">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-ceramic-purple-100">
+                <Users className="w-6 h-6 text-ceramic-brand" />
+              </div>
+              <div>
+                <p className="font-semibold text-ceramic-primary">Add Student</p>
+                <p className="text-sm text-ceramic-secondary">Enroll new student</p>
+              </div>
+              <ArrowRight className="w-5 h-5 text-ceramic-dimmed ml-auto group-hover:text-ceramic-brand transition-colors" />
+            </div>
+          </Link>
+
+          <Link href="/school-admin/teachers/create" className="group">
+            <div className="flex items-center gap-3 p-4 rounded-xl border border-ceramic-border bg-ceramic-white hover:border-ceramic-blue-300 hover:shadow-md transition-all dark:bg-ceramic-gray-800">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-ceramic-blue-100">
+                <GraduationCap className="w-6 h-6 text-ceramic-blue-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-ceramic-primary">Add Teacher</p>
+                <p className="text-sm text-ceramic-secondary">Hire new staff</p>
+              </div>
+              <ArrowRight className="w-5 h-5 text-ceramic-dimmed ml-auto group-hover:text-ceramic-blue-600 transition-colors" />
+            </div>
+          </Link>
+
+          <Link href="/school-admin/classes/create" className="group">
+            <div className="flex items-center gap-3 p-4 rounded-xl border border-ceramic-border bg-ceramic-white hover:border-ceramic-yellow-300 hover:shadow-md transition-all dark:bg-ceramic-gray-800">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-ceramic-yellow-100">
+                <BookOpen className="w-6 h-6 text-ceramic-orange-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-ceramic-primary">Create Class</p>
+                <p className="text-sm text-ceramic-secondary">Setup new class</p>
+              </div>
+              <ArrowRight className="w-5 h-5 text-ceramic-dimmed ml-auto group-hover:text-ceramic-orange-600 transition-colors" />
+            </div>
+          </Link>
+
+          <Link href="/school-admin/attendance" className="group">
+            <div className="flex items-center gap-3 p-4 rounded-xl border border-ceramic-border bg-ceramic-white hover:border-ceramic-green-300 hover:shadow-md transition-all dark:bg-ceramic-gray-800">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-ceramic-green-100">
+                <ClipboardCheck className="w-6 h-6 text-ceramic-positive" />
+              </div>
+              <div>
+                <p className="font-semibold text-ceramic-primary">Mark Attendance</p>
+                <p className="text-sm text-ceramic-secondary">Daily attendance</p>
+              </div>
+              <ArrowRight className="w-5 h-5 text-ceramic-dimmed ml-auto group-hover:text-ceramic-positive transition-colors" />
+            </div>
+          </Link>
+        </MobileCardGrid>
       </div>
 
-      {/* Recent Activity & Upcoming Events */}
+      {/* Recent Activity & Upcoming Events - Ceramic Styled */}
       <div className="grid lg:grid-cols-2 gap-6">
         {/* Recent Activity */}
-        <Card>
+        <Card variant="ceramic">
           <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>Latest updates in your school</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Recent Activity</CardTitle>
+                <CardDescription>Latest updates in your school</CardDescription>
+              </div>
+              <Button variant="ceramic-ghost" size="sm" asChild>
+                <Link href="/school-admin/reports">
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {recentActivities.map((activity) => (
-                <div key={activity.id} className="flex items-center gap-4">
+                <div key={activity.id} className="flex items-center gap-4 p-3 rounded-lg hover:bg-ceramic-gray-50 transition-colors dark:hover:bg-ceramic-gray-800">
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                    activity.type === "enrollment" ? "bg-green-100" :
-                    activity.type === "homework" ? "bg-blue-100" :
-                    activity.type === "result" ? "bg-purple-100" : "bg-yellow-100"
+                    activity.type === "enrollment" ? "bg-ceramic-green-100" :
+                    activity.type === "homework" ? "bg-ceramic-blue-100" :
+                    activity.type === "result" ? "bg-ceramic-purple-100" : "bg-ceramic-yellow-100"
                   }`}>
                     <activity.icon className={`w-5 h-5 ${
-                      activity.type === "enrollment" ? "text-green-600" :
-                      activity.type === "homework" ? "text-blue-600" :
-                      activity.type === "result" ? "text-purple-600" : "text-yellow-600"
+                      activity.type === "enrollment" ? "text-ceramic-positive" :
+                      activity.type === "homework" ? "text-ceramic-blue-600" :
+                      activity.type === "result" ? "text-ceramic-brand" : "text-ceramic-orange-600"
                     }`} />
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm text-gray-900">{activity.message}</p>
-                    <p className="text-xs text-gray-500">{activity.time}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-ceramic-primary truncate">{activity.message}</p>
+                    <p className="text-xs text-ceramic-secondary">{activity.time}</p>
                   </div>
                 </div>
               ))}
@@ -524,28 +534,38 @@ export default async function SchoolAdminDashboardPage() {
         </Card>
 
         {/* Upcoming Events */}
-        <Card>
+        <Card variant="ceramic">
           <CardHeader>
-            <CardTitle>Upcoming Events</CardTitle>
-            <CardDescription>Important dates & activities</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Upcoming Events</CardTitle>
+                <CardDescription>Important dates & activities</CardDescription>
+              </div>
+              <Button variant="ceramic-ghost" size="sm" asChild>
+                <Link href="/school-admin/calendar">
+                  <Calendar className="w-4 h-4" />
+                </Link>
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-3">
               {upcomingEvents.map((event) => (
-                <div key={event.id} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                  <div className="w-12 h-12 rounded-lg flex items-center justify-center text-white" style={{ background: 'linear-gradient(to bottom right, rgb(139 92 246), rgb(124 58 237))' }}>
+                <div key={event.id} className="flex items-center gap-4 p-3 bg-ceramic-gray-50 rounded-lg hover:bg-ceramic-gray-100 transition-colors dark:bg-ceramic-gray-800 dark:hover:bg-ceramic-gray-700">
+                  <div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-sm"
+                    style={{ background: primaryGradient }}
+                  >
                     <Clock className="w-6 h-6" />
                   </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-900">{event.title}</p>
-                    <p className="text-sm text-gray-500">{event.date}</p>
-                    <p className="text-xs text-gray-400">{event.time}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-ceramic-primary truncate">{event.title}</p>
+                    <p className="text-sm text-ceramic-secondary">{event.date}</p>
                   </div>
                   <Badge
-                    variant="outline"
-                    className={
-                      event.type === "meeting" ? "bg-blue-100 text-blue-700" :
-                      event.type === "exam" ? "bg-red-100 text-red-700" : "bg-purple-100 text-purple-700"
+                    variant={
+                      event.type === "meeting" ? "ceramic-info" :
+                      event.type === "exam" ? "ceramic-error" : "ceramic"
                     }
                   >
                     {event.type}
@@ -556,6 +576,8 @@ export default async function SchoolAdminDashboardPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+        </div>
+      </div>
+    </>
   );
 }

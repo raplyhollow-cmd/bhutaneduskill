@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
-import { users, wizardProgress, studentApplications, notifications, notificationDeliveries } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { users, wizardProgress, studentApplications, notifications, notificationDeliveries, schools } from "@/lib/db/schema";
+import { eq, sql, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { logger } from "@/lib/logger";
 
@@ -206,6 +206,81 @@ export async function POST(request: NextRequest) {
       // Only if schoolId is available (from school verification step)
       if (dbUser.schoolId) {
         try {
+          // SEAT LIMIT CHECK: Verify school has capacity before allowing enrollment
+          const schoolRecords = await db
+            .select({
+              maxStudents: schools.maxStudents,
+              isActive: schools.isActive,
+              subscriptionStatus: schools.subscriptionStatus,
+            })
+            .from(schools)
+            .where(eq(schools.id, dbUser.schoolId))
+            .limit(1);
+
+          if (schoolRecords.length === 0) {
+            logger.error("School not found during student setup", { schoolId: dbUser.schoolId });
+            return NextResponse.json(
+              { error: "School not found. Please contact support." },
+              { status: 404 }
+            );
+          }
+
+          const school = schoolRecords[0];
+
+          // Check if school is active
+          if (!school.isActive) {
+            logger.warn("Student attempted to join inactive school", { schoolId: dbUser.schoolId });
+            return NextResponse.json(
+              { error: "This school is currently inactive. Please contact your school administrator." },
+              { status: 403 }
+            );
+          }
+
+          // Check if school subscription is active
+          if (school.subscriptionStatus !== "active" && school.subscriptionStatus !== "trial") {
+            logger.warn("Student attempted to join school with inactive subscription", {
+              schoolId: dbUser.schoolId,
+              subscriptionStatus: school.subscriptionStatus,
+            });
+            return NextResponse.json(
+              { error: "This school's subscription is not active. Please contact your school administrator." },
+              { status: 403 }
+            );
+          }
+
+          // Count current students at the school (excluding pending applications)
+          const currentStudentsResult = await db
+            .select({ count: sql<number>`count(*)` })
+            .from(users)
+            .where(
+              and(
+                eq(users.schoolId, dbUser.schoolId),
+                eq(users.type, "student"),
+                eq(users.onboardingStatus, "enrolled") // Only count enrolled students
+              )
+            );
+
+          const currentStudentCount = currentStudentsResult[0]?.count || 0;
+
+          // Check if limit reached
+          if (currentStudentCount >= school.maxStudents) {
+            logger.warn("School seat limit reached", {
+              schoolId: dbUser.schoolId,
+              currentStudents: currentStudentCount,
+              maxStudents: school.maxStudents,
+            });
+            return NextResponse.json(
+              {
+                error: "This school has reached its student capacity limit.",
+                details: {
+                  currentStudents: currentStudentCount,
+                  maxStudents: school.maxStudents,
+                },
+              },
+              { status: 403 }
+            );
+          }
+
           const applicationId = `app-${Date.now()}-${nanoid(8)}`;
           const now = new Date();
 

@@ -17,11 +17,7 @@ import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import {
-  paymentTransactions,
   invoices,
-  subscriptions,
-  subscriptionPlans,
-  tenants,
   schools,
 } from "@/lib/db/schema";
 import { eq, and, desc, sql, count, sum, gte, lte, or, SQL } from "drizzle-orm";
@@ -47,6 +43,26 @@ interface PaymentTransactionData {
   paidDate: string | null;
   refundAmount: number;
   failureReason: string | null;
+}
+
+/**
+ * Simulated payment transaction data from invoices
+ * In the current schema, payments are tracked through invoices with paidAt dates
+ */
+interface InvoicePaymentData {
+  id: string;
+  invoiceNumber: string;
+  schoolName: string;
+  subscriptionTier: string;
+  amount: string;
+  currency: string;
+  status: string;
+  paymentMethod: string | null;
+  invoiceDate: Date;
+  dueDate: Date;
+  paidAt: Date | null;
+  refundAmount: string | null;
+  refundReason: string | null;
 }
 
 interface SchoolPaymentSummary {
@@ -201,6 +217,7 @@ export async function GET(req: NextRequest) {
 
 /**
  * Get payment transactions with filtering
+ * Uses invoice data as the source of payment information
  */
 async function getPaymentTransactions(req: NextRequest): Promise<PaymentTransactionData[]> {
   const { searchParams } = new URL(req.url);
@@ -210,88 +227,70 @@ async function getPaymentTransactions(req: NextRequest): Promise<PaymentTransact
   const endDate = searchParams.get("endDate");
   const limit = parseInt(searchParams.get("limit") || "100");
 
-  // Build conditions
+  // Build conditions for invoices
   const conditions: (SQL | undefined)[] = [];
 
   if (status) {
-    conditions.push(eq(paymentTransactions.status, status));
+    conditions.push(eq(invoices.status, status));
   }
 
   if (startDate) {
-    conditions.push(gte(paymentTransactions.createdAt, new Date(startDate)));
+    conditions.push(gte(invoices.invoiceDate, new Date(startDate)));
   }
 
   if (endDate) {
-    conditions.push(lte(paymentTransactions.createdAt, new Date(endDate)));
+    conditions.push(lte(invoices.invoiceDate, new Date(endDate)));
   }
 
-  let baseQuery = db
+  if (schoolId) {
+    conditions.push(eq(invoices.schoolId, schoolId));
+  }
+
+  const whereClause = conditions.length > 0 ? and(...conditions.filter(Boolean) as SQL[]) : undefined;
+
+  // Get invoices with school data
+  const invoiceData = await db
     .select({
-      id: paymentTransactions.id,
-      transactionId: paymentTransactions.id,
-      amount: paymentTransactions.amount,
-      currency: paymentTransactions.currency,
-      status: paymentTransactions.status,
-      provider: paymentTransactions.provider,
-      providerTransactionId: paymentTransactions.providerTransactionId,
-      paymentMethodType: paymentTransactions.paymentMethodType,
-      responseMessage: paymentTransactions.responseMessage,
-      failureReason: paymentTransactions.failureReason,
-      refundAmount: paymentTransactions.refundAmount,
-      createdAt: paymentTransactions.createdAt,
-      // Invoice data
-      invoiceId: paymentTransactions.invoiceId,
+      id: invoices.id,
       invoiceNumber: invoices.invoiceNumber,
-      invoiceDueDate: invoices.dueDate,
-      invoicePaidAt: invoices.paidAt,
-      // Subscription data
-      subscriptionId: subscriptions.id,
-      planName: subscriptionPlans.name,
-      // Tenant/School data
-      tenantId: tenants.id,
-      tenantName: tenants.name,
-      schoolId: schools.id,
+      schoolId: invoices.schoolId,
       schoolName: schools.name,
       schoolCode: schools.code,
+      subscriptionTier: invoices.subscriptionTier,
+      amount: invoices.amount,
+      currency: invoices.currency,
+      status: invoices.status,
+      paymentMethod: invoices.paymentMethod,
+      invoiceDate: invoices.invoiceDate,
+      dueDate: invoices.dueDate,
+      paidAt: invoices.paidAt,
+      refundAmount: invoices.refundAmount,
+      refundReason: invoices.refundReason,
+      billingPeriodStart: invoices.billingPeriodStart,
+      billingPeriodEnd: invoices.billingPeriodEnd,
     })
-    .from(paymentTransactions)
-    .leftJoin(invoices, eq(paymentTransactions.invoiceId, invoices.id))
-    .leftJoin(subscriptions, eq(paymentTransactions.subscriptionId, subscriptions.id))
-    .leftJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
-    .leftJoin(tenants, eq(paymentTransactions.tenantId, tenants.id))
-    .leftJoin(schools, eq(schools.tenantId, tenants.id));
-
-  // Apply school filter if specified
-  if (schoolId) {
-    baseQuery = baseQuery.where(eq(schools.id, schoolId)) as typeof baseQuery;
-  }
-
-  // Apply conditions
-  const whereClause = conditions.length > 0 ? and(...conditions.filter(Boolean) as SQL[]) : undefined;
-  if (whereClause) {
-    baseQuery = baseQuery.where(whereClause) as typeof baseQuery;
-  }
-
-  const transactionData = await baseQuery
-    .orderBy(desc(paymentTransactions.createdAt))
+    .from(invoices)
+    .innerJoin(schools, eq(invoices.schoolId, schools.id))
+    .where(whereClause)
+    .orderBy(desc(invoices.invoiceDate))
     .limit(limit);
 
-  return transactionData.map((t) => ({
-    id: t.id,
-    transactionId: t.providerTransactionId || t.id,
-    invoiceNumber: t.invoiceNumber || "N/A",
-    school: t.schoolName || t.tenantName || "Unknown",
-    plan: t.planName || "Unknown",
-    amount: t.amount || 0,
-    currency: t.currency || "BTN",
-    status: t.status,
-    paymentMethod: t.paymentMethodType || t.provider || "unknown",
-    provider: t.provider || "unknown",
-    transactionDate: t.createdAt?.toISOString() || new Date().toISOString(),
-    dueDate: t.invoiceDueDate?.toISOString() || new Date().toISOString(),
-    paidDate: t.invoicePaidAt?.toISOString() || null,
-    refundAmount: t.refundAmount || 0,
-    failureReason: t.failureReason || null,
+  return invoiceData.map((inv) => ({
+    id: inv.id,
+    transactionId: inv.id,
+    invoiceNumber: inv.invoiceNumber,
+    school: inv.schoolName || "Unknown",
+    plan: inv.subscriptionTier || "Unknown",
+    amount: Number(inv.amount) || 0,
+    currency: inv.currency || "BTN",
+    status: inv.status,
+    paymentMethod: inv.paymentMethod || "unknown",
+    provider: inv.paymentMethod || "manual",
+    transactionDate: inv.invoiceDate?.toISOString() || new Date().toISOString(),
+    dueDate: inv.dueDate?.toISOString() || new Date().toISOString(),
+    paidDate: inv.paidAt?.toISOString() || null,
+    refundAmount: Number(inv.refundAmount) || 0,
+    failureReason: inv.refundReason || null,
   }));
 }
 
@@ -313,9 +312,7 @@ async function getSchoolPaymentSummaries(req: NextRequest): Promise<SchoolPaymen
       lastPaymentDate: sql<string>`MAX(${invoices.paidAt})`,
     })
     .from(invoices)
-    .innerJoin(subscriptions, eq(invoices.subscriptionId, subscriptions.id))
-    .innerJoin(tenants, eq(subscriptions.tenantId, tenants.id))
-    .innerJoin(schools, eq(tenants.id, schools.tenantId))
+    .innerJoin(schools, eq(invoices.schoolId, schools.id))
     .where(
       and(
         eq(invoices.status, "paid"),
@@ -331,9 +328,7 @@ async function getSchoolPaymentSummaries(req: NextRequest): Promise<SchoolPaymen
       totalAmount: sum(invoices.totalAmount),
     })
     .from(invoices)
-    .innerJoin(subscriptions, eq(invoices.subscriptionId, subscriptions.id))
-    .innerJoin(tenants, eq(subscriptions.tenantId, tenants.id))
-    .innerJoin(schools, eq(tenants.id, schools.tenantId))
+    .innerJoin(schools, eq(invoices.schoolId, schools.id))
     .where(eq(invoices.status, "pending"))
     .groupBy(schools.id);
 
@@ -344,9 +339,7 @@ async function getSchoolPaymentSummaries(req: NextRequest): Promise<SchoolPaymen
       totalAmount: sum(invoices.totalAmount),
     })
     .from(invoices)
-    .innerJoin(subscriptions, eq(invoices.subscriptionId, subscriptions.id))
-    .innerJoin(tenants, eq(subscriptions.tenantId, tenants.id))
-    .innerJoin(schools, eq(tenants.id, schools.tenantId))
+    .innerJoin(schools, eq(invoices.schoolId, schools.id))
     .where(and(eq(invoices.status, "overdue"), sql`${invoices.dueDate} < ${now}`))
     .groupBy(schools.id);
 
@@ -416,57 +409,61 @@ async function getSchoolPaymentSummaries(req: NextRequest): Promise<SchoolPaymen
 
 /**
  * Get payment method statistics
+ * Based on invoice payment methods
  */
 async function getPaymentMethodStats(req: NextRequest): Promise<PaymentMethodStats[]> {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
+  // Get payment method stats from paid invoices
   const stats = await db
     .select({
-      provider: paymentTransactions.provider,
-      paymentMethodType: paymentTransactions.paymentMethodType,
+      paymentMethod: invoices.paymentMethod,
       transactionCount: count(),
-      totalAmount: sum(paymentTransactions.amount),
-      successCount: count(),
+      totalAmount: sum(invoices.totalAmount),
     })
-    .from(paymentTransactions)
-    .where(gte(paymentTransactions.createdAt, startOfMonth))
-    .groupBy(paymentTransactions.provider, paymentTransactions.paymentMethodType);
-
-  // Get failed transactions count for success rate calculation
-  const failedStats = await db
-    .select({
-      provider: paymentTransactions.provider,
-      paymentMethodType: paymentTransactions.paymentMethodType,
-      failedCount: count(),
-    })
-    .from(paymentTransactions)
+    .from(invoices)
     .where(
       and(
-        gte(paymentTransactions.createdAt, startOfMonth),
-        eq(paymentTransactions.status, "failed")
+        eq(invoices.status, "paid"),
+        gte(invoices.paidAt, startOfMonth)
       )
     )
-    .groupBy(paymentTransactions.provider, paymentTransactions.paymentMethodType);
+    .groupBy(invoices.paymentMethod);
+
+  // Get failed payment attempts (overdue pending invoices as proxy)
+  const failedStats = await db
+    .select({
+      paymentMethod: invoices.paymentMethod,
+      failedCount: count(),
+    })
+    .from(invoices)
+    .where(
+      and(
+        eq(invoices.status, "overdue"),
+        gte(invoices.dueDate, startOfMonth)
+      )
+    )
+    .groupBy(invoices.paymentMethod);
 
   const failedMap = new Map(
-    failedStats.map((f) => [`${f.provider}-${f.paymentMethodType}`, f.failedCount])
+    failedStats.map((f) => [f.paymentMethod || "unknown", f.failedCount])
   );
 
   return stats.map((stat) => {
-    const key = `${stat.provider}-${stat.paymentMethodType}`;
-    const failedCount = failedMap.get(key) || 0;
+    const method = stat.paymentMethod || "unknown";
+    const failedCount = failedMap.get(method) || 0;
     const totalTransactions = stat.transactionCount;
     const successRate = totalTransactions > 0
-      ? Math.round(((totalTransactions - failedCount) / totalTransactions) * 100)
+      ? Math.round(((totalTransactions) / (totalTransactions + failedCount)) * 100)
       : 0;
     const averageAmount = totalTransactions > 0
       ? Number(stat.totalAmount) / totalTransactions
       : 0;
 
     return {
-      method: stat.paymentMethodType || stat.provider,
-      provider: stat.provider,
+      method,
+      provider: method,
       transactionCount: totalTransactions,
       totalAmount: Number(stat.totalAmount) || 0,
       successRate,
@@ -528,9 +525,7 @@ async function getPaymentAlerts(req: NextRequest): Promise<PaymentAlertData[]> {
       schoolName: schools.name,
     })
     .from(invoices)
-    .innerJoin(subscriptions, eq(invoices.subscriptionId, subscriptions.id))
-    .innerJoin(tenants, eq(subscriptions.tenantId, tenants.id))
-    .innerJoin(schools, eq(tenants.id, schools.tenantId))
+    .innerJoin(schools, eq(invoices.schoolId, schools.id))
     .where(
       and(
         or(
@@ -557,41 +552,6 @@ async function getPaymentAlerts(req: NextRequest): Promise<PaymentAlertData[]> {
     });
   }
 
-  // Recent failed payment transactions
-  const failedPayments = await db
-    .select({
-      id: paymentTransactions.id,
-      amount: paymentTransactions.amount,
-      currency: paymentTransactions.currency,
-      failureReason: paymentTransactions.failureReason,
-      createdAt: paymentTransactions.createdAt,
-      schoolName: schools.name,
-    })
-    .from(paymentTransactions)
-    .innerJoin(tenants, eq(paymentTransactions.tenantId, tenants.id))
-    .innerJoin(schools, eq(tenants.id, schools.tenantId))
-    .where(
-      and(
-        eq(paymentTransactions.status, "failed"),
-        gte(paymentTransactions.createdAt, new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)) // Last 7 days
-      )
-    )
-    .orderBy(desc(paymentTransactions.createdAt))
-    .limit(10);
-
-  for (const payment of failedPayments) {
-    alerts.push({
-      id: payment.id,
-      type: "failed_payment",
-      school: payment.schoolName || "Unknown",
-      amount: Number(payment.amount) || 0,
-      currency: payment.currency || "BTN",
-      dueDate: payment.createdAt?.toISOString() || now.toISOString(),
-      daysOverdue: 0,
-      description: `Payment failed: ${payment.failureReason || "Unknown reason"}`,
-    });
-  }
-
   // Upcoming payments (due in next 7 days)
   const upcomingInvoices = await db
     .select({
@@ -603,9 +563,7 @@ async function getPaymentAlerts(req: NextRequest): Promise<PaymentAlertData[]> {
       schoolName: schools.name,
     })
     .from(invoices)
-    .innerJoin(subscriptions, eq(invoices.subscriptionId, subscriptions.id))
-    .innerJoin(tenants, eq(subscriptions.tenantId, tenants.id))
-    .innerJoin(schools, eq(tenants.id, schools.tenantId))
+    .innerJoin(schools, eq(invoices.schoolId, schools.id))
     .where(
       and(
         eq(invoices.status, "pending"),
@@ -630,9 +588,9 @@ async function getPaymentAlerts(req: NextRequest): Promise<PaymentAlertData[]> {
     });
   }
 
-  // Sort by severity (overdue first, then failed, then upcoming)
+  // Sort by severity (overdue first, then upcoming)
   return alerts.sort((a, b) => {
-    const priority = { overdue: 0, failed_payment: 1, upcoming_payment: 2 };
+    const priority = { overdue: 0, upcoming_payment: 1 };
     const priorityDiff = priority[a.type] - priority[b.type];
     if (priorityDiff !== 0) return priorityDiff;
     return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();

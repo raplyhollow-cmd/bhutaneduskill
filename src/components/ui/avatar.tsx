@@ -2,30 +2,57 @@
 
 import * as React from "react"
 import { Avatar as AvatarPrimitive } from "radix-ui"
+import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
 
+const avatarVariants = cva(
+  "group/avatar relative flex shrink-0 overflow-hidden rounded-full select-none",
+  {
+    variants: {
+      variant: {
+        default: "",
+        // Ceramic design system variants
+        ceramic: "[background-color:var(--ceramic-purple-100)] [color:var(--ceramic-purple-700)] dark:[background-color:var(--ceramic-purple-900)] dark:[color:var(--ceramic-purple-300)]",
+        "ceramic-gray": "[background-color:var(--ceramic-gray-100)] [color:var(--ceramic-gray-700)] dark:[background-color:var(--ceramic-gray-700)] dark:[color:var(--ceramic-gray-300)]",
+        "ceramic-success": "[background-color:var(--ceramic-green-100)] [color:var(--ceramic-green-700)] dark:[background-color:var(--ceramic-green-900)] dark:[color:var(--ceramic-green-300)]",
+        "ceramic-brand": "[background-color:rgba(132,107,255,0.15)] [color:var(--ceramic-brand)]",
+        "ceramic-outline": "[background-color:transparent] [border:1px_solid_var(--border-color-primary)]",
+      },
+      size: {
+        xs: "size-5 [&>svg]:size-3 text-[0.625rem]",
+        sm: "size-7 text-[0.75rem]",
+        default: "size-9 text-sm",
+        lg: "size-11 text-base",
+        xl: "size-14 text-lg",
+        "2xl": "size-20 text-xl",
+      },
+      clickable: {
+        true: "min-h-[44px] min-w-[44px] cursor-pointer transition-opacity hover:opacity-80 active:opacity-70",
+        false: "",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+      clickable: false,
+    },
+  }
+)
+
 function Avatar({
   className,
+  variant = "default",
   size = "default",
   clickable = false,
   ...props
-}: React.ComponentProps<typeof AvatarPrimitive.Root> & {
-  size?: "default" | "sm" | "lg"
-  clickable?: boolean
-}) {
+}: React.ComponentProps<typeof AvatarPrimitive.Root> & VariantProps<typeof avatarVariants>) {
   return (
     <AvatarPrimitive.Root
       data-slot="avatar"
+      data-variant={variant}
       data-size={size}
-      className={cn(
-        "group/avatar relative flex shrink-0 overflow-hidden rounded-full select-none",
-        // Default size increased from size-8 (32px) to size-9 (36px) for better touch targets
-        "size-9 data-[size=lg]:size-11 data-[size=sm]:size-7",
-        // Touch target support - minimum 44x44px when clickable
-        clickable && "min-h-[44px] min-w-[44px] cursor-pointer transition-opacity hover:opacity-80 active:opacity-70",
-        className
-      )}
+      className={cn(avatarVariants({ variant, size, clickable }), className)}
       {...props}
     />
   )
@@ -46,13 +73,17 @@ function AvatarImage({
 
 function AvatarFallback({
   className,
+  variant = "default",
   ...props
-}: React.ComponentProps<typeof AvatarPrimitive.Fallback>) {
+}: React.ComponentProps<typeof AvatarPrimitive.Fallback> & VariantProps<typeof avatarVariants>) {
   return (
     <AvatarPrimitive.Fallback
       data-slot="avatar-fallback"
+      data-variant={variant}
       className={cn(
-        "bg-muted text-muted-foreground flex size-full items-center justify-center rounded-lg text-sm group-data-[size=sm]/avatar:text-xs",
+        avatarVariants({ variant }),
+        "flex size-full items-center justify-center font-medium group-data-[size=xs]/avatar:text-[0.625rem] group-data-[size=sm]/avatar:text-xs group-data-[size=default]/avatar:text-sm group-data-[size=lg]/avatar:text-base group-data-[size=xl]/avatar:text-lg group-data-[size=2xl]/avatar:text-xl",
+        variant === "default" && "bg-muted text-muted-foreground",
         className
       )}
       {...props}
@@ -91,15 +122,20 @@ function AvatarGroup({ className, ...props }: React.ComponentProps<"div">) {
 
 function AvatarGroupCount({
   className,
+  variant = "default",
   ...props
-}: React.ComponentProps<"div">) {
+}: React.ComponentProps<"div"> & VariantProps<typeof avatarVariants>) {
   return (
     <div
       data-slot="avatar-group-count"
+      data-variant={variant}
       className={cn(
-        "bg-muted text-muted-foreground ring-background relative flex shrink-0 items-center justify-center rounded-lg text-sm ring-2",
-        // Increased from size-8 to size-9 (36px) to match new default avatar size
-        "size-9 group-has-data-[size=lg]/avatar-group:size-11 group-has-data-[size=sm]/avatar-group:size-7 [&>svg]:size-4 group-has-data-[size=lg]/avatar-group:[&>svg]:size-5 group-has-data-[size=sm]/avatar-group:[&>svg]:size-3",
+        avatarVariants({ variant, size: "default" }),
+        "ring-background relative flex shrink-0 items-center justify-center rounded-lg ring-2 font-medium",
+        // Size adjustments based on avatar group size
+        "size-9 group-has-data-[size=xs]/avatar-group:size-5 group-has-data-[size=sm]/avatar-group:size-7 group-has-data-[size=lg]/avatar-group:size-11 group-has-data-[size=xl]/avatar-group:size-14 group-has-data-[size=2xl]/avatar-group:size-20",
+        "[&>svg]:size-4 group-has-data-[size=xs]/avatar-group:[&>svg]:size-3 group-has-data-[size=sm]/avatar-group:[&>svg]:size-3 group-has-data-[size=lg]/avatar-group:[&>svg]:size-5 group-has-data-[size=xl]/avatar-group:[&>svg]:size-6 group-has-data-[size=2xl]/avatar-group:[&>svg]:size-8",
+        variant === "default" && "bg-muted text-muted-foreground",
         className
       )}
       {...props}
@@ -114,4 +150,5 @@ export {
   AvatarBadge,
   AvatarGroup,
   AvatarGroupCount,
+  avatarVariants,
 }

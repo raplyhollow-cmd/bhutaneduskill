@@ -11,7 +11,7 @@ import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
-import { subscriptions, subscriptionPlans, tenants, schools, users } from "@/lib/db/schema";
+import { subscriptions, subscriptionPlans, tenants, users } from "@/lib/db/schema";
 import { eq, desc, and, like, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
     }
     if (search) {
       conditions.push(
-        sql`${tenants.name} ILIKE ${`%${search}%`} OR ${schools.name} ILIKE ${`%${search}%`}`
+        sql`${tenants.name} ILIKE ${`%${search}%`}`
       );
     }
 
@@ -74,18 +74,15 @@ export async function GET(req: NextRequest) {
         planId: subscriptionPlans.id,
         planName: subscriptionPlans.name,
         planTier: subscriptionPlans.tier,
-        // Tenant/School info
+        // Tenant info
         tenantId: tenants.id,
         tenantName: tenants.name,
         tenantSlug: tenants.slug,
         tenantDomain: tenants.domain,
-        schoolName: schools.name,
-        schoolCode: schools.code,
       })
       .from(subscriptions)
       .leftJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
       .leftJoin(tenants, eq(subscriptions.tenantId, tenants.id))
-      .leftJoin(schools, eq(schools.tenantId, tenants.id))
       .where(whereClause)
       .orderBy(desc(subscriptions.createdAt))
       .limit(limit)
@@ -124,8 +121,7 @@ export async function GET(req: NextRequest) {
     const formattedData = subscriptionsData.map((sub) => {
       return {
         id: sub.id,
-        schoolName: sub.schoolName || sub.tenantName || "Unknown",
-        schoolCode: sub.schoolCode || undefined,
+        tenantName: sub.tenantName || "Unknown",
         tenantSlug: sub.tenantSlug,
         plan: sub.planName?.toLowerCase() || "unknown",
         status: sub.status,

@@ -302,13 +302,22 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - **shadcn/ui** - For the beautiful UI components
 - **Next.js Team** - For the amazing framework
 
+## Documentation
+
+📚 **[Complete Project Journal](docs/journal/bhutan-eduskill-complete-journal.html)** - Full project history, timeline, and technical documentation
+
+Other documentation:
+- [Documentation Index](docs/JOURNAL_INDEX.md) - Complete documentation guide
+- [CHANGELOG](CHANGELOG.md) - Version history and release notes
+- [CLAUDE.md](CLAUDE.md) - Development guidelines and coding patterns
+
 ## Support
 
 For support, questions, or suggestions:
 
 - Open an issue on GitHub
-- Contact: [Your Email]
-- Documentation: [Full Documentation Link]
+- Review the [Project Journal](docs/journal/bhutan-eduskill-complete-journal.html) for technical details
+- Check [Documentation Index](docs/JOURNAL_INDEX.md) for all available docs
 
 ## Roadmap
 

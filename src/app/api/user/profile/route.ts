@@ -9,9 +9,20 @@ import { logger } from "@/lib/logger";
 export async function GET(req: NextRequest) {
   try {
     const authResult = await requireAuth();
+
+    // Handle user not found in DB (new signup case)
     if ("error" in authResult) {
+      if (authResult.status === 404) {
+        // User exists in Clerk but not in DB - needs setup
+        return NextResponse.json({
+          profile: null,
+          needsSetup: true,
+          error: authResult.error
+        }, { status: 200 }); // Return 200 so client can handle gracefully
+      }
       return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
+
     const { user } = authResult;
 
     if (!user) {
@@ -25,7 +36,7 @@ export async function GET(req: NextRequest) {
       grade: (user as any).classGrade ? `Class ${(user as any).classGrade}` : "",
     };
 
-    return NextResponse.json({ profile: transformedProfile });
+    return NextResponse.json({ profile: transformedProfile, needsSetup: false });
   } catch (error) {
     logger.error(error, { route: "/api/user/profile", method: "GET" });
     return NextResponse.json(

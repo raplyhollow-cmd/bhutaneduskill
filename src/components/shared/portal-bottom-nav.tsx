@@ -47,7 +47,7 @@ const PortalBottomNav = React.forwardRef<HTMLDivElement, PortalBottomNavProps>(
         className={cn(
           "fixed bottom-0 left-0 right-0 z-40",
           "md:hidden", // Hidden on desktop (sidebar used instead)
-          "bg-white border-t border-gray-200",
+          "bg-ceramic-white border-t border-ceramic-border",
           "pb-[env(safe-area-inset-bottom)]", // Safe area for notched devices
           className
         )}
@@ -76,14 +76,14 @@ const PortalBottomNav = React.forwardRef<HTMLDivElement, PortalBottomNavProps>(
                   <Icon
                     className={cn(
                       "w-6 h-6 transition-all duration-200",
-                      active ? "text-orange-600 scale-110" : "text-gray-400"
+                      active ? "text-ceramic-brand scale-110" : "text-ceramic-dimmed"
                     )}
                     strokeWidth={2}
                   />
 
                   {/* Badge */}
                   {item.badge && (
-                    <span className="absolute -top-1 -right-2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 text-[10px] font-medium text-white">
+                    <span className="absolute -top-1 -right-2 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-ceramic-negative text-[10px] font-medium text-white">
                       {item.badge}
                     </span>
                   )}
@@ -93,7 +93,7 @@ const PortalBottomNav = React.forwardRef<HTMLDivElement, PortalBottomNavProps>(
                 <span
                   className={cn(
                     "text-[11px] font-medium mt-1 transition-colors duration-200",
-                    active ? "text-orange-600" : "text-gray-500"
+                    active ? "text-ceramic-brand" : "text-ceramic-secondary"
                   )}
                 >
                   {item.label}
@@ -101,7 +101,7 @@ const PortalBottomNav = React.forwardRef<HTMLDivElement, PortalBottomNavProps>(
 
                 {/* Active indicator */}
                 {active && (
-                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-0.5 bg-orange-600 rounded-full" />
+                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-0.5 bg-ceramic-brand rounded-full" />
                 )}
               </Link>
             );
@@ -231,8 +231,8 @@ export function MoreMenu({ items, trigger }: MoreMenuProps) {
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-inset"
         )}
       >
-        <MoreHorizontal className="w-6 h-6 text-gray-400" strokeWidth={2} />
-        <span className="text-[11px] font-medium mt-1 text-gray-500">More</span>
+        <MoreHorizontal className="w-6 h-6 text-ceramic-dimmed" strokeWidth={2} />
+        <span className="text-[11px] font-medium mt-1 text-ceramic-secondary">More</span>
       </button>
 
       {isOpen && (
@@ -244,7 +244,7 @@ export function MoreMenu({ items, trigger }: MoreMenuProps) {
           />
 
           {/* Menu */}
-          <div className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-t-2xl border border-gray-200 shadow-lg overflow-hidden z-50">
+          <div className="absolute bottom-full left-0 right-0 mb-2 bg-ceramic-white rounded-t-2xl border border-ceramic-border shadow-lg overflow-hidden z-50">
             <div className="p-4 space-y-2">
               {items.map((item, index) => {
                 const Icon = item.icon;
@@ -253,12 +253,12 @@ export function MoreMenu({ items, trigger }: MoreMenuProps) {
                     key={index}
                     href={item.href}
                     onClick={() => setIsOpen(false)}
-                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-ceramic-gray-50 transition-colors"
                   >
-                    <Icon className="w-5 h-5 text-gray-400" strokeWidth={2} />
-                    <span className="font-medium text-gray-700">{item.label}</span>
+                    <Icon className="w-5 h-5 text-ceramic-dimmed" strokeWidth={2} />
+                    <span className="font-medium text-ceramic-primary">{item.label}</span>
                     {item.badge && (
-                      <span className="ml-auto h-5 min-w-[20px] px-1.5 flex items-center justify-center rounded-full bg-orange-100 text-orange-700 text-xs font-medium">
+                      <span className="ml-auto h-5 min-w-[20px] px-1.5 flex items-center justify-center rounded-full bg-ceramic-brand/10 text-ceramic-brand text-xs font-medium">
                         {item.badge}
                       </span>
                     )}

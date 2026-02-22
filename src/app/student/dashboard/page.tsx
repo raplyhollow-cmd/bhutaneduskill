@@ -18,6 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { CeramicCallout } from "@/components/ui/ceramic-callout";
 import {
   ClipboardCheck,
   Briefcase,
@@ -36,6 +37,9 @@ import { fetchStudentDashboard } from "../_actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StudentAIInsights } from "./ai-insights-wrapper";
 import { AssessmentProfileCard } from "@/components/student/assessment-profile-card";
+import { AICareerCoachWidget } from "@/components/student/ai-career-coach-widget";
+import { RoadmapTracker } from "@/components/student/roadmap-tracker";
+import { MarksOverviewCard } from "@/components/student/marks-overview-card";
 import type { StudentDashboardData } from "@/lib/api/student";
 
 // Force dynamic rendering - this page uses server actions that require headers
@@ -93,15 +97,15 @@ function calculateXP(
   return { xp: totalXP, level, progress };
 }
 
-// Get urgency badge style
-function getUrgencyBadge(urgency: "high" | "medium" | "low") {
+// Get urgency badge style - ceramic variants
+function getUrgencyBadge(urgency: "high" | "medium" | "low"): "ceramic-error" | "ceramic-warning" | "ceramic-default" {
   switch (urgency) {
     case "high":
-      return "bg-red-100 text-red-700";
+      return "ceramic-error";
     case "medium":
-      return "bg-yellow-100 text-yellow-700";
+      return "ceramic-warning";
     case "low":
-      return "bg-gray-100 text-gray-600";
+      return "ceramic-default";
   }
 }
 
@@ -155,16 +159,16 @@ export default function StudentDashboardPage() {
 
   if (error || !dashboardData) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Card className="max-w-md mx-4">
+      <div className="min-h-screen flex items-center justify-center bg-ceramic-bg">
+        <Card variant="ceramic" className="max-w-md mx-4">
           <CardHeader>
-            <CardTitle className="text-red-600">Dashboard Error</CardTitle>
+            <CardTitle className="text-ceramic-negative">Dashboard Error</CardTitle>
             <CardDescription>
               There was a problem loading your dashboard. Please try refreshing the page.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button asChild>
+            <Button variant="ceramic" asChild>
               <Link href="/student">Reload Page</Link>
             </Button>
           </CardContent>
@@ -286,30 +290,28 @@ export default function StudentDashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Pending Enrollment Banner */}
+      {/* Pending Enrollment Banner - Ceramic Styled */}
       {dashboardData.onboardingStatus === "pending_enrollment" && (
-        <Card className="bg-amber-50 border-amber-200">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-2 bg-amber-100 rounded-full">
-                <Clock className="h-6 w-6 text-amber-600" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-amber-900 mb-1">Enrollment Pending</h3>
-                <p className="text-amber-700 text-sm">
-                  Your application is being reviewed by the school administration.
-                  You will be notified once enrolled. In the meantime, you can take
-                  assessments and explore career options.
-                </p>
-              </div>
-              <div className="hidden md:block">
-                <Badge className="bg-amber-200 text-amber-900">
-                  Awaiting Approval
-                </Badge>
-              </div>
+        <CeramicCallout variant="ceramic-warning">
+          <div className="flex items-center gap-4">
+            <div className="p-2 bg-ceramic-orange-100 rounded-full">
+              <Clock className="h-6 w-6 text-ceramic-orange-600" />
             </div>
-          </CardContent>
-        </Card>
+            <div className="flex-1">
+              <h3 className="font-semibold text-ceramic-primary mb-1">Enrollment Pending</h3>
+              <p className="text-ceramic-secondary text-sm">
+                Your application is being reviewed by the school administration.
+                You will be notified once enrolled. In the meantime, you can take
+                assessments and explore career options.
+              </p>
+            </div>
+            <div className="hidden md:block">
+              <Badge variant="ceramic-warning">
+                Awaiting Approval
+              </Badge>
+            </div>
+          </div>
+        </CeramicCallout>
       )}
 
       {/* AI Insights Section - Dynamic from API */}
@@ -323,91 +325,105 @@ export default function StudentDashboardPage() {
         }}
       />
 
-      {/* Quick Stats */}
-      <div className="grid md:grid-cols-4 gap-6">
-        {/* Assessments Completed */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <ClipboardCheck className="w-4 h-4" />
-              Assessments
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{assessments.completed}/5</div>
-            <p className="text-xs text-gray-500 mt-1">Career assessments</p>
-            {assessments.completed < 5 && (
-              <Link href="/student/assessment" className="text-xs text-orange-600 hover:underline mt-2 inline-block">
-                Complete more →
-              </Link>
-            )}
-          </CardContent>
-        </Card>
+      {/* NEW: Row 1 - AI Career Coach + Quick Stats */}
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* AI Career Coach Widget */}
+        <div className="lg:col-span-1">
+          <AICareerCoachWidget />
+        </div>
 
-        {/* Career Matches */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <Briefcase className="w-4 h-4" />
-              Career Matches
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{careerMatches.totalMatches}</div>
-            <p className="text-xs text-gray-500 mt-1">
-              {careerMatches.topMatches > 0 ? `${careerMatches.topMatches} top matches` : "Based on your profile"}
-            </p>
-            {careerMatches.totalMatches > 0 && (
-              <Link href="/student/careers" className="text-xs text-orange-600 hover:underline mt-2 inline-block">
-                View careers →
-              </Link>
-            )}
-          </CardContent>
-        </Card>
+        {/* Quick Stats - Ceramic Styled */}
+        <div className="lg:col-span-2 grid md:grid-cols-4 gap-6">
+          {/* Assessments Completed */}
+          <Card variant="ceramic">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-ceramic-secondary flex items-center gap-2">
+                <ClipboardCheck className="w-4 h-4" />
+                Assessments
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-ceramic-primary">{assessments.completed}/5</div>
+              <p className="text-xs text-ceramic-dimmed mt-1">Career assessments</p>
+              {assessments.completed < 5 && (
+                <Link href="/student/assessment" className="text-xs text-orange-600 hover:underline mt-2 inline-block">
+                  Complete more →
+                </Link>
+              )}
+            </CardContent>
+          </Card>
 
-        {/* Goals Set */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <Target className="w-4 h-4" />
-              Active Goals
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{assessments.completed >= 1 ? "3" : "0"}</div>
-            <p className="text-xs text-gray-500 mt-1">
-              {assessments.completed >= 1 ? "Short-term goals set" : "Complete assessment first"}
-            </p>
-            {assessments.completed >= 1 && (
-              <Link href="/student/plan" className="text-xs text-orange-600 hover:underline mt-2 inline-block">
-                Update goals →
-              </Link>
-            )}
-          </CardContent>
-        </Card>
+          {/* Career Matches */}
+          <Card variant="ceramic">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-ceramic-secondary flex items-center gap-2">
+                <Briefcase className="w-4 h-4" />
+                Career Matches
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-ceramic-primary">{careerMatches.totalMatches}</div>
+              <p className="text-xs text-ceramic-dimmed mt-1">
+                {careerMatches.topMatches > 0 ? `${careerMatches.topMatches} top matches` : "Based on your profile"}
+              </p>
+              {careerMatches.totalMatches > 0 && (
+                <Link href="/student/careers" className="text-xs text-orange-600 hover:underline mt-2 inline-block">
+                  View careers →
+                </Link>
+              )}
+            </CardContent>
+          </Card>
 
-        {/* XP & Level */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4" />
-              Your Progress
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-end gap-2">
-              <div className="text-2xl font-bold text-gray-900">Level {level}</div>
-              <div className="text-sm text-gray-500 mb-1">{xp} XP</div>
-            </div>
-            <Progress value={xpProgress} className="h-2 mt-2" />
-            <p className="text-xs text-gray-500 mt-1">{xpProgress}% to Level {level + 1}</p>
-          </CardContent>
-        </Card>
+          {/* Goals Set */}
+          <Card variant="ceramic">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-ceramic-secondary flex items-center gap-2">
+                <Target className="w-4 h-4" />
+                Active Goals
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-ceramic-primary">{assessments.completed >= 1 ? "3" : "0"}</div>
+              <p className="text-xs text-ceramic-dimmed mt-1">
+                {assessments.completed >= 1 ? "Short-term goals set" : "Complete assessment first"}
+              </p>
+              {assessments.completed >= 1 && (
+                <Link href="/student/plan" className="text-xs text-orange-600 hover:underline mt-2 inline-block">
+                  Update goals →
+                </Link>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* XP & Level */}
+          <Card variant="ceramic">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium text-ceramic-secondary flex items-center gap-2">
+                <TrendingUp className="w-4 h-4" />
+                Your Progress
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-end gap-2">
+                <div className="text-2xl font-bold text-ceramic-primary">Level {level}</div>
+                <div className="text-sm text-ceramic-dimmed mb-1">{xp} XP</div>
+              </div>
+              <Progress value={xpProgress} className="h-2 mt-2" />
+              <p className="text-xs text-ceramic-dimmed mt-1">{xpProgress}% to Level {level + 1}</p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
-      {/* Recommended Next Steps */}
+      {/* NEW: Row 2 - Roadmap Tracker + Marks Overview */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        <RoadmapTracker />
+        <MarksOverviewCard />
+      </div>
+
+      {/* Recommended Next Steps - Ceramic Styled */}
       {recommendedActions.length > 0 && (
-        <Card>
+        <Card variant="ceramic">
           <CardHeader>
             <CardTitle>Recommended for You</CardTitle>
             <CardDescription>Personalized next steps based on your progress</CardDescription>
@@ -416,20 +432,22 @@ export default function StudentDashboardPage() {
             <div className="space-y-3">
               {recommendedActions.slice(0, 4).map((action) => (
                 <Link key={action.id} href={action.link}>
-                  <div className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:border-orange-300 hover:bg-orange-50/50 transition-colors cursor-pointer group">
+                  <div className="flex items-center justify-between p-4 rounded-lg border border-ceramic-border hover:border-ceramic-orange-300 hover:bg-ceramic-orange-50/50 transition-colors cursor-pointer group">
                     <div className="flex items-center gap-4">
                       <div className={`w-10 h-10 rounded-full ${action.iconBg} flex items-center justify-center`}>
                         <action.icon className={`w-5 h-5 ${action.iconColor}`} />
                       </div>
                       <div>
-                        <div className="font-medium text-gray-900 flex items-center gap-2">
+                        <div className="font-medium text-ceramic-primary flex items-center gap-2">
                           {action.title}
-                          <Badge className={action.badgeColor}>{action.badge}</Badge>
+                          <Badge variant={action.badgeColor.includes("orange") ? "ceramic-warning" : action.badgeColor.includes("blue") ? "ceramic-info" : action.badgeColor.includes("purple") ? "ceramic" : "ceramic-default"}>
+                            {action.badge}
+                          </Badge>
                         </div>
-                        <div className="text-sm text-gray-500">{action.description}</div>
+                        <div className="text-sm text-ceramic-secondary">{action.description}</div>
                       </div>
                     </div>
-                    <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-orange-600 transition-colors" />
+                    <ArrowRight className="w-5 h-5 text-ceramic-dimmed group-hover:text-orange-600 transition-colors" />
                   </div>
                 </Link>
               ))}
@@ -443,9 +461,9 @@ export default function StudentDashboardPage() {
         <AssessmentProfileCard />
       )}
 
-      {/* Upcoming Deadlines */}
+      {/* Upcoming Deadlines - Ceramic Styled */}
       {deadlines.length > 0 && (
-        <Card>
+        <Card variant="ceramic">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="w-5 h-5" />
@@ -455,24 +473,24 @@ export default function StudentDashboardPage() {
           <CardContent>
             <div className="space-y-3">
               {deadlines.slice(0, 5).map((deadline) => (
-                <div key={deadline.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50">
+                <div key={deadline.id} className="flex items-center justify-between p-3 rounded-lg bg-ceramic-gray-50 dark:bg-ceramic-gray-800">
                   <div className="flex items-center gap-3">
                     <div className={`w-2 h-2 rounded-full ${
-                      deadline.urgency === "high" ? "bg-red-500" :
-                      deadline.urgency === "medium" ? "bg-yellow-500" :
-                      "bg-green-500"
+                      deadline.urgency === "high" ? "bg-ceramic-negative" :
+                      deadline.urgency === "medium" ? "bg-ceramic-warning" :
+                      "bg-ceramic-positive"
                     }`} />
                     <div>
-                      <div className="font-medium text-gray-900">{deadline.title}</div>
-                      <div className="text-sm text-gray-500">{deadline.type}</div>
+                      <div className="font-medium text-ceramic-primary">{deadline.title}</div>
+                      <div className="text-sm text-ceramic-secondary">{deadline.type}</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Badge className={getUrgencyBadge(deadline.urgency)}>
+                    <Badge variant={getUrgencyBadge(deadline.urgency)}>
                       {deadline.urgency === "high" ? "Due Soon" :
                        deadline.urgency === "medium" ? "This Week" : "Upcoming"}
                     </Badge>
-                    <div className="text-sm text-gray-600 flex items-center gap-1">
+                    <div className="text-sm text-ceramic-secondary flex items-center gap-1">
                       <Clock className="w-3 h-3" />
                       {formatRelativeDate(deadline.dueDate)}
                     </div>
@@ -484,9 +502,9 @@ export default function StudentDashboardPage() {
         </Card>
       )}
 
-      {/* Recent Achievements */}
+      {/* Recent Achievements - Ceramic Styled */}
       {achievements.length > 0 && (
-        <Card>
+        <Card variant="ceramic">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CheckCircle2 className="w-5 h-5" />
@@ -496,25 +514,25 @@ export default function StudentDashboardPage() {
           <CardContent>
             <div className="grid md:grid-cols-2 gap-3">
               {achievements.slice(0, 6).map((achievement) => (
-                <div key={achievement.id} className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-100">
+                <div key={achievement.id} className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-orange-50 to-amber-50 border border-ceramic-orange-200">
                   <div className={`w-10 h-10 rounded-full ${
-                    achievement.type === "assessment" ? "bg-purple-100" :
-                    achievement.type === "module" ? "bg-green-100" :
-                    "bg-blue-100"
+                    achievement.type === "assessment" ? "bg-ceramic-purple-100" :
+                    achievement.type === "module" ? "bg-ceramic-green-100" :
+                    "bg-ceramic-blue-100"
                   } flex items-center justify-center`}>
                     {achievement.type === "assessment" ? (
-                      <ClipboardCheck className="w-5 h-5 text-purple-600" />
+                      <ClipboardCheck className="w-5 h-5 text-ceramic-brand" />
                     ) : achievement.type === "module" ? (
-                      <BookOpen className="w-5 h-5 text-green-600" />
+                      <BookOpen className="w-5 h-5 text-ceramic-positive" />
                     ) : (
-                      <TrendingUp className="w-5 h-5 text-blue-600" />
+                      <TrendingUp className="w-5 h-5 text-ceramic-blue-600" />
                     )}
                   </div>
                   <div className="flex-1">
-                    <div className="font-medium text-gray-900">{achievement.title}</div>
-                    <div className="text-xs text-gray-500">{formatRelativeDate(achievement.date)}</div>
+                    <div className="font-medium text-ceramic-primary">{achievement.title}</div>
+                    <div className="text-xs text-ceramic-dimmed">{formatRelativeDate(achievement.date)}</div>
                   </div>
-                  <Badge className="bg-orange-100 text-orange-700">
+                  <Badge variant="ceramic-default">
                     {achievement.type === "assessment" ? "+50 XP" :
                      achievement.type === "module" ? "+100 XP" : "+25 XP"}
                   </Badge>

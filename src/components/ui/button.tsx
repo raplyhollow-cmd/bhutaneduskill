@@ -21,6 +21,14 @@ const buttonVariants = cva(
         ghost:
           "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        // Ceramic design system variants
+        ceramic: "[background-color:var(--ceramic-brand)] [color:var(--ceramic-white)] border-transparent hover:opacity-90 hover:shadow-md active:scale-[0.98]",
+        "ceramic-outline": "[border-color:var(--border-color-primary)] [background-color:transparent] [color:var(--ceramic-primary)] hover:[background-color:var(--ceramic-gray-100)]",
+        "ceramic-ghost": "[background-color:transparent] [color:var(--ceramic-secondary)] hover:[background-color:var(--ceramic-gray-100)] hover:[color:var(--ceramic-primary)]",
+        "ceramic-success": "[background-color:var(--ceramic-green-600)] [color:var(--ceramic-white)] hover:opacity-90",
+        "ceramic-error": "[background-color:var(--ceramic-red-600)] [color:var(--ceramic-white)] hover:opacity-90",
+        "ceramic-warning": "[background-color:var(--ceramic-orange-600)] [color:var(--ceramic-white)] hover:opacity-90",
+        "ceramic-info": "[background-color:var(--ceramic-blue-600)] [color:var(--ceramic-white)] hover:opacity-90",
       },
       size: {
         default: "h-11 px-5 py-2.5 has-[>svg]:px-4",

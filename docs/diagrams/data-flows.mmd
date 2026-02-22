@@ -1,0 +1,495 @@
+# Bhutan EduSkill - Data Flow Diagrams
+
+**Last Updated:** February 22, 2026
+
+---
+
+## 1. Student Registration & Setup Flow
+
+```mermaid
+flowchart TD
+    A[User Accesses /signup] --> B{Selects Student Role}
+    B --> C[Clerk Authentication<br/>Google/Email]
+    C --> D[Redirect to /dashboard]
+    D --> E[GET /api/auth/set-role]
+    E --> F{needsSetup?}
+    F -->|true| G[Redirect to /setup/unified]
+    F -->|false| H[Access Student Portal]
+
+    G --> I[3-Step Setup Wizard]
+    I --> J[Step 1: Personal Info]
+    J --> K[Step 2: Class Selection]
+    K --> L[Step 3: Learning Preferences]
+
+    L --> M[POST /api/setup/student]
+    M --> N{User exists in DB?}
+    N -->|No| O[Create users record]
+    N -->|Yes| P[Update users record]
+
+    O --> Q[Create students record]
+    P --> Q
+    Q --> R[Set onboardingComplete: true]
+    R --> S[Redirect to /student/dashboard]
+
+    style A fill:#e1f5ff
+    style C fill:#fef3c7
+    style O fill:#d4edda
+    style Q fill:#d4edda
+    style S fill:#c3e6cb
+```
+
+**API Endpoint:** `POST /api/setup/student`
+
+**Database Tables:**
+1. `users` - Create or update user record
+2. `students` - Create student-specific record
+3. `classes` - Link student to class
+4. `schools` - Link student to school
+
+**Request Body:**
+```typescript
+{
+  firstName: string,
+  lastName: string,
+  email: string,
+  phone: string,
+  dateOfBirth: string,
+  grade: number,
+  section: string,
+  interests: string[],
+  goals: string[]
+}
+```
+
+---
+
+## 2. School Admin Application & Approval Flow
+
+```mermaid
+flowchart TD
+    A[User Signs Up as School Admin] --> B[POST /api/setup/school-admin]
+    B --> C[Create users record]
+    C --> D[Create school_admin_applications<br/>status: pending_approval]
+    D --> E[Redirect to /pending-approval]
+
+    E --> F{Platform Admin Action}
+    F --> G[GET /api/admin/school-admin-applications]
+    G --> H[View All Applications]
+
+    H --> I{Review Decision}
+    I -->|Approve| J[POST /api/admin/school-admin-applications/:id/approve]
+    I -->|Reject| K[POST /api/admin/school-admin-applications/:id/reject]
+
+    J --> L[Verify Payment]
+    L --> M[Update application status: approved]
+    M --> N[Update users.type: school-admin]
+    N --> O[INSERT into user_roles<br/>role: school-admin]
+    O --> P[Link users.schoolId]
+    P --> Q[Send Approval Email]
+
+    Q --> R[User Can Access<br/>/school-admin]
+
+    K --> S[Update application status: rejected]
+    S --> T[Send Rejection Email]
+
+    style A fill:#e1f5ff
+    style D fill:#fff3cd
+    style J fill:#d4edda
+    style M fill:#d4edda
+    style N fill:#d4edda
+    style O fill:#d4edda
+    style S fill:#f8d7da
+```
+
+**API Endpoints:**
+- `POST /api/setup/school-admin` - Submit application
+- `GET /api/admin/school-admin-applications` - List applications
+- `POST /api/admin/school-admin-applications/:id/approve` - Approve
+- `POST /api/admin/school-admin-applications/:id/reject` - Reject
+
+**Database Tables:**
+1. `users` - User record
+2. `school_admin_applications` - Application tracking
+3. `user_roles` - Role assignment
+4. `schools` - School linkage
+
+---
+
+## 3. Career Matching Flow (Assessment → AI → Career)
+
+```mermaid
+flowchart TD
+    A[Student Takes Assessment] --> B[POST /api/student/assessments]
+    B --> C[Store assessment_results<br/>RIASEC/MBTI/DISC]
+
+    C --> D[AI Career Matching Engine]
+    D --> E[Fetch Student Data]
+    E --> F[Get assessment scores]
+    E --> G[Get academic performance]
+    E --> H[Get interests & goals]
+
+    F --> I[Compare with Career Database]
+    G --> I
+    H --> I
+
+    I --> J[Calculate Match Scores]
+    J --> K[Sort by relevance]
+    K --> L[Return Top 10 Careers]
+
+    L --> M[Store in career_matches]
+    M --> N[Display on /student/careers]
+
+    N --> O{Student Interacts}
+    O -->|Save Career| P[POST /api/saved-careers]
+    O -->|Ask AI| Q[POST /api/ai/career]
+
+    Q --> R[AI Career Coach]
+    R --> S[Context: Bhutan-specific]
+    R --> T[RUB Colleges Data]
+    R --> U[BCSE Requirements]
+    R --> V[Career Guidance]
+
+    style A fill:#ff9966
+    style C fill:#ffd9b3
+    style J fill:#d4edda
+    style L fill:#d4edda
+    style R fill:#e8f5e9
+    style V fill:#c3e6cb
+```
+
+**API Endpoints:**
+- `POST /api/student/assessments` - Submit assessment
+- `GET /api/student/careers` - Get career matches
+- `POST /api/ai/career` - AI career advice
+- `POST /api/saved-careers` - Save career
+
+**Database Tables:**
+1. `assessments` - Assessment definitions
+2. `assessment_results` - Student scores
+3. `riasec_results` - RIASEC specific
+4. `mbti_results` - MBTI specific
+5. `disc_results` - DISC specific
+6. `career_matches` - Match results
+7. `careers` - Career catalog
+8. `rub_colleges` - College data
+9. `ai_interactions` - AI chat logs
+
+---
+
+## 4. Seat Capacity Enforcement Flow
+
+```mermaid
+flowchart TD
+    A[School Admin Action] --> B{Operation Type}
+    B -->|Add Student| C[Check Capacity]
+    B -->|Bulk Import| D[Check Capacity x N]
+    B -->|Upgrade Tier| E[Update Limits]
+
+    C --> F[GET /api/school-admin/capacity]
+    F --> G[Return current usage]
+    G --> H{Capacity Available?}
+
+    H -->|Yes| I[Proceed with operation]
+    H -->|No| J[Return 409 Error<br/>Seat limit exceeded]
+
+    D --> K[Calculate total students]
+    K --> L{Total <= maxStudents?}
+
+    L -->|Yes| M[Proceed with import]
+    L -->|No| N[Return 409 Error<br/>Would exceed limit]
+
+    E --> O[Update schools.subscriptionTier]
+    O --> P[Update schools.maxStudents]
+    P --> Q[New capacity active]
+
+    I --> R[Create student record]
+    M --> S[Bulk create students]
+
+    R --> T[Increment usage count]
+    S --> T
+
+    style C fill:#fef3c7
+    style J fill:#f8d7da
+    style M fill:#d4edda
+    style N fill:#f8d7da
+    style R fill:#d4edda
+    style T fill:#c3e6cb
+```
+
+**API Endpoints:**
+- `GET /api/school-admin/capacity` - Check capacity
+- `POST /api/school-admin/students` - Add student (with check)
+- `POST /api/school-admin/students/bulk-import` - Bulk import (with check)
+- `PATCH /api/admin/schools/[id]/tier` - Upgrade tier
+
+**Capacity Limits by Tier:**
+| Tier | Max Students |
+|------|--------------|
+| Free | 50 |
+| Basic | 100 |
+| Standard | 500 |
+| Premium | 1000 |
+| Enterprise | 10000 |
+
+---
+
+## 5. Invoice & Billing Cycle Flow
+
+```mermaid
+flowchart TD
+    A[Monthly Billing Cycle] --> B[POST /api/admin/billing/generate-invoices]
+    B --> C[For each active school]
+    C --> D[Get subscription tier]
+    D --> E[Calculate amount<br/>Based on tier & usage]
+
+    E --> F[CREATE invoice record<br/>status: draft]
+    F --> G[Send invoice email]
+    G --> H[Update invoice.status: pending]
+
+    H --> I{School Payment}
+    I -->|Pay Online| J[POST /api/billing/invoices/:id/pay]
+    I -->|Bank Transfer| K[Admin verifies]
+
+    J --> L[Payment Gateway]
+    L --> M[Update payment records]
+    M --> N[Update invoice.status: paid]
+
+    K --> O[POST /api/admin/schools/:id/invoices/:id/record-payment]
+    O --> N
+
+    N --> P[GET /api/admin/stats<br/>Revenue updated]
+
+    style A fill:#ec4899
+    style F fill:#ffd9b3
+    style L fill:#d4edda
+    style N fill:#c3e6cb
+    style P fill:#e8f5e9
+```
+
+**API Endpoints:**
+- `POST /api/admin/billing/generate-invoices` - Generate invoices
+- `GET /api/billing/invoices` - List invoices
+- `GET /api/billing/invoices/:id` - Get invoice
+- `POST /api/billing/invoices/:id/pay` - Pay invoice
+- `POST /api/admin/schools/:id/invoices/:id/record-payment` - Record payment
+- `GET /api/admin/stats` - Revenue stats
+
+**Database Tables:**
+1. `invoices` - Invoice records
+2. `payment_transactions` - Payment records
+3. `subscriptions` - Active subscriptions
+4. `schools` - School billing info
+5. `subscription_plans` - Plan pricing
+
+---
+
+## 6. Library Book Circulation Flow
+
+```mermaid
+flowchart TD
+    A[Student/Teacher] --> B[GET /api/library/books]
+    B --> C[View available books]
+
+    C --> D{Request to Borrow}
+    D --> E[POST /api/library/issue]
+
+    E --> F[Check: available_copies > 0?]
+    F -->|No| G[Return error: Unavailable]
+    F -->|Yes| H[CREATE circulation record<br/>status: issued]
+
+    H --> I[Decrement books.available_copies]
+    I --> J[Increment books.currently_borrowed]
+    J --> K[Set dueDate = today + 14 days]
+
+    K --> L[Book issued successfully]
+
+    L --> M{Student Returns Book}
+    M --> N[POST /api/library/issue/:id/return]
+
+    N --> O[Update circulation.status: returned]
+    O --> P[Set returnDate]
+    P --> Q[Increment books.available_copies]
+
+    Q --> R{Overdue?}
+    R -->|Yes| S[Calculate fine]
+    R -->|No| T[No fine]
+
+    S --> U[CREATE fine_payment record]
+    T --> V[Return complete]
+    U --> V
+
+    style A fill:#8b5cf6
+    style H fill:#d4edda
+    style L fill:#c3e6cb
+    style O fill:#d4edda
+    style S fill:#fff3cd
+    style V fill:#c3e6cb
+```
+
+**API Endpoints:**
+- `GET /api/library/books` - List books
+- `POST /api/library/issue` - Issue book
+- `POST /api/library/issue/:id/return` - Return book
+- `POST /api/library/fines` - Pay fine
+- `GET /api/library/members` - List members
+
+**Database Tables:**
+1. `books` - Book catalog
+2. `circulation` - Checkout tracking
+3. `library_members` - Member records
+4. `fine_payments` - Fine payments
+5. `reservations` - Book holds
+
+---
+
+## 7. Hostel Allocation Flow
+
+```mermaid
+flowchart TD
+    A[School Admin] --> B[POST /api/school-admin/hostels/allocate]
+    B --> C{Request Type}
+    C -->|Allocate| D[Validate room capacity]
+    C -->|Deallocate| E[Remove allocation]
+
+    D --> F{Room has space?}
+    F -->|No| G[Return error: Room full]
+    F -->|Yes| H[Check existing allocation]
+
+    H --> I{Already allocated?}
+    I -->|Yes| J[Free previous allocation]
+    I -->|No| K[Skip]
+
+    J --> L[CREATE hostel_allocation<br/>roomId, studentId]
+    K --> L
+
+    L --> M[Update room occupancy]
+    M --> N[Allocation successful]
+
+    E --> O[DELETE hostel_allocation]
+    O --> P[Update room occupancy]
+    P --> Q[Deallocate successful]
+
+    style A fill:#8b5cf6
+    style L fill:#d4edda
+    style N fill:#c3e6cb
+    style O fill:#ffd9b3
+    style Q fill:#c3e6cb
+```
+
+**API Endpoints:**
+- `GET /api/school-admin/hostels/allocate` - Get occupancy
+- `POST /api/school-admin/hostels/allocate` - Allocate student
+- `DELETE /api/school-admin/hostels/allocate?studentId=X` - Deallocate
+
+**Database Tables:**
+1. `hostel_buildings` - Buildings
+2. `hostel_rooms` - Rooms with capacity
+3. `hostel_allocations` - Student assignments
+4. `users` - Student records
+
+---
+
+## Data Flow Architecture
+
+```mermaid
+graph LR
+    subgraph "Frontend"
+        UI[React Components]
+    end
+
+    subgraph "API Layer"
+        ROUTE[API Routes<br/>src/app/api/*/route.ts]
+    end
+
+    subgraph "Business Logic"
+        AUTH[requireAuth<br/>Permission checks]
+        LOGIC[Business Logic<br/>Validation, processing]
+    end
+
+    subgraph "Data Layer"
+        ORM[Drizzle ORM]
+        DB[(PostgreSQL)]
+    end
+
+    subgraph "External Services"
+        CLERK[Clerk Auth]
+        AI[AI/LLM Service]
+        PAYMENT[Payment Gateway]
+    end
+
+    UI --> ROUTE
+    ROUTE --> AUTH
+    AUTH --> LOGIC
+    LOGIC --> ORM
+    ORM --> DB
+
+    AUTH --> CLERK
+    LOGIC --> AI
+    LOGIC --> PAYMENT
+
+    style UI fill:#e1f5ff
+    style ROUTE fill:#fef3c7
+    style AUTH fill:#ffd9b3
+    style LOGIC fill:#d4edda
+    style ORM fill:#c3e6cb
+    style DB fill:#a7f3d0
+```
+
+---
+
+## Request-Response Flow Pattern
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant UI as React Frontend
+    participant API as API Route
+    participant Auth as requireAuth()
+    participant DB as PostgreSQL
+
+    User->>UI: Click button
+    UI->>API: POST /api/endpoint
+
+    API->>Auth: requireAuth(['role'])
+    Auth->>DB: SELECT * FROM users WHERE clerkUserId = ?
+    DB-->>Auth: User data
+    Auth-->>API: { userId, user }
+
+    API->>DB: Execute query
+    DB-->>API: Result data
+
+    API->>API: Process data
+    API->>DB: INSERT/UPDATE/DELETE
+
+    DB-->>API: Success
+    API-->>UI: { success: true, data }
+    UI-->>User: Show success message
+```
+
+---
+
+## Error Handling Flow
+
+```mermaid
+flowchart TD
+    A[API Request] --> B[try block]
+    B --> C{requireAuth check}
+    C -->|Failed| D[Return 401 Unauthorized]
+    C -->|Success| E{requirePermission check}
+
+    E -->|Failed| F[Return 403 Forbidden]
+    E -->|Success| G[Execute logic]
+
+    G --> H{Database query}
+    H -->|Error| I[logger.apiError]
+    H -->|Success| J[logger.info]
+
+    I --> K[Return 500 with error]
+    J --> L[Return 200 with data]
+
+    style D fill:#f8d7da
+    style F fill:#f8d7da
+    style I fill:#fff3cd
+    style K fill:#f8d7da
+    style L fill:#d4edda
+```

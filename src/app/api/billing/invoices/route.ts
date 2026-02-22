@@ -11,7 +11,7 @@ import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
-import { invoices, subscriptions, subscriptionPlans, tenants, schools } from "@/lib/db/schema";
+import { invoices, schools } from "@/lib/db/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
@@ -25,7 +25,8 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
-    const subscriptionId = searchParams.get("subscriptionId");
+    const schoolId = searchParams.get("schoolId");
+    const subscriptionTier = searchParams.get("subscriptionTier");
     const stats = searchParams.get("stats") === "true";
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "50");
@@ -36,25 +37,50 @@ export async function GET(req: NextRequest) {
       const invoiceStats = await db
         .select({
           totalCount: sql<number>`COUNT(*)`,
-          pendingCount: sql<number>`COUNT(*) FILTER (WHERE ${invoices.status} = 'pending')`,
+          sentCount: sql<number>`COUNT(*) FILTER (WHERE ${invoices.status} = 'sent')`,
+          draftCount: sql<number>`COUNT(*) FILTER (WHERE ${invoices.status} = 'draft')`,
           paidCount: sql<number>`COUNT(*) FILTER (WHERE ${invoices.status} = 'paid')`,
           overdueCount: sql<number>`COUNT(*) FILTER (WHERE ${invoices.status} = 'overdue')`,
-          totalAmount: sql<number>`COALESCE(SUM(${invoices.totalAmount}), 0)`,
-          pendingAmount: sql<number>`COALESCE(SUM(${invoices.totalAmount}) FILTER (WHERE ${invoices.status} = 'pending'), 0)`,
-          paidAmount: sql<number>`COALESCE(SUM(${invoices.totalAmount}) FILTER (WHERE ${invoices.status} = 'paid'), 0)`,
         })
         .from(invoices);
+
+      // Sum amounts manually due to decimal type
+      const allInvoices = await db
+        .select({
+          status: invoices.status,
+          totalAmount: invoices.totalAmount,
+          refundAmount: invoices.refundAmount,
+        })
+        .from(invoices);
+
+      let totalAmount = 0;
+      let pendingAmount = 0;
+      let paidAmount = 0;
+
+      for (const inv of allInvoices) {
+        const amt = parseFloat(inv.totalAmount);
+        const refund = inv.refundAmount ? parseFloat(inv.refundAmount) : 0;
+        const netAmount = amt - refund;
+        totalAmount += netAmount;
+
+        if (inv.status === "sent" || inv.status === "draft") {
+          pendingAmount += netAmount;
+        }
+        if (inv.status === "paid") {
+          paidAmount += netAmount;
+        }
+      }
 
       return NextResponse.json({
         success: true,
         data: {
           totalCount: invoiceStats[0]?.totalCount || 0,
-          pendingCount: invoiceStats[0]?.pendingCount || 0,
+          pendingCount: (invoiceStats[0]?.sentCount || 0) + (invoiceStats[0]?.draftCount || 0),
           paidCount: invoiceStats[0]?.paidCount || 0,
           overdueCount: invoiceStats[0]?.overdueCount || 0,
-          totalAmount: invoiceStats[0]?.totalAmount || 0,
-          pendingAmount: invoiceStats[0]?.pendingAmount || 0,
-          paidAmount: invoiceStats[0]?.paidAmount || 0,
+          totalAmount,
+          pendingAmount,
+          paidAmount,
         },
       });
     }
@@ -65,8 +91,11 @@ export async function GET(req: NextRequest) {
     if (status) {
       conditions.push(eq(invoices.status, status));
     }
-    if (subscriptionId) {
-      conditions.push(eq(invoices.subscriptionId, subscriptionId));
+    if (schoolId) {
+      conditions.push(eq(invoices.schoolId, schoolId));
+    }
+    if (subscriptionTier) {
+      conditions.push(eq(invoices.subscriptionTier, subscriptionTier));
     }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -86,22 +115,15 @@ export async function GET(req: NextRequest) {
         currency: invoices.currency,
         status: invoices.status,
         paymentMethod: invoices.paymentMethod,
+        paymentReference: invoices.paymentReference,
         pdfUrl: invoices.pdfUrl,
         notes: invoices.notes,
-        // Subscription info
-        subscriptionId: subscriptions.id,
-        planName: subscriptionPlans.name,
-        // Tenant/School info
-        tenantId: tenants.id,
-        tenantName: tenants.name,
-        tenantSlug: tenants.slug,
+        subscriptionTier: invoices.subscriptionTier,
+        schoolId: invoices.schoolId,
         schoolName: schools.name,
       })
       .from(invoices)
-      .leftJoin(subscriptions, eq(invoices.subscriptionId, subscriptions.id))
-      .leftJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
-      .leftJoin(tenants, eq(invoices.tenantId, tenants.id))
-      .leftJoin(schools, eq(schools.tenantId, tenants.id))
+      .leftJoin(schools, eq(invoices.schoolId, schools.id))
       .where(whereClause)
       .orderBy(desc(invoices.invoiceDate))
       .limit(limit)
@@ -109,23 +131,19 @@ export async function GET(req: NextRequest) {
 
     // Format response data
     const formattedData = invoicesData.map((inv) => {
-      const getSchoolName = () => {
-        if (inv.schoolName) return inv.schoolName;
-        return inv.tenantName || "Unknown";
-      };
-
       return {
         id: inv.id,
         invoiceNumber: inv.invoiceNumber,
-        school: getSchoolName(),
-        plan: inv.planName || "Unknown",
-        amount: inv.totalAmount || inv.amount,
+        school: inv.schoolName || "Unknown",
+        plan: inv.subscriptionTier || "Unknown",
+        amount: parseFloat(inv.totalAmount),
         currency: inv.currency,
         status: inv.status,
         dueDate: inv.dueDate?.toISOString() || new Date().toISOString(),
         paidDate: inv.paidAt?.toISOString(),
         pdfUrl: inv.pdfUrl,
         paymentMethod: inv.paymentMethod,
+        paymentReference: inv.paymentReference,
       };
     });
 
@@ -163,40 +181,29 @@ export async function POST(req: NextRequest) {
     const { userId } = authResult;
     const body = await req.json();
 
-    const { subscriptionId, amount, taxAmount = 0, discountAmount = 0, dueDays = 30, notes, lineItems } = body;
+    const { schoolId, amount, taxAmount = 0, discountAmount = 0, dueDays = 30, notes, subscriptionTier = "standard", billingPeriodStart, billingPeriodEnd } = body;
 
-    if (!subscriptionId || !amount) {
+    if (!schoolId || !amount) {
       return NextResponse.json(
-        { success: false, error: "subscriptionId and amount are required" },
+        { success: false, error: "schoolId and amount are required" },
         { status: 400 }
       );
     }
 
-    // Get subscription details
-    const subscription = await db
-      .select({
-        id: subscriptions.id,
-        tenantId: subscriptions.tenantId,
-        price: subscriptions.price,
-        currency: subscriptions.currency,
-        billingCycle: subscriptions.billingCycle,
-        currentPeriodStart: subscriptions.currentPeriodStart,
-        currentPeriodEnd: subscriptions.currentPeriodEnd,
-        planName: subscriptionPlans.name,
-      })
-      .from(subscriptions)
-      .leftJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
-      .where(eq(subscriptions.id, subscriptionId))
+    // Verify school exists
+    const school = await db
+      .select({ id: schools.id, name: schools.name })
+      .from(schools)
+      .where(eq(schools.id, schoolId))
       .limit(1);
 
-    if (subscription.length === 0) {
+    if (school.length === 0) {
       return NextResponse.json(
-        { success: false, error: "Subscription not found" },
+        { success: false, error: "School not found" },
         { status: 404 }
       );
     }
 
-    const sub = subscription[0];
     const now = new Date();
     const dueDate = new Date(now.getTime() + dueDays * 24 * 60 * 60 * 1000);
 
@@ -208,35 +215,32 @@ export async function POST(req: NextRequest) {
       .where(sql`EXTRACT(YEAR FROM ${invoices.invoiceDate}) = ${year}`);
     const invoiceNumber = `INV-${year}-${String((invoiceCount[0]?.count || 0) + 1).padStart(4, "0")}`;
 
-    // Calculate total
+    // Calculate total - convert to decimal string
     const totalAmount = amount + taxAmount - discountAmount;
+    const amountStr = amount.toFixed(2);
+    const taxAmountStr = taxAmount.toFixed(2);
+    const discountAmountStr = discountAmount.toFixed(2);
+    const totalAmountStr = totalAmount.toFixed(2);
 
     // Create invoice
     const invoiceId = `inv-${nanoid()}`;
     await db.insert(invoices).values({
       id: invoiceId,
-      subscriptionId,
-      tenantId: sub.tenantId,
+      schoolId,
+      subscriptionTier,
       invoiceNumber,
       invoiceDate: now,
-      periodStart: sub.currentPeriodStart || now,
-      periodEnd: sub.currentPeriodEnd || dueDate,
-      amount,
-      taxAmount,
-      discountAmount,
-      totalAmount,
-      currency: sub.currency,
-      status: "pending",
+      billingPeriodStart: billingPeriodStart || now,
+      billingPeriodEnd: billingPeriodEnd || dueDate,
+      amount: amountStr,
+      taxAmount: taxAmountStr,
+      discountAmount: discountAmountStr,
+      totalAmount: totalAmountStr,
+      currency: "BTN",
+      status: "sent",
       dueDate,
       notes,
-      lineItems: lineItems || [
-        {
-          description: `${sub.planName} - ${sub.billingCycle} subscription`,
-          quantity: 1,
-          unitPrice: amount,
-          amount: amount,
-        },
-      ],
+      createdBy: userId,
       createdAt: now,
       updatedAt: now,
     });
@@ -255,7 +259,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Failed to create invoice";
-    logger.apiError(error, { route: "/", method: "GET" });
+    logger.apiError(error, { route: "/", method: "POST" });
     return NextResponse.json(
       { success: false, error: errorMessage },
       { status: 500 }
@@ -272,7 +276,7 @@ export async function PATCH(req: NextRequest) {
     const { userId } = authResult;
     const body = await req.json();
 
-    const { invoiceId, action, status, paymentMethod, paymentDetails } = body;
+    const { invoiceId, action, status, paymentMethod, paymentReference } = body;
 
     if (!invoiceId) {
       return NextResponse.json(
@@ -289,7 +293,7 @@ export async function PATCH(req: NextRequest) {
           status: "paid",
           paidAt: new Date(),
           paymentMethod: paymentMethod || "manual",
-          paymentDetails: paymentDetails || {},
+          paymentReference: paymentReference || `txn-${Date.now()}`,
           updatedAt: new Date(),
         })
         .where(eq(invoices.id, invoiceId));
@@ -331,7 +335,7 @@ export async function PATCH(req: NextRequest) {
           status,
           ...(status === "paid" && { paidAt: new Date() }),
           ...(paymentMethod && { paymentMethod }),
-          ...(paymentDetails && { paymentDetails }),
+          ...(paymentReference && { paymentReference }),
           updatedAt: new Date(),
         })
         .where(eq(invoices.id, invoiceId));
@@ -348,7 +352,7 @@ export async function PATCH(req: NextRequest) {
     );
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Failed to update invoice";
-    logger.apiError(error, { route: "/", method: "GET" });
+    logger.apiError(error, { route: "/", method: "PATCH" });
     return NextResponse.json(
       { success: false, error: errorMessage },
       { status: 500 }

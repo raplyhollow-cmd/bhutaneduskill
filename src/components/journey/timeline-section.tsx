@@ -1,8 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Calendar, Rocket, Bug, Code2, Database, Server, CheckCircle2, ChevronRight } from "lucide-react";
+import { Calendar, Rocket, CheckCircle2, ChevronRight, Terminal, GitCommit, Code2, Server, Bug } from "lucide-react";
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 
 interface Phase {
   id: string;
@@ -22,7 +23,7 @@ const phases: Phase[] = [
     name: "Phase 1: Foundation",
     period: "January 2026",
     gradient: "from-purple-500 to-violet-600",
-    icon: <Database className="w-6 h-6" />,
+    icon: <Terminal className="w-6 h-6" />,
     description: "Core platform architecture with authentication, multi-tenant support, and foundational portals.",
     achievements: [
       "6 Core Portals (Student, Teacher, Parent, Counselor, School Admin, Admin)",
@@ -102,19 +103,20 @@ function PhaseCard({ phase, index, isExpanded, onToggle }: { phase: Phase; index
       className="relative"
     >
       {/* Timeline dot */}
-      <div className="absolute left-0 top-8 w-4 h-4 rounded-full border-4 border-slate-950 z-10" style={{ backgroundColor: phase.color }} />
+      <div className="absolute left-0 top-8 w-4 h-4 rounded-full border-4 border-ceramic-bg-dark z-10" style={{ backgroundColor: phase.color }} />
 
       {/* Connector line */}
       {index < phases.length - 1 && (
-        <div className="absolute left-1.5 top-12 w-0.5 h-full bg-gradient-to-b from-gray-700 to-transparent" />
+        <div className="absolute left-1.5 top-12 w-0.5 h-full bg-gradient-to-b from-ceramic-gray-700 to-transparent" />
       )}
 
       {/* Card */}
       <div className="relative ml-10">
         <motion.div
-          className={`relative bg-white/5 backdrop-blur-sm rounded-2xl border overflow-hidden transition-all duration-300 ${
-            isExpanded ? 'border-white/20' : 'border-white/10 hover:border-white/20'
-          }`}
+          className={cn(
+            "relative bg-ceramic-white/5 dark:bg-ceramic-white/5 backdrop-blur-sm rounded-2xl border overflow-hidden transition-all duration-300",
+            isExpanded ? 'border-ceramic-border' : 'border-ceramic-border hover:border-ceramic-brand/30'
+          )}
           style={{
             boxShadow: isExpanded ? `0 0 40px -10px ${phase.color}40` : 'none'
           }}
@@ -132,29 +134,32 @@ function PhaseCard({ phase, index, isExpanded, onToggle }: { phase: Phase; index
           {/* Header */}
           <button
             onClick={onToggle}
-            className="relative w-full text-left p-6 hover:bg-white/5 transition-colors"
+            className="relative w-full text-left p-6 hover:bg-ceramic-gray-50/50 dark:hover:bg-ceramic-gray-800/50 transition-colors"
           >
             <div className="flex items-start gap-4">
               {/* Icon */}
-              <div className={`p-3 rounded-xl bg-gradient-to-br ${phase.gradient} text-white flex-shrink-0`}>
+              <div
+                className="p-3 rounded-xl text-white flex-shrink-0"
+                style={{ background: `linear-gradient(135deg, ${phase.color} 0%, ${phase.color} 100%)` }}
+              >
                 {phase.icon}
               </div>
 
               {/* Content */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 mb-1">
-                  <h3 className="text-xl font-bold text-white">{phase.name}</h3>
+                  <h3 className="text-xl font-bold text-ceramic-primary dark:text-white">{phase.name}</h3>
                   {isExpanded && (
                     <motion.span
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
-                      className="px-2 py-0.5 rounded-full text-xs font-semibold bg-green-500/20 text-green-400 border border-green-500/30"
+                      className="px-2 py-0.5 rounded-full text-xs font-semibold bg-ceramic-positive/20 text-ceramic-positive border border-ceramic-positive/30"
                     >
                       Active
                     </motion.span>
                   )}
                 </div>
-                <p className="text-gray-400 text-sm flex items-center gap-2">
+                <p className="text-ceramic-secondary dark:text-ceramic-gray-400 text-sm flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
                   {phase.period}
                 </p>
@@ -164,7 +169,7 @@ function PhaseCard({ phase, index, isExpanded, onToggle }: { phase: Phase; index
               <motion.div
                 animate={{ rotate: isExpanded ? 90 : 0 }}
                 transition={{ duration: 0.2 }}
-                className="text-gray-500"
+                className="text-ceramic-dimmed"
               >
                 <ChevronRight className="w-5 h-5" />
               </motion.div>
@@ -180,12 +185,12 @@ function PhaseCard({ phase, index, isExpanded, onToggle }: { phase: Phase; index
               transition={{ duration: 0.3 }}
               className="px-6 pb-6"
             >
-              <p className="text-gray-400 mb-4">{phase.description}</p>
+              <p className="text-ceramic-secondary dark:text-ceramic-gray-400 mb-4">{phase.description}</p>
 
               {/* Files created badge */}
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 mb-4">
-                <Code2 className="w-4 h-4 text-gray-400" />
-                <span className="text-sm text-gray-300">{phase.files} files created</span>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-ceramic-gray-50 dark:bg-ceramic-gray-800 border border-ceramic-border mb-4">
+                <Code2 className="w-4 h-4 text-ceramic-secondary" />
+                <span className="text-sm text-ceramic-primary dark:text-ceramic-gray-200">{phase.files} files created</span>
               </div>
 
               {/* Achievements list */}
@@ -198,8 +203,8 @@ function PhaseCard({ phase, index, isExpanded, onToggle }: { phase: Phase; index
                     transition={{ delay: i * 0.05, duration: 0.2 }}
                     className="flex items-start gap-3"
                   >
-                    <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-                    <span className="text-gray-300 text-sm">{achievement}</span>
+                    <CheckCircle2 className="w-5 h-5 text-ceramic-positive flex-shrink-0 mt-0.5" />
+                    <span className="text-ceramic-primary dark:text-ceramic-gray-200 text-sm">{achievement}</span>
                   </motion.div>
                 ))}
               </div>
@@ -217,11 +222,11 @@ export function TimelineSection() {
   return (
     <section id="timeline" className="relative py-24 px-4 sm:px-6 lg:px-8">
       {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-gray-900 to-slate-950" />
+      <div className="absolute inset-0 bg-gradient-to-b from-ceramic-bg-dark via-ceramic-gray-900 to-ceramic-bg-dark" />
 
       {/* Gradient accents */}
       <div className="absolute top-0 left-0 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl" />
-      <div className="absolute bottom-0 right-0 w-96 h-96 bg-orange-500/10 rounded-full blur-3xl" />
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-ceramic-brand/10 rounded-full blur-3xl" />
 
       <div className="relative max-w-4xl mx-auto">
         {/* Header */}
@@ -232,17 +237,17 @@ export function TimelineSection() {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-ceramic-white/5 dark:bg-ceramic-white/5 backdrop-blur-sm border border-ceramic-border mb-6">
             <Calendar className="w-4 h-4 text-purple-400" />
-            <span className="text-sm font-semibold text-gray-300">Development Timeline</span>
+            <span className="text-sm font-semibold text-ceramic-secondary dark:text-ceramic-gray-300">Development Timeline</span>
           </div>
 
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-6">
-            From <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">Idea</span> to{" "}
-            <span className="bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">Impact</span>
+            From <span className="bg-clip-text text-transparent" style={{ background: 'linear-gradient(135deg, rgb(168 85 247) 0%, rgb(236 72 153) 100%)' }}>Idea</span> to{" "}
+            <span className="bg-clip-text text-transparent" style={{ background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)' }}>Impact</span>
           </h2>
 
-          <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+          <p className="text-lg text-ceramic-gray-400 max-w-2xl mx-auto">
             Track our progress through four distinct phases of development, from foundational architecture
             to a comprehensive education platform serving all of Bhutan.
           </p>
@@ -256,19 +261,19 @@ export function TimelineSection() {
           transition={{ duration: 1, delay: 0.2 }}
           className="mb-16"
         >
-          <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-purple-500 via-blue-500 via-orange-500 to-green-500 w-full" />
+          <div className="h-2 bg-ceramic-gray-800 rounded-full overflow-hidden">
+            <div className="h-full w-full" style={{ background: 'linear-gradient(90deg, rgb(139 92 246) 0%, rgb(59 130 246) 33%, rgb(249 115 22) 66%, rgb(34 197 94) 100%)' }} />
           </div>
-          <div className="flex justify-between mt-2 text-sm text-gray-500 font-mono">
+          <div className="flex justify-between mt-2 text-sm text-ceramic-dimmed font-mono">
             <span>Jan 2026</span>
-            <span className="text-green-400">98% Complete</span>
+            <span className="text-ceramic-positive">98% Complete</span>
             <span>Feb 2026</span>
           </div>
         </motion.div>
 
         {/* Timeline */}
         <div className="relative">
-          <div className="absolute left-1.5 top-0 bottom-0 w-0.5 bg-gradient-to-b from-purple-500 via-blue-500 via-orange-500 to-green-500 opacity-30" />
+          <div className="absolute left-1.5 top-0 bottom-0 w-0.5 opacity-30" style={{ background: 'linear-gradient(180deg, rgb(139 92 246) 0%, rgb(59 130 246) 33%, rgb(249 115 22) 66%, rgb(34 197 94) 100%)' }} />
 
           <div className="space-y-6">
             {phases.map((phase, index) => (
@@ -291,9 +296,9 @@ export function TimelineSection() {
           transition={{ delay: 0.3 }}
           className="mt-16 text-center"
         >
-          <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-white/5 backdrop-blur-sm border border-white/10">
-            <Rocket className="w-5 h-5 text-orange-400" />
-            <span className="text-gray-300 font-medium">
+          <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-ceramic-white/5 dark:bg-ceramic-white/5 backdrop-blur-sm border border-ceramic-border">
+            <Rocket className="w-5 h-5 text-ceramic-brand" />
+            <span className="text-ceramic-gray-300 font-medium">
               {phases.reduce((sum, p) => sum + p.files, 0)}+ files created across all phases
             </span>
           </div>

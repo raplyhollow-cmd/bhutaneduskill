@@ -10,9 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import {
   invoices,
-  subscriptions,
-  subscriptionPlans,
-  tenants,
+  schools,
   paymentTransactions,
 } from "@/lib/db/schema";
 import { eq, desc, and } from "drizzle-orm";
@@ -24,99 +22,43 @@ import type { ApiSuccess, ApiErrorResponse } from "@/types";
 // TYPES
 // ============================================================================
 
-interface PaymentDetails {
-  transactionId?: string;
-  bankReference?: string;
-  cardLast4?: string;
-  paidBy?: string;
-  notes?: string;
-}
-
-interface LineItem {
-  description: string;
-  quantity: number;
-  unitPrice: number;
-  amount: number;
-}
-
 interface InvoiceDetail {
   id: string;
   invoiceNumber: string;
   invoiceDate: Date;
   dueDate: Date;
   paidAt?: Date | null;
-  amount: number;
-  taxAmount: number;
-  discountAmount: number;
-  totalAmount: number;
+  amount: string;  // decimal type
+  taxAmount: string;  // decimal type
+  discountAmount: string;  // decimal type
+  totalAmount: string;  // decimal type
   currency: string;
   status: string;
   paymentMethod?: string | null;
-  paymentDetails?: {
-    transactionId?: string;
-    bankReference?: string;
-    cardLast4?: string;
-    paidBy?: string;
-    notes?: string;
-  } | null;
+  paymentReference?: string | null;
   pdfUrl?: string | null;
   notes?: string | null;
-  internalNotes?: string | null;
-  lineItems?: Array<{
-    description: string;
-    quantity: number;
-    unitPrice: number;
-    amount: number;
-  }>;
-  // Period
-  periodStart: Date;
-  periodEnd: Date;
+  // Billing period
+  billingPeriodStart: Date;
+  billingPeriodEnd: Date;
   // Refund
-  refundAmount: number;
+  refundAmount: string | null;  // decimal type
   refundReason?: string | null;
   refundedAt?: Date | null;
-  // Nested
-  subscription?: {
-    id: string;
-    status: string;
-    billingCycle: string;
-    price: number;
-  };
-  plan?: {
-    id: string;
-    name: string;
-    tier: string;
-  };
-  tenant?: {
-    id: string;
-    name: string;
-    slug?: string;
-    domain?: string;
-  };
-  // Payment transactions
-  paymentHistory?: Array<{
-    id: string;
-    amount: number;
-    status: string;
-    provider: string;
-    providerTransactionId?: string | null;
-    createdAt: Date;
-  }>;
+  // School
+  schoolId: string;
+  schoolName?: string | null;
+  // Subscription tier
+  subscriptionTier: string;
   createdAt: Date;
   updatedAt: Date;
 }
 
 interface UpdateInvoiceRequest {
   action?: "mark_paid" | "mark_pending" | "mark_overdue" | "void" | "send_reminder" | "record_payment" | "refund";
-  status?: "draft" | "pending" | "paid" | "overdue" | "cancelled" | "refunded";
+  status?: "draft" | "sent" | "paid" | "overdue" | "cancelled" | "refunded";
   paymentMethod?: "card" | "bank" | "rma" | "cash" | "cheque" | "manual";
-  paymentDetails?: {
-    transactionId?: string;
-    bankReference?: string;
-    cardLast4?: string;
-    paidBy?: string;
-    notes?: string;
-  };
+  paymentReference?: string;
   amount?: number;
   notes?: string;
   refundAmount?: number;
@@ -159,37 +101,22 @@ export async function GET(request: NextRequest, context: RouteContext) {
         currency: invoices.currency,
         status: invoices.status,
         paymentMethod: invoices.paymentMethod,
-        paymentDetails: invoices.paymentDetails,
+        paymentReference: invoices.paymentReference,
         pdfUrl: invoices.pdfUrl,
         notes: invoices.notes,
-        internalNotes: invoices.internalNotes,
-        lineItems: invoices.lineItems,
-        periodStart: invoices.periodStart,
-        periodEnd: invoices.periodEnd,
+        billingPeriodStart: invoices.billingPeriodStart,
+        billingPeriodEnd: invoices.billingPeriodEnd,
         refundAmount: invoices.refundAmount,
         refundReason: invoices.refundReason,
         refundedAt: invoices.refundedAt,
         createdAt: invoices.createdAt,
         updatedAt: invoices.updatedAt,
-        // Subscription details
-        subscriptionId: subscriptions.id,
-        subscriptionStatus: subscriptions.status,
-        subscriptionBillingCycle: subscriptions.billingCycle,
-        subscriptionPrice: subscriptions.price,
-        // Plan details
-        planId: subscriptionPlans.id,
-        planName: subscriptionPlans.name,
-        planTier: subscriptionPlans.tier,
-        // Tenant details
-        tenantId: tenants.id,
-        tenantName: tenants.name,
-        tenantSlug: tenants.slug,
-        tenantDomain: tenants.domain,
+        subscriptionTier: invoices.subscriptionTier,
+        schoolId: invoices.schoolId,
+        schoolName: schools.name,
       })
       .from(invoices)
-      .leftJoin(subscriptions, eq(invoices.subscriptionId, subscriptions.id))
-      .leftJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
-      .leftJoin(tenants, eq(invoices.tenantId, tenants.id))
+      .leftJoin(schools, eq(invoices.schoolId, schools.id))
       .where(eq(invoices.id, invoiceId))
       .limit(1);
 
@@ -202,12 +129,6 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     const inv = invoiceData[0];
 
-    // Get payment transactions for this invoice
-    const transactions = await db.query.paymentTransactions.findMany({
-      where: eq(paymentTransactions.invoiceId, invoiceId),
-      orderBy: [desc(paymentTransactions.createdAt)],
-    });
-
     // Format response
     const invoiceDetail: InvoiceDetail = {
       id: inv.id,
@@ -216,53 +137,23 @@ export async function GET(request: NextRequest, context: RouteContext) {
       dueDate: inv.dueDate,
       paidAt: inv.paidAt,
       amount: inv.amount,
-      taxAmount: inv.taxAmount || 0,
-      discountAmount: inv.discountAmount || 0,
+      taxAmount: inv.taxAmount || "0",
+      discountAmount: inv.discountAmount || "0",
       totalAmount: inv.totalAmount,
       currency: inv.currency,
       status: inv.status,
       paymentMethod: inv.paymentMethod,
-      paymentDetails: (inv.paymentDetails as PaymentDetails | null) || null,
+      paymentReference: inv.paymentReference,
       pdfUrl: inv.pdfUrl,
       notes: inv.notes,
-      internalNotes: inv.internalNotes,
-      lineItems: (inv.lineItems as LineItem[] | null) || [],
-      periodStart: inv.periodStart,
-      periodEnd: inv.periodEnd,
-      refundAmount: inv.refundAmount || 0,
+      billingPeriodStart: inv.billingPeriodStart,
+      billingPeriodEnd: inv.billingPeriodEnd,
+      refundAmount: inv.refundAmount || "0",
       refundReason: inv.refundReason,
       refundedAt: inv.refundedAt,
-      subscription: inv.subscriptionId
-        ? {
-            id: inv.subscriptionId,
-            status: inv.subscriptionStatus || "",
-            billingCycle: inv.subscriptionBillingCycle || "",
-            price: inv.subscriptionPrice || 0,
-          }
-        : undefined,
-      plan: inv.planId
-        ? {
-            id: inv.planId,
-            name: inv.planName || "",
-            tier: inv.planTier || "",
-          }
-        : undefined,
-      tenant: inv.tenantId
-        ? {
-            id: inv.tenantId,
-            name: inv.tenantName || "",
-            slug: inv.tenantSlug || undefined,
-            domain: inv.tenantDomain || undefined,
-          }
-        : undefined,
-      paymentHistory: transactions.map((t) => ({
-        id: t.id,
-        amount: t.amount,
-        status: t.status,
-        provider: t.provider,
-        providerTransactionId: t.providerTransactionId,
-        createdAt: t.createdAt,
-      })),
+      schoolId: inv.schoolId,
+      schoolName: inv.schoolName,
+      subscriptionTier: inv.subscriptionTier,
       createdAt: inv.createdAt,
       updatedAt: inv.updatedAt,
     };
@@ -330,10 +221,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     switch (action) {
       case "mark_paid": {
         const paymentMethod = body.paymentMethod || invoice.paymentMethod || "manual";
-        const paymentDetails = body.paymentDetails || {};
-
-        // Create payment transaction record
-        const transactionId = `txn-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const paymentReference = body.paymentReference || `txn-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 
         // Update invoice as paid
         await db
@@ -342,22 +230,15 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             status: "paid",
             paidAt: new Date(),
             paymentMethod,
-            paymentDetails: {
-              ...paymentDetails,
-              transactionId: paymentDetails.transactionId || transactionId,
-              paidBy: paymentDetails.paidBy || userId,
-            },
+            paymentReference,
             updatedAt: new Date(),
           })
           .where(eq(invoices.id, invoiceId));
 
-        // Record payment transaction (if not already using paymentTransactions table)
-        // This would be implemented when payment flow is complete
-
         logger.info("Invoice marked as paid", {
           invoiceId,
           paymentMethod,
-          transactionId: paymentDetails.transactionId,
+          paymentReference,
           updatedBy: userId,
         });
 
@@ -439,13 +320,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
       case "send_reminder": {
         // In a full implementation, this would:
-        // 1. Send email notification to tenant
+        // 1. Send email notification to school
         // 2. Log the reminder event
         // 3. Update reminder count
 
         logger.info("Payment reminder sent for invoice", {
           invoiceId,
-          tenantId: invoice.tenantId,
+          schoolId: invoice.schoolId,
           sentBy: userId,
         });
 
@@ -456,15 +337,18 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       }
 
       case "record_payment": {
-        const amount = body.amount || invoice.totalAmount;
+        // Convert decimal amounts to numbers for calculation
+        const totalAmount = parseFloat(invoice.totalAmount);
+        const currentRefundAmount = invoice.refundAmount ? parseFloat(invoice.refundAmount) : 0;
+        const amount = body.amount || totalAmount;
         const paymentMethod = body.paymentMethod || invoice.paymentMethod || "manual";
-        const paymentDetails = body.paymentDetails || {};
+        const paymentReference = body.paymentReference || `txn-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 
         // Create transaction ID
-        const transactionId = `txn-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const transactionId = paymentReference;
 
         // Check if payment completes the invoice
-        const isFullyPaid = amount >= invoice.totalAmount - (invoice.refundAmount || 0);
+        const isFullyPaid = amount >= totalAmount - currentRefundAmount;
 
         await db
           .update(invoices)
@@ -472,13 +356,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             status: isFullyPaid ? "paid" : "pending",
             paidAt: isFullyPaid ? new Date() : invoice.paidAt,
             paymentMethod,
-            paymentDetails: {
-              ...(invoice.paymentDetails as PaymentDetails | null || {}),
-              ...paymentDetails,
-              transactionId: paymentDetails.transactionId || transactionId,
-              paidBy: paymentDetails.paidBy || userId,
-              amount: amount,
-            } as PaymentDetails,
+            paymentReference: transactionId,
             updatedAt: new Date(),
           })
           .where(eq(invoices.id, invoiceId));
@@ -498,7 +376,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
               ? "Payment recorded and invoice marked as paid"
               : "Partial payment recorded",
             isFullyPaid,
-            remainingAmount: invoice.totalAmount - amount,
+            remainingAmount: totalAmount - amount,
           },
           message: "Payment recorded",
         } satisfies ApiSuccess<{ message: string; isFullyPaid: boolean; remainingAmount: number }>);
@@ -512,10 +390,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           );
         }
 
-        const refundAmount = body.refundAmount || invoice.totalAmount;
+        // Convert decimal amounts to numbers for calculation
+        const totalAmount = parseFloat(invoice.totalAmount);
+        const currentRefundAmount = invoice.refundAmount ? parseFloat(invoice.refundAmount) : 0;
+        const refundAmount = body.refundAmount || totalAmount;
         const refundReason = body.refundReason || "No reason provided";
 
-        if (refundAmount > invoice.totalAmount - (invoice.refundAmount || 0)) {
+        if (refundAmount > totalAmount - currentRefundAmount) {
           return NextResponse.json(
             { error: "Refund amount exceeds available balance", status: 400 } as ApiErrorResponse,
             { status: 400 }
@@ -526,21 +407,17 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         const refundTransactionId = `refund-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 
         // Calculate new refund amount (cumulative)
-        const newRefundAmount = (invoice.refundAmount || 0) + refundAmount;
-        const isFullyRefunded = newRefundAmount >= invoice.totalAmount;
+        const newRefundAmount = currentRefundAmount + refundAmount;
+        const isFullyRefunded = newRefundAmount >= totalAmount;
 
         await db
           .update(invoices)
           .set({
-            refundAmount: newRefundAmount,
+            refundAmount: newRefundAmount.toFixed(2),
             refundReason,
             refundedAt: new Date(),
             status: isFullyRefunded ? "refunded" : "paid",
-            paymentDetails: {
-              ...(invoice.paymentDetails as PaymentDetails | null || {}),
-              refundTransactionId,
-              refundedBy: userId,
-            } as PaymentDetails,
+            paymentReference: refundTransactionId,
             updatedAt: new Date(),
           })
           .where(eq(invoices.id, invoiceId));
@@ -558,7 +435,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           data: {
             message: isFullyRefunded ? "Invoice fully refunded" : "Partial refund processed",
             refundAmount: newRefundAmount,
-            remainingAmount: invoice.totalAmount - newRefundAmount,
+            remainingAmount: totalAmount - newRefundAmount,
             isFullyRefunded,
           },
           message: "Refund processed",
@@ -587,8 +464,8 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             updates.paymentMethod = body.paymentMethod;
           }
 
-          if (body.paymentDetails) {
-            updates.paymentDetails = body.paymentDetails;
+          if (body.paymentReference) {
+            updates.paymentReference = body.paymentReference;
           }
 
           if (body.notes) {

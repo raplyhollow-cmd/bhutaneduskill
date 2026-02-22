@@ -1,0 +1,363 @@
+# Bhutan EduSkill - Authentication & Authorization Flow
+
+**Last Updated:** February 22, 2026
+**Auth Provider:** Clerk
+**Authorization:** RBAC (Role-Based Access Control)
+
+---
+
+## Complete Authentication Flow
+
+```mermaid
+flowchart TD
+    A[User Visits Website] --> B{Already Signed In?}
+    B -->|No| C[Show Sign In/Sign Up]
+    B -->|Yes| D[Clerk Session Active]
+
+    C --> E[User selects portal type]
+    E --> F[Clerk Authentication<br/>Google or Email]
+
+    F --> G[Clerk creates user record]
+    G --> H[Redirect to /dashboard]
+
+    D --> H
+    H --> I[GET /api/auth/set-role]
+
+    I --> J{User Type Check}
+    J -->|admin| K[Skip Setup<br/>needsSetup: false]
+    J -->|other| L{needsSetup flag}
+
+    L -->|true| M[Redirect to /setup/unified]
+    L -->|false| N[Access portal directly]
+
+    M --> O[3-Step Setup Wizard]
+    O --> P[POST /api/setup/{portal}]
+
+    P --> Q{User exists in DB?}
+    Q -->|No| R[Create users record]
+    Q -->|Yes| S[Update users record]
+
+    R --> T[Set onboardingComplete: true]
+    S --> T
+
+    T --> U[Redirect to /{portal}/dashboard]
+
+    K --> N
+    N --> V[Portal Layout with Sidebar]
+
+    style A fill:#e1f5ff
+    style F fill:#fef3c7
+    style K fill:#d4edda
+    style R fill:#d4edda
+    style T fill:#c3e6cb
+    style V fill:#a7f3d0
+```
+
+---
+
+## Clerk Integration Points
+
+```mermaid
+graph LR
+    subgraph "Clerk Authentication"
+        SIGNUP[Sign Up<br/>Google/Email]
+        SIGNIN[Sign In<br/>Google/Email]
+        SESSION[Session Management]
+        WEBHOOK[Webhook<br/>User events]
+    end
+
+    subgraph "Our Backend"
+        AUTH_SET_ROLE[/api/auth/set-role<br/>Get user type]
+        SETUP_WIZARD[/api/setup/*<br/>Create user]
+        WEBHOOK_HANDLER[/api/clerk/webhook<br/>Sync events]
+    end
+
+    SIGNUP --> SESSION
+    SIGNIN --> SESSION
+    SESSION --> AUTH_SET_ROLE
+
+    WEBHOOK --> WEBHOOK_HANDLER
+
+    style SIGNUP fill:#fef3c7
+    style AUTH_SET_ROLE fill:#d4edda
+    style WEBHOOK_HANDLER fill:#ffd9b3
+```
+
+**Clerk Environment Variables:**
+```env
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_***
+CLERK_SECRET_KEY=sk_***
+NEXT_PUBLIC_CLERK_SIGN_IN_URL=/signin
+NEXT_PUBLIC_CLERK_SIGN_UP_URL=/signup
+```
+
+---
+
+## requireAuth() Implementation
+
+```mermaid
+flowchart TD
+    A[API Route Called] --> B[await requireAuth<br/>allowedRoles?]
+
+    B --> C[Get auth from Clerk]
+    C --> D{User authenticated?}
+
+    D -->|No| E[Return 401 Unauthorized<br/>error: Not authenticated]
+
+    D -->|Yes| F[Query users table<br/>WHERE clerkUserId = ?]
+
+    F --> G{User exists in DB?}
+    G -->|No| H[Return 404 Not Found<br/>error: User not found]
+
+    G -->|Yes| I{Role check needed?}
+    I -->|No| J[Return { user, userId }]
+    I -->|Yes| K{Has allowed role?}
+
+    K -->|No| L[Return 403 Forbidden<br/>error: Insufficient permissions]
+    K -->|Yes| J
+
+    style E fill:#f8d7da
+    style H fill:#f8d7da
+    style L fill:#f8d7da
+    style J fill:#d4edda
+```
+
+**Code Location:** `src/lib/auth-utils.ts`
+
+```typescript
+export async function requireAuth(allowedRoles?: UserRole[]) {
+  const { userId: clerkUserId } = await auth();
+  if (!clerkUserId) {
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  }
+
+  const user = await db.select().from(users)
+    .where(eq(users.clerkUserId, clerkUserId))
+    .limit(1);
+
+  if (user.length === 0) {
+    return NextResponse.json({ error: 'User not found' }, { status: 404 });
+  }
+
+  if (allowedRoles && !allowedRoles.includes(user[0].type as UserRole)) {
+    return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+  }
+
+  return { user: user[0], userId: user[0].id };
+}
+```
+
+---
+
+## Role-Based Access Control (RBAC)
+
+```mermaid
+flowchart TD
+    A[User] --> B[user_roles table]
+    B --> C[roles table]
+    C --> D[role_permissions table]
+    D --> E[permissions table]
+
+    B --> F{Role Assignment}
+    F -->|admin| G[Platform Admin<br/>Full access]
+    F -->|school-admin| H[School Admin<br/>School-scoped]
+    F -->|teacher| I[Teacher<br/>Class-scoped]
+    F -->|student| J[Student<br/>Own data only]
+    F -->|parent| K[Parent<br/>Children data]
+    F -->|counselor| L[Counselor<br/>Student data]
+    F -->|ministry| M[Ministry<br/>National view]
+
+    style G fill:#ec4899
+    style H fill:#8b5cf6
+    style I fill:#3b82f6
+    style J fill:#f97316
+    style K fill:#9ca3af
+    style L fill:#a855f7
+    style M fill:#6366f1
+```
+
+**RBAC Tables:**
+1. `roles` - Role definitions
+2. `permissions` - Permission definitions
+3. `user_roles` - User-role assignments
+4. `role_permissions` - Role-permission mapping
+
+**Default Roles:**
+| Role | Description | Permissions |
+|------|-------------|-------------|
+| admin | Platform administrator | Full system access |
+| school-admin | School administrator | School-scoped access |
+| teacher | Teacher | Class/subject access |
+| student | Student | Own data access |
+| parent | Parent | Children data access |
+| counselor | Counselor | Student support access |
+| ministry | Ministry official | National view access |
+
+---
+
+## Setup Wizard Flows
+
+### Student Setup
+```mermaid
+flowchart TD
+    A[/setup/unified - Select Student] --> B[Step 1: Personal Information]
+    B --> C[Name, email, phone, DOB]
+    C --> D[Step 2: Class Selection]
+    D --> E[Grade, section, academic year]
+    E --> F[Step 3: Learning Preferences]
+    F --> G[Interests, goals, subjects]
+    G --> H[POST /api/setup/student]
+    H --> I[Create users + students records]
+    I --> J[Redirect to /student/dashboard]
+```
+
+### School Admin Setup
+```mermaid
+flowchart TD
+    A[/setup/unified - Select School Admin] --> B[Step 1: Personal Details]
+    B --> C[Name, email, phone, position]
+    C --> D[Step 2: School Verification]
+    D --> E[Enter school code]
+    E --> F[Validate school exists]
+    F --> G[Step 3: Documents]
+    G --> H[Upload proof documents]
+    H --> I[POST /api/setup/school-admin]
+    I --> J[Create user + application record]
+    J --> K[status: pending_approval]
+    K --> L[Redirect to /pending-approval]
+```
+
+### Platform Admin Setup (Bypass)
+```mermaid
+flowchart TD
+    A[Clerk auth with admin role] --> B[/api/auth/set-role]
+    B --> C{user.type === 'admin'?}
+    C -->|Yes| D[Return needsSetup: false]
+    C -->|No| E[Check onboardingComplete]
+    D --> F[Redirect to /admin/dashboard]
+    E --> F
+```
+
+---
+
+## Portal Authentication Pattern
+
+All 7 portals use the same authentication pattern in their layout:
+
+```mermaid
+flowchart TD
+    A[Portal Layout Component] --> B[useEffect on mount]
+    B --> C[Fetch /api/auth/set-role]
+    C --> D[Fetch /api/user/profile]
+
+    D --> E{Response check}
+    E -->|needsSetup: true| F[Set needsSetup state]
+    E -->|userType exists| G[Set userType state]
+
+    F --> H[Redirect to /setup/unified]
+    G --> I[Render Portal Sidebar]
+    I --> J[Render Children]
+
+    style F fill:#fff3cd
+    style H fill:#fef3c7
+    style I fill:#d4edda
+```
+
+**Layout Files:**
+1. `src/app/[portal]/layout.tsx` - Dynamic portal routing
+2. `src/app/admin/layout.tsx` - Admin-specific (bypass setup)
+3. `src/app/parent/layout.tsx` - Parent-specific
+
+---
+
+## Authorization Matrix
+
+| Resource | Admin | School Admin | Teacher | Student | Parent | Counselor | Ministry |
+|----------|-------|-------------|---------|---------|--------|-----------|----------|
+| Users (all) | ✅ RW | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ R |
+| Schools (all) | ✅ RW | ✅ R (own) | ❌ | ❌ | ❌ | ❌ | ✅ R |
+| Students (all) | ✅ RW | ✅ RW (school) | ✅ R (class) | ✅ R (self) | ✅ R (children) | ✅ R (assigned) | ✅ R |
+| Teachers (all) | ✅ RW | ✅ RW (school) | ✅ R (self) | ❌ | ❌ | ❌ | ✅ R |
+| Classes (all) | ✅ RW | ✅ RW (school) | ✅ RW (assigned) | ✅ R (own) | ✅ R (children) | ❌ | ❌ |
+| Homework | ✅ RW | ✅ RW (school) | ✅ RW (assigned) | ✅ RW (own) | ✅ R (children) | ❌ | ❌ |
+| Assessments | ✅ RW | ✅ RW (school) | ✅ RW (assigned) | ✅ R (own) | ✅ R (children) | ✅ R (assigned) | ❌ |
+| Attendance | ✅ RW | ✅ RW (school) | ✅ RW (assigned) | ✅ R (own) | ✅ R (children) | ✅ R (assigned) | ❌ |
+| Fees | ✅ RW | ✅ RW (school) | ❌ | ✅ R (self) | ✅ RW (children) | ❌ | ❌ |
+| Reports | ✅ RW | ✅ RW (school) | ✅ R (class) | ✅ R (self) | ✅ R (children) | ✅ R (assigned) | ✅ R (national) |
+| Settings | ✅ RW | ✅ RW (school) | ❌ | ❌ | ❌ | ❌ | ✅ RW |
+| Billing | ✅ RW | ✅ R (own) | ❌ | ❌ | ❌ | ❌ | ✅ R |
+
+**Legend:**
+- ✅ R = Read access
+- ✅ RW = Read + Write access
+- ❌ = No access
+- (school) = School-scoped only
+- (own) = Own data only
+- (children) = Children data only
+- (class) = Assigned classes only
+- (assigned) = Assigned students only
+- (national) = National-level data
+
+---
+
+## Session Management
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Clerk
+    participant Middleware
+    participant API as API Route
+    participant DB as Database
+
+    User->>Clerk: Sign in
+    Clerk-->>User: Session token
+    User->>Middleware: Request with token
+    Middleware->>Clerk: Verify token
+    Clerk-->>Middleware: User data
+    Middleware->>API: Forward request
+    API->>DB: Query with clerkUserId
+    DB-->>API: User record
+    API-->>User: Response
+
+    Note over User,DB: All subsequent requests<br/>include Clerk session token
+```
+
+---
+
+## Security Headers
+
+**Middleware:** `src/middleware.ts`
+
+```typescript
+// CORS headers for all /api routes
+response.headers.set('Access-Control-Allow-Origin', allowedOrigins)
+response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE')
+response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+
+// Security headers
+response.headers.set('X-Content-Type-Options', 'nosniff')
+response.headers.set('X-Frame-Options', 'DENY')
+response.headers.set('X-XSS-Protection', '1; mode=block')
+response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+```
+
+---
+
+## Token Refresh Flow
+
+```mermaid
+flowchart TD
+    A[User Session Active] --> B{Token expired?}
+    B -->|Yes| C[Clerk auto-refresh]
+    B -->|No| D[Continue using token]
+
+    C --> E[New token issued]
+    E --> F[Update client-side token]
+    F --> D
+
+    D --> G[Next API call]
+
+    style C fill:#fef3c7
+    style E fill:#d4edda
+```

@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bhutan EduSkill - System Flow Diagram</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 20px;
+        }
+        .diagram-container {
+            margin: 40px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 1px solid #e9ecef;
+        }
+        .diagram-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .diagram-title .icon {
+            font-size: 1.5em;
+        }
+        .mermaid {
+            background: white;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .stat-card .number {
+            font-size: 2em;
+            font-weight: bold;
+        }
+        .stat-card .label {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9em;
+        }
+        .legend-color {
+            width: 30px;
+            height: 20px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎓 Bhutan EduSkill - System Flow Diagrams</h1>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="number">29</div>
+                <div class="label">Database Tables</div>
+            </div>
+            <div class="stat-card">
+                <div class="number">180+</div>
+                <div class="label">API Routes</div>
+            </div>
+            <div class="stat-card">
+                <div class="number">7</div>
+                <div class="label">User Portals</div>
+            </div>
+            <div class="stat-card">
+                <div class="number">0</div>
+                <div class="label">Type Errors ✅</div>
+            </div>
+        </div>
+
+        <div class="legend">
+            <strong>Portal Colors:</strong>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #ff9966;"></div>
+                <span>Student</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #3b82f6;"></div>
+                <span>Teacher</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #9ca3af;"></div>
+                <span>Parent</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #8b5cf6;"></div>
+                <span>School Admin</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #ec4899;"></div>
+                <span>Platform Admin</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #a855f7;"></div>
+                <span>Ministry</span>
+            </div>
+        </div>
+
+        <div class="diagram-container">
+            <div class="diagram-title">
+                <span class="icon">👤</span>
+                User Registration & Onboarding
+            </div>
+            <div class="mermaid">
+flowchart TD
+    A[User Visits /signup] --> B{Select Portal Type}
+    B -->|Student| C[Student Signup]
+    B -->|Teacher| D[Teacher Signup]
+    B -->|Parent| E[Parent Signup]
+    B -->|School Admin| F[School Admin Signup]
+    B -->|Platform Admin| G[Admin Setup]
+
+    C --> H[POST /api/setup/student]
+    D --> I[POST /api/setup/teacher]
+    E --> J[POST /api/setup/parent]
+    F --> K[POST /api/setup/school-admin]
+    G --> L[POST /api/setup/admin]
+
+    H --> M{User exists in DB?}
+    I --> N{User exists in DB?}
+    J --> O{User exists in DB?}
+    K --> P{User exists in DB?}
+    L --> Q{User exists in DB?}
+
+    M -->|No| R[Create User Record<br/>users table]
+    N -->|No| S[Create User Record]
+    O -->|No| T[Create User Record]
+    P -->|No| U[Create User Record]
+    Q -->|No| V[Create User & Admin Role]
+
+    M -->|Yes| W[Update User Record]
+    N -->|Yes| X[Update User Record]
+    O -->|Yes| Y[Update User Record]
+    P -->|Yes| Z[Update User Record]
+    Q -->|Yes| AA[Update User Record]
+
+    R --> AB[Create Student Record<br/>students table]
+    S --> AC[Create Teacher Record<br/>teachers table]
+    T --> AD[Create Parent Record<br/>parents table]
+    U --> AE[School Admin Application<br/>school_admin_applications table]
+    V --> AF[Assign Admin Role<br/>user_roles table]
+
+    AE --> AG[Pending Approval]
+    AF --> AH[Admin Dashboard Access]
+
+    style A fill:#e1f5ff
+    style AB fill:#d4edda
+    style AC fill:#d4edda
+    style AD fill:#d4edda
+    style AE fill:#fff3cd
+    style AF fill:#d1ecf1
+    style AH fill:#d4edda
+            </div>
+        </div>
+
+        <div class="diagram-container">
+            <div class="diagram-title">
+                <span class="icon">✅</span>
+                School Admin Approval Flow
+            </div>
+            <div class="mermaid">
+flowchart TD
+    A[Platform Admin Logged In] --> B[Navigate to /admin/school-admin-applications]
+    B --> C[GET /api/admin/school-admin-applications]
+    C --> D[Fetch All Applications]
+
+    D --> E{Application Status}
+    E -->|pending_approval| F[Show Approve/Reject Buttons]
+    E -->|approved| G[Show Approved Badge]
+    E -->|rejected| H[Show Rejected Badge]
+
+    F --> I[Click Approve Button]
+    I --> J[POST /api/admin/school-admin-applications/:id/approve]
+
+    J --> K[Verify Application Exists]
+    K --> L[Update Application Status to approved]
+    L --> M[Set reviewedAt and reviewedBy]
+    M --> N[Update User Type to school-admin]
+
+    N --> O[Assign school-admin Role<br/>user_roles table]
+    O --> P[Link User to School<br/>users.schoolId]
+
+    P --> Q[Success Response]
+    Q --> R[Refresh Page - Status: approved]
+
+    style A fill:#ec4899
+    style K fill:#f8d7da
+    style L fill:#d4edda
+    style O fill:#d4edda
+    style P fill:#d4edda
+    style Q fill:#d4edda
+    style R fill:#c3e6cb
+            </div>
+        </div>
+
+        <div class="diagram-container">
+            <div class="diagram-title">
+                <span class="icon">🏫</span>
+                School Creation Flow
+            </div>
+            <div class="mermaid">
+flowchart TD
+    A[Platform Admin Logged In] --> B[Navigate to /admin/schools]
+    B --> C[Click Add School Button]
+    C --> D[AddSchoolModal Opens]
+
+    D --> E[Fill School Form]
+    E --> F[School Name, Code, Address]
+    F --> G[Contact Details]
+    G --> H[Subscription Tier: free/basic/premium]
+
+    H --> I[Submit Form]
+    I --> J[POST /api/admin/schools]
+
+    J --> K[Validate Input Data]
+    K --> L[Generate School ID]
+    L --> M[INSERT into schools Table]
+
+    M --> N[School Created Successfully]
+    N --> O[Return School Data]
+    O --> P[Close Modal]
+    P --> Q[Refresh Schools List]
+
+    Q --> R[View School in List]
+    R --> S[Click Manage School]
+    S --> T[Navigate to /admin/schools/:id]
+
+    T --> U[School Details View]
+    U --> V[Edit School, Manage Billing,<br/>View Students, Activate/Suspend]
+
+    style A fill:#ec4899
+    style D fill:#fff3cd
+    style M fill:#d4edda
+    style N fill:#d4edda
+    style U fill:#e8f5e9
+            </div>
+        </div>
+
+        <div class="diagram-container">
+            <div class="diagram-title">
+                <span class="icon">🎓</span>
+                Student Profile Data Flow
+            </div>
+            <div class="mermaid">
+flowchart LR
+    A[Student Logged In] --> B[/student/dashboard]
+    B --> C[GET /api/student/profile]
+
+    C --> D[Fetch users Table]
+    D --> E[Join students Table]
+    E --> F[Join schools Table]
+
+    F --> G[Return Combined Data]
+    G --> H{Student Record Exists?}
+
+    H -->|Yes| I[Display Profile Info:<br/>Name, Class, School]
+    H -->|No| J[Redirect to Setup]
+
+    I --> K[Update Profile Form]
+    K --> L[PATCH /api/student/profile]
+    L --> M[Update students Table]
+    M --> N[Update users Table]
+
+    N --> O[Profile Updated Successfully]
+    O --> P[Refresh Dashboard Data]
+
+    style A fill:#ff9966
+    style D fill:#ffd9b3
+    style E fill:#d4edda
+    style M fill:#d4edda
+    style O fill:#c3e6cb
+            </div>
+        </div>
+
+        <div class="diagram-container">
+            <div class="diagram-title">
+                <span class="icon">🤖</span>
+                AI Career Coach Data Flow
+            </div>
+            <div class="mermaid">
+flowchart TD
+    A[Student Takes Assessment] --> B[POST /api/student/assessments]
+    B --> C[Store Results:<br/>riasec_results, mbti_results]
+
+    C --> D[Student Opens AI Coach]
+    D --> E[POST /api/ai/career]
+
+    E --> F[Fetch Student Data:<br/>Grades, Interests,<br/>Assessment Results]
+    F --> G[Build Context Snapshot]
+
+    G --> H[Call Gemini API]
+    H --> I[Bhutan-Specific System Prompt]
+    I --> J[RUB Colleges Data]
+    J --> K[BCSE Requirements]
+    K --> L[National Workforce Priorities]
+
+    L --> M[Generate Career Recommendations]
+    M --> N[Return Localized Advice:<br/>"Consider ILCS at Taktse for<br/>your Dzongkha skills"]
+
+    N --> O[Store in ai_interactions Table]
+    O --> P[Display to Student]
+
+    style A fill:#ff9966
+    style H fill:#e8f5e9
+    style I fill:#d4edda
+    style M fill:#c3e6cb
+    style O fill:#d1ecf1
+            </div>
+        </div>
+
+        <div class="diagram-container">
+            <div class="diagram-title">
+                <span class="icon">📚</span>
+                Library Book Circulation Flow
+            </div>
+            <div class="mermaid">
+flowchart TD
+    A[Student/Teacher] --> B[GET /api/library/books]
+    B --> C[View Available Books]
+
+    C --> D[Request to Borrow Book]
+    D --> E[POST /api/library/issue]
+
+    E --> F[Check: available_copies greater than 0?]
+    F -->|No| G[Show Error: Book Unavailable]
+    F -->|Yes| H[Create library_circulation Record]
+
+    H --> I[Set status: issued]
+    I --> J[Decrement available_copies]
+    J --> K[Increment currently_borrowed]
+
+    K --> L[Set dueDate = today + 14 days]
+    L --> M[Return Circulation Record]
+
+    M --> N[Book Issued Successfully]
+    N --> O[Book Checkout Complete]
+
+    O --> P[Student Returns Book]
+    P --> Q[PATCH /api/library/issue/:id/return]
+
+    Q --> R[Update status: returned]
+    R --> S[Set returnDate]
+    S --> T[Increment available_copies]
+    T --> U[Calculate Fine if Overdue]
+
+    U --> V[Update library_circulation Record]
+    V --> W[Return Book Successfully]
+
+    style A fill:#7b68ee
+    style H fill:#d4edda
+    style M fill:#d4edda
+    style R fill:#d4edda
+    style V fill:#d4edda
+    style W fill:#c3e6cb
+            </div>
+        </div>
+
+        <div class="diagram-container">
+            <div class="diagram-title">
+                <span class="icon">🏛️</span>
+                Ministry GNH Analytics Flow
+            </div>
+            <div class="mermaid">
+flowchart TD
+    A[Ministry User Logged In] --> B[Navigate to /ministry/gnh]
+    B --> C[GET /api/ministry/gnh]
+
+    C --> D[Fetch All Schools by Dzongkhag]
+    D --> E[Group Students by District]
+    E --> F[Aggregate Counselor Interventions]
+
+    F --> G[Calculate GNH Metrics:<br/>Mental Health Index,<br/>Attendance Rate,<br/>Social Cooperation]
+
+    G --> H[Compute Wellbeing Score per Dzongkhag]
+    H --> I[Determine Risk Level:<br/>Low (70+), Medium (60-69), High (&lt;60)]
+
+    I --> J[Generate National Heatmap]
+    J --> K[Identify Students At Risk]
+    K --> L[Calculate Intervention Summary]
+
+    L --> M[Return GNH Dashboard Data]
+    M --> N[Display National Command Center]
+
+    style A fill:#a855f7
+    style D fill:#f3e8ff
+    style G fill:#dbeafe
+    style J fill:#d1fae5
+    style M fill:#d1ecf1
+    style N fill:#c3e6cb
+            </div>
+        </div>
+
+        <div class="diagram-container">
+            <div class="diagram-title">
+                <span class="icon">👨‍🏫</span>
+                Teacher Resource Optimization Flow
+            </div>
+            <div class="mermaid">
+flowchart TD
+    A[Ministry User Logged In] --> B[Navigate to /ministry/teacher-resources]
+    B --> C[GET /api/ministry/teacher-resources]
+
+    C --> D[Fetch Teacher Counts by Dzongkhag]
+    D --> E[Fetch Student Counts by Dzongkhag]
+    E --> F[Calculate Teacher-Student Ratio]
+
+    F --> G[Compare to Optimal Ratio (25:1)]
+    G --> H{Variance Check}
+
+    H -->|&lt;-5%| I[Mark as Overstaffed]
+    H -->|±5%| J[Mark as Optimal]
+    H -->|&gt;+5%| K[Mark as Understaffed]
+    H -->|&gt;+20%| L[Mark as Critical]
+
+    I --> M[Identify Redistribution Opportunities]
+    K --> M
+    L --> N[Urgent: Recommend Deployments]
+
+    M --> O[Calculate Subject Gaps]
+    N --> O
+    O --> P[Generate Redistribution Report]
+
+    P --> Q[Return Optimization Data]
+    Q --> R[Display Teacher Resource Heatmap]
+
+    style A fill:#a855f7
+    style H fill:#fff3cd
+    style M fill:#d1ecf1
+    style N fill:#f8d7da
+    style Q fill:#d1ecf1
+    style R fill:#c3e6cb
+            </div>
+        </div>
+
+        <div class="diagram-container">
+            <div class="diagram-title">
+                <span class="icon">⚖️</span>
+                Labor Market Bridge Flow
+            </div>
+            <div class="mermaid">
+flowchart TD
+    A[Ministry User Logged In] --> B[Navigate to /ministry/labor-market]
+    B --> C[GET /api/ministry/labor-market]
+
+    C --> D[Fetch Student Career Interests]
+    D --> E[Fetch National Workforce Goals 2030]
+    E --> F[Compare Interest vs Demand]
+
+    F --> G[Calculate Alignment % per Sector]
+    G --> H{Alignment Status}
+
+    H -->|&lt;50%| I[CRITICAL: Large Shortage]
+    H -->|50-80%| J[WARNING: Moderate Shortage]
+    H -->|80-120%| K[BALANCED: On Track]
+    H -->|&gt;120%| L[SURPLUS: Overcapacity]
+
+    I --> M[Generate AI Insights]
+    J --> M
+    K --> M
+    L --> M
+
+    M --> N[Recommend Policy Actions:<br/>Scholarships, Promotions,<br/>Curriculum Changes]
+
+    N --> O[Compare to National SDP Goals]
+    O --> P[Calculate Workforce Gap]
+
+    P --> Q[Return Labor Market Data]
+    Q --> R[Display Strategic Workforce Dashboard]
+
+    style A fill:#a855f7
+    style H fill:#fff3cd
+    style I fill:#f8d7da
+    style M fill:#dbeafe
+    style N fill:#d1ecf1
+    style Q fill:#d1ecf1
+    style R fill:#c3e6cb
+            </div>
+        </div>
+
+        <div class="diagram-container">
+            <div class="diagram-title">
+                <span class="icon">📊</span>
+                Ministry to DOE Data Flow
+            </div>
+            <div class="mermaid">
+flowchart LR
+    A[Teacher Logs Homework] --> B[POST /api/teacher/homework]
+    B --> C[Store in syllabus_progress Table]
+
+    D[Counselor Logs Intervention] --> E[POST /api/counselor/interventions]
+    E --> F[Store Anonymized Data]
+
+    C --> G[Aggregate at Dzongkhag Level]
+    F --> G
+
+    G --> H[GET /api/ministry/emis-sync]
+    H --> I[Generate EMIS Report]
+
+    I --> J{Sync with Ministry?}
+    J -->|Yes| K[POST to National EMIS Database]
+    J -->|No| L[Store for Batch Export]
+
+    K --> M[EMIS Updated Successfully]
+    L --> N[Report Ready for Download]
+
+    style A fill:#3b82f6
+    style D fill:#a855f7
+    style G fill:#dbeafe
+    style I fill:#d1ecf1
+    style K fill:#d4edda
+    style M fill:#c3e6cb
+    style N fill:#d1ecf1
+            </div>
+        </div>
+    </div>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            flowchart: {
+                useMaxWidth: false,
+                htmlLabels: true,
+                curve: 'basis'
+            }
+        });
+    </script>
+</body>
+</html>

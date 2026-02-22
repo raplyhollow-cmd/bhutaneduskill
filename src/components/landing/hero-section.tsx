@@ -59,6 +59,7 @@ function FlowStep({
           transition={{
             duration: 2,
             repeat: Infinity,
+            repeatType: "loop",
             ease: "easeInOut",
             delay: index * 0.3,
           }}
@@ -90,6 +91,7 @@ function FlowStep({
             transition={{
               duration: 1.5,
               repeat: Infinity,
+              repeatType: "loop",
               ease: "easeInOut",
               delay: index * 0.2,
             }}
@@ -183,6 +185,7 @@ export function HeroSection() {
                 transition={{
                   duration: 4,
                   repeat: Infinity,
+                  repeatType: "loop",
                   ease: "easeInOut",
                 }}
                 className="absolute inset-0 bg-gradient-to-br from-orange-400/20 to-red-400/20 rounded-3xl blur-3xl"
@@ -238,7 +241,7 @@ export function HeroSection() {
       >
         <motion.div
           animate={{ y: [0, 8, 0] }}
-          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+          transition={{ duration: 1.5, repeat: Infinity, repeatType: "loop", ease: "easeInOut" }}
           className="w-5 h-8 border border-gray-300 dark:border-gray-700 rounded-full flex items-start justify-center p-1"
         >
           <div className="w-1 h-1.5 bg-gray-400 dark:bg-gray-500 rounded-full" />

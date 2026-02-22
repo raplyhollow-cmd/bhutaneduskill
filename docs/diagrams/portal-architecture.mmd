@@ -1,0 +1,438 @@
+# Bhutan EduSkill - Portal Architecture Diagram
+
+**Last Updated:** February 22, 2026
+**Total Portals:** 7
+
+---
+
+## Portal Architecture Overview
+
+```mermaid
+graph TB
+    subgraph "Frontend Layer - Next.js App Router"
+        LANDING[Landing Pages<br/>/, /about, /contact]
+        AUTH[Authentication<br/>/signup, /signin]
+        DASH[Dashboard Router<br/>/dashboard]
+        PORTAL[Unified Portal<br/>/[portal]/*]
+    end
+
+    subgraph "7 Portals"
+        STUDENT[Student Portal<br/>/student/*]
+        TEACHER[Teacher Portal<br/>/teacher/*]
+        PARENT[Parent Portal<br/>/parent/*]
+        COUNSELOR[Counselor Portal<br/>/counselor/*]
+        SCHOOL_ADMIN[School Admin Portal<br/>/school-admin/*]
+        ADMIN[Platform Admin Portal<br/>/admin/*]
+        MINISTRY[Ministry Portal<br/>/ministry/*]
+    end
+
+    subgraph "Shared Components"
+        SIDEBAR[PortalSidebar<br/>Theme-aware]
+        HEADER[PortalHeader<br/>User info]
+        BOTTOM_NAV[PortalBottomNav<br/>Mobile]
+        AI[UnifiedAIAssistant<br/>Role-aware]
+    end
+
+    subgraph "Layout Layer"
+        LAYOUT_UNIFIED[src/app/[portal]/layout.tsx<br/>Dynamic portal routing]
+        LAYOUT_ADMIN[src/app/admin/layout.tsx<br/>Admin-specific]
+        LAYOUT_PARENT[src/app/parent/layout.tsx<br/>Parent-specific]
+    end
+
+    LANDING --> AUTH
+    AUTH --> DASH
+    DASH --> PORTAL
+    PORTAL --> LAYOUT_UNIFIED
+    LAYOUT_UNIFIED --> STUDENT
+    LAYOUT_UNIFIED --> TEACHER
+    LAYOUT_UNIFIED --> PARENT
+    LAYOUT_UNIFIED --> COUNSELOR
+    LAYOUT_UNIFIED --> SCHOOL_ADMIN
+    LAYOUT_UNIFIED --> ADMIN
+    LAYOUT_UNIFIED --> MINISTRY
+
+    STUDENT --> SIDEBAR
+    TEACHER --> SIDEBAR
+    PARENT --> SIDEBAR
+    COUNSELOR --> SIDEBAR
+    SCHOOL_ADMIN --> SIDEBAR
+    ADMIN --> SIDEBAR
+    MINISTRY --> SIDEBAR
+
+    style STUDENT fill:#f97316
+    style TEACHER fill:#3b82f6
+    style PARENT fill:#9ca3af
+    style COUNSELOR fill:#a855f7
+    style SCHOOL_ADMIN fill:#8b5cf6
+    style ADMIN fill:#ec4899
+    style MINISTRY fill:#6366f1
+```
+
+---
+
+## Portal Structure Details
+
+### 1. Student Portal (24 pages)
+
+**Theme:** Orange (rgb(249 115 22))
+
+| Route | Page | Component |
+|-------|------|-----------|
+| `/student/dashboard` | Dashboard | StudentDashboard |
+| `/student/classes` | Classes | ClassList |
+| `/student/homework` | Homework | HomeworkList |
+| `/student/results` | Results | ResultsView |
+| `/student/attendance` | Attendance | AttendanceView |
+| `/student/careers` | Careers | CareerExplorer |
+| `/student/roadmap` | Roadmap | RoadmapTracker |
+| `/student/skills` | Skills | SkillBuilder |
+| `/student/study-abroad` | Study Abroad | StudyAbroad |
+| `/student/scholarships` | Scholarships | ScholarshipFinder |
+| `/student/assessment` | Assessment | AssessmentCenter |
+| `/student/learning` | Learning | LearningHub |
+| `/student/plan` | Plan | StudyPlan |
+| `/student/progress` | Progress | ProgressTracker |
+| `/student/modules` | Modules | LearningModules |
+| `/student/hostel` | Hostel | HostelInfo |
+| `/student/transport` | Transport | TransportInfo |
+| `/student/library` | Library | LibraryCatalog |
+| `/student/medical` | Medical | MedicalRecords |
+| `/student/fees` | Fees | FeeStatus |
+| `/student/journal` | Journal | LearningJournal |
+| `/student/settings` | Settings | UserSettings |
+| `/student/id-card` | ID Card | DigitalID |
+| `/student/monetize` | Monetize | EarnPoints |
+
+### 2. Teacher Portal (13 pages)
+
+**Theme:** Blue (rgb(59 130 246))
+
+| Route | Page | Component |
+|-------|------|-----------|
+| `/teacher/dashboard` | Dashboard | TeacherDashboard |
+| `/teacher/students` | Students | StudentRoster |
+| `/teacher/classes` | Classes | ClassManagement |
+| `/teacher/attendance` | Attendance | AttendanceTracker |
+| `/teacher/homework` | Homework | HomeworkManager |
+| `/teacher/assessments` | Assessments | AssessmentManager |
+| `/teacher/lessons` | Lessons | LessonPlanner |
+| `/teacher/schedule` | Schedule | TeachingSchedule |
+| `/teacher/reports` | Reports | StudentReports |
+| `/teacher/leave` | Leave | LeaveManagement |
+| `/teacher/payslips` | Payslips | SalaryInfo |
+| `/teacher/earnings` | Earnings | EarningsTracker |
+| `/teacher/live-sessions` | Live Sessions | VirtualClassroom |
+
+### 3. Parent Portal (14 pages)
+
+**Theme:** Gray (rgb(107 114 128))
+
+| Route | Page | Component |
+|-------|------|-----------|
+| `/parent/dashboard` | Dashboard | ParentDashboard |
+| `/parent/children` | Children | ChildrenList |
+| `/parent/progress` | Progress | AcademicProgress |
+| `/parent/attendance` | Attendance | AttendanceView |
+| `/parent/report-cards` | Report Cards | ReportCardView |
+| `/parent/assessments` | Assessments | AssessmentResults |
+| `/parent/homework` | Homework | HomeworkTracker |
+| `/parent/medical` | Medical | MedicalInfo |
+| `/parent/transport` | Transport | TransportTracking |
+| `/parent/fees` | Fees | FeePayment |
+| `/parent/documents` | Documents | DocumentCenter |
+| `/parent/communication` | Communication | MessageCenter |
+| `/parent/consent` | Consent | ConsentForms |
+
+### 4. Counselor Portal (14 pages)
+
+**Theme:** Purple (rgb(168 85 247))
+
+| Route | Page | Component |
+|-------|------|-----------|
+| `/counselor/dashboard` | Dashboard | CounselorDashboard |
+| `/counselor/students` | Students | StudentCaseload |
+| `/counselor/sessions` | Sessions | CounselingSessions |
+| `/counselor/interventions` | Interventions | InterventionTracker |
+| `/counselor/assessments` | Assessments | AssessmentCenter |
+| `/counselor/career-alignment` | Career Alignment | CareerGuidance |
+| `/counselor/red-flags` | Red Flags | AtRiskStudents |
+| `/counselor/wellness-compass` | Wellness | WellnessCompass |
+| `/counselor/resources` | Resources | ResourceLibrary |
+| `/counselor/plans` | Plans | ActionPlans |
+| `/counselor/notes` | Notes | SessionNotes |
+| `/counselor/reports` | Reports | CounselingReports |
+| `/counselor/data-export` | Data Export | BulkExport |
+
+### 5. School Admin Portal (26 pages)
+
+**Theme:** Violet (rgb(139 92 246))
+
+| Route | Page | Component |
+|-------|------|-----------|
+| `/school-admin/dashboard` | Dashboard | SchoolAdminDashboard |
+| `/school-admin/students` | Students | StudentManagement |
+| `/school-admin/students/create` | Create Student | StudentForm |
+| `/school-admin/teachers` | Teachers | TeacherManagement |
+| `/school-admin/teachers/create` | Create Teacher | TeacherForm |
+| `/school-admin/classes` | Classes | ClassManagement |
+| `/school-admin/subjects` | Subjects | SubjectManagement |
+| `/school-admin/departments` | Departments | DepartmentManagement |
+| `/school-admin/timetable` | Timetable | TimetableManager |
+| `/school-admin/timetable/assign` | Assign Timetable | TimetableAssign |
+| `/school-admin/attendance` | Attendance | AttendanceOverview |
+| `/school-admin/fees` | Fees | FeeManagement |
+| `/school-admin/results` | Results | ResultsManagement |
+| `/school-admin/homework` | Homework | HomeworkAssignments |
+| `/school-admin/report-cards` | Report Cards | ReportCardGenerator |
+| `/school-admin/examinations` | Examinations | ExamManager |
+| `/school-admin/library` | Library | LibraryManagement |
+| `/school-admin/hostel` | Hostel | HostelManagement |
+| `/school-admin/infirmary` | Infirmary | MedicalCenter |
+| `/school-admin/inventory` | Inventory | InventoryManagement |
+| `/school-admin/transport` | Transport | TransportManagement |
+| `/school-admin/announcements` | Announcements | AnnouncementCenter |
+| `/school-admin/settings` | Settings | SchoolSettings |
+| `/school-admin/bcse` | BCSE | BCSEIntegration |
+| `/school-admin/payroll` | Payroll | PayrollManagement |
+| `/school-admin/id-cards` | ID Cards | IDCardGenerator |
+| `/school-admin/leaves` | Leaves | LeaveManagement |
+
+### 6. Platform Admin Portal (19 pages)
+
+**Theme:** Pink (rgb(236 72 153))
+
+| Route | Page | Component |
+|-------|------|-----------|
+| `/admin/dashboard` | Dashboard | AdminDashboard |
+| `/admin/schools` | Schools | SchoolManagement |
+| `/admin/users` | Users | UserManagement |
+| `/admin/school-admin-applications` | Applications | ApplicationReview |
+| `/admin/careers` | Careers | CareerManagement |
+| `/admin/content` | Content | ContentManagement |
+| `/admin/partners` | Partners | PartnerManagement |
+| `/admin/notifications` | Notifications | NotificationCenter |
+| `/admin/analytics` | Analytics | PlatformAnalytics |
+| `/admin/counselors` | Counselors | CounselorManagement |
+| `/admin/support` | Support | SupportCenter |
+| `/admin/roles` | Roles | RoleManagement |
+| `/admin/permissions` | Permissions | PermissionManager |
+| `/admin/settings` | Settings | SystemSettings |
+| `/admin/system-status` | System Status | HealthMonitor |
+| `/admin/command-center` | Command Center | AdminTerminal |
+| `/admin/knowledge` | Knowledge Base | KBManager |
+| `/admin/billing` | Billing | BillingOverview |
+| `/admin/sitrep` | SitRep | SituationReport |
+
+### 7. Ministry Portal (10 pages)
+
+**Theme:** Indigo (rgb(99 102 241))
+
+| Route | Page | Component |
+|-------|------|-----------|
+| `/ministry/dashboard` | Dashboard | MinistryDashboard |
+| `/ministry/schools` | Schools | NationalSchools |
+| `/ministry/analytics` | Analytics | NationalAnalytics |
+| `/ministry/notifications` | Notifications | NationalAnnouncements |
+| `/ministry/billing` | Billing | RevenueOverview |
+| `/ministry/policies` | Policies | PolicyManagement |
+| `/ministry/teacher-resources` | Resources | TeacherResources |
+| `/ministry/infrastructure` | Infrastructure | InfrastructureReport |
+| `/ministry/gnh` | GNH | GNHValues |
+| `/ministry/emis` | EMIS | EMISReports |
+
+---
+
+## Shared Components Architecture
+
+### Sidebar Component
+
+```mermaid
+graph LR
+    subgraph PortalSidebar
+        THEME[Portal Config<br/>Color, Icon, Label]
+        USER[User Info<br/>Name, Role, Avatar]
+        MENU[Navigation Menu<br/>Role-based items]
+        AI[AI Assistant<br/>Floating bubble]
+        FOOTER[Footer<br/>Logout, Settings]
+    end
+
+    THEME --> MENU
+    USER --> FOOTER
+```
+
+**Portal Config (`src/config/portal-config.ts`):**
+```typescript
+export const portalConfig = {
+  student: {
+    name: "Student Portal",
+    color: "rgb(249 115 22)",
+    icon: "GraduationCap",
+    gradient: "from-orange-500 to-red-500"
+  },
+  teacher: {
+    name: "Teacher Portal",
+    color: "rgb(59 130 246)",
+    icon: "ChalkboardTeacher",
+    gradient: "from-blue-500 to-indigo-500"
+  },
+  // ... etc
+}
+```
+
+### AI Assistant Component
+
+```mermaid
+graph LR
+    subgraph UnifiedAIAssistant
+        ROLE[User Role Detection]
+        PROMPT[Role-Specific Prompt]
+        MODEL[AI Model]
+        UI[Themed Chat UI]
+    end
+
+    ROLE --> PROMPT
+    PROMPT --> MODEL
+    MODEL --> UI
+```
+
+**Role-Specific AI:**
+| Role | AI Name | Theme | Specialization |
+|------|---------|-------|----------------|
+| Student | Career Coach | Orange | Career guidance, study tips |
+| Teacher | Teacher Assistant | Blue | Lesson planning, assessments |
+| Parent | Parent Guide | Gray | Child development, fees |
+| Counselor | Wellness Guide | Purple | Mental health, interventions |
+| School Admin | Admin Helper | Violet | School management |
+| Platform Admin | System Assistant | Pink | Platform oversight |
+| Ministry | Policy Advisor | Indigo | Education policy |
+
+---
+
+## Layout Hierarchy
+
+```
+src/app/
+├── layout.tsx                    # Root layout (ToastProvider, theme)
+├── [portal]/
+│   └── layout.tsx                # Dynamic portal layout (7 portals)
+├── admin/
+│   └── layout.tsx                # Admin-specific layout
+├── parent/
+│   └── layout.tsx                # Parent-specific layout
+├── student/                      # Uses [portal] layout
+│   ├── dashboard/page.tsx
+│   ├── classes/page.tsx
+│   └── ...
+├── teacher/                      # Uses [portal] layout
+├── counselor/                    # Uses [portal] layout
+├── school-admin/                 # Uses [portal] layout
+├── ministry/                     # Uses [portal] layout
+└── setup/
+    └── unified/page.tsx          # Unified setup wizard
+```
+
+---
+
+## Component Distribution
+
+### Shared Components (50+)
+- UI Components: 35 (button, card, dialog, etc.)
+- Layout Components: 6 (sidebar, header, footer, etc.)
+- Form Components: 7 (auto-save, OTP input, etc.)
+- Shared Feature Components: 10+ (crud-card, victory-screen, etc.)
+
+### Portal-Specific Components (120+)
+- Admin: 23 components
+- School Admin: 12 components
+- Student: 8 components
+- Teacher: 4 components
+- Parent: 3 components
+- Counselor: 3 components
+- Ministry: 2 components
+- Landing/Marketing: 25 components
+- AI: 11 components
+- Assessment: 8 components
+- Dashboard: 6 components
+- Journey: 5 components
+- Wizard: 3 components
+
+---
+
+## Portal Navigation Structure
+
+### Student Portal Navigation
+```
+Dashboard
+├── Classes
+├── Homework
+├── Assessments
+├── Results
+├── Attendance
+├── Career
+│   ├── Career Explorer
+│   ├── Roadmap
+│   ├── Skills
+│   └── Scholarships
+├── Learning
+│   ├── Modules
+│   ├── Plan
+│   └── Progress
+├── Services
+│   ├── Library
+│   ├── Hostel
+│   ├── Transport
+│   └── Medical
+├── Fees
+├── Journal
+└── Settings
+```
+
+### School Admin Navigation
+```
+Dashboard
+├── Students
+├── Teachers
+├── Academics
+│   ├── Classes
+│   ├── Subjects
+│   ├── Departments
+│   └── Timetable
+├── Operations
+│   ├── Attendance
+│   ├── Fees
+│   ├── Examinations
+│   └── Report Cards
+├── Facilities
+│   ├── Library
+│   ├── Hostel
+│   ├── Infirmary
+│   ├── Inventory
+│   └── Transport
+├── Administration
+│   ├── Announcements
+│   ├── Settings
+│   ├── Payroll
+│   └── ID Cards
+└── Reports
+```
+
+---
+
+## Responsive Design Strategy
+
+### Desktop (> 1024px)
+- Full sidebar navigation
+- Horizontal header
+- Multi-column layouts
+- Hover interactions
+
+### Tablet (768px - 1024px)
+- Collapsible sidebar
+- Optimized tables
+- Touch-friendly controls
+
+### Mobile (< 768px)
+- Bottom navigation bar
+- Full-screen modals
+- Swipe gestures
+- Single column layouts

@@ -41,6 +41,9 @@ import {
   Bell,
   Activity,
   Bus,
+  Command,
+  Database,
+  Zap,
 } from "lucide-react";
 
 // ============ PORTAL CONFIGURATION ============
@@ -147,11 +150,13 @@ export const PORTAL_CONFIG = {
     activeText: "rgb(219 39 119)",
     navigationItems: [
       { name: "Dashboard", href: "/admin", icon: Home },
+      { name: "Command Center", href: "/admin/command-center", icon: Command },
       { name: "Schools", href: "/admin/schools", icon: Building2 },
       { name: "Users", href: "/admin/users", icon: Users },
       { name: "Teachers", href: "/admin/teachers", icon: GraduationCap },
       { name: "Counselors", href: "/admin/counselors", icon: MessageSquare },
       { name: "Assessments", href: "/admin/assessments", icon: ClipboardList },
+      { name: "Knowledge", href: "/admin/knowledge", icon: Database },
       { name: "Content", href: "/admin/content", icon: FileText },
       { name: "Careers", href: "/admin/careers", icon: Briefcase },
       { name: "Reports", href: "/admin/reports", icon: BarChart3 },

@@ -2,8 +2,9 @@ import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
-import { users, wizardProgress } from "@/lib/db/schema";
+import { users, wizardProgress, schoolAdminApplications } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { nanoid } from "nanoid";
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,15 +27,86 @@ export async function POST(request: NextRequest) {
 
     const dbUser = userRecord[0];
 
-    // Update user as onboarding complete
-    await db
-      .update(users)
-      .set({ onboardingComplete: true })
-      .where(eq(users.id, dbUser.id));
+    // Check if there's a pending application (for school-admins)
+    let application: any[] = [];
+    if (dbUser.type === "school-admin") {
+      application = await db
+        .select()
+        .from(schoolAdminApplications)
+        .where(eq(schoolAdminApplications.userId, dbUser.id))
+        .limit(1);
+    }
 
-    logger.debug("[Setup Complete] Marked onboarding complete for user:", dbUser.id, "type:", dbUser.type);
+    // For school admins, we need to check if they have an application
+    // and set status accordingly
+    if (dbUser.type === "school-admin") {
+      if (application.length > 0 && application[0].status === "approved") {
+        // Already approved, mark as complete
+        await db
+          .update(users)
+          .set({
+            onboardingComplete: true,
+            onboardingStatus: "complete",
+          })
+          .where(eq(users.id, dbUser.id));
+      } else if (application.length > 0 && application[0].status === "pending_approval") {
+        // Still pending approval, don't mark as complete
+        await db
+          .update(users)
+          .set({
+            onboardingComplete: false,
+            onboardingStatus: "pending_approval",
+          })
+          .where(eq(users.id, dbUser.id));
+      } else {
+        // No application found - shouldn't happen for school-admin
+        // Create application record
+        if (dbUser.schoolId) {
+          const appId = `sa_app_${nanoid()}`;
+          await db.insert(schoolAdminApplications).values({
+            id: appId,
+            userId: dbUser.id,
+            schoolId: dbUser.schoolId,
+            status: "pending_approval",
+            paymentStatus: "pending",
+            appliedAt: new Date(),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+          logger.info("Created school admin application from complete wizard", { userId: dbUser.id });
+        }
 
-    return NextResponse.json({ success: true });
+        // Mark as pending approval
+        await db
+          .update(users)
+          .set({
+            onboardingComplete: false,
+            onboardingStatus: "pending_approval",
+          })
+          .where(eq(users.id, dbUser.id));
+      }
+    } else {
+      // For other roles, just mark as complete
+      await db
+        .update(users)
+        .set({
+          onboardingComplete: true,
+          onboardingStatus: "complete",
+        })
+        .where(eq(users.id, dbUser.id));
+    }
+
+    logger.debug("[Setup Complete] Completed setup for user:", dbUser.id, "type:", dbUser.type);
+
+    // Return the approval status so the wizard knows where to redirect
+    const needsApproval = dbUser.type === "school-admin" &&
+      (application.length === 0 || application[0].status !== "approved");
+
+    return NextResponse.json({
+      success: true,
+      needsApproval,
+      onboardingStatus: dbUser.onboardingStatus,
+    });
   } catch (error) {
     logger.error("Error completing wizard:", error);
     return NextResponse.json(

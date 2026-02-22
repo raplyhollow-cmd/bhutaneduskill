@@ -50,6 +50,22 @@ const envSchema = z.object({
   NEXT_PUBLIC_APP_URL: z.string().default("http://localhost:3003"),
 
   // -----------------------------------------------------------------------------
+  // NextAuth (Required for production)
+  // -----------------------------------------------------------------------------
+  NEXTAUTH_SECRET: z.string().optional().transform(val => {
+    if (process.env.NODE_ENV === "production" && !val) {
+      throw new Error("NEXTAUTH_SECRET is required in production. Generate one with: openssl rand -base64 32");
+    }
+    return val || "dev-secret-change-in-production";
+  }),
+  NEXTAUTH_URL: z.string().url().optional().transform(val => {
+    if (process.env.NODE_ENV === "production" && !val) {
+      throw new Error("NEXTAUTH_URL is required in production. Set it to your production domain.");
+    }
+    return val || "http://localhost:3003";
+  }),
+
+  // -----------------------------------------------------------------------------
   // Sentry (Optional)
   // -----------------------------------------------------------------------------
   NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),

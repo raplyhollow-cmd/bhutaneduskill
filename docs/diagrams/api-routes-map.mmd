@@ -1,0 +1,687 @@
+# Bhutan EduSkill - API Routes Map
+
+**Last Updated:** February 22, 2026
+**Total Routes:** 286+
+
+---
+
+## API Route Structure Overview
+
+```mermaid
+graph TB
+    ROOT[/api] --> AUTH[Auth & Setup]
+    ROOT --> ADMIN[Admin - 69 routes]
+    ROOT --> SCHOOL_ADMIN[School Admin - 81 routes]
+    ROOT --> TEACHER[Teacher - 34 routes]
+    ROOT --> STUDENT[Student - 40 routes]
+    ROOT --> PARENT[Parent - 36 routes]
+    ROOT --> COUNSELOR[Counselor - 24 routes]
+    ROOT --> MINISTRY[Ministry - 14 routes]
+    ROOT --> SHARED[Shared Services - 28 routes]
+
+    AUTH --> AUTH1[/auth/set-role]
+    AUTH --> AUTH2[/setup/*]
+    AUTH --> AUTH3[/user/profile]
+    AUTH --> AUTH4[/clerk/webhook]
+
+    style ADMIN fill:#ec4899
+    style SCHOOL_ADMIN fill:#8b5cf6
+    style TEACHER fill:#3b82f6
+    style STUDENT fill:#f97316
+    style PARENT fill:#9ca3af
+    style COUNSELOR fill:#a855f7
+    style MINISTRY fill:#6366f1
+```
+
+---
+
+## Authentication Routes (4 routes)
+
+| Route | Method | Auth | Purpose |
+|-------|--------|------|---------|
+| `/api/auth/set-role` | GET | ❌ | Get user type & setup status |
+| `/api/user/profile` | GET | ✅ | Get current user profile |
+| `/api/clerk/webhook` | POST | ❌ | Clerk auth events |
+| `/api/verification/school` | POST | ❌ | Verify school code |
+
+**Protected:** 1/4 (25%)
+**Public:** 3/4 (webhooks, setup, verification)
+
+---
+
+## Setup Routes (9 routes)
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/setup/student` | POST | Student onboarding |
+| `/api/setup/teacher` | POST | Teacher profile creation |
+| `/api/setup/parent` | POST | Parent registration |
+| `/api/setup/counselor` | POST | Counselor setup |
+| `/api/setup/school-admin` | POST | School admin setup |
+| `/api/setup/admin` | POST | Platform admin setup |
+| `/api/setup/ministry` | POST | Ministry official setup |
+| `/api/setup/complete` | POST | Finalize onboarding |
+| `/api/setup/import` | POST | Bulk user import |
+
+**All routes:** Create user if not exists in database
+
+---
+
+## Admin Routes (69 routes)
+
+### Dashboard & Analytics (7 routes)
+```
+/api/admin/dashboard/stats
+/api/admin/analytics-data
+/api/admin/analytics-data/export
+/api/admin/analytics-data/schools
+/api/admin/insights
+/api/admin/reports
+/api/admin/sitrep
+```
+
+### School Management (12 routes)
+```
+/api/admin/schools
+/api/admin/schools/[id]
+/api/admin/schools/[id]/approve
+/api/admin/schools/[id]/activate
+/api/admin/schools/[id]/suspend
+/api/admin/schools/[id]/tier
+/api/admin/schools/[id]/invoices
+/api/admin/schools/[id]/seat-usage
+/api/schools/lookup
+/api/schools/verify-code
+/api/schools/validate-code
+```
+
+### User Management (10 routes)
+```
+/api/admin/users
+/api/admin/users/batch
+/api/admin/users/[userId]
+/api/admin/users/[userId]/verify
+/api/admin/users/[userId]/delete
+/api/admin/roles
+/api/admin/roles/[roleId]/permissions
+/api/admin/roles/[roleId]/users
+/api/admin/permissions
+```
+
+### School Admin Applications (5 routes)
+```
+/api/admin/school-admin-applications
+/api/admin/school-admin-applications/[id]
+/api/admin/school-admin-applications/[id]/approve
+/api/admin/school-admin-applications/[id]/reject
+/api/admin/school-admin-applications/[id]/verify-payment
+```
+
+### Content Management (8 routes)
+```
+/api/admin/content/colleges
+/api/admin/content/programs
+/api/admin/content/scholarships
+/api/admin/content/sync
+```
+
+### Billing (6 routes)
+```
+/api/admin/billing
+/api/admin/billing/invoices
+/api/admin/billing/invoices/[invoiceId]
+/api/ministry/billing
+/api/ministry/billing/invoices
+/api/ministry/billing/payments
+```
+
+### Support & Partners (8 routes)
+```
+/api/admin/support
+/api/admin/support/agents
+/api/admin/support/[id]
+/api/admin/partners
+/api/admin/partners/[partnerId]
+/api/admin/partners/[partnerId]/invite
+/api/admin/partners/[partnerId]/statistics
+/api/admin/partners/[partnerId]/commissions
+```
+
+### Command Center (3 routes)
+```
+/api/admin/command/execute
+/api/admin/command/history
+/api/admin/command/status
+```
+
+### Knowledge Base (2 routes)
+```
+/api/admin/knowledge/articles
+/api/admin/knowledge/articles/[id]
+```
+
+### Notifications (4 routes)
+```
+/api/admin/notifications
+/api/admin/notifications/[notificationId]
+/api/admin/notifications/my-notifications/unread-count
+/api/announcements
+```
+
+### Settings (4 routes)
+```
+/api/admin/settings
+/api/admin/settings/tiers
+/api/admin/system-status
+/api/admin/stats
+```
+
+**Authentication:** All routes require `requireAuth(['admin'])`
+
+---
+
+## School Admin Routes (81 routes)
+
+### Dashboard (4 routes)
+```
+/api/school-admin/dashboard/stats
+/api/school-admin/dashboard/recent-activity
+/api/school-admin/dashboard/upcoming
+/api/school-admin/dashboard/alerts
+```
+
+### Students (12 routes)
+```
+/api/school-admin/students
+/api/school-admin/students/[id]
+/api/school-admin/students/bulk-import
+/api/school-admin/students/search
+/api/school-admin/applications
+/api/school-admin/applications/[id]
+/api/school-admin/applications/approve-batch
+/api/school-admin/applications/reject-batch
+/api/school-admin/applications/[id]/approve
+/api/school-admin/applications/[id]/reject
+/api/school-admin/applications/[id]/assignment
+```
+
+### Teachers (8 routes)
+```
+/api/school-admin/teachers
+/api/school-admin/teachers/[id]
+/api/school-admin/teachers/add
+/api/school-admin/teachers/search
+```
+
+### Classes & Subjects (10 routes)
+```
+/api/school-admin/classes
+/api/school-admin/classes/[id]
+/api/school-admin/subjects
+/api/school-admin/subjects/[id]
+/api/school-admin/curriculum-assign
+/api/school-admin/departments
+```
+
+### Timetable (6 routes)
+```
+/api/school-admin/timetable
+/api/school-admin/timetable/[id]
+/api/school-admin/timetable/generate
+/api/timetable/generate
+```
+
+### Attendance (4 routes)
+```
+/api/school-admin/attendance
+/api/school-admin/attendance/bulk-import
+/api/school-admin/attendance/history
+```
+
+### Fees (6 routes)
+```
+/api/school-admin/fees/structures
+/api/school-admin/fees/structures/[id]
+/api/school-admin/fees/payments
+/api/parent/fees
+```
+
+### Hostels (3 routes)
+```
+/api/school-admin/hostels/allocate
+/api/hostel/allocations
+/api/school-admin/capacity
+```
+
+### Library (4 routes)
+```
+/api/library/books
+/api/library/issue
+/api/library/members
+/api/library/fines
+```
+
+### Reports (6 routes)
+```
+/api/reports/generate
+/api/reports/attendance/[studentId]
+/api/reports/fees/collection
+```
+
+### Settings (8 routes)
+```
+/api/school-admin/settings
+/api/school-admin/settings/academic-years
+/api/school-admin/settings/academic-years/[id]
+/api/school-admin/settings/bell-schedules
+/api/school-admin/settings/bell-schedules/[id]
+```
+
+### Capacity (1 route)
+```
+/api/school-admin/capacity
+```
+
+**Authentication:** All routes require `requireAuth(['school-admin'])`
+
+---
+
+## Teacher Routes (34 routes)
+
+### Dashboard (3 routes)
+```
+/api/teacher/dashboard/stats
+/api/teacher/dashboard/schedule
+```
+
+### Students (4 routes)
+```
+/api/teacher/students
+/api/teacher/students/[id]
+```
+
+### Homework (6 routes)
+```
+/api/teacher/homework
+/api/teacher/homework/[id]
+/api/teacher/homework/[id]/submissions
+/api/student/homework
+/api/student/homework/[id]
+/api/student/homework/[id]/draft
+```
+
+### Assessments (6 routes)
+```
+/api/teacher/assessments
+/api/teacher/assessments/[id]
+/api/student/assessments
+/api/assessment-submissions
+/api/assessment-submissions/[id]
+/api/certificates/[assessmentId]
+```
+
+### Attendance (4 routes)
+```
+/api/teacher/attendance
+/api/teacher/attendance/history
+/api/student/attendance
+/api/student/attendance/check-in
+/api/student/attendance/my-records
+```
+
+### Lessons (4 routes)
+```
+/api/teacher/lessons
+/api/teacher/lessons/[id]
+/api/teacher/resources
+```
+
+### Reports (3 routes)
+```
+/api/teacher/reports
+/api/teacher/reports/student
+```
+
+### Profile (4 routes)
+```
+/api/teacher/profile
+```
+
+**Authentication:** All routes require `requireAuth(['teacher'])`
+
+---
+
+## Student Routes (40 routes)
+
+### Profile (4 routes)
+```
+/api/student/profile
+/api/student/profile/update
+```
+
+### Dashboard (3 routes)
+```
+/api/student/dashboard/stats
+/api/student/dashboard/progress
+```
+
+### Academics (8 routes)
+```
+/api/student/classes
+/api/student/homework
+/api/student/homework/[id]
+/api/student/assessments
+/api/assessment-submissions
+/api/student/results
+```
+
+### Attendance (3 routes)
+```
+/api/student/attendance
+/api/student/attendance/check-in
+/api/student/attendance/my-records
+```
+
+### Career (10 routes)
+```
+/api/careers
+/api/saved-careers
+/api/student/assessments
+/api/student/profile
+/api/student/roadmap
+/api/student/marks-summary
+/api/skills
+/api/skills/count
+/api/plans/[id]
+```
+
+### AI Features (6 routes)
+```
+/api/ai/career
+/api/ai/scholarships
+/api/ai/skill-gap
+/api/ai/career-predictor
+/api/ai/essay-reviewer
+/api/ai/interview-coach
+```
+
+### Fees (3 routes)
+```
+/api/student/fees
+/api/parent/fees
+```
+
+### Journal (3 routes)
+```
+/api/journal/[id]
+```
+
+**Authentication:** All routes require `requireAuth(['student'])`
+
+---
+
+## Parent Routes (36 routes)
+
+### Dashboard (3 routes)
+```
+/api/parent/dashboard/stats
+/api/parent/dashboard/notifications
+```
+
+### Children (6 routes)
+```
+/api/parent/children
+/api/parent/children/[id]
+/api/parent/search-student
+```
+
+### Progress (8 routes)
+```
+/api/parent/children/[id]/progress
+/api/parent/children/[id]/attendance
+/api/parent/children/[id]/behavior-logs
+/api/parent/homework
+```
+
+### Assessments (4 routes)
+```
+/api/parent/assessments
+```
+
+### Report Cards (4 routes)
+```
+/api/parent/report-cards
+```
+
+### Fees (6 routes)
+```
+/api/parent/fees
+```
+
+### Communication (5 routes)
+```
+/api/parent/contacts
+```
+
+**Authentication:** All routes require `requireAuth(['parent'])`
+
+---
+
+## Counselor Routes (24 routes)
+
+### Dashboard (3 routes)
+```
+/api/counselor/dashboard/stats
+```
+
+### Students (4 routes)
+```
+/api/counselor/students
+/api/counselor/students/[id]
+```
+
+### Interventions (6 routes)
+```
+/api/counselor/interventions
+/api/counselor/interventions/[id]
+```
+
+### Sessions (4 routes)
+```
+/api/counselor/sessions
+```
+
+### Resources (3 routes)
+```
+/api/counselor/resources
+```
+
+### Notes (4 routes)
+```
+/api/counselor-notes/[id]
+```
+
+**Authentication:** All routes require `requireAuth(['counselor'])`
+
+---
+
+## Ministry Routes (14 routes)
+
+### Dashboard (3 routes)
+```
+/api/ministry/dashboard/stats
+```
+
+### Schools (4 routes)
+```
+/api/ministry/schools
+```
+
+### Analytics (3 routes)
+```
+/api/ministry/analytics
+```
+
+### Policies (2 routes)
+```
+/api/ministry/policies
+```
+
+### GNH (1 route)
+```
+/api/ministry/gnh
+```
+
+### EMIS (1 route)
+```
+/api/ministry/emis
+```
+
+**Authentication:** All routes require `requireAuth(['ministry'])`
+
+---
+
+## Shared Service Routes (28 routes)
+
+### Library (6 routes)
+```
+/api/library/books
+/api/library/issue
+/api/library/members
+/api/library/fines
+```
+
+### Transport (5 routes)
+```
+/api/transport
+```
+
+### Inventory (6 routes)
+```
+/api/inventory/items
+/api/inventory/categories
+/api/inventory/vendors
+/api/inventory/maintenance
+/api/inventory/settings
+```
+
+### Billing (4 routes)
+```
+/api/billing/invoices
+/api/billing/invoices/[invoiceId]
+/api/billing/subscriptions
+/api/billing/subscriptions/[subscriptionId]
+```
+
+### Notifications (3 routes)
+```
+/api/notifications
+/api/notifications/my-notifications
+/api/notifications/my-notifications/unread-count
+```
+
+### Files (2 routes)
+```
+/api/files/[id]
+```
+
+### Tuition (2 routes)
+```
+/api/tuition/courses
+/api/tuition/sessions
+```
+
+### ID Cards (1 route)
+```
+/api/id-card
+```
+
+### Leave (1 route)
+```
+/api/leave
+```
+
+### Consent (1 route)
+```
+/api/consent/[id]
+```
+
+---
+
+## Security Summary
+
+| Portal | Routes | Protected | % Protected |
+|--------|--------|-----------|-------------|
+| Admin | 69 | 69 | 100% |
+| School Admin | 81 | 81 | 100% |
+| Teacher | 34 | 34 | 100% |
+| Student | 40 | 40 | 100% |
+| Parent | 36 | 36 | 100% |
+| Counselor | 24 | 24 | 100% |
+| Ministry | 14 | 14 | 100% |
+| Shared | 28 | 25 | 89% |
+| Auth/Setup | 13 | 1 | 8% |
+| **Total** | **369** | **324** | **88%** |
+
+**Public Routes (8%):**
+- Webhooks (Clerk, payments)
+- School verification
+- Setup wizard access
+- Public lookups
+
+---
+
+## Response Format Standards
+
+### Success Response
+```typescript
+{
+  success: true,
+  data: T
+}
+```
+
+### Error Response
+```typescript
+{
+  success: false,
+  error: string
+}
+```
+
+### Pagination
+```typescript
+{
+  success: true,
+  data: T[],
+  pagination: {
+    page: number,
+    limit: number,
+    total: number,
+    totalPages: number
+  }
+}
+```
+
+---
+
+## HTTP Method Distribution
+
+| Method | Count | Usage |
+|--------|-------|-------|
+| GET | ~120 | Read operations |
+| POST | ~150 | Create operations |
+| PATCH | ~60 | Update operations |
+| DELETE | ~39 | Delete operations |
+
+---
+
+## Rate Limiting Status
+
+| Route Type | Rate Limited | Limit |
+|------------|--------------|-------|
+| Auth routes | ✅ | 10 req/min |
+| Setup routes | ✅ | 5 req/min |
+| Public API | ✅ | 100 req/min |
+| Protected API | ❌ | None |
+| Webhooks | ❌ | None |

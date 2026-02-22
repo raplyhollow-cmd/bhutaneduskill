@@ -1,5 +1,8 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { users } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
 // ============================================================================
 // ROUTE PROTECTION
@@ -107,6 +110,76 @@ export default clerkMiddleware(async (auth, request) => {
     "Permissions-Policy",
     "camera=(), microphone=(), geolocation=(), interest-cohort=()"
   );
+
+  // ============================================================================
+  // Zero Data Access Enforcement for Restricted/Pending Users
+  // ============================================================================
+  // Block API access for users with restricted or pending approval status
+  // They can only access specific endpoints needed for setup
+  if (userId && request.nextUrl.pathname.startsWith("/api")) {
+    const allowedPaths = [
+      "/api/user/profile",
+      "/api/auth/set-role",
+      "/api/auth/",
+      "/api/setup/",
+      "/api/schools/search", // For school search in setup
+    ];
+
+    const isAllowedPath = allowedPaths.some(path =>
+      request.nextUrl.pathname.startsWith(path)
+    );
+
+    // Always allow these public pages
+    const isPublicPage = [
+      "/restricted",
+      "/pending-approval",
+      "/rejected",
+      "/setup/",
+    ].some(path => request.nextUrl.pathname.startsWith(path));
+
+    if (!isAllowedPath && !isPublicPage) {
+      try {
+        // Check user's onboarding status from database
+        const userRecords = await db
+          .select({ onboardingStatus: users.onboardingStatus })
+          .from(users)
+          .where(eq(users.clerkUserId, userId))
+          .limit(1);
+
+        if (userRecords.length > 0) {
+          const { onboardingStatus } = userRecords[0];
+
+          // Block access for restricted and pending_approval users
+          if (onboardingStatus === "restricted" || onboardingStatus === "pending_approval") {
+            return NextResponse.json(
+              {
+                error: onboardingStatus === "restricted"
+                  ? "Complete your profile to access this feature"
+                  : "Your application is pending approval",
+                redirectTo: onboardingStatus === "restricted" ? "/restricted" : "/pending-approval",
+              },
+              { status: 403 }
+            );
+          }
+
+          // Redirect rejected users to rejected page
+          if (onboardingStatus === "rejected") {
+            return NextResponse.json(
+              {
+                error: "Your application was not approved",
+                redirectTo: "/rejected",
+              },
+              { status: 403 }
+            );
+          }
+        }
+      } catch (error) {
+        // On database error, allow request to proceed (fail-open)
+        // This prevents middleware from breaking the app
+        console.error("Middleware database check failed:", error);
+      }
+    }
+  }
 
   // ============================================================================
   // Cookie-based Intelligent Routing (for root and /route)

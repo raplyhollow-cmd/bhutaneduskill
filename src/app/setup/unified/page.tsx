@@ -141,6 +141,7 @@ export default function UnifiedSetupWizard() {
   const [error, setError] = useState("");
 
   // Check if user is already set up (especially admin users)
+  // Also check for pre-filled school code from URL
   useEffect(() => {
     let isMounted = true;
 
@@ -170,6 +171,13 @@ export default function UnifiedSetupWizard() {
       .catch(() => {
         // On error, continue showing setup wizard
       });
+
+    // Check for pre-filled school code in URL query parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const preFilledCode = urlParams.get("code");
+    if (preFilledCode) {
+      setSchoolCode(preFilledCode.toUpperCase());
+    }
 
     return () => {
       isMounted = false;
@@ -362,10 +370,17 @@ export default function UnifiedSetupWizard() {
         return;
       }
 
-      logger.debug("[Setup Complete] Setup complete, redirecting to", `/${selectedRole.id}`);
+      const data = await response.json();
 
-      // Redirect to portal immediately
-      router.push(`/${selectedRole.id}?welcome=true`);
+      logger.debug("[Setup Complete] Setup complete, needsApproval:", data.needsApproval);
+
+      // For school-admins who need approval, redirect to pending-approval page
+      if (data.needsApproval) {
+        router.push("/pending-approval");
+      } else {
+        // Redirect to portal immediately
+        router.push(`/${selectedRole.id}?welcome=true`);
+      }
     } catch (err) {
       logger.error("[Setup Complete] Error:", err);
       setError("Failed to complete setup. Please try again.");
@@ -1073,13 +1088,13 @@ export default function UnifiedSetupWizard() {
       },
       "school-admin": {
         color: "violet",
-        title: "Your School Dashboard is Ready!",
+        title: "Application Submitted - Awaiting Approval",
         features: [
-          "Add subjects and create class schedules",
-          "Invite teachers to join the platform",
-          "Register students or send them invite codes",
-          "Set up fee structure",
-          "Explore AI-powered insights",
+          "Your application has been submitted to the platform administrator",
+          "You'll receive an email once your account is approved",
+          "After approval, you can manage your school, students, and teachers",
+          "Set up subjects, class schedules, and fee structures",
+          "Explore AI-powered insights for your school",
         ],
       },
     };
@@ -1122,11 +1137,11 @@ export default function UnifiedSetupWizard() {
           transition={{ delay: 0.2 }}
         >
           <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">
-            Welcome, {fullName}!
+            {selectedRole.id === "school-admin" ? "Application Submitted!" : `Welcome, ${fullName}!`}
           </h2>
           <p className="text-slate-600">
             {selectedRole.id === "school-admin"
-              ? `Your account has been linked to ${verifiedSchool?.name || "your school"}.`
+              ? `Your application for ${verifiedSchool?.name || "your school"} has been submitted and is awaiting approval.`
               : `Your ${selectedRole.name} account is ready.`}
           </p>
         </motion.div>
@@ -1204,6 +1219,11 @@ export default function UnifiedSetupWizard() {
               <>
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                 Processing...
+              </>
+            ) : selectedRole.id === "school-admin" ? (
+              <>
+                View Application Status
+                <ArrowRight className="w-5 h-5 ml-2" />
               </>
             ) : (
               <>

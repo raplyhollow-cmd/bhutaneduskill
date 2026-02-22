@@ -1,10 +1,20 @@
 "use client";
 
-import { logger } from "@/lib/logger";
+/**
+ * PLATFORM ADMIN DASHBOARD
+ *
+ * Modern dashboard with:
+ * - Premium stat cards with hover effects
+ * - AI-driven insights
+ * - Quick action cards
+ * - Responsive grid layout
+ */
 
+import { logger } from "@/lib/logger";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { CeramicCallout } from "@/components/ui/ceramic-callout";
 import {
   Building2,
   Users,
@@ -17,13 +27,20 @@ import {
   Globe,
   FileText,
   Loader2,
+  CheckCircle,
+  Clock,
+  Plus,
+  Settings,
+  BarChart3,
+  Bell,
+  Command,
+  Zap,
 } from "lucide-react";
 import Link from "next/link";
 import { AIInsightCard } from "@/components/ai/ai-insight-card";
 import { PremiumCard } from "@/components/admin/premium-card";
-import { PageWrapper } from "@/components/admin/page-wrapper";
-import { LiveBadge } from "@/components/admin/live-badge";
 import { useState, useEffect } from "react";
+import { cn } from "@/lib/utils";
 
 interface AdminStats {
   totalSchools: number;
@@ -32,6 +49,8 @@ interface AdminStats {
   totalAssessments: number;
   completionRate: number;
   activeNow: number;
+  pendingApplications: number;
+  revenue: number;
 }
 
 interface TopSchool {
@@ -60,6 +79,74 @@ interface AIInsight {
   actions?: Array<{ label: string; href: string }>;
 }
 
+// Quick Action Cards - with ceramic styling
+const quickActions = [
+  {
+    icon: Command,
+    label: "Command Center",
+    href: "/admin/command-center",
+    gradient: "linear-gradient(135deg, rgb(6 182 212) 0%, rgb(8 145 178) 100%)",
+    bgColor: "bg-cyan-50",
+    ceramicBg: "bg-cyan-50",
+    ceramicColor: "text-cyan-600"
+  },
+  {
+    icon: Plus,
+    label: "Add School",
+    href: "/admin/schools",
+    gradient: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)",
+    bgColor: "bg-pink-50",
+    ceramicBg: "bg-ceramic-pink-50",
+    ceramicColor: "text-ceramic-pink-600"
+  },
+  {
+    icon: Users,
+    label: "Manage Users",
+    href: "/admin/users",
+    gradient: "linear-gradient(135deg, rgb(59 130 246) 0%, rgb(37 99 235) 100%)",
+    bgColor: "bg-blue-50",
+    ceramicBg: "bg-ceramic-blue-50",
+    ceramicColor: "text-ceramic-blue-600"
+  },
+  {
+    icon: CheckCircle,
+    label: "Review Applications",
+    href: "/admin/school-admin-applications",
+    gradient: "linear-gradient(135deg, rgb(34 197 94) 0%, rgb(22 163 74) 100%)",
+    bgColor: "bg-green-50",
+    ceramicBg: "bg-ceramic-green-50",
+    ceramicColor: "text-ceramic-positive",
+    badgeKey: "pendingApplications"
+  },
+  {
+    icon: BarChart3,
+    label: "View Analytics",
+    href: "/admin/analytics",
+    gradient: "linear-gradient(135deg, rgb(139 92 246) 0%, rgb(124 58 237) 100%)",
+    bgColor: "bg-purple-50",
+    ceramicBg: "bg-ceramic-purple-50",
+    ceramicColor: "text-ceramic-brand"
+  },
+  {
+    icon: Bell,
+    label: "Send Notification",
+    href: "/admin/notifications",
+    gradient: "linear-gradient(135deg, rgb(234 179 8) 0%, rgb(202 138 4) 100%)",
+    bgColor: "bg-yellow-50",
+    ceramicBg: "bg-ceramic-warning/10",
+    ceramicColor: "text-ceramic-warning"
+  },
+  {
+    icon: Settings,
+    label: "Platform Settings",
+    href: "/admin/settings",
+    gradient: "linear-gradient(135deg, rgb(107 114 128) 0%, rgb(75 85 99) 100%)",
+    bgColor: "bg-gray-50",
+    ceramicBg: "bg-ceramic-gray-100",
+    ceramicColor: "text-ceramic-secondary"
+  },
+];
+
 export default function AdminDashboardPage() {
   const [stats, setStats] = useState<AdminStats>({
     totalSchools: 0,
@@ -68,6 +155,8 @@ export default function AdminDashboardPage() {
     totalAssessments: 0,
     completionRate: 0,
     activeNow: 0,
+    pendingApplications: 0,
+    revenue: 0,
   });
   const [topSchools, setTopSchools] = useState<TopSchool[]>([]);
   const [careerInterests, setCareerInterests] = useState<CareerInterest[]>([]);
@@ -80,7 +169,6 @@ export default function AdminDashboardPage() {
     loadDashboardData();
   }, []);
 
-  // Load AI insights after dashboard data is available
   useEffect(() => {
     if (!isLoading && stats && topSchools && careerInterests && stats.totalSchools > 0) {
       loadAIInsights();
@@ -110,14 +198,15 @@ export default function AdminDashboardPage() {
       setAlerts(newAlerts);
     } catch (error) {
       logger.error("Failed to load admin dashboard:", error);
-      // Set fallback values to prevent UI errors
       setStats({
         totalSchools: 0,
         totalStudents: 0,
         totalTeachers: 0,
         totalAssessments: 0,
         completionRate: 0,
-        activeNow: 0
+        activeNow: 0,
+        pendingApplications: 0,
+        revenue: 0,
       });
       setTopSchools([]);
       setCareerInterests([]);
@@ -142,22 +231,14 @@ export default function AdminDashboardPage() {
         }),
       });
 
-      // Log response status for debugging
-      logger.debug("[Admin Dashboard] AI Insights API status:", response.status);
-
       if (response.ok) {
         const data = await response.json();
-        logger.debug("[Admin Dashboard] AI Insights received:", data.insights?.length || 0, "insights");
         setAiInsights(data.insights || []);
       } else {
-        // Log error details
-        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
-        logger.error("[Admin Dashboard] AI Insights API error:", errorData);
-        // Set empty insights to show fallback
         setAiInsights([]);
       }
     } catch (error) {
-      logger.error("[Admin Dashboard] Failed to load AI insights:", error);
+      logger.error("Failed to load AI insights:", error);
       setAiInsights([]);
     } finally {
       setIsLoadingInsights(false);
@@ -166,89 +247,116 @@ export default function AdminDashboardPage() {
 
   if (isLoading) {
     return (
-      <PageWrapper>
-        <div className="space-y-6">
-          {/* Header skeleton */}
-          <div className="flex items-center gap-4">
-            <div className="h-8 bg-gray-200 rounded w-48 animate-pulse" />
-            <div className="flex-1 space-y-2">
-              <div className="h-8 bg-gray-200 rounded w-64 animate-pulse" />
-              <div className="h-4 bg-gray-200 rounded w-48 animate-pulse" />
-            </div>
-          </div>
-
-          {/* Stats skeleton */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="p-6 border border-gray-200 rounded-lg">
-                <div className="h-4 bg-gray-200 rounded w-20 mb-2 animate-pulse" />
-                <div className="h-8 bg-gray-200 rounded w-16 mb-1 animate-pulse" />
-                <div className="h-3 bg-gray-200 rounded w-24 animate-pulse" />
-              </div>
-            ))}
-          </div>
-
-          {/* AI Insights skeleton */}
-          <div className="grid md:grid-cols-3 gap-4">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="p-6 border border-gray-200 rounded-lg">
-                <div className="h-5 bg-gray-200 rounded w-32 mb-4 animate-pulse" />
-                <div className="h-4 bg-gray-200 rounded w-full mb-2 animate-pulse" />
-                <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse" />
-              </div>
-            ))}
-          </div>
+      <div className="space-y-6">
+        <div className="grid md:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-32 bg-ceramic-gray-100 rounded-lg animate-pulse" />
+          ))}
         </div>
-      </PageWrapper>
+      </div>
     );
   }
 
   return (
-    <PageWrapper>
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      {/* Welcome Header - Ceramic styled */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Admin Dashboard
+          <h1 className="text-2xl font-bold text-ceramic-primary">
+            Welcome back, Platform Admin
           </h1>
-          <div className="flex items-center gap-2">
-            <p className="text-gray-600">
-              Platform-wide overview and management
-            </p>
-            <LiveBadge />
-          </div>
+          <p className="text-ceramic-secondary mt-1">
+            Here's what's happening across your platform today
+          </p>
         </div>
-        <div className="flex gap-3">
-          <Button variant="outline">
+        <div className="flex gap-2">
+          <Button variant="ceramic-ghost" size="sm">
             Export Report
           </Button>
-          <Button asChild>
-            <Link href="/admin/schools">
-              Manage Schools
+          <Button variant="ceramic" size="sm" asChild className="bg-cyan-600 hover:bg-cyan-700">
+            <Link href="/admin/command-center" className="flex items-center gap-2">
+              <Command className="w-4 h-4" />
+              Command Center
             </Link>
+          </Button>
+          <Button variant="ceramic" size="sm" asChild>
+            <Link href="/admin/schools">Manage Schools</Link>
           </Button>
         </div>
       </div>
 
-      {/* AI Insights Section - Dynamic from API */}
+      {/* Stats Grid - Ceramic styled */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <PremiumCard className="p-5 group ceramic-interactive">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-medium text-ceramic-dimmed">Total Schools</p>
+              <p className="text-3xl font-bold text-ceramic-primary mt-1">{stats.totalSchools}</p>
+              <p className="text-xs text-ceramic-positive mt-2 flex items-center gap-1">
+                <ArrowUp className="w-3 h-3" /> 2 new this month
+              </p>
+            </div>
+            <div className="p-3 rounded-lg bg-ceramic-pink-50 group-hover:bg-ceramic-pink-100 transition-colors">
+              <Building2 className="w-5 h-5 text-ceramic-pink-600" />
+            </div>
+          </div>
+        </PremiumCard>
+
+        <PremiumCard className="p-5 group ceramic-interactive">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-medium text-ceramic-dimmed">Total Students</p>
+              <p className="text-3xl font-bold text-ceramic-primary mt-1">{stats.totalStudents.toLocaleString()}</p>
+              <p className="text-xs text-ceramic-positive mt-2 flex items-center gap-1">
+                <ArrowUp className="w-3 h-3" /> +12% from last month
+              </p>
+            </div>
+            <div className="p-3 rounded-lg bg-ceramic-blue-50 group-hover:bg-ceramic-blue-100 transition-colors">
+              <Users className="w-5 h-5 text-ceramic-blue-600" />
+            </div>
+          </div>
+        </PremiumCard>
+
+        <PremiumCard className="p-5 group ceramic-interactive">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-medium text-ceramic-dimmed">Total Teachers</p>
+              <p className="text-3xl font-bold text-ceramic-primary mt-1">{stats.totalTeachers.toLocaleString()}</p>
+              <p className="text-xs text-ceramic-positive mt-2 flex items-center gap-1">
+                <ArrowUp className="w-3 h-3" /> +8 this month
+              </p>
+            </div>
+            <div className="p-3 rounded-lg bg-ceramic-purple-50 group-hover:bg-ceramic-purple-100 transition-colors">
+              <GraduationCap className="w-5 h-5 text-ceramic-brand" />
+            </div>
+          </div>
+        </PremiumCard>
+
+        <PremiumCard className="p-5 group ceramic-interactive">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-sm font-medium text-ceramic-dimmed">Active Now</p>
+              <p className="text-3xl font-bold text-ceramic-positive mt-1">{stats.activeNow}</p>
+              <p className="text-xs text-ceramic-secondary mt-2">Currently online</p>
+            </div>
+            <div className="p-3 rounded-lg bg-ceramic-green-50 group-hover:bg-ceramic-green-100 transition-colors">
+              <Activity className="w-5 h-5 text-ceramic-positive" />
+            </div>
+          </div>
+        </PremiumCard>
+      </div>
+
+      {/* AI Insights */}
       <div className="grid md:grid-cols-3 gap-4">
         {isLoadingInsights ? (
           <>
-            <Card>
-              <CardContent className="flex items-center justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="flex items-center justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="flex items-center justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-              </CardContent>
-            </Card>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i}>
+                <CardContent className="flex items-center justify-center py-12">
+                  <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                </CardContent>
+              </Card>
+            ))}
           </>
         ) : aiInsights.length > 0 ? (
           aiInsights.map((insight, index) => (
@@ -261,12 +369,11 @@ export default function AdminDashboardPage() {
             />
           ))
         ) : (
-          // Fallback to data-driven insights if API returns empty
           <>
             <AIInsightCard
               type="warning"
               title="School Engagement Alert"
-              message={`${alerts.filter(a => a.type === "warning").length > 0 ? "Some schools have low assessment completion rates. " : ""}${topSchools.filter(s => s.completion < 80).length} schools below 80% completion threshold.`}
+              message={`${topSchools.filter(s => s.completion < 80).length} schools below 80% completion threshold.`}
               actions={[
                 { label: "View Schools", href: "/admin/schools" },
                 { label: "Send Alert", href: "/admin/notifications" },
@@ -276,7 +383,7 @@ export default function AdminDashboardPage() {
             <AIInsightCard
               type="success"
               title="Platform Growth Positive"
-              message={`${stats.totalStudents} students across ${stats.totalSchools} schools. 15% increase in new registrations this month. Career guidance adoption trending upward.`}
+              message={`${stats.totalStudents} students across ${stats.totalSchools} schools. 15% increase in new registrations this month.`}
               actions={[
                 { label: "View Analytics", href: "/admin/analytics" },
               ]}
@@ -285,325 +392,164 @@ export default function AdminDashboardPage() {
             <AIInsightCard
               type="tip"
               title="Popular Career Interests"
-              message={`AI analysis shows ${careerInterests[0]?.career || "Technology"} and ${careerInterests[1]?.career || "Healthcare"} as top career interests. Consider partnering with relevant RUB colleges for workshops.`}
+              message={`AI analysis shows ${careerInterests[0]?.career || "Technology"} and ${careerInterests[1]?.career || "Healthcare"} as top interests.`}
               actions={[
                 { label: "View Content", href: "/admin/content" },
-                { label: "Manage Partners", href: "/admin/partners" },
               ]}
             />
           </>
         )}
       </div>
 
-      {/* Alerts */}
-      {alerts.length > 0 && (
-        <div className="space-y-2">
-          {alerts.map((alert, index) => (
-            <div
-              key={index}
-              className={`p-4 rounded-lg flex items-center gap-3 ${
-                alert.type === "warning"
-                  ? "bg-yellow-50 text-yellow-900 border border-yellow-200"
-                  : alert.type === "success"
-                  ? "bg-green-50 text-green-900 border border-green-200"
-                  : "bg-blue-50 text-blue-900 border border-blue-200"
-              }`}
-            >
-              <AlertCircle className="w-5 h-5" />
-              <span className="flex-1">{alert.message}</span>
-            </div>
-          ))}
+      {/* Quick Actions - Ceramic styled */}
+      <div>
+        <h2 className="text-lg font-semibold text-ceramic-primary mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          {quickActions.map((action) => {
+            const Icon = action.icon;
+            // Get dynamic badge value - check if badgeKey exists and has corresponding stat
+            const badgeValue = 'badgeKey' in action && action.badgeKey
+              ? `${stats[action.badgeKey as keyof AdminStats] || 0} pending`
+              : ('badge' in action ? action.badge : undefined);
+
+            return (
+              <Link
+                key={action.label}
+                href={action.href}
+                className="group"
+              >
+                <PremiumCard className="p-4 text-center hover:scale-105 transition-transform ceramic-interactive">
+                  <div className={`w-12 h-12 rounded-xl ${action.ceramicBg} flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform`}>
+                    <Icon className={`w-6 h-6 ${action.ceramicColor}`} />
+                  </div>
+                  <p className="text-sm font-medium text-ceramic-primary">{action.label}</p>
+                  {badgeValue && (
+                    <Badge variant="ceramic" className="mt-2 text-xs">
+                      {String(badgeValue)}
+                    </Badge>
+                  )}
+                </PremiumCard>
+              </Link>
+            );
+          })}
         </div>
-      )}
-
-      {/* Stats Grid - Using PremiumCard with hover effects */}
-      <div className="grid md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <PremiumCard className="p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Building2 className="w-4 h-4 text-gray-500" />
-            <span className="text-sm font-medium text-gray-500">Schools</span>
-          </div>
-          <div className="text-2xl font-semibold text-gray-900">
-            {stats.totalSchools}
-          </div>
-          <p className="text-xs text-green-600 mt-1">
-            <ArrowUp className="w-3 h-3 inline" /> +2 this month
-          </p>
-        </PremiumCard>
-
-        <PremiumCard className="p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Users className="w-4 h-4 text-gray-500" />
-            <span className="text-sm font-medium text-gray-500">Students</span>
-          </div>
-          <div className="text-2xl font-semibold text-gray-900">
-            {stats.totalStudents}
-          </div>
-          <p className="text-xs text-green-600 mt-1">
-            <ArrowUp className="w-3 h-3 inline" /> +156 this month
-          </p>
-        </PremiumCard>
-
-        <PremiumCard className="p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <GraduationCap className="w-4 h-4 text-gray-500" />
-            <span className="text-sm font-medium text-gray-500">Teachers</span>
-          </div>
-          <div className="text-2xl font-semibold text-gray-900">
-            {stats.totalTeachers}
-          </div>
-          <p className="text-xs text-green-600 mt-1">
-            <ArrowUp className="w-3 h-3 inline" /> +8 this month
-          </p>
-        </PremiumCard>
-
-        <PremiumCard className="p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <FileText className="w-4 h-4 text-gray-500" />
-            <span className="text-sm font-medium text-gray-500">Assessments</span>
-          </div>
-          <div className="text-2xl font-semibold text-gray-900">
-            {stats.totalAssessments}
-          </div>
-          <p className="text-xs text-gray-500 mt-1">Total completed</p>
-        </PremiumCard>
-
-        <PremiumCard className="p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="w-4 h-4 text-gray-500" />
-            <span className="text-sm font-medium text-gray-500">Completion</span>
-          </div>
-          <div className="text-2xl font-semibold text-gray-900">
-            {stats.completionRate}%
-          </div>
-          <p className="text-xs text-green-600 mt-1">
-            <ArrowUp className="w-3 h-3 inline" /> +5% from last month
-          </p>
-        </PremiumCard>
-
-        <PremiumCard className="p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Activity className="w-4 h-4 text-gray-500" />
-            <span className="text-sm font-medium text-gray-500">Active Now</span>
-          </div>
-          <div className="text-2xl font-semibold text-green-600">
-            {stats.activeNow}
-          </div>
-          <p className="text-xs text-gray-500 mt-1">Currently online</p>
-        </PremiumCard>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              Total Assessments
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900">
-              {stats.totalAssessments}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">Total completed</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4" />
-              Completion
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900">
-              {stats.completionRate}%
-            </div>
-            <p className="text-xs text-green-600 mt-1">
-              <ArrowUp className="w-3 h-3 inline" /> +5% from last month
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <Activity className="w-4 h-4" />
-              Active Now
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {stats.activeNow}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">Currently online</p>
-          </CardContent>
-        </Card>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-8">
+      {/* Content Sections - Ceramic styled */}
+      <div className="grid lg:grid-cols-2 gap-6">
         {/* Top Schools */}
-        <Card>
+        <Card variant="ceramic">
           <CardHeader>
-            <CardTitle>Top Schools by Engagement</CardTitle>
-            <CardDescription>Assessment completion rates</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Top Schools by Engagement</CardTitle>
+                <CardDescription>Assessment completion rates</CardDescription>
+              </div>
+              <Badge variant="ceramic" className="text-xs">
+                Live
+              </Badge>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {topSchools.map((school, index) => (
-              <div key={school.name} className="flex items-center gap-4">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                  index === 0 ? "bg-yellow-100 text-yellow-700" :
-                  index === 1 ? "bg-gray-100 text-gray-700" :
-                  index === 2 ? "bg-orange-100 text-orange-700" :
-                  "bg-gray-50 text-gray-600"
-                }`}>
-                  {index + 1}
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-medium text-gray-900">{school.name}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-500">{school.students} students</span>
-                      <Badge variant="outline" className="text-xs">
-                        {school.completion}%
-                      </Badge>
+            {topSchools.length === 0 ? (
+              <p className="text-sm text-ceramic-secondary text-center py-8">No schools data available</p>
+            ) : (
+              topSchools.map((school, index) => (
+                <div key={school.name} className="flex items-center gap-4">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
+                    index === 0 ? "bg-ceramic-yellow-100 text-ceramic-yellow-700" :
+                    index === 1 ? "bg-ceramic-gray-200 text-ceramic-gray-700" :
+                    index === 2 ? "bg-ceramic-orange-100 text-ceramic-orange-700" :
+                    "bg-ceramic-gray-100 text-ceramic-gray-600"
+                  }`}>
+                    {index + 1}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-medium text-ceramic-primary truncate">{school.name}</span>
+                      <span className="text-sm text-ceramic-secondary ml-2">{school.students} students</span>
+                    </div>
+                    <div className="w-full bg-ceramic-gray-200 rounded-full h-2">
+                      <div
+                        className="h-2 rounded-full transition-all duration-500"
+                        style={{
+                          width: `${school.completion}%`,
+                          background: "linear-gradient(90deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)"
+                        }}
+                      />
                     </div>
                   </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full"
-                      style={{ width: `${school.completion}%` }}
-                    />
-                  </div>
+                  <span className="text-sm font-semibold text-ceramic-secondary">{school.completion}%</span>
                 </div>
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center ${
-                  school.change > 0 ? "bg-green-100" : "bg-red-100"
-                }`}>
-                  {school.change > 0 ? (
-                    <ArrowUp className="w-3 h-3 text-green-600" />
-                  ) : (
-                    <ArrowDown className="w-3 h-3 text-red-600" />
-                  )}
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </CardContent>
         </Card>
 
-        {/* Career Interests Distribution */}
-        <Card>
+        {/* Career Interests */}
+        <Card variant="ceramic">
           <CardHeader>
             <CardTitle>Career Interests Distribution</CardTitle>
             <CardDescription>Most popular career choices across all students</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {careerInterests.map((item) => (
-              <div key={item.career} className="flex items-center gap-4">
-                <div className="w-32 text-sm font-medium text-gray-900">
-                  {item.career}
-                </div>
-                <div className="flex-1">
-                  <div className="w-full bg-gray-200 rounded-full h-3">
-                    <div
-                      className="bg-gradient-to-r from-blue-500 to-purple-500 h-3 rounded-full"
-                      style={{ width: `${item.percentage * 4}%` }}
-                    />
+            {careerInterests.length === 0 ? (
+              <p className="text-sm text-ceramic-secondary text-center py-8">No career data available</p>
+            ) : (
+              careerInterests.map((item, index) => (
+                <div key={item.career} className="flex items-center gap-4">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                    index === 0 ? "bg-ceramic-pink-100 text-ceramic-pink-700" :
+                    index === 1 ? "bg-ceramic-blue-100 text-ceramic-blue-700" :
+                    index === 2 ? "bg-ceramic-purple-100 text-ceramic-purple-700" :
+                    "bg-ceramic-gray-100 text-ceramic-gray-600"
+                  }`}>
+                    {index + 1}
                   </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium text-ceramic-primary truncate">{item.career}</span>
+                      <span className="text-sm font-semibold text-ceramic-secondary">{item.percentage}%</span>
+                    </div>
+                    <div className="w-full bg-ceramic-gray-200 rounded-full h-2">
+                      <div
+                        className="h-2 rounded-full"
+                        style={{
+                          width: `${item.percentage * 4}%`,
+                          background: "linear-gradient(90deg, rgb(59 130 246) 0%, rgb(139 92 246) 100%)"
+                        }}
+                      />
+                    </div>
+                  </div>
+                  {item.trend === "up" && <ArrowUp className="w-4 h-4 text-ceramic-positive flex-shrink-0" />}
+                  {item.trend === "down" && <ArrowDown className="w-4 h-4 text-ceramic-negative flex-shrink-0" />}
                 </div>
-                <div className="flex items-center gap-2 w-20">
-                  <span className="text-sm font-semibold text-gray-900">
-                    {item.percentage}%
-                  </span>
-                  {item.trend === "up" && (
-                    <ArrowUp className="w-4 h-4 text-green-500" />
-                  )}
-                  {item.trend === "down" && (
-                    <ArrowDown className="w-4 h-4 text-red-500" />
-                  )}
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Study Abroad Interest */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Globe className="w-5 h-5" />
-            Study Abroad Interest
-          </CardTitle>
-          <CardDescription>Student interest by destination country</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid md:grid-cols-5 gap-6">
-            {[
-              { country: "🇦🇺 Australia", percentage: 35, students: 860 },
-              { country: "🇳🇿 New Zealand", percentage: 25, students: 614 },
-              { country: "🇺🇸 United States", percentage: 20, students: 491 },
-              { country: "🇸🇬 Singapore", percentage: 12, students: 295 },
-              { country: "🇪🇺 Europe", percentage: 8, students: 196 },
-            ].map((item) => (
-              <div key={item.country} className="text-center p-4 bg-gray-50 rounded-lg">
-                <div className="text-3xl mb-2">{item.country.split(" ")[0]}</div>
-                <div className="text-2xl font-bold text-gray-900">{item.percentage}%</div>
-                <div className="text-sm text-gray-500">{item.students} students</div>
-                <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                  <div
-                    className="bg-blue-500 h-2 rounded-full"
-                    style={{ width: `${item.percentage * 2}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Platform Status */}
+      {/* Alerts - Ceramic styled */}
       {alerts.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {alerts.map((alert, index) => (
-            <div
+            <CeramicCallout
               key={index}
-              className={`p-4 rounded-lg flex items-center gap-3 ${
+              variant={
                 alert.type === "warning"
-                  ? "bg-yellow-50 text-yellow-900 border border-yellow-200"
+                  ? "ceramic-warning"
                   : alert.type === "success"
-                  ? "bg-green-50 text-green-900 border border-green-200"
-                  : "bg-blue-50 text-blue-900 border border-blue-200"
-              }`}
+                  ? "ceramic-success"
+                  : "ceramic-info"
+              }
+              className="flex items-center gap-3"
             >
-              <AlertCircle className="w-5 h-5" />
-              <span className="flex-1">{alert.message}</span>
-            </div>
+              <span className="flex-1 text-sm">{alert.message}</span>
+            </CeramicCallout>
           ))}
         </div>
       )}
-
-      {/* Recent Activity Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Platform Overview</CardTitle>
-          <CardDescription>Real-time platform statistics</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid md:grid-cols-3 gap-4">
-            <div className="p-4 bg-blue-50 rounded-lg">
-              <p className="text-sm text-blue-600 font-medium">Total Schools</p>
-              <p className="text-2xl font-bold text-blue-900">{stats.totalSchools}</p>
-            </div>
-            <div className="p-4 bg-green-50 rounded-lg">
-              <p className="text-sm text-green-600 font-medium">Active Students</p>
-              <p className="text-2xl font-bold text-green-900">{stats.totalStudents}</p>
-            </div>
-            <div className="p-4 bg-purple-50 rounded-lg">
-              <p className="text-sm text-purple-600 font-medium">Assessments Completed</p>
-              <p className="text-2xl font-bold text-purple-900">{stats.totalAssessments}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </PageWrapper>
+    </div>
   );
 }

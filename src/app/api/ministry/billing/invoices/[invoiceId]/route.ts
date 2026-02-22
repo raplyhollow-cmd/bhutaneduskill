@@ -14,9 +14,6 @@ import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import {
   invoices,
-  subscriptions,
-  subscriptionPlans,
-  tenants,
   schools,
 } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -43,8 +40,8 @@ interface InvoiceResponseData {
   invoiceDate: string;
   dueDate: string;
   paidDate: string | null;
-  periodStart: string;
-  periodEnd: string;
+  billingPeriodStart: string;
+  billingPeriodEnd: string;
   lineItems: Array<{
     description: string;
     quantity: number;
@@ -53,11 +50,8 @@ interface InvoiceResponseData {
   }>;
   notes: string | null;
   pdfUrl: string | null;
-  paymentDetails: {
-    method?: string;
-    transactionId?: string;
-    paidBy?: string;
-  } | null;
+  paymentMethod: string | null;
+  paymentReference: string | null;
 }
 
 interface GeneratedInvoiceResponse {
@@ -108,26 +102,20 @@ export async function GET(
         invoiceDate: invoices.invoiceDate,
         dueDate: invoices.dueDate,
         paidAt: invoices.paidAt,
-        periodStart: invoices.periodStart,
-        periodEnd: invoices.periodEnd,
+        billingPeriodStart: invoices.billingPeriodStart,
+        billingPeriodEnd: invoices.billingPeriodEnd,
         amount: invoices.amount,
         taxAmount: invoices.taxAmount,
         discountAmount: invoices.discountAmount,
         totalAmount: invoices.totalAmount,
         currency: invoices.currency,
         status: invoices.status,
-        lineItems: invoices.lineItems,
         notes: invoices.notes,
         pdfUrl: invoices.pdfUrl,
         paymentMethod: invoices.paymentMethod,
-        paymentDetails: invoices.paymentDetails,
-        // Subscription data
-        subscriptionId: subscriptions.id,
-        planName: subscriptionPlans.name,
-        billingCycle: subscriptions.billingCycle,
-        // Tenant/School data
-        tenantId: tenants.id,
-        tenantName: tenants.name,
+        paymentReference: invoices.paymentReference,
+        subscriptionTier: invoices.subscriptionTier,
+        // School data
         schoolId: schools.id,
         schoolName: schools.name,
         schoolAddress: schools.address,
@@ -138,10 +126,7 @@ export async function GET(
         schoolPhone: schools.phone,
       })
       .from(invoices)
-      .innerJoin(subscriptions, eq(invoices.subscriptionId, subscriptions.id))
-      .innerJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
-      .innerJoin(tenants, eq(invoices.tenantId, tenants.id))
-      .leftJoin(schools, eq(tenants.id, schools.tenantId))
+      .innerJoin(schools, eq(invoices.schoolId, schools.id))
       .where(eq(invoices.id, invoiceId))
       .limit(1);
 
@@ -152,15 +137,24 @@ export async function GET(
       );
     }
 
-    // Construct response
+    // Construct response - generate default line items since they don't exist in schema
+    const defaultLineItems = [
+      {
+        description: `${invoiceData.subscriptionTier?.toUpperCase() || "STANDARD"} Plan Subscription - ${invoiceData.billingPeriodStart?.toISOString().split('T')[0]} to ${invoiceData.billingPeriodEnd?.toISOString().split('T')[0]}`,
+        quantity: 1,
+        unitPrice: Number(invoiceData.amount) || 0,
+        amount: Number(invoiceData.amount) || 0,
+      },
+    ];
+
     const invoice: InvoiceResponseData = {
       id: invoiceData.id,
       invoiceNumber: invoiceData.invoiceNumber,
-      school: invoiceData.schoolName || invoiceData.tenantName || "Unknown",
-      schoolAddress: `${invoiceData.schoolAddress}, ${invoiceData.schoolCity}, ${invoiceData.schoolState} - ${invoiceData.schoolPostalCode}`,
-      schoolEmail: invoiceData.schoolEmail,
-      schoolPhone: invoiceData.schoolPhone,
-      plan: invoiceData.planName || "Unknown",
+      school: invoiceData.schoolName || "Unknown",
+      schoolAddress: `${invoiceData.schoolAddress || ""}, ${invoiceData.schoolCity || ""}, ${invoiceData.schoolState || ""} - ${invoiceData.schoolPostalCode || ""}`,
+      schoolEmail: invoiceData.schoolEmail || "",
+      schoolPhone: invoiceData.schoolPhone || "",
+      plan: invoiceData.subscriptionTier || "Unknown",
       amount: Number(invoiceData.amount) || 0,
       taxAmount: Number(invoiceData.taxAmount) || 0,
       discountAmount: Number(invoiceData.discountAmount) || 0,
@@ -170,18 +164,13 @@ export async function GET(
       invoiceDate: invoiceData.invoiceDate?.toISOString() || new Date().toISOString(),
       dueDate: invoiceData.dueDate?.toISOString() || new Date().toISOString(),
       paidDate: invoiceData.paidAt?.toISOString() || null,
-      periodStart: invoiceData.periodStart?.toISOString() || new Date().toISOString(),
-      periodEnd: invoiceData.periodEnd?.toISOString() || new Date().toISOString(),
-      lineItems: parseLineItems(invoiceData.lineItems),
+      billingPeriodStart: invoiceData.billingPeriodStart?.toISOString() || new Date().toISOString(),
+      billingPeriodEnd: invoiceData.billingPeriodEnd?.toISOString() || new Date().toISOString(),
+      lineItems: defaultLineItems,
       notes: invoiceData.notes,
       pdfUrl: invoiceData.pdfUrl,
-      paymentDetails: invoiceData.paymentDetails
-        ? {
-            method: invoiceData.paymentMethod,
-            transactionId: invoiceData.paymentDetails.transactionId,
-            paidBy: invoiceData.paymentDetails.paidBy,
-          }
-        : null,
+      paymentMethod: invoiceData.paymentMethod,
+      paymentReference: invoiceData.paymentReference,
     };
 
     // If PDF already exists, return its URL
@@ -710,7 +699,7 @@ function generateInvoiceHtml(invoice: InvoiceResponseData): string {
       </div>
       <div class="period-row">
         <span class="period-label">Billing Period:</span>
-        <span class="period-value">${formatDate(invoice.periodStart)} - ${formatDate(invoice.periodEnd)}</span>
+        <span class="period-value">${formatDate(invoice.billingPeriodStart)} - ${formatDate(invoice.billingPeriodEnd)}</span>
       </div>
       ${invoice.paidDate ? `
       <div class="period-row">
@@ -777,25 +766,19 @@ function generateInvoiceHtml(invoice: InvoiceResponseData): string {
     </div>
 
     <!-- Payment Details -->
-    ${invoice.paymentDetails ? `
+    ${invoice.paymentMethod || invoice.paymentReference ? `
     <div class="payment-details">
       <div class="payment-title">Payment Information</div>
-      ${invoice.paymentDetails.method ? `
+      ${invoice.paymentMethod ? `
       <div class="payment-row">
         <span class="payment-label">Payment Method:</span>
-        <span class="payment-value">${invoice.paymentDetails.method}</span>
+        <span class="payment-value">${invoice.paymentMethod}</span>
       </div>
       ` : ''}
-      ${invoice.paymentDetails.transactionId ? `
+      ${invoice.paymentReference ? `
       <div class="payment-row">
-        <span class="payment-label">Transaction ID:</span>
-        <span class="payment-value">${invoice.paymentDetails.transactionId}</span>
-      </div>
-      ` : ''}
-      ${invoice.paymentDetails.paidBy ? `
-      <div class="payment-row">
-        <span class="payment-label">Paid By:</span>
-        <span class="payment-value">${invoice.paymentDetails.paidBy}</span>
+        <span class="payment-label">Transaction Reference:</span>
+        <span class="payment-value">${invoice.paymentReference}</span>
       </div>
       ` : ''}
     </div>

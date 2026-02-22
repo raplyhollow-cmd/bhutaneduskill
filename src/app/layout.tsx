@@ -4,9 +4,12 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "next-themes";
 import { ToastProvider } from "@/components/ui/toast";
 import { UnifiedAIAssistant } from "@/components/ai/unified-ai-assistant";
-import { UserProvider } from "@/contexts/UserContext";
+import { UserProvider } from "@/hooks/use-current-user";
 import { AppErrorBoundary } from "@/components/error/app-error-boundary";
+import { TransitionProvider } from "@/components/transitions/transition-provider";
+import { GlobalProviders } from "@/components/global/global-providers";
 import "./globals.css";
+import "../styles/ceramic.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -40,11 +43,15 @@ export default function RootLayout({
           <AppErrorBoundary>
             <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
               <UserProvider>
-                <ToastProvider>{children}</ToastProvider>
+                <TransitionProvider>
+                  <ToastProvider>
+                    {children}
+                  </ToastProvider>
+                  <UnifiedAIAssistant />
+                </TransitionProvider>
+                {/* Global UI Providers */}
+                <GlobalProviders />
               </UserProvider>
-              <div className="fixed bottom-24 right-4 z-[100] md:bottom-6 md:right-6">
-                <UnifiedAIAssistant />
-              </div>
             </ThemeProvider>
           </AppErrorBoundary>
         </body>

@@ -5,6 +5,7 @@ import { ArrowRight, Sparkles, Rocket, Mail, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { useRef, useState, useCallback } from "react";
+import { cn } from "@/lib/utils";
 
 // Magnetic button component
 function MagneticCTAButton({
@@ -41,15 +42,16 @@ function MagneticCTAButton({
         transition={{ type: "spring", stiffness: 300, damping: 20 }}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        className={`inline-block relative overflow-hidden rounded-full ${primary ? "cursor-pointer" : ""}`}
+        className={cn("inline-block relative overflow-hidden rounded-full", primary && "cursor-pointer")}
       >
         <Button
           size="lg"
-          className={`h-14 px-8 rounded-full font-semibold text-base transition-all ${
-            primary
-              ? "bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white shadow-lg shadow-orange-500/25 hover:shadow-xl hover:shadow-orange-500/40 border-0 relative overflow-hidden group"
-              : "h-14 px-8 border-2 border-gray-300 dark:border-gray-700 hover:border-orange-500 dark:hover:border-orange-500 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-900 dark:text-white bg-transparent"
-          }`}
+          variant={primary ? "ceramic" : "ceramic-outline"}
+          className={cn(
+            "h-14 px-8 rounded-full font-semibold text-base transition-all",
+            primary && "shadow-lg shadow-ceramic-brand/25 hover:shadow-xl hover:shadow-ceramic-brand/40"
+          )}
+          style={primary ? { background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)' } : undefined}
         >
           {/* Animated gradient background for primary button */}
           {primary && (
@@ -64,6 +66,7 @@ function MagneticCTAButton({
               transition={{
                 duration: 1.5,
                 repeat: Infinity,
+                repeatType: "loop",
                 ease: "linear",
               }}
             />
@@ -110,9 +113,10 @@ export function CTASection() {
           transition={{
             duration: 20,
             repeat: Infinity,
+            repeatType: "loop",
             ease: "linear",
           }}
-          className="absolute top-1/4 left-1/4 w-96 h-96 bg-orange-500/20 rounded-full blur-3xl"
+          className="absolute top-1/4 left-1/4 w-96 h-96 bg-ceramic-brand/20 rounded-full blur-3xl"
         />
         <motion.div
           animate={{
@@ -122,6 +126,7 @@ export function CTASection() {
           transition={{
             duration: 15,
             repeat: Infinity,
+            repeatType: "loop",
             ease: "linear",
           }}
           className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-red-500/20 rounded-full blur-3xl"
@@ -134,9 +139,11 @@ export function CTASection() {
           transition={{
             duration: 10,
             repeat: Infinity,
+            repeatType: "loop",
             ease: "easeInOut",
           }}
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gradient-to-br from-orange-400/10 to-transparent rounded-full blur-2xl"
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full blur-2xl"
+          style={{ background: 'linear-gradient(to top right, rgb(249 115 22) 0%, transparent 100%)' }}
         />
       </div>
 
@@ -162,7 +169,7 @@ export function CTASection() {
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
             transition={{ delay: 0.1 }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-orange-200 dark:border-orange-800 text-orange-700 dark:text-orange-400 text-sm font-medium mb-8 shadow-lg"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-ceramic-white/80 dark:bg-ceramic-gray-900/80 backdrop-blur-sm border border-ceramic-border text-ceramic-brand text-sm font-medium mb-8 shadow-lg"
           >
             <Rocket className="w-4 h-4" />
             Ready to transform your education?
@@ -174,12 +181,12 @@ export function CTASection() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.2 }}
-            className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-6 leading-tight"
+            className="text-4xl sm:text-5xl lg:text-6xl font-bold text-ceramic-primary dark:text-white mb-6 leading-tight"
           >
             Join thousands of
             <span className="block mt-2">
               <span className="gradient-text-animated">students achieving more</span>
-              <Sparkles className="inline-block w-10 h-10 ml-2 text-orange-500" />
+              <Sparkles className="inline-block w-10 h-10 ml-2 text-ceramic-brand" />
             </span>
           </motion.h2>
 
@@ -189,26 +196,29 @@ export function CTASection() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.3 }}
-            className="text-lg sm:text-xl text-gray-700 dark:text-gray-300 mb-10 max-w-2xl mx-auto leading-relaxed"
+            className="text-lg sm:text-xl text-ceramic-secondary dark:text-ceramic-gray-300 mb-10 max-w-2xl mx-auto leading-relaxed"
           >
             Start your journey today — free for students, with premium features for schools.
           </motion.p>
 
-          {/* CTA Buttons */}
+          {/* CTA Buttons - Single Row Sleek Design */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.4 }}
-            className="flex flex-col sm:flex-row gap-4 justify-center mb-10"
+            className="flex flex-wrap items-center justify-center gap-3 mb-10"
           >
             <MagneticCTAButton href="/sign-up" primary>
               <Rocket className="w-5 h-5" />
               Get Started Free
             </MagneticCTAButton>
-            <MagneticCTAButton href="/contact" primary={false}>
+            <MagneticCTAButton href="/portfolio" primary={false}>
+              View Portfolio
+            </MagneticCTAButton>
+            <MagneticCTAButton href="/packages" primary={false}>
               <Mail className="w-5 h-5" />
-              Contact Sales
+              View Packages
             </MagneticCTAButton>
           </motion.div>
 
@@ -218,7 +228,7 @@ export function CTASection() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ delay: 0.5 }}
-            className="flex flex-wrap items-center justify-center gap-6 text-sm text-gray-700 dark:text-gray-300"
+            className="flex flex-wrap items-center justify-center gap-6 text-sm text-ceramic-secondary dark:text-ceramic-gray-300"
           >
             {[
               { text: "No credit card required", icon: CheckCircle2 },
@@ -233,7 +243,7 @@ export function CTASection() {
                 transition={{ delay: 0.6 + index * 0.1 }}
                 className="flex items-center gap-2"
               >
-                <item.icon className="w-4 h-4 text-green-600 dark:text-green-400" />
+                <item.icon className="w-4 h-4 text-ceramic-positive" />
                 <span>{item.text}</span>
               </motion.div>
             ))}
@@ -245,7 +255,7 @@ export function CTASection() {
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
             transition={{ delay: 0.7 }}
-            className="mt-8 text-sm text-gray-600 dark:text-gray-400"
+            className="mt-8 text-sm text-ceramic-dimmed"
           >
             Schools and institutions can request a demo for enterprise features.
           </motion.p>
@@ -256,7 +266,7 @@ export function CTASection() {
           {Array.from({ length: 6 }).map((_, i) => (
             <motion.div
               key={i}
-              className="absolute w-2 h-2 bg-orange-400/30 rounded-full"
+              className="absolute w-2 h-2 bg-ceramic-brand/30 rounded-full"
               style={{
                 left: `${10 + i * 15}%`,
                 top: `${20 + (i % 3) * 20}%`,
@@ -268,6 +278,7 @@ export function CTASection() {
               transition={{
                 duration: 10 + i * 2,
                 repeat: Infinity,
+                repeatType: "loop",
                 ease: "linear",
                 delay: i * 1.5,
               }}

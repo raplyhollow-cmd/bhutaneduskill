@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
         setupCompletedAt: new Date(),
         subscriptionStatus: "active",
         activatedAt: new Date(),
+        isActive: true,
         updatedAt: new Date(),
       })
       .where(eq(schools.id, schoolId));

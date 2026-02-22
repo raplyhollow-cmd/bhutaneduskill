@@ -22,11 +22,10 @@ export async function GET(request: NextRequest) {
       .select({
         id: users.id,
         type: users.type,
-        onboardingComplete: users.onboardingComplete,
-        onboardingStatus: users.onboardingStatus,
         schoolId: users.schoolId,
         firstName: users.firstName,
         lastName: users.lastName,
+        onboardingStatus: users.onboardingStatus,
       })
       .from(users)
       .where(eq(users.clerkUserId, userId))
@@ -43,8 +42,6 @@ export async function GET(request: NextRequest) {
     logger.debug("User found in database", {
       userId: user.id,
       type: user.type,
-      onboardingComplete: user.onboardingComplete,
-      onboardingStatus: user.onboardingStatus,
     });
 
     // Platform admins skip all onboarding checks
@@ -66,50 +63,36 @@ export async function GET(request: NextRequest) {
     }
 
     // School admins: check if their application is approved
-    if (user.type === "school-admin" && user.schoolId) {
-      const application = await db
-        .select()
-        .from(schoolAdminApplications)
-        .where(eq(schoolAdminApplications.userId, user.id))
-        .limit(1);
+    // First check onboardingStatus directly (more efficient)
+    if (user.type === "school-admin" && user.onboardingStatus === "pending_approval") {
+      logger.debug("School admin awaiting approval", { userId: user.id, onboardingStatus: user.onboardingStatus });
+      return NextResponse.json({
+        userType: null,
+        needsSetup: true,
+        awaitingApproval: true,
+      });
+    }
 
-      if (application.length > 0 && application[0].status === "pending_approval") {
-        logger.debug("School admin awaiting approval", { userId: user.id });
-        return NextResponse.json({
-          userType: null,
-          needsSetup: true,
-          awaitingApproval: true,
-        });
-      }
+    // Fallback: check application status table if onboardingStatus not set
+    if (user.type === "school-admin" && user.schoolId && !user.onboardingStatus) {
+      try {
+        const application = await db
+          .select()
+          .from(schoolAdminApplications)
+          .where(eq(schoolAdminApplications.userId, user.id))
+          .limit(1);
 
-      // Check if school is active and setup complete
-      const schoolRecords = await db
-        .select({
-          subscriptionStatus: schools.subscriptionStatus,
-          setupComplete: schools.setupComplete,
-        })
-        .from(schools)
-        .where(eq(schools.id, user.schoolId))
-        .limit(1);
-
-      if (schoolRecords.length > 0) {
-        const school = schoolRecords[0];
-        if (school.subscriptionStatus !== "active") {
-          logger.debug("School not active", { userId: user.id, schoolId: user.schoolId });
+        if (application.length > 0 && application[0].status === "pending_approval") {
+          logger.debug("School admin awaiting approval (from table)", { userId: user.id });
           return NextResponse.json({
             userType: null,
             needsSetup: true,
-            schoolNotActive: true,
+            awaitingApproval: true,
           });
         }
-        if (!school.setupComplete) {
-          logger.debug("School setup not complete", { userId: user.id, schoolId: user.schoolId });
-          return NextResponse.json({
-            userType: "school-admin",
-            needsSetup: true,
-            schoolSetupIncomplete: true,
-          });
-        }
+      } catch {
+        // school_admin_applications table doesn't exist - continue
+        logger.debug("school_admin_applications table not found, skipping check");
       }
     }
 

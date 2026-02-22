@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { GraduationCap, BookOpen, Users, HeartHandshake, Building, Shield, Landmark, GraduationCap as AlumniIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 interface Portal {
   name: string;
@@ -100,15 +101,15 @@ export function PortalSelector({ isOpen, onClose, triggerRef }: PortalSelectorPr
             animate={{ y: isOpen ? 0 : "100%" }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 z-50 md:hidden rounded-t-3xl bg-white dark:bg-gray-900 shadow-2xl p-6"
+            className="fixed bottom-0 left-0 right-0 z-50 md:hidden rounded-t-3xl bg-ceramic-white dark:bg-ceramic-gray-900 shadow-2xl p-6"
           >
             <div className="w-full">
               {/* Drag Handle */}
               <div className="flex justify-center mb-6">
-                <div className="w-12 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full" />
+                <div className="w-12 h-1.5 bg-ceramic-gray-300 dark:bg-ceramic-gray-700 rounded-full" />
               </div>
 
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 text-center">
+              <h3 className="text-lg font-semibold text-ceramic-primary dark:text-white mb-4 text-center">
                 Choose Your Portal
               </h3>
 
@@ -125,7 +126,7 @@ export function PortalSelector({ isOpen, onClose, triggerRef }: PortalSelectorPr
                       <Link
                         href={portal.href}
                         onClick={onClose}
-                        className="flex items-center gap-4 p-4 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-transparent transition-all duration-200 group"
+                        className="flex items-center gap-4 p-4 rounded-xl border border-ceramic-border hover:border-transparent transition-all duration-200 group"
                         style={{
                           background: "linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.5) 100%)"
                         }}
@@ -137,10 +138,10 @@ export function PortalSelector({ isOpen, onClose, triggerRef }: PortalSelectorPr
                           <Icon className="w-6 h-6" style={{ color: portal.color }} />
                         </div>
                         <div className="flex-1">
-                          <h4 className="font-semibold text-gray-900 dark:text-white group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
+                          <h4 className="font-semibold text-ceramic-primary dark:text-white group-hover:text-ceramic-brand transition-colors">
                             {portal.name} Portal
                           </h4>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                          <p className="text-sm text-ceramic-dimmed">
                             {portal.description}
                           </p>
                         </div>
@@ -150,12 +151,13 @@ export function PortalSelector({ isOpen, onClose, triggerRef }: PortalSelectorPr
                 })}
               </div>
 
-              <button
+              <Button
+                variant="ceramic-outline"
                 onClick={onClose}
-                className="w-full mt-6 py-3.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-medium rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                className="w-full mt-6 py-3.5"
               >
                 Cancel
-              </button>
+              </Button>
             </div>
           </motion.div>
 
@@ -167,7 +169,7 @@ export function PortalSelector({ isOpen, onClose, triggerRef }: PortalSelectorPr
             transition={{ duration: 0.2 }}
             className="hidden md:block fixed z-50 left-1/2 -translate-x-1/2 top-20"
           >
-            <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-gray-200/50 dark:border-gray-700/50 p-2 w-96">
+            <div className="bg-ceramic-white/95 dark:bg-ceramic-gray-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-ceramic-border p-2 w-96">
               <div className="grid grid-cols-2 gap-2">
                 {portals.map((portal) => {
                   const Icon = portal.icon;
@@ -176,7 +178,7 @@ export function PortalSelector({ isOpen, onClose, triggerRef }: PortalSelectorPr
                       key={portal.name}
                       href={portal.href}
                       onClick={onClose}
-                      className="group relative overflow-hidden rounded-xl p-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all duration-200"
+                      className="group relative overflow-hidden rounded-xl p-3 hover:bg-ceramic-gray-50 dark:hover:bg-ceramic-gray-800 transition-all duration-200"
                     >
                       {/* Hover glow effect */}
                       <div
@@ -191,7 +193,7 @@ export function PortalSelector({ isOpen, onClose, triggerRef }: PortalSelectorPr
                         >
                           <Icon className="w-4 h-4" style={{ color: portal.color }} />
                         </div>
-                        <p className="text-xs font-medium text-center text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors leading-tight">
+                        <p className="text-xs font-medium text-center text-ceramic-secondary dark:text-ceramic-gray-300 group-hover:text-ceramic-primary dark:group-hover:text-white transition-colors leading-tight">
                           {portal.name}
                         </p>
                       </div>

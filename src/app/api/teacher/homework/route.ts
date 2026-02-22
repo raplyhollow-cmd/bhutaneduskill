@@ -4,53 +4,79 @@ import { requireAuth } from "@/lib/auth-utils";
 import { requirePermission } from "@/lib/rbac";
 import { db } from "@/lib/db";
 import { homework, users, classes, subjects } from "@/lib/db/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, or } from "drizzle-orm";
 import { z } from "zod";
 
-// Validation schema for creating homework
+/**
+ * Validation schema for creating homework
+ * Matches the homework table structure in schema.ts
+ */
 const createHomeworkSchema = z.object({
-  classId: z.string(),
+  classId: z.string().min(1, "Class ID is required"),
   subjectId: z.string().optional(),
-  title: z.string().min(1),
-  description: z.string().optional(),
-  instructions: z.string().optional(),
-  type: z.enum(["assignment", "quiz", "project", "reading"]),
+  title: z.string().min(1, "Title is required"),
+  description: z.string().min(1, "Description is required"),
+  dueDate: z.string().min(1, "Due date is required"),
+  assignedDate: z.string().min(1, "Assigned date is required"),
+  totalPoints: z.number().int().min(0).optional(),
+  passingScore: z.number().int().min(0).optional(),
   questions: z.array(z.object({
     id: z.string(),
     type: z.enum(["multiple_choice", "true_false", "short_answer", "essay", "fill_blank", "numeric", "math_expression", "match_following", "match", "graph_plot", "handwriting"]),
-    question: z.string(),
+    text: z.string(),
     options: z.array(z.string()).optional(),
-    correctAnswer: z.any().optional(),
-    points: z.number(),
-    explanation: z.string().optional(),
-    mathMode: z.boolean().optional(),
+    correctAnswer: z.union([z.string(), z.array(z.string())]).optional(),
+    points: z.number().int().min(0),
   })).optional(),
   attachments: z.array(z.object({
+    id: z.string(),
     name: z.string(),
-    url: z.string(),
     type: z.string(),
-    size: z.number(),
-  })).optional(),
-  externalLinks: z.array(z.object({
-    title: z.string(),
     url: z.string(),
-    provider: z.enum(["google_drive", "onedrive", "dropbox", "other"]),
   })).optional(),
-  assignedDate: z.string(),
-  dueDate: z.string(),
-  lateSubmissionDeadline: z.string().optional(),
-  maxPoints: z.number().optional(),
-  passingPoints: z.number().optional(),
-  timeLimit: z.number().optional(),
-  attemptsAllowed: z.number().default(1),
-  showAnswersAfter: z.enum(["immediate", "after_due", "manual"]).optional(),
+  isPublished: z.boolean().optional().default(false),
 });
 
-// GET /api/teacher/homework - List all homework created by teacher
+/**
+ * Validation schema for updating homework
+ */
+const updateHomeworkSchema = z.object({
+  title: z.string().min(1).optional(),
+  description: z.string().min(1).optional(),
+  dueDate: z.string().optional(),
+  assignedDate: z.string().optional(),
+  totalPoints: z.number().int().min(0).optional(),
+  passingScore: z.number().int().min(0).optional(),
+  questions: z.array(z.object({
+    id: z.string(),
+    type: z.string(),
+    text: z.string(),
+    options: z.array(z.string()).optional(),
+    correctAnswer: z.any().optional(),
+    points: z.number().int().min(0),
+  })).optional(),
+  attachments: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    type: z.string(),
+    url: z.string(),
+  })).optional(),
+  isPublished: z.boolean().optional(),
+  isActive: z.boolean().optional(),
+});
+
+/**
+ * GET /api/teacher/homework - List all homework for teacher's classes
+ *
+ * Query parameters:
+ * - status: "draft" | "published" | "all" (default: "all")
+ * - classId: Filter by specific class
+ * - subjectId: Filter by specific subject
+ */
 export async function GET(request: NextRequest) {
   const authResult = await requireAuth(['teacher', 'admin']);
   if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+    return NextResponse.json({ success: false, error: authResult.error }, { status: authResult.status });
   }
 
   const { user: currentUser, userId } = authResult;
@@ -60,49 +86,119 @@ export async function GET(request: NextRequest) {
   if (permCheck) return permCheck;
 
   const { searchParams } = new URL(request.url);
-  const status = searchParams.get("status"); // draft, published, closed
+  const status = searchParams.get("status") || "all";
   const classId = searchParams.get("classId");
+  const subjectId = searchParams.get("subjectId");
 
   try {
-    // Build conditions - get classes taught by this teacher
+    // Get classes taught by this teacher (teacherId field in classes table)
     const teacherClasses = await db.query.classes.findMany({
       where: eq(classes.teacherId, currentUser.id),
     });
 
     const classIds = teacherClasses.map(c => c.id);
-    const conditions = classIds.length > 0 ? [sql`${homework.classId} IN ${sql.raw(`('${classIds.join("','")}')`)}`] : [];
 
+    // If teacher has no classes, return empty result
+    if (classIds.length === 0) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          homework: [],
+          total: 0,
+        },
+      });
+    }
+
+    // Build query conditions
+    const conditions: any[] = [];
+
+    // Only get homework for teacher's classes
+    for (const cid of classIds) {
+      conditions.push(eq(homework.classId, cid));
+    }
+
+    // Additional filters
     if (classId) {
+      // Verify teacher owns this class
+      if (!classIds.includes(classId)) {
+        return NextResponse.json({
+          success: false,
+          error: "You don't have access to this class",
+        }, { status: 403 });
+      }
+      conditions.length = 0; // Clear previous conditions
       conditions.push(eq(homework.classId, classId));
     }
 
-    if (status === "draft") {
-      conditions.push(sql`${homework.isPublished} = 0`);
-    } else if (status === "published") {
-      conditions.push(sql`${homework.isPublished} = 1`);
+    if (subjectId) {
+      conditions.push(eq(homework.subjectId, subjectId));
     }
 
-    const homeworkList = await db.query.homework.findMany({
-      where: and(...conditions),
-      with: {
-        class: true,
-        subject: true,
-      },
-      orderBy: [desc(homework.createdAt)],
-    });
+    // Status filtering
+    if (status === "draft") {
+      conditions.push(sql`${homework.isPublished} = false`);
+    } else if (status === "published") {
+      conditions.push(sql`${homework.isPublished} = true`);
+    }
 
-    return NextResponse.json({ homework: homeworkList });
+    // Only active homework (not deleted)
+    conditions.push(sql`${homework.isActive} = true`);
+
+    const homeworkList = await db
+      .select({
+        id: homework.id,
+        classId: homework.classId,
+        subjectId: homework.subjectId,
+        title: homework.title,
+        description: homework.description,
+        dueDate: homework.dueDate,
+        assignedDate: homework.assignedDate,
+        totalPoints: homework.totalPoints,
+        passingScore: homework.passingScore,
+        questions: homework.questions,
+        attachments: homework.attachments,
+        isPublished: homework.isPublished,
+        isActive: homework.isActive,
+        createdAt: homework.createdAt,
+        updatedAt: homework.updatedAt,
+        // Include related data
+        className: classes.name,
+        classGrade: classes.grade,
+        classSection: classes.section,
+        subjectName: subjects.name,
+        subjectCode: subjects.code,
+      })
+      .from(homework)
+      .innerJoin(classes, eq(homework.classId, classes.id))
+      .leftJoin(subjects, eq(homework.subjectId, subjects.id))
+      .where(and(...conditions))
+      .orderBy(desc(homework.createdAt));
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        homework: homeworkList,
+        total: homeworkList.length,
+      },
+    });
   } catch (error) {
     logger.error("Homework fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch homework" }, { status: 500 });
+    return NextResponse.json({
+      success: false,
+      error: "Failed to fetch homework",
+    }, { status: 500 });
   }
 }
 
-// POST /api/teacher/homework - Create new homework
+/**
+ * POST /api/teacher/homework - Create new homework
+ *
+ * Body: JSON object matching createHomeworkSchema
+ */
 export async function POST(request: NextRequest) {
   const authResult = await requireAuth(['teacher', 'admin']);
   if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+    return NextResponse.json({ success: false, error: authResult.error }, { status: authResult.status });
   }
 
   const { user: currentUser, userId } = authResult;
@@ -115,59 +211,273 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = createHomeworkSchema.parse(body);
 
-    // Verify the class belongs to this teacher's school
+    // Verify the class belongs to this teacher
     const classInfo = await db.query.classes.findFirst({
       where: eq(classes.id, validatedData.classId),
     });
 
     if (!classInfo) {
-      return NextResponse.json({ error: "Class not found" }, { status: 404 });
+      return NextResponse.json({
+        success: false,
+        error: "Class not found",
+      }, { status: 404 });
     }
 
-    // Calculate max points from questions if not provided
-    let maxPoints = validatedData.maxPoints;
-    if (!maxPoints && validatedData.questions) {
-      maxPoints = validatedData.questions.reduce((sum, q) => sum + q.points, 0);
+    // Verify teacher owns this class (unless admin)
+    if (currentUser.type !== 'admin' && classInfo.teacherId !== currentUser.id) {
+      return NextResponse.json({
+        success: false,
+        error: "You don't have permission to create homework for this class",
+      }, { status: 403 });
     }
 
-    // Filter questions to only include types supported by the database
-    const supportedQuestionTypes = ["multiple_choice", "short_answer", "essay", "fill_blank", "numeric", "math_expression", "graph_plot", "handwriting", "match"];
-    const filteredQuestions = (validatedData.questions || []).filter((q: any) =>
-      supportedQuestionTypes.includes(q.type)
-    ) as any[];
+    // Verify subject if provided
+    if (validatedData.subjectId) {
+      const subjectInfo = await db.query.subjects.findFirst({
+        where: eq(subjects.id, validatedData.subjectId),
+      });
+
+      if (!subjectInfo) {
+        return NextResponse.json({
+          success: false,
+          error: "Subject not found",
+        }, { status: 404 });
+      }
+    }
+
+    // Calculate total points from questions if not provided
+    let totalPoints = validatedData.totalPoints;
+    if (!totalPoints && validatedData.questions) {
+      totalPoints = validatedData.questions.reduce((sum, q) => sum + (q.points || 0), 0);
+    }
+
+    // Default passing score to 60% if not provided
+    const passingScore = validatedData.passingScore ?? Math.floor((totalPoints || 100) * 0.6);
+
+    // Generate unique ID
+    const homeworkId = `hw_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
     const [newHomework] = await db.insert(homework).values({
-      id: `hw_${Date.now()}`,
-      schoolId: currentUser.schoolId,
+      id: homeworkId,
       classId: validatedData.classId,
       subjectId: validatedData.subjectId,
-      teacherId: currentUser.id,
       title: validatedData.title,
       description: validatedData.description,
-      instructions: validatedData.instructions,
-      type: validatedData.type as any,
-      questions: filteredQuestions,
-      attachments: validatedData.attachments || [],
-      externalLinks: validatedData.externalLinks || [],
-      assignedDate: validatedData.assignedDate,
       dueDate: validatedData.dueDate,
-      lateSubmissionDeadline: validatedData.lateSubmissionDeadline,
-      maxPoints,
-      passingPoints: validatedData.passingPoints,
-      timeLimit: validatedData.timeLimit,
-      attemptsAllowed: validatedData.attemptsAllowed,
-      showAnswersAfter: validatedData.showAnswersAfter,
-      isPublished: false, // Start as draft
+      assignedDate: validatedData.assignedDate,
+      totalPoints: totalPoints || 100,
+      passingScore,
+      questions: validatedData.questions as any,
+      attachments: validatedData.attachments as any,
+      isPublished: validatedData.isPublished ?? false,
+      isActive: true,
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as any).returning();
+    }).returning();
 
-    return NextResponse.json({ homework: newHomework }, { status: 201 });
+    logger.info("Homework created", {
+      homeworkId,
+      teacherId: currentUser.id,
+      classId: validatedData.classId,
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: newHomework,
+    }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: "Validation failed", details: error.issues }, { status: 400 });
+      return NextResponse.json({
+        success: false,
+        error: "Validation failed",
+        details: error.issues,
+      }, { status: 400 });
     }
     logger.error("Homework creation error:", error);
-    return NextResponse.json({ error: "Failed to create homework" }, { status: 500 });
+    return NextResponse.json({
+      success: false,
+      error: "Failed to create homework",
+    }, { status: 500 });
+  }
+}
+
+/**
+ * PATCH /api/teacher/homework - Update existing homework
+ *
+ * Body: JSON object with fields to update
+ * Query parameters:
+ * - id: Homework ID (required)
+ */
+export async function PATCH(request: NextRequest) {
+  const authResult = await requireAuth(['teacher', 'admin']);
+  if ('error' in authResult) {
+    return NextResponse.json({ success: false, error: authResult.error }, { status: authResult.status });
+  }
+
+  const { user: currentUser, userId } = authResult;
+
+  // Check homework.update permission
+  const permCheck = await requirePermission(userId, "homework.update");
+  if (permCheck) return permCheck;
+
+  const { searchParams } = new URL(request.url);
+  const homeworkId = searchParams.get("id");
+
+  if (!homeworkId) {
+    return NextResponse.json({
+      success: false,
+      error: "Homework ID is required",
+    }, { status: 400 });
+  }
+
+  try {
+    const body = await request.json();
+    const validatedData = updateHomeworkSchema.parse(body);
+
+    // Get existing homework
+    const existingHomework = await db.query.homework.findFirst({
+      where: eq(homework.id, homeworkId),
+    });
+
+    if (!existingHomework) {
+      return NextResponse.json({
+        success: false,
+        error: "Homework not found",
+      }, { status: 404 });
+    }
+
+    // Verify teacher owns this class (unless admin)
+    if (currentUser.type !== 'admin') {
+      const classInfo = await db.query.classes.findFirst({
+        where: eq(classes.id, existingHomework.classId),
+      });
+
+      if (!classInfo || classInfo.teacherId !== currentUser.id) {
+        return NextResponse.json({
+          success: false,
+          error: "You don't have permission to update this homework",
+        }, { status: 403 });
+      }
+    }
+
+    // Prepare update data
+    const updateData: any = {
+      ...validatedData,
+      updatedAt: new Date(),
+    };
+
+    // Calculate total points from questions if questions are being updated
+    if (validatedData.questions && !validatedData.totalPoints) {
+      updateData.totalPoints = validatedData.questions.reduce((sum, q) => sum + (q.points || 0), 0);
+    }
+
+    const [updatedHomework] = await db.update(homework)
+      .set(updateData)
+      .where(eq(homework.id, homeworkId))
+      .returning();
+
+    logger.info("Homework updated", {
+      homeworkId,
+      teacherId: currentUser.id,
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: updatedHomework,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({
+        success: false,
+        error: "Validation failed",
+        details: error.issues,
+      }, { status: 400 });
+    }
+    logger.error("Homework update error:", error);
+    return NextResponse.json({
+      success: false,
+      error: "Failed to update homework",
+    }, { status: 500 });
+  }
+}
+
+/**
+ * DELETE /api/teacher/homework - Soft delete homework (set isActive = false)
+ *
+ * Query parameters:
+ * - id: Homework ID (required)
+ */
+export async function DELETE(request: NextRequest) {
+  const authResult = await requireAuth(['teacher', 'admin']);
+  if ('error' in authResult) {
+    return NextResponse.json({ success: false, error: authResult.error }, { status: authResult.status });
+  }
+
+  const { user: currentUser, userId } = authResult;
+
+  // Check homework.delete permission
+  const permCheck = await requirePermission(userId, "homework.delete");
+  if (permCheck) return permCheck;
+
+  const { searchParams } = new URL(request.url);
+  const homeworkId = searchParams.get("id");
+
+  if (!homeworkId) {
+    return NextResponse.json({
+      success: false,
+      error: "Homework ID is required",
+    }, { status: 400 });
+  }
+
+  try {
+    // Get existing homework
+    const existingHomework = await db.query.homework.findFirst({
+      where: eq(homework.id, homeworkId),
+    });
+
+    if (!existingHomework) {
+      return NextResponse.json({
+        success: false,
+        error: "Homework not found",
+      }, { status: 404 });
+    }
+
+    // Verify teacher owns this class (unless admin)
+    if (currentUser.type !== 'admin') {
+      const classInfo = await db.query.classes.findFirst({
+        where: eq(classes.id, existingHomework.classId),
+      });
+
+      if (!classInfo || classInfo.teacherId !== currentUser.id) {
+        return NextResponse.json({
+          success: false,
+          error: "You don't have permission to delete this homework",
+        }, { status: 403 });
+      }
+    }
+
+    // Soft delete by setting isActive to false
+    await db.update(homework)
+      .set({
+        isActive: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(homework.id, homeworkId));
+
+    logger.info("Homework deleted", {
+      homeworkId,
+      teacherId: currentUser.id,
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: { id: homeworkId, deleted: true },
+    });
+  } catch (error) {
+    logger.error("Homework deletion error:", error);
+    return NextResponse.json({
+      success: false,
+      error: "Failed to delete homework",
+    }, { status: 500 });
   }
 }

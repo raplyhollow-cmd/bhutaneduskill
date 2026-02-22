@@ -8,7 +8,7 @@
 import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
-import { schools, tenants, districts, users } from "@/lib/db/schema";
+import { schools, districts, users } from "@/lib/db/schema";
 import { desc, count, eq, and } from "drizzle-orm";
 import { SchoolsClient } from "./schools-client";
 import { logger } from "@/lib/logger";
@@ -42,7 +42,7 @@ export default async function AdminSchoolsPage() {
 
   const { userId, user } = authResult;
 
-  // Fetch all schools with their tenant and district info
+  // Fetch all schools with their district info
   const allSchools = await db
     .select({
       id: schools.id,
@@ -54,14 +54,11 @@ export default async function AdminSchoolsPage() {
       contactPhone: schools.contactPhone,
       address: schools.address,
       createdAt: schools.createdAt,
-      tenantId: schools.tenantId,
-      tenantName: tenants.name,
       districtId: schools.districtId,
       districtName: districts.name,
       isActive: schools.isActive,
     })
     .from(schools)
-    .leftJoin(tenants, eq(schools.tenantId, tenants.id))
     .leftJoin(districts, eq(schools.districtId, districts.id))
     .orderBy(desc(schools.createdAt));
 

@@ -18,6 +18,7 @@ import { PremiumCard } from "@/components/admin/premium-card";
 import { PageWrapper } from "@/components/admin/page-wrapper";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { EditUserModal } from "@/components/admin/edit-user-modal";
 import {
   ArrowLeft,
   Edit,
@@ -67,6 +68,7 @@ export default function UserDetailPage() {
   const [user, setUser] = useState<UserDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   useEffect(() => {
     async function fetchUserDetail() {
@@ -97,10 +99,10 @@ export default function UserDetailPage() {
     }
   }, [userId]);
 
-  // If action=edit, redirect to edit modal/page
+  // If action=edit, open edit modal
   useEffect(() => {
     if (action === "edit" && user) {
-      // For now, we'll show a prompt. In a full implementation, this would open an edit modal
+      setIsEditModalOpen(true);
       router.replace(`/admin/users/${userId}`);
     }
   }, [action, user, router]);
@@ -418,6 +420,23 @@ export default function UserDetailPage() {
           </div>
         </div>
       </PremiumCard>
+
+      {/* Edit User Modal */}
+      <EditUserModal
+        open={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        user={user}
+        onSuccess={async () => {
+          setIsEditModalOpen(false);
+          // Refresh user data
+          const res = await fetch(`/api/admin/users/${userId}`);
+          if (res.ok) {
+            const result = await res.json();
+            const userData = result.data || result;
+            setUser(userData);
+          }
+        }}
+      />
     </PageWrapper>
   );
 }

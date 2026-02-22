@@ -11,7 +11,7 @@ const memberSchema = z.object({
   memberType: z.enum(["student", "teacher", "staff"]),
   borrowingLimit: z.number().min(1).max(20).default(5),
   membershipStatus: z.enum(["active", "inactive", "suspended"]).default("active"),
-  expiryDate: z.string().optional(),
+  expiryDate: z.string().optional(), // ISO string, will be converted to Date
   notes: z.string().optional(),
 });
 
@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
     const membershipNumber = `LIB-${year}-${String((memberCount[0]?.count || 0) + 1).padStart(4, "0")}`;
 
     const memberId = `lib_mem_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
-    const now = new Date().toISOString();
+    const now = new Date();
 
     const [newMember] = await db.insert(libraryMembers).values({
       id: memberId,
@@ -166,11 +166,11 @@ export async function POST(request: NextRequest) {
       membershipNumber,
       membershipStatus: validatedData.membershipStatus,
       joinedDate: now,
-      expiryDate: validatedData.expiryDate,
+      expiryDate: validatedData.expiryDate ? new Date(validatedData.expiryDate) : undefined,
       borrowingLimit: validatedData.borrowingLimit,
       currentlyBorrowed: 0,
       totalBorrowed: 0,
-      fineDue: 0,
+      fineDue: "0",
       notes: validatedData.notes,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -222,10 +222,16 @@ export async function PATCH(request: NextRequest) {
 
     const validatedData = memberSchema.partial().parse(updateData);
 
+    // Convert expiryDate string to Date if provided
+    const updateValues: Record<string, any> = { ...validatedData };
+    if (validatedData.expiryDate) {
+      updateValues.expiryDate = new Date(validatedData.expiryDate);
+    }
+
     const updatedMember = await db
       .update(libraryMembers)
       .set({
-        ...validatedData,
+        ...updateValues,
         updatedAt: new Date(),
       })
       .where(eq(libraryMembers.id, id))

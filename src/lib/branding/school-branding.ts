@@ -128,19 +128,23 @@ export const SCHOOL_THEMES: Record<string, SchoolTheme> = {
 
 /**
  * Get school branding configuration
+ * Note: Branding is stored in the settings field of the tenants table, not schools table
+ * This function returns default branding for now - use tenant-based branding for custom themes
  */
 export async function getSchoolBranding(schoolId: string): Promise<SchoolBranding> {
   try {
+    // Check if school exists first
     const [school] = await db
       .select({
-        branding: schools.branding,
-        theme: schools.theme,
+        name: schools.name,
+        logo: schools.logo,
+        type: schools.type,
       })
       .from(schools)
       .where(eq(schools.id, schoolId))
       .limit(1);
 
-    if (!school || !school.branding) {
+    if (!school) {
       // Return default branding
       return {
         primaryColor: "rgb(249 115 22)",
@@ -149,25 +153,12 @@ export async function getSchoolBranding(schoolId: string): Promise<SchoolBrandin
       };
     }
 
-    // Parse branding JSON
-    const branding = typeof school.branding === "string"
-      ? JSON.parse(school.branding)
-      : school.branding;
-
+    // Return default branding with school logo if available
     return {
-      logo: branding.logo,
-      logoUrl: branding.logoUrl,
-      primaryColor: branding.primaryColor || "rgb(249 115 22)",
-      secondaryColor: branding.secondaryColor || "rgb(194 65 12)",
-      accentColor: branding.accentColor || "rgb(251 146 60)",
-      backgroundColor: branding.backgroundColor,
-      textColor: branding.textColor,
-      fontFamily: branding.fontFamily,
-      customCSS: branding.customCSS,
-      favicon: branding.favicon,
-      loginBackground: branding.loginBackground,
-      reportCardTemplate: branding.reportCardTemplate,
-      idCardTemplate: branding.idCardTemplate,
+      logoUrl: school.logo || undefined,
+      primaryColor: "rgb(249 115 22)",
+      secondaryColor: "rgb(194 65 12)",
+      accentColor: "rgb(251 146 60)",
     };
 
   } catch (error) {
@@ -182,15 +173,17 @@ export async function getSchoolBranding(schoolId: string): Promise<SchoolBrandin
 
 /**
  * Update school branding
+ * Note: Branding is stored in the settings field of the tenants table, not schools table
+ * This function is a placeholder - use tenant-based branding for custom themes
  */
 export async function updateSchoolBranding(
   schoolId: string,
-  branding: Partial<SchoolBranding>
+  brandingData: Partial<SchoolBranding>
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Get existing branding
+    // Check if school exists
     const [school] = await db
-      .select({ branding: schools.branding })
+      .select({ id: schools.id })
       .from(schools)
       .where(eq(schools.id, schoolId))
       .limit(1);
@@ -199,28 +192,14 @@ export async function updateSchoolBranding(
       return { success: false, error: "School not found" };
     }
 
-    // Merge with existing branding
-    const existingBranding = school.branding && typeof school.branding === "string"
-      ? JSON.parse(school.branding)
-      : (school.branding || {});
+    // Note: Branding should be stored in the tenants table settings, not schools table
+    // For now, this is a placeholder that logs the branding data
+    logger.info("School branding update requested (not implemented - use tenant branding)", {
+      schoolId,
+      brandingData,
+    });
 
-    const newBranding = {
-      ...existingBranding,
-      ...branding,
-    };
-
-    // Update database
-    await db
-      .update(schools)
-      .set({
-        branding: newBranding as any, // JSON column
-        updatedAt: new Date(),
-      })
-      .where(eq(schools.id, schoolId));
-
-    logger.info("School branding updated", { schoolId });
-
-    return { success: true };
+    return { success: false, error: "School branding should be updated via tenant settings" };
 
   } catch (error) {
     logger.error("Failed to update school branding", { error, schoolId });

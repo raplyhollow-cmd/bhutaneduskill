@@ -75,7 +75,7 @@ export function OptionButton({ label, isSelected, onClick, icon }: OptionButtonP
           className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent"
           initial={{ x: "-100%" }}
           animate={{ x: "200%" }}
-          transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+          transition={{ duration: 1.5, repeat: Infinity, repeatType: "loop", ease: "linear" }}
         />
       )}
 
@@ -159,7 +159,7 @@ export function LikertOption({ value, label, isSelected, onClick }: LikertOption
           className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
           initial={{ x: "-100%" }}
           animate={{ x: "200%" }}
-          transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+          transition={{ duration: 1.5, repeat: Infinity, repeatType: "loop", ease: "linear" }}
         />
       )}
       <div className={`text-3xl font-bold mb-1 relative z-10 ${isSelected ? "text-white" : "text-gray-900"}`}>

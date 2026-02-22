@@ -101,7 +101,7 @@ export function AssessmentContainer({
                 <motion.div
                   className="absolute top-0 left-0 h-full bg-gradient-to-r from-transparent via-white/30 to-transparent w-20"
                   animate={{ x: ["0%", "500%", "1000%"] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                  transition={{ duration: 2, repeat: Infinity, repeatType: "loop", ease: "linear" }}
                   style={{ width: "80px" }}
                 />
               </div>

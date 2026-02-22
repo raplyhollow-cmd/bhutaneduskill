@@ -5,10 +5,13 @@ import * as TabsPrimitive from "@radix-ui/react-tabs"
 import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 
+// Types for ceramic variant
+export type TabsVariant = "default" | "pills" | "underline" | "ceramic"
+
 const Tabs = TabsPrimitive.Root
 
 interface TabsListProps extends React.ComponentPropsWithoutRef<typeof TabsPrimitive.List> {
-  variant?: "default" | "pills" | "underline"
+  variant?: TabsVariant
 }
 
 const TabsList = React.forwardRef<
@@ -22,6 +25,7 @@ const TabsList = React.forwardRef<
       variant === "default" && "rounded-lg bg-gray-100 p-1.5 gap-1.5",
       variant === "pills" && "rounded-full bg-gray-100 p-1.5 gap-1.5",
       variant === "underline" && "border-b border-gray-200 gap-1",
+      variant === "ceramic" && "rounded-lg bg-[rgb(246,246,247)] p-1 gap-1 border border-[rgb(220,220,224)] dark:bg-[rgb(51,51,62)] dark:border-[rgb(62,62,75)]",
       className
     )}
     {...props}
@@ -30,7 +34,7 @@ const TabsList = React.forwardRef<
 TabsList.displayName = TabsPrimitive.List.displayName
 
 interface TabsTriggerProps extends React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger> {
-  variant?: "default" | "pills" | "underline"
+  variant?: TabsVariant
   showIndicator?: boolean
 }
 
@@ -64,6 +68,11 @@ const TabsTrigger = React.forwardRef<
           "data-[state=active]:border-purple-600 data-[state=active]:text-purple-600",
           "data-[state=inactive]:border-transparent data-[state=inactive]:text-gray-500",
           "hover:data-[state=inactive]:text-gray-700 hover:data-[state=inactive]:border-gray-300"
+        ],
+        variant === "ceramic" && [
+          "rounded-md px-4 py-2 text-sm font-medium min-h-[36px]",
+          "data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm dark:data-[state=active]:bg-[rgb(27,27,31)] dark:data-[state=active]:text-gray-100",
+          "data-[state=inactive]:text-gray-600 hover:text-gray-900 dark:data-[state=inactive]:text-gray-400 dark:hover:text-gray-200"
         ],
         className
       )}
@@ -104,7 +113,7 @@ const TabsContent = React.forwardRef<
 TabsContent.displayName = TabsPrimitive.Content.displayName
 
 /**
- * TabsNavigation - Clerk-style border bottom tabs
+ * TabsNavigation - Ceramic-style border bottom tabs
  * For page-level navigation with proper ARIA roles
  *
  * @example
@@ -129,28 +138,43 @@ export function TabsNavigation({
   )
 }
 
+interface TabsNavigationTriggerProps extends Omit<React.ComponentProps<typeof TabsPrimitive.Trigger>, 'className'> {
+  value: string
+  ceramicVariant?: TabsVariant
+  className?: string
+}
+
 export function TabsNavigationTrigger({
   children,
   value,
-  disabled
-}: React.ComponentProps<typeof TabsPrimitive.Trigger> & { value: string }) {
+  disabled,
+  ceramicVariant = "default",
+  className
+}: TabsNavigationTriggerProps) {
   return (
     <TabsPrimitive.Trigger
       value={value}
       disabled={disabled}
       className={cn(
-        "relative border-b-2 py-4 px-1 text-sm font-medium transition-colors",
-        "data-[state=active]:border-purple-600 data-[state=active]:text-purple-600",
-        "data-[state=inactive]:border-transparent data-[state=inactive]:text-gray-500",
-        "hover:data-[state=inactive]:text-gray-700 hover:data-[state=inactive]:border-gray-300",
+        "relative border-b-2 py-4 px-1 text-sm font-medium transition-colors -mb-px",
         "focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:ring-offset-2",
         "disabled:cursor-not-allowed disabled:opacity-50",
-        "-mb-px"
+        ceramicVariant === "default" && [
+          "data-[state=active]:border-purple-600 data-[state=active]:text-purple-600",
+          "data-[state=inactive]:border-transparent data-[state=inactive]:text-gray-500",
+          "hover:data-[state=inactive]:text-gray-700 hover:data-[state=inactive]:border-gray-300"
+        ],
+        ceramicVariant === "ceramic" && [
+          "data-[state=active]:border-[rgb(132,107,255)] data-[state=active]:text-[rgb(132,107,255)] dark:data-[state=active]:border-[rgb(166,152,255)] dark:data-[state=active]:text-[rgb(166,152,255)]",
+          "data-[state=inactive]:border-transparent data-[state=inactive]:text-gray-500 dark:data-[state=inactive]:text-gray-400",
+          "hover:data-[state=inactive]:text-gray-700 dark:hover:data-[state=inactive]:text-gray-300 hover:data-[state=inactive]:border-gray-300 dark:hover:data-[state=inactive]:border-gray-600"
+        ],
+        className
       )}
     >
       {children}
       {/* Active indicator */}
-      <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600 data-[state=active]:block data-[state=inactive]:hidden" />
+      <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600 data-[state=active]:block data-[state=inactive]:hidden dark:bg-[rgb(132,107,255)]" />
     </TabsPrimitive.Trigger>
   )
 }
@@ -172,6 +196,7 @@ interface TabsWithUnderlineProps {
   onChange?: (value: string) => void
   children: React.ReactNode
   className?: string
+  ceramicVariant?: TabsVariant
 }
 
 export function TabsWithUnderline({
@@ -179,7 +204,8 @@ export function TabsWithUnderline({
   defaultValue,
   onChange,
   children,
-  className
+  className,
+  ceramicVariant = "default"
 }: TabsWithUnderlineProps) {
   const [activeTab, setActiveTab] = React.useState(defaultValue || tabs[0]?.value)
 
@@ -197,26 +223,40 @@ export function TabsWithUnderline({
             value={tab.value}
             disabled={tab.disabled}
             className={cn(
-              "relative flex items-center gap-2 border-b-2 py-4 px-1 text-sm font-medium transition-colors",
-              "data-[state=active]:border-purple-600 data-[state=active]:text-purple-600",
-              "data-[state=inactive]:border-transparent data-[state=inactive]:text-gray-500",
-              "hover:data-[state=inactive]:text-gray-700 hover:data-[state=inactive]:border-gray-300",
+              "relative flex items-center gap-2 border-b-2 py-4 px-1 text-sm font-medium transition-colors -mb-px",
               "focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:ring-offset-2",
               "disabled:cursor-not-allowed disabled:opacity-50",
-              "-mb-px"
+              ceramicVariant === "default" && [
+                "data-[state=active]:border-purple-600 data-[state=active]:text-purple-600",
+                "data-[state=inactive]:border-transparent data-[state=inactive]:text-gray-500",
+                "hover:data-[state=inactive]:text-gray-700 hover:data-[state=inactive]:border-gray-300"
+              ],
+              ceramicVariant === "ceramic" && [
+                "data-[state=active]:border-[rgb(132,107,255)] data-[state=active]:text-[rgb(132,107,255)]",
+                "data-[state=inactive]:border-transparent data-[state=inactive]:text-gray-500",
+                "hover:data-[state=inactive]:text-gray-700 hover:data-[state=inactive]:border-gray-300"
+              ]
             )}
           >
             {tab.icon && <span className="h-4 w-4">{tab.icon}</span>}
             <span>{tab.label}</span>
             {tab.badge && (
-              <span className="ml-1 rounded-full bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-600">
+              <span className={cn(
+                "ml-1 rounded-full px-2 py-0.5 text-xs font-medium",
+                ceramicVariant === "default" && "bg-purple-100 text-purple-600",
+                ceramicVariant === "ceramic" && "bg-[rgb(245,243,255)] text-[rgb(132,107,255)]"
+              )}>
                 {tab.badge}
               </span>
             )}
             {/* Animated indicator */}
             {activeTab === tab.value && (
               <motion.span
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600"
+                className={cn(
+                  "absolute bottom-0 left-0 right-0 h-0.5",
+                  ceramicVariant === "default" && "bg-purple-600",
+                  ceramicVariant === "ceramic" && "bg-[rgb(132,107,255)]"
+                )}
                 layoutId="activeIndicator"
                 transition={{ type: "spring", stiffness: 500, damping: 30 }}
               />
@@ -248,11 +288,17 @@ interface VerticalTabsListProps extends React.ComponentPropsWithoutRef<typeof Ta
   className?: string
 }
 
-export function VerticalTabsList({ className, ...props }: VerticalTabsListProps) {
+interface VerticalTabsListProps extends React.ComponentPropsWithoutRef<typeof TabsPrimitive.List> {
+  ceramicVariant?: TabsVariant
+}
+
+export function VerticalTabsList({ className, ceramicVariant = "default", ...props }: VerticalTabsListProps) {
   return (
     <TabsPrimitive.List
       className={cn(
-        "flex flex-col gap-1 w-48 border-r border-gray-200 pr-4",
+        "flex flex-col gap-1 w-48 border-r pr-4",
+        ceramicVariant === "default" && "border-gray-200",
+        ceramicVariant === "ceramic" && "border-[rgb(220,220,224)] dark:border-[rgb(62,62,75)]",
         className
       )}
       {...props}
@@ -263,6 +309,7 @@ export function VerticalTabsList({ className, ...props }: VerticalTabsListProps)
 interface VerticalTabsTriggerProps extends React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger> {
   icon?: React.ReactNode
   shortcut?: string
+  ceramicVariant?: TabsVariant
 }
 
 export function VerticalTabsTrigger({
@@ -270,6 +317,7 @@ export function VerticalTabsTrigger({
   className,
   icon,
   shortcut,
+  ceramicVariant = "default",
   ...props
 }: VerticalTabsTriggerProps) {
   return (
@@ -277,10 +325,16 @@ export function VerticalTabsTrigger({
       className={cn(
         "relative flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg min-h-[40px]",
         "transition-colors",
-        "data-[state=active]:bg-purple-50 data-[state=active]:text-purple-600",
-        "data-[state=inactive]:text-gray-600 hover:bg-gray-100 hover:text-gray-900",
         "focus:outline-none focus:ring-2 focus:ring-purple-500/20",
         "disabled:cursor-not-allowed disabled:opacity-50",
+        ceramicVariant === "default" && [
+          "data-[state=active]:bg-purple-50 data-[state=active]:text-purple-600",
+          "data-[state=inactive]:text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+        ],
+        ceramicVariant === "ceramic" && [
+          "data-[state=active]:bg-[rgb(245,243,255)] data-[state=active]:text-[rgb(132,107,255)] dark:data-[state=active]:bg-[rgb(76,43,130)] dark:data-[state=active]:text-[rgb(186,177,255)]",
+          "data-[state=inactive]:text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:data-[state=inactive]:text-gray-400 dark:hover:bg-gray-800"
+        ],
         className
       )}
       {...props}
@@ -291,7 +345,11 @@ export function VerticalTabsTrigger({
         <span className="text-xs text-gray-400">{shortcut}</span>
       )}
       {/* Active indicator */}
-      <span className="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-1 rounded-r-full bg-purple-600 data-[state=active]:block data-[state=inactive]:hidden" />
+      <span className={cn(
+        "absolute left-0 top-1/2 -translate-y-1/2 h-8 w-1 rounded-r-full data-[state=active]:block data-[state=inactive]:hidden",
+        ceramicVariant === "default" && "bg-purple-600",
+        ceramicVariant === "ceramic" && "bg-[rgb(132,107,255)] dark:bg-[rgb(166,152,255)]"
+      )} />
     </TabsPrimitive.Trigger>
   )
 }

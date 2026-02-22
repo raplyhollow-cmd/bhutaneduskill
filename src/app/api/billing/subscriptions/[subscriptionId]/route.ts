@@ -12,9 +12,9 @@ import {
   subscriptions,
   subscriptionPlans,
   tenants,
-  invoices,
   paymentTransactions,
 } from "@/lib/db/schema";
+import { invoices } from "@/lib/db/billing-schema";
 import { eq, desc, and, count, sql } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";

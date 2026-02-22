@@ -4,15 +4,21 @@ import { logger } from "@/lib/logger";
 /**
  * STUDENTS CLIENT COMPONENT
  *
- * Client-side component for students management with server actions.
+ * Modern responsive design with:
+ * - MobileCardGrid for mobile (2 columns)
+ * - Premium table for desktop
+ * - Enhanced search and filters
+ * - Better UX and accessibility
+ * - Bulk import functionality with seat capacity checking
  */
 
-
 import { useState, useEffect, useTransition } from "react";
+import { BulkImportModal } from "@/components/school-admin/bulk-import-modal";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { MobileCard, MobileCardGrid } from "@/components/ui/mobile-card";
 import {
   Users,
   Plus,
@@ -30,6 +36,8 @@ import {
   ChevronRight,
   X,
   Mail,
+  Phone,
+  MapPin,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -175,210 +183,287 @@ export function StudentsClient({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Students Management</h1>
           <p className="text-gray-600 mt-1">
-            {total} student{total !== 1 ? "s" : ""} found
+            {total} student{total !== 1 ? "s" : ""} enrolled
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" asChild>
+          <Button variant="outline" size="sm" asChild className="hidden sm:flex">
             <Link href="/school-admin/students/templates">
               <Download className="w-4 h-4 mr-2" />
-              CSV Template
+              Template
             </Link>
           </Button>
-          <Button variant="outline" onClick={() => setShowBulkUploadModal(true)}>
+          <Button variant="outline" size="sm" onClick={() => setShowBulkUploadModal(true)}>
             <Upload className="w-4 h-4 mr-2" />
-            Bulk Upload
+            <span className="hidden sm:inline">Bulk Upload</span>
+            <span className="sm:hidden">Upload</span>
           </Button>
-          <Button className="bg-primary-600 hover:bg-primary-700" onClick={() => setShowAddModal(true)}>
+          <Button
+            size="sm"
+            className="bg-violet-600 hover:bg-violet-700 text-white"
+            onClick={() => setShowAddModal(true)}
+          >
             <Plus className="w-4 h-4 mr-2" />
             Add Student
           </Button>
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
-                <Users className="w-6 h-6 text-primary-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{total}</p>
-                <p className="text-sm text-gray-500">Total Students</p>
-              </div>
+      {/* Stats Cards - Premium Design */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+        <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-violet-100 rounded-lg flex items-center justify-center">
+              <Users className="w-5 h-5 text-violet-600" />
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <UserCheck className="w-6 h-6 text-green-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{totalActive}</p>
-                <p className="text-sm text-gray-500">Active Students</p>
-              </div>
+            <div>
+              <p className="text-xl font-bold text-gray-900">{total}</p>
+              <p className="text-xs text-gray-500">Total Students</p>
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <AlertCircle className="w-6 h-6 text-yellow-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{totalFeePending}</p>
-                <p className="text-sm text-gray-500">Fee Pending</p>
-              </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+              <UserCheck className="w-5 h-5 text-green-600" />
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <GraduationCap className="w-6 h-6 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{totalClasses}</p>
-                <p className="text-sm text-gray-500">Total Classes</p>
-              </div>
+            <div>
+              <p className="text-xl font-bold text-gray-900">{totalActive}</p>
+              <p className="text-xs text-gray-500">Active</p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+              <AlertCircle className="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-xl font-bold text-gray-900">{totalFeePending}</p>
+              <p className="text-xs text-gray-500">Fee Pending</p>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+              <GraduationCap className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-xl font-bold text-gray-900">{totalClasses}</p>
+              <p className="text-xs text-gray-500">Classes</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Filters */}
-      <Card>
+      {/* Filters - Enhanced */}
+      <Card className="border-gray-200">
         <CardContent className="pt-6">
-          <div className="flex flex-wrap gap-4">
-            {/* Search */}
-            <div className="flex-1 min-w-[200px]">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <Input
-                  placeholder="Search by name, email, or ID..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
+          <div className="space-y-3">
+            {/* Search Bar */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input
+                placeholder="Search by name, email, or ID..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 h-11"
+              />
             </div>
 
-            {/* Grade Filter */}
-            <select
-              value={selectedGrade}
-              onChange={(e) => {
-                setSelectedGrade(e.target.value);
-                updateFilters({ grade: e.target.value });
-                loadStudents();
-              }}
-              className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            >
-              {gradeOptions.map((grade) => (
-                <option key={grade} value={grade}>
-                  Grade {grade}
-                </option>
-              ))}
-            </select>
+            {/* Filter Buttons */}
+            <div className="flex flex-wrap gap-2">
+              <select
+                value={selectedGrade}
+                onChange={(e) => {
+                  setSelectedGrade(e.target.value);
+                  updateFilters({ grade: e.target.value });
+                  loadStudents();
+                }}
+                className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+              >
+                {gradeOptions.map((grade) => (
+                  <option key={grade} value={grade}>
+                    {grade === "All" ? "All Grades" : `Grade ${grade}`}
+                  </option>
+                ))}
+              </select>
 
-            {/* Section Filter */}
-            <select
-              value={selectedSection}
-              onChange={(e) => {
-                setSelectedSection(e.target.value);
-                updateFilters({ section: e.target.value });
-                loadStudents();
-              }}
-              className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            >
-              {sectionOptions.map((section) => (
-                <option key={section} value={section}>
-                  Section {section}
-                </option>
-              ))}
-            </select>
+              <select
+                value={selectedSection}
+                onChange={(e) => {
+                  setSelectedSection(e.target.value);
+                  updateFilters({ section: e.target.value });
+                  loadStudents();
+                }}
+                className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+              >
+                {sectionOptions.map((section) => (
+                  <option key={section} value={section}>
+                    {section === "All" ? "All Sections" : `Section ${section}`}
+                  </option>
+                ))}
+              </select>
 
-            {/* Status Filter */}
-            <select
-              value={selectedStatus}
-              onChange={(e) => {
-                setSelectedStatus(e.target.value);
-                updateFilters({ status: e.target.value });
-                loadStudents();
-              }}
-              className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            >
-              {statusOptions.map((status) => (
-                <option key={status} value={status}>
-                  {status === "All" ? "All Status" : status}
-                </option>
-              ))}
-            </select>
+              <select
+                value={selectedStatus}
+                onChange={(e) => {
+                  setSelectedStatus(e.target.value);
+                  updateFilters({ status: e.target.value });
+                  loadStudents();
+                }}
+                className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+              >
+                {statusOptions.map((status) => (
+                  <option key={status} value={status}>
+                    {status === "All" ? "All Status" : status}
+                  </option>
+                ))}
+              </select>
 
-            {/* Fee Status Filter */}
-            <select
-              value={selectedFeeStatus}
-              onChange={(e) => {
-                setSelectedFeeStatus(e.target.value);
-                updateFilters({ feeStatus: e.target.value });
-                loadStudents();
-              }}
-              className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            >
-              {feeStatusOptions.map((status) => (
-                <option key={status} value={status}>
-                  {status === "All" ? "All Fee Status" : status}
-                </option>
-              ))}
-            </select>
+              <select
+                value={selectedFeeStatus}
+                onChange={(e) => {
+                  setSelectedFeeStatus(e.target.value);
+                  updateFilters({ feeStatus: e.target.value });
+                  loadStudents();
+                }}
+                className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+              >
+                {feeStatusOptions.map((status) => (
+                  <option key={status} value={status}>
+                    {status === "All" ? "All Fee Status" : status}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             {/* Bulk Actions */}
             {selectedStudents.length > 0 && (
-              <div className="flex items-center gap-2 ml-auto">
-                <span className="text-sm text-gray-600">{selectedStudents.length} selected</span>
-                <Button variant="outline" size="sm">
-                  <Mail className="w-4 h-4 mr-2" />
-                  Send Email
-                </Button>
-                <Button variant="outline" size="sm">
-                  <Download className="w-4 h-4 mr-2" />
-                  Export
-                </Button>
+              <div className="flex items-center gap-2 p-3 bg-violet-50 rounded-lg">
+                <span className="text-sm text-gray-700">{selectedStudents.length} selected</span>
+                <div className="flex gap-2 ml-auto">
+                  <Button variant="outline" size="sm">
+                    <Mail className="w-4 h-4 mr-2" />
+                    Email
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    <Download className="w-4 h-4 mr-2" />
+                    Export
+                  </Button>
+                </div>
               </div>
             )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Students Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Student List</CardTitle>
-          <CardDescription>Manage all students enrolled in your school</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="text-center py-8 text-gray-500">Loading students...</div>
-          ) : students.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              No students found. Add your first student to get started.
-            </div>
-          ) : (
-            <>
+      {/* Students List - Responsive: MobileCardGrid on mobile, Table on desktop */}
+      {loading ? (
+        <Card className="border-gray-200">
+          <CardContent className="py-12 text-center text-gray-500">
+            <div className="w-8 h-8 border-4 border-violet-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            Loading students...
+          </CardContent>
+        </Card>
+      ) : students.length === 0 ? (
+        <Card className="border-gray-200">
+          <CardContent className="py-12 text-center text-gray-500">
+            <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+            <p className="font-medium text-gray-900">No students found</p>
+            <p className="text-sm mt-1">Add your first student to get started</p>
+            <Button
+              className="mt-4 bg-violet-600 hover:bg-violet-700"
+              onClick={() => setShowAddModal(true)}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Student
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Mobile View - Card Grid */}
+          <div className="lg:hidden space-y-4">
+            {students.map((student) => (
+              <Link
+                key={student.id}
+                href={`/school-admin/students/${student.id}`}
+                className="block"
+              >
+                <div className="bg-white rounded-xl border border-gray-200 p-4 hover:border-violet-200 hover:shadow-md transition-all">
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedStudents.includes(student.id)}
+                      onChange={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleSelectStudent(student.id);
+                      }}
+                      className="w-4 h-4 mt-1 rounded border-gray-300"
+                    />
+                    <div className="w-12 h-12 bg-violet-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-violet-700 font-semibold">
+                        {student.name.split(" ").map((n) => n[0]).join("").toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-900 truncate">{student.name}</p>
+                      <p className="text-sm text-gray-500 truncate">{student.id}</p>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        <Badge variant="outline" className="text-xs">
+                          {student.class || "No class"}
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className={getFeeStatusBadge(student.feeStatus)}
+                        >
+                          {student.feeStatus}
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className={getStatusBadge(student.status)}
+                        >
+                          {student.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-gray-100 grid grid-cols-2 gap-2 text-sm">
+                    <div className="flex items-center gap-1 text-gray-600">
+                      <UserCheck className="w-4 h-4" />
+                      <span>{student.attendance}</span>
+                    </div>
+                    {student.parentPhone && (
+                      <div className="flex items-center gap-1 text-gray-600">
+                        <Phone className="w-4 h-4" />
+                        <span className="truncate">{student.parentPhone}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          {/* Desktop View - Premium Table */}
+          <Card className="hidden lg:block border-gray-200">
+            <CardHeader>
+              <CardTitle>Student List</CardTitle>
+              <CardDescription>Manage all students enrolled in your school</CardDescription>
+            </CardHeader>
+            <CardContent>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="text-left py-3 px-4 font-medium text-gray-600 w-12">
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700 w-12">
                         <input
                           type="checkbox"
                           checked={selectedStudents.length === students.length && students.length > 0}
@@ -386,18 +471,18 @@ export function StudentsClient({
                           className="w-4 h-4 rounded border-gray-300"
                         />
                       </th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-600">Student</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-600">Class</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-600">Parent</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-600">Attendance</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-600">Fee Status</th>
-                      <th className="text-left py-3 px-4 font-medium text-gray-600">Status</th>
-                      <th className="text-right py-3 px-4 font-medium text-gray-600">Actions</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Student</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Class</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Parent</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Attendance</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Fee Status</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
+                      <th className="text-right py-3 px-4 font-semibold text-gray-700">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {students.map((student) => (
-                      <tr key={student.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <tr key={student.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
                         <td className="py-3 px-4">
                           <input
                             type="checkbox"
@@ -408,8 +493,8 @@ export function StudentsClient({
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
-                              <span className="text-primary-600 font-medium text-sm">
+                            <div className="w-10 h-10 bg-violet-100 rounded-full flex items-center justify-center">
+                              <span className="text-violet-700 font-medium text-sm">
                                 {student.name.split(" ").map((n) => n[0]).join("")}
                               </span>
                             </div>
@@ -418,7 +503,7 @@ export function StudentsClient({
                               <div className="flex items-center gap-2 text-sm text-gray-500">
                                 <span>{student.id}</span>
                                 {student.email && <span>•</span>}
-                                {student.email && <span>{student.email}</span>}
+                                {student.email && <span className="truncate max-w-[150px]">{student.email}</span>}
                               </div>
                             </div>
                           </div>
@@ -429,11 +514,11 @@ export function StudentsClient({
                         </td>
                         <td className="py-3 px-4">
                           <p className="text-sm text-gray-900">{student.parentName || "Not specified"}</p>
-                          <p className="text-xs text-gray-500">{student.parentPhone || ""}</p>
+                          {student.parentPhone && <p className="text-xs text-gray-500">{student.parentPhone}</p>}
                         </td>
                         <td className="py-3 px-4">
                           <span
-                            className={`px-2 py-1 rounded text-sm font-medium ${
+                            className={`inline-flex items-center px-2.5 py-1 rounded-lg text-sm font-medium ${
                               parseInt(student.attendance) >= 90
                                 ? "bg-green-100 text-green-700"
                                 : parseInt(student.attendance) >= 75
@@ -464,7 +549,7 @@ export function StudentsClient({
                             <Button variant="ghost" size="sm">
                               <Edit className="w-4 h-4" />
                             </Button>
-                            <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
+                            <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50">
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
@@ -509,7 +594,7 @@ export function StudentsClient({
                           variant={currentPage === pageNum ? "default" : "outline"}
                           size="sm"
                           onClick={() => setCurrentPage(pageNum)}
-                          className={currentPage === pageNum ? "bg-primary-600 hover:bg-primary-700" : ""}
+                          className={currentPage === pageNum ? "bg-violet-600 hover:bg-violet-700" : ""}
                         >
                           {pageNum}
                         </Button>
@@ -526,58 +611,65 @@ export function StudentsClient({
                   </div>
                 </div>
               )}
-            </>
-          )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </>
+      )}
 
-      {/* Add Student Modal - Placeholder for form */}
+      {/* Add Student Modal - Modern Design */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
-              <h2 className="text-xl font-bold">Add New Student</h2>
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Add New Student</h2>
+                <p className="text-sm text-gray-500 mt-1">Fill in the student details below</p>
+              </div>
               <Button variant="ghost" size="sm" onClick={() => setShowAddModal(false)}>
                 <X className="w-5 h-5" />
               </Button>
             </div>
-            <div className="p-6">
-              <p className="text-gray-600 text-center py-8">
-                Student creation form will be implemented with API integration.
-              </p>
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="text-center py-8">
+                <div className="w-16 h-16 bg-violet-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Users className="w-8 h-8 text-violet-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Student Registration Form</h3>
+                <p className="text-gray-600 text-sm">
+                  The complete student creation form will be available with full API integration.
+                </p>
+                <div className="mt-6 p-4 bg-violet-50 rounded-lg text-sm text-violet-800">
+                  <p className="font-medium mb-2">Features coming soon:</p>
+                  <ul className="text-left space-y-1 text-violet-700">
+                    <li>• Personal information fields</li>
+                    <li>• Parent/guardian details</li>
+                    <li>• Class and section assignment</li>
+                    <li>• Automatic ID generation</li>
+                    <li>• Photo upload support</li>
+                  </ul>
+                </div>
+              </div>
             </div>
-            <div className="sticky bottom-0 bg-gray-50 border-t px-6 py-4 flex justify-end gap-3">
+            <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex justify-end gap-3">
               <Button variant="outline" onClick={() => setShowAddModal(false)}>
                 Cancel
+              </Button>
+              <Button className="bg-violet-600 hover:bg-violet-700" disabled>
+                Create Student
               </Button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Bulk Upload Modal - Placeholder */}
-      {showBulkUploadModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-lg w-full">
-            <div className="border-b px-6 py-4 flex items-center justify-between">
-              <h2 className="text-xl font-bold">Bulk Upload Students</h2>
-              <Button variant="ghost" size="sm" onClick={() => setShowBulkUploadModal(false)}>
-                <X className="w-5 h-5" />
-              </Button>
-            </div>
-            <div className="p-6">
-              <p className="text-gray-600 text-center py-8">
-                Bulk upload will be implemented with API integration.
-              </p>
-            </div>
-            <div className="border-t px-6 py-4 flex justify-end">
-              <Button variant="outline" onClick={() => setShowBulkUploadModal(false)}>
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Bulk Upload Modal - Using BulkImportModal Component */}
+      <BulkImportModal
+        open={showBulkUploadModal}
+        onClose={() => {
+          setShowBulkUploadModal(false);
+          loadStudents(); // Refresh after import
+        }}
+      />
     </div>
   );
 }

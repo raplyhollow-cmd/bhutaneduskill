@@ -1,4 +1,4 @@
-import { pgTable, text, integer, boolean, timestamp, json, jsonb, index } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, boolean, timestamp, json, jsonb, index, decimal, primaryKey } from "drizzle-orm/pg-core";
 import { relations, sql, eq, and, or, desc, like, inArray } from "drizzle-orm";
 import { rubColleges, rubScholarships } from "./rub-schema";
 import { tenants } from "./tenancy-schema";
@@ -159,13 +159,28 @@ export {
 export {
   subscriptionPlans,
   subscriptions,
-  invoices,
   paymentMethods,
   discountCodes,
   discountUsages,
   paymentTransactions,
   usageRecords,
 } from "./billing-schema";
+
+// Teacher-specific tables
+export {
+  teacherBehaviorLogs,
+  type TeacherBehaviorLog,
+  type NewTeacherBehaviorLog,
+} from "./teacher-logs-schema";
+
+export {
+  lessonPlans,
+  syllabusProgress,
+  type LessonPlan,
+  type NewLessonPlan,
+  type SyllabusProgress,
+  type NewSyllabusProgress,
+} from "./lesson-plan-schema";
 
 // ============================================================================
 // DISTRICTS TABLE
@@ -219,19 +234,20 @@ export const users = pgTable("users", {
   employeeId: text("employee_id"),
   // subjects: json("subjects").$type<string[]>(), // REMOVED: DB has text type, not json
   subjects: text("subjects"), // Database has text type
-  tenantId: text("tenant_id").references(() => tenants.id),
+  clerkId: text("clerk_id").unique(), // Clerk user ID (legacy, kept for compatibility)
+  tenantId: text("tenant_id"), // Multi-tenant isolation
   emailVerified: boolean("email_verified").default(false),
   onboardingComplete: boolean("onboarding_complete").default(false),
-  onboardingStatus: text("onboarding_status").default("pending_enrollment"), // "pending_enrollment" | "complete" | "rejected"
+  onboardingStatus: text("onboarding_status").default("restricted"),
   classGrade: integer("class_grade"),
   parentId: text("parent_id").references(() => users.id),
   isActive: boolean("is_active").default(true),
-  department: text("department"), // For teachers
+  department: text("department"), // Department for staff users
   // Additional profile fields (optional)
-  school: text("school"), // School name (free text field)
-  interests: json("interests").$type<string[]>(), // Array of interests
-  goals: text("goals"), // Career/education goals
-  settings: json("settings").$type<Record<string, any>>(), // User settings including bio
+  school: text("school"), // School reference for compatibility
+  interests: text("interests"), // User interests as text
+  goals: text("goals"), // User goals
+  settings: text("settings"), // User settings as text (JSON stored as text)
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 }, (table) => ({
@@ -248,20 +264,7 @@ export const users = pgTable("users", {
 
 export type User = typeof users.$inferSelect;
 
-export const usersRelations = relations(users, ({ one, many }) => ({
-  school: one(schools, {
-    fields: [users.schoolId],
-    references: [schools.id],
-  }),
-  parent: one(users, {
-    fields: [users.parentId],
-    references: [users.id],
-  }),
-  circulationAsBorrower: many(circulation),
-  circulationAsStudent: many(circulation),
-  libraryMembers: many(libraryMembers),
-  reservations: many(libraryReservations),
-}));
+// usersRelations will be defined at the end of the file after all tables are defined
 
 // ============================================================================
 // STUDENT APPLICATIONS TABLE
@@ -297,20 +300,7 @@ export const studentApplications = pgTable("student_applications", {
 
 export type StudentApplication = typeof studentApplications.$inferSelect;
 
-export const studentApplicationsRelations = relations(studentApplications, ({ one }) => ({
-  student: one(users, {
-    fields: [studentApplications.studentId],
-    references: [users.id],
-  }),
-  school: one(schools, {
-    fields: [studentApplications.schoolId],
-    references: [schools.id],
-  }),
-  reviewer: one(users, {
-    fields: [studentApplications.reviewedBy],
-    references: [users.id],
-  }),
-}));
+// studentApplicationsRelations will be defined at the end of the file after all tables are defined
 
 // ============================================================================
 // SCHOOL ADMIN APPLICATIONS TABLE
@@ -327,16 +317,19 @@ export const schoolAdminApplications = pgTable("school_admin_applications", {
   status: text("status").notNull().default("pending_approval"), // "pending_approval" | "approved" | "rejected"
   paymentStatus: text("payment_status").notNull().default("pending"), // "pending" | "paid" | "failed"
   paymentAmount: text("payment_amount"), // Store as text to avoid numeric precision issues
-  paymentDate: timestamp("payment_date", { withTimezone: true }),
+  paymentDate: timestamp("payment_date"), // Database uses timestamp without time zone
   paymentMethod: text("payment_method"), // "bank_transfer" | "cheque" | "online" | "cash"
   paymentReference: text("payment_reference"), // Transaction ID / cheque number
-  appliedAt: timestamp("applied_at", { withTimezone: true }).notNull(),
+  paymentVerifiedBy: text("payment_verified_by").references(() => users.id), // Admin who verified payment
+  paymentVerifiedAt: timestamp("payment_verified_at"), // When payment was verified (no timezone)
+  bankReferenceNumber: text("bank_reference_number"), // Bank reference number for verification
+  appliedAt: timestamp("applied_at").notNull(), // Database uses timestamp without time zone
   reviewedBy: text("reviewed_by").references(() => users.id),
-  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  reviewedAt: timestamp("reviewed_at"), // Database uses timestamp without time zone
   rejectionReason: text("rejection_reason"),
   notes: text("notes"), // Admin notes during review
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at").notNull(), // Database uses timestamp without time zone
+  updatedAt: timestamp("updated_at").notNull(), // Database uses timestamp without time zone
 }, (table) => ({
   userIdIdx: index("idx_school_admin_apps_user_id").on(table.userId),
   schoolIdIdx: index("idx_school_admin_apps_school_id").on(table.schoolId),
@@ -347,20 +340,7 @@ export const schoolAdminApplications = pgTable("school_admin_applications", {
 
 export type SchoolAdminApplication = typeof schoolAdminApplications.$inferSelect;
 
-export const schoolAdminApplicationsRelations = relations(schoolAdminApplications, ({ one }) => ({
-  user: one(users, {
-    fields: [schoolAdminApplications.userId],
-    references: [users.id],
-  }),
-  school: one(schools, {
-    fields: [schoolAdminApplications.schoolId],
-    references: [schools.id],
-  }),
-  reviewer: one(users, {
-    fields: [schoolAdminApplications.reviewedBy],
-    references: [users.id],
-  }),
-}));
+// schoolAdminApplicationsRelations will be defined at the end of the file after all tables are defined
 
 // ============================================================================
 // TEACHER APPLICATIONS TABLE
@@ -396,20 +376,7 @@ export const teacherApplications = pgTable("teacher_applications", {
 
 export type TeacherApplication = typeof teacherApplications.$inferSelect;
 
-export const teacherApplicationsRelations = relations(teacherApplications, ({ one }) => ({
-  user: one(users, {
-    fields: [teacherApplications.userId],
-    references: [users.id],
-  }),
-  school: one(schools, {
-    fields: [teacherApplications.schoolId],
-    references: [schools.id],
-  }),
-  reviewer: one(users, {
-    fields: [teacherApplications.reviewedBy],
-    references: [users.id],
-  }),
-}));
+// teacherApplicationsRelations will be defined at the end of the file after all tables are defined
 
 // ============================================================================
 // DEPARTMENTS TABLE
@@ -439,16 +406,7 @@ export const departments = pgTable("departments", {
 
 export type Department = typeof departments.$inferSelect;
 
-export const departmentsRelations = relations(departments, ({ one, many }) => ({
-  school: one(schools, {
-    fields: [departments.schoolId],
-    references: [schools.id],
-  }),
-  head: one(users, {
-    fields: [departments.headOfDepartment],
-    references: [users.id],
-  }),
-}));
+// departmentsRelations will be defined at the end of the file after all tables are defined
 
 // ============================================================================
 // SCHOOLS TABLE
@@ -485,28 +443,25 @@ export const schools = pgTable("schools", {
   level: text("level"), // "primary" | "middle" | "secondary" | "higher_secondary"
   contactEmail: text("contact_email"),
   contactPhone: text("contact_phone"),
-  tenantId: text("tenant_id").references(() => tenants.id),
-  districtId: text("district_id").references(() => districts.id),
-  // domain: text("domain"), // REMOVED: Not in actual database
+  districtId: text("district_id"), // FK reference removed - will link manually when districts exist
+  tenantId: text("tenant_id"), // Multi-tenant isolation
   isActive: boolean("is_active").default(true),
-  // verifiedAt: timestamp("verified_at", { withTimezone: true }), // REMOVED: Not in actual database
-  // School branding and customization
-  branding: json("branding").$type<Record<string, unknown>>(), // Custom branding: logo, colors, theme
-  theme: text("theme"), // Selected theme name
-  // Hierarchical Ecosystem - Subscription & Setup Status
+  // Subscription and status fields
   subscriptionStatus: text("subscription_status").default("pending_payment"), // "pending_payment" | "active" | "suspended" | "cancelled"
   subscriptionTier: text("subscription_tier"), // "basic" | "standard" | "premium" | "enterprise"
-  activatedAt: timestamp("activated_at", { withTimezone: true }), // When subscription was activated
-  setupComplete: boolean("setup_complete").default(false), // Whether school admin has completed setup wizard
-  setupCompletedAt: timestamp("setup_completed_at", { withTimezone: true }), // When setup was completed
+  activatedAt: timestamp("activated_at", { withTimezone: true }),
+  setupComplete: boolean("setup_complete").default(false),
+  setupCompletedAt: timestamp("setup_completed_at", { withTimezone: true }),
+  // Fee generation session tracking (for annual SDF/termly fees)
+  currentSessionYear: text("current_session_year"), // e.g., "2026"
+  feeGenerationDate: text("fee_generation_date"), // ISO date string when fees were generated
+  feeGenerationStatus: text("fee_generation_status").default("pending"), // "pending" | "generated" | "partial"
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 }, (table) => ({
   // Indexes for frequently queried columns
   codeIdx: index("idx_schools_code").on(table.code),
   isActiveIdx: index("idx_schools_is_active").on(table.isActive),
-  districtIdIdx: index("idx_schools_district_id").on(table.districtId),
-  tenantIdIdx: index("idx_schools_tenant_id").on(table.tenantId),
   subscriptionStatusIdx: index("idx_schools_subscription_status").on(table.subscriptionStatus),
 }));
 
@@ -518,6 +473,418 @@ export const schoolsRelations = relations(schools, ({ many }) => ({
   libraryMembers: many(libraryMembers),
   reservations: many(libraryReservations),
   digitalResources: many(digitalResources),
+  invoices: many(invoices),
+}));
+
+// ============================================================================
+// SCHOOL INVOICES TABLE
+// ============================================================================
+
+/**
+ * School subscription invoices
+ * Tracks all billing for school subscriptions
+ */
+export const invoices = pgTable("invoices", {
+  id: text("id").primaryKey(),
+  invoiceNumber: text("invoice_number").notNull().unique(),
+  schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }).notNull(),
+
+  // Invoice details
+  subscriptionTier: text("subscription_tier").notNull(), // "basic" | "standard" | "premium" | "enterprise"
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(), // Using decimal for proper currency handling
+  taxAmount: decimal("tax_amount", { precision: 12, scale: 2 }).default("0"),
+  discountAmount: decimal("discount_amount", { precision: 12, scale: 2 }).default("0"),
+  totalAmount: decimal("total_amount", { precision: 12, scale: 2 }).notNull(), // Final amount including tax and discount
+  currency: text("currency").default("BTN"), // Bhutanese Ngultrum
+
+  // Billing period
+  billingPeriodStart: timestamp("billing_period_start", { withTimezone: true }).notNull(),
+  billingPeriodEnd: timestamp("billing_period_end", { withTimezone: true }).notNull(),
+  invoiceDate: timestamp("invoice_date", { withTimezone: true }).notNull(), // Date invoice was issued
+  dueDate: timestamp("due_date", { withTimezone: true }).notNull(),
+
+  // Status
+  status: text("status").notNull(), // "draft" | "sent" | "paid" | "overdue" | "cancelled" | "refunded"
+
+  // Payment details
+  paidAt: timestamp("paid_at", { withTimezone: true }),
+  paymentMethod: text("payment_method"), // "bank_transfer" | "cash" | "online" | "check"
+  paymentReference: text("payment_reference"), // Transaction ID, check number, etc.
+
+  // Refund details
+  refundAmount: decimal("refund_amount", { precision: 12, scale: 2 }),
+  refundReason: text("refund_reason"),
+  refundedAt: timestamp("refunded_at", { withTimezone: true }),
+
+  // PDF
+  pdfUrl: text("pdf_url"), // URL to generated PDF invoice
+
+  // Metadata
+  notes: text("notes"),
+  metadata: json("metadata").$type<Record<string, unknown>>(),
+
+  // Audit
+  createdBy: text("created_by"), // Platform admin user ID
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+
+  // Soft delete
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+}, (table) => ({
+  schoolIdIdx: index("idx_invoices_school_id").on(table.schoolId),
+  statusIdx: index("idx_invoices_status").on(table.status),
+  dueDateIdx: index("idx_invoices_due_date").on(table.dueDate),
+  invoiceNumberIdx: index("idx_invoices_invoice_number").on(table.invoiceNumber),
+}));
+
+export type Invoice = typeof invoices.$inferSelect;
+
+export const invoicesRelations = relations(invoices, ({ one }) => ({
+  school: one(schools, {
+    fields: [invoices.schoolId],
+    references: [schools.id],
+  }),
+}));
+
+// ============================================================================
+// STUDENTS TABLE
+// ============================================================================
+
+/**
+ * Student-specific information
+ * Extends the users table with student-specific fields
+ */
+export const students = pgTable("students", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  schoolId: text("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
+  studentCode: text("student_code").notNull().unique(), // Unique student identifier within school
+  currentClass: text("current_class"), // Current class/grade (e.g., "10", "12")
+  section: text("section"), // Section within class (e.g., "A", "B")
+  dateOfBirth: timestamp("date_of_birth", { mode: "date" }),
+  gender: text("gender"), // "male" | "female" | "other"
+  bloodGroup: text("blood_group"), // "A+" | "A-" | "B+" | "B-" | "O+" | "O-" | "AB+" | "AB-"
+  address: text("address"),
+  emergencyContact: text("emergency_contact"), // Emergency contact person name
+  emergencyPhone: text("emergency_phone"), // Emergency contact phone number
+  metadata: jsonb("metadata"), // Additional flexible data as JSONB
+  status: text("status").notNull().default("active"), // "active" | "inactive" | "graduated" | "transferred" | "suspended"
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  userIdIdx: index("idx_students_user_id").on(table.userId),
+  schoolIdIdx: index("idx_students_school_id").on(table.schoolId),
+  studentCodeIdx: index("idx_students_student_code").on(table.studentCode),
+  statusIdx: index("idx_students_status").on(table.status),
+}));
+
+export type Student = typeof students.$inferSelect;
+
+export const studentsRelations = relations(students, ({ one }) => ({
+  user: one(users, {
+    fields: [students.userId],
+    references: [users.id],
+  }),
+  school: one(schools, {
+    fields: [students.schoolId],
+    references: [schools.id],
+  }),
+}));
+
+// ============================================================================
+// TEACHERS TABLE
+// ============================================================================
+
+/**
+ * Teacher-specific information
+ * Extends the users table with teacher-specific fields
+ */
+export const teachers = pgTable("teachers", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  schoolId: text("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
+  employeeId: text("employee_id").notNull().unique(), // Unique employee identifier
+  designation: text("designation").notNull(), // "Lecturer" | "Senior Teacher" | "HOD" | "Principal" etc.
+  department: text("department"), // Department name (e.g., "Science", "Mathematics")
+  specialization: text("specialization"), // Subject specialization (e.g., "Physics", "Chemistry")
+  joiningDate: timestamp("joining_date", { mode: "date" }).notNull(),
+  status: text("status").notNull().default("active"), // "active" | "inactive" | "on_leave" | "resigned" | "terminated"
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  userIdIdx: index("idx_teachers_user_id").on(table.userId),
+  schoolIdIdx: index("idx_teachers_school_id").on(table.schoolId),
+  employeeIdIdx: index("idx_teachers_employee_id").on(table.employeeId),
+  statusIdx: index("idx_teachers_status").on(table.status),
+}));
+
+export type Teacher = typeof teachers.$inferSelect;
+
+export const teachersRelations = relations(teachers, ({ one }) => ({
+  user: one(users, {
+    fields: [teachers.userId],
+    references: [users.id],
+  }),
+  school: one(schools, {
+    fields: [teachers.schoolId],
+    references: [schools.id],
+  }),
+}));
+
+// ============================================================================
+// PARENTS TABLE
+// ============================================================================
+
+/**
+ * Parent-specific information
+ * Extends the users table with parent-specific fields
+ */
+export const parents = pgTable("parents", {
+  id: text("id").primaryKey(),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  occupation: text("occupation"),
+  workAddress: text("work_address"),
+  emergencyContact: text("emergency_contact"), // Primary emergency contact
+  relationshipToPrimary: text("relationship_to_primary"), // "father" | "mother" | "guardian" | "other"
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  userIdIdx: index("idx_parents_user_id").on(table.userId),
+}));
+
+export type Parent = typeof parents.$inferSelect;
+
+export const parentsRelations = relations(parents, ({ one, many }) => ({
+  user: one(users, {
+    fields: [parents.userId],
+    references: [users.id],
+  }),
+  studentRelationships: many(parentToStudent),
+}));
+
+// ============================================================================
+// PARENT TO STUDENT JOIN TABLE
+// ============================================================================
+
+/**
+ * Parent-Student relationships
+ * Links parents to their children with relationship details
+ */
+export const parentToStudent = pgTable("parent_to_student", {
+  parentId: text("parent_id").notNull().references(() => parents.id, { onDelete: "cascade" }),
+  studentId: text("student_id").notNull().references(() => students.id, { onDelete: "cascade" }),
+  isPrimaryContact: boolean("is_primary_contact").default(false),
+  relationshipType: text("relationship_type").notNull(), // "father" | "mother" | "guardian" | "stepfather" | "stepmother" | "grandparent"
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.parentId, table.studentId] }),
+  parentIdIdx: index("idx_parent_to_student_parent_id").on(table.parentId),
+  studentIdIdx: index("idx_parent_to_student_student_id").on(table.studentId),
+}));
+
+export type ParentToStudent = typeof parentToStudent.$inferSelect;
+
+export const parentToStudentRelations = relations(parentToStudent, ({ one }) => ({
+  parent: one(parents, {
+    fields: [parentToStudent.parentId],
+    references: [parents.id],
+  }),
+  student: one(students, {
+    fields: [parentToStudent.studentId],
+    references: [students.id],
+  }),
+}));
+
+// ============================================================================
+// LIBRARY BOOKS TABLE
+// ============================================================================
+
+/**
+ * Library books catalog
+ * Tracks all books in the library system
+ */
+export const libraryBooks = pgTable("library_books", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  author: text("author").notNull(),
+  isbn: text("isbn").unique(),
+  publisher: text("publisher"),
+  publicationYear: integer("publication_year"),
+  category: text("category"), // "fiction" | "non-fiction" | "reference" | "textbook" etc.
+  subCategory: text("sub_category"),
+  language: text("language").default("en"),
+  pages: integer("pages"),
+  coverImage: text("cover_image"),
+  description: text("description"),
+  totalCopies: integer("total_copies").notNull().default(1),
+  availableCopies: integer("available_copies").notNull().default(1),
+  location: text("location"), // Shelf location (e.g., "A-12", "Reference-3")
+  callNumber: text("call_number"), // Library classification number
+  tags: jsonb("tags"), // Array of tags for categorization
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  schoolIdIdx: index("idx_library_books_school_id").on(table.schoolId),
+  isbnIdx: index("idx_library_books_isbn").on(table.isbn),
+  categoryIdx: index("idx_library_books_category").on(table.category),
+  titleIdx: index("idx_library_books_title").on(table.title),
+}));
+
+export type LibraryBook = typeof libraryBooks.$inferSelect;
+
+export const libraryBooksRelations = relations(libraryBooks, ({ one, many }) => ({
+  school: one(schools, {
+    fields: [libraryBooks.schoolId],
+    references: [schools.id],
+  }),
+  circulation: many(libraryCirculation),
+}));
+
+// ============================================================================
+// LIBRARY MEMBERS TABLE
+// ============================================================================
+
+/**
+ * Library membership records
+ * Tracks who can borrow books from the library
+ */
+export const libraryMembers = pgTable("library_members", {
+  id: text("id").primaryKey(),
+  schoolId: text("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  memberType: text("member_type").notNull(), // "student" | "teacher" | "staff"
+  membershipNumber: text("membership_number").notNull().unique(),
+  membershipStatus: text("membership_status").notNull().default("active"), // "active" | "inactive" | "suspended"
+  joinedDate: timestamp("joined_date", { mode: "date" }).notNull(),
+  expiryDate: timestamp("expiry_date", { mode: "date" }),
+  borrowingLimit: integer("borrowing_limit").default(5), // Max books allowed
+  currentlyBorrowed: integer("currently_borrowed").default(0),
+  totalBorrowed: integer("total_borrowed").default(0),
+  fineDue: decimal("fine_due", { precision: 10, scale: 2 }).default("0"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  schoolIdIdx: index("idx_library_members_school_id").on(table.schoolId),
+  userIdIdx: index("idx_library_members_user_id").on(table.userId),
+  membershipNumberIdx: index("idx_library_members_membership_number").on(table.membershipNumber),
+  membershipStatusIdx: index("idx_library_members_membership_status").on(table.membershipStatus),
+}));
+
+export type LibraryMember = typeof libraryMembers.$inferSelect;
+
+export const libraryMembersRelations = relations(libraryMembers, ({ one }) => ({
+  school: one(schools, {
+    fields: [libraryMembers.schoolId],
+    references: [schools.id],
+  }),
+  user: one(users, {
+    fields: [libraryMembers.userId],
+    references: [users.id],
+  }),
+}));
+
+// ============================================================================
+// LIBRARY CIRCULATION TABLE
+// ============================================================================
+
+/**
+ * Library circulation records
+ * Tracks book checkouts, returns, and renewals
+ */
+export const libraryCirculation = pgTable("library_circulation", {
+  id: text("id").primaryKey(),
+  bookId: text("book_id").notNull().references(() => libraryBooks.id, { onDelete: "cascade" }),
+  memberId: text("member_id").notNull().references(() => libraryMembers.id, { onDelete: "cascade" }),
+  schoolId: text("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
+  checkoutDate: timestamp("checkout_date", { withTimezone: true }).notNull(),
+  dueDate: timestamp("due_date", { withTimezone: true }).notNull(),
+  returnDate: timestamp("return_date", { withTimezone: true }),
+  status: text("status").notNull().default("borrowed"), // "borrowed" | "returned" | "overdue" | "lost"
+  renewals: integer("renewals").default(0),
+  maxRenewals: integer("max_renewals").notNull().default(3),
+  fine: decimal("fine", { precision: 10, scale: 2 }).default("0"),
+  finePaid: boolean("fine_paid").default(false),
+  notes: text("notes"),
+  processedBy: text("processed_by").references(() => users.id), // Staff who processed the transaction
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  bookIdIdx: index("idx_library_circulation_book_id").on(table.bookId),
+  memberIdIdx: index("idx_library_circulation_member_id").on(table.memberId),
+  schoolIdIdx: index("idx_library_circulation_school_id").on(table.schoolId),
+  statusIdx: index("idx_library_circulation_status").on(table.status),
+  dueDateIdx: index("idx_library_circulation_due_date").on(table.dueDate),
+}));
+
+export type LibraryCirculation = typeof libraryCirculation.$inferSelect;
+
+export const libraryCirculationRelations = relations(libraryCirculation, ({ one }) => ({
+  book: one(libraryBooks, {
+    fields: [libraryCirculation.bookId],
+    references: [libraryBooks.id],
+  }),
+  member: one(libraryMembers, {
+    fields: [libraryCirculation.memberId],
+    references: [libraryMembers.id],
+  }),
+  school: one(schools, {
+    fields: [libraryCirculation.schoolId],
+    references: [schools.id],
+  }),
+}));
+
+// ============================================================================
+// STUDENT PORTFOLIOS TABLE
+// ============================================================================
+
+/**
+ * Student portfolios and achievements
+ * Tracks student work, projects, and accomplishments
+ */
+export const studentPortfolios = pgTable("student_portfolios", {
+  id: text("id").primaryKey(),
+  studentId: text("student_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  schoolId: text("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  category: text("category").notNull(), // "project" | "assignment" | "competition" | "certificate" | "extracurricular"
+  subCategory: text("sub_category"),
+  type: text("type").notNull(), // "academic" | "sports" | "arts" | "community" | "leadership" | "other"
+  content: jsonb("content"), // Flexible content structure for different portfolio types
+  attachments: jsonb("attachments"), // Array of file attachments (images, documents, etc.)
+  tags: jsonb("tags"), // Array of tags for categorization
+  date: timestamp("date", { mode: "date" }).notNull(), // Date of achievement or completion
+  isPublic: boolean("is_public").default(false), // Whether to display publicly
+  isFeatured: boolean("is_featured").default(false), // Whether to feature on profile
+  status: text("status").notNull().default("draft"), // "draft" | "published" | "archived"
+  submittedBy: text("submitted_by").references(() => users.id), // Teacher or student who submitted
+  approvedBy: text("approved_by").references(() => users.id), // Teacher who approved
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
+  viewCount: integer("view_count").default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  studentIdIdx: index("idx_student_portfolios_student_id").on(table.studentId),
+  schoolIdIdx: index("idx_student_portfolios_school_id").on(table.schoolId),
+  categoryIdx: index("idx_student_portfolios_category").on(table.category),
+  typeIdx: index("idx_student_portfolios_type").on(table.type),
+  statusIdx: index("idx_student_portfolios_status").on(table.status),
+}));
+
+export type StudentPortfolio = typeof studentPortfolios.$inferSelect;
+
+export const studentPortfoliosRelations = relations(studentPortfolios, ({ one }) => ({
+  student: one(users, {
+    fields: [studentPortfolios.studentId],
+    references: [users.id],
+  }),
+  school: one(schools, {
+    fields: [studentPortfolios.schoolId],
+    references: [schools.id],
+  }),
 }));
 
 // ============================================================================
@@ -685,14 +1052,7 @@ export const books = pgTable("books", {
 
 export type Book = typeof books.$inferSelect;
 
-export const booksRelations = relations(books, ({ one, many }) => ({
-  school: one(schools, {
-    fields: [books.schoolId],
-    references: [schools.id],
-  }),
-  circulation: many(circulation),
-  reservations: many(libraryReservations),
-}));
+// booksRelations will be defined at the end of the file after all tables are defined
 
 // ============================================================================
 // CLASSES TABLE
@@ -905,8 +1265,8 @@ export const announcements = pgTable("announcements", {
   priority: text("priority").notNull(), // "low" | "normal" | "high" | "urgent"
   targetAudience: text("target_audience").notNull(), // "all" | "students" | "teachers" | "parents" | "staff" | "counselor"
   targetGradeLevel: text("target_grade_level").notNull(), // e.g., "10-12"
-  targetClassIds: json("target_class_ids").$type<string[]>(),
-  targetUserIds: json("target_user_ids").$type<string[]>(),
+  targetClassIds: text("target_class_ids"), // Stored as text, parse as JSON array when needed
+  targetUserIds: text("target_user_ids"), // Stored as text, parse as JSON array when needed
   category: text("category").notNull(),
   publishDate: text("publish_date").notNull(),
   expiryDate: text("expiry_date").notNull(),
@@ -1017,7 +1377,8 @@ export type FeePayment = typeof feePayments.$inferSelect;
 export const studentFees = pgTable("student_fees", {
   id: text("id").primaryKey(),
   studentId: text("student_id").references(() => users.id, { onDelete: "cascade" }),
-  feeType: text("fee_type").notNull(), // "tuition" | "library" | "lab" | "transport" | "hostel" | "activity" | "uniform" | "exam" | "other"
+  feeType: text("fee_type").notNull(), // "tuition" | "library" | "lab" | "transport" | "hostel" | "activity" | "uniform" | "exam" | "other" | "sdf" | "rimdro" | "diary" | "sports" | "stationery"
+  // SDF = School Development Fund (government schools), Rimdro = annual prayer fee, Diary = school diary & ID card
   amount: integer("amount").notNull(),
   totalAmount: integer("total_amount"),
   amountPaid: integer("amount_paid"),
@@ -1998,35 +2359,6 @@ export const circulation = pgTable("circulation", {
 
 export type Circulation = typeof circulation.$inferSelect;
 
-// ============================================================================
-// LIBRARY MEMBERS TABLE
-// ============================================================================
-
-export const libraryMembers = pgTable("library_members", {
-  id: text("id").primaryKey(),
-  schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }),
-  userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
-  memberType: text("member_type").notNull(), // "student" | "teacher" | "staff"
-  membershipNumber: text("membership_number").notNull().unique(),
-  membershipStatus: text("membership_status").notNull(), // "active" | "inactive" | "suspended"
-  joinedDate: text("joined_date").notNull(),
-  expiryDate: text("expiry_date"),
-  borrowingLimit: integer("borrowing_limit").default(5), // Max books allowed
-  currentlyBorrowed: integer("currently_borrowed").default(0),
-  totalBorrowed: integer("total_borrowed").default(0),
-  fineDue: integer("fine_due").default(0),
-  notes: text("notes"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-}, (table) => ({
-  // Indexes for frequently queried columns
-  schoolIdIdx: index("idx_library_members_school_id").on(table.schoolId),
-  userIdIdx: index("idx_library_members_user_id").on(table.userId),
-  membershipStatusIdx: index("idx_library_members_membership_status").on(table.membershipStatus),
-  membershipNumberIdx: index("idx_library_members_membership_number").on(table.membershipNumber),
-}));
-
-export type LibraryMember = typeof libraryMembers.$inferSelect;
 
 // ============================================================================
 // LIBRARY RESERVATIONS TABLE
@@ -2061,50 +2393,7 @@ export const libraryReservations = pgTable("library_reservations", {
 
 export type LibraryReservation = typeof libraryReservations.$inferSelect;
 
-// ============================================================================
-// LIBRARY RELATIONSHIPS
-// ============================================================================
-
-export const circulationRelations = relations(circulation, ({ one }) => ({
-  book: one(books, {
-    fields: [circulation.bookId],
-    references: [books.id],
-  }),
-  borrower: one(users, {
-    fields: [circulation.borrowerId],
-    references: [users.id],
-  }),
-  student: one(users, {
-    fields: [circulation.studentId],
-    references: [users.id],
-  }),
-}));
-
-export const libraryMembersRelations = relations(libraryMembers, ({ one }) => ({
-  user: one(users, {
-    fields: [libraryMembers.userId],
-    references: [users.id],
-  }),
-  school: one(schools, {
-    fields: [libraryMembers.schoolId],
-    references: [schools.id],
-  }),
-}));
-
-export const libraryReservationsRelations = relations(libraryReservations, ({ one }) => ({
-  book: one(books, {
-    fields: [libraryReservations.bookId],
-    references: [books.id],
-  }),
-  user: one(users, {
-    fields: [libraryReservations.userId],
-    references: [users.id],
-  }),
-  school: one(schools, {
-    fields: [libraryReservations.schoolId],
-    references: [schools.id],
-  }),
-}));
+// Library relations will be defined at the end of the file after all tables are defined
 
 // ============================================================================
 // DIGITAL RESOURCES TABLE
@@ -2151,12 +2440,7 @@ export const digitalResources = pgTable("digital_resources", {
 
 export type DigitalResource = typeof digitalResources.$inferSelect;
 
-export const digitalResourcesRelations = relations(digitalResources, ({ one }) => ({
-  school: one(schools, {
-    fields: [digitalResources.schoolId],
-    references: [schools.id],
-  }),
-}));
+// digitalResourcesRelations will be defined at the end of the file after all tables are defined
 
 // ============================================================================
 // CONSENT RECORDS TABLE
@@ -2333,6 +2617,133 @@ export const interventionNotes = pgTable("intervention_notes", {
 
 export type InterventionNote = typeof interventionNotes.$inferSelect;
 export type NewInterventionNote = typeof interventionNotes.$inferInsert;
+
+// ============================================================================
+// RED FLAGS TABLE (Counselor Portal - GNH Sentinel)
+// ============================================================================
+
+/**
+ * Red Flags - AI-generated early warning system for at-risk students
+ * Part of "The GNH Sentinel" - counselor's proactive student well-being monitoring
+ */
+export const redFlags = pgTable("red_flags", {
+  id: text("id").primaryKey(),
+  studentId: text("student_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  counselorId: text("counselor_id").references(() => users.id, { onDelete: "set null" }),
+  schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }),
+
+  // Flag details
+  severity: text("severity").notNull(), // "low" | "medium" | "high" | "critical"
+  flagType: text("flag_type").notNull(), // "attendance" | "behavior" | "academic" | "wellness" | "combined"
+
+  // AI-generated analysis
+  patternDetected: json("pattern_detected").$type<{
+    categories: string[];
+    description: string;
+    confidence: number;
+  }>(),
+  aiRecommendation: text("ai_recommendation"),
+  gnhPrinciple: text("gnh_principle"), // GNH domain affected (e.g., "psychological wellbeing")
+
+  // Source data
+  behaviorLogIds: json("behavior_log_ids").$type<string[]>(),
+  attendanceData: json("attendance_data").$type<{
+    rate: number;
+    lates: number;
+    absences: number;
+    period: string;
+  }>(),
+  academicData: json("academic_data").$type<{
+    avgMarks: number;
+    failingSubjects: string[];
+    trend: "declining" | "stable" | "improving";
+  }>(),
+
+  // Status
+  status: text("status").notNull().default("flagged"), // "flagged" | "reviewed" | "intervention_planned" | "resolved" | "dismissed"
+
+  // Resolution
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  reviewedBy: text("reviewed_by").references(() => users.id, { onDelete: "set null" }),
+  interventionId: text("intervention_id"), // Links to studentInterventions
+  resolutionNotes: text("resolution_notes"),
+
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  studentIdIdx: index("idx_red_flags_student_id").on(table.studentId),
+  counselorIdIdx: index("idx_red_flags_counselor_id").on(table.counselorId),
+  schoolIdIdx: index("idx_red_flags_school_id").on(table.schoolId),
+  severityIdx: index("idx_red_flags_severity").on(table.severity),
+  statusIdx: index("idx_red_flags_status").on(table.status),
+  createdAtIdx: index("idx_red_flags_created_at").on(table.createdAt),
+}));
+
+export type RedFlag = typeof redFlags.$inferSelect;
+export type NewRedFlag = typeof redFlags.$inferInsert;
+
+// ============================================================================
+// CAREER APPROVALS TABLE (Counselor Portal - Career Alignment)
+// ============================================================================
+
+/**
+ * Career Approvals - Human counselor endorsement for student career paths
+ * Part of "Career Alignment" - counselor reviews AI career roadmaps before RUB scholarships
+ */
+export const careerApprovals = pgTable("career_approvals", {
+  id: text("id").primaryKey(),
+  studentId: text("student_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  counselorId: text("counselor_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
+  careerMatchId: text("career_match_id"), // References careerMatches table
+
+  // Career details
+  careerTitle: text("career_title").notNull(),
+  careerField: text("career_field"), // e.g., "engineering", "medicine", "education"
+  targetRUBCollege: text("target_rub_college"), // e.g., "CST", "Sherubtse", "Paro College"
+  targetProgram: text("target_program"),
+
+  // Counselor assessment
+  approvalStatus: text("approval_status").notNull().default("pending"), // "pending" | "approved" | "approved_with_reservations" | "not_recommended"
+  suitabilityScore: integer("suitability_score"), // 0-100 counselor's assessment
+  counselorNotes: text("counselor_notes"),
+  reservations: text("reservations"), // Specific concerns for "approved_with_reservations"
+
+  // Alignment checks
+  academicAlignment: text("academic_alignment"), // "well_aligned" | "needs_improvement" | "misaligned"
+  skillsGap: json("skills_gap").$type<string[]>(),
+  recommendedPreparation: json("recommended_preparation").$type<Array<{
+    action: string;
+    priority: "high" | "medium" | "low";
+    timeline: string;
+  }>>(),
+
+  // RUB scholarship linkage
+  scholarshipReady: boolean("scholarship_ready").default(false),
+  recommendedScholarships: json("recommended_scholarships").$type<Array<{
+    scholarshipId: string;
+    name: string;
+    suitability: string;
+  }>>(),
+
+  // Timeline
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
+  validUntil: timestamp("valid_until", { withTimezone: true }), // Approval expires after 1 year
+
+  // GNH alignment
+  gnhAlignment: json("gnh_alignment").$type<string[]>(), // GNH principles this career supports
+
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  studentIdIdx: index("idx_career_approvals_student_id").on(table.studentId),
+  counselorIdIdx: index("idx_career_approvals_counselor_id").on(table.counselorId),
+  statusIdx: index("idx_career_approvals_status").on(table.approvalStatus),
+  careerTitleIdx: index("idx_career_approvals_career_title").on(table.careerTitle),
+  createdAtIdx: index("idx_career_approvals_created_at").on(table.createdAt),
+}));
+
+export type CareerApproval = typeof careerApprovals.$inferSelect;
+export type NewCareerApproval = typeof careerApprovals.$inferInsert;
 
 // ============================================================================
 // WIZARD PROGRESS TABLE
@@ -2623,6 +3034,183 @@ export const aiInteractions = pgTable("ai_interactions", {
 
 export type AIInteraction = typeof aiInteractions.$inferSelect;
 export type NewAIInteraction = typeof aiInteractions.$inferInsert;
+
+// ============================================================================
+// PLATFORM ADMIN COMMAND CENTER TABLES
+// ============================================================================
+
+// Daily SITREP (Situation Report) records for platform admin briefings
+export const sitrepReports = pgTable("sitrep_reports", {
+  id: text("id").primaryKey(),
+  reportDate: text("report_date").notNull().unique(), // Format: YYYY-MM-DD
+  healthStatus: text("health_status").notNull(), // "healthy" | "degraded" | "critical"
+  growthData: json("growth_data").notNull().$type<{
+    newSchools: number;
+    newUsers: number;
+    newStudents: number;
+    newTeachers: number;
+    churnedSchools: number;
+    growthPercentage: number;
+  }>(),
+  revenueData: json("revenue_data").notNull().$type<{
+    mrr: number; // Monthly Recurring Revenue
+    overdueInvoices: number;
+    overdueAmount: number;
+    paidThisMonth: number;
+    pendingInvoices: number;
+  }>(),
+  activityData: json("activity_data").notNull().$type<{
+    aiConsultations: number;
+    assessmentsCompleted: number;
+    topCareer: string;
+    topCareerTrend: "up" | "down" | "stable";
+    activeNow: number;
+  }>(),
+  anomalyCount: integer("anomaly_count").notNull().default(0),
+  actionItemCount: integer("action_item_count").notNull().default(0),
+  aiGeneratedSummary: text("ai_generated_summary"), // AI-generated narrative
+  generatedBy: text("generated_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type SitrepReport = typeof sitrepReports.$inferSelect;
+export type NewSitrepReport = typeof sitrepReports.$inferInsert;
+
+// Anomaly alerts detected by the AI Sentinel
+export const anomalyAlerts = pgTable("anomaly_alerts", {
+  id: text("id").primaryKey(),
+  severity: text("severity").notNull(), // "low" | "medium" | "high" | "critical"
+  type: text("type").notNull(), // "seat_limit" | "overdue_payment" | "low_engagement" | "api_error" | "system_health"
+  entityId: text("entity_id").notNull(), // school_id, invoice_id, etc.
+  entityType: text("entity_type").notNull(), // "school" | "invoice" | "user" | "system"
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  suggestedAction: text("suggested_action"),
+  status: text("status").notNull().default("open"), // "open" | "acknowledged" | "resolved" | "dismissed"
+  acknowledgedBy: text("acknowledged_by").references(() => users.id, { onDelete: "set null" }),
+  acknowledgedAt: timestamp("acknowledged_at", { withTimezone: true }),
+  resolvedBy: text("resolved_by").references(() => users.id, { onDelete: "set null" }),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  resolution: text("resolution"),
+  metadata: json("metadata").$type<Record<string, any>>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type AnomalyAlert = typeof anomalyAlerts.$inferSelect;
+export type NewAnomalyAlert = typeof anomalyAlerts.$inferInsert;
+
+// System health metrics daily snapshots
+export const systemHealthMetrics = pgTable("system_health_metrics", {
+  id: text("id").primaryKey(),
+  snapshotDate: text("snapshot_date").notNull().unique(), // Format: YYYY-MM-DD
+  apiLatency: integer("api_latency"), // Average API response time in ms
+  errorRate: decimal("error_rate", { precision: 5, scale: 2 }), // Percentage
+  activeUsers: integer("active_users").notNull().default(0),
+  totalRequests: integer("total_requests").notNull().default(0),
+  failedRequests: integer("failed_requests").notNull().default(0),
+  aiServiceStatus: text("ai_service_status").notNull(), // "operational" | "degraded" | "down"
+  databaseStatus: text("database_status").notNull(), // "operational" | "degraded" | "down"
+  storageUsage: integer("storage_usage").notNull().default(0), // In bytes
+  storageLimit: integer("storage_limit").notNull().default(0), // In bytes
+  uptime: decimal("uptime", { precision: 5, scale: 2 }), // Percentage
+  metadata: json("metadata").$type<Record<string, any>>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type SystemHealthMetric = typeof systemHealthMetrics.$inferSelect;
+export type NewSystemHealthMetric = typeof systemHealthMetrics.$inferInsert;
+
+// Knowledge drafts for AI-ingested content awaiting review
+export const knowledgeDrafts = pgTable("knowledge_drafts", {
+  id: text("id").primaryKey(),
+  sourceType: text("source_type").notNull(), // "rub" | "scholarship" | "career" | "college"
+  sourceUrl: text("source_url"),
+  sourceName: text("source_name"), // Display name
+  rawContent: text("raw_content"),
+  structuredData: json("structured_data").notNull().$type<Record<string, any>>(),
+  confidenceScore: decimal("confidence_score", { precision: 3, scale: 2 }), // 0.00 to 1.00
+  status: text("status").notNull().default("pending"), // "pending" | "approved" | "rejected"
+  reviewedBy: text("reviewed_by").references(() => users.id, { onDelete: "set null" }),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  reviewNotes: text("review_notes"),
+  ingestMethod: text("ingest_method").notNull(), // "ai_parse" | "manual" | "bulk_import"
+  estimatedRecords: integer("estimated_records"), // How many records will be created
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type KnowledgeDraft = typeof knowledgeDrafts.$inferSelect;
+export type NewKnowledgeDraft = typeof knowledgeDrafts.$inferInsert;
+
+// RUB requirement mappings (knowledge base for career matching)
+export const rubRequirements = pgTable("rub_requirements", {
+  id: text("id").primaryKey(),
+  collegeId: text("college_id").notNull(), // References RUB college
+  programId: text("program_id"), // References specific program
+  programName: text("program_name").notNull(),
+  educationLevel: text("education_level").notNull(), // "undergraduate" | "diploma" | "certificate"
+  requiredSubjects: json("required_subjects").notNull().$type<Array<{
+    subject: string;
+    minimumGrade: string; // e.g., "A", "B", "C"
+    minimumPercentage: number;
+  }>>(),
+  aggregateRequirements: json("aggregate_requirements").$type<{
+    minimumPercentage?: number;
+    subjectsToConsider?: string[];
+    englishRequired?: boolean;
+    dzongkhaRequired?: boolean;
+  }>(),
+  additionalRequirements: text("additional_requirements"),
+  intakeCapacity: integer("intake_capacity"),
+  duration: text("duration"), // e.g., "4 years", "2 years"
+  isActive: boolean("is_active").notNull().default(true),
+  effectiveFrom: text("effective_from"), // YYYY-MM-DD
+  effectiveUntil: text("effective_until"), // YYYY-MM-DD or null for ongoing
+  sourceDraftId: text("source_draft_id").references(() => knowledgeDrafts.id, { onDelete: "set null" }),
+  metadata: json("metadata").$type<Record<string, any>>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type RubRequirement = typeof rubRequirements.$inferSelect;
+export type NewRubRequirement = typeof rubRequirements.$inferInsert;
+
+// National scholarships database (beyond RUB scholarships)
+export const nationalScholarships = pgTable("national_scholarships", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  provider: text("provider").notNull(), // e.g., "DAHE", "RUB", "Private"
+  type: text("type").notNull(), // "merit" | "need" | "sports" | "specific_field"
+  educationLevel: text("education_level").notNull(), // "undergraduate" | "postgraduate"
+  eligibilityCriteria: json("eligibility_criteria").notNull().$type<{
+    minimumPercentage?: number;
+    stream?: string[];
+    subjects?: string[];
+    familyIncomeLimit?: number;
+    district?: string[];
+    gender?: string;
+  }>(),
+  benefits: json("benefits").notNull().$type<{
+    covers: string[]; // ["tuition", "living_allowance", "books"]
+    amount?: number;
+    currency?: string;
+    notes?: string;
+  }>(),
+  applicationDeadline: text("application_deadline"), // YYYY-MM-DD or "rolling"
+  applicationUrl: text("application_url"),
+  documentsRequired: json("documents_required").$type<string[]>(),
+  isActive: boolean("is_active").notNull().default(true),
+  academicYear: text("academic_year"), // e.g., "2024-2025"
+  sourceDraftId: text("source_draft_id").references(() => knowledgeDrafts.id, { onDelete: "set null" }),
+  metadata: json("metadata").$type<Record<string, any>>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type NationalScholarship = typeof nationalScholarships.$inferSelect;
+export type NewNationalScholarship = typeof nationalScholarships.$inferInsert;
 
 // ============================================================================
 // SUPPORT TICKETS TABLE
@@ -3298,3 +3886,174 @@ export const medicalReferrals = pgTable("medical_referrals", {
 
 export type MedicalReferral = typeof medicalReferrals.$inferSelect;
 export type NewMedicalReferral = typeof medicalReferrals.$inferInsert;
+
+// ============================================================================
+// ALL TABLE RELATIONSHIPS
+// ============================================================================
+// All relations are defined at the end to ensure all referenced tables exist
+
+// Users relations
+export const usersRelations = relations(users, ({ one, many }) => ({
+  school: one(schools, {
+    fields: [users.schoolId],
+    references: [schools.id],
+  }),
+  parent: one(users, {
+    fields: [users.parentId],
+    references: [users.id],
+  }),
+  circulationAsBorrower: many(circulation),
+  circulationAsStudent: many(circulation),
+  libraryMembers: many(libraryMembers),
+  reservations: many(libraryReservations),
+}));
+
+// Student applications relations
+export const studentApplicationsRelations = relations(studentApplications, ({ one }) => ({
+  student: one(users, {
+    fields: [studentApplications.studentId],
+    references: [users.id],
+  }),
+  school: one(schools, {
+    fields: [studentApplications.schoolId],
+    references: [schools.id],
+  }),
+  reviewer: one(users, {
+    fields: [studentApplications.reviewedBy],
+    references: [users.id],
+  }),
+}));
+
+// School admin applications relations
+export const schoolAdminApplicationsRelations = relations(schoolAdminApplications, ({ one }) => ({
+  user: one(users, {
+    fields: [schoolAdminApplications.userId],
+    references: [users.id],
+  }),
+  school: one(schools, {
+    fields: [schoolAdminApplications.schoolId],
+    references: [schools.id],
+  }),
+  reviewer: one(users, {
+    fields: [schoolAdminApplications.reviewedBy],
+    references: [users.id],
+  }),
+  paymentVerifier: one(users, {
+    fields: [schoolAdminApplications.paymentVerifiedBy],
+    references: [users.id],
+  }),
+}));
+
+// Teacher applications relations
+export const teacherApplicationsRelations = relations(teacherApplications, ({ one }) => ({
+  user: one(users, {
+    fields: [teacherApplications.userId],
+    references: [users.id],
+  }),
+  school: one(schools, {
+    fields: [teacherApplications.schoolId],
+    references: [schools.id],
+  }),
+  reviewer: one(users, {
+    fields: [teacherApplications.reviewedBy],
+    references: [users.id],
+  }),
+}));
+
+// Departments relations
+export const departmentsRelations = relations(departments, ({ one, many }) => ({
+  school: one(schools, {
+    fields: [departments.schoolId],
+    references: [schools.id],
+  }),
+  head: one(users, {
+    fields: [departments.headOfDepartment],
+    references: [users.id],
+  }),
+}));
+
+// Books relations
+export const booksRelations = relations(books, ({ one, many }) => ({
+  school: one(schools, {
+    fields: [books.schoolId],
+    references: [schools.id],
+  }),
+  circulation: many(circulation),
+  reservations: many(libraryReservations),
+}));
+
+// Library relations
+export const circulationRelations = relations(circulation, ({ one }) => ({
+  book: one(books, {
+    fields: [circulation.bookId],
+    references: [books.id],
+  }),
+  borrower: one(users, {
+    fields: [circulation.borrowerId],
+    references: [users.id],
+  }),
+  student: one(users, {
+    fields: [circulation.studentId],
+    references: [users.id],
+  }),
+}));
+
+
+export const libraryReservationsRelations = relations(libraryReservations, ({ one }) => ({
+  book: one(books, {
+    fields: [libraryReservations.bookId],
+    references: [books.id],
+  }),
+  user: one(users, {
+    fields: [libraryReservations.userId],
+    references: [users.id],
+  }),
+  school: one(schools, {
+    fields: [libraryReservations.schoolId],
+    references: [schools.id],
+  }),
+}));
+
+// Digital resources relations
+export const digitalResourcesRelations = relations(digitalResources, ({ one }) => ({
+  school: one(schools, {
+    fields: [digitalResources.schoolId],
+    references: [schools.id],
+  }),
+}));
+
+// ============================================================================
+// COUNSELOR PORTAL RELATIONS
+// ============================================================================
+
+// Red Flags relations
+export const redFlagsRelations = relations(redFlags, ({ one }) => ({
+  student: one(users, {
+    fields: [redFlags.studentId],
+    references: [users.id],
+  }),
+  counselor: one(users, {
+    fields: [redFlags.counselorId],
+    references: [users.id],
+  }),
+  school: one(schools, {
+    fields: [redFlags.schoolId],
+    references: [schools.id],
+  }),
+  reviewer: one(users, {
+    fields: [redFlags.reviewedBy],
+    references: [users.id],
+  }),
+}));
+
+// Career Approvals relations
+export const careerApprovalsRelations = relations(careerApprovals, ({ one }) => ({
+  student: one(users, {
+    fields: [careerApprovals.studentId],
+    references: [users.id],
+  }),
+  counselor: one(users, {
+    fields: [careerApprovals.counselorId],
+    references: [users.id],
+  }),
+}));

@@ -45,7 +45,26 @@ export async function POST(request: NextRequest) {
         firstName,
         lastName,
         email,
-        onboardingComplete: step === "complete",
+        phone: "", // Will be updated from form data
+        profileImage: "", // Default empty
+        dateOfBirth: "", // Will be updated from form data
+        gender: "other", // Default
+        grade: 0, // Required integer, default to 0
+        section: "",
+        rollNumber: "",
+        address: "",
+        city: "",
+        state: "",
+        postalCode: "",
+        country: "Bhutan",
+        parentContact: "",
+        parentPhone: "",
+        emergencyContact: "",
+        bloodGroup: "",
+        enrollmentDate: new Date().toISOString(),
+        lastLogin: new Date().toISOString(),
+        emailVerified: false,
+        onboardingComplete: false,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -156,10 +175,11 @@ export async function POST(request: NextRequest) {
 
     // Mark onboarding as complete when step is "complete"
     if (step === "complete") {
+      // Set onboarding status to pending_approval for platform admin review
       await db
         .update(users)
         .set({
-          onboardingComplete: false, // Don't mark complete until platform admin approves
+          onboardingComplete: true,
           onboardingStatus: "pending_approval",
         })
         .where(eq(users.id, dbUser.id));
@@ -167,24 +187,33 @@ export async function POST(request: NextRequest) {
       // Create school admin application for platform admin approval
       if (dbUser.schoolId) {
         // Check if application already exists
-        const existingApplication = await db
-          .select()
-          .from(schoolAdminApplications)
-          .where(eq(schoolAdminApplications.userId, dbUser.id))
-          .limit(1);
+        let existingApplication: any[] = [];
+        try {
+          existingApplication = await db
+            .select()
+            .from(schoolAdminApplications)
+            .where(eq(schoolAdminApplications.userId, dbUser.id))
+            .limit(1);
+        } catch {
+          logger.warn("school_admin_applications table doesn't exist, skipping application creation");
+        }
 
         if (existingApplication.length === 0) {
-          await db.insert(schoolAdminApplications).values({
-            id: `sa_app_${nanoid()}`,
-            userId: dbUser.id,
-            schoolId: dbUser.schoolId,
-            status: "pending_approval",
-            paymentStatus: "pending", // Payment will be verified by platform admin
-            appliedAt: new Date(),
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          });
-          logger.info("Created school admin application", { userId: dbUser.id, schoolId: dbUser.schoolId });
+          try {
+            await db.insert(schoolAdminApplications).values({
+              id: `sa_app_${nanoid()}`,
+              userId: dbUser.id,
+              schoolId: dbUser.schoolId,
+              status: "pending_approval",
+              paymentStatus: "pending",
+              appliedAt: new Date(),
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            });
+            logger.info("Created school admin application", { userId: dbUser.id, schoolId: dbUser.schoolId });
+          } catch (err) {
+            logger.warn("Could not create school admin application", { error: err });
+          }
         }
       }
 

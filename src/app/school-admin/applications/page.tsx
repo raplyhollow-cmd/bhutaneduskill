@@ -8,7 +8,7 @@
 import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
-import { users, schools } from "@/lib/db/schema";
+import { users, schools, departments, classes } from "@/lib/db/schema";
 import { eq, and, desc, count } from "drizzle-orm";
 import { ApplicationsClient } from "./applications-client";
 import { logger } from "@/lib/logger";
@@ -72,7 +72,7 @@ export default async function SchoolAdminApplicationsPage() {
     .orderBy(desc(users.createdAt));
 
   // Get total counts (including approved)
-  const [totalStudents, totalTeachers, approvedStudents, approvedTeachers] = await Promise.all([
+  const [totalStudents, totalTeachers, approvedStudents, approvedTeachers, schoolDepartments, schoolClasses] = await Promise.all([
     db.select({ count: count() }).from(users).where(and(eq(users.schoolId, user.schoolId), eq(users.type, "student"))),
     db.select({ count: count() }).from(users).where(and(eq(users.schoolId, user.schoolId), eq(users.type, "teacher"))),
     db.select({ count: count() }).from(users).where(
@@ -89,12 +89,32 @@ export default async function SchoolAdminApplicationsPage() {
         eq(users.onboardingComplete, true)
       )
     ),
+    // Fetch departments for teacher assignment
+    db.select({
+      id: departments.id,
+      name: departments.name,
+      code: departments.code,
+    }).from(departments).where(eq(departments.schoolId, user.schoolId)),
+    // Fetch classes for student assignment
+    db.select({
+      id: classes.id,
+      name: classes.name,
+      grade: classes.grade,
+      section: classes.section,
+    }).from(classes).where(eq(classes.schoolId, user.schoolId)).then((rows) =>
+      rows.map((row) => ({
+        ...row,
+        grade: String(row.grade),
+      }))
+    ),
   ]);
 
   return (
     <ApplicationsClient
       pendingStudents={pendingStudents}
       pendingTeachers={pendingTeachers}
+      departments={schoolDepartments}
+      classes={schoolClasses}
       stats={{
         totalStudents: totalStudents[0]?.count || 0,
         totalTeachers: totalTeachers[0]?.count || 0,

@@ -40,6 +40,8 @@ export async function GET(request: NextRequest) {
         paymentDate: schoolAdminApplications.paymentDate,
         paymentMethod: schoolAdminApplications.paymentMethod,
         paymentReference: schoolAdminApplications.paymentReference,
+        paymentVerifiedAt: schoolAdminApplications.paymentVerifiedAt,
+        bankReferenceNumber: schoolAdminApplications.bankReferenceNumber,
         appliedAt: schoolAdminApplications.appliedAt,
         reviewedAt: schoolAdminApplications.reviewedAt,
         rejectionReason: schoolAdminApplications.rejectionReason,

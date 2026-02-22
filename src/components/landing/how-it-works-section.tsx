@@ -208,7 +208,7 @@ function EcosystemStep({ step, index, isActive, setActive }: { step: typeof ecos
         <div className="hidden lg:block absolute top-1/2 -right-4 -translate-y-1/2 z-10">
           <motion.div
             animate={{ x: [0, 5, 0] }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+            transition={{ duration: 1.5, repeat: Infinity, repeatType: "loop", ease: "easeInOut" }}
             className="w-8 h-8 rounded-full bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 flex items-center justify-center shadow-lg"
           >
             <ChevronRight className="w-4 h-4 text-gray-400" />
@@ -406,7 +406,7 @@ export function HowItWorksSection() {
             <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-2">
               <motion.div
                 animate={{ x: [0, 10, 0] }}
-                transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                transition={{ duration: 1.5, repeat: Infinity, repeatType: "loop", ease: "easeInOut" }}
                 className="px-4 py-2 rounded-full bg-gradient-to-r from-orange-500 to-red-500 text-white text-sm font-semibold shadow-lg"
               >
                 AI Processing

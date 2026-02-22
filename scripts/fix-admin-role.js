@@ -5,15 +5,17 @@ const sql = neon(process.env.DATABASE_URL);
 
 async function fixAdminRole() {
   const email = 'raplyhollow@gmail.com';
+  const targetUserId = 'user_1771601957167_fcywre3ko'; // Current logged in user
 
   console.log("Fixing platform admin role assignment for:", email);
+  console.log("Target User ID:", targetUserId);
   console.log("---");
 
   // Get user info
   const user = await sql`
     SELECT id, email, clerk_user_id, type
     FROM users
-    WHERE email = ${email}
+    WHERE email = ${email} OR id = ${targetUserId}
   `;
 
   if (user.length === 0) {
@@ -21,8 +23,10 @@ async function fixAdminRole() {
     return;
   }
 
-  const userId = user[0].id;
-  console.log("User ID:", userId);
+  // Use the target user ID (current logged in user)
+  const userId = targetUserId;
+  console.log("User records found:", user.length);
+  console.log("Will assign role to User ID:", userId);
   console.log("Clerk ID:", user[0].clerk_user_id);
   console.log("---");
 

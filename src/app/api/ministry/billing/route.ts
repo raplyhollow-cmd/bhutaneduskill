@@ -17,12 +17,8 @@ import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import {
-  subscriptions,
-  subscriptionPlans,
   invoices,
-  tenants,
   schools,
-  paymentTransactions,
 } from "@/lib/db/schema";
 import { eq, and, desc, sql, count, sum, gte, SQL } from "drizzle-orm";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
@@ -228,39 +224,48 @@ async function getRevenueStatistics(): Promise<RevenueStatistics> {
   const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
-  // Active subscriptions
-  const [activeSubsResult] = await db
-    .select({ count: count(), total: sum(subscriptions.price) })
-    .from(subscriptions)
-    .where(sql`${subscriptions.status} = 'active' OR ${subscriptions.status} = 'trialing'`);
+  // Active schools (as proxy for active subscriptions)
+  const [activeSchoolsResult] = await db
+    .select({
+      count: count(),
+      totalRevenue: sum(invoices.totalAmount),
+    })
+    .from(schools)
+    .innerJoin(invoices, eq(schools.id, invoices.schoolId))
+    .where(eq(schools.isActive, true));
 
-  const activeSubscriptions = activeSubsResult?.count || 0;
-  const totalRevenue = Number(activeSubsResult?.total) || 0;
+  const activeSubscriptions = activeSchoolsResult?.count || 0;
+  const totalRevenue = Number(activeSchoolsResult?.totalRevenue) || 0;
 
-  // New subscriptions this month
-  const [newSubsResult] = await db
+  // New subscriptions (schools) this month
+  const [newSchoolsResult] = await db
     .select({ count: count() })
-    .from(subscriptions)
-    .where(gte(subscriptions.createdAt, startOfThisMonth));
+    .from(schools)
+    .where(gte(schools.createdAt, startOfThisMonth));
 
-  const newSubscriptionsThisMonth = newSubsResult?.count || 0;
+  const newSubscriptionsThisMonth = newSchoolsResult?.count || 0;
 
-  // Calculate monthly recurring revenue (MRR)
+  // Calculate monthly recurring revenue from paid invoices this month
   const [monthlyResult] = await db
     .select({
-      total: sum(sql`CASE WHEN ${subscriptions.billingCycle} = 'monthly' THEN ${subscriptions.price} ELSE ${subscriptions.price} / 12 END`),
+      total: sum(invoices.totalAmount),
     })
-    .from(subscriptions)
-    .where(sql`${subscriptions.status} = 'active'`);
+    .from(invoices)
+    .where(
+      and(
+        eq(invoices.status, "paid"),
+        gte(invoices.paidAt, startOfThisMonth)
+      )
+    );
 
   const monthlyRecurring = Number(monthlyResult?.total) || 0;
 
-  // Annual recurring revenue
+  // Annual recurring revenue (projected)
   const annualRecurring = monthlyRecurring * 12;
 
   // Revenue change (compare with last month)
   const [lastMonthRevenue] = await db
-    .select({ total: sum(sql`CAST(${invoices.totalAmount} AS INTEGER)`) })
+    .select({ total: sum(invoices.totalAmount) })
     .from(invoices)
     .where(
       and(
@@ -270,7 +275,7 @@ async function getRevenueStatistics(): Promise<RevenueStatistics> {
     );
 
   const [thisMonthRevenue] = await db
-    .select({ total: sum(sql`CAST(${invoices.totalAmount} AS INTEGER)`) })
+    .select({ total: sum(invoices.totalAmount) })
     .from(invoices)
     .where(
       and(
@@ -327,7 +332,7 @@ async function getMonthlyRevenueData(): Promise<MonthlyRevenueData[]> {
   const revenueByMonth = await db
     .select({
       month: sql<string>`DATE_TRUNC('month', ${invoices.paidAt})`,
-      revenue: sum(sql`CAST(${invoices.totalAmount} AS INTEGER)`),
+      revenue: sum(invoices.totalAmount),
     })
     .from(invoices)
     .where(
@@ -362,26 +367,24 @@ async function getMonthlyRevenueData(): Promise<MonthlyRevenueData[]> {
 }
 
 /**
- * Get revenue breakdown by plan type
+ * Get revenue breakdown by plan type (subscription tier)
  */
 async function getRevenueByPlan(): Promise<PlanRevenueBreakdown[]> {
   const revenueByPlan = await db
     .select({
-      planName: subscriptionPlans.name,
-      planId: subscriptionPlans.id,
-      totalRevenue: sum(subscriptions.price),
+      planName: invoices.subscriptionTier,
+      totalRevenue: sum(invoices.totalAmount),
       subscriptionCount: count(),
     })
-    .from(subscriptions)
-    .innerJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
-    .where(sql`${subscriptions.status} = 'active' OR ${subscriptions.status} = 'trialing'`)
-    .groupBy(subscriptionPlans.id, subscriptionPlans.name)
-    .orderBy(desc(sum(subscriptions.price)));
+    .from(invoices)
+    .where(eq(invoices.status, "paid"))
+    .groupBy(invoices.subscriptionTier)
+    .orderBy(desc(sum(invoices.totalAmount)));
 
   const totalRevenue = revenueByPlan.reduce((sum, item) => sum + Number(item.totalRevenue), 0);
 
   return revenueByPlan.map((item) => ({
-    planName: item.planName,
+    planName: item.planName || "Unknown",
     totalRevenue: Number(item.totalRevenue) || 0,
     subscriptionCount: item.subscriptionCount,
     percentage: calculatePercentage(Number(item.totalRevenue) || 0, totalRevenue),
@@ -390,6 +393,7 @@ async function getRevenueByPlan(): Promise<PlanRevenueBreakdown[]> {
 
 /**
  * Get school subscriptions with filtering
+ * Uses school data and recent invoices to derive subscription information
  */
 async function getSchoolSubscriptions(req: NextRequest): Promise<SchoolSubscriptionData[]> {
   const { searchParams } = new URL(req.url);
@@ -399,73 +403,82 @@ async function getSchoolSubscriptions(req: NextRequest): Promise<SchoolSubscript
   const limit = parseInt(searchParams.get("limit") || "100");
 
   // Build conditions
-  const conditions = [];
+  const conditions: (SQL | undefined)[] = [];
 
   if (status) {
-    conditions.push(eq(subscriptions.status, status));
+    conditions.push(eq(schools.subscriptionStatus, status));
   }
 
   if (plan) {
-    conditions.push(eq(subscriptionPlans.id, plan));
+    conditions.push(eq(schools.subscriptionTier, plan));
   }
 
   if (search) {
     conditions.push(
-      sql`${tenants.name} ILIKE ${`%${search}%`} OR ${schools.name} ILIKE ${`%${search}%`}`
+      sql`${schools.name} ILIKE ${`%${search}%`}`
     );
   }
 
-  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+  const whereClause = conditions.length > 0 ? and(...conditions.filter(Boolean) as SQL[]) : undefined;
 
-  const subscriptionData = await db
+  const schoolData = await db
     .select({
-      id: subscriptions.id,
-      status: subscriptions.status,
-      startDate: subscriptions.startDate,
-      endDate: subscriptions.endDate,
-      currentPeriodStart: subscriptions.currentPeriodStart,
-      currentPeriodEnd: subscriptions.currentPeriodEnd,
-      price: subscriptions.price,
-      currency: subscriptions.currency,
-      billingCycle: subscriptions.billingCycle,
-      autoRenew: subscriptions.autoRenew,
-      isTrial: subscriptions.isTrial,
-      maxStudents: subscriptions.maxStudents,
-      maxTeachers: subscriptions.maxTeachers,
-      currentStudents: subscriptions.currentStudents,
-      currentTeachers: subscriptions.currentTeachers,
-      // Plan info
-      planId: subscriptionPlans.id,
-      planName: subscriptionPlans.name,
-      // Tenant/School info
-      tenantId: tenants.id,
-      tenantName: tenants.name,
-      schoolName: schools.name,
-      schoolCode: schools.code,
+      id: schools.id,
+      name: schools.name,
+      code: schools.code,
+      subscriptionStatus: schools.subscriptionStatus,
+      subscriptionTier: schools.subscriptionTier,
+      activatedAt: schools.activatedAt,
+      isActive: schools.isActive,
+      maxStudents: schools.maxStudents,
     })
-    .from(subscriptions)
-    .leftJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
-    .leftJoin(tenants, eq(subscriptions.tenantId, tenants.id))
-    .leftJoin(schools, eq(schools.tenantId, tenants.id))
+    .from(schools)
     .where(whereClause)
-    .orderBy(desc(subscriptions.createdAt))
+    .orderBy(desc(schools.createdAt))
     .limit(limit);
 
-  return subscriptionData.map((sub) => ({
-    id: sub.id,
-    schoolName: sub.schoolName || sub.tenantName || "Unknown",
-    schoolCode: sub.schoolCode || "",
-    plan: sub.planName?.toLowerCase() || "unknown",
-    planPrice: sub.price || 0,
-    status: sub.status,
-    students: sub.currentStudents || 0,
-    teachers: sub.currentTeachers || 0,
-    startDate: sub.startDate?.toISOString() || new Date().toISOString(),
-    renewalDate: sub.currentPeriodEnd?.toISOString() || sub.endDate?.toISOString() || new Date().toISOString(),
-    totalPaid: sub.price || 0,
-    isTrial: sub.isTrial || false,
-    autoRenew: sub.autoRenew || false,
-  }));
+  // Get latest invoice for each school to determine pricing and payment status
+  const schoolIds = schoolData.map(s => s.id);
+  const latestInvoices = schoolIds.length > 0 ? await db
+    .select({
+      schoolId: invoices.schoolId,
+      subscriptionTier: invoices.subscriptionTier,
+      totalAmount: invoices.totalAmount,
+      currency: invoices.currency,
+      billingPeriodStart: invoices.billingPeriodStart,
+      billingPeriodEnd: invoices.billingPeriodEnd,
+      invoiceDate: invoices.invoiceDate,
+    })
+    .from(invoices)
+    .where(sql`${invoices.schoolId} = ANY(${schoolIds})`)
+    .orderBy(desc(invoices.invoiceDate)) : [];
+
+  // Create a map of latest invoice per school
+  const invoiceMap = new Map<string, typeof latestInvoices[0]>();
+  for (const invoice of latestInvoices) {
+    if (!invoiceMap.has(invoice.schoolId)) {
+      invoiceMap.set(invoice.schoolId, invoice);
+    }
+  }
+
+  return schoolData.map((school) => {
+    const invoice = invoiceMap.get(school.id);
+    return {
+      id: school.id,
+      schoolName: school.name || "Unknown",
+      schoolCode: school.code || "",
+      plan: school.subscriptionTier || invoice?.subscriptionTier || "unknown",
+      planPrice: Number(invoice?.totalAmount) || 0,
+      status: school.subscriptionStatus || "unknown",
+      students: 0, // Would need to query students table
+      teachers: 0, // Would need to query teachers table
+      startDate: school.activatedAt?.toISOString() || new Date().toISOString(),
+      renewalDate: invoice?.billingPeriodEnd?.toISOString() || new Date().toISOString(),
+      totalPaid: Number(invoice?.totalAmount) || 0,
+      isTrial: school.subscriptionStatus === "trialing",
+      autoRenew: true, // Default assumption
+    };
+  });
 }
 
 /**
@@ -496,15 +509,11 @@ async function getInvoices(req: NextRequest): Promise<InvoiceData[]> {
       status: invoices.status,
       pdfUrl: invoices.pdfUrl,
       // Related data
-      planName: subscriptionPlans.name,
-      tenantName: tenants.name,
+      subscriptionTier: invoices.subscriptionTier,
       schoolName: schools.name,
     })
     .from(invoices)
-    .leftJoin(subscriptions, eq(invoices.subscriptionId, subscriptions.id))
-    .leftJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
-    .leftJoin(tenants, eq(invoices.tenantId, tenants.id))
-    .leftJoin(schools, eq(schools.tenantId, tenants.id))
+    .innerJoin(schools, eq(invoices.schoolId, schools.id))
     .where(whereClause)
     .orderBy(desc(invoices.invoiceDate))
     .limit(limit);
@@ -512,8 +521,8 @@ async function getInvoices(req: NextRequest): Promise<InvoiceData[]> {
   return invoiceData.map((inv) => ({
     id: inv.id,
     invoiceNumber: inv.invoiceNumber || "",
-    school: inv.schoolName || inv.tenantName || "Unknown",
-    plan: inv.planName || "Unknown",
+    school: inv.schoolName || "Unknown",
+    plan: inv.subscriptionTier || "Unknown",
     amount: Number(inv.amount) || 0,
     currency: inv.currency,
     status: inv.status,
@@ -554,9 +563,9 @@ async function getPaymentMethods(): Promise<PaymentMethodData[]> {
 // ============================================================================
 
 /**
- * Generate a new invoice for a subscription
+ * Generate a new invoice for a school
  * POST /api/ministry/billing
- * Body: { subscriptionId, periodStart, periodEnd }
+ * Body: { schoolId, amount, periodStart, periodEnd }
  */
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
@@ -579,14 +588,16 @@ export async function POST(req: NextRequest) {
 
     // Parse request body
     const body = await req.json() as {
-      subscriptionId?: string;
+      schoolId?: string;
+      amount?: number;
+      subscriptionTier?: string;
       periodStart?: string;
       periodEnd?: string;
     };
 
-    if (!body.subscriptionId) {
+    if (!body.schoolId) {
       return NextResponse.json(
-        { error: "subscriptionId is required", status: 400 } satisfies ApiErrorResponse,
+        { error: "schoolId is required", status: 400 } satisfies ApiErrorResponse,
         { status: 400 }
       );
     }
@@ -595,59 +606,41 @@ export async function POST(req: NextRequest) {
       route: "/api/ministry/billing",
       method: "POST",
       userId,
-      subscriptionId: body.subscriptionId,
+      schoolId: body.schoolId,
     });
 
-    // Get subscription details
-    const [subscriptionData] = await db
+    // Get school details
+    const [schoolData] = await db
       .select({
-        id: subscriptions.id,
-        tenantId: subscriptions.tenantId,
-        planId: subscriptions.planId,
-        price: subscriptions.price,
-        currency: subscriptions.currency,
-        billingCycle: subscriptions.billingCycle,
-        currentPeriodStart: subscriptions.currentPeriodStart,
-        currentPeriodEnd: subscriptions.currentPeriodEnd,
-        maxStudents: subscriptions.maxStudents,
-        maxTeachers: subscriptions.maxTeachers,
-        currentStudents: subscriptions.currentStudents,
-        currentTeachers: subscriptions.currentTeachers,
-        planName: subscriptionPlans.name,
+        id: schools.id,
+        name: schools.name,
+        subscriptionTier: schools.subscriptionTier,
       })
-      .from(subscriptions)
-      .innerJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
-      .where(eq(subscriptions.id, body.subscriptionId))
+      .from(schools)
+      .where(eq(schools.id, body.schoolId))
       .limit(1);
 
-    if (!subscriptionData) {
+    if (!schoolData) {
       return NextResponse.json(
-        { error: "Subscription not found", status: 404 } satisfies ApiErrorResponse,
+        { error: "School not found", status: 404 } satisfies ApiErrorResponse,
         { status: 404 }
       );
     }
 
-    // Get tenant info
-    const [tenantInfo] = await db
-      .select({
-        name: tenants.name,
-      })
-      .from(tenants)
-      .where(eq(tenants.id, subscriptionData.tenantId))
-      .limit(1);
+    // Parse period dates
+    const now = new Date();
+    const periodStart = body.periodStart ? new Date(body.periodStart) : now;
+    const periodEnd = body.periodEnd ? new Date(body.periodEnd) : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-    // Check if invoice already exists for this period
-    const periodStart = body.periodStart ? new Date(body.periodStart) : subscriptionData.currentPeriodStart;
-    const periodEnd = body.periodEnd ? new Date(body.periodEnd) : subscriptionData.currentPeriodEnd;
-
+    // Check if invoice already exists for this school and period
     const [existingInvoice] = await db
       .select()
       .from(invoices)
       .where(
         and(
-          eq(invoices.subscriptionId, body.subscriptionId),
-          sql`${invoices.periodStart} >= ${periodStart}`,
-          sql`${invoices.periodEnd} <= ${periodEnd}`
+          eq(invoices.schoolId, body.schoolId),
+          sql`${invoices.billingPeriodStart} = ${periodStart}`,
+          sql`${invoices.billingPeriodEnd} = ${periodEnd}`
         )
       )
       .limit(1);
@@ -662,7 +655,6 @@ export async function POST(req: NextRequest) {
             currency: existingInvoice.currency,
             status: existingInvoice.status,
             dueDate: existingInvoice.dueDate?.toISOString(),
-            pdfUrl: existingInvoice.pdfUrl,
           },
           message: "Invoice already exists for this period",
         },
@@ -670,7 +662,6 @@ export async function POST(req: NextRequest) {
     }
 
     // Generate invoice number
-    const now = new Date();
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, "0");
 
@@ -683,9 +674,18 @@ export async function POST(req: NextRequest) {
     const sequenceNumber = String((invoiceCount?.count ?? 0) + 1).padStart(3, "0");
     const invoiceNumber = `INV-${year}${month}-${sequenceNumber}`;
 
-    // Calculate amounts
-    const subtotal = subscriptionData.price;
-    const gstRate = 7; // 7% GST for Bhutan
+    // Use provided amount or default based on tier
+    const tier = body.subscriptionTier || schoolData.subscriptionTier || "basic";
+    const tierPrices: Record<string, number> = {
+      basic: 50000, // BTN 500
+      standard: 100000, // BTN 1000
+      premium: 200000, // BTN 2000
+      enterprise: 500000, // BTN 5000
+    };
+    const subtotal = body.amount || tierPrices[tier] || 50000;
+
+    // GST is 7% for Bhutan
+    const gstRate = 7;
     const taxAmount = Math.round((subtotal * gstRate) / 100);
     const totalAmount = subtotal + taxAmount;
 
@@ -693,48 +693,25 @@ export async function POST(req: NextRequest) {
     const dueDate = new Date(now);
     dueDate.setDate(dueDate.getDate() + 30);
 
-    // Create line items
-    const lineItems = [
-      {
-        description: `${subscriptionData.planName} Subscription (${subscriptionData.billingCycle})`,
-        quantity: 1,
-        unitPrice: subscriptionData.price,
-        amount: subscriptionData.price,
-      },
-    ];
-
-    // Add student/teacher overages if applicable
-    if (subscriptionData.currentStudents && subscriptionData.maxStudents && subscriptionData.currentStudents > subscriptionData.maxStudents) {
-      const overageStudents = subscriptionData.currentStudents - subscriptionData.maxStudents;
-      const overageCost = overageStudents * 500; // BTN 5 per student per month (in cents)
-      lineItems.push({
-        description: `Student overage (${overageStudents} students × BTN 5/month)`,
-        quantity: overageStudents,
-        unitPrice: 500,
-        amount: overageCost,
-      });
-    }
-
     // Create invoice
     const invoiceId = `invoice-${nanoid()}`;
 
     await db.insert(invoices).values({
       id: invoiceId,
-      subscriptionId: body.subscriptionId,
-      tenantId: subscriptionData.tenantId,
       invoiceNumber,
+      schoolId: body.schoolId,
+      subscriptionTier: tier,
+      amount: String(subtotal),
+      taxAmount: String(taxAmount),
+      discountAmount: "0",
+      totalAmount: String(totalAmount),
+      currency: "BTN",
       invoiceDate: now,
-      periodStart,
-      periodEnd,
-      amount: subtotal,
-      taxAmount,
-      discountAmount: 0,
-      totalAmount,
-      currency: subscriptionData.currency,
-      status: "pending",
+      billingPeriodStart: periodStart,
+      billingPeriodEnd: periodEnd,
       dueDate,
-      lineItems,
-      notes: `Invoice for ${tenantInfo?.name || "School"} - ${subscriptionData.planName} subscription`,
+      status: "pending",
+      paymentMethod: null,
       createdAt: now,
       updatedAt: now,
     });
@@ -745,7 +722,7 @@ export async function POST(req: NextRequest) {
       duration: `${duration}ms`,
       invoiceId,
       invoiceNumber,
-      subscriptionId: body.subscriptionId,
+      schoolId: body.schoolId,
     });
 
     return NextResponse.json({
@@ -754,12 +731,12 @@ export async function POST(req: NextRequest) {
           id: invoiceId,
           invoiceNumber,
           amount: totalAmount,
-          currency: subscriptionData.currency,
+          currency: "BTN",
           status: "pending",
           dueDate: dueDate.toISOString(),
           subtotal,
           taxAmount,
-          lineItems,
+          subscriptionTier: tier,
         },
       },
     } satisfies ApiSuccess<unknown>);

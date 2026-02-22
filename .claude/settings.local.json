@@ -55,7 +55,11 @@
       "Bash(awk:*)",
       "Bash(tr:*)",
       "Bash(wc:*)",
-      "Bash(cut:*)"
+      "Bash(cut:*)",
+      "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_zEGrNB2cl7wk@ep-soft-rain-aigc3qom-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require\" npx drizzle-kit push:*)",
+      "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_zEGrNB2cl7wk@ep-soft-rain-aigc3qom-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require\" npx drizzle-kit generate:*)",
+      "Bash(npx dotenv-cli -e .env -- psql:*)",
+      "Bash(npx dotenv-cli:*)"
     ]
   }
 }

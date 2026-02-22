@@ -5,6 +5,15 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Home,
   ClipboardList,
@@ -39,8 +48,12 @@ import {
   ChevronDown,
   ChevronRight,
   ExternalLink,
+  LogOut,
+  Bell,
+  User,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@clerk/nextjs";
 
 interface SidebarProps {
   userType: "student" | "teacher" | "parent" | "counselor" | "admin" | "school-admin" | "ministry";
@@ -306,6 +319,50 @@ const schoolAdminNavigationCategories: NavCategory[] = [
   },
 ];
 
+// Ministry navigation - National Command Center
+const ministryNavigationCategories: NavCategory[] = [
+  {
+    title: "Overview",
+    defaultOpen: true,
+    items: [
+      { name: "Dashboard", href: "/ministry", icon: Home },
+    ],
+  },
+  {
+    title: "National Intelligence",
+    defaultOpen: true,
+    items: [
+      { name: "Schools", href: "/ministry/schools", icon: Building2 },
+      { name: "National Analytics", href: "/ministry/analytics", icon: BarChart3 },
+      { name: "GNH Dashboard", href: "/ministry/gnh", icon: HeartPulse },
+    ],
+  },
+  {
+    title: "Strategic Planning",
+    items: [
+      { name: "Labor Market", href: "/ministry/labor-market", icon: TrendingUp },
+      { name: "Teacher Resources", href: "/ministry/teacher-resources", icon: GraduationCap },
+      { name: "Infrastructure", href: "/ministry/infrastructure", icon: Database },
+    ],
+  },
+  {
+    title: "Policy & Communications",
+    items: [
+      { name: "Policies", href: "/ministry/policies", icon: Shield },
+      { name: "Notifications", href: "/ministry/notifications", icon: Megaphone },
+      { name: "EMIS Sync", href: "/ministry/emis", icon: LinkIcon },
+    ],
+  },
+  {
+    title: "Oversight",
+    items: [
+      { name: "Billing Overview", href: "/ministry/billing", icon: DollarSign },
+      { name: "Reports", href: "/ministry/reports", icon: FileText },
+      { name: "Settings", href: "/ministry/settings", icon: Settings },
+    ],
+  },
+];
+
 // Categorized navigation for all portal types
 const navigationCategories: Record<string, NavCategory[]> = {
   student: studentNavigationCategories,
@@ -314,7 +371,7 @@ const navigationCategories: Record<string, NavCategory[]> = {
   counselor: counselorNavigationCategories,
   admin: adminNavigationCategories,
   "school-admin": schoolAdminNavigationCategories,
-  ministry: adminNavigationCategories, // Reuse admin structure for ministry
+  ministry: ministryNavigationCategories,
 };
 
 // Keep flat navigation for backward compatibility
@@ -325,7 +382,7 @@ const navigationItems = {
   counselor: counselorNavigationCategories.flatMap((cat) => cat.items),
   admin: adminNavigationCategories.flatMap((cat) => cat.items),
   "school-admin": schoolAdminNavigationCategories.flatMap((cat) => cat.items),
-  ministry: adminNavigationCategories.flatMap((cat) => cat.items),
+  ministry: ministryNavigationCategories.flatMap((cat) => cat.items),
 };
 
 // Clerk-inspired color scheme for each portal type
@@ -366,6 +423,12 @@ const portalStyles = {
     activeBg: "rgb(255 255 255)",
     activeText: "rgb(124 58 237)",
   },
+  ministry: {
+    background: "linear-gradient(180deg, rgb(168 85 247) 0%, rgb(147 51 234) 100%)",
+    hoverBg: "rgba(255, 255, 255, 0.15)",
+    activeBg: "rgb(255 255 255)",
+    activeText: "rgb(147 51 234)",
+  },
 };
 
 const portalNames = {
@@ -375,6 +438,7 @@ const portalNames = {
   counselor: "Counselor Portal",
   admin: "Admin Portal",
   "school-admin": "School Admin Portal",
+  ministry: "Ministry of Education",
 };
 
 /**
@@ -432,6 +496,17 @@ export function PortalSidebar({ userType, userName, userImage, studentId }: Side
   const defaultOpenCategories = new Set(["Overview"]);
   const [openCategories, setOpenCategories] = useState<Set<string>>(defaultOpenCategories);
 
+  // Get user initials for avatar
+  const getUserInitials = () => {
+    if (!userName) return "U";
+    return userName
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
   // Toggle category open/closed state
   const toggleCategory = (categoryTitle: string) => {
     setOpenCategories((prev) => {
@@ -486,7 +561,7 @@ export function PortalSidebar({ userType, userName, userImage, studentId }: Side
           size="icon"
           variant="outline"
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="bg-white shadow-lg border-gray-200 hover:bg-gray-50 text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+          className="bg-white/95 backdrop-blur-xl shadow-lg border-ceramic-border hover:bg-ceramic-gray-50 text-ceramic-primary focus:outline-none focus:ring-2 focus:ring-ceramic-brand focus:ring-offset-2 rounded-xl min-h-[44px] min-w-[44px]"
           aria-label={isMobileMenuOpen ? "Close portal navigation menu" : "Open portal navigation menu"}
           aria-expanded={isMobileMenuOpen}
           aria-controls="portal-sidebar"
@@ -537,20 +612,19 @@ export function PortalSidebar({ userType, userName, userImage, studentId }: Side
       <aside
         id="portal-sidebar"
         className={cn(
-          "fixed top-0 left-0 z-40 h-screen w-64 text-white overflow-hidden transition-transform duration-300 ease-in-out",
+          "nav-clerk fixed top-0 left-0 z-40 h-screen w-64 overflow-hidden transition-transform duration-300 ease-in-out",
           // Desktop: always visible (translate-x-0)
           "lg:translate-x-0",
           // Mobile: hidden by default, visible when menu is open
           "-translate-x-full",
           isMobileMenuOpen && "!translate-x-0"
         )}
-        style={{ background: portalStyle.background }}
         aria-label={`${portalName} navigation`}
       >
-        <div className="h-full flex flex-col">
+        <div className="h-full flex flex-col bg-ceramic-bg-menu">
           {/* Portal Header */}
           <motion.div
-            className="p-6 border-b border-white/20"
+            className="p-6 border-b border-ceramic-border"
             initial={{ opacity: 0, y: 0 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1, duration: 0.4 }}
@@ -561,7 +635,7 @@ export function PortalSidebar({ userType, userName, userImage, studentId }: Side
               onClick={() => setIsMobileMenuOpen(false)}
             >
               <motion.h1
-                className="text-xl font-bold flex items-center gap-2 text-white"
+                className="text-xl font-bold flex items-center gap-2 text-ceramic-primary"
                 whileHover={{ scale: 1.02 }}
                 transition={{ type: "spring", stiffness: 400 }}
               >
@@ -569,50 +643,36 @@ export function PortalSidebar({ userType, userName, userImage, studentId }: Side
                   animate={{ rotate: [0, 10, 0] }}
                   transition={{ duration: 0.5, repeat: Infinity, repeatType: "loop", repeatDelay: 3 }}
                 >
-                  <GraduationCap className="w-6 h-6" />
+                  <GraduationCap className="w-6 h-6" style={{ color: portalStyle.activeText }} />
                 </motion.div>
                 Bhutan EduSkill
               </motion.h1>
-              <p className="text-sm text-white/80 mt-1">{portalName}</p>
+              <p className="text-sm text-ceramic-secondary mt-1">{portalName}</p>
             </Link>
           </motion.div>
 
           {/* User Info */}
           {userName && (
             <motion.div
-              className="p-4 border-b border-white/20"
+              className="p-4 border-b border-ceramic-border"
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15, duration: 0.4 }}
             >
               <div className="flex items-center gap-3">
                 {userImage ? (
-                  <motion.img
-                    src={userImage}
-                    alt={userName}
-                    className="w-10 h-10 rounded-full bg-white/20 border-2 border-white/30"
-                    whileHover={{ scale: 1.1, rotate: 5 }}
-                    transition={{ type: "spring", stiffness: 300 }}
-                  />
+                  <Avatar variant="ceramic" size="lg" clickable>
+                    <AvatarImage src={userImage} alt={userName} />
+                    <AvatarFallback variant="ceramic-brand">{getUserInitials()}</AvatarFallback>
+                  </Avatar>
                 ) : (
-                  <motion.div
-                    className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center border-2 border-white/30"
-                    whileHover={{ scale: 1.1, rotate: 5 }}
-                    transition={{ type: "spring", stiffness: 300 }}
-                  >
-                    <span className="font-semibold text-white">
-                      {userName
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .toUpperCase()
-                        .slice(0, 2)}
-                    </span>
-                  </motion.div>
+                  <Avatar variant="ceramic-brand" size="lg" clickable>
+                    <AvatarFallback variant="ceramic-brand">{getUserInitials()}</AvatarFallback>
+                  </Avatar>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate text-white">{userName}</p>
-                  <p className="text-xs text-white/70 capitalize">{userType.replace("-", " ")}</p>
+                  <p className="font-medium truncate text-ceramic-primary">{userName}</p>
+                  <p className="text-xs text-ceramic-dimmed capitalize">{userType.replace("-", " ")}</p>
                 </div>
               </div>
             </motion.div>
@@ -633,7 +693,7 @@ export function PortalSidebar({ userType, userName, userImage, studentId }: Side
                     {/* Category Header */}
                     <button
                       onClick={() => toggleCategory(category.title)}
-                      className="flex items-center justify-between w-full px-3 py-2 text-xs font-semibold uppercase tracking-wider text-white/70 hover:text-white transition-colors duration-200 group"
+                      className="nav-section-title flex items-center justify-between w-full px-3 py-2 text-xs font-semibold uppercase tracking-wider text-ceramic-dimmed hover:text-ceramic-secondary transition-colors duration-200 group"
                       aria-expanded={isCategoryOpen}
                       aria-controls={`category-${category.title.replace(/\s+/g, "-")}`}
                     >
@@ -642,7 +702,7 @@ export function PortalSidebar({ userType, userName, userImage, studentId }: Side
                         animate={{ rotate: isCategoryOpen ? 180 : 0 }}
                         transition={{ duration: 0.2, ease: "easeInOut" }}
                       >
-                        <ChevronDown className="w-4 h-4" />
+                        <ChevronDown className="w-4 h-4 text-ceramic-dimmed" />
                       </motion.div>
                     </button>
 
@@ -672,36 +732,25 @@ export function PortalSidebar({ userType, userName, userImage, studentId }: Side
                                 <Link
                                   href={item.href}
                                   onClick={() => setIsMobileMenuOpen(false)}
-                                  className="flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 relative group focus:outline-none focus:ring-2 focus:ring-white focus:ring-inset min-h-[44px] ml-2"
-                                  style={
+                                  className={cn(
+                                    "nav-item-clerk flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 relative group focus:outline-none min-h-[44px] ml-2",
                                     isActive
-                                      ? {
-                                          background: portalStyle.activeBg,
-                                          color: portalStyle.activeText,
-                                        }
-                                      : undefined
-                                  }
+                                      ? "bg-ceramic-purple-50 text-ceramic-brand nav-item-clerk-active"
+                                      : "text-ceramic-secondary hover:bg-ceramic-gray-50 hover:text-ceramic-primary"
+                                  )}
                                   aria-current={isActive ? "page" : undefined}
                                 >
-                                  {!isActive && (
-                                    <motion.div
-                                      className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100"
-                                      style={{ background: portalStyle.hoverBg }}
-                                      transition={{ duration: 0.2 }}
-                                    />
-                                  )}
                                   <motion.div
-                                    whileHover={{ scale: 1.1, rotate: isActive ? 0 : 5 }}
+                                    whileHover={{ scale: 1.1 }}
                                     transition={{ type: "spring", stiffness: 300 }}
-                                    className="relative z-10"
+                                    className="nav-icon-clerk flex-shrink-0 w-5 h-5 flex items-center justify-center"
                                   >
-                                    <item.icon className="w-5 h-5" style={{ color: isActive ? portalStyle.activeText : 'white' }} />
+                                    <item.icon className="w-5 h-5" />
                                   </motion.div>
-                                  <span className="font-medium relative z-10" style={{ color: isActive ? portalStyle.activeText : 'white' }}>{item.name}</span>
+                                  <span className="font-medium flex-1">{item.name}</span>
                                   {isActive && (
                                     <motion.div
-                                      className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
-                                      style={{ background: portalStyle.activeText }}
+                                      className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full bg-ceramic-brand"
                                       layoutId={`active-indicator-${userType}`}
                                       transition={{ type: "spring", stiffness: 300, damping: 30 }}
                                     />
@@ -716,7 +765,7 @@ export function PortalSidebar({ userType, userName, userImage, studentId }: Side
 
                     {/* Category separator */}
                     {catIndex < categories.length - 1 && (
-                      <div className="mt-4 border-t border-white/10" />
+                      <div className="mt-4 border-t border-ceramic-border" />
                     )}
                   </div>
                 );
@@ -724,8 +773,8 @@ export function PortalSidebar({ userType, userName, userImage, studentId }: Side
 
               {/* Cross-portal navigation section - shown for teacher, parent, counselor */}
               {(userType === "teacher" || userType === "parent" || userType === "counselor") && studentId && (
-                <div className="mt-4 pt-4 border-t border-white/10">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-white/70 px-3 py-2 flex items-center gap-2">
+                <div className="mt-4 pt-4 border-t border-ceramic-border">
+                  <p className="nav-section-title text-xs font-semibold uppercase tracking-wider text-ceramic-dimmed px-3 py-2 flex items-center gap-2">
                     <ExternalLink className="w-3 h-3" />
                     View Related
                   </p>
@@ -735,12 +784,11 @@ export function PortalSidebar({ userType, userName, userImage, studentId }: Side
                         key={link.type}
                         href={link.href}
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className="flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200 relative group focus:outline-none focus:ring-2 focus:ring-white/50 min-h-[44px] ml-2"
+                        className="nav-item-clerk flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200 relative group focus:outline-none text-ceramic-secondary hover:bg-ceramic-gray-50 hover:text-ceramic-primary min-h-[44px] ml-2"
                       >
-                        <div className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 bg-white/10 transition-opacity duration-200" />
-                        <link.icon className="w-4 h-4 text-white/80 relative z-10" />
-                        <span className="text-sm text-white/90 relative z-10 flex-1">{link.label}</span>
-                        <ExternalLink className="w-3 h-3 text-white/60 relative z-10" />
+                        <link.icon className="nav-icon-clerk w-4 h-4 flex-shrink-0" />
+                        <span className="text-sm flex-1">{link.label}</span>
+                        <ExternalLink className="w-3 h-3 text-ceramic-dimmed" />
                       </Link>
                     ))}
                   </div>
@@ -750,7 +798,7 @@ export function PortalSidebar({ userType, userName, userImage, studentId }: Side
           </nav>
 
           {/* Footer - spacer for bottom padding */}
-          <div className="p-4 border-t border-white/20" />
+          <div className="p-4 border-t border-ceramic-border" />
         </div>
       </aside>
     </>
@@ -769,9 +817,25 @@ export function PortalHeader({
   subtitle?: string;
 }) {
   const portalStyle = portalStyles[userType];
+  const { signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut({ redirectUrl: '/' });
+  };
+
+  // Get user initials for avatar
+  const getUserInitials = () => {
+    if (!userName) return "U";
+    return userName
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
 
   return (
-    <header className="bg-white/95 backdrop-blur-md border-b border-gray-200 sticky top-0 z-30 shadow-sm">
+    <header className="topnav-clerk bg-ceramic-white/95 backdrop-blur-md border-b border-ceramic-border sticky top-0 z-30 shadow-sm">
       <div className="px-6 py-4">
         <div className="flex items-center justify-between">
           <motion.div
@@ -780,8 +844,8 @@ export function PortalHeader({
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.4 }}
           >
-            <h1 className="text-2xl font-bold text-gray-900">{title || "Dashboard"}</h1>
-            {subtitle && <p className="text-sm text-gray-600 mt-1">{subtitle}</p>}
+            <h1 className="text-2xl font-bold text-ceramic-primary">{title || "Dashboard"}</h1>
+            {subtitle && <p className="text-sm text-ceramic-secondary mt-1">{subtitle}</p>}
           </motion.div>
           <motion.div
             className="flex items-center gap-4"
@@ -791,35 +855,68 @@ export function PortalHeader({
           >
             {/* Notifications placeholder */}
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Button variant="ghost" size="icon" className="relative hover:bg-gray-100">
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-                <MessageSquare className="w-5 h-5 text-gray-700" />
+              <Button variant="ceramic-ghost" size="icon" className="relative hover:bg-ceramic-gray-100 min-h-[44px] min-w-[44px]">
+                <span className="absolute top-1 right-1 w-2 h-2 bg-ceramic-negative rounded-full animate-pulse"></span>
+                <Bell className="w-5 h-5 text-ceramic-secondary" />
               </Button>
             </motion.div>
 
-            {/* User menu */}
+            {/* User dropdown menu - ceramic styled */}
             {userName && (
-              <motion.div
-                className="flex items-center gap-3"
-                whileHover={{ scale: 1.02 }}
-                transition={{ type: "spring", stiffness: 300 }}
-              >
-                <div className="text-right hidden sm:block">
-                  <p className="font-medium text-gray-900">{userName}</p>
-                  <p className="text-xs text-gray-600 capitalize">{userType.replace("-", " ")}</p>
-                </div>
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold shadow-md"
-                  style={{ background: portalStyle.background }}
-                >
-                  {userName
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .toUpperCase()
-                    .slice(0, 2)}
-                </div>
-              </motion.div>
+              <DropdownMenu variant="ceramic">
+                <DropdownMenuTrigger asChild>
+                  <motion.button
+                    className="flex items-center gap-3 focus:outline-none"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    transition={{ type: "spring", stiffness: 300 }}
+                  >
+                    <div className="text-right hidden sm:block">
+                      <p className="font-medium text-ceramic-primary">{userName}</p>
+                      <p className="text-xs text-ceramic-secondary capitalize">
+                        {userType.replace("-", " ")}
+                      </p>
+                    </div>
+                    <Avatar variant="ceramic-brand" size="lg" clickable>
+                      <AvatarFallback variant="ceramic-brand">
+                        {getUserInitials()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </motion.button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56" variant="ceramic">
+                  <DropdownMenuLabel ceramicVariant="ceramic">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{userName}</p>
+                      <p className="text-xs leading-none text-ceramic-dimmed capitalize">
+                        {userType.replace("-", " ")}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator ceramicVariant="ceramic" />
+                  <DropdownMenuItem asChild ceramicVariant="ceramic">
+                    <a href={`/${userType}/settings`} className="flex items-center gap-2 cursor-pointer">
+                      <User className="w-4 h-4" />
+                      <span>Profile</span>
+                    </a>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild ceramicVariant="ceramic">
+                    <a href={`/${userType}/settings`} className="flex items-center gap-2 cursor-pointer">
+                      <Settings className="w-4 h-4" />
+                      <span>Settings</span>
+                    </a>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator ceramicVariant="ceramic" />
+                  <DropdownMenuItem
+                    onClick={handleSignOut}
+                    ceramicVariant="ceramic"
+                    className="text-ceramic-negative focus:text-ceramic-negative cursor-pointer"
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    <span>Sign Out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </motion.div>
         </div>

@@ -599,6 +599,64 @@ export function needsSetup(user: User): boolean {
 }
 
 /**
+ * Verify school activation status for school users
+ * Returns error if school is not active or setup is not complete
+ *
+ * @param user - The user to check
+ * @returns Error message if access should be denied, null if OK
+ */
+export async function verifySchoolActivation(user: User): Promise<{ error: string } | null> {
+  // Platform admins are always allowed
+  if (user.type === "admin") {
+    return null;
+  }
+
+  // Users without school are OK (they're in setup)
+  if (!user.schoolId) {
+    return null;
+  }
+
+  // Fetch school to check status
+  const { schools } = await import("@/lib/db/schema");
+  const school = await db.query.schools.findFirst({
+    where: eq(schools.id, user.schoolId),
+    columns: {
+      isActive: true,
+      subscriptionStatus: true,
+      setupComplete: true,
+    },
+  });
+
+  if (!school) {
+    return { error: "School not found" };
+  }
+
+  // Check activation status
+  if (!school.isActive) {
+    return { error: "Your school is currently inactive. Please contact the platform administrator." };
+  }
+
+  if (school.subscriptionStatus === "suspended") {
+    return { error: "Your school's subscription has been suspended. Please contact the platform administrator." };
+  }
+
+  if (school.subscriptionStatus === "cancelled") {
+    return { error: "Your school's subscription has been cancelled." };
+  }
+
+  if (school.subscriptionStatus === "pending_payment") {
+    return { error: "Your school's subscription is pending payment approval." };
+  }
+
+  // Check setup status for school admins
+  if (user.type === "school-admin" && !school.setupComplete) {
+    return { error: "Please complete the school setup wizard to access this feature." };
+  }
+
+  return null;
+}
+
+/**
  * Get the redirect path for a user based on their onboarding status
  *
  * @param user - The user to check

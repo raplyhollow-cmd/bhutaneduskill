@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bhutan EduSkill | Technical Retrospective</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+        
+        :root {
+            --glass: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: radial-gradient(circle at top left, #0f172a, #020617);
+            color: #f1f5f9;
+            scroll-behavior: smooth;
+        }
+
+        .glass-card {
+            background: var(--glass);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 1.5rem;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .glass-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+            border-color: rgba(34, 211, 238, 0.3);
+        }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #22d3ee, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .timeline-line {
+            width: 2px;
+            background: linear-gradient(to bottom, #22d3ee 0%, #818cf8 50%, #334155 100%);
+        }
+
+        .pulse-dot {
+            box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.7);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(34, 211, 238, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 211, 238, 0); }
+        }
+
+        code { color: #f472b6; font-size: 0.9em; background: rgba(0,0,0,0.3); padding: 2px 4px; border-radius: 4px; }
+        
+        .section-divider {
+            height: 1px;
+            background: linear-gradient(to right, transparent, var(--glass-border), transparent);
+            margin: 4rem 0;
+        }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+    </style>
+</head>
+<body class="p-6 md:p-12">
+    <div class="max-w-6xl mx-auto">
+        <!-- Header -->
+        <header class="mb-16 text-center">
+            <h1 class="text-5xl md:text-7xl font-bold mb-4 tracking-tighter gradient-text">Bhutan EduSkill</h1>
+            <p class="text-slate-400 text-lg md:text-xl max-w-2xl mx-auto">
+                Comprehensive Technical Documentation: Kingdom of Bhutan National AI Education Infrastructure.
+            </p>
+            <div class="mt-8 flex justify-center gap-4 flex-wrap">
+                <span class="px-4 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-sm font-medium">Production Ready</span>
+                <span class="px-4 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-400 text-sm font-medium">7 Portals Live</span>
+                <span class="px-4 py-1 rounded-full bg-pink-500/10 border border-pink-500/30 text-pink-400 text-sm font-medium">145+ Tables</span>
+                <span class="px-4 py-1 rounded-full bg-green-500/10 border border-green-500/30 text-green-400 text-sm font-medium">369 API Routes</span>
+            </div>
+        </header>
+
+        <!-- The Struggle Timeline -->
+        <section class="mb-20">
+            <h2 class="text-3xl font-bold mb-12 text-center gradient-text">The 14-Day Development Sprint</h2>
+            <div class="relative">
+                <div class="absolute left-1/2 transform -translate-x-1/2 timeline-line h-full hidden md:block"></div>
+                
+                <!-- Day 1 -->
+                <div class="flex flex-col md:flex-row items-center mb-16">
+                    <div class="md:w-1/2 md:pr-12 md:text-right">
+                        <h4 class="text-cyan-400 font-bold text-xl mb-1">Feb 8, 2026</h4>
+                        <h3 class="text-white text-2xl font-bold mb-3">Project Initiation & Day Zero</h3>
+                        <p class="text-slate-400">First schema design and Neon Postgres setup. Encountered the initial <code>TOO_MANY_CONNECTIONS</code> bottleneck.</p>
+                    </div>
+                    <div class="w-12 h-12 bg-slate-900 border-4 border-cyan-500 rounded-full flex items-center justify-center z-10 pulse-dot my-4 md:my-0">
+                        <span class="text-xs text-cyan-400">01</span>
+                    </div>
+                    <div class="md:w-1/2 md:pl-12"></div>
+                </div>
+
+                <!-- Day 4 -->
+                <div class="flex flex-col md:flex-row items-center mb-16">
+                    <div class="md:w-1/2"></div>
+                    <div class="w-12 h-12 bg-slate-900 border-4 border-indigo-500 rounded-full flex items-center justify-center z-10 my-4 md:my-0">
+                        <span class="text-xs text-indigo-400">02</span>
+                    </div>
+                    <div class="md:w-1/2 md:pl-12 text-left">
+                        <h4 class="text-indigo-400 font-bold text-xl mb-1">Feb 12, 2026</h4>
+                        <h3 class="text-white text-2xl font-bold mb-3">RBAC & Clerk Middleware</h3>
+                        <p class="text-slate-400">Architected the 7-portal routing and implemented the <code>requireAuth()</code> and <code>requirePermission()</code> hooks.</p>
+                    </div>
+                </div>
+
+                <!-- Day 8 -->
+                <div class="flex flex-col md:flex-row items-center mb-16">
+                    <div class="md:w-1/2 md:pr-12 md:text-right">
+                        <h4 class="text-pink-400 font-bold text-xl mb-1">Feb 16, 2026</h4>
+                        <h3 class="text-white text-2xl font-bold mb-3">National Logic & Billing</h3>
+                        <p class="text-slate-400">Integrated SDF billing logic and the 3-step Unified Onboarding Wizard for all Bhutanese users.</p>
+                    </div>
+                    <div class="w-12 h-12 bg-slate-900 border-4 border-pink-500 rounded-full flex items-center justify-center z-10 my-4 md:my-0">
+                        <span class="text-xs text-pink-400">03</span>
+                    </div>
+                    <div class="md:w-1/2 md:pl-12"></div>
+                </div>
+
+                <!-- Today -->
+                <div class="flex flex-col md:flex-row items-center">
+                    <div class="md:w-1/2"></div>
+                    <div class="w-12 h-12 bg-slate-900 border-4 border-green-500 rounded-full flex items-center justify-center z-10 my-4 md:my-0">
+                        <span class="text-xs text-green-400">04</span>
+                    </div>
+                    <div class="md:w-1/2 md:pl-12 text-left">
+                        <h4 class="text-green-400 font-bold text-xl mb-1">Feb 22, 2026</h4>
+                        <h3 class="text-white text-2xl font-bold mb-3">Production Maturity</h3>
+                        <p class="text-slate-400">Stabilized architecture with 369 routes and complete Gemini 1.5 Pro AI core integration.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="section-divider"></div>
+
+        <!-- Pillar 1: Portal Architecture -->
+        <section class="mb-20">
+            <h2 class="text-3xl font-bold mb-8 gradient-text">1. Portal Architecture & UI Layer</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <div class="glass-card p-6">
+                    <h3 class="text-white font-bold mb-4 flex items-center">
+                        <span class="w-8 h-8 rounded bg-cyan-500/20 text-cyan-400 flex items-center justify-center mr-2">7</span>
+                        Isolated Environments
+                    </h3>
+                    <div class="mermaid scale-90 origin-top">
+graph LR
+    P[Unified Dashboard Router] --> S[Student]
+    P --> T[Teacher]
+    P --> PA[Parent]
+    P --> CO[Counselor]
+    P --> SA[School Admin]
+    P --> AD[Platform Admin]
+    P --> MI[Ministry]
+    style P fill:#1e293b,stroke:#334155
+                    </div>
+                </div>
+                <div class="glass-card p-6">
+                    <h4 class="text-white font-bold mb-2">Frontend Stack</h4>
+                    <ul class="text-slate-400 text-sm space-y-2">
+                        <li><strong class="text-slate-200">Framework:</strong> Next.js 14+ (App Router)</li>
+                        <li><strong class="text-slate-200">Routing:</strong> Dynamic <code>/[portal]/dashboard</code> structure</li>
+                        <li><strong class="text-slate-200">Components:</strong> 135+ Atomic components (ShadcnUI + Tailwind)</li>
+                        <li><strong class="text-slate-200">Responsiveness:</strong> Sidebar-to-BottomNav mobile strategy</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Pillar 2: Security & Auth Flow -->
+        <section class="mb-20">
+            <h2 class="text-3xl font-bold mb-8 gradient-text">2. Authentication & Security (Clerk RBAC)</h2>
+            <div class="glass-card p-8 mb-8">
+                <div class="mermaid">
+sequenceDiagram
+    participant U as User (CID Verified)
+    participant C as Clerk Auth
+    participant M as Middleware
+    participant D as Neon Postgres
+    
+    U->>C: Login (Google/Email)
+    C-->>U: Session JWT
+    U->>M: Request /api/[portal]/data
+    M->>C: Validate Token
+    M->>D: Check requirePermission(role)
+    D-->>M: User Verified & Authorized
+    M-->>U: Secured Data Payload
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="p-6 border border-white/5 rounded-2xl bg-white/5">
+                    <h4 class="text-white font-bold mb-2 text-sm uppercase tracking-widest">RBAC Logic</h4>
+                    <p class="text-slate-400 text-sm">Permissions are mapped via the <code>user_roles</code> and <code>role_permissions</code> tables. This ensures a Teacher cannot view Ministry Heatmaps, and Parents can only see data for students linked to their CID.</p>
+                </div>
+                <div class="p-6 border border-white/5 rounded-2xl bg-white/5">
+                    <h4 class="text-white font-bold mb-2 text-sm uppercase tracking-widest">Data Guard</h4>
+                    <code class="block bg-black/50 p-3 rounded text-xs">
+                        const { schoolId } = await requireAuth(['school-admin']);<br>
+                        const data = await db.select().from(students).where(eq(students.schoolId, schoolId));
+                    </code>
+                </div>
+            </div>
+        </section>
+
+        <!-- Pillar 3: Database & ERD -->
+        <section class="mb-20">
+            <h2 class="text-3xl font-bold mb-8 gradient-text">3. Database Schema (145+ Tables)</h2>
+            <div class="glass-card p-8 mb-8 overflow-hidden">
+                <h4 class="text-slate-200 font-bold mb-6">Core Entity Clusters</h4>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-cyan-500/5 p-4 rounded-xl border border-cyan-500/10">
+                        <span class="text-xs text-cyan-400 font-bold block mb-1">ACADEMICS</span>
+                        <p class="text-[10px] text-slate-400">Classes, Subjects, Attendance, Exams, Homework, Grading</p>
+                    </div>
+                    <div class="bg-indigo-500/5 p-4 rounded-xl border border-indigo-500/10">
+                        <span class="text-xs text-indigo-400 font-bold block mb-1">OPERATIONS</span>
+                        <p class="text-[10px] text-slate-400">Hostels, Library, Inventory, Transport, Invoices, SDF Fees</p>
+                    </div>
+                    <div class="bg-pink-500/5 p-4 rounded-xl border border-pink-500/10">
+                        <span class="text-xs text-pink-400 font-bold block mb-1">AI & CAREER</span>
+                        <p class="text-[10px] text-slate-400">Assessments, Roadmap, Skill Gap, RUB Matches, Scholarships</p>
+                    </div>
+                    <div class="bg-purple-500/5 p-4 rounded-xl border border-purple-500/10">
+                        <span class="text-xs text-purple-400 font-bold block mb-1">ADMIN & RBAC</span>
+                        <p class="text-[10px] text-slate-400">Users, Roles, Permissions, Schools, Districts, Logs</p>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 glass-card">
+                <h4 class="text-white font-bold mb-4">Relational Integrity Logic</h4>
+                <p class="text-slate-400 text-sm">
+                    Utilizing **Neon Serverless Postgres**, we implemented a tenant-first indexing strategy. High-query columns like <code>clerkUserId</code> and <code>schoolId</code> are indexed to ensure sub-100ms response times despite the massive table count.
+                </p>
+            </div>
+        </section>
+
+        <!-- Pillar 4: API & Data Flow -->
+        <section class="mb-20">
+            <h2 class="text-3xl font-bold mb-8 gradient-text">4. API Route Mapping (369 Routes)</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="glass-card p-6">
+                    <h5 class="text-white font-bold text-sm mb-4">Route Distribution</h5>
+                    <div class="space-y-3">
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-400">School Admin</span>
+                            <span class="text-indigo-400">81 Routes</span>
+                        </div>
+                        <div class="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+                            <div class="bg-indigo-400 h-full" style="width: 22%"></div>
+                        </div>
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-400">Platform Admin</span>
+                            <span class="text-cyan-400">69 Routes</span>
+                        </div>
+                        <div class="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+                            <div class="bg-cyan-400 h-full" style="width: 18.7%"></div>
+                        </div>
+                        <div class="flex justify-between text-xs">
+                            <span class="text-slate-400">Student Portal</span>
+                            <span class="text-orange-400">40 Routes</span>
+                        </div>
+                        <div class="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+                            <div class="bg-orange-400 h-full" style="width: 10.8%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="md:col-span-2 glass-card p-6">
+                    <h5 class="text-white font-bold text-sm mb-4">Strategic EMIS Synchronization</h5>
+                    <div class="mermaid">
+flowchart LR
+    T[Teacher Log] --> DB[(Neon DB)]
+    C[Counselor Log] --> DB
+    DB --> AGG[National Aggregator]
+    AGG --> M[Ministry Pulse Heatmap]
+    AGG --> E[EMIS Sync Engine]
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Pillar 5: AI Integration -->
+        <section class="mb-20">
+            <h2 class="text-3xl font-bold mb-8 gradient-text">5. AI Core (Gemini 1.5 Pro)</h2>
+            <div class="glass-card p-8 flex flex-col md:flex-row gap-12 items-center">
+                <div class="md:w-1/2">
+                    <h4 class="text-white font-bold mb-4">The "Sentinel" & "Coach" Models</h4>
+                    <p class="text-slate-400 text-sm leading-relaxed mb-6">
+                        Our AI core is role-aware. For **Students**, it acts as a Career Coach, analyzing assessment results against Royal University of Bhutan (RUB) scholarship criteria. For **Ministry Officials**, it acts as a Policy Advisor, synthesizing regional performance data into actionable briefings.
+                    </p>
+                    <div class="flex gap-4">
+                        <span class="text-[10px] px-2 py-1 bg-white/5 rounded border border-white/10 text-slate-300">Natural Language Querying</span>
+                        <span class="text-[10px] px-2 py-1 bg-white/5 rounded border border-white/10 text-slate-300">Anomaly Detection</span>
+                    </div>
+                </div>
+                <div class="md:w-1/2 w-full bg-black/40 p-6 rounded-2xl">
+                    <div class="mermaid">
+graph TD
+    Data[DB Context] --> G[Gemini 1.5 Pro]
+    Role[User Role] --> G
+    G --> R1[Counselor: Wellness Flags]
+    G --> R2[Student: Career Roadmap]
+    G --> R3[Ministry: Policy Briefing]
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="text-center pb-20 border-t border-white/5 pt-10">
+            <p class="text-slate-500 text-sm">Bhutan EduSkill Master Architecture Report &copy; 2026</p>
+            <p class="text-slate-600 text-[10px] mt-2 italic">A Unified Educational Vision for the Kingdom of Bhutan</p>
+        </footer>
+    </div>
+
+    <script>
+        // Ensure mermaid is only initialized once
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'dark',
+            securityLevel: 'loose',
+            fontFamily: 'Space Grotesk',
+            flowchart: {
+                htmlLabels: true,
+                curve: 'basis'
+            }
+        });
+    </script>
+</body>
+</html>

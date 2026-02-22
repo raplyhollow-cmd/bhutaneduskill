@@ -19,6 +19,7 @@ import { PageWrapper } from "@/components/admin/page-wrapper";
 import { LiveBadge } from "@/components/admin/live-badge";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft,
   Edit,
@@ -32,8 +33,14 @@ import {
   Phone,
   Calendar,
   Settings,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  CreditCard,
 } from "lucide-react";
 import { TableSkeleton, ListItemSkeleton } from "@/components/admin/skeletons";
+import { ApproveSchoolModal, type SchoolDetailForModal } from "./approve-school-modal";
+import { BillingSection, type SchoolDetailForBilling } from "./billing-section";
 
 interface SchoolDetail {
   id: string;
@@ -47,7 +54,31 @@ interface SchoolDetail {
   city: string;
   district: string;
   isActive: boolean;
+  subscriptionStatus?: string;
+  subscriptionTier?: string;
+  activatedAt?: string | null;
+  setupComplete?: boolean;
+  setupCompletedAt?: string | null;
+  principalName?: string;
+  principalEmail?: string;
+  principalPhone?: string;
+  establishedYear?: number;
+  accreditationStatus?: string;
+  maxStudents?: number;
+  campusSize?: string;
+  facilities?: string[];
+  board?: string;
+  state: string;
+  country: string;
+  postalCode: string;
+  counselorName?: string;
+  counselorEmail?: string;
+  counselorPhone?: string;
+  vicePrincipalName?: string;
+  logo?: string;
+  website?: string;
   createdAt: string;
+  updatedAt: string;
   tenantName: string;
   stats: {
     students: number;
@@ -71,6 +102,7 @@ export default function SchoolDetailPage() {
   const [school, setSchool] = useState<SchoolDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
 
   useEffect(() => {
     async function fetchSchoolDetail() {
@@ -116,6 +148,77 @@ export default function SchoolDetailPage() {
       router.push("/admin/schools");
     } catch (err) {
       alert("Failed to delete school. Please try again.");
+    }
+  };
+
+  const handleApprove = async (tier: string = "standard") => {
+    try {
+      const res = await fetch(`/api/admin/schools/${schoolId}/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subscriptionTier: tier,
+        }),
+      });
+
+      if (res.ok) {
+        // Refresh school data
+        const res2 = await fetch(`/api/admin/schools/${schoolId}`);
+        if (res2.ok) {
+          const data = await res2.json();
+          setSchool(data);
+        }
+        setIsApproveModalOpen(false);
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to approve school");
+      }
+    } catch (err) {
+      alert("Failed to approve school. Please try again.");
+    }
+  };
+
+  const handleSuspend = async () => {
+    if (!confirm("Are you sure you want to suspend this school?")) return;
+
+    try {
+      const res = await fetch(`/api/admin/schools/${schoolId}/suspend`, {
+        method: "POST",
+      });
+
+      if (res.ok) {
+        const res2 = await fetch(`/api/admin/schools/${schoolId}`);
+        if (res2.ok) {
+          const data = await res2.json();
+          setSchool(data);
+        }
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to suspend school");
+      }
+    } catch (err) {
+      alert("Failed to suspend school. Please try again.");
+    }
+  };
+
+  const handleActivate = async () => {
+    try {
+      const res = await fetch(`/api/admin/schools/${schoolId}/activate`, {
+        method: "POST",
+      });
+
+      if (res.ok) {
+        const res2 = await fetch(`/api/admin/schools/${schoolId}`);
+        if (res2.ok) {
+          const data = await res2.json();
+          setSchool(data);
+        }
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to activate school");
+      }
+    } catch (err) {
+      alert("Failed to activate school. Please try again.");
     }
   };
 
@@ -197,7 +300,25 @@ export default function SchoolDetailPage() {
       color: "text-purple-600",
       bgColor: "bg-purple-50",
     },
+    {
+      label: "Subscription",
+      value: school.subscriptionStatus || "pending",
+      icon: CreditCard,
+      color: school.subscriptionStatus === "active" ? "text-green-600" : "text-yellow-600",
+      bgColor: school.subscriptionStatus === "active" ? "bg-green-50" : "bg-yellow-50",
+      isBadge: true,
+    },
   ];
+
+  const subscriptionStatuses = {
+    pending_payment: { label: "Pending Payment", color: "bg-yellow-50 text-yellow-700 border-yellow-200", icon: AlertTriangle },
+    active: { label: "Active", color: "bg-green-50 text-green-700 border-green-200", icon: CheckCircle },
+    suspended: { label: "Suspended", color: "bg-red-50 text-red-700 border-red-200", icon: XCircle },
+    cancelled: { label: "Cancelled", color: "bg-gray-50 text-gray-700 border-gray-200", icon: XCircle },
+  };
+
+  const statusInfo = subscriptionStatuses[school.subscriptionStatus as keyof typeof subscriptionStatuses] || subscriptionStatuses.pending_payment;
+  const StatusIcon = statusInfo.icon;
 
   return (
     <PageWrapper>
@@ -232,7 +353,37 @@ export default function SchoolDetailPage() {
             {school.level}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {school.subscriptionStatus === "pending_payment" && (
+            <Button
+              onClick={() => setIsApproveModalOpen(true)}
+              style={{ background: "linear-gradient(135deg, rgb(34 197 94) 0%, rgb(22 163 74) 100%)" }}
+              className="text-white"
+            >
+              <CheckCircle className="w-4 h-4 mr-2" />
+              Approve School
+            </Button>
+          )}
+          {school.subscriptionStatus === "active" && (
+            <Button
+              variant="outline"
+              onClick={handleSuspend}
+              className="text-red-600 hover:bg-red-50"
+            >
+              <XCircle className="w-4 h-4 mr-2" />
+              Suspend
+            </Button>
+          )}
+          {school.subscriptionStatus === "suspended" && (
+            <Button
+              variant="outline"
+              onClick={handleActivate}
+              className="text-green-600 hover:bg-green-50"
+            >
+              <CheckCircle className="w-4 h-4 mr-2" />
+              Activate
+            </Button>
+          )}
           <Button
             variant="outline"
             onClick={() => router.push(`/admin/schools/${schoolId}?action=edit`)}
@@ -253,7 +404,7 @@ export default function SchoolDetailPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {statCards.map((stat) => {
           const Icon = stat.icon;
           return (
@@ -264,9 +415,15 @@ export default function SchoolDetailPage() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">{stat.label}</p>
-                  <p className="text-2xl font-semibold text-gray-900">
-                    {stat.value}
-                  </p>
+                  {stat.isBadge ? (
+                    <Badge className={stat.bgColor + " " + stat.color}>
+                      {stat.value === "active" ? "Active" : stat.value}
+                    </Badge>
+                  ) : (
+                    <p className="text-2xl font-semibold text-gray-900">
+                      {stat.value}
+                    </p>
+                  )}
                 </div>
               </div>
             </PremiumCard>
@@ -274,7 +431,16 @@ export default function SchoolDetailPage() {
         })}
       </div>
 
-      {/* School Information */}
+      {/* Main Tabs */}
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="billing">Billing</TabsTrigger>
+          <TabsTrigger value="settings">Settings</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-4">
+          {/* School Information */}
       <PremiumCard className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900">School Information</h2>
@@ -413,6 +579,104 @@ export default function SchoolDetailPage() {
           )}
         </PremiumCard>
       )}
+        </TabsContent>
+
+        <TabsContent value="billing">
+          <BillingSection school={school as SchoolDetailForBilling} onUpdate={() => {
+            // Refresh school data
+            fetch(`/api/admin/schools/${schoolId}`)
+              .then(res => res.json())
+              .then(data => setSchool(data));
+          }} />
+        </TabsContent>
+
+        <TabsContent value="settings">
+          <PremiumCard>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">School Settings</h2>
+              <LiveBadge />
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                <div>
+                  <p className="text-gray-900">Active Status</p>
+                  <p className="text-sm text-gray-500">Enable or disable school access</p>
+                </div>
+                <Badge variant={school.isActive ? "default" : "secondary"}>
+                  {school.isActive ? "Active" : "Inactive"}
+                </Badge>
+              </div>
+
+              <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                <div>
+                  <p className="text-gray-900">Maximum Students</p>
+                  <p className="text-sm text-gray-500">Current enrollment limit</p>
+                </div>
+                <span className="text-gray-900">{school.maxStudents || "N/A"}</span>
+              </div>
+
+              <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                <div>
+                  <p className="text-gray-900">Campus Size</p>
+                  <p className="text-sm text-gray-500">Physical campus area</p>
+                </div>
+                <span className="text-gray-900">{school.campusSize || "N/A"}</span>
+              </div>
+
+              <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                <div>
+                  <p className="text-gray-900">Setup Status</p>
+                  <p className="text-sm text-gray-500">School admin setup completion</p>
+                </div>
+                {school.setupComplete ? (
+                  <Badge className="bg-green-50 text-green-700 border-green-200">
+                    <CheckCircle className="w-3 h-3 mr-1" />
+                    Complete
+                  </Badge>
+                ) : (
+                  <Badge className="bg-yellow-50 text-yellow-700 border-yellow-200">
+                    <AlertTriangle className="w-3 h-3 mr-1" />
+                    In Progress
+                  </Badge>
+                )}
+              </div>
+
+              {school.facilities && school.facilities.length > 0 && (
+                <div>
+                  <p className="text-gray-900 mb-2">Facilities</p>
+                  <div className="flex flex-wrap gap-2">
+                    {school.facilities.map((facility, index) => (
+                      <Badge key={index} variant="outline">
+                        {facility}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </PremiumCard>
+        </TabsContent>
+      </Tabs>
+
+      {/* Approve School Modal */}
+      <ApproveSchoolModal
+        open={isApproveModalOpen}
+        onClose={() => setIsApproveModalOpen(false)}
+        onApprove={handleApprove}
+        school={school ? {
+          id: school.id,
+          name: school.name,
+          code: school.code,
+          schoolType: school.schoolType,
+          level: school.level,
+          contactEmail: school.contactEmail,
+          contactPhone: school.contactPhone,
+          address: school.address,
+          city: school.city,
+          maxStudents: school.maxStudents,
+        } as SchoolDetailForModal : null}
+      />
     </PageWrapper>
   );
 }

@@ -78,6 +78,12 @@ export function AIInsightsSection({ stats }: AIInsightsSectionProps) {
         });
 
         if (!response.ok) {
+          // 401/403 = no API key configured, expected in development
+          if (response.status === 401 || response.status === 403) {
+            // Silently use fallback insights for missing API key
+            setFallbackInsights();
+            return;
+          }
           throw new Error(`API error: ${response.status}`);
         }
 
@@ -89,7 +95,11 @@ export function AIInsightsSection({ stats }: AIInsightsSectionProps) {
           setError(data.error);
         }
       } catch (err) {
-        logger.error("Failed to fetch AI insights:", err);
+        // Only log unexpected errors, not 401/403 which are expected without API key
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        if (!errorMessage.includes('401') && !errorMessage.includes('403')) {
+          logger.error("Failed to fetch AI insights:", err);
+        }
         setError("Unable to load insights. Using fallback insights.");
         // Set fallback insights on error
         setFallbackInsights();

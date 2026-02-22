@@ -3,6 +3,7 @@
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { users, classes, enrollments, homework, homeworkSubmissions, attendance, assessments, subjects } from "@/lib/db/schema";
+import { teacherBehaviorLogs } from "@/lib/db/teacher-logs-schema";
 import { eq, and, desc, count, sql, gte, lte, inArray } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth-utils";
 
@@ -56,12 +57,23 @@ export interface RecentActivity {
   timestamp: string;
 }
 
+export interface RecentBehaviorLog {
+  id: string;
+  studentName: string;
+  type: "merit" | "demerit";
+  category: string;
+  description: string;
+  points: number;
+  createdAt: string;
+}
+
 export interface TeacherDashboardData {
   stats: TeacherStats;
   classes: TeacherClassData[];
   upcomingHomework: PendingGradingItem[];
   recentActivity: RecentActivity[];
   needsAttention: StudentNeedingAttention[];
+  recentBehaviorLogs: RecentBehaviorLog[];
 }
 
 // ============================================================================
@@ -323,12 +335,42 @@ export async function getTeacherDashboardData(): Promise<TeacherDashboardData | 
     // Recent activity (could be enhanced with activity log)
     const recentActivity: RecentActivity[] = [];
 
+    // Fetch recent behavior logs for teacher's students
+    let recentBehaviorLogs: RecentBehaviorLog[] = [];
+    if (classIds.length > 0) {
+      const behaviorLogsData = await db.query.teacherBehaviorLogs.findMany({
+        where: inArray(teacherBehaviorLogs.classId, classIds),
+        orderBy: [desc(teacherBehaviorLogs.createdAt)],
+        limit: 5,
+      });
+
+      recentBehaviorLogs = await Promise.all(
+        behaviorLogsData.map(async (log) => {
+          const student = await db.query.users.findFirst({
+            where: eq(users.id, log.studentId),
+            columns: { id: true, firstName: true, lastName: true },
+          });
+
+          return {
+            id: log.id,
+            studentName: student ? `${student.firstName} ${student.lastName || ""}`.trim() : "Unknown",
+            type: log.type as "merit" | "demerit",
+            category: log.category,
+            description: log.description,
+            points: log.points,
+            createdAt: log.createdAt.toISOString(),
+          };
+        })
+      );
+    }
+
     return {
       stats,
       classes: classesData,
       upcomingHomework: pendingGradingItems,
       recentActivity,
       needsAttention: needsAttention.slice(0, 5),
+      recentBehaviorLogs,
     };
   } catch (error) {
     logger.error("Failed to fetch teacher dashboard data:", error);

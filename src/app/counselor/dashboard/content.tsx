@@ -29,6 +29,9 @@ import {
   Download,
   ArrowRight,
   Loader2,
+  Shield,
+  Heart,
+  Stamp,
 } from "lucide-react";
 import Link from "next/link";
 import { AIInsightCard } from "@/components/ai/ai-insight-card";
@@ -233,15 +236,27 @@ export function CounselorDashboardContent() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" asChild>
-            <Link href="/counselor/reports">
-              <Download className="w-4 h-4 mr-2" />
-              Export Data
+            <Link href="/counselor/red-flags">
+              <Shield className="w-4 h-4 mr-2 text-red-600" />
+              Red Flags
             </Link>
           </Button>
-          <Button className="bg-purple-600 hover:bg-purple-700" asChild>
-            <Link href="/counselor/sessions">
-              <Sparkles className="w-4 h-4 mr-2" />
-              AI Coach
+          <Button variant="outline" asChild>
+            <Link href="/counselor/wellness-compass">
+              <Heart className="w-4 h-4 mr-2 text-pink-600" />
+              Wellness Compass
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/counselor/career-alignment">
+              <Stamp className="w-4 h-4 mr-2 text-blue-600" />
+              Career Alignment
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/counselor/reports">
+              <Download className="w-4 h-4 mr-2" />
+              Export
             </Link>
           </Button>
         </div>
@@ -284,7 +299,7 @@ export function CounselorDashboardContent() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">Total Students</CardTitle>
@@ -338,6 +353,25 @@ export function CounselorDashboardContent() {
               <Sparkles className="w-8 h-8 text-purple-600 opacity-20" />
             </div>
             <p className="text-xs text-gray-500 mt-2">Student interactions</p>
+          </CardContent>
+        </Card>
+
+        {/* New: Red Flags Card */}
+        <Card className="border-red-200 bg-red-50/30">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-red-600 flex items-center gap-2">
+              <Shield className="w-4 h-4" />
+              Red Flags
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="text-3xl font-bold text-red-600">-</div>
+              <AlertCircle className="w-8 h-8 text-red-600 opacity-20" />
+            </div>
+            <Button variant="link" className="p-0 h-auto text-red-600 text-xs" asChild>
+              <Link href="/counselor/red-flags">View flagged students →</Link>
+            </Button>
           </CardContent>
         </Card>
       </div>

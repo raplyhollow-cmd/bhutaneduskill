@@ -15,7 +15,7 @@ const problems = [
     outcome: "Get matched to RUB programs that fit YOUR personality and strengths",
     solution: "RIASEC assessment → AI career matching → Confident subject selection",
     icon: Target,
-    color: "from-orange-500 to-red-500",
+    color: "rgb(249 115 22)",
     bgColor: "bg-orange-50 dark:bg-orange-950/20",
   },
   {
@@ -26,7 +26,7 @@ const problems = [
     outcome: "See homework, attendance, and progress every single day",
     solution: "Real-time dashboard + instant notifications + direct teacher messaging",
     icon: Users,
-    color: "from-blue-500 to-cyan-500",
+    color: "rgb(59 130 246)",
     bgColor: "bg-blue-50 dark:bg-blue-950/20",
   },
   {
@@ -37,7 +37,7 @@ const problems = [
     outcome: "Auto-grade homework in seconds, generate reports with one click",
     solution: "8 question types + instant analytics + automated reports",
     icon: Zap,
-    color: "from-emerald-500 to-green-500",
+    color: "rgb(16 185 129)",
     bgColor: "bg-emerald-50 dark:bg-emerald-950/20",
   },
 ];
@@ -82,24 +82,24 @@ function ProblemSolutionCard({ problem, index }: { problem: typeof problems[0]; 
       transition={{ delay: index * 0.15, duration: 0.5 }}
       className="group"
     >
-      <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:shadow-2xl transition-all duration-500">
+      <div className="relative overflow-hidden rounded-3xl bg-ceramic-white dark:bg-ceramic-gray-900 border border-ceramic-border hover:shadow-2xl transition-all duration-500">
         {/* Problem Section - Top */}
-        <div className="relative p-6 pb-8 border-b border-gray-100 dark:border-gray-800">
+        <div className="relative p-6 pb-8 border-b border-ceramic-border">
           {/* Alert badge */}
           <div className="flex items-center gap-2 mb-4">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50">
-              <AlertCircle className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
-              <span className="text-xs font-semibold text-red-700 dark:text-red-300">The Problem</span>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ceramic-negative/10 dark:bg-ceramic-negative/20 border border-ceramic-negative/30">
+              <AlertCircle className="w-3.5 h-3.5 text-ceramic-negative" />
+              <span className="text-xs font-semibold text-ceramic-negative">The Problem</span>
             </div>
           </div>
 
           {/* Problem statement */}
-          <p className="text-base text-gray-700 dark:text-gray-300 leading-relaxed mb-4">
+          <p className="text-base text-ceramic-primary dark:text-ceramic-gray-200 leading-relaxed mb-4">
             {problem.problem}
           </p>
 
           {/* Context */}
-          <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+          <p className="text-sm text-ceramic-dimmed italic">
             "{problem.context}"
           </p>
         </div>
@@ -108,44 +108,51 @@ function ProblemSolutionCard({ problem, index }: { problem: typeof problems[0]; 
         <div className={`${problem.bgColor} p-6 relative`}>
           {/* Check badge */}
           <div className="flex items-center gap-2 mb-4">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">Our Solution</span>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ceramic-white dark:bg-ceramic-gray-800 border border-ceramic-border">
+              <CheckCircle2 className="w-3.5 h-3.5 text-ceramic-positive" />
+              <span className="text-xs font-semibold text-ceramic-positive">Our Solution</span>
             </div>
           </div>
 
           {/* Stat highlight */}
           <div className="flex items-baseline gap-2 mb-4">
-            <div className="text-4xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+            <div
+              className="text-4xl font-bold bg-clip-text text-transparent"
+              style={{ background: `linear-gradient(135deg, ${problem.color} 0%, ${problem.color} 100%)` }}
+            >
               {problem.stat.includes('%') ? (
                 <StatCounter value={problem.stat.replace('%', '')} suffix="%" />
               ) : (
                 problem.stat
               )}
             </div>
-            <span className="text-sm text-gray-600 dark:text-gray-400">
+            <span className="text-sm text-ceramic-secondary dark:text-ceramic-gray-400">
               {problem.statLabel}
             </span>
           </div>
 
           {/* Outcome */}
           <div className="flex items-start gap-3 mb-4">
-            <div className={`p-2 rounded-lg bg-gradient-to-br ${problem.color} flex-shrink-0`}>
+            <div
+              className="p-2 rounded-lg flex-shrink-0"
+              style={{ background: `linear-gradient(135deg, ${problem.color} 0%, ${problem.color} 100%)` }}
+            >
               <Icon className="w-4 h-4 text-white" strokeWidth={2} />
             </div>
-            <p className="text-sm font-medium text-gray-800 dark:text-gray-200 leading-relaxed">
+            <p className="text-sm font-medium text-ceramic-primary dark:text-ceramic-gray-100 leading-relaxed">
               {problem.outcome}
             </p>
           </div>
 
           {/* Solution steps */}
           <div className="flex items-center justify-between">
-            <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+            <p className="text-xs text-ceramic-secondary dark:text-ceramic-gray-400 font-medium">
               {problem.solution}
             </p>
             <Link
               href="/sign-up"
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-lg bg-gradient-to-r ${problem.color} text-white text-sm font-semibold hover:shadow-lg transition-all`}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-white text-sm font-semibold hover:shadow-lg transition-all"
+              style={{ background: `linear-gradient(135deg, ${problem.color} 0%, ${problem.color} 100%)` }}
             >
               Start Now
               <ArrowRight className="w-4 h-4" strokeWidth={2} />
@@ -154,7 +161,10 @@ function ProblemSolutionCard({ problem, index }: { problem: typeof problems[0]; 
         </div>
 
         {/* Decorative gradient line */}
-        <div className={`absolute left-0 right-0 top-1/2 -translate-y-1/2 h-px bg-gradient-to-r ${problem.color} opacity-20`} />
+        <div
+          className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-px opacity-20"
+          style={{ background: `linear-gradient(90deg, ${problem.color} 0%, ${problem.color} 100%)` }}
+        />
       </div>
     </motion.div>
   );
@@ -162,9 +172,9 @@ function ProblemSolutionCard({ problem, index }: { problem: typeof problems[0]; 
 
 export function FeaturesSection() {
   return (
-    <section className="relative py-32 bg-white dark:bg-gray-950 overflow-hidden">
+    <section className="relative py-32 bg-ceramic-white dark:bg-ceramic-gray-950 overflow-hidden">
       {/* Background decorations */}
-      <div className="absolute top-20 left-1/4 w-96 h-96 bg-orange-400/5 rounded-full blur-3xl" />
+      <div className="absolute top-20 left-1/4 w-96 h-96 bg-ceramic-brand/5 rounded-full blur-3xl" />
       <div className="absolute bottom-20 right-1/4 w-96 h-96 bg-blue-400/5 rounded-full blur-3xl" />
 
       <div className="max-w-6xl mx-auto px-6 relative">
@@ -176,17 +186,17 @@ export function FeaturesSection() {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 mb-6">
-            <div className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-ceramic-gray-50 dark:bg-ceramic-gray-900 border border-ceramic-border text-sm font-medium text-ceramic-secondary dark:text-ceramic-gray-300 mb-6">
+            <div className="w-1.5 h-1.5 rounded-full bg-ceramic-brand" />
             Why Schools Choose Us
           </div>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-gray-950 dark:text-white mb-4">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-ceramic-primary dark:text-white mb-4">
             Real Problems,{" "}
-            <span className="bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+            <span className="bg-clip-text text-transparent" style={{ background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)' }}>
               Real Solutions
             </span>
           </h2>
-          <p className="text-lg text-gray-500 dark:text-gray-400 max-w-2xl mx-auto">
+          <p className="text-lg text-ceramic-dimmed max-w-2xl mx-auto">
             We don't just add features. We solve actual problems faced by Bhutanese students, parents, and teachers every day.
           </p>
         </motion.div>
@@ -206,13 +216,14 @@ export function FeaturesSection() {
           transition={{ delay: 0.5 }}
           className="mt-16 text-center"
         >
-          <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gradient-to-r from-orange-100 to-red-100 dark:from-orange-950/50 dark:to-red-950/50 border border-orange-200 dark:border-orange-900/50">
-            <span className="text-gray-700 dark:text-gray-300 font-medium">
+          <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full border border-ceramic-border" style={{ background: 'linear-gradient(135deg, rgb(254 243 199) 0%, rgb(254 215 170) 100%)' }}>
+            <span className="text-ceramic-primary font-medium">
               Already know what you need?
             </span>
             <Link
               href="/sign-up"
-              className="inline-flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-full font-semibold text-sm hover:from-orange-700 hover:to-red-700 hover:shadow-lg transition-all"
+              className="inline-flex items-center gap-2 px-5 py-2 text-white rounded-full font-semibold text-sm hover:shadow-lg transition-all"
+              style={{ background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)' }}
             >
               Get Started Free
               <ArrowRight className="w-4 h-4" strokeWidth={2} />

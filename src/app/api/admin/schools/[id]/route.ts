@@ -9,7 +9,7 @@
 import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
-import { schools, users, tenants, districts } from "@/lib/db/schema";
+import { schools, users, districts } from "@/lib/db/schema";
 import { eq, and, count, desc } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
@@ -31,7 +31,7 @@ export async function GET(
 
     const { id } = await params;
 
-    // Fetch school with tenant and district info
+    // Fetch school with district info
     const schoolResult = await db
       .select({
         id: schools.id,
@@ -43,15 +43,36 @@ export async function GET(
         contactPhone: schools.contactPhone,
         address: schools.address,
         city: schools.city,
+        state: schools.state,
+        country: schools.country,
+        postalCode: schools.postalCode,
         districtId: schools.districtId,
-        tenantId: schools.tenantId,
         isActive: schools.isActive,
+        subscriptionStatus: schools.subscriptionStatus,
+        subscriptionTier: schools.subscriptionTier,
+        activatedAt: schools.activatedAt,
+        setupComplete: schools.setupComplete,
+        setupCompletedAt: schools.setupCompletedAt,
+        principalName: schools.principalName,
+        principalEmail: schools.principalEmail,
+        principalPhone: schools.principalPhone,
+        establishedYear: schools.establishedYear,
+        accreditationStatus: schools.accreditationStatus,
+        maxStudents: schools.maxStudents,
+        campusSize: schools.campusSize,
+        facilities: schools.facilities,
+        board: schools.board,
+        counselorName: schools.counselorName,
+        counselorEmail: schools.counselorEmail,
+        counselorPhone: schools.counselorPhone,
+        vicePrincipalName: schools.vicePrincipalName,
+        logo: schools.logo,
+        website: schools.website,
         createdAt: schools.createdAt,
-        tenantName: tenants.name,
+        updatedAt: schools.updatedAt,
         districtName: districts.name,
       })
       .from(schools)
-      .leftJoin(tenants, eq(schools.tenantId, tenants.id))
       .leftJoin(districts, eq(schools.districtId, districts.id))
       .where(eq(schools.id, id))
       .limit(1);

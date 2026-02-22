@@ -9,6 +9,13 @@ import { z } from "zod";
 // Fine rate: Nu. 2 per day (Bhutanese Ngultrum)
 const FINE_RATE_PER_DAY = 2;
 
+// Helper: Convert decimal/string to number
+function toNumber(value: string | number | null | undefined): number {
+  if (typeof value === 'number') return value;
+  if (!value) return 0;
+  return parseFloat(value as string) || 0;
+}
+
 // Helper: Calculate fine for overdue books
 function calculateFine(dueDate: string, returnDate: string = new Date().toISOString()): number {
   const due = new Date(dueDate);
@@ -86,14 +93,21 @@ export async function GET(request: NextRequest) {
       .where(circulationWhereClause)
       .orderBy(desc(circulation.dueDate));
 
+    // Helper to convert decimal to number
+    const toNumber = (value: string | number | null | undefined): number => {
+      if (typeof value === 'number') return value;
+      if (!value) return 0;
+      return parseFloat(value as string) || 0;
+    };
+
     // Calculate outstanding fines
     const finesWithCalc = circulationRecords.map((record) => {
       const calculatedFine = record.status === "borrowed"
         ? calculateFine(record.dueDate)
-        : record.fine;
+        : toNumber(record.fine);
 
       const totalFine = calculatedFine;
-      const paid = record.finePaid ? record.fine : 0;
+      const paid = record.finePaid ? toNumber(record.fine) : 0;
       const outstanding = totalFine - paid;
 
       return {
@@ -137,11 +151,12 @@ export async function GET(request: NextRequest) {
         memberConditions.push(eq(libraryMembers.id, memberId));
       }
 
-      memberConditions.push(gt(libraryMembers.fineDue, 0));
+      // Use SQL for decimal comparison
+      memberConditions.push(sql`${libraryMembers.fineDue} > ${"0"}`);
 
       const memberWhereClause = memberConditions.length > 0
         ? and(...memberConditions)
-        : gt(libraryMembers.fineDue, 0);
+        : sql`${libraryMembers.fineDue} > ${"0"}`;
 
       membersWithFines = await db.query.libraryMembers.findMany({
         where: memberWhereClause,
@@ -254,11 +269,12 @@ export async function POST(request: NextRequest) {
       });
 
       if (member) {
-        const newFineDue = Math.max(0, member.fineDue - paymentAmount);
+        const currentFineDue = toNumber(member.fineDue);
+        const newFineDue = Math.max(0, currentFineDue - paymentAmount);
 
         const [updated] = await db.update(libraryMembers)
           .set({
-            fineDue: newFineDue,
+            fineDue: newFineDue.toString(),
             updatedAt: new Date(),
           })
           .where(eq(libraryMembers.id, member.id))
@@ -279,20 +295,21 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      if (member.fineDue <= 0) {
+      const currentFineDue = toNumber(member.fineDue);
+      if (currentFineDue <= 0) {
         return NextResponse.json(
           { success: false, error: "No outstanding fines for this member" },
           { status: 400 }
         );
       }
 
-      const paymentAmount = Math.min(validatedData.amount, member.fineDue);
+      const paymentAmount = Math.min(validatedData.amount, currentFineDue);
       paidAmount = paymentAmount;
-      const newFineDue = member.fineDue - paymentAmount;
+      const newFineDue = currentFineDue - paymentAmount;
 
       const [updated] = await db.update(libraryMembers)
         .set({
-          fineDue: newFineDue,
+          fineDue: newFineDue.toString(),
           updatedAt: new Date(),
         })
         .where(eq(libraryMembers.id, validatedData.memberId))
@@ -332,7 +349,7 @@ export async function POST(request: NextRequest) {
       success: true,
       data: {
         paidAmount,
-        remainingBalance: updatedMember?.fineDue || 0,
+        remainingBalance: updatedMember ? toNumber(updatedMember.fineDue) : 0,
         member: updatedMember,
         circulations: updatedCirculations,
         message: `Payment of Nu. ${paidAmount} recorded successfully`,
@@ -407,11 +424,12 @@ export async function PATCH(request: NextRequest) {
     });
 
     if (member) {
-      const newFineDue = Math.max(0, member.fineDue - waiveAmt);
+      const currentFineDue = toNumber(member.fineDue);
+      const newFineDue = Math.max(0, currentFineDue - waiveAmt);
 
       await db.update(libraryMembers)
         .set({
-          fineDue: newFineDue,
+          fineDue: newFineDue.toString(),
           updatedAt: new Date(),
         })
         .where(eq(libraryMembers.id, member.id));

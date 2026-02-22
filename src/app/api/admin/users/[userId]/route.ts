@@ -479,7 +479,7 @@ export async function DELETE(
 
   try {
     const { searchParams } = new URL(request.url);
-    const hardDelete = searchParams.get('hard') === 'true';
+    const hardDelete = searchParams.get('hard') !== 'false'; // Default to hard delete unless explicitly false
 
     // Check if user exists
     const existingUser = await db

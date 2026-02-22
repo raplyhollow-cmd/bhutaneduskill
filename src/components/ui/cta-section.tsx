@@ -16,7 +16,7 @@ interface CTASectionProps {
   secondaryButtonHref?: string;
   badge?: string;
   className?: string;
-  variant?: "orange" | "purple" | "blue" | "dark" | "gradient";
+  variant?: "orange" | "purple" | "blue" | "dark" | "gradient" | "ceramic";
   showGlow?: boolean;
   features?: string[];
 }
@@ -57,18 +57,25 @@ const variants = {
     badgeBg: "bg-white/20",
     badgeText: "text-white",
   },
+  ceramic: {
+    background: "linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)",
+    textColor: "text-white",
+    descriptionColor: "text-white/80",
+    badgeBg: "bg-white/20",
+    badgeText: "text-white",
+  },
 };
 
 export function CTASection({
   title = "Ready to Discover Your Path?",
-  description = "Join thousands of Bhutanese students already using Career Compass to discover their skills and achieve their dreams.",
+  description = "Join thousands of Bhutanese students already using Bhutan EduSkill to discover their skills and achieve their dreams.",
   primaryButtonText = "Start Your Journey",
   primaryButtonHref = "/sign-up",
   secondaryButtonText,
   secondaryButtonHref,
   badge,
   className,
-  variant = "orange",
+  variant = "ceramic",
   showGlow = true,
   features,
 }: CTASectionProps) {
@@ -82,7 +89,7 @@ export function CTASection({
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 0.5 }}
-          className="relative overflow-hidden rounded-2xl p-12 sm:p-16 text-center"
+          className="relative overflow-hidden rounded-2xl p-12 sm:p-16 text-center border border-ceramic-border"
           style={{ background: style.background }}
         >
           {/* Glow effects */}
@@ -144,7 +151,7 @@ export function CTASection({
                     key={index}
                     className="flex items-center gap-2 text-sm text-white/90"
                   >
-                    <Check className="h-4 w-4 text-green-300" />
+                    <Check className="h-4 w-4 text-ceramic-positive" />
                     <span>{feature}</span>
                   </div>
                 ))}
@@ -162,7 +169,8 @@ export function CTASection({
               <Button
                 asChild
                 size="lg"
-                className="bg-white text-primary hover:bg-white/90 shadow-lg min-h-[44px] text-base font-semibold"
+                variant="ceramic"
+                className="bg-white text-ceramic-primary hover:bg-white/90 shadow-lg min-h-[44px] text-base font-semibold"
               >
                 <Link href={primaryButtonHref} className="group">
                   {primaryButtonText}
@@ -174,7 +182,7 @@ export function CTASection({
                 <Button
                   asChild
                   size="lg"
-                  variant="outline"
+                  variant="ceramic-outline"
                   className="bg-white/10 border-white/30 text-white hover:bg-white/20 min-h-[44px] text-base font-semibold"
                 >
                   <Link href={secondaryButtonHref}>

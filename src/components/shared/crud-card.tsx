@@ -230,13 +230,13 @@ export function CrudCard({
 
   return (
     <>
-      <Card className="shadow-sm">
+      <Card variant="ceramic" className="shadow-sm">
         <CardHeader className="cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
                 {title}
-                <Badge variant="secondary">{items.length}</Badge>
+                <Badge variant="ceramic">{items.length}</Badge>
               </CardTitle>
               {description && <CardDescription>{description}</CardDescription>}
             </div>
@@ -244,17 +244,19 @@ export function CrudCard({
               {showAddButton && onAdd && (
                 <Button
                   size="sm"
+                  variant="ceramic"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleAdd();
                   }}
-                  className="bg-orange-600 hover:bg-orange-700"
+                  className="text-white"
+                  style={{ background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)' }}
                 >
                   <Plus className="w-4 h-4 mr-1" />
                   Add
                 </Button>
               )}
-              <Button size="sm" variant="ghost" onClick={(e) => e.stopPropagation()}>
+              <Button size="sm" variant="ceramic-ghost" onClick={(e) => e.stopPropagation()}>
                 {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </Button>
             </div>
@@ -264,19 +266,19 @@ export function CrudCard({
         {isExpanded && (
           <CardContent>
             {items.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">{emptyMessage}</div>
+              <div className="text-center py-8 text-ceramic-dimmed">{emptyMessage}</div>
             ) : (
               <div className="space-y-2 max-h-[400px] overflow-y-auto" style={{ maxHeight }}>
                 {items.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group"
+                    className="flex items-center justify-between p-4 bg-ceramic-gray-50 dark:bg-ceramic-gray-800 rounded-lg hover:bg-ceramic-gray-100 dark:hover:bg-ceramic-gray-700 transition-colors group border border-ceramic-border"
                   >
                     <div className="flex-1 grid gap-2" style={{ gridTemplateColumns: `repeat(${columns.length}, 1fr)` }}>
                       {columns.map((column) => (
                         <div key={column.key} className="min-w-0">
                           {column.key === "id" ? (
-                            <span className="text-xs text-gray-400">{item.id.slice(0, 8)}...</span>
+                            <span className="text-xs text-ceramic-dimmed">{item.id.slice(0, 8)}...</span>
                           ) : (
                             <div className="text-sm truncate" title={String(item[column.key])}>
                               {renderFieldValue(column, item[column.key], item)}
@@ -289,7 +291,7 @@ export function CrudCard({
                       {onEdit && (
                         <Button
                           size="sm"
-                          variant="ghost"
+                          variant="ceramic-ghost"
                           onClick={() => handleEdit(item)}
                           className="h-8 w-8 p-0"
                         >
@@ -299,9 +301,9 @@ export function CrudCard({
                       {onDelete && (
                         <Button
                           size="sm"
-                          variant="ghost"
+                          variant="ceramic-ghost"
                           onClick={() => handleDeleteClick(item)}
-                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                          className="h-8 w-8 p-0 text-ceramic-negative hover:text-ceramic-negative"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
@@ -317,7 +319,7 @@ export function CrudCard({
 
       {/* Add Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent variant="ceramic" className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Add {title.slice(0, -1)}</DialogTitle>
             <DialogDescription>Fill in the details below.</DialogDescription>
@@ -327,16 +329,21 @@ export function CrudCard({
               .filter((col) => col.key !== "id" && col.editable !== false)
               .map((column) => (
                 <div key={column.key} className="grid gap-2">
-                  <label className="text-sm font-medium">{column.label}</label>
+                  <label className="text-sm font-medium text-ceramic-primary">{column.label}</label>
                   {renderFormInput(column)}
                 </div>
               ))}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={isSubmitting}>
+            <Button variant="ceramic-outline" onClick={() => setIsAddDialogOpen(false)} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-orange-600 hover:bg-orange-700">
+            <Button
+              variant="ceramic"
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              style={{ background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)' }}
+            >
               {isSubmitting ? "Adding..." : "Add"}
             </Button>
           </DialogFooter>
@@ -345,7 +352,7 @@ export function CrudCard({
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent variant="ceramic" className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Edit {title.slice(0, -1)}</DialogTitle>
             <DialogDescription>Update the details below.</DialogDescription>
@@ -355,16 +362,21 @@ export function CrudCard({
               .filter((col) => col.key !== "id" && col.editable !== false)
               .map((column) => (
                 <div key={column.key} className="grid gap-2">
-                  <label className="text-sm font-medium">{column.label}</label>
+                  <label className="text-sm font-medium text-ceramic-primary">{column.label}</label>
                   {renderFormInput(column)}
                 </div>
               ))}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={isSubmitting}>
+            <Button variant="ceramic-outline" onClick={() => setIsEditDialogOpen(false)} disabled={isSubmitting}>
               Cancel
             </Button>
-            <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-orange-600 hover:bg-orange-700">
+            <Button
+              variant="ceramic"
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              style={{ background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)' }}
+            >
               {isSubmitting ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>
@@ -373,7 +385,7 @@ export function CrudCard({
 
       {/* Delete Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent variant="ceramic">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {title.slice(0, -1)}?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -385,7 +397,7 @@ export function CrudCard({
             <AlertDialogAction
               onClick={handleDeleteConfirm}
               disabled={isSubmitting}
-              className="bg-red-500 hover:bg-red-600"
+              className="bg-ceramic-negative hover:bg-ceramic-negative/90"
             >
               {isSubmitting ? "Deleting..." : "Delete"}
             </AlertDialogAction>

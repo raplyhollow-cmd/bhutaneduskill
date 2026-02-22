@@ -9,6 +9,13 @@ import { z } from "zod";
 // Fine rate: Nu. 2 per day (Bhutanese Ngultrum)
 const FINE_RATE_PER_DAY = 2;
 
+// Helper: Convert decimal/string to number
+function toNumber(value: string | number | null | undefined): number {
+  if (typeof value === 'number') return value;
+  if (!value) return 0;
+  return parseFloat(value as string) || 0;
+}
+
 // Borrow period in days
 const DEFAULT_BORROW_DAYS = 14;
 const MAX_RENEWALS = 2;
@@ -52,8 +59,9 @@ async function checkLibraryMembership(userId: string, schoolId: string): Promise
   }
 
   // Check if member has unpaid fines
-  if (member.fineDue > 0) {
-    return { valid: false, error: `Please pay outstanding fines (Nu. ${member.fineDue}) before borrowing` };
+  const fineDue = toNumber(member.fineDue);
+  if (fineDue > 0) {
+    return { valid: false, error: `Please pay outstanding fines (Nu. ${fineDue}) before borrowing` };
   }
 
   return { valid: true, member };

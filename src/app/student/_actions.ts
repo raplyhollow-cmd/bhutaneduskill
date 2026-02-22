@@ -1,5 +1,6 @@
 "use server";
 import { logger } from "@/lib/logger";
+import { parseJsonArray } from "@/lib/db/json-helpers";
 
 /**
  * STUDENT SERVER ACTIONS
@@ -492,7 +493,7 @@ export async function fetchStudentAnnouncements(): Promise<{
         attachments: a.attachments as any,
         targetAudience: a.targetAudience,
         targetGradeLevel: a.targetGradeLevel,
-        targetClassIds: a.targetClassIds,
+        targetClassIds: parseJsonArray<string>(a.targetClassIds) as string[] | null,
         isPublished: a.isPublished,
         isArchived: a.isArchived,
         publishDate: a.publishDate,
@@ -519,7 +520,7 @@ export async function fetchStudentAnnouncements(): Promise<{
         attachments: a.attachments as any,
         targetAudience: a.targetAudience,
         targetGradeLevel: a.targetGradeLevel,
-        targetClassIds: a.targetClassIds,
+        targetClassIds: parseJsonArray<string>(a.targetClassIds) as string[] | null,
         isPublished: a.isPublished,
         isArchived: a.isArchived,
         publishDate: a.publishDate,

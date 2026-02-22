@@ -58,6 +58,7 @@ export interface InvoiceData {
   totalAmount?: number;
   currency: string;
   status: string;
+  invoiceDate: string;
   dueDate: string;
   paidDate?: string;
   pdfUrl?: string;
@@ -65,7 +66,6 @@ export interface InvoiceData {
   refundAmount?: number;
   refundReason?: string;
   refundedAt?: string;
-  subscriptionId?: string;
 }
 
 export interface BillingStats {
@@ -92,6 +92,26 @@ export interface ActionResult<T = unknown> {
   data?: T;
   error?: string;
   message?: string;
+}
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Convert decimal string to number safely
+ */
+function decimalToNumber(value: string | null | undefined): number {
+  if (value === null || value === undefined) return 0;
+  const num = parseFloat(value);
+  return isNaN(num) ? 0 : num;
+}
+
+/**
+ * Convert number to decimal string for database storage
+ */
+function numberToDecimal(value: number): string {
+  return value.toFixed(2);
 }
 
 // ============================================================================
@@ -141,20 +161,17 @@ export async function fetchBillingData(): Promise<ActionResult<{
         tenantName: tenants.name,
         tenantSlug: tenants.slug,
         tenantDomain: tenants.domain,
-        schoolName: schools.name,
-        schoolCode: schools.code,
       })
       .from(subscriptions)
       .leftJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
       .leftJoin(tenants, eq(subscriptions.tenantId, tenants.id))
-      .leftJoin(schools, eq(schools.tenantId, tenants.id))
       .orderBy(desc(subscriptions.createdAt))
       .limit(100);
 
     const formattedSubscriptions: SubscriptionData[] = subscriptionsResult.map((sub) => ({
       id: sub.id,
-      schoolName: sub.schoolName || sub.tenantName || "Unknown",
-      schoolCode: sub.schoolCode || undefined,
+      schoolName: sub.tenantName || "Unknown",
+      schoolCode: undefined,
       tenantSlug: sub.tenantSlug,
       plan: sub.planName?.toLowerCase() || "unknown",
       status: sub.status,
@@ -172,7 +189,7 @@ export async function fetchBillingData(): Promise<ActionResult<{
       maxTeachers: sub.maxTeachers,
     }));
 
-    // Fetch invoices
+    // Fetch invoices - using schoolId instead of tenantId/subscriptionId
     const invoicesResult = await db
       .select({
         id: invoices.id,
@@ -187,53 +204,42 @@ export async function fetchBillingData(): Promise<ActionResult<{
         currency: invoices.currency,
         status: invoices.status,
         paymentMethod: invoices.paymentMethod,
+        paymentReference: invoices.paymentReference,
         pdfUrl: invoices.pdfUrl,
         refundAmount: invoices.refundAmount,
         refundReason: invoices.refundReason,
         refundedAt: invoices.refundedAt,
-        subscriptionId: invoices.subscriptionId,
-        planName: subscriptionPlans.name,
-        tenantId: tenants.id,
-        tenantName: tenants.name,
+        subscriptionTier: invoices.subscriptionTier,
+        schoolId: invoices.schoolId,
         schoolName: schools.name,
       })
       .from(invoices)
-      .leftJoin(subscriptions, eq(invoices.subscriptionId, subscriptions.id))
-      .leftJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
-      .leftJoin(tenants, eq(invoices.tenantId, tenants.id))
-      .leftJoin(schools, eq(schools.tenantId, tenants.id))
+      .leftJoin(schools, eq(invoices.schoolId, schools.id))
       .orderBy(desc(invoices.invoiceDate))
       .limit(100);
 
-    const formattedInvoices: InvoiceData[] = invoicesResult.map((inv) => {
-      const getSchoolName = () => {
-        if (inv.schoolName) return inv.schoolName;
-        return inv.tenantName || "Unknown";
-      };
+    const formattedInvoices: InvoiceData[] = invoicesResult.map((inv) => ({
+      id: inv.id,
+      invoiceNumber: inv.invoiceNumber || "",
+      school: inv.schoolName || "Unknown",
+      plan: inv.subscriptionTier || "Unknown",
+      amount: decimalToNumber(inv.totalAmount) || decimalToNumber(inv.amount),
+      taxAmount: decimalToNumber(inv.taxAmount),
+      discountAmount: decimalToNumber(inv.discountAmount),
+      totalAmount: decimalToNumber(inv.totalAmount),
+      currency: inv.currency,
+      status: inv.status,
+      invoiceDate: inv.invoiceDate?.toISOString() || new Date().toISOString(),
+      dueDate: inv.dueDate?.toISOString() || new Date().toISOString(),
+      paidDate: inv.paidAt?.toISOString(),
+      pdfUrl: inv.pdfUrl,
+      paymentMethod: inv.paymentMethod,
+      refundAmount: decimalToNumber(inv.refundAmount),
+      refundReason: inv.refundReason,
+      refundedAt: inv.refundedAt?.toISOString(),
+    }));
 
-      return {
-        id: inv.id,
-        invoiceNumber: inv.invoiceNumber || "",
-        school: getSchoolName(),
-        plan: inv.planName || "Unknown",
-        amount: inv.totalAmount || inv.amount,
-        taxAmount: inv.taxAmount || 0,
-        discountAmount: inv.discountAmount || 0,
-        totalAmount: inv.totalAmount,
-        currency: inv.currency,
-        status: inv.status,
-        dueDate: inv.dueDate?.toISOString() || new Date().toISOString(),
-        paidDate: inv.paidAt?.toISOString(),
-        pdfUrl: inv.pdfUrl,
-        paymentMethod: inv.paymentMethod,
-        refundAmount: inv.refundAmount || 0,
-        refundReason: inv.refundReason,
-        refundedAt: inv.refundedAt?.toISOString(),
-        subscriptionId: inv.subscriptionId,
-      };
-    });
-
-    // Calculate stats
+    // Calculate stats from subscriptions
     const revenueStats = await db
       .select({
         totalRevenue: sql<number>`COALESCE(SUM(${subscriptions.price}), 0)`,
@@ -243,14 +249,43 @@ export async function fetchBillingData(): Promise<ActionResult<{
       })
       .from(subscriptions);
 
-    const invoiceStats = await db
+    // Calculate stats from invoices - handle decimal type properly
+    const invoiceStatsResult = await db
       .select({
-        pendingCount: sql<number>`COUNT(*) FILTER (WHERE ${invoices.status} = 'pending')`,
-        pendingAmount: sql<number>`COALESCE(SUM(${invoices.totalAmount}) FILTER (WHERE ${invoices.status} = 'pending'), 0)`,
-        paidAmount: sql<number>`COALESCE(SUM(${invoices.totalAmount}) FILTER (WHERE ${invoices.status} = 'paid'), 0)`,
-        refundedAmount: sql<number>`COALESCE(SUM(${invoices.refundAmount}), 0)`,
+        pendingCount: sql<number>`COUNT(*) FILTER (WHERE ${invoices.status} = 'sent')`,
+        draftCount: sql<number>`COUNT(*) FILTER (WHERE ${invoices.status} = 'draft')`,
+        paidCount: sql<number>`COUNT(*) FILTER (WHERE ${invoices.status} = 'paid')`,
+        overdueCount: sql<number>`COUNT(*) FILTER (WHERE ${invoices.status} = 'overdue')`,
+        pendingAmount: invoices.totalAmount,
+        paidAmount: invoices.totalAmount,
+        refundedAmount: invoices.refundAmount,
       })
       .from(invoices);
+
+    // Aggregate invoice stats manually to handle decimal conversion
+    let pendingCount = 0;
+    let pendingAmount = 0;
+    let paidAmount = 0;
+    let refundedAmount = 0;
+
+    for (const stat of invoiceStatsResult) {
+      if (stat.pendingAmount) {
+        pendingAmount += decimalToNumber(stat.pendingAmount);
+      }
+      if (stat.refundedAmount) {
+        refundedAmount += decimalToNumber(stat.refundedAmount);
+      }
+    }
+
+    // Count by status
+    for (const inv of invoicesResult) {
+      if (inv.status === "sent" || inv.status === "draft") {
+        pendingCount++;
+      }
+      if (inv.status === "paid") {
+        paidAmount += decimalToNumber(inv.totalAmount);
+      }
+    }
 
     const mrrResult = await db
       .select({
@@ -268,12 +303,12 @@ export async function fetchBillingData(): Promise<ActionResult<{
       totalRevenue: revenueStats[0]?.totalRevenue || 0,
       revenueChange: 12, // Mock value - would be calculated from historical data
       activeSubscriptions: revenueStats[0]?.activeCount || 0,
-      pendingInvoices: invoiceStats[0]?.pendingCount || 0,
+      pendingInvoices: pendingCount,
       overduePayments: revenueStats[0]?.pastDueCount || 0,
       monthlyRecurring: mrrResult[0]?.mrr || 0,
-      pendingAmount: invoiceStats[0]?.pendingAmount || 0,
-      paidAmount: invoiceStats[0]?.paidAmount || 0,
-      refundedAmount: invoiceStats[0]?.refundedAmount || 0,
+      pendingAmount,
+      paidAmount,
+      refundedAmount,
     };
 
     // Generate revenue chart data (mock - in production would come from analytics)
@@ -311,50 +346,42 @@ export async function fetchBillingData(): Promise<ActionResult<{
 // ============================================================================
 
 /**
- * Create a new invoice for a subscription
+ * Create a new invoice for a school
  */
 export async function createInvoice(data: {
-  subscriptionId: string;
+  schoolId: string;
   amount: number;
   notes?: string;
   taxAmount?: number;
   discountAmount?: number;
   dueDays?: number;
+  subscriptionTier?: string;
+  billingPeriodStart?: Date;
+  billingPeriodEnd?: Date;
 }): Promise<ActionResult<{ invoiceNumber: string; id: string }>> {
   const authResult = await requireAuth(["admin"]);
   if ("error" in authResult) {
     return { success: false, error: authResult.error };
   }
 
-  const { subscriptionId, amount, notes, taxAmount = 0, discountAmount = 0, dueDays = 30 } = data;
+  const { schoolId, amount, notes, taxAmount = 0, discountAmount = 0, dueDays = 30, subscriptionTier = "standard", billingPeriodStart, billingPeriodEnd } = data;
 
-  if (!subscriptionId || !amount) {
-    return { success: false, error: "Subscription ID and amount are required" };
+  if (!schoolId || !amount) {
+    return { success: false, error: "School ID and amount are required" };
   }
 
   try {
-    // Get subscription details
-    const subscription = await db
-      .select({
-        id: subscriptions.id,
-        tenantId: subscriptions.tenantId,
-        price: subscriptions.price,
-        currency: subscriptions.currency,
-        billingCycle: subscriptions.billingCycle,
-        currentPeriodStart: subscriptions.currentPeriodStart,
-        currentPeriodEnd: subscriptions.currentPeriodEnd,
-        planName: subscriptionPlans.name,
-      })
-      .from(subscriptions)
-      .leftJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
-      .where(eq(subscriptions.id, subscriptionId))
+    // Verify school exists
+    const school = await db
+      .select()
+      .from(schools)
+      .where(eq(schools.id, schoolId))
       .limit(1);
 
-    if (subscription.length === 0) {
-      return { success: false, error: "Subscription not found" };
+    if (school.length === 0) {
+      return { success: false, error: "School not found" };
     }
 
-    const sub = subscription[0];
     const now = new Date();
     const dueDate = new Date(now.getTime() + dueDays * 24 * 60 * 60 * 1000);
 
@@ -373,30 +400,23 @@ export async function createInvoice(data: {
     const invoiceId = `inv-${nanoid()}`;
     await db.insert(invoices).values({
       id: invoiceId,
-      subscriptionId,
-      tenantId: sub.tenantId,
+      schoolId,
       invoiceNumber,
       invoiceDate: now,
-      periodStart: sub.currentPeriodStart || now,
-      periodEnd: sub.currentPeriodEnd || dueDate,
-      amount,
-      taxAmount,
-      discountAmount,
-      totalAmount,
-      currency: sub.currency,
-      status: "pending",
+      billingPeriodStart: billingPeriodStart || now,
+      billingPeriodEnd: billingPeriodEnd || dueDate,
+      amount: numberToDecimal(amount),
+      taxAmount: numberToDecimal(taxAmount),
+      discountAmount: numberToDecimal(discountAmount),
+      totalAmount: numberToDecimal(totalAmount),
+      currency: "BTN",
+      status: "sent",
       dueDate,
       notes,
-      lineItems: [
-        {
-          description: `${sub.planName} - ${sub.billingCycle} subscription`,
-          quantity: 1,
-          unitPrice: amount,
-          amount: amount,
-        },
-      ],
+      createdBy: authResult.userId,
       createdAt: now,
       updatedAt: now,
+      subscriptionTier,
     });
 
     revalidatePath("/admin/billing");
@@ -421,14 +441,14 @@ export async function updateInvoiceStatus(data: {
   action: string;
   status?: string;
   paymentMethod?: string;
-  paymentDetails?: Record<string, unknown>;
+  paymentReference?: string;
 }): Promise<ActionResult> {
   const authResult = await requireAuth(["admin"]);
   if ("error" in authResult) {
     return { success: false, error: authResult.error };
   }
 
-  const { invoiceId, action, status, paymentMethod, paymentDetails } = data;
+  const { invoiceId, action, status, paymentMethod, paymentReference } = data;
 
   if (!invoiceId) {
     return { success: false, error: "Invoice ID is required" };
@@ -443,7 +463,7 @@ export async function updateInvoiceStatus(data: {
             status: "paid",
             paidAt: new Date(),
             paymentMethod: paymentMethod || "manual",
-            paymentDetails: paymentDetails || {},
+            paymentReference: paymentReference,
             updatedAt: new Date(),
           })
           .where(eq(invoices.id, invoiceId));
@@ -467,17 +487,22 @@ export async function updateInvoiceStatus(data: {
         break;
       }
 
-      case "record_payment": {
-        const amount = (data as { amount?: number }).amount || 0;
-        const isFullyPaid = amount > 0; // Simplified check
-
+      case "mark_sent": {
         await db
           .update(invoices)
           .set({
-            status: isFullyPaid ? "paid" : "pending",
-            paidAt: isFullyPaid ? new Date() : null,
-            paymentMethod: paymentMethod || "manual",
-            paymentDetails: paymentDetails || {},
+            status: "sent",
+            updatedAt: new Date(),
+          })
+          .where(eq(invoices.id, invoiceId));
+        break;
+      }
+
+      case "cancel": {
+        await db
+          .update(invoices)
+          .set({
+            status: "cancelled",
             updatedAt: new Date(),
           })
           .where(eq(invoices.id, invoiceId));
@@ -492,7 +517,7 @@ export async function updateInvoiceStatus(data: {
               status,
               ...(status === "paid" && { paidAt: new Date() }),
               ...(paymentMethod && { paymentMethod }),
-              ...(paymentDetails && { paymentDetails }),
+              ...(paymentReference && { paymentReference }),
               updatedAt: new Date(),
             })
             .where(eq(invoices.id, invoiceId));
@@ -550,20 +575,22 @@ export async function processRefund(data: {
       return { success: false, error: "Can only refund paid invoices" };
     }
 
-    const availableAmount = (invoice.totalAmount || invoice.amount) - (invoice.refundAmount || 0);
+    const totalAmount = decimalToNumber(invoice.totalAmount);
+    const currentRefundAmount = decimalToNumber(invoice.refundAmount);
+    const availableAmount = totalAmount - currentRefundAmount;
 
     if (refundAmount > availableAmount) {
       return { success: false, error: "Refund amount exceeds available balance" };
     }
 
     // Calculate new refund amount (cumulative)
-    const newRefundAmount = (invoice.refundAmount || 0) + refundAmount;
-    const isFullyRefunded = newRefundAmount >= (invoice.totalAmount || invoice.amount);
+    const newRefundAmount = currentRefundAmount + refundAmount;
+    const isFullyRefunded = newRefundAmount >= totalAmount;
 
     await db
       .update(invoices)
       .set({
-        refundAmount: newRefundAmount,
+        refundAmount: numberToDecimal(newRefundAmount),
         refundReason,
         refundedAt: new Date(),
         status: isFullyRefunded ? "refunded" : "paid",
@@ -577,7 +604,7 @@ export async function processRefund(data: {
       success: true,
       data: {
         refundAmount: newRefundAmount,
-        remainingAmount: (invoice.totalAmount || invoice.amount) - newRefundAmount,
+        remainingAmount: totalAmount - newRefundAmount,
         isFullyRefunded,
       },
       message: isFullyRefunded ? "Invoice fully refunded" : "Partial refund processed",

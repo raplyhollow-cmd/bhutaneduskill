@@ -380,8 +380,9 @@ export default function AdminBillingPage() {
     setActionMessage(null);
 
     startTransition(async () => {
+      // Get school ID from the subscription (subscription.id is the school ID in our context)
       const result = await createInvoice({
-        subscriptionId: selectedSubscription,
+        schoolId: selectedSubscription,
         amount: parseInt(invoiceAmount, 10),
         notes: invoiceNotes || undefined,
       });
@@ -430,10 +431,7 @@ export default function AdminBillingPage() {
         invoiceId: paymentInvoice.id,
         action: "record_payment",
         paymentMethod,
-        paymentDetails: {
-          notes: paymentNotes,
-          amount: parseInt(paymentAmount, 10),
-        },
+        paymentReference: paymentNotes || `txn-${Date.now()}`,
       });
 
       if (result.success) {
@@ -1347,7 +1345,7 @@ export default function AdminBillingPage() {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium text-gray-700">
-                  Select Subscription *
+                  Select School *
                 </label>
                 <select
                   required
@@ -1355,7 +1353,7 @@ export default function AdminBillingPage() {
                   onChange={(e) => setSelectedSubscription(e.target.value)}
                   className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 outline-none"
                 >
-                  <option value="">Choose a subscription...</option>
+                  <option value="">Choose a school...</option>
                   {subscriptions.map((sub) => (
                     <option key={sub.id} value={sub.id}>
                       {sub.schoolName} - {sub.plan} ({formatCurrency(sub.price)})

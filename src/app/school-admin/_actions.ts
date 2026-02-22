@@ -1,5 +1,6 @@
 "use server";
 import { logger } from "@/lib/logger";
+import { parseJsonArray, stringifyJson } from "@/lib/db/json-helpers";
 
 /**
  * SCHOOL ADMIN SERVER ACTIONS
@@ -366,8 +367,15 @@ export async function fetchAnnouncements(options: {
       .limit(options.limit || 50)
       .offset(options.offset || 0);
 
+    // Parse JSON fields (stored as text in DB)
+    const parsedResults = results.map((r) => ({
+      ...r,
+      targetClassIds: parseJsonArray<string>(r.targetClassIds) as string[] | null,
+      targetUserIds: parseJsonArray<string>(r.targetUserIds) as string[] | null,
+    })) as AnnouncementData[];
+
     return {
-      announcements: results as AnnouncementData[],
+      announcements: parsedResults,
       total: total as number,
     };
   } catch (error) {
@@ -397,7 +405,14 @@ export async function fetchAnnouncementById(id: string): Promise<AnnouncementDat
       .where(and(eq(announcementsTable.id, id), eq(announcementsTable.schoolId, schoolId)))
       .limit(1);
 
-    return (announcement as AnnouncementData) || null;
+    if (!announcement) return null;
+
+    // Parse JSON fields (stored as text in DB)
+    return {
+      ...announcement,
+      targetClassIds: parseJsonArray<string>(announcement.targetClassIds) as string[] | null,
+      targetUserIds: parseJsonArray<string>(announcement.targetUserIds) as string[] | null,
+    } as AnnouncementData;
   } catch (error) {
     logger.error("Failed to fetch announcement:", error);
     return null;
@@ -455,6 +470,18 @@ export async function createAnnouncement(data: {
     const now = new Date();
     const publishedAt = data.isPublished ? now : null;
 
+    // Stringify JSON arrays for text columns (DB expects text for targetClassIds and targetUserIds)
+    const targetClassIdsStr = data.targetClassIds ? stringifyJson(data.targetClassIds) : null;
+    const targetUserIdsStr = data.targetUserIds ? stringifyJson(data.targetUserIds) : null;
+
+    // Prepare attachments as array (stored as json in DB)
+    const attachmentsArray = data.attachments?.map(att => ({
+      id: `att_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      name: att.name,
+      url: att.url,
+      type: att.type,
+    })) || null;
+
     const [announcement] = await db
       .insert(announcementsTable)
       .values({
@@ -465,24 +492,19 @@ export async function createAnnouncement(data: {
         authorRole,
         title: data.title,
         content: data.content,
-        excerpt: data.excerpt || null,
+        excerpt: data.excerpt || "",
         targetAudience: data.targetAudience,
-        targetGradeLevel: data.targetGradeLevel || null,
-        targetClassIds: data.targetClassIds || null,
-        targetUserIds: data.targetUserIds || null,
+        targetGradeLevel: data.targetGradeLevel || "",
+        targetClassIds: targetClassIdsStr,
+        targetUserIds: targetUserIdsStr,
         priority: data.priority || "normal",
         category: data.category || "general",
         isPublished: !!data.isPublished,
         isPinned: !!data.isPinned,
         isArchived: false,
-        attachments: data.attachments?.map(att => ({
-          id: `att_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          name: att.name,
-          url: att.url,
-          type: att.type,
-        })) || null,
-        publishDate: data.publishDate || null,
-        expiryDate: data.expiryDate || null,
+        attachments: attachmentsArray,
+        publishDate: data.publishDate || "",
+        expiryDate: data.expiryDate || "",
         viewCount: 0,
         createdAt: now,
         updatedAt: now,

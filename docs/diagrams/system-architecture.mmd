@@ -1,0 +1,462 @@
+# Bhutan EduSkill - System Architecture Flow Diagrams
+
+## User Registration & Onboarding Flow
+
+```mermaid
+flowchart TD
+    A[User Visits /signup] --> B{Select Portal Type}
+    B -->|Student| C[Student Signup]
+    B -->|Teacher| D[Teacher Signup]
+    B -->|Parent| E[Parent Signup]
+    B -->|School Admin| F[School Admin Signup]
+    B -->|Platform Admin| G[Admin Setup]
+
+    C --> H[POST /api/setup/student]
+    D --> I[POST /api/setup/teacher]
+    E --> J[POST /api/setup/parent]
+    F --> K[POST /api/setup/school-admin]
+    G --> L[POST /api/setup/admin]
+
+    H --> M{User exists in DB?}
+    I --> N{User exists in DB?}
+    J --> O{User exists in DB?}
+    K --> P{User exists in DB?}
+    L --> Q{User exists in DB?}
+
+    M -->|No| R[Create User Record<br/>users table]
+    N -->|No| S[Create User Record]
+    O -->|No| T[Create User Record]
+    P -->|No| U[Create User Record]
+    Q -->|No| V[Create User & Admin Role]
+
+    M -->|Yes| W[Update User Record]
+    N -->|Yes| X[Update User Record]
+    O -->|Yes| Y[Update User Record]
+    P -->|Yes| Z[Update User Record]
+    Q -->|Yes| AA[Update User Record]
+
+    R --> AB[Create Student Record<br/>students table]
+    S --> AC[Create Teacher Record<br/>teachers table]
+    T --> AD[Create Parent Record<br/>parents table]
+    U --> AE[School Admin Application<br/>school_admin_applications table]
+    V --> AF[Assign Admin Role<br/>user_roles table]
+
+    AE --> AG[Pending Approval]
+    AF --> AH[Admin Dashboard Access]
+
+    style A fill:#e1f5ff
+    style AB fill:#d4edda
+    style AC fill:#d4edda
+    style AD fill:#d4edda
+    style AE fill:#fff3cd
+    style AF fill:#d1ecf1
+    style AH fill:#d4edda
+```
+
+## School Admin Approval Flow (Platform Admin)
+
+```mermaid
+flowchart TD
+    A[Platform Admin Logged In] --> B[Navigate to /admin/school-admin-applications]
+    B --> C[GET /api/admin/school-admin-applications]
+    C --> D[Fetch All Applications]
+
+    D --> E{Application Status}
+    E -->|pending_approval| F[Show Approve/Reject Buttons]
+    E -->|approved| G[Show Approved Badge]
+    E -->|rejected| H[Show Rejected Badge]
+
+    F --> I[Click Approve Button]
+    I --> J[POST /api/admin/school-admin-applications/:id/approve]
+
+    J --> K[Verify Application Exists]
+    K --> L[Update Application Status → approved]
+    L --> M[Set reviewedAt & reviewedBy]
+    M --> N[Update User Type → school-admin]
+
+    N --> O[Assign school-admin Role<br/>user_roles table]
+    O --> P[Link User to School<br/>users.schoolId]
+
+    P --> Q[Success Response]
+    Q --> R[Refresh Page - Status: approved]
+
+    style A fill:#e1f5ff
+    style K fill:#f8d7da
+    style L fill:#d4edda
+    style O fill:#d4edda
+    style P fill:#d4edda
+    style Q fill:#d4edda
+    style R fill:#c3e6cb
+```
+
+## School Creation Flow (Platform Admin)
+
+```mermaid
+flowchart TD
+    A[Platform Admin Logged In] --> B[Navigate to /admin/schools]
+    B --> C[Click Add School Button]
+    C --> D[AddSchoolModal Opens]
+
+    D --> E[Fill School Form]
+    E --> F[School Name, Code, Address]
+    F --> G[Contact Details]
+    G --> H[Subscription Tier: free/basic/premium]
+
+    H --> I[Submit Form]
+    I --> J[POST /api/admin/schools]
+
+    J --> K[Validate Input Data]
+    K --> L[Generate School ID]
+    L --> M[INSERT into schools Table]
+
+    M --> N[School Created Successfully]
+    N --> O[Return School Data]
+    O --> P[Close Modal]
+    P --> Q[Refresh Schools List]
+
+    Q --> R[View School in List]
+    R --> S[Click Manage School]
+    S --> T[Navigate to /admin/schools/:id]
+
+    T --> U[School Details View]
+    U --> V[Edit School, Manage Billing,<br/>View Students, Activate/Suspend]
+
+    style A fill:#e1f5ff
+    style D fill:#fff3cd
+    style M fill:#d4edda
+    style N fill:#d4edda
+    style U fill:#e8f5e9
+```
+
+## Student Profile Data Flow
+
+```mermaid
+flowchart LR
+    A[Student Logged In] --> B[/student/dashboard]
+    B --> C[GET /api/student/profile]
+
+    C --> D[Fetch users Table]
+    D --> E[Join students Table]
+    E --> F[Join schools Table]
+
+    F --> G[Return Combined Data]
+    G --> H{Student Record Exists?}
+
+    H -->|Yes| I[Display Profile Info:<br/>Name, Class, School]
+    H -->|No| J[Redirect to Setup]
+
+    I --> K[Update Profile Form]
+    K --> L[PATCH /api/student/profile]
+    L --> M[Update students Table]
+    M --> N[Update users Table]
+
+    N --> O[Profile Updated Successfully]
+    O --> P[Refresh Dashboard Data]
+
+    style A fill:#ff9966
+    style D fill:#ffd9b3
+    style E fill:#d4edda
+    style M fill:#d4edda
+    style O fill:#c3e6cb
+```
+
+## AI Career Coach Data Flow
+
+```mermaid
+flowchart TD
+    A[Student Takes Assessment] --> B[POST /api/student/assessments]
+    B --> C[Store Results:<br/>riasec_results, mbti_results]
+
+    C --> D[Student Opens AI Coach]
+    D --> E[POST /api/ai/career]
+
+    E --> F[Fetch Student Data:<br/>Grades, Interests,<br/>Assessment Results]
+    F --> G[Build Context Snapshot]
+
+    G --> H[Call Gemini API]
+    H --> I[Bhutan-Specific System Prompt]
+    I --> J[RUB Colleges Data]
+    J --> K[BCSE Requirements]
+    K --> L[National Workforce Priorities]
+
+    L --> M[Generate Career Recommendations]
+    M --> N[Return Localized Advice:<br/>"Consider ILCS at Taktse for<br/>your Dzongkha skills"]
+
+    N --> O[Store in ai_interactions Table]
+    O --> P[Display to Student]
+
+    style A fill:#ff9966
+    style H fill:#e8f5e9
+    style I fill:#d4edda
+    style M fill:#c3e6cb
+    style O fill:#d1ecf1
+```
+
+## Library Book Circulation Flow
+
+```mermaid
+flowchart TD
+    A[Student/Teacher] --> B[GET /api/library/books]
+    B --> C[View Available Books]
+
+    C --> D[Request to Borrow Book]
+    D --> E[POST /api/library/issue]
+
+    E --> F[Check: available_copies > 0?]
+    F -->|No| G[Show Error: Book Unavailable]
+    F -->|Yes| H[Create library_circulation Record]
+
+    H --> I[Set status: issued]
+    I --> J[Decrement available_copies]
+    J --> K[Increment currently_borrowed]
+
+    K --> L[Set dueDate = today + 14 days]
+    L --> M[Return Circulation Record]
+
+    M --> N[Book Issued Successfully]
+    N --> O[Book Checkout Complete]
+
+    O --> P[Student Returns Book]
+    P --> Q[PATCH /api/library/issue/:id/return]
+
+    Q --> R[Update status: returned]
+    R --> S[Set returnDate]
+    S --> T[Increment available_copies]
+    T --> U[Calculate Fine if Overdue]
+
+    U --> V[Update library_circulation Record]
+    V --> W[Return Book Successfully]
+
+    style A fill:#7b68ee
+    style H fill:#d4edda
+    style M fill:#d4edda
+    style R fill:#d4edda
+    style V fill:#d4edda
+    style W fill:#c3e6cb
+```
+
+## Invoice & Billing Data Flow
+
+```mermaid
+flowchart TD
+    A[Admin Creates Invoice] --> B[POST /api/admin/billing/create-invoice]
+    B --> C[Generate Invoice ID]
+    C --> D[INSERT into invoices Table]
+
+    D --> E[Set amount, taxAmount,<br/>discountAmount, totalAmount]
+    E --> F[Set invoiceDate, dueDate]
+    F --> G[Set status: draft]
+
+    G --> H[Invoice Created]
+    H --> I[Send Invoice to School]
+
+    I --> J[School Makes Payment]
+    J --> K[POST /api/billing/invoices/:id/record-payment]
+
+    K --> L[Update paymentReference]
+    L --> M[Update paymentMethod]
+    M --> N[Set paidAt Date]
+
+    N --> O[Update status: paid]
+    O --> P[Payment Recorded]
+
+    P --> Q[View Dashboard]
+    Q --> R[GET /api/admin/stats]
+    R --> S[Calculate Revenue Stats]
+
+    S --> T[SUM all invoice.totalAmount]
+    T --> U[COUNT by status]
+    U --> V[Display Dashboard Metrics]
+
+    style A fill:#ec4899
+    style D fill:#d4edda
+    style K fill:#fff3cd
+    style O fill:#d4edda
+    style T fill:#d4edda
+    style V fill:#e8f5e9
+```
+
+## Complete System Architecture
+
+```mermaid
+graph TB
+    subgraph "Frontend Layer"
+        A1[Student Portal<br/>/student/*]
+        A2[Teacher Portal<br/>/teacher/*]
+        A3[Parent Portal<br/>/parent/*]
+        A4[School Admin Portal<br/>/school-admin/*]
+        A5[Platform Admin Portal<br/>/admin/*]
+        A6[Ministry Portal<br/>/ministry/*]
+    end
+
+    subgraph "API Layer"
+        B1[Student APIs<br/>/api/student/*]
+        B2[Teacher APIs<br/>/api/teacher/*]
+        B3[Parent APIs<br/>/api/parent/*]
+        B4[School Admin APIs<br/>/api/school-admin/*]
+        B5[Admin APIs<br/>/api/admin/*]
+        B6[Ministry APIs<br/>/api/ministry/*]
+        B7[Shared APIs<br/>/api/auth/*<br/>/api/setup/*]
+        B8[Billing APIs<br/>/api/billing/*]
+        B9[Library APIs<br/>/api/library/*]
+        B10[AI APIs<br/>/api/ai/*]
+    end
+
+    subgraph "Business Logic Layer"
+        C1[Auth Utils<br/>requireAuth()]
+        C2[RBAC<br/>requirePermission()]
+        C3[API Utils<br/>createSafeHandler()]
+        C4[Logger<br/>error tracking]
+    end
+
+    subgraph "Data Layer"
+        D1[(PostgreSQL Database)]
+        D2[Drizzle ORM]
+        D3[Schema Definitions<br/>schema.ts]
+    end
+
+    A1 --> B1
+    A2 --> B2
+    A3 --> B3
+    A4 --> B4
+    A5 --> B5
+    A6 --> B6
+
+    B1 --> C1
+    B2 --> C1
+    B3 --> C1
+    B4 --> C1
+    B5 --> C1
+    B6 --> C1
+
+    C1 --> C2
+    C1 --> C3
+    C1 --> C4
+
+    C3 --> D2
+    D2 --> D3
+    D3 --> D1
+
+    style A1 fill:#ff9966
+    style A2 fill:#3b82f6
+    style A3 fill:#9ca3af
+    style A4 fill:#8b5cf6
+    style A5 fill:#ec4899
+    style A6 fill:#a855f7
+    style D1 fill:#10b981
+```
+
+## Database Schema Relationships
+
+```mermaid
+erDiagram
+    users ||--o{ students : "userId"
+    users ||--o{ teachers : "userId"
+    users ||--o{ parents : "userId"
+    users ||--o{ user_roles : "userId"
+
+    schools ||--o{ students : "schoolId"
+    schools ||--o{ teachers : "schoolId"
+    schools ||--o{ invoices : "schoolId"
+    schools ||--o{ subscriptions : "schoolId"
+
+    parents ||--o{ parent_to_student : "parentId"
+    students ||--o{ parent_to_student : "studentId"
+
+    students ||--o{ student_portfolios : "studentId"
+    students ||--o{ homework_submissions : "studentId"
+    students ||--o{ attendance_records : "studentId"
+
+    library_members ||--o{ library_circulation : "memberId"
+    library_books ||--o{ library_circulation : "bookId"
+
+    users ||--o{ ai_interactions : "userId"
+    users ||--o{ assessments : "userId"
+
+    roles ||--o{ user_roles : "roleId"
+    roles ||--o{ role_permissions : "roleId"
+    permissions ||--o{ role_permissions : "permissionId"
+
+    users ||--o{ school_admin_applications : "userId"
+    schools ||--o{ school_admin_applications : "schoolId"
+```
+
+## Request-Response Flow (Happy Path)
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant UI as Next.js Frontend
+    participant API as API Route
+    participant Auth as requireAuth()
+    participant DB as PostgreSQL
+
+    User->>UI: Click "Approve" Button
+    UI->>API: POST /api/admin/school-admin-applications/:id/approve
+
+    API->>Auth: requireAuth(['admin'])
+    Auth->>DB: SELECT * FROM users WHERE clerkUserId = ?
+    DB-->>Auth: User Data
+    Auth-->>API: { userId, user }
+
+    API->>Auth: requirePermission(userId, 'schools.approve')
+    Auth->>DB: CHECK user_roles
+    Auth-->>API: Permission Granted
+
+    API->>DB: SELECT * FROM school_admin_applications WHERE id = ?
+    DB-->>API: Application Data
+
+    API->>DB: UPDATE school_admin_applications SET status = 'approved'
+    API->>DB: UPDATE users SET type = 'school-admin' WHERE id = ?
+    API->>DB: INSERT INTO user_roles (userId, roleId) VALUES (?, ?)
+
+    DB-->>API: Update Complete
+    API->>Auth: logger.info("Application approved", { applicationId, userId })
+
+    API-->>UI: { success: true, data: application }
+    UI-->>User: Show Success Toast
+    UI->>UI: Refresh Page Data
+    UI-->>User: Updated List with Approved Badge
+```
+
+## Error Handling Flow
+
+```mermaid
+flowchart TD
+    A[API Request Received] --> B[try Block]
+    B --> C{requireAuth Check}
+    C -->|Failed| D[Return 401 Unauthorized]
+    C -->|Success| E{requirePermission Check}
+
+    E -->|Failed| F[Return 403 Forbidden]
+    E -->|Success| G[Execute Database Query]
+
+    G --> H{Query Successful?}
+    H -->|Error| I[logger.apiError]
+    H -->|Success| J[logger.info]
+
+    I --> K[Return 500 with Error Message]
+    J --> L[Return 200 with Data]
+
+    K --> M[client sees: "An error occurred"]
+    L --> N[client receives data]
+
+    style D fill:#f8d7da
+    style F fill:#f8d7da
+    style I fill:#fff3cd
+    style K fill:#f8d7da
+    style L fill:#d4edda
+    style M fill:#f8d7da
+    style N fill:#d4edda
+```
+
+## Key: Colors
+- 🟧 Orange: Student Portal
+- 🔵 Blue: Teacher Portal
+- 🟪 Gray: Parent Portal
+- 🟣 Purple: School Admin Portal
+- 🔴 Pink: Platform Admin Portal
+- 🟣 Purple: Ministry Portal
+- 🟢 Green: Success
+- 🔴 Red: Error
+- 🟡 Yellow: Warning

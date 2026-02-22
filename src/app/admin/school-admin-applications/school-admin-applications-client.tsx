@@ -20,6 +20,9 @@ import {
   Filter,
   FileText,
   ChevronDown,
+  ShieldCheck,
+  ShieldAlert,
+  Receipt,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -46,6 +49,8 @@ interface Application {
   paymentDate: Date | null;
   paymentMethod: string | null;
   paymentReference: string | null;
+  paymentVerifiedAt: Date | null;
+  bankReferenceNumber: string | null;
   appliedAt: Date | string;
   reviewedAt: Date | null;
   rejectionReason: string | null;
@@ -150,14 +155,12 @@ export function SchoolAdminApplicationsClient({
     if (!selectedApplication) return;
     setLoading(selectedApplication.id);
     try {
-      const response = await fetch(`/api/admin/school-admin-applications/${selectedApplication.id}`, {
-        method: "PATCH",
+      const response = await fetch(`/api/admin/school-admin-applications/${selectedApplication.id}/verify-payment`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          paymentStatus: "paid",
+          bankReferenceNumber: paymentDetails.reference,
           paymentAmount: parseFloat(paymentDetails.amount),
-          paymentReference: paymentDetails.reference,
-          paymentMethod: paymentDetails.method,
           paymentDate: new Date().toISOString(),
         }),
       });
@@ -170,6 +173,27 @@ export function SchoolAdminApplicationsClient({
       } else {
         const data = await response.json();
         alert(data.error || "Failed to verify payment");
+      }
+    } catch (error) {
+      alert("Network error. Please try again.");
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleRevokeVerification = async (applicationId: string) => {
+    if (!confirm("Are you sure you want to revoke payment verification?")) return;
+    setLoading(applicationId);
+    try {
+      const response = await fetch(`/api/admin/school-admin-applications/${applicationId}/verify-payment`, {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        router.refresh();
+      } else {
+        const data = await response.json();
+        alert(data.error || "Failed to revoke verification");
       }
     } catch (error) {
       alert("Network error. Please try again.");
@@ -206,32 +230,53 @@ export function SchoolAdminApplicationsClient({
     }
   };
 
-  const getPaymentStatusBadge = (status: string) => {
-    switch (status) {
-      case "paid":
-        return (
-          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-            <DollarSign className="w-3 h-3 mr-1" />
-            Paid
+  const getPaymentStatusBadge = (application: Application) => {
+    const { paymentStatus, paymentVerifiedAt, bankReferenceNumber } = application;
+
+    // Verified payment (paid and has verification data)
+    if (paymentStatus === "paid" && paymentVerifiedAt && bankReferenceNumber) {
+      return (
+        <div className="flex flex-col gap-1">
+          <Badge variant="ceramic-success" className="border-green-200 bg-green-50">
+            <ShieldCheck className="w-3 h-3 mr-1" />
+            Payment Verified
           </Badge>
-        );
-      case "pending":
-        return (
-          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
-            <AlertCircle className="w-3 h-3 mr-1" />
-            Payment Pending
-          </Badge>
-        );
-      case "failed":
-        return (
-          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-            <XCircle className="w-3 h-3 mr-1" />
-            Failed
-          </Badge>
-        );
-      default:
-        return <Badge variant="outline">{status}</Badge>;
+          <span className="text-xs text-gray-500">Ref: {bankReferenceNumber}</span>
+        </div>
+      );
     }
+
+    // Paid but not fully verified (legacy case)
+    if (paymentStatus === "paid") {
+      return (
+        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+          <DollarSign className="w-3 h-3 mr-1" />
+          Paid
+        </Badge>
+      );
+    }
+
+    // Pending payment
+    if (paymentStatus === "pending") {
+      return (
+        <Badge variant="ceramic-warning" className="border-yellow-200 bg-yellow-50">
+          <ShieldAlert className="w-3 h-3 mr-1" />
+          Payment Pending
+        </Badge>
+      );
+    }
+
+    // Failed payment
+    if (paymentStatus === "failed") {
+      return (
+        <Badge variant="ceramic-error" className="border-red-200 bg-red-50">
+          <XCircle className="w-3 h-3 mr-1" />
+          Payment Failed
+        </Badge>
+      );
+    }
+
+    return <Badge variant="outline">{paymentStatus}</Badge>;
   };
 
   const formatDate = (date: Date | string | null) => {
@@ -399,7 +444,7 @@ export function SchoolAdminApplicationsClient({
                         </div>
                         <div className="flex flex-wrap gap-2">
                           {getStatusBadge(application.status)}
-                          {getPaymentStatusBadge(application.paymentStatus)}
+                          {getPaymentStatusBadge(application)}
                         </div>
                       </div>
 
@@ -440,6 +485,13 @@ export function SchoolAdminApplicationsClient({
                               <span>Ref: {application.paymentReference}</span>
                             </div>
                           )}
+                          {application.bankReferenceNumber && (
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <Receipt className="w-4 h-4" />
+                              <span>Bank Ref: {application.bankReferenceNumber}</span>
+                              <ShieldCheck className="w-4 h-4 text-green-600" />
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -459,43 +511,28 @@ export function SchoolAdminApplicationsClient({
                     <div className="flex lg:flex-col gap-2 lg:w-40">
                       {application.status === "pending_approval" && (
                         <>
-                          {application.paymentStatus !== "paid" ? (
-                            <Button
-                              variant="outline"
-                              className="flex-1 border-orange-500 text-orange-600 hover:bg-orange-50"
-                              onClick={() => {
-                                setSelectedApplication(application);
-                                setShowVerifyPaymentDialog(true);
-                              }}
-                              disabled={loading === application.id}
-                            >
-                              {loading === application.id ? "Processing..." : "Verify Payment"}
-                            </Button>
-                          ) : (
-                            <>
-                              <Button
-                                className="flex-1"
-                                style={{
-                                  background: "linear-gradient(135deg, rgb(34 197 94) 0%, rgb(22 163 74) 100%)",
-                                }}
-                                onClick={() => handleApprove(application.id)}
-                                disabled={loading === application.id}
-                              >
-                                {loading === application.id ? "Approving..." : "Approve"}
-                              </Button>
-                              <Button
-                                variant="outline"
-                                className="flex-1 border-red-500 text-red-600 hover:bg-red-50"
-                                onClick={() => {
-                                  setSelectedApplication(application);
-                                  setShowRejectDialog(true);
-                                }}
-                                disabled={loading === application.id}
-                              >
-                                Reject
-                              </Button>
-                            </>
-                          )}
+                          {/* Direct approve/reject for MVP - payment handled at school level */}
+                          <Button
+                            className="flex-1"
+                            style={{
+                              background: "linear-gradient(135deg, rgb(34 197 94) 0%, rgb(22 163 74) 100%)",
+                            }}
+                            onClick={() => handleApprove(application.id)}
+                            disabled={loading === application.id}
+                          >
+                            {loading === application.id ? "Approving..." : "Approve"}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="flex-1 border-red-500 text-red-600 hover:bg-red-50"
+                            onClick={() => {
+                              setSelectedApplication(application);
+                              setShowRejectDialog(true);
+                            }}
+                            disabled={loading === application.id}
+                          >
+                            Reject
+                          </Button>
                         </>
                       )}
                       {application.status === "approved" && application.reviewedAt && (
@@ -560,72 +597,108 @@ export function SchoolAdminApplicationsClient({
 
       {/* Verify Payment Dialog */}
       <Dialog open={showVerifyPaymentDialog} onOpenChange={setShowVerifyPaymentDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Verify Payment</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
+                <Receipt className="w-4 h-4 text-orange-600" />
+              </div>
+              Verify Payment
+            </DialogTitle>
             <DialogDescription>
-              Confirm payment details for this school admin application.
+              Enter the payment verification details to confirm payment for this school admin application.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="paymentAmount">Payment Amount (Nu.)</Label>
-              <input
-                id="paymentAmount"
-                type="number"
-                placeholder="e.g., 10000"
-                value={paymentDetails.amount}
-                onChange={(e) => setPaymentDetails({ ...paymentDetails, amount: e.target.value })}
-                className="w-full mt-2 px-3 py-2 rounded-lg border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 outline-none"
-              />
+          <div className="space-y-4 pt-2">
+            {/* Payment verification info */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-blue-900">
+                <strong>Verification Required:</strong> Please verify the bank reference number before approving this application.
+              </p>
             </div>
-            <div>
-              <Label htmlFor="paymentReference">Payment Reference</Label>
-              <input
-                id="paymentReference"
-                type="text"
-                placeholder="e.g., Bank transaction ID, Receipt number"
-                value={paymentDetails.reference}
-                onChange={(e) => setPaymentDetails({ ...paymentDetails, reference: e.target.value })}
-                className="w-full mt-2 px-3 py-2 rounded-lg border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 outline-none"
-              />
-            </div>
-            <div>
-              <Label htmlFor="paymentMethod">Payment Method</Label>
-              <select
-                id="paymentMethod"
-                value={paymentDetails.method}
-                onChange={(e) => setPaymentDetails({ ...paymentDetails, method: e.target.value })}
-                className="w-full mt-2 px-3 py-2 rounded-lg border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 outline-none"
-              >
-                <option value="bank_transfer">Bank Transfer</option>
-                <option value="cash">Cash</option>
-                <option value="online">Online Payment</option>
-                <option value="check">Check</option>
-              </select>
-            </div>
+
+            {/* Application summary */}
             {selectedApplication && (
-              <div className="bg-gray-50 rounded-lg p-3">
-                <p className="text-sm text-gray-700">
-                  <strong>School:</strong> {selectedApplication.schoolName}
-                  <br />
-                  <strong>Applicant:</strong> {selectedApplication.userName}
-                </p>
+              <div className="bg-gray-50 rounded-lg p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">School</span>
+                  <span className="text-sm font-medium text-gray-900">{selectedApplication.schoolName}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Applicant</span>
+                  <span className="text-sm font-medium text-gray-900">{selectedApplication.userName}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Email</span>
+                  <span className="text-sm text-gray-900">{selectedApplication.userEmail}</span>
+                </div>
               </div>
             )}
+
+            {/* Form fields */}
+            <div className="space-y-3">
+              <div>
+                <Label htmlFor="paymentAmount" className="text-sm font-medium">
+                  Payment Amount (Nu.) <span className="text-red-500">*</span>
+                </Label>
+                <div className="relative mt-1.5">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">Nu.</span>
+                  <input
+                    id="paymentAmount"
+                    type="number"
+                    placeholder="10000"
+                    value={paymentDetails.amount}
+                    onChange={(e) => setPaymentDetails({ ...paymentDetails, amount: e.target.value })}
+                    className="w-full pl-10 pr-3 py-2 rounded-md border border-gray-300 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="paymentReference" className="text-sm font-medium">
+                  Bank Reference Number <span className="text-red-500">*</span>
+                </Label>
+                <input
+                  id="paymentReference"
+                  type="text"
+                  placeholder="e.g., BTN123456789"
+                  value={paymentDetails.reference}
+                  onChange={(e) => setPaymentDetails({ ...paymentDetails, reference: e.target.value })}
+                  className="w-full mt-1.5 px-3 py-2 rounded-md border border-gray-300 text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none transition-all"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Enter the bank transaction ID or reference number from the payment receipt
+                </p>
+              </div>
+            </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowVerifyPaymentDialog(false)}>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowVerifyPaymentDialog(false)}
+              className="flex-1"
+            >
               Cancel
             </Button>
             <Button
-              style={{
-                background: "linear-gradient(135deg, rgb(34 197 94) 0%, rgb(22 163 74) 100%)",
-              }}
               onClick={handleVerifyPayment}
               disabled={!paymentDetails.amount || !paymentDetails.reference || loading === selectedApplication?.id}
+              className="flex-1"
+              style={{
+                background: "linear-gradient(135deg, rgb(139 92 246) 0%, rgb(124 58 237) 100%)",
+              }}
             >
-              {loading === selectedApplication?.id ? "Verifying..." : "Verify & Approve"}
+              {loading === selectedApplication?.id ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                  Verifying...
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="w-4 h-4 mr-2" />
+                  Verify Payment
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

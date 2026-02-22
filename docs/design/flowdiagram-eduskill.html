@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bhutan EduSkill - Project Flow Architecture</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background-color: #f8fafc;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        .flow-line {
+            width: 2px;
+            background: repeating-linear-gradient(to bottom, #cbd5e1 0, #cbd5e1 5px, transparent 5px, transparent 10px);
+            height: 40px;
+            margin: 0 auto;
+        }
+        .step-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .step-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        .tenant-box {
+            border: 2px dashed #cbd5e1;
+            background: rgba(255, 255, 255, 0.5);
+        }
+        .status-badge {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <header class="max-w-5xl mx-auto text-center mb-12">
+        <h1 class="text-4xl font-extrabold text-slate-900 mb-2">BHUTAN EDUSKILL</h1>
+        <p class="text-lg text-slate-600">Multi-Tenant Education Platform Ecosystem & Workflow</p>
+        <div class="mt-4 flex justify-center gap-4">
+            <span class="flex items-center gap-2 text-sm font-medium text-slate-500">
+                <i class="fas fa-shield-alt text-blue-500"></i> Tenant Isolated
+            </span>
+            <span class="flex items-center gap-2 text-sm font-medium text-slate-500">
+                <i class="fas fa-user-check text-green-500"></i> Multi-level Approval
+            </span>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto space-y-4">
+
+        <!-- STEP 1: SIGN UP -->
+        <section class="step-card bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="bg-indigo-600 p-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <span class="bg-white/20 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">1</span>
+                    <h2 class="text-white font-bold text-lg">Initial Onboarding & Identity</h2>
+                </div>
+                <span class="status-badge bg-indigo-200 text-indigo-800">Auth via Clerk</span>
+            </div>
+            <div class="p-6 grid md:grid-cols-2 gap-6">
+                <div class="space-y-3">
+                    <h3 class="font-semibold text-slate-800 flex items-center gap-2">
+                        <i class="fas fa-users text-indigo-500"></i> General Users
+                    </h3>
+                    <p class="text-sm text-slate-600">Students, Teachers, and Parents sign up normally but remain in a "Restricted" state until a valid School Code is provided.</p>
+                </div>
+                <div class="space-y-3 border-l pl-6 border-slate-100">
+                    <h3 class="font-semibold text-slate-800 flex items-center gap-2">
+                        <i class="fas fa-user-shield text-indigo-500"></i> School Admin / Counselor
+                    </h3>
+                    <p class="text-sm text-slate-600">Enter a pre-authorized <strong>School Code</strong>. System creates a pending application in <code>school_admin_applications</code>.</p>
+                </div>
+            </div>
+        </section>
+
+        <div class="flow-line"></div>
+
+        <!-- STEP 2 & 3: PLATFORM ADMIN -->
+        <section class="step-card bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="bg-slate-800 p-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <span class="bg-white/20 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">2-3</span>
+                    <h2 class="text-white font-bold text-lg">Platform Admin Oversight</h2>
+                </div>
+                <span class="status-badge bg-amber-400 text-slate-900">High Privilege</span>
+            </div>
+            <div class="p-6 space-y-6">
+                <div class="grid md:grid-cols-2 gap-8">
+                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                        <h4 class="font-bold text-slate-700 text-sm mb-3">SCHOOL CREATION</h4>
+                        <ul class="text-sm space-y-2 text-slate-600">
+                            <li><i class="fas fa-check-circle text-green-500 mr-2"></i> Register School Details</li>
+                            <li><i class="fas fa-check-circle text-green-500 mr-2"></i> Define Seat Limits (Max Students)</li>
+                            <li><i class="fas fa-key text-amber-500 mr-2"></i> Generate <strong>ABC-DIST-2024</strong> Code</li>
+                        </ul>
+                    </div>
+                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                        <h4 class="font-bold text-slate-700 text-sm mb-3">REVIEW APPLICATIONS</h4>
+                        <ul class="text-sm space-y-2 text-slate-600">
+                            <li><i class="fas fa-search text-blue-500 mr-2"></i> Verify Credentials & ID</li>
+                            <li><i class="fas fa-credit-card text-blue-500 mr-2"></i> Validate Payment (Bank Ref #)</li>
+                            <li><i class="fas fa-user-plus text-green-500 mr-2"></i> Approve → Links Admin to Tenant</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="flow-line"></div>
+
+        <!-- STEP 4: SETUP WIZARD -->
+        <section class="step-card bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="bg-emerald-600 p-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <span class="bg-white/20 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">4</span>
+                    <h2 class="text-white font-bold text-lg">School Admin: The Setup Wizard</h2>
+                </div>
+                <span class="status-badge bg-emerald-100 text-emerald-800">Tenant Config</span>
+            </div>
+            <div class="p-6">
+                <div class="flex flex-wrap gap-4">
+                    <div class="flex-1 min-w-[150px] p-3 bg-emerald-50 border border-emerald-100 rounded text-center">
+                        <p class="text-xs font-bold text-emerald-700">STEP 1</p>
+                        <p class="text-sm font-medium">Profile</p>
+                    </div>
+                    <div class="flex-1 min-w-[150px] p-3 bg-emerald-50 border border-emerald-100 rounded text-center">
+                        <p class="text-xs font-bold text-emerald-700">STEP 2</p>
+                        <p class="text-sm font-medium">Academic Year</p>
+                    </div>
+                    <div class="flex-1 min-w-[150px] p-3 bg-emerald-50 border border-emerald-100 rounded text-center">
+                        <p class="text-xs font-bold text-emerald-700">STEP 3</p>
+                        <p class="text-sm font-medium">Departments</p>
+                    </div>
+                    <div class="flex-1 min-w-[150px] p-3 bg-emerald-50 border border-emerald-100 rounded text-center">
+                        <p class="text-xs font-bold text-emerald-700">STEP 4</p>
+                        <p class="text-sm font-medium">Classrooms</p>
+                    </div>
+                </div>
+                <p class="mt-4 text-center text-xs text-slate-500 italic">Upon completion: <code>setupComplete: true</code> | Status: <strong>ACTIVE</strong></p>
+            </div>
+        </section>
+
+        <div class="flow-line"></div>
+
+        <!-- STEP 5 & 6: JOIN & APPROVAL -->
+        <section class="step-card bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="bg-blue-600 p-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <span class="bg-white/20 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">5-6</span>
+                    <h2 class="text-white font-bold text-lg">The School Community Grows</h2>
+                </div>
+                <span class="status-badge bg-blue-100 text-blue-800">Verification Loop</span>
+            </div>
+            <div class="p-6 grid md:grid-cols-2 gap-8 items-center">
+                <div class="space-y-4">
+                    <div class="flex items-start gap-4">
+                        <div class="bg-blue-100 p-2 rounded"><i class="fas fa-sign-in-alt text-blue-600"></i></div>
+                        <div>
+                            <h4 class="font-bold text-slate-800">Join Request</h4>
+                            <p class="text-sm text-slate-600">Teachers/Students enter code. System maps them to the specific <code>school_id</code>.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-4">
+                        <div class="bg-orange-100 p-2 rounded"><i class="fas fa-hourglass-half text-orange-600"></i></div>
+                        <div>
+                            <h4 class="font-bold text-slate-800">Awaiting Portal</h4>
+                            <p class="text-sm text-slate-600">Users see a "Pending Approval" screen. Zero data access allowed at this stage.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                    <h4 class="text-center font-bold text-slate-800 mb-4">Admin Decision Center</h4>
+                    <div class="flex justify-center gap-4">
+                        <button class="px-4 py-2 bg-green-500 text-white text-sm font-bold rounded shadow hover:bg-green-600">APPROVE</button>
+                        <button class="px-4 py-2 bg-red-500 text-white text-sm font-bold rounded shadow hover:bg-red-600">REJECT</button>
+                    </div>
+                    <p class="mt-4 text-xs text-center text-slate-500">School Admin assigns teachers to Depts/Classes during approval.</p>
+                </div>
+            </div>
+        </section>
+
+        <div class="flow-line"></div>
+
+        <!-- STEP 7: ACTIVE PORTALS -->
+        <section class="step-card bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="bg-purple-600 p-4">
+                <div class="flex items-center gap-3">
+                    <span class="bg-white/20 text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">7</span>
+                    <h2 class="text-white font-bold text-lg">Active Operational Portals</h2>
+                </div>
+            </div>
+            <div class="p-6 grid md:grid-cols-4 gap-4">
+                <div class="p-4 border border-slate-100 rounded-lg hover:bg-slate-50">
+                    <h5 class="font-bold text-purple-700 text-xs uppercase mb-2">Student</h5>
+                    <ul class="text-[11px] space-y-1 text-slate-600">
+                        <li>• Homework & Quiz</li>
+                        <li>• Attendance Tracking</li>
+                        <li>• Career Mapping</li>
+                    </ul>
+                </div>
+                <div class="p-4 border border-slate-100 rounded-lg hover:bg-slate-50">
+                    <h5 class="font-bold text-purple-700 text-xs uppercase mb-2">Teacher</h5>
+                    <ul class="text-[11px] space-y-1 text-slate-600">
+                        <li>• Manage Assessments</li>
+                        <li>• Mark Attendance</li>
+                        <li>• Student Analytics</li>
+                    </ul>
+                </div>
+                <div class="p-4 border border-slate-100 rounded-lg hover:bg-slate-50">
+                    <h5 class="font-bold text-purple-700 text-xs uppercase mb-2">School Admin</h5>
+                    <ul class="text-[11px] space-y-1 text-slate-600">
+                        <li>• Staff & User Management</li>
+                        <li>• Facility Planning</li>
+                        <li>• Financial Overviews</li>
+                    </ul>
+                </div>
+                <div class="p-4 border border-slate-100 rounded-lg hover:bg-slate-50">
+                    <h5 class="font-bold text-purple-700 text-xs uppercase mb-2">Platform Admin</h5>
+                    <ul class="text-[11px] space-y-1 text-slate-600">
+                        <li>• Global Performance</li>
+                        <li>• Multi-school Support</li>
+                        <li>• Subscription Mgmt</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- DATA ISOLATION FOOTER -->
+        <section class="mt-12 p-8 rounded-2xl bg-slate-900 text-white">
+            <div class="flex items-center gap-4 mb-6">
+                <i class="fas fa-database text-3xl text-blue-400"></i>
+                <div>
+                    <h2 class="text-xl font-bold">Data Isolation (Tenant Scope)</h2>
+                    <p class="text-slate-400 text-sm">Security architecture ensuring School A cannot see School B data.</p>
+                </div>
+            </div>
+            
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="tenant-box p-4 rounded-xl border-blue-500/30">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-xs font-bold text-blue-400">TENANT 01</span>
+                        <span class="text-[10px] bg-blue-500/20 px-2 py-1 rounded">Active</span>
+                    </div>
+                    <div class="space-y-1">
+                        <div class="h-2 w-full bg-slate-800 rounded overflow-hidden">
+                            <div class="h-full bg-blue-500 w-3/4"></div>
+                        </div>
+                        <p class="text-[10px] text-slate-500">150 / 200 Students</p>
+                    </div>
+                </div>
+
+                <div class="tenant-box p-4 rounded-xl border-emerald-500/30">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-xs font-bold text-emerald-400">TENANT 02</span>
+                        <span class="text-[10px] bg-emerald-500/20 px-2 py-1 rounded">Active</span>
+                    </div>
+                    <div class="space-y-1">
+                        <div class="h-2 w-full bg-slate-800 rounded overflow-hidden">
+                            <div class="h-full bg-emerald-500 w-1/2"></div>
+                        </div>
+                        <p class="text-[10px] text-slate-500">100 / 200 Students</p>
+                    </div>
+                </div>
+
+                <div class="tenant-box p-4 rounded-xl border-slate-700">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-xs font-bold text-slate-400">TENANT 03</span>
+                        <span class="text-[10px] bg-slate-700 px-2 py-1 rounded text-slate-400">Pending</span>
+                    </div>
+                    <div class="flex flex-col items-center justify-center h-8">
+                        <i class="fas fa-lock text-slate-700"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8 border-t border-slate-800 pt-6">
+                <h3 class="text-sm font-bold text-slate-300 mb-4">Core Schema Logic:</h3>
+                <div class="grid md:grid-cols-2 gap-4 text-xs font-mono text-slate-400">
+                    <div class="bg-black/30 p-3 rounded">
+                        <span class="text-blue-400">Schools Table:</span><br>
+                        - subscriptionStatus: string<br>
+                        - setupComplete: boolean<br>
+                        - schoolCode: unique_string
+                    </div>
+                    <div class="bg-black/30 p-3 rounded">
+                        <span class="text-blue-400">Invoices Table:</span><br>
+                        - schoolId: uuid<br>
+                        - amount: decimal<br>
+                        - status: paid | pending
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="mt-12 text-center text-slate-500 text-sm pb-12">
+        &copy; 2024 Bhutan EduSkill Project Architecture
+    </footer>
+
+</body>
+</html>

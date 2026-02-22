@@ -333,11 +333,13 @@ export async function POST(req: NextRequest) {
     await db.insert(verificationRequests).values(newVerificationRequest);
 
     // Create school record if verified
+    let schoolId: string | undefined;
     if (tenantStatus === "verified") {
       const schoolCode = `SCH-${body.district.substring(0, 3).toUpperCase()}-${nanoid(6)}`;
+      schoolId = `school-${nanoid()}`;
 
       await db.insert(schools).values({
-        id: `school-${nanoid()}`,
+        id: schoolId,
         name: body.schoolName,
         code: schoolCode,
         type: body.schoolType as "public" | "private" | "international",
@@ -367,7 +369,6 @@ export async function POST(req: NextRequest) {
         level: body.schoolLevel,
         contactEmail: body.contactEmail,
         contactPhone: body.contactPhone,
-        tenantId,
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -383,28 +384,39 @@ export async function POST(req: NextRequest) {
     });
 
     // Prepare response
-    const responseData = {
-      data: {
-        requestId,
-        tenantId,
-        status: verificationStatus,
-        verified: tenantStatus === "verified",
-        verificationCode,
-        message: tenantStatus === "verified"
-          ? "Your school has been verified! You can now sign in."
-          : body.verificationMethod === "domain"
-          ? "Please add the DNS TXT record to verify your domain."
-          : "Your documents have been submitted for review. You will receive an email once verification is complete.",
-      }
-    };
-
     logger.info("School verification request created successfully", {
       requestId,
       tenantId,
       status: verificationStatus,
     });
 
-    return NextResponse.json(responseData, { status: 201 });
+    const message = tenantStatus === "verified"
+      ? "Your school has been verified! You can now sign in."
+      : body.verificationMethod === "domain"
+      ? "Please add the DNS TXT record to verify your domain."
+      : "Your documents have been submitted for review. You will receive an email once verification is complete.";
+
+    type VerificationResponseData = {
+      requestId: string;
+      tenantId: string;
+      status: "pending" | "under_review" | "approved";
+      verified: boolean;
+      verificationCode?: string;
+      message: string;
+      schoolId?: string;
+    };
+
+    return NextResponse.json({
+      data: {
+        requestId,
+        tenantId,
+        status: verificationStatus,
+        verified: tenantStatus === "verified",
+        verificationCode,
+        message,
+        schoolId,
+      }
+    } satisfies ApiSuccess<VerificationResponseData>, { status: 201 });
 
   } catch (error) {
     logger.apiError(error, { route: "/api/verification/school", method: "POST" });

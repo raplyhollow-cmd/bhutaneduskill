@@ -2,191 +2,361 @@
  * SCHOOL ADMIN - TEACHERS MANAGEMENT
  *
  * Features:
- * - List all teachers with filters
- * - Add new teacher
- * - Edit teacher details
- * - Assign classes and subjects
+ * - Grid view with teacher cards showing photo placeholder, name, subjects, classes
+ * - Add Teacher modal
+ * - Filter by department
+ * - Modern purple/indigo gradient theme
  */
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+"use client";
+
+import { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Plus,
   Search,
-  Edit,
-  Eye,
   Mail,
   Phone,
   GraduationCap,
-  Check,
+  BookOpen,
+  Users,
+  Building2,
+  Loader2,
 } from "lucide-react";
-import Link from "next/link";
-import { db } from "@/lib/db";
-import { users, schools } from "@/lib/db/schema";
-import { desc, eq, sql, like, or, and } from "drizzle-orm";
-import { redirect } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
+import { AddTeacherModal } from "@/components/school-admin/add-teacher-modal";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-export default async function SchoolAdminTeachersPage() {
-  const { userId } = await auth();
+interface Teacher {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  employeeId: string | null;
+  subjects: string | null;
+  department?: string;
+  schoolId: string | null;
+  schoolName?: string;
+}
 
-  if (!userId) {
-    redirect("/sign-in");
+export default function SchoolAdminTeachersPage() {
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  useEffect(() => {
+    fetchTeachers();
+  }, []);
+
+  const fetchTeachers = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/school-admin/teachers");
+      if (response.ok) {
+        const data = await response.json();
+        setTeachers(data.teachers || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch teachers:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const parseJsonArray = (jsonStr: string | null): string[] => {
+    if (!jsonStr) return [];
+    try {
+      return JSON.parse(jsonStr);
+    } catch {
+      return [];
+    }
+  };
+
+  const getInitials = (firstName: string | null, lastName: string | null) => {
+    const first = firstName?.[0] || "";
+    const last = lastName?.[0] || "";
+    return (first + last).toUpperCase() || "T";
+  };
+
+  const departments = Array.from(
+    new Set(teachers.map(t => t.department).filter(Boolean))
+  );
+
+  const filteredTeachers = teachers.filter((teacher) => {
+    const matchesSearch =
+      searchQuery === "" ||
+      teacher.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      teacher.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      teacher.employeeId?.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesDepartment =
+      departmentFilter === "all" || teacher.department === departmentFilter;
+
+    return matchesSearch && matchesDepartment;
+  });
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-8 h-8 animate-spin text-violet-600" />
+          <p className="text-gray-600">Loading teachers...</p>
+        </div>
+      </div>
+    );
   }
 
-  // Fetch all teachers with their school info
-  const allTeachers = await db
-    .select({
-      id: users.id,
-      firstName: users.firstName,
-      lastName: users.lastName,
-      email: users.email,
-      phone: users.phone,
-      employeeId: users.employeeId,
-      subjects: users.subjects,
-      schoolId: users.schoolId,
-      schoolName: schools.name,
-    })
-    .from(users)
-    .leftJoin(schools, eq(users.schoolId, schools.id))
-    .where(eq(users.type, "teacher"))
-    .orderBy(desc(users.createdAt));
-
   return (
-    <div className="min-h-screen bg-gray-50 lg:ml-64">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Teachers</h1>
-            <p className="text-gray-600 mt-1">
-              Manage all teachers in your school ({allTeachers.length} total)
-            </p>
-          </div>
-          <Link href="/school-admin/teachers/create">
-            <Button className="gap-2">
-              <Plus className="w-4 h-4" />
-              Add Teacher
-            </Button>
-          </Link>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Teachers Management</h1>
+          <p className="text-gray-600 mt-1">
+            {teachers.length} {teachers.length === 1 ? "teacher" : "teachers"} in your school
+          </p>
         </div>
+        <Button
+          onClick={() => setIsAddModalOpen(true)}
+          className="shadow-md hover:shadow-lg transition-shadow"
+          style={{ background: "linear-gradient(135deg, rgb(139 92 246) 0%, rgb(124 58 237) 100%)" }}
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Add Teacher
+        </Button>
+      </div>
 
-        {/* Search and Filters */}
-        <Card className="mb-6">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card className="border-l-4 border-l-violet-500 shadow-sm hover:shadow-md transition-shadow">
           <CardContent className="pt-6">
-            <div className="flex flex-col sm:flex-row gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <Input
-                  placeholder="Search by name, email, or employee ID..."
-                  className="pl-10"
-                />
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgb(139 92 246) 0%, rgb(124 58 237) 100%)' }}>
+                <GraduationCap className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900">{teachers.length}</p>
+                <p className="text-sm text-gray-500">Total Teachers</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Teachers Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle>All Teachers</CardTitle>
-            <CardDescription>View and manage teacher information</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">Teacher</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">Contact</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">Department</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">Subjects</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">Status</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {allTeachers.map((teacher) => (
-                    <tr key={teacher.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                            <GraduationCap className="w-5 h-5 text-blue-600" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900">
-                              {teacher.firstName} {teacher.lastName}
-                            </p>
-                            <p className="text-sm text-gray-500">{teacher.employeeId || 'N/A'}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="space-y-1 text-sm">
-                          {teacher.email && (
-                            <div className="flex items-center gap-1 text-gray-600">
-                              <Mail className="w-3 h-3" />
-                              {teacher.email}
-                            </div>
-                          )}
-                          {teacher.phone && (
-                            <div className="flex items-center gap-1 text-gray-600">
-                              <Phone className="w-3 h-3" />
-                              {teacher.phone}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-sm text-gray-700">{(teacher as any).department || '-'}</td>
-                      <td className="py-3 px-4">
-                        <div className="flex flex-wrap gap-1">
-                          {teacher.subjects ? (JSON.parse(teacher.subjects as string) as string[]).map((subj, i) => (
-                            <Badge key={i} variant="outline" className="text-xs">
-                              {subj}
-                            </Badge>
-                          )) : '-'}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <Badge
-                          variant={(teacher as any).isActive ? "default" : "secondary"}
-                          className={(teacher as any).isActive ? "bg-green-100 text-green-700 hover:bg-green-100" : ""}
-                        >
-                          {(teacher as any).isActive ? "Active" : "Inactive"}
-                        </Badge>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-2">
-                          <Link href={`/school-admin/teachers/${teacher.id}`}>
-                            <Button variant="ghost" size="sm">
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                          </Link>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {allTeachers.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="py-12 text-center text-gray-500">
-                        <div className="flex flex-col items-center gap-3">
-                          <GraduationCap className="w-12 h-12 text-gray-300" />
-                          <p>No teachers found</p>
-                          <Link href="/school-admin/teachers/create">
-                            <Button>Add your first teacher</Button>
-                          </Link>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+        <Card className="border-l-4 border-l-blue-500 shadow-sm hover:shadow-md transition-shadow">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <Building2 className="w-6 h-6 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900">{departments.length}</p>
+                <p className="text-sm text-gray-500">Departments</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-green-500 shadow-sm hover:shadow-md transition-shadow">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                <BookOpen className="w-6 h-6 text-green-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900">
+                  {teachers.reduce((sum, t) => sum + parseJsonArray(t.subjects).length, 0)}
+                </p>
+                <p className="text-sm text-gray-500">Total Subjects</p>
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Filters */}
+      <Card className="shadow-sm">
+        <CardContent className="p-4">
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Input
+                placeholder="Search by name, email, or employee ID..."
+                className="pl-10"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-gray-400" />
+              <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="All Departments" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Departments</SelectItem>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept} value={dept || ""}>
+                      {dept}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Teachers Grid */}
+      {filteredTeachers.length === 0 ? (
+        <Card className="shadow-sm">
+          <CardContent className="py-16">
+            <div className="text-center">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-violet-100 to-indigo-200 flex items-center justify-center mx-auto mb-4 shadow-inner">
+                <GraduationCap className="w-10 h-10 text-violet-400" />
+              </div>
+              <p className="text-gray-900 font-semibold text-lg">
+                {searchQuery || departmentFilter !== "all" ? "No teachers found" : "No teachers yet"}
+              </p>
+              <p className="text-gray-500 text-sm mt-1">
+                {searchQuery || departmentFilter !== "all"
+                  ? "Try adjusting your filters"
+                  : "Add your first teacher to get started"}
+              </p>
+              {!searchQuery && departmentFilter === "all" && (
+                <Button
+                  onClick={() => setIsAddModalOpen(true)}
+                  className="mt-4"
+                  style={{ background: "linear-gradient(135deg, rgb(139 92 246) 0%, rgb(124 58 237) 100%)" }}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Teacher
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredTeachers.map((teacher) => {
+            const subjects = parseJsonArray(teacher.subjects);
+            return (
+              <Card
+                key={teacher.id}
+                className="overflow-hidden hover:shadow-xl transition-all duration-200 border-t-4 group"
+                style={{ borderTopColor: 'rgb(139 92 246)' }}
+              >
+                <CardContent className="p-6">
+                  {/* Teacher Header */}
+                  <div className="flex items-start gap-4 mb-4">
+                    <div
+                      className="w-16 h-16 rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-lg flex-shrink-0 group-hover:scale-110 transition-transform"
+                      style={{ background: 'linear-gradient(135deg, rgb(139 92 246) 0%, rgb(124 58 237) 100%)' }}
+                    >
+                      {getInitials(teacher.firstName, teacher.lastName)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-gray-900 text-lg truncate">
+                        {teacher.name}
+                      </h3>
+                      {teacher.employeeId && (
+                        <p className="text-sm text-gray-500 font-mono">
+                          {teacher.employeeId}
+                        </p>
+                      )}
+                      {teacher.department && (
+                        <Badge className="mt-1.5 text-xs bg-violet-100 text-violet-700 hover:bg-violet-100">
+                          {teacher.department}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Contact Info */}
+                  <div className="space-y-2 mb-4">
+                    {teacher.email && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Mail className="w-4 h-4 flex-shrink-0" />
+                        <span className="truncate">{teacher.email}</span>
+                      </div>
+                    )}
+                    {teacher.phone && (
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Phone className="w-4 h-4 flex-shrink-0" />
+                        <span className="truncate">{teacher.phone}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Subjects */}
+                  {subjects.length > 0 && (
+                    <div className="mb-4">
+                      <p className="text-xs text-gray-500 mb-2 flex items-center gap-1">
+                        <BookOpen className="w-3 h-3" />
+                        Subjects ({subjects.length})
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {subjects.slice(0, 3).map((subject, idx) => (
+                          <Badge
+                            key={idx}
+                            variant="outline"
+                            className="text-xs border-gray-200 text-gray-700"
+                          >
+                            {subject}
+                          </Badge>
+                        ))}
+                        {subjects.length > 3 && (
+                          <Badge
+                            variant="outline"
+                            className="text-xs border-violet-200 text-violet-700 bg-violet-50"
+                          >
+                            +{subjects.length - 3} more
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2 pt-3 border-t">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 hover:bg-violet-50 hover:border-violet-300 transition-colors"
+                    >
+                      <Users className="w-4 h-4 mr-1" />
+                      Classes
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex-1 hover:bg-violet-50 text-violet-600 hover:text-violet-700 transition-colors"
+                    >
+                      View Profile
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Add Teacher Modal */}
+      <AddTeacherModal
+        open={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSuccess={() => {
+          fetchTeachers();
+          setIsAddModalOpen(false);
+        }}
+      />
     </div>
   );
 }

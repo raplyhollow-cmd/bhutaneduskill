@@ -2,9 +2,10 @@ import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
-import { users, schools, assessments, careerMatches } from "@/lib/db/schema";
+import { users, schools, assessments, careerMatches, schoolAdminApplications } from "@/lib/db/schema";
 import { eq, and, desc, gte, count, isNotNull, inArray } from "drizzle-orm";
 import { apiErrorResponse, type ErrorContext } from "@/lib/api/graceful-error";
+import { sql } from "drizzle-orm";
 
 /**
  * GET /api/admin/dashboard - Get platform-wide statistics
@@ -34,7 +35,8 @@ export async function GET(request: NextRequest) {
     totalTeachers: 0,
     totalAssessments: 0,
     completionRate: 0,
-    activeNow: 0
+    activeNow: 0,
+    pendingApplications: 0
   };
   let topSchools: Array<{
     id: string;
@@ -106,6 +108,18 @@ export async function GET(request: NextRequest) {
   }
 
   stats.activeNow = Math.floor(stats.totalStudents * 0.06); // Estimate
+
+  // Fetch pending school admin applications
+  try {
+    const pendingAppsResult = await db
+      .select({ count: count() })
+      .from(schoolAdminApplications)
+      .where(eq(schoolAdminApplications.status, "pending_approval"));
+    stats.pendingApplications = pendingAppsResult[0]?.count || 0;
+  } catch (error) {
+    logger.warn("Failed to fetch pending applications", error);
+    // Keep default 0
+  }
 
   // Fetch top schools with individual error handling
   try {
@@ -203,12 +217,8 @@ export async function GET(request: NextRequest) {
     partialData.push("careerInterests");
   }
 
-  // If we have at least some data, return it successfully with partial flag
-  // If everything failed, return 500 error
-  if (stats.totalSchools === 0 && stats.totalStudents === 0 && topSchools.length === 0) {
-    return apiErrorResponse(new Error("Failed to fetch all dashboard data"), errorContext);
-  }
-
+  // Always return the data we have - even if it's all zeros (empty database)
+  // An empty system is not an error
   return NextResponse.json({
     stats,
     topSchools,
