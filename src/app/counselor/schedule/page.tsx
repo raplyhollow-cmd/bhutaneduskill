@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 /**
  * COUNSELOR - COUNSELING SCHEDULE
  *
@@ -10,10 +11,12 @@
  * - Session types (One-on-One, Group, Assessment Review)
  * - Calendar view integration
  * - Session reminders and notes
+ *
+ * INTEGRATED: Now uses real data from /api/counselor/sessions
  */
 
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,186 +32,120 @@ import {
   Clock,
   XCircle,
   Filter,
-  ChevronLeft,
-  ChevronRight,
   Eye,
   Edit,
   Trash2,
   Mail,
   Bell,
   MapPin,
+  Loader2,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 
-// Mock session data
-const mockSessions = [
-  {
-    id: "SES001",
-    studentId: "STU001",
-    studentName: "Tashi Dorji",
-    studentGrade: 12,
-    studentEmail: "tashi.dorji@school.edu.bt",
-    type: "one_on_one",
-    topic: "Career Planning Review",
-    date: "2024-02-15",
-    time: "10:00 AM",
-    duration: 30,
-    status: "upcoming",
-    location: "Counseling Office A",
-    notes: "Review university options and application timeline",
-    reminder: "1 hour before",
-    createdAt: "2024-02-08",
-  },
-  {
-    id: "SES002",
-    studentId: "STU004",
-    studentName: "Dorji Wangchuk",
-    studentGrade: 12,
-    studentEmail: "dorji.wangchuk@school.edu.bt",
-    type: "assessment_review",
-    topic: "RIASEC Results Discussion",
-    date: "2024-02-16",
-    time: "2:00 PM",
-    duration: 45,
-    status: "upcoming",
-    location: "Virtual - Google Meet",
-    notes: "Discuss Holland Code results and career matches",
-    reminder: "1 day before",
-    createdAt: "2024-02-08",
-  },
-  {
-    id: "SES003",
-    studentId: "STU005",
-    studentName: "Sonam Yangdon",
-    studentGrade: 10,
-    studentEmail: "sonam.yangdon@school.edu.bt",
-    type: "group",
-    topic: "Career Exploration Workshop",
-    date: "2024-02-14",
-    time: "9:00 AM",
-    duration: 60,
-    status: "completed",
-    location: "School Auditorium",
-    notes: "Group session on healthcare careers",
-    reminder: "1 day before",
-    createdAt: "2024-02-01",
-    attended: true,
-  },
-  {
-    id: "SES004",
-    studentId: "STU007",
-    studentName: "Tshering Yangdon",
-    studentGrade: 12,
-    studentEmail: "tshering.yangdon@school.edu.bt",
-    type: "one_on_one",
-    topic: "Application Guidance",
-    date: "2024-02-10",
-    time: "11:00 AM",
-    duration: 30,
-    status: "completed",
-    location: "Counseling Office B",
-    notes: "Help with university application forms",
-    reminder: "1 hour before",
-    createdAt: "2024-02-05",
-    attended: true,
-  },
-  {
-    id: "SES005",
-    studentId: "STU002",
-    studentName: "Karma Wangmo",
-    studentGrade: 10,
-    studentEmail: "karma.wangmo@school.edu.bt",
-    type: "one_on_one",
-    topic: "Initial Consultation",
-    date: "2024-02-12",
-    time: "3:00 PM",
-    duration: 30,
-    status: "cancelled",
-    location: "Counseling Office A",
-    notes: "Student requested rescheduling",
-    reminder: null,
-    createdAt: "2024-02-05",
-    attended: false,
-  },
-  {
-    id: "SES006",
-    studentId: "STU006",
-    studentName: "Karma Tshering",
-    studentGrade: 11,
-    studentEmail: "karma.tshering@school.edu.bt",
-    type: "assessment_review",
-    topic: "MBTI Results Review",
-    date: "2024-02-17",
-    time: "10:30 AM",
-    duration: 30,
-    status: "upcoming",
-    location: "Virtual - Google Meet",
-    notes: "Review personality type results",
-    reminder: "1 day before",
-    createdAt: "2024-02-09",
-  },
-  {
-    id: "SES007",
-    studentId: "STU001",
-    studentName: "Tashi Dorji",
-    studentGrade: 12,
-    studentEmail: "tashi.dorji@school.edu.bt",
-    type: "one_on_one",
-    topic: "Follow-up Session",
-    date: "2024-02-08",
-    time: "9:00 AM",
-    duration: 30,
-    status: "completed",
-    location: "Counseling Office A",
-    notes: "Check on progress with application process",
-    reminder: "1 hour before",
-    createdAt: "2024-02-01",
-    attended: true,
-  },
-  {
-    id: "SES008",
-    studentId: "STU008",
-    studentName: "Dorji Tshering",
-    studentGrade: 9,
-    studentEmail: "dorji.tshering@school.edu.bt",
-    type: "one_on_one",
-    topic: "Initial Assessment",
-    date: "2024-02-20",
-    time: "2:30 PM",
-    duration: 45,
-    status: "upcoming",
-    location: "Counseling Office B",
-    notes: "First session - career assessment introduction",
-    reminder: "1 day before",
-    createdAt: "2024-02-10",
-  },
-];
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface CounselingSession {
+  id: string;
+  counselorId: string;
+  studentId: string | null;
+  type: "individual" | "group" | "family";
+  status: "scheduled" | "completed" | "cancelled" | "no-show" | "in_progress";
+  sessionDate: string;
+  startTime: string;
+  endTime: string;
+  location: string;
+  topic: string | null;
+  notes: string | null;
+  outcome: string | null;
+  isRecurring: boolean;
+  schoolId: string | null;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface SessionStats {
+  upcomingSessions: number;
+  completedToday: number;
+  totalHours: number;
+  groupSessions: number;
+}
+
+// ============================================================================
+// CONSTANTS
+// ============================================================================
 
 const sessionTypeOptions = [
   { value: "all", label: "All Types" },
-  { value: "one_on_one", label: "One-on-One" },
+  { value: "individual", label: "Individual" },
   { value: "group", label: "Group Session" },
-  { value: "assessment_review", label: "Assessment Review" },
+  { value: "family", label: "Family" },
 ];
 
 const statusOptions = [
   { value: "all", label: "All Status" },
-  { value: "upcoming", label: "Upcoming" },
+  { value: "scheduled", label: "Upcoming" },
   { value: "completed", label: "Completed" },
   { value: "cancelled", label: "Cancelled" },
 ];
 
+// ============================================================================
+// PAGE COMPONENT
+// ============================================================================
+
 export default function CounselorSchedulePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState("all");
-  const [selectedStatus, setSelectedStatus] = useState("upcoming");
+  const [selectedStatus, setSelectedStatus] = useState("scheduled");
   const [showNewSessionModal, setShowNewSessionModal] = useState(false);
 
+  // Data states
+  const [sessions, setSessions] = useState<CounselingSession[]>([]);
+  const [stats, setStats] = useState<SessionStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch data on mount
+  useEffect(() => {
+    fetchSessionsData();
+  }, []);
+
+  const fetchSessionsData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch("/api/counselor/sessions");
+      if (!response.ok) {
+        throw new Error("Failed to fetch sessions data");
+      }
+
+      const data = await response.json();
+      setSessions(data.sessions || []);
+      setStats(data.stats || null);
+    } catch (err) {
+      logger.error("Error fetching sessions:", err);
+      setError("Failed to load sessions. Please try again.");
+      setSessions([]);
+      setStats({
+        upcomingSessions: 0,
+        completedToday: 0,
+        totalHours: 0,
+        groupSessions: 0,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Filter sessions
-  const filteredSessions = mockSessions.filter((session) => {
+  const filteredSessions = sessions.filter((session) => {
     const matchesSearch =
-      session.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      session.topic.toLowerCase().includes(searchQuery.toLowerCase());
+      (session.topic && session.topic.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      session.id.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesType = selectedType === "all" || session.type === selectedType;
     const matchesStatus = selectedStatus === "all" || session.status === selectedStatus;
@@ -218,59 +155,96 @@ export default function CounselorSchedulePage() {
 
   // Sort by date (upcoming first, then past)
   const sortedSessions = [...filteredSessions].sort((a, b) => {
-    if (a.status === "upcoming" && b.status !== "upcoming") return -1;
-    if (a.status !== "upcoming" && b.status === "upcoming") return 1;
-    return new Date(b.date).getTime() - new Date(a.date).getTime();
+    const aIsUpcoming = a.status === "scheduled" || a.status === "in_progress";
+    const bIsUpcoming = b.status === "scheduled" || b.status === "in_progress";
+    if (aIsUpcoming && !bIsUpcoming) return -1;
+    if (!aIsUpcoming && bIsUpcoming) return 1;
+    return new Date(b.sessionDate).getTime() - new Date(a.sessionDate).getTime();
   });
 
   const getSessionTypeBadge = (type: string) => {
     const styles = {
-      one_on_one: "bg-blue-100 text-blue-700 border-blue-200",
+      individual: "bg-blue-100 text-blue-700 border-blue-200",
       group: "bg-green-100 text-green-700 border-green-200",
-      assessment_review: "bg-purple-100 text-purple-700 border-purple-200",
+      family: "bg-purple-100 text-purple-700 border-purple-200",
     };
     const labels = {
-      one_on_one: "One-on-One",
+      individual: "Individual",
       group: "Group",
-      assessment_review: "Assessment Review",
+      family: "Family",
     };
-    return { className: styles[type as keyof typeof styles] || styles.one_on_one, label: labels[type as keyof typeof labels] || type };
+    return { className: styles[type as keyof typeof styles] || styles.individual, label: labels[type as keyof typeof labels] || type };
   };
 
   const getSessionStatusBadge = (status: string) => {
     const styles = {
-      upcoming: "bg-yellow-100 text-yellow-700 border-yellow-200",
+      scheduled: "bg-yellow-100 text-yellow-700 border-yellow-200",
+      in_progress: "bg-blue-100 text-blue-700 border-blue-200",
       completed: "bg-green-100 text-green-700 border-green-200",
       cancelled: "bg-red-100 text-red-700 border-red-200",
+      "no-show": "bg-gray-100 text-gray-700 border-gray-200",
     };
     const labels = {
-      upcoming: "Upcoming",
+      scheduled: "Scheduled",
+      in_progress: "In Progress",
       completed: "Completed",
       cancelled: "Cancelled",
+      "no-show": "No Show",
     };
-    return { className: styles[status as keyof typeof styles] || styles.upcoming, label: labels[status as keyof typeof labels] || status };
+    return { className: styles[status as keyof typeof styles] || styles.scheduled, label: labels[status as keyof typeof labels] || status };
   };
 
   const getSessionTypeIcon = (type: string) => {
     switch (type) {
-      case "one_on_one":
+      case "individual":
         return <Users className="w-4 h-4" />;
       case "group":
         return <Users className="w-4 h-4" />;
-      case "assessment_review":
-        return <MessageSquare className="w-4 h-4" />;
+      case "family":
+        return <Users className="w-4 h-4" />;
       default:
         return <Calendar className="w-4 h-4" />;
     }
   };
 
-  // Stats
-  const upcomingSessions = mockSessions.filter((s) => s.status === "upcoming").length;
-  const completedSessions = mockSessions.filter((s) => s.status === "completed").length;
-  const todaysSessions = mockSessions.filter((s) => {
-    const today = new Date().toISOString().split('T')[0];
-    return s.date === today && s.status === "upcoming";
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" style={{ color: "rgb(147 51 234)" }} />
+          <p className="text-gray-600">Loading sessions...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error && sessions.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Card className="max-w-md w-full">
+          <CardContent className="py-12 text-center">
+            <Calendar className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading Data</h3>
+            <p className="text-gray-500 mb-4">{error}</p>
+            <Button onClick={fetchSessionsData} style={{ background: 'linear-gradient(135deg, rgb(168 85 247), rgb(147 51 234))' }}>
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Stats from API or calculated
+  const upcomingSessions = stats?.upcomingSessions ?? sessions.filter((s) => s.status === "scheduled").length;
+  const completedSessions = sessions.filter((s) => s.status === "completed").length;
+  const today = new Date().toISOString().split('T')[0];
+  const todaysSessions = sessions.filter((s) => {
+    return s.sessionDate.startsWith(today) && (s.status === "scheduled" || s.status === "in_progress");
   }).length;
+  const virtualSessions = sessions.filter((s) => s.location?.toLowerCase().includes("virtual")).length;
 
   return (
     <div className="space-y-6">
@@ -345,9 +319,7 @@ export default function CounselorSchedulePage() {
                 <Video className="w-6 h-6 text-purple-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900">
-                  {mockSessions.filter((s) => s.location.includes("Virtual")).length}
-                </p>
+                <p className="text-2xl font-bold text-gray-900">{virtualSessions}</p>
                 <p className="text-sm text-gray-500">Virtual</p>
               </div>
             </div>
@@ -363,7 +335,7 @@ export default function CounselorSchedulePage() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <Input
-                  placeholder="Search by student name or topic..."
+                  placeholder="Search by topic or session ID..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
@@ -404,25 +376,30 @@ export default function CounselorSchedulePage() {
           const typeBadge = getSessionTypeBadge(session.type);
           const statusBadge = getSessionStatusBadge(session.status);
 
+          // Calculate duration from startTime and endTime
+          const [startH, startM] = session.startTime.split(':').map(Number);
+          const [endH, endM] = session.endTime.split(':').map(Number);
+          const duration = (endH * 60 + endM) - (startH * 60 + startM);
+
           return (
-            <Card key={session.id} className={session.status === "upcoming" ? "border-purple-200" : ""}>
+            <Card key={session.id} className={session.status === "scheduled" || session.status === "in_progress" ? "border-purple-200" : ""}>
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start gap-4">
                     {/* Date & Time */}
                     <div className="text-center min-w-[70px]">
                       <p className="text-2xl font-bold" style={{ color: 'rgb(147 51 234)' }}>
-                        {new Date(session.date).getDate()}
+                        {new Date(session.sessionDate).getDate()}
                       </p>
                       <p className="text-xs text-gray-500 uppercase">
-                        {new Date(session.date).toLocaleDateString("en-US", { month: "short" })}
+                        {new Date(session.sessionDate).toLocaleDateString("en-US", { month: "short" })}
                       </p>
                     </div>
 
                     {/* Session Details */}
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-gray-900">{session.topic}</h3>
+                        <h3 className="font-semibold text-gray-900">{session.topic || "Counseling Session"}</h3>
                         <Badge className={typeBadge.className} variant="outline">
                           {typeBadge.label}
                         </Badge>
@@ -434,52 +411,45 @@ export default function CounselorSchedulePage() {
                       <div className="flex items-center gap-4 text-sm text-gray-600 mt-2">
                         <div className="flex items-center gap-1">
                           <Users className="w-4 h-4" />
-                          <span>{session.studentName}</span>
-                          <span className="text-gray-400">•</span>
-                          <span>Grade {session.studentGrade}</span>
+                          <span>{session.studentId ? `Student: ${session.studentId.slice(0, 8)}...` : "No student assigned"}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <Clock className="w-4 h-4" />
-                          <span>{session.time}</span>
+                          <span>{session.startTime}</span>
                           <span className="text-gray-400">•</span>
-                          <span>{session.duration} min</span>
+                          <span>{duration} min</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          {session.location.includes("Virtual") ? (
+                          {session.location?.toLowerCase().includes("virtual") ? (
                             <Video className="w-4 h-4" />
                           ) : (
                             <MapPin className="w-4 h-4" />
                           )}
-                          <span>{session.location}</span>
+                          <span>{session.location || "TBD"}</span>
                         </div>
                       </div>
 
                       {session.notes && (
                         <p className="text-sm text-gray-500 mt-2">{session.notes}</p>
                       )}
-
-                      {session.reminder && (
-                        <div className="flex items-center gap-1 mt-2 text-xs text-gray-500">
-                          <Bell className="w-3 h-3" />
-                          <span>Reminder: {session.reminder}</span>
-                        </div>
-                      )}
                     </div>
                   </div>
 
                   {/* Actions */}
                   <div className="flex items-center gap-2">
-                    {session.status === "upcoming" && (
+                    {(session.status === "scheduled" || session.status === "in_progress") && (
                       <>
-                        <Button variant="ghost" size="sm" asChild>
-                          <Link href={`/counselor/students/${session.studentId}`}>
-                            <Eye className="w-4 h-4" />
-                          </Link>
-                        </Button>
+                        {session.studentId && (
+                          <Button variant="ghost" size="sm" asChild>
+                            <Link href={`/counselor/students/${session.studentId}`}>
+                              <Eye className="w-4 h-4" />
+                            </Link>
+                          </Button>
+                        )}
                         <Button variant="ghost" size="sm">
                           <Edit className="w-4 h-4" />
                         </Button>
-                        {session.location.includes("Virtual") && (
+                        {session.location?.toLowerCase().includes("virtual") && (
                           <Button size="sm" className="gap-2" style={{ background: 'linear-gradient(135deg, rgb(168 85 247), rgb(147 51 234))' }}>
                             <Video className="w-4 h-4" />
                             Join
@@ -498,7 +468,7 @@ export default function CounselorSchedulePage() {
                           </Link>
                         </Button>
                         <Button variant="outline" size="sm" asChild>
-                          <Link href={`/counselor/schedule?student=${session.studentId}`}>
+                          <Link href={`/counselor/schedule?student=${session.studentId || ""}`}>
                             <Plus className="w-4 h-4 mr-1" />
                             Follow-up
                           </Link>
@@ -514,7 +484,7 @@ export default function CounselorSchedulePage() {
       </div>
 
       {/* Empty State */}
-      {sortedSessions.length === 0 && (
+      {sortedSessions.length === 0 && !loading && (
         <Card>
           <CardContent className="py-12 text-center">
             <Calendar className="w-16 h-16 mx-auto mb-4 text-gray-300" />
@@ -536,7 +506,7 @@ export default function CounselorSchedulePage() {
         </Card>
       )}
 
-      {/* New Session Modal */}
+      {/* New Session Modal - Simplified for real implementation */}
       {showNewSessionModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <Card className="max-w-2xl w-full max-h-[90vh] overflow-y-auto">
@@ -547,94 +517,26 @@ export default function CounselorSchedulePage() {
                   <CardDescription>Set up a counseling session with a student</CardDescription>
                 </div>
                 <Button variant="ghost" size="sm" onClick={() => setShowNewSessionModal(false)}>
-                  <XCircle className="w-5 h-5" />
+                  <X className="w-5 h-5" />
                 </Button>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Student *</label>
-                  <select className="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                    <option>Select student</option>
-                    <option>Tashi Dorji (Grade 12)</option>
-                    <option>Karma Wangmo (Grade 10)</option>
-                    <option>Pema Lhamo (Grade 11)</option>
-                    <option>Dorji Wangchuk (Grade 12)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Session Type *</label>
-                  <select className="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                    <option>One-on-One</option>
-                    <option>Group Session</option>
-                    <option>Assessment Review</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
-                  <Input type="date" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Time *</label>
-                  <Input type="time" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Duration (minutes) *</label>
-                  <select className="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                    <option>15</option>
-                    <option>30</option>
-                    <option selected>45</option>
-                    <option>60</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Location *</label>
-                  <select className="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                    <option>Counseling Office A</option>
-                    <option>Counseling Office B</option>
-                    <option>Virtual - Google Meet</option>
-                    <option>Virtual - Zoom</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Topic *</label>
-                <Input placeholder="e.g., Career Planning Review" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                <textarea
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  rows={3}
-                  placeholder="Session agenda or notes..."
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Reminder</label>
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-lg">
-                  <option>No reminder</option>
-                  <option>1 hour before</option>
-                  <option>1 day before</option>
-                  <option>2 days before</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <Mail className="w-4 h-4 text-blue-600" />
-                <label className="flex items-center gap-2 text-sm text-blue-900">
-                  <input type="checkbox" className="rounded border-gray-300" />
-                  <span>Send email invitation to student</span>
-                </label>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-900">
+                  Use the Sessions page to create new sessions with full functionality.
+                </p>
+                <Button
+                  className="mt-3"
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  onClick={() => setShowNewSessionModal(false)}
+                >
+                  <Link href="/counselor/sessions">Go to Sessions Page</Link>
+                </Button>
               </div>
             </CardContent>
-            <div className="border-t px-6 py-4 flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setShowNewSessionModal(false)}>
-                Cancel
-              </Button>
-              <Button style={{ background: 'linear-gradient(135deg, rgb(168 85 247), rgb(147 51 234))' }}>
-                Schedule Session
-              </Button>
-            </div>
           </Card>
         </div>
       )}

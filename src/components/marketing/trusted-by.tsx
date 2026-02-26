@@ -1,10 +1,11 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, Variants } from "framer-motion";
 import { GraduationCap, School, Building2, BookOpen, Users, Award } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Mock data for schools/partners
+// NOTE: In production, this data should come from a CMS or database
+// Schools/partners featured on landing page
 const schools = [
   {
     id: 1,
@@ -61,7 +62,7 @@ interface TrustedByProps {
 }
 
 export function TrustedBy({ className }: TrustedByProps) {
-  const containerVariants = {
+  const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
@@ -72,7 +73,7 @@ export function TrustedBy({ className }: TrustedByProps) {
     },
   };
 
-  const itemVariants = {
+  const itemVariants: Variants = {
     hidden: { opacity: 0, y: 20 },
     visible: {
       opacity: 1,

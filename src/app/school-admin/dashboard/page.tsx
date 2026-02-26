@@ -17,6 +17,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CeramicCallout } from "@/components/ui/ceramic-callout";
 import { StatsCard, MobileCardGrid } from "@/components/ui/mobile-card";
+import { StatCardSkeleton, CardGridSkeleton } from "@/components/ui/skeleton/card-skeleton";
+import { ListSkeleton } from "@/components/ui/skeleton/list-skeleton";
 import {
   Users,
   UserCheck,
@@ -40,7 +42,7 @@ import { useEffect, useState } from "react";
 import { fetchDashboardStats, fetchClasses } from "../_actions";
 import { AIInsightsSection } from "@/components/school-admin/ai-insights-section";
 import { CapacityStatusCard } from "@/components/school-admin/capacity-status-card";
-import { UniversalMobileSidebar, UniversalPortalHeader } from "@/components/mobile/universal-mobile-sidebar";
+import type { ClassData } from "@/lib/api/school-admin";
 
 export default function SchoolAdminDashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
@@ -75,10 +77,10 @@ export default function SchoolAdminDashboardPage() {
   }, []);
 
   // Transform classes to today's classes format
-  const todayClasses = (classesData as any).classesList?.slice(0, 5).map((cls: any) => ({
+  const todayClasses = classesData.classesList?.slice(0, 5).map((cls: ClassData) => ({
     id: cls.id,
     name: cls.name || `Class ${cls.grade}`,
-    teacher: cls.classTeacherName || cls.homeroomTeacherName || "Not Assigned",
+    teacher: cls.classTeacher || "Not Assigned",
     subject: "General",
     time: "9:00 AM",
     attendanceStatus: "completed" as const,
@@ -171,11 +173,40 @@ export default function SchoolAdminDashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <Clock className="w-8 h-8 animate-spin text-violet-500 mx-auto mb-2" />
-          <p className="text-sm text-gray-500">Loading dashboard...</p>
+      <div className="space-y-6 p-4 lg:p-8">
+        {/* Welcome Banner Skeleton */}
+        <div className="relative overflow-hidden rounded-2xl p-6 lg:p-8 text-white shadow-lg">
+          <div className="animate-pulse bg-violet-200/30 absolute inset-0" />
+          <div className="relative z-10">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="space-y-3">
+                <div className="h-8 w-64 bg-white/20 rounded-lg animate-pulse" />
+                <div className="h-4 w-96 bg-white/10 rounded animate-pulse" />
+              </div>
+              <div className="flex gap-2">
+                <div className="h-10 w-32 bg-white/20 rounded-lg animate-pulse" />
+                <div className="h-10 w-32 bg-white/30 rounded-lg animate-pulse" />
+              </div>
+            </div>
+          </div>
         </div>
+
+        {/* Stats Grid Skeleton */}
+        <CardGridSkeleton count={4} />
+
+        {/* Quick Actions Skeleton */}
+        <CardGridSkeleton count={3} />
+
+        {/* Today's Classes Skeleton */}
+        <Card>
+          <CardHeader>
+            <div className="h-6 w-40 bg-muted rounded-lg animate-pulse" />
+            <div className="h-4 w-60 bg-muted rounded animate-pulse mt-2" />
+          </CardHeader>
+          <CardContent>
+            <ListSkeleton items={5} showIcon showAction />
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -185,28 +216,7 @@ export default function SchoolAdminDashboardPage() {
   const primaryLight = "rgb(139 92 246)";
 
   return (
-    <>
-      {/* Desktop Sidebar - always visible */}
-      <div className="hidden lg:block fixed top-0 left-0 z-40 h-screen">
-        <UniversalMobileSidebar portalType="school-admin" userName={userName} userImage={userImage} />
-      </div>
-
-      {/* Mobile Sidebar - slides in/out */}
-      <UniversalMobileSidebar portalType="school-admin" userName={userName} userImage={userImage} />
-
-      {/* Main Content - with left margin for desktop sidebar */}
-      <div className="lg:ml-64 min-h-screen">
-        {/* Header for mobile */}
-        <div className="lg:hidden">
-          <UniversalPortalHeader
-            portalType="school-admin"
-            userName={userName}
-            title="Dashboard"
-            subtitle="Manage your school effectively"
-          />
-        </div>
-
-        <div className="space-y-6 p-4 lg:p-8">
+    <div className="space-y-6 p-4 lg:p-8">
           {/* Welcome Banner */}
       <div className="relative overflow-hidden rounded-2xl p-6 lg:p-8 text-white shadow-lg">
         <div style={{ background: primaryGradient }} className="absolute inset-0" />
@@ -576,8 +586,6 @@ export default function SchoolAdminDashboardPage() {
           </CardContent>
         </Card>
       </div>
-        </div>
-      </div>
-    </>
+    </div>
   );
 }

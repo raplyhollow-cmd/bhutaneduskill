@@ -6,6 +6,14 @@ import { requirePermission } from "@/lib/rbac";
 import { logger } from "@/lib/logger";
 import { eq, and } from "drizzle-orm";
 
+interface DepartmentUpdateData {
+  name?: string;
+  code?: string;
+  description?: string;
+  headOfDepartment?: string;
+  updatedAt: Date;
+}
+
 // PATCH /api/school-admin/departments/[id] - Update department
 export async function PATCH(
   request: NextRequest,
@@ -58,7 +66,7 @@ export async function PATCH(
     }
 
     // Build update object
-    const updateData: any = {
+    const updateData: DepartmentUpdateData = {
       updatedAt: new Date(),
     };
     if (name !== undefined) updateData.name = name;

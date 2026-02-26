@@ -1,4 +1,3 @@
-import { logger } from "@/lib/logger";
 /**
  * RBAC ROLES API
  *
@@ -8,25 +7,18 @@ import { logger } from "@/lib/logger";
  * DELETE /api/admin/roles - Delete role
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { nanoid } from "nanoid";
 import { db } from "@/lib/db";
 import { roles, rolePermissions, permissions, userRoles, users } from "@/lib/db/schema";
 import { eq, desc, like, or, count, sql } from "drizzle-orm";
-import { requireAuth } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 // GET /api/admin/roles - List all roles
-export async function GET(request: NextRequest) {
-  const authResult = await requireAuth(["admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json(
-      { success: false, error: authResult.error },
-      { status: authResult.status }
-    );
-  }
-
-  try {
-    const { searchParams } = new URL(request.url);
+export const GET = createApiRoute(
+  async (req, auth) => {
+    const { searchParams } = new URL(req.url);
     const search = searchParams.get("search");
 
     let whereCondition = undefined;
@@ -62,38 +54,22 @@ export async function GET(request: NextRequest) {
       .where(whereCondition)
       .orderBy(desc(roles.createdAt));
 
-    return NextResponse.json({
+    return {
       success: true,
       data: rolesList,
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch roles" },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);
 
 // POST /api/admin/roles - Create new role
-export async function POST(request: NextRequest) {
-  const authResult = await requireAuth(["admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json(
-      { success: false, error: authResult.error },
-      { status: authResult.status }
-    );
-  }
-
-  try {
+export const POST = createApiRoute(
+  async (req, auth) => {
     const body = await request.json();
     const { name, slug, description } = body;
 
     if (!name || !slug) {
-      return NextResponse.json(
-        { success: false, error: "Name and slug are required" },
-        { status: 400 }
-      );
+      return { success: false, error: "Name and slug are required" };
     }
 
     // Check if slug already exists
@@ -104,10 +80,7 @@ export async function POST(request: NextRequest) {
       .limit(1);
 
     if (existing.length > 0) {
-      return NextResponse.json(
-        { success: false, error: "Role with this slug already exists" },
-        { status: 409 }
-      );
+      return { success: false, error: "Role with this slug already exists" };
     }
 
     const [newRole] = await db
@@ -124,38 +97,22 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
-    return NextResponse.json({
+    return {
       success: true,
       data: newRole,
-    }, { status: 201 });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json(
-      { success: false, error: "Failed to create role" },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);
 
 // PATCH /api/admin/roles - Update role
-export async function PATCH(request: NextRequest) {
-  const authResult = await requireAuth(["admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json(
-      { success: false, error: authResult.error },
-      { status: authResult.status }
-    );
-  }
-
-  try {
+export const PATCH = createApiRoute(
+  async (req, auth) => {
     const body = await request.json();
     const { id, name, description, isActive } = body;
 
     if (!id) {
-      return NextResponse.json(
-        { success: false, error: "Role ID is required" },
-        { status: 400 }
-      );
+      return { success: false, error: "Role ID is required" };
     }
 
     // Check if role exists and is not a system role
@@ -166,17 +123,11 @@ export async function PATCH(request: NextRequest) {
       .limit(1);
 
     if (existing.length === 0) {
-      return NextResponse.json(
-        { success: false, error: "Role not found" },
-        { status: 404 }
-      );
+      return { success: false, error: "Role not found" };
     }
 
     if (existing[0].isSystemRole) {
-      return NextResponse.json(
-        { success: false, error: "Cannot modify system roles" },
-        { status: 403 }
-      );
+      return { success: false, error: "Cannot modify system roles" };
     }
 
     const updateData: Record<string, unknown> = {
@@ -193,38 +144,22 @@ export async function PATCH(request: NextRequest) {
       .where(eq(roles.id, id))
       .returning();
 
-    return NextResponse.json({
+    return {
       success: true,
       data: updated,
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json(
-      { success: false, error: "Failed to update role" },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);
 
 // DELETE /api/admin/roles - Delete role
-export async function DELETE(request: NextRequest) {
-  const authResult = await requireAuth(["admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json(
-      { success: false, error: authResult.error },
-      { status: authResult.status }
-    );
-  }
-
-  try {
-    const { searchParams } = new URL(request.url);
+export const DELETE = createApiRoute(
+  async (req, auth) => {
+    const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
 
     if (!id) {
-      return NextResponse.json(
-        { success: false, error: "Role ID is required" },
-        { status: 400 }
-      );
+      return { success: false, error: "Role ID is required" };
     }
 
     // Check if role exists and is not a system role
@@ -235,30 +170,19 @@ export async function DELETE(request: NextRequest) {
       .limit(1);
 
     if (existing.length === 0) {
-      return NextResponse.json(
-        { success: false, error: "Role not found" },
-        { status: 404 }
-      );
+      return { success: false, error: "Role not found" };
     }
 
     if (existing[0].isSystemRole) {
-      return NextResponse.json(
-        { success: false, error: "Cannot delete system roles" },
-        { status: 403 }
-      );
+      return { success: false, error: "Cannot delete system roles" };
     }
 
     await db.delete(roles).where(eq(roles.id, id));
 
-    return NextResponse.json({
+    return {
       success: true,
       message: "Role deleted successfully",
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json(
-      { success: false, error: "Failed to delete role" },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);

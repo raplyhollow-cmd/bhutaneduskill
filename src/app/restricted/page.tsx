@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@/components/ui/toaster";
 import { PremiumCard, PremiumCardHeader, PremiumCardTitle, PremiumCardDescription, PremiumCardContent } from "@/components/admin/premium-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AlertCircle, School, ArrowRight, CheckCircle2, Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
+import { portal } from "@/styles/design-tokens";
 
 interface UserProfile {
   id: string;
@@ -77,7 +78,7 @@ export default function RestrictedPage() {
       toast({
         title: "School code required",
         description: "Please enter your school verification code to continue.",
-        variant: "destructive",
+        variant: "error",
       });
       return;
     }
@@ -98,12 +99,12 @@ export default function RestrictedPage() {
   }
 
   // Portal colors for consistent branding
-  const portalColors: Record<string, { from: string; to: string; bg: string }> = {
-    student: { from: "rgb(249 115 22)", to: "rgb(194 65 12)", bg: "bg-orange-50" },
-    teacher: { from: "rgb(59 130 246)", to: "rgb(37 99 235)", bg: "bg-blue-50" },
-    parent: { from: "rgb(107 114 128)", to: "rgb(75 85 99)", bg: "bg-gray-50" },
-    counselor: { from: "rgb(168 85 247)", to: "rgb(147 51 234)", bg: "bg-purple-50" },
-    "school-admin": { from: "rgb(139 92 246)", to: "rgb(124 58 237)", bg: "bg-violet-50" },
+  const portalColors: Record<string, { gradient: string; bg: string }> = {
+    student: { gradient: portal.student.gradient, bg: "bg-orange-50" },
+    teacher: { gradient: portal.teacher.gradient, bg: "bg-blue-50" },
+    parent: { gradient: portal.parent.gradient, bg: "bg-gray-50" },
+    counselor: { gradient: portal.counselor.gradient, bg: "bg-purple-50" },
+    "school-admin": { gradient: portal.schoolAdmin.gradient, bg: "bg-violet-50" },
   };
 
   const colors = portalColors[user?.type || "student"] || portalColors.student;
@@ -120,7 +121,7 @@ export default function RestrictedPage() {
         >
           <div
             className="w-24 h-24 rounded-full flex items-center justify-center"
-            style={{ background: `linear-gradient(135deg, ${colors.from} 0%, ${colors.to} 100%)` }}
+            style={{ background: colors.gradient }}
           >
             <School className="w-12 h-12 text-white" />
           </div>
@@ -156,7 +157,7 @@ export default function RestrictedPage() {
                   </div>
                   <div
                     className="px-3 py-1 rounded-full text-xs font-medium text-white"
-                    style={{ background: `linear-gradient(135deg, ${colors.from} 0%, ${colors.to} 100%)` }}
+                    style={{ background: colors.gradient }}
                   >
                     {user?.type?.replace("-", " ")}
                   </div>
@@ -224,7 +225,7 @@ export default function RestrictedPage() {
                   >
                     <div
                       className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                      style={{ background: `linear-gradient(135deg, ${colors.from} 0%, ${colors.to} 100%)` }}
+                      style={{ background: colors.gradient }}
                     >
                       <CheckCircle2 className="w-3.5 h-3.5 text-white" />
                     </div>
@@ -246,7 +247,7 @@ export default function RestrictedPage() {
             onClick={handleContinue}
             disabled={isSubmitting}
             className="w-full gap-2 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300"
-            style={{ background: `linear-gradient(135deg, ${colors.from} 0%, ${colors.to} 100%)` }}
+            style={{ background: colors.gradient }}
           >
             {isSubmitting ? (
               <>Processing...</>

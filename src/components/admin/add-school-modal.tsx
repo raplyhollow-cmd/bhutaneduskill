@@ -1,7 +1,7 @@
 "use client";
 
 import { logger } from "@/lib/logger";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@/components/ui/toaster";
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { portal } from "@/styles/design-tokens";
 
 interface AddSchoolModalProps {
   open: boolean;
@@ -95,7 +96,7 @@ export function AddSchoolModal({ open, onClose, onSuccess }: AddSchoolModalProps
         toast({
           title: "Failed to create school",
           description: responseData.error || "Unknown error",
-          variant: "destructive",
+          variant: "error",
         });
       }
     } catch (error) {
@@ -103,7 +104,7 @@ export function AddSchoolModal({ open, onClose, onSuccess }: AddSchoolModalProps
       toast({
         title: "Network error",
         description: "Please check your connection and try again.",
-        variant: "destructive",
+        variant: "error",
       });
     } finally {
       setIsLoading(false);
@@ -361,7 +362,7 @@ export function AddSchoolModal({ open, onClose, onSuccess }: AddSchoolModalProps
               type="submit"
               disabled={isLoading || !name || !district || !contactEmail || !contactPhone}
               className="flex-1"
-              style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
+              style={{ background: portal.admin.gradient }}
             >
               {isLoading ? "Creating..." : "Create School"}
             </Button>

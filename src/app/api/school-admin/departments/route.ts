@@ -1,20 +1,17 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { departments, users, subjects } from "@/lib/db/schema";
-import { requireAuth, canApproveApplications } from "@/lib/auth-utils";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse } from "@/lib/api/response-helpers";
 import { requirePermission } from "@/lib/rbac";
 import { logger } from "@/lib/logger";
 import { eq, and, desc, like, count } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 // GET /api/school-admin/departments - List departments (school-scoped)
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["school-admin", "admin", "teacher"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { user, userId } = authResult;
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
+    const { user, userId } = getAuth(request);
 
     // Check departments.manage permission
     const permCheck = await requirePermission(userId, "departments.manage");
@@ -98,21 +95,15 @@ export async function GET(request: NextRequest) {
 
     logger.info("Departments listed", { userId, schoolId: user.schoolId });
 
-    return NextResponse.json({ departments: departmentsWithCounts });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/departments", method: "GET" });
-    return NextResponse.json({ error: "Failed to fetch departments" }, { status: 500 });
-  }
-}
+    return successResponse({ departments: departmentsWithCounts });
+  },
+  ["school-admin", "admin", "teacher"]
+);
 
 // POST /api/school-admin/departments - Create department
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["school-admin", "admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { user, userId } = authResult;
+export const POST = createApiRoute(
+  async (request: NextRequest) => {
+    const { user, userId } = getAuth(request);
 
     // Check departments.manage permission
     const permCheck = await requirePermission(userId, "departments.manage");
@@ -122,13 +113,13 @@ export async function POST(request: NextRequest) {
     const { name, code, description, headOfDepartment } = body;
 
     if (!name || !code) {
-      return NextResponse.json({ error: "Name and code are required" }, { status: 400 });
+      return badRequestResponse("Name and code are required");
     }
 
     // Check if department code already exists in this school
     const schoolId = user.type === "admin" ? body.schoolId : user.schoolId;
     if (!schoolId) {
-      return NextResponse.json({ error: "School ID is required" }, { status: 400 });
+      return badRequestResponse("School ID is required");
     }
 
     const existing = await db
@@ -138,7 +129,7 @@ export async function POST(request: NextRequest) {
       .limit(1);
 
     if (existing.length > 0) {
-      return NextResponse.json({ error: "Department code already exists in this school" }, { status: 400 });
+      return badRequestResponse("Department code already exists in this school");
     }
 
     const departmentId = `dept_${nanoid()}`;
@@ -160,9 +151,7 @@ export async function POST(request: NextRequest) {
 
     logger.info("Department created", { userId, departmentId, name, schoolId });
 
-    return NextResponse.json({ department: newDepartment }, { status: 201 });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/departments", method: "POST" });
-    return NextResponse.json({ error: "Failed to create department" }, { status: 500 });
-  }
-}
+    return successResponse({ department: newDepartment });
+  },
+  ["school-admin", "admin"]
+);

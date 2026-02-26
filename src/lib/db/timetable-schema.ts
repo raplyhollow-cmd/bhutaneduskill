@@ -1,122 +1,26 @@
 /**
  * Timetable Management Database Schema
  * Handles class scheduling, teacher allocation, and conflict detection
+ *
+ * NOTE: timePeriods, rooms, and timetableEntries are defined in schema.ts
+ * to maintain a single source of truth. This file re-exports them for
+ * convenience and defines timetable-specific tables.
  */
 
 import { pgTable, text, integer, boolean, timestamp, pgEnum , json} from "drizzle-orm/pg-core";
 
-// ============================================================================
-// TIMETABLE PERIODS
-// ============================================================================
-
-/**
- * Time periods for the school day
- * e.g., Period 1: 8:00-8:45, Period 2: 8:45-9:30, etc.
- */
-export const timePeriods = pgTable("time_periods", {
-  id: text("id").primaryKey(),
-  schoolId: text("school_id").notNull(),
-
-  // Period details
-  name: text("name").notNull(), // "Period 1", "Break", "Lunch"
-  type: text("type").notNull(), // "class", "break", "lunch"
-  orderIndex: integer("order_index").notNull(), // Sorting order
-
-  // Time
-  startTime: text("start_time").notNull(), // HH:MM format (24h)
-  endTime: text("end_time").notNull(), // HH:MM format (24h)
-  duration: integer("duration").notNull(), // In minutes
-
-  // Days applicable
-  days: json("days").$type<Array<"Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday">>(),
-
-  isActive: boolean("is_active").default(true),
-
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
+// Re-export core timetable tables from schema.ts
+export {
+  timePeriods,
+  rooms,
+  timetableEntries,
+  type TimePeriod,
+  type Room,
+  type TimetableEntry,
+} from "./schema";
 
 // ============================================================================
-// TIMETABLE ENTRIES
-// ============================================================================
-
-/**
- * Individual timetable entries
- * Links a class, subject, teacher, room, and time period
- */
-export const timetableEntries = pgTable("timetable_entries", {
-  id: text("id").primaryKey(),
-  schoolId: text("school_id").notNull(),
-
-  // Class and section
-  classId: text("class_id").notNull(), // References classes table
-  grade: integer("grade").notNull(),
-  section: text("section"),
-
-  // Subject and teacher
-  subjectId: text("subject_id").notNull(), // References subjects table
-  subjectName: text("subject_name").notNull(), // Denormalized for easy access
-  teacherId: text("teacher_id").notNull(), // References users table (type='teacher')
-  teacherName: text("teacher_name"), // Denormalized
-
-  // Room allocation
-  roomId: text("room_id"), // Physical classroom/lab ID
-  roomName: text("room_name"), // "Room 101", "Science Lab", etc.
-
-  // Time slot
-  periodId: text("period_id").notNull(), // References time_periods
-  dayOfWeek: text("day_of_week").notNull(), // "Monday", "Tuesday", etc.
-
-  // Additional info
-  academicYear: text("academic_year").notNull(), // "2024-2025"
-  termId: text("term_id"), // References academic_terms
-  isElective: boolean("is_elective").default(false),
-  isDoublePeriod: boolean("is_double_period").default(false),
-  notes: text("notes"),
-
-  // Status
-  isActive: boolean("is_active").default(true),
-
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
-
-// ============================================================================
-// ROOMS
-// ============================================================================
-
-/**
- * Physical rooms in the school
- * Classrooms, labs, halls, etc.
- */
-export const rooms = pgTable("rooms", {
-  id: text("id").primaryKey(),
-  schoolId: text("school_id").notNull(),
-
-  // Room details
-  name: text("name").notNull(), // "Room 101", "Computer Lab 1"
-  roomNumber: text("room_number"), // "101", "CL1"
-  type: text("type").notNull(), // "classroom", "lab", "hall", "library", "office"
-  capacity: integer("capacity"), // Number of students
-
-  // Features
-  hasProjector: boolean("has_projector").default(false),
-  hasComputers: boolean("has_computers").default(false),
-  hasLabEquipment: boolean("has_lab_equipment").default(false),
-  facilities: json("facilities").$type<string[]>(), // ["projector", "smart_board", "ac"]
-
-  // Location
-  building: text("building"), // "Block A", "Main Building"
-  floor: integer("floor"), // Floor number
-
-  isActive: boolean("is_active").default(true),
-
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
-
-// ============================================================================
-// TIMETALE CONFLICTS
+// TIMETABLE CONFLICTS
 // ============================================================================
 
 /**
@@ -221,9 +125,6 @@ export const examEntries = pgTable("exam_entries", {
 // TYPE EXPORTS
 // ============================================================================
 
-export type TimePeriod = typeof timePeriods.$inferSelect;
-export type TimetableEntry = typeof timetableEntries.$inferSelect;
-export type Room = typeof rooms.$inferSelect;
 export type TimetableConflict = typeof timetableConflicts.$inferSelect;
 export type ExamSchedule = typeof examSchedules.$inferSelect;
 export type ExamEntry = typeof examEntries.$inferSelect;

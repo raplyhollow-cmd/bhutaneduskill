@@ -1,19 +1,29 @@
-import { NextRequest, NextResponse } from "next/server";
+/**
+ * SCHOOLS API
+ *
+ * GET /api/schools - Get schools
+ * POST /api/schools - Create school (admin only)
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for cleaner code
+ * FIXED: No longer uses disabled db.query API
+ */
+
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { schools, users } from "@/lib/db/schema";
 import { eq, like, or, desc } from "drizzle-orm";
-import { requireAuth } from "@/lib/auth-utils";
 import { requirePermission } from "@/lib/rbac";
 import { logger } from "@/lib/logger";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, createdResponse, badRequestResponse } from "@/lib/api/response-helpers";
 
+// ============================================================================
 // GET /api/schools - Get schools
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth();
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { user, userId } = authResult;
+// ============================================================================
+
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user, userId } = auth;
 
     // Check schools.read permission - skip for platform admins and counselors
     if (user.type !== "admin" && user.type !== "counselor") {
@@ -29,75 +39,73 @@ export async function GET(request: NextRequest) {
     if (!["admin", "counselor"].includes(user.type)) {
       // Non-admin users can only see their own school
       if (user.schoolId) {
-        const school = await db.query.schools.findFirst({
-          where: eq(schools.id, user.schoolId),
-        });
-        return NextResponse.json({ schools: school ? [school] : [] });
+        const schoolList = await db
+          .select()
+          .from(schools)
+          .where(eq(schools.id, user.schoolId))
+          .limit(1);
+        return successResponse({ schools: schoolList });
       }
-      return NextResponse.json({ schools: [] });
+      return successResponse({ schools: [] });
     }
 
-    let schoolList: any[];
+    // Use db.select() instead of db.query.schools.findMany()
+    type SchoolRecord = typeof schools.$inferSelect;
+    let schoolList: SchoolRecord[];
     if (search) {
-      schoolList = await db.query.schools.findMany({
-        where: or(
+      schoolList = await db
+        .select()
+        .from(schools)
+        .where(or(
           like(schools.name, `%${search}%`),
           like(schools.code, `%${search}%`)
-        ),
-        limit,
-        orderBy: desc(schools.createdAt),
-      });
+        ))
+        .limit(limit)
+        .orderBy(desc(schools.createdAt));
     } else {
-      schoolList = await db.query.schools.findMany({
-        limit,
-        orderBy: desc(schools.createdAt),
-      });
+      schoolList = await db
+        .select()
+        .from(schools)
+        .limit(limit)
+        .orderBy(desc(schools.createdAt));
     }
 
-    return NextResponse.json({ schools: schoolList });
-  } catch (error) {
-    logger.error(error, { route: "/api/schools", method: "GET" });
-    return NextResponse.json({ error: "Failed to fetch schools" }, { status: 500 });
-  }
-}
+    return successResponse({ schools: schoolList });
+  },
+  ['admin', 'school-admin', 'teacher', 'counselor']
+);
 
+// ============================================================================
 // POST /api/schools - Create school (admin only)
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
+// ============================================================================
 
-    if ("error" in authResult) {
-      logger.security("unauthorized_school_creation_attempt", { error: authResult.error });
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { user, userId } = authResult;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user, userId } = auth;
     logger.debug("School creation auth check", { userId, userType: user?.type });
-
-    // Platform admins already verified by requireAuth(["admin"]) - skip RBAC check
-    // RBAC permission check is only needed for non-admin roles
 
     const body = await request.json();
     const { name, code, address, contactEmail, contactPhone, subscriptionStatus, subscriptionTier, district, maxStudents } = body;
 
     // Validate required fields
     if (!name) {
-      return NextResponse.json({ error: "School name is required" }, { status: 400 });
+      return badRequestResponse("School name is required");
     }
 
     // Auto-generate school code in format: ABC-DIST-YYYY
-    // Flow diagram: Generate ABC-DIST-2024 code
     const currentYear = new Date().getFullYear();
-    const districtCode = district ? district.substring(0, 3).toUpperCase() : "THI"; // Default to Thimphu
+    const districtCode = district ? district.substring(0, 3).toUpperCase() : "THI";
     const nameCode = code || name.substring(0, 3).toUpperCase();
     let generatedCode = `${nameCode}-${districtCode}-${currentYear}`;
 
-    // Check if code already exists
-    const existingSchool = await db.query.schools.findFirst({
-      where: eq(schools.code, generatedCode),
-    });
+    // Check if code already exists - use db.select() instead of db.query
+    const existingSchool = await db
+      .select()
+      .from(schools)
+      .where(eq(schools.code, generatedCode))
+      .limit(1);
 
-    if (existingSchool) {
-      // Add random suffix if code exists
+    if (existingSchool.length > 0) {
       const randomSuffix = Math.random().toString(36).substring(2, 4).toUpperCase();
       generatedCode = `${nameCode}-${districtCode}-${currentYear}-${randomSuffix}`;
     }
@@ -105,10 +113,33 @@ export async function POST(request: NextRequest) {
     // Generate a unique school ID
     const schoolId = `school_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
-    // Build school data with fields that exist in database
-    // Note: subscriptionStatus, subscriptionTier, activatedAt, setupComplete fields
-    // are NOT in the database yet - they need to be added via migration
-    const schoolData: any = {
+    // Build school data
+    interface SchoolCreateData {
+      id: string;
+      name: string;
+      code: string;
+      type: string;
+      address: string;
+      city: string;
+      state: string;
+      country: string;
+      postalCode: string;
+      phone: string;
+      email: string;
+      website: string;
+      logo: string;
+      establishedYear: number;
+      accreditationStatus: string;
+      maxStudents: number;
+      campusSize: string;
+      facilities: string;
+      principalName: string;
+      principalPhone: string;
+      principalEmail: string;
+      domain: string;
+      isActive: boolean;
+    }
+    const schoolData: SchoolCreateData = {
       id: schoolId,
       name,
       code: generatedCode,
@@ -126,7 +157,7 @@ export async function POST(request: NextRequest) {
       accreditationStatus: "registered",
       maxStudents: maxStudents || 1000,
       campusSize: "10 acres",
-      facilities: "[]", // Store as JSON string (db column is text type)
+      facilities: "[]",
       board: "BCSE",
       principalName: "TBD",
       principalEmail: contactEmail || `principal@${generatedCode.toLowerCase()}.bt`,
@@ -139,30 +170,25 @@ export async function POST(request: NextRequest) {
       level: "middle",
       contactEmail: contactEmail || null,
       contactPhone: contactPhone || null,
-      // Note: subscription status and tier will be stored in a separate table or added later
-      isActive: true, // Default to active since subscription columns don't exist yet
+      isActive: true,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
 
-    await db.insert(schools).values(schoolData);
+    await db.insert(schools).values(schoolData as any);
 
-    // Query the created school to return it
-    const createdSchool = await db.query.schools.findFirst({
-      where: eq(schools.id, schoolId),
-    });
+    // Query the created school using db.select() instead of db.query
+    const createdSchoolList = await db
+      .select()
+      .from(schools)
+      .where(eq(schools.id, schoolId))
+      .limit(1);
+
+    const createdSchool = createdSchoolList[0];
 
     logger.info("School created successfully", { schoolId, code: generatedCode, name });
 
-    return NextResponse.json({ school: createdSchool }, { status: 201 });
-  } catch (error) {
-    logger.error(error, { route: "/api/schools", method: "POST" });
-    console.error("School creation error:", error);
-    // Log the actual error for debugging
-    if (error instanceof Error) {
-      console.error("Error message:", error.message);
-      console.error("Error stack:", error.stack);
-    }
-    return NextResponse.json({ error: "Failed to create school" }, { status: 500 });
-  }
-}
+    return createdResponse({ school: createdSchool });
+  },
+  ['admin']
+);

@@ -1,6 +1,7 @@
 "use client";
 
 import { logger } from "@/lib/logger";
+import { useToast } from "@/components/ui/toaster";
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
+import { portal } from "@/styles/design-tokens";
 
 export interface ResourceFormData {
   title: string;
@@ -67,6 +69,7 @@ const PREDEFINED_TAGS = [
 ];
 
 export function AddResourceModal({ open, onClose, onSuccess }: AddResourceModalProps) {
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -110,11 +113,20 @@ export function AddResourceModal({ open, onClose, onSuccess }: AddResourceModalP
         throw new Error(error.error || "Failed to create resource");
       }
 
+      toast({
+        title: "Resource created",
+        description: `${title} has been added to the library.`,
+        variant: "success",
+      });
       onSuccess();
       handleClose();
     } catch (error) {
       logger.error("[ADD RESOURCE] Error:", error);
-      alert(error instanceof Error ? error.message : "Failed to create resource. Please try again.");
+      toast({
+        title: "Failed to create resource",
+        description: error instanceof Error ? error instanceof Error ? error.message : String(error) : "Please try again.",
+        variant: "error",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -141,10 +153,18 @@ export function AddResourceModal({ open, onClose, onSuccess }: AddResourceModalP
 
       const data = await response.json();
       setAccessUrl(data.file.url);
-      alert("File uploaded successfully!");
+      toast({
+        title: "File uploaded successfully",
+        description: "Your file has been uploaded.",
+        variant: "success",
+      });
     } catch (error) {
       logger.error("[FILE UPLOAD] Error:", error);
-      alert("Failed to upload file. Please try again.");
+      toast({
+        title: "Upload failed",
+        description: "Failed to upload file. Please try again.",
+        variant: "error",
+      });
     } finally {
       setIsUploading(false);
     }
@@ -402,7 +422,7 @@ export function AddResourceModal({ open, onClose, onSuccess }: AddResourceModalP
               type="submit"
               disabled={isLoading || !title || !description}
               className="flex-1"
-              style={{ background: "linear-gradient(135deg, rgb(168 85 247), rgb(147 51 234))" }}
+              style={{ background: portal.counselor.gradient }}
             >
               {isLoading ? (
                 <>

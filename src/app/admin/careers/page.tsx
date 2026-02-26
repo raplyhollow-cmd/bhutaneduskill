@@ -39,6 +39,23 @@ import {
   Download,
   Upload,
 } from "lucide-react";
+
+type CareerData = {
+  id: string;
+  name: string;
+  slug: string;
+  description?: string | null;
+  riasecCode?: string | null;
+  hollandCodes?: Record<string, number> | null;
+  skills?: string[] | null;
+  educationLevel?: string[] | null;
+  subjects?: string[] | null;
+  workEnvironment?: string | null;
+  typicalSalary?: string | null;
+  bhutanDemand?: string | null;
+  bhutanSpecific?: boolean;
+  isActive?: boolean;
+};
 import Link from "next/link";
 import {
   getCareers,
@@ -79,7 +96,7 @@ export default function AdminCareersPage() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [careerToDelete, setCareerToDelete] = useState<string | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
-  const [editingCareer, setEditingCareer] = useState<any>(null);
+  const [editingCareer, setEditingCareer] = useState<CareerData | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   // Fetch careers on mount

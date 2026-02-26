@@ -5,11 +5,11 @@
  * that was causing the React hooks error.
  */
 
+// Dynamic import to avoid "use server" / "use client" conflict
+import dynamic from "next/dynamic";
 import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
-import { UniversalMobileSidebar, UniversalPortalHeader } from "@/components/mobile/universal-mobile-sidebar";
-import { PortalErrorBoundary } from "@/components/error/portal-error-boundary";
 
 export default async function AdminLayout({
   children,
@@ -40,6 +40,3 @@ export default async function AdminLayout({
     </AdminLayoutClient>
   );
 }
-
-// Dynamic import to avoid "use server" / "use client" conflict
-import dynamic from "next/dynamic";

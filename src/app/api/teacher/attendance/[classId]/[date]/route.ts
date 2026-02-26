@@ -5,6 +5,15 @@ import { db } from "@/lib/db";
 import { attendance, users, classes, enrollments } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 
+interface AttendanceRecord {
+  studentId: string;
+  status: string;
+  notes?: string;
+  reason?: string;
+  checkInTime?: string;
+  checkOutTime?: string;
+}
+
 interface Params {
   params: Promise<{ classId: string; date: string }>;
 }
@@ -80,7 +89,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     // Process each attendance record
     const results = await Promise.all(
-      attendanceData.map(async (record: any) => {
+      attendanceData.map(async (record: AttendanceRecord) => {
         const { studentId, status, notes, reason, checkInTime, checkOutTime } = record;
 
         // Check for existing record

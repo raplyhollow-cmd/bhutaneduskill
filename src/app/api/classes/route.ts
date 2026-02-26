@@ -1,31 +1,42 @@
-import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
-import { requirePermission } from "@/lib/rbac";
+/**
+ * CLASSES API
+ *
+ * GET /api/classes - Get classes with filtering
+ * POST /api/classes - Create new class
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { classes } from "@/lib/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { classes, users, schools } from "@/lib/db/schema";
+import { eq, and, desc, inArray } from "drizzle-orm";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, createdResponse, badRequestResponse } from "@/lib/api/response-helpers";
 
+// ============================================================================
 // GET /api/classes - Get classes
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin', 'teacher', 'counselor']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
+// ============================================================================
 
-    const { user: currentUser, userId } = authResult;
+/**
+ * Drizzle where condition type
+ */
+type WhereCondition = {
+  field: string;
+  operator: string;
+  value: unknown;
+} | ReturnType<typeof eq>;
 
-    // Check classes.read permission
-    const permCheck = await requirePermission(userId, "classes.read");
-    if (permCheck) return permCheck;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user: currentUser, userId } = auth;
 
     const { searchParams } = new URL(request.url);
     const schoolId = searchParams.get("schoolId");
     const teacherId = searchParams.get("teacherId");
     const academicYear = searchParams.get("academicYear");
 
-    const conditions = [];
+    const conditions: WhereCondition[] = [];
     if (schoolId) {
       conditions.push(eq(classes.schoolId, schoolId));
     }
@@ -38,52 +49,77 @@ export async function GET(request: NextRequest) {
 
     // Teachers can only see their own classes
     if (currentUser.type === "teacher") {
-      conditions.push(eq(classes.teacherId, currentUser.id as string));
+      conditions.push(eq(classes.teacherId, userId));
     }
 
-    let classList: any[];
-    if (conditions.length > 0) {
-      classList = await db.query.classes.findMany({
-        where: conditions.length === 1 ? conditions[0] : and(...conditions),
-        with: {
-          teacher: true,
-          school: true,
-        },
-        orderBy: desc(classes.createdAt),
-      });
-    } else {
-      classList = await db.query.classes.findMany({
-        with: {
-          teacher: true,
-          school: true,
-        },
-        orderBy: desc(classes.createdAt),
-      });
-    }
+    const whereClause = conditions.length > 0
+      ? conditions.length === 1 ? conditions[0] : and(...conditions)
+      : undefined;
 
-    return NextResponse.json({ classes: classList });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json({ error: "Failed to fetch classes" }, { status: 500 });
-  }
-}
+    // Get base class data
+    const classList = await db
+      .select()
+      .from(classes)
+      .where(whereClause)
+      .orderBy(desc(classes.createdAt));
 
+    // OPTIMIZATION: Fix N+1 query by batching teacher and school lookups
+    const uniqueTeacherIds = [...new Set(classList.map(c => c.teacherId).filter(Boolean))];
+    const uniqueSchoolIds = [...new Set(classList.map(c => c.schoolId).filter(Boolean))];
+
+    // Batch fetch teachers
+    const teachers = uniqueTeacherIds.length > 0
+      ? await db
+          .select({
+            id: users.id,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            email: users.email,
+          })
+          .from(users)
+          .where(inArray(users.id, uniqueTeacherIds))
+      : [];
+
+    const teacherMap = new Map(teachers.map(t => [t.id, t]));
+
+    // Batch fetch schools
+    const schoolData = uniqueSchoolIds.length > 0
+      ? await db
+          .select({
+            id: schools.id,
+            name: schools.name,
+          })
+          .from(schools)
+          .where(inArray(schools.id, uniqueSchoolIds))
+      : [];
+
+    const schoolMap = new Map(schoolData.map(s => [s.id, s]));
+
+    // Enrich classes with batched data
+    const enrichedClasses = classList.map((cls) => ({
+      ...cls,
+      teacher: cls.teacherId ? teacherMap.get(cls.teacherId) || null : null,
+      school: cls.schoolId ? schoolMap.get(cls.schoolId) || null : null,
+    }));
+
+    return successResponse({ classes: enrichedClasses });
+  },
+  ['admin', 'school-admin', 'teacher', 'counselor']
+);
+
+// ============================================================================
 // POST /api/classes - Create class
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
+// ============================================================================
 
-    const { user: currentUser, userId } = authResult;
-
-    // Check classes.create permission
-    const permCheck = await requirePermission(userId, "classes.create");
-    if (permCheck) return permCheck;
-
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user: currentUser } = auth;
     const body = await request.json();
     const { name, grade, section, academicYear, students } = body;
+
+    if (!name || !grade) {
+      return badRequestResponse("Name and grade are required");
+    }
 
     const teacherId = body.teacherId || currentUser.id;
     const schoolId = body.schoolId || currentUser.schoolId;
@@ -91,9 +127,7 @@ export async function POST(request: NextRequest) {
     const [newClass] = await db
       .insert(classes)
       .values({
-        ...({
-          id: `class_${Date.now()}`,
-        }),
+        id: `class_${Date.now()}`,
         schoolId,
         teacherId,
         name,
@@ -106,9 +140,7 @@ export async function POST(request: NextRequest) {
       } as any)
       .returning();
 
-    return NextResponse.json({ class: newClass }, { status: 201 });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json({ error: "Failed to create class" }, { status: 500 });
-  }
-}
+    return createdResponse({ class: newClass });
+  },
+  ['admin', 'school-admin', 'teacher']
+);

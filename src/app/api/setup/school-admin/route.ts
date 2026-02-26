@@ -1,18 +1,71 @@
-import { NextRequest, NextResponse } from "next/server";
-import { currentUser } from "@clerk/nextjs/server";
+import { NextRequest } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { users, wizardProgress, schools, schoolAdminApplications } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { logger } from "@/lib/logger";
 
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface ClerkJSEmailAddress {
+  id: string;
+  emailAddress: string;
+}
+
+interface WizardProgressRecord {
+  id: string;
+  userId: string;
+  currentStep: string;
+  completedSteps: string[];
+  data: Record<string, unknown>;
+  isCompleted: boolean;
+  lastUpdated: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface SchoolAdminApplicationRecord {
+  id: string;
+  userId: string;
+  schoolId: string;
+  status: string;
+  paymentStatus: string;
+  appliedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * School Admin Setup API
+ *
+ * Handles the setup of School Admin users during registration.
+ * Creates a user with type="school-admin" if not exists.
+ *
+ * Note: This route intentionally uses Clerk's auth() directly instead of requireAuth()
+ * because it's called during the setup wizard for users who may not exist in the database yet.
+ * The setup wizard pattern requires: 1) Clerk auth (user exists in Clerk) 2) Check database 3) Create if not exists
+ */
+
 export async function POST(request: NextRequest) {
   try {
-    const user = await currentUser();
+    const { userId } = await auth();
 
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
     }
+
+    // Get user from Clerk
+    const clerkUser = await fetch(`https://api.clerk.com/v1/users/${userId}`, {
+      headers: {
+        Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}`,
+      },
+    }).then((res) => res.json());
 
     const body = await request.json();
     const { step, data } = body;
@@ -21,24 +74,23 @@ export async function POST(request: NextRequest) {
     let userRecord = await db
       .select()
       .from(users)
-      .where(eq(users.clerkUserId, user.id))
+      .where(eq(users.clerkUserId, userId))
       .limit(1);
 
     // Create user if not exists (user signed in via Clerk but not in DB yet)
     let dbUser;
     if (userRecord.length === 0) {
-      const userId = `user-${nanoid()}`;
-      const firstName = user.firstName || "School";
-      const lastName = user.lastName || "Admin";
+      const newUserId = `user-${nanoid()}`;
+      const firstName = clerkUser.first_name || "School";
+      const lastName = clerkUser.last_name || "Admin";
       // Defensive email extraction - try multiple methods
-      const email = user.primaryEmailAddress?.emailAddress
-        || user.emailAddresses?.find((e: any) => e.id === user.primaryEmailAddressId)?.emailAddress
-        || user.emailAddresses?.[0]?.emailAddress
+      const email = clerkUser.email_addresses?.[0]?.email_address
+        || clerkUser.primary_email_address?.email_address
         || "";
 
       await db.insert(users).values({
-        id: userId,
-        clerkUserId: user.id,
+        id: newUserId,
+        clerkUserId: userId,
         type: "school-admin",
         role: "school-admin",
         name: `${firstName} ${lastName}`.trim(),
@@ -46,7 +98,7 @@ export async function POST(request: NextRequest) {
         lastName,
         email,
         phone: "", // Will be updated from form data
-        profileImage: "", // Default empty
+        profileImage: clerkUser.image_url || "",
         dateOfBirth: "", // Will be updated from form data
         gender: "other", // Default
         grade: 0, // Required integer, default to 0
@@ -73,7 +125,7 @@ export async function POST(request: NextRequest) {
       userRecord = await db
         .select()
         .from(users)
-        .where(eq(users.clerkUserId, user.id))
+        .where(eq(users.clerkUserId, userId))
         .limit(1);
 
       dbUser = userRecord[0];
@@ -90,7 +142,10 @@ export async function POST(request: NextRequest) {
         .limit(1);
 
       if (schoolRecord.length === 0) {
-        return NextResponse.json({ error: "Invalid school code" }, { status: 400 });
+        return new Response(
+          JSON.stringify({ error: "Invalid school code" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
       }
 
       // Link user to school
@@ -98,10 +153,12 @@ export async function POST(request: NextRequest) {
         .update(users)
         .set({ schoolId: schoolRecord[0].id })
         .where(eq(users.id, dbUser.id));
+
+      dbUser.schoolId = schoolRecord[0].id;
     }
 
     // Update or create wizard progress (gracefully handle missing table)
-    let existingProgress: any[] = [];
+    let existingProgress: WizardProgressRecord[] = [];
     try {
       existingProgress = await db
         .select()
@@ -120,7 +177,7 @@ export async function POST(request: NextRequest) {
           .update(wizardProgress)
           .set({
             currentStep: step === "complete" ? "5" : String((parseInt(existingProgress[0].currentStep as string) || 0) + 1),
-            data: { ...(existingProgress[0].data as any), ...data },
+            data: { ...(existingProgress[0]?.data || {}), ...data },
             updatedAt: new Date(),
           })
           .where(eq(wizardProgress.id, existingProgress[0].id));
@@ -156,7 +213,7 @@ export async function POST(request: NextRequest) {
           firstName: nameParts[0] || "",
           lastName: nameParts.slice(1).join(" ") || "",
           email: data.personalDetails.email || data.adminEmail || dbUser.email,
-          phone: data.personalDetails.phone || data.adminPhone || "",
+          phone: data.personalDetails.phone || data.adminPhone || dbUser.phone,
         })
         .where(eq(users.id, dbUser.id));
     } else if (data.adminName) {
@@ -168,7 +225,7 @@ export async function POST(request: NextRequest) {
           firstName: nameParts[0] || "",
           lastName: nameParts.slice(1).join(" ") || "",
           email: data.adminEmail || dbUser.email,
-          phone: data.adminPhone || "",
+          phone: data.adminPhone || dbUser.phone,
         })
         .where(eq(users.id, dbUser.id));
     }
@@ -187,7 +244,7 @@ export async function POST(request: NextRequest) {
       // Create school admin application for platform admin approval
       if (dbUser.schoolId) {
         // Check if application already exists
-        let existingApplication: any[] = [];
+        let existingApplication: SchoolAdminApplicationRecord[] = [];
         try {
           existingApplication = await db
             .select()
@@ -220,15 +277,18 @@ export async function POST(request: NextRequest) {
       logger.info("School admin setup complete, awaiting approval", { userId: dbUser.id });
     }
 
-    return NextResponse.json({ success: true });
+    return new Response(
+      JSON.stringify({ success: true }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
   } catch (error) {
     logger.error("School-admin setup error:", error);
-    return NextResponse.json(
-      {
+    return new Response(
+      JSON.stringify({
         error: "Failed to process setup",
         details: error instanceof Error ? error.message : "Unknown error"
-      },
-      { status: 500 }
+      }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
 }

@@ -22,6 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { portal } from "@/styles/design-tokens";
 import { updateSupportTicket } from "@/app/admin/support/actions";
 
 // Ticket type from schema
@@ -233,7 +234,7 @@ export function EditTicketModal({ open, onClose, onSuccess, ticket }: EditTicket
             <Button
               type="submit"
               disabled={isLoading}
-              style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
+              style={{ background: portal.admin.gradient }}
               className="text-white"
             >
               {isLoading ? "Saving..." : "Save Changes"}

@@ -1,26 +1,32 @@
 /**
  * Scholarships API
  * Browse government and private scholarships
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
 import { rubScholarships } from "@/lib/db/schema";
 import { db } from "@/lib/db";
 import { eq, and, or, like, sql } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse } from "@/lib/api/response-helpers";
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+type WhereCondition = SQL | undefined;
 
 /**
  * GET /api/scholarships
  * Browse available scholarships
  */
-export async function GET(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["student", "parent", "counselor", "teacher", "school_admin", "admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
+export const GET = createApiRoute(
+  async (req: NextRequest) => {
     const { searchParams } = new URL(req.url);
     const type = searchParams.get("type"); // merit, need_based, sports, arts, government, private
     const provider = searchParams.get("provider");
@@ -30,7 +36,7 @@ export async function GET(req: NextRequest) {
     const activeOnly = searchParams.get("activeOnly") !== "false"; // Default true
 
     // Build query conditions
-    const conditions: any[] = [];
+    const conditions: WhereCondition[] = [];
 
     if (activeOnly) {
       conditions.push(eq(rubScholarships.isActive, true));
@@ -68,33 +74,25 @@ export async function GET(req: NextRequest) {
       provider,
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        scholarships,
-        filters: {
-          types: [
-            { value: "merit", label: "Merit Based" },
-            { value: "need_based", label: "Need Based" },
-            { value: "sports", label: "Sports" },
-            { value: "arts", label: "Arts & Culture" },
-            { value: "government", label: "Government" },
-            { value: "private", label: "Private Organization" },
-          ],
-          providers: [
-            { value: "Govt", label: "Royal Government of Bhutan" },
-            { value: "RUB", label: "Royal University of Bhutan" },
-            { value: "Private", label: "Private Organizations" },
-            { value: "International", label: "International" },
-          ],
-        },
+    return successResponse({
+      scholarships,
+      filters: {
+        types: [
+          { value: "merit", label: "Merit Based" },
+          { value: "need_based", label: "Need Based" },
+          { value: "sports", label: "Sports" },
+          { value: "arts", label: "Arts & Culture" },
+          { value: "government", label: "Government" },
+          { value: "private", label: "Private Organization" },
+        ],
+        providers: [
+          { value: "Govt", label: "Royal Government of Bhutan" },
+          { value: "RUB", label: "Royal University of Bhutan" },
+          { value: "Private", label: "Private Organizations" },
+          { value: "International", label: "International" },
+        ],
       },
     });
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/scholarships", method: "GET" });
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : "Failed to fetch scholarships",
-    }, { status: 500 });
-  }
-}
+  },
+  ["student", "parent", "counselor", "teacher", "school-admin", "admin"]
+);

@@ -1,6 +1,8 @@
 "use client";
 
 import { logger } from "@/lib/logger";
+import { useToast } from "@/components/ui/toaster";
+import { portal } from "@/styles/design-tokens";
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -16,6 +18,7 @@ interface AddCollegeModalProps {
 }
 
 export function AddCollegeModal({ open, onClose, onSuccess }: AddCollegeModalProps) {
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
   // Form fields
@@ -80,9 +83,19 @@ export function AddCollegeModal({ open, onClose, onSuccess }: AddCollegeModalPro
       setAvgSAT("");
       setAvgACT("");
       setRequiredGPA("");
+
+      toast({
+        title: "College created",
+        description: `"${name}" has been added to the database.`,
+        variant: "success",
+      });
     } catch (error) {
       logger.error("[ADD COLLEGE] Error:", error);
-      alert(error instanceof Error ? error.message : "Failed to create college. Please try again.");
+      toast({
+        title: "Failed to create college",
+        description: error instanceof Error ? error instanceof Error ? error.message : String(error) : "Please try again.",
+        variant: "error",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -293,7 +306,7 @@ export function AddCollegeModal({ open, onClose, onSuccess }: AddCollegeModalPro
               type="submit"
               disabled={isLoading || !name || !slug || !location}
               className="flex-1"
-              style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
+              style={{ background: portal.admin.gradient }}
             >
               {isLoading ? "Creating..." : "Create College"}
             </Button>

@@ -3,7 +3,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { studentAllergies } from "@/lib/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql, Sql } from "drizzle-orm";
+
+type DrizzleCondition = Sql<boolean> | ReturnType<typeof eq>;
+
+interface AllergyUpdateData {
+  updatedAt: Date;
+  isActive?: boolean;
+  verifiedBy?: string;
+  verifiedAt?: Date;
+}
 
 /**
  * GET /api/school-admin/medical/allergies - Get student allergies/conditions
@@ -22,7 +31,7 @@ export async function GET(request: NextRequest) {
     const severity = searchParams.get('severity');
     const allergenType = searchParams.get('allergenType');
 
-    let whereConditions: any[] = [
+    const whereConditions: DrizzleCondition[] = [
       eq(studentAllergies.schoolId, user.schoolId),
       eq(studentAllergies.isActive, true),
     ];
@@ -141,7 +150,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Missing allergy ID" }, { status: 400 });
     }
 
-    const updateData: any = {
+    const updateData: AllergyUpdateData = {
       updatedAt: new Date(),
     };
 

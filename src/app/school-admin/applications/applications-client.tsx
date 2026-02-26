@@ -40,7 +40,7 @@ import {
   type Department as BulkDepartment,
   type ClassItem as BulkClassItem,
 } from "@/components/school-admin/bulk-approval-grid";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@/components/ui/toaster";
 import { CeramicCallout } from "@/components/ui/ceramic-callout";
 
 interface PendingUser {
@@ -178,7 +178,7 @@ export function ApplicationsClient({
     } catch (error) {
       toast.error({
         title: "Approval failed",
-        description: error instanceof Error ? error.message : "Could not approve selected applicants",
+        description: error instanceof Error ? error instanceof Error ? error.message : String(error) : "Could not approve selected applicants",
       });
       throw error;
     }
@@ -210,7 +210,7 @@ export function ApplicationsClient({
     } catch (error) {
       toast.error({
         title: "Rejection failed",
-        description: error instanceof Error ? error.message : "Could not reject selected applicants",
+        description: error instanceof Error ? error instanceof Error ? error.message : String(error) : "Could not reject selected applicants",
       });
       throw error;
     }

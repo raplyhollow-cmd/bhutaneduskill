@@ -42,6 +42,20 @@ export interface ExportResult {
   error?: string;
 }
 
+/**
+ * Generic record type for CSV/JSON export data
+ */
+export type ExportRecord = Record<string, string | number | boolean | null | undefined>;
+
+/**
+ * Export data container with metadata
+ */
+export interface ExportData {
+  data: ExportRecord[];
+  filename: string;
+  headers: string[];
+}
+
 // ============================================================================
 // CSV EXPORTER
 // ============================================================================
@@ -49,7 +63,7 @@ export interface ExportResult {
 /**
  * Convert array of objects to CSV
  */
-function arrayToCSV(data: any[], headers: string[] = []): string {
+function arrayToCSV(data: ExportRecord[], headers: string[] = []): string {
   if (data.length === 0) return "";
 
   // Use provided headers or extract from first object
@@ -76,7 +90,7 @@ function arrayToCSV(data: any[], headers: string[] = []): string {
 /**
  * Convert array of objects to JSON
  */
-function arrayToJSON(data: any[]): string {
+function arrayToJSON(data: ExportRecord[]): string {
   return JSON.stringify(data, null, 2);
 }
 
@@ -274,7 +288,7 @@ export async function exportData(options: ExportOptions): Promise<ExportResult> 
   const { format, dataType, schoolId, academicYear, classId } = options;
 
   try {
-    let exportData: { data: any[]; filename: string; headers: string[] };
+    let exportData: ExportData;
 
     switch (dataType) {
       case "students":
@@ -379,16 +393,16 @@ export interface ImportResult {
 /**
  * Parse CSV content to array of objects
  */
-function parseCSVContent(content: string): any[] {
+function parseCSVContent(content: string): ExportRecord[] {
   const lines = content.trim().split("\n");
   if (lines.length < 2) return [];
 
   const headers = parseCSVLine(lines[0]);
-  const result = [];
+  const result: ExportRecord[] = [];
 
   for (let i = 1; i < lines.length; i++) {
     const values = parseCSVLine(lines[i]);
-    const obj: any = {};
+    const obj: ExportRecord = {};
 
     headers.forEach((header, index) => {
       obj[header] = values[index];
@@ -427,7 +441,7 @@ function parseCSVLine(line: string): string[] {
  */
 export async function importStudents(options: {
   schoolId: string;
-  data: any[];
+  data: ExportRecord[];
   skipDuplicates?: boolean;
 }): Promise<ImportResult> {
   const { schoolId, data, skipDuplicates = true } = options;
@@ -505,7 +519,7 @@ export async function importData(options: ImportOptions): Promise<ImportResult> 
   const { format, dataType, schoolId, data, skipDuplicates = true } = options;
 
   try {
-    let parsedData: any[];
+    let parsedData: ExportRecord[];
 
     // Parse data based on format
     if (format === "csv") {

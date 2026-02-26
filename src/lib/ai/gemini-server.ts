@@ -34,8 +34,8 @@ const generationConfig = {
   maxOutputTokens: 2048,
 };
 
-// Safety settings configuration (using 'any' to match Gemini SDK types)
-const safetySettings: any[] = [
+// Safety settings configuration for Gemini SDK
+const safetySettings = [
   {
     category: "HARM_CATEGORY_HARASSMENT",
     threshold: "BLOCK_MEDIUM_AND_ABOVE",
@@ -52,7 +52,7 @@ const safetySettings: any[] = [
     category: "HARM_CATEGORY_DANGEROUS_CONTENT",
     threshold: "BLOCK_MEDIUM_AND_ABOVE",
   },
-];
+] as const;
 
 // ============================================================================
 // TYPES

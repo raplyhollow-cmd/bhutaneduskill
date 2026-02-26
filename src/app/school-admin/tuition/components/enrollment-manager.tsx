@@ -17,6 +17,28 @@ import { Input } from "@/components/ui/input";
 import { Users, Plus, CheckCircle, XCircle, Clock, DollarSign, Search, Filter, RefreshCw, Eye, Edit, X, User, BookOpen, Calendar as CalendarIcon } from "lucide-react";
 import type { TuitionEnrollment } from "@/lib/db/schema";
 
+type ApiEnrollment = {
+  id: string;
+  studentId: string;
+  courseId: string;
+  tutorId?: string | null;
+  status: string;
+  enrollmentDate?: string;
+  enrolledAt?: string;
+  amountPaid?: number;
+  totalPaid?: number;
+  tutorEarnings?: number;
+  sessionsCompleted?: number;
+  student?: Student;
+  course?: Course;
+  tutor?: {
+    user?: {
+      firstName?: string | null;
+      lastName?: string | null;
+    };
+  };
+};
+
 interface Student {
   id: string;
   firstName: string | null;
@@ -85,7 +107,7 @@ export function EnrollmentManager({ onLoadData }: EnrollmentManagerProps) {
 
         // Transform enrollments with student and course details
         const transformedEnrollments: EnrollmentWithDetails[] = await Promise.all(
-          (data.enrollments || []).map(async (enrollment: any) => {
+          (data.enrollments || []).map(async (enrollment: ApiEnrollment) => {
             let studentName = "Unknown Student";
             let courseTitle = "Unknown Course";
             let tutorName = "Unknown Tutor";

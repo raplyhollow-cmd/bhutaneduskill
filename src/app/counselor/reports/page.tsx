@@ -180,10 +180,21 @@ const exportFormats = [
 
 const categoryOptions = ["All", "Student", "Analytics", "Career", "Sessions", "Assessment", "Activity"];
 
+type ReportTemplate = {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+  lastGenerated: string;
+  generates: number;
+};
+
 export default function CounselorReportsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<ReportTemplate | null>(null);
   const [selectedFormat, setSelectedFormat] = useState("pdf");
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [dateRange, setDateRange] = useState({ from: "", to: "" });
@@ -407,13 +418,13 @@ export default function CounselorReportsPage() {
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-gray-500">{report.fileSize}</span>
                       <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon-xs" className="h-6 w-6">
+                        <Button variant="ghost" size="icon" className="h-6 w-6" className="h-6 w-6">
                           <Eye className="w-3 h-3" />
                         </Button>
-                        <Button variant="ghost" size="icon-xs" className="h-6 w-6">
+                        <Button variant="ghost" size="icon" className="h-6 w-6" className="h-6 w-6">
                           <Download className="w-3 h-3" />
                         </Button>
-                        <Button variant="ghost" size="icon-xs" className="h-6 w-6">
+                        <Button variant="ghost" size="icon" className="h-6 w-6" className="h-6 w-6">
                           <Mail className="w-3 h-3" />
                         </Button>
                       </div>

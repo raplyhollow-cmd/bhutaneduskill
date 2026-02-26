@@ -3,6 +3,8 @@
  *
  * GET /api/teacher/schedule - Fetch teacher's weekly/monthly schedule
  *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ *
  * Features:
  * - Weekly and monthly views
  * - Class timings from timetable
@@ -11,12 +13,13 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { timetableEntries, classes, subjects, rooms, timePeriods, users, schoolEvents } from "@/lib/db/schema";
 import { eq, and, asc, or } from "drizzle-orm";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import type { ApiSuccess } from "@/types";
+import { successResponse } from "@/lib/api/response-helpers";
 
 // ============================================================================
 // TYPES
@@ -140,18 +143,14 @@ function calculateDuration(startTime: string, endTime: string): number {
 // API HANDLER
 // ============================================================================
 
-export async function GET(req: NextRequest) {
-  try {
-    // Authenticate user
-    const authResult = await requireAuth(["teacher", "admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
+export const GET = createApiRoute(
+  async (req: NextRequest) => {
+    const auth = getAuth(req);
+    if (!auth) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { userId, user } = authResult;
+    const { userId, user } = auth;
 
     // Get query parameters
     const searchParams = req.nextUrl.searchParams;
@@ -408,18 +407,7 @@ export async function GET(req: NextRequest) {
       view,
     });
 
-    return NextResponse.json({ data: response } satisfies ApiSuccess<ScheduleResponse>);
-  } catch (error) {
-    logger.apiError(error, {
-      route: "/api/teacher/schedule",
-      method: "GET",
-    });
-    return NextResponse.json(
-      {
-        error: "Failed to fetch schedule",
-        status: 500,
-      } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return successResponse(response);
+  },
+  ['teacher', 'admin']
+);

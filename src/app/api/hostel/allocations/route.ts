@@ -59,7 +59,8 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status") || "active";
     const roomId = searchParams.get("roomId");
 
-    const whereConditions: any[] = [
+    type QueryCondition = ReturnType<typeof eq>;
+    const whereConditions: QueryCondition[] = [
       eq(hostelAllocations.schoolId, schoolId || ""),
     ];
 

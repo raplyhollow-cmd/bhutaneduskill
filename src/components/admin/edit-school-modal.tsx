@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { logger } from "@/lib/logger";
+import { useToast } from "@/components/ui/toaster";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { portal } from "@/styles/design-tokens";
 
 interface School {
   id: string;
@@ -30,6 +32,7 @@ interface EditSchoolModalProps {
 }
 
 export function EditSchoolModal({ open, onClose, onSuccess, school }: EditSchoolModalProps) {
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
   // Form fields - initialize with school data when it changes
@@ -88,14 +91,27 @@ export function EditSchoolModal({ open, onClose, onSuccess, school }: EditSchool
       logger.debug("[EDIT SCHOOL] Response data:", responseData);
 
       if (response.ok) {
+        toast({
+          title: "School updated",
+          description: `${name} has been updated successfully.`,
+          variant: "success",
+        });
         onSuccess();
         onClose();
       } else {
-        alert(responseData.error || "Failed to update school");
+        toast({
+          title: "Failed to update school",
+          description: responseData.error || "Please try again.",
+          variant: "error",
+        });
       }
     } catch (error) {
       logger.error("[EDIT SCHOOL] Error:", error);
-      alert("Network error. Please try again.");
+      toast({
+        title: "Network error",
+        description: "Please check your connection and try again.",
+        variant: "error",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -264,7 +280,7 @@ export function EditSchoolModal({ open, onClose, onSuccess, school }: EditSchool
               type="submit"
               disabled={isLoading || !name || !code || !contactEmail || !contactPhone}
               className="flex-1"
-              style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
+              style={{ background: portal.admin.gradient }}
             >
               {isLoading ? "Saving..." : "Save Changes"}
             </Button>

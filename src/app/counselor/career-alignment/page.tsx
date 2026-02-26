@@ -46,6 +46,14 @@ interface StudentCareerMatch {
   avgMarks?: number;
 }
 
+interface SelectedCareer {
+  careerId: string;
+  careerTitle: string;
+  matchScore: number;
+  matchReason: string;
+  riasecCode?: string;
+}
+
 interface ApprovalRequest {
   studentId: string;
   careerTitle: string;
@@ -79,7 +87,7 @@ export default function CareerAlignmentPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStudent, setSelectedStudent] = useState<StudentCareerMatch | null>(null);
-  const [selectedCareer, setSelectedCareer] = useState<any>(null);
+  const [selectedCareer, setSelectedCareer] = useState<SelectedCareer | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [approvalData, setApprovalData] = useState<ApprovalRequest>({
     studentId: "",
@@ -121,7 +129,7 @@ export default function CareerAlignmentPage() {
     }
   }
 
-  function selectCareer(career: any) {
+  function selectCareer(career: { careerTitle: string; riasecCode?: string }) {
     setSelectedCareer(career);
     setApprovalData({
       ...approvalData,

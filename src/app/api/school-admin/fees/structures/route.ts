@@ -1,10 +1,20 @@
-import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+/**
+ * SCHOOL ADMIN FEE STRUCTURES API
+ *
+ * GET /api/school-admin/fees/structures - List fee structures
+ * POST /api/school-admin/fees/structures - Create fee structure
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { feeStructures, users } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse, createdResponse } from "@/lib/api/response-helpers";
+import { logger } from "@/lib/logger";
 import { logFeeModified } from "@/lib/audit-log";
 
 const feeStructureSchema = z.object({
@@ -23,14 +33,18 @@ const feeStructureSchema = z.object({
   applicableScholarships: z.array(z.string()).optional(),
 });
 
+// ============================================================================
 // GET /api/school-admin/fees/structures - List fee structures
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+// ============================================================================
+
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId, user } = authResult;
+
+    const { userId, user } = auth;
 
     const { searchParams } = new URL(request.url);
     const grade = searchParams.get("grade");
@@ -38,79 +52,81 @@ export async function GET(request: NextRequest) {
 
     const currentUser = user;
 
-    let conditions = [eq(feeStructures.schoolId, currentUser.schoolId)];
-    // Note: feeStructures might not have schoolId in all queries, adjust as needed
-
     const structures = await db.query.feeStructures.findMany({
       orderBy: [desc(feeStructures.createdAt)],
     });
 
-    return NextResponse.json({ structures });
-  } catch (error) {
-    logger.error("Fee structures fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch fee structures" }, { status: 500 });
-  }
-}
+    return successResponse({ structures });
+  },
+  ['admin', 'school-admin']
+);
 
+// ============================================================================
 // POST /api/school-admin/fees/structures - Create fee structure
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+// ============================================================================
+
+export const POST = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId, user } = authResult;
 
-    const body = await request.json();
-    const validatedData = feeStructureSchema.parse(body);
+    const { userId, user } = auth;
 
-    const currentUser = user;
+    try {
+      const body = await request.json();
+      const validatedData = feeStructureSchema.parse(body);
 
-    // Transform fees data to match schema
-    const transformedFees = validatedData.fees.map(fee => ({
-      feeType: fee.name,
-      amount: fee.amount,
-      frequency: fee.frequency,
-    }));
+      const currentUser = user;
 
-    const [newStructure] = await db.insert(feeStructures).values({
-      id: `fee_struct_${Date.now()}`,
-      schoolId: currentUser.schoolId,
-      name: validatedData.name,
-      description: "Fee structure",
-      academicYear: validatedData.academicYear,
-      grade: validatedData.grade,
-      totalFees: validatedData.totalAnnualAmount || 0,
-      breakdown: transformedFees,
-      fees: transformedFees,
-      isRecurring: false,
-      currency: "BTN",
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }).returning();
+      // Transform fees data to match schema
+      const transformedFees = validatedData.fees.map(fee => ({
+        feeType: fee.name,
+        amount: fee.amount,
+        frequency: fee.frequency,
+      }));
 
-    // Log audit event for fee structure creation
-    await logFeeModified(
-      "created",
-      newStructure.id,
-      undefined,
-      {
-        name: newStructure.name,
-        grade: newStructure.grade,
-        academicYear: newStructure.academicYear,
-        totalFees: newStructure.totalFees,
-      },
-      userId,
-      request
-    );
+      const [newStructure] = await db.insert(feeStructures).values({
+        id: `fee_struct_${Date.now()}`,
+        schoolId: currentUser.schoolId,
+        name: validatedData.name,
+        description: "Fee structure",
+        academicYear: validatedData.academicYear,
+        grade: validatedData.grade,
+        totalFees: validatedData.totalAnnualAmount || 0,
+        breakdown: transformedFees,
+        fees: transformedFees,
+        isRecurring: false,
+        currency: "BTN",
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }).returning();
 
-    return NextResponse.json({ structure: newStructure }, { status: 201 });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: "Validation failed", details: error.issues }, { status: 400 });
+      // Log audit event for fee structure creation
+      await logFeeModified(
+        "created",
+        newStructure.id,
+        undefined,
+        {
+          name: newStructure.name,
+          grade: newStructure.grade,
+          academicYear: newStructure.academicYear,
+          totalFees: newStructure.totalFees,
+        },
+        userId,
+        request
+      );
+
+      return createdResponse({ structure: newStructure });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return badRequestResponse("Validation failed: " + error.issues.map(i => i.message).join(", "));
+      }
+      logger.error("Fee structure creation error:", error);
+      return errorResponse("Failed to create fee structure", 500);
     }
-    logger.error("Fee structure creation error:", error);
-    return NextResponse.json({ error: "Failed to create fee structure" }, { status: 500 });
-  }
-}
+  },
+  ['admin', 'school-admin']
+);

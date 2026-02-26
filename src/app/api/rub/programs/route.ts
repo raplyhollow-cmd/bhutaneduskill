@@ -1,26 +1,32 @@
 /**
  * RUB Programs API
  * Browse and search RUB college programs
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
 import { rubColleges, rubPrograms } from "@/lib/db/schema";
 import { db } from "@/lib/db";
 import { eq, and, or, like, sql } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse } from "@/lib/api/response-helpers";
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+type WhereCondition = SQL | undefined;
 
 /**
  * GET /api/rub/programs
  * Browse RUB college programs
  */
-export async function GET(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["student", "parent", "counselor", "teacher", "school_admin", "admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
+export const GET = createApiRoute(
+  async (req: NextRequest) => {
     const { searchParams } = new URL(req.url);
     const collegeId = searchParams.get("collegeId");
     const level = searchParams.get("level"); // certificate, diploma, bachelor, master, phd
@@ -29,7 +35,7 @@ export async function GET(req: NextRequest) {
     const admissionOpen = searchParams.get("admissionOpen") === "true";
 
     // Build query conditions
-    const conditions: any[] = [];
+    const conditions: WhereCondition[] = [];
 
     // Only show active programs
     conditions.push(eq(rubPrograms.isActive, true));
@@ -116,22 +122,14 @@ export async function GET(req: NextRequest) {
       field,
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        programs: programsWithCollege,
-        colleges,
-        filters: {
-          levels: ["certificate", "diploma", "bachelor", "master", "phd"],
-          fields: ["engineering", "arts", "science", "business", "education", "medicine", "technology"],
-        },
+    return successResponse({
+      programs: programsWithCollege,
+      colleges,
+      filters: {
+        levels: ["certificate", "diploma", "bachelor", "master", "phd"],
+        fields: ["engineering", "arts", "science", "business", "education", "medicine", "technology"],
       },
     });
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/rub/programs", method: "GET" });
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : "Failed to fetch programs",
-    }, { status: 500 });
-  }
-}
+  },
+  ["student", "parent", "counselor", "teacher", "school-admin", "admin"]
+);

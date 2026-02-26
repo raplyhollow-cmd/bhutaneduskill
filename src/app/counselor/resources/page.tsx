@@ -82,7 +82,7 @@ interface ResourceStats {
 
 // Helper function to get icon for category
 function getCategoryIcon(iconName: string) {
-  const icons: Record<string, React.ComponentType<any>> = {
+  const icons: Record<string, React.ComponentType<{ className?: string }>> = {
     "career": GraduationCap,
     "college": Briefcase,
     "scholarship": Heart,

@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowRight, GraduationCap, School, Users, Shield, Building, TrendingUp } from "lucide-react";
+import { portal } from "@/styles/design-tokens";
 
 const portals = [
   {
@@ -10,54 +11,54 @@ const portals = [
     href: "/sign-in?redirect=/student",
     icon: GraduationCap,
     description: "Assessments, careers, and planning.",
-    color: "rgb(249 115 22)",
+    color: portal.student.primary,
     bg: "bg-orange-50 dark:bg-orange-950/20",
-    headerRgb: "rgb(249 115 22)",
+    headerRgb: portal.student.primary,
   },
   {
     title: "Teachers",
     href: "/sign-in?redirect=/teacher",
     icon: School,
     description: "Classes, homework, and grading.",
-    color: "rgb(59 130 246)",
+    color: portal.teacher.primary,
     bg: "bg-blue-50 dark:bg-blue-950/20",
-    headerRgb: "rgb(59 130 246)",
+    headerRgb: portal.teacher.primary,
   },
   {
     title: "Parents",
     href: "/sign-in?redirect=/parent",
     icon: Users,
     description: "Track your child's progress.",
-    color: "rgb(107 114 128)",
+    color: portal.parent.primary,
     bg: "bg-purple-50 dark:bg-purple-950/20",
-    headerRgb: "rgb(107 114 128)",
+    headerRgb: portal.parent.primary,
   },
   {
     title: "Counselors",
     href: "/sign-in?redirect=/counselor",
     icon: Shield,
     description: "Student guidance & interventions.",
-    color: "rgb(168 85 247)",
+    color: portal.counselor.primary,
     bg: "bg-violet-50 dark:bg-violet-950/20",
-    headerRgb: "rgb(168 85 247)",
+    headerRgb: portal.counselor.primary,
   },
   {
     title: "School Admin",
     href: "/sign-in?redirect=/school-admin",
     icon: Building,
     description: "Manage operations & data.",
-    color: "rgb(139 92 246)",
+    color: portal.schoolAdmin.primary,
     bg: "bg-cyan-50 dark:bg-cyan-950/20",
-    headerRgb: "rgb(139 92 246)",
+    headerRgb: portal.schoolAdmin.primary,
   },
   {
     title: "Platform Admin",
     href: "/sign-in?redirect=/admin",
     icon: TrendingUp,
     description: "Manage schools & billing.",
-    color: "rgb(236 72 153)",
+    color: portal.admin.primary,
     bg: "bg-pink-50 dark:bg-pink-950/20",
-    headerRgb: "rgb(236 72 153)",
+    headerRgb: portal.admin.primary,
   },
 ];
 

@@ -173,7 +173,7 @@ export const tenantSettings = pgTable("tenant_settings", {
   rubSchoolCode: text("rub_school_code"),
 
   // Custom fields
-  customFields: json("custom_fields").$type<Record<string, any>>(),
+  customFields: json("custom_fields").$type<Record<string, unknown>>(),
 
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
@@ -203,12 +203,12 @@ export const tenantAuditLog = pgTable("tenant_audit_log", {
   performedByRole: text("performed_by_role"), // Role at time of action
 
   // Change details
-  oldValue: json("old_value").$type<Record<string, any>>(),
-  newValue: json("new_value").$type<Record<string, any>>(),
+  oldValue: json("old_value").$type<Record<string, unknown>>(),
+  newValue: json("new_value").$type<Record<string, unknown>>(),
   changes: json("changes").$type<Array<{
     field: string;
-    oldValue: any;
-    newValue: any;
+    oldValue: unknown;
+    newValue: unknown;
   }>>(),
 
   // Context

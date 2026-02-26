@@ -174,9 +174,16 @@ export default clerkMiddleware(async (auth, request) => {
           }
         }
       } catch (error) {
-        // On database error, allow request to proceed (fail-open)
-        // This prevents middleware from breaking the app
-        console.error("Middleware database check failed:", error);
+        // SECURITY: Log database errors without exposing sensitive details
+        // Fail-open to prevent middleware from breaking the app
+        // In production, consider monitoring these events separately
+        const isDevelopment = process.env.NODE_ENV === "development";
+        if (isDevelopment) {
+          console.error("Middleware database check failed:", error);
+        } else {
+          // In production, log generic error without exposing internals
+          console.error("Middleware: Database check failed for user:", userId?.slice(0, 8) + "...");
+        }
       }
     }
   }

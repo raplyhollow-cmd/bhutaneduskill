@@ -36,17 +36,24 @@ const nextConfig: NextConfig = {
   // Reduce file system watching overhead
   webpack: (config, { dev, isServer }) => {
     if (dev) {
-      // Speed up HMR
+      // Speed up HMR - remove polling, use native file watching (much faster)
       config.watchOptions = {
-        poll: 1000, // Check for changes every second
-        aggregateTimeout: 300,
+        poll: false, // Use native file watching instead of polling
+        aggregateTimeout: 200, // Faster rebuilds
         ignored: [
           '**/node_modules/**',
           '**/.git/**',
           '**/.next/**',
           '**/dist/**',
           '**/build/**',
+          '**/public/**', // Don't watch public folder
         ],
+      };
+
+      // Cache webpack results for faster rebuilds
+      config.cache = {
+        type: 'filesystem',
+        cacheDirectory: '.next/cache/webpack',
       };
     }
     return config;

@@ -63,7 +63,17 @@ export async function GET(req: NextRequest) {
       }, { status: 404 });
     }
 
-    const response: any = {
+    const response: {
+      success: boolean;
+      data: {
+        studentId: string;
+        academicProfile: unknown;
+        scholarshipEligibility: unknown[];
+        admissionPredictions?: unknown;
+        recommendedColleges?: unknown;
+        careerSuggestions?: unknown;
+      };
+    } = {
       success: true,
       data: {
         studentId,

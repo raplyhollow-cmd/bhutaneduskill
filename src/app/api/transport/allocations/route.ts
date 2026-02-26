@@ -6,15 +6,18 @@
  * - POST: Create new allocation
  * - PATCH: Update existing allocation
  * - DELETE: Remove allocation
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { transportAllocations, transportRoutes, vehicles, users } from "@/lib/db/schema";
-import { eq, and, desc, sql, or } from "drizzle-orm";
+import { eq, and, desc, or, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { logger } from "@/lib/logger";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse, notFoundResponse } from "@/lib/api/response-helpers";
 
 // Types for proper TypeScript safety
 interface TransportAllocationWithDetails {
@@ -60,13 +63,14 @@ interface TransportAllocationWithDetails {
 // GET - Fetch transport allocations
 // ============================================================================
 
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth();
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId, user } = authResult;
+
+    const { userId, user } = auth;
 
     const currentUser = await db.query.users.findFirst({
       where: eq(users.id, userId),
@@ -74,7 +78,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return notFoundResponse("User");
     }
 
     const { searchParams } = new URL(request.url);
@@ -97,7 +101,7 @@ export async function GET(request: NextRequest) {
       });
 
       if (!allocation) {
-        return NextResponse.json({
+        return successResponse({
           allocation: null,
           hasTransport: false,
           message: "No transport allocation found",
@@ -146,7 +150,7 @@ export async function GET(request: NextRequest) {
         }>;
       } | null;
 
-      return NextResponse.json({
+      return successResponse({
         allocation: {
           id: allocation.id,
           studentId: allocation.studentId,
@@ -201,7 +205,7 @@ export async function GET(request: NextRequest) {
       // Only active allocations
       conditions.push(eq(transportAllocations.isActive, true));
 
-      const whereClause = conditions.length > 0 ? and(...conditions as Array<any>) : undefined;
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
       const allocations = await db.query.transportAllocations.findMany({
         where: whereClause,
@@ -213,13 +217,29 @@ export async function GET(request: NextRequest) {
       });
 
       // Enrich with student details
+      // OPTIMIZATION: Batch fetch all student details
+      const studentIds = allocations.map(a => a.studentId);
+      let studentsMap = new Map<string, { id: string; firstName: string | null; lastName: string | null; classGrade: number | null; section: string | null }>();
+
+      if (studentIds.length > 0) {
+        const studentsData = await db
+          .select({
+            id: users.id,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            classGrade: users.classGrade,
+            section: users.section,
+          })
+          .from(users)
+          .where(inArray(users.id, studentIds));
+
+        studentsMap = new Map(studentsData.map(s => [s.id, s]));
+      }
+
       const allocationsWithStudents: TransportAllocationWithDetails[] = [];
 
       for (const allocation of allocations) {
-        const student = await db.query.users.findFirst({
-          where: eq(users.id, allocation.studentId),
-          columns: { id: true, firstName: true, lastName: true, classGrade: true, section: true },
-        });
+        const student = studentsMap.get(allocation.studentId);
 
         const studentData = student ? {
           id: student.id,
@@ -252,21 +272,16 @@ export async function GET(request: NextRequest) {
         allocationsWithStudents.push(allocationWithDetails);
       }
 
-      return NextResponse.json({
+      return successResponse({
         allocations: allocationsWithStudents,
         total: allocationsWithStudents.length,
       });
     }
 
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/transport/allocations", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch transport allocations" },
-      { status: 500 }
-    );
-  }
-}
+    return errorResponse("Forbidden", 403);
+  },
+  ['student', 'admin', 'school-admin']
+);
 
 // ============================================================================
 // POST - Create transport allocation
@@ -283,13 +298,14 @@ interface CreateAllocationBody {
   fee?: number;
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin", "school-admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const POST = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId } = authResult;
+
+    const { userId } = auth;
 
     const currentUser = await db.query.users.findFirst({
       where: eq(users.id, userId),
@@ -297,7 +313,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return notFoundResponse("User");
     }
 
     const body: CreateAllocationBody = await request.json();
@@ -314,10 +330,7 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!studentId || !routeId || !stopName || !pickupTime || !dropTime) {
-      return NextResponse.json(
-        { error: "Missing required fields: studentId, routeId, stopName, pickupTime, dropTime" },
-        { status: 400 }
-      );
+      return badRequestResponse("Missing required fields: studentId, routeId, stopName, pickupTime, dropTime");
     }
 
     // Verify student exists
@@ -326,7 +339,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!student) {
-      return NextResponse.json({ error: "Student not found" }, { status: 404 });
+      return notFoundResponse("Student");
     }
 
     // Verify route exists
@@ -335,7 +348,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!route) {
-      return NextResponse.json({ error: "Route not found" }, { status: 404 });
+      return notFoundResponse("Route");
     }
 
     // Deactivate existing allocation for this student
@@ -373,18 +386,13 @@ export async function POST(request: NextRequest) {
       createdBy: userId,
     });
 
-    return NextResponse.json({
+    return successResponse({
       success: true,
       allocation: newAllocation,
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/transport/allocations", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to create transport allocation" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin', 'school-admin']
+);
 
 // ============================================================================
 // PATCH - Update transport allocation
@@ -401,22 +409,20 @@ interface UpdateAllocationBody {
   isPaid?: boolean;
 }
 
-export async function PATCH(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin", "school-admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const PATCH = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId } = authResult;
+
+    const { userId } = auth;
 
     const body: UpdateAllocationBody = await request.json();
     const { allocationId, ...updateData } = body;
 
     if (!allocationId) {
-      return NextResponse.json(
-        { error: "allocationId is required" },
-        { status: 400 }
-      );
+      return badRequestResponse("allocationId is required");
     }
 
     // Update allocation
@@ -427,7 +433,7 @@ export async function PATCH(request: NextRequest) {
       .returning();
 
     if (!updatedAllocation) {
-      return NextResponse.json({ error: "Allocation not found" }, { status: 404 });
+      return notFoundResponse("Allocation");
     }
 
     logger.info("Transport allocation updated", {
@@ -435,39 +441,32 @@ export async function PATCH(request: NextRequest) {
       updatedBy: userId,
     });
 
-    return NextResponse.json({
+    return successResponse({
       success: true,
       allocation: updatedAllocation,
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/transport/allocations", method: "PATCH" });
-    return NextResponse.json(
-      { error: "Failed to update transport allocation" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin', 'school-admin']
+);
 
 // ============================================================================
 // DELETE - Deactivate transport allocation
 // ============================================================================
 
-export async function DELETE(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin", "school-admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const DELETE = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId } = authResult;
+
+    const { userId } = auth;
 
     const { searchParams } = new URL(request.url);
     const allocationId = searchParams.get("id");
 
     if (!allocationId) {
-      return NextResponse.json(
-        { error: "Allocation id is required" },
-        { status: 400 }
-      );
+      return badRequestResponse("Allocation id is required");
     }
 
     // Soft delete (deactivate)
@@ -478,7 +477,7 @@ export async function DELETE(request: NextRequest) {
       .returning();
 
     if (!deletedAllocation) {
-      return NextResponse.json({ error: "Allocation not found" }, { status: 404 });
+      return notFoundResponse("Allocation");
     }
 
     logger.info("Transport allocation deactivated", {
@@ -486,15 +485,10 @@ export async function DELETE(request: NextRequest) {
       deletedBy: userId,
     });
 
-    return NextResponse.json({
+    return successResponse({
       success: true,
       message: "Allocation deactivated successfully",
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/transport/allocations", method: "DELETE" });
-    return NextResponse.json(
-      { error: "Failed to deactivate transport allocation" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin', 'school-admin']
+);

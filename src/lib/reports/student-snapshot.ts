@@ -14,7 +14,7 @@ import { db } from "@/lib/db";
 import { users, classes, enrollments, attendance, homeworkSubmissions, homework } from "@/lib/db/schema";
 import { examResultsEnhanced, assessmentResults } from "@/lib/db/schema";
 import { teacherBehaviorLogs } from "@/lib/db/teacher-logs-schema";
-import { eq, and, inArray, gte, count, sql, desc } from "drizzle-orm";
+import { eq, and, inArray, gte, count, sql, desc, asc } from "drizzle-orm";
 
 // ============================================================================
 // TYPES
@@ -109,28 +109,34 @@ export async function generateStudentSnapshot(
 ): Promise<StudentSnapshot | null> {
   try {
     // Get student basic info
-    const student = await db.query.users.findFirst({
-      where: eq(users.id, studentId),
-    });
+    const [student] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, studentId))
+      .limit(1);
 
     if (!student || student.type !== 'student') {
       return null;
     }
 
     // Get student's enrollment for class info
-    const enrollment = await db.query.enrollments.findFirst({
-      where: and(
+    const [enrollment] = await db
+      .select()
+      .from(enrollments)
+      .where(and(
         eq(enrollments.studentId, studentId),
         eq(enrollments.status, 'active')
-      ),
-    });
+      ))
+      .limit(1);
 
     let className = 'Not Assigned';
     let rollNumber: string | undefined;
     if (enrollment) {
-      const cls = await db.query.classes.findFirst({
-        where: eq(classes.id, enrollment.classId),
-      });
+      const [cls] = await db
+        .select()
+        .from(classes)
+        .where(eq(classes.id, enrollment.classId))
+        .limit(1);
       if (cls) {
         className = cls.name;
         rollNumber = enrollment.rollNumber;
@@ -185,17 +191,19 @@ export async function generateStudentSnapshot(
 
 async function fetchAcademicData(studentId: string) {
   // Get exam results
-  const examResults = await db.query.examResultsEnhanced.findMany({
-    where: eq(examResultsEnhanced.studentId, studentId),
-    orderBy: [desc(examResultsEnhanced.examYear)],
-    limit: 10,
-  });
+  const examResults = await db
+    .select()
+    .from(examResultsEnhanced)
+    .where(eq(examResultsEnhanced.userId, studentId))
+    .orderBy(desc(examResultsEnhanced.examYear))
+    .limit(10);
 
   // Get assessment results
-  const assessmentResultsData = await db.query.assessmentResults.findMany({
-    where: eq(assessmentResults.studentId, studentId),
-    limit: 20,
-  });
+  const assessmentResultsData = await db
+    .select()
+    .from(assessmentResults)
+    .where(eq(assessmentResults.studentId, studentId))
+    .limit(20);
 
   // Combine and calculate averages
   const allScores: number[] = [];
@@ -265,12 +273,13 @@ async function fetchAttendanceData(
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   const startDateStr = startDate || thirtyDaysAgo.toISOString().split('T')[0];
 
-  const attendanceRecords = await db.query.attendance.findMany({
-    where: and(
+  const attendanceRecords = await db
+    .select()
+    .from(attendance)
+    .where(and(
       eq(attendance.studentId, studentId),
       gte(attendance.date, startDateStr)
-    ),
-  });
+    ));
 
   const presentDays = attendanceRecords.filter((a) => a.status === 'present').length;
   const absentDays = attendanceRecords.filter((a) => a.status === 'absent').length;
@@ -304,11 +313,12 @@ async function fetchBehaviorData(
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 90); // Last 3 months for behavior
 
-  const logs = await db.query.teacherBehaviorLogs.findMany({
-    where: eq(teacherBehaviorLogs.studentId, studentId),
-    orderBy: [desc(teacherBehaviorLogs.createdAt)],
-    limit: 50,
-  });
+  const logs = await db
+    .select()
+    .from(teacherBehaviorLogs)
+    .where(eq(teacherBehaviorLogs.studentId, studentId))
+    .orderBy(desc(teacherBehaviorLogs.createdAt))
+    .limit(50);
 
   const meritPoints = logs
     .filter((log) => log.type === 'merit')
@@ -352,9 +362,10 @@ async function fetchHomeworkData(
   endDate?: string
 ) {
   // Get all homework submissions for student
-  const submissions = await db.query.homeworkSubmissions.findMany({
-    where: eq(homeworkSubmissions.studentId, studentId),
-  });
+  const submissions = await db
+    .select()
+    .from(homeworkSubmissions)
+    .where(eq(homeworkSubmissions.studentId, studentId));
 
   const totalAssigned = submissions.length;
   const submittedOnTime = submissions.filter((s) => s.status === 'submitted' && !s.isLate).length;
@@ -386,10 +397,10 @@ async function fetchHomeworkData(
 // ============================================================================
 
 function calculateSummary(
-  academic: any,
-  attendance: any,
-  behavior: any,
-  homework: any
+  academic: ReturnType<typeof fetchAcademicData> extends Promise<infer T> ? T : never,
+  attendance: ReturnType<typeof fetchAttendanceData> extends Promise<infer T> ? T : never,
+  behavior: ReturnType<typeof fetchBehaviorData> extends Promise<infer T> ? T : never,
+  homework: ReturnType<typeof fetchHomeworkData> extends Promise<infer T> ? T : never
 ) {
   const strengths: string[] = [];
   const concerns: string[] = [];

@@ -5,7 +5,7 @@
  * View badges, awards, and milestones earned
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,10 @@ import {
   TrendingUp,
   Sparkles,
   Filter,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
+import { logger } from "@/lib/logger";
 
 // Types
 interface Achievement {
@@ -49,183 +52,12 @@ interface Milestone {
   currentXP: number;
 }
 
-// Mock achievements data
-const mockAchievements: Achievement[] = [
-  {
-    id: "first_assessment",
-    title: "Career Explorer",
-    description: "Complete your first career assessment",
-    category: "assessment",
-    icon: "compass",
-    rarity: "common",
-    earnedDate: "2025-01-15T10:30:00",
-    progress: 1,
-    maxProgress: 1,
-    xpReward: 50,
-    isUnlocked: true,
-  },
-  {
-    id: "riasec_complete",
-    title: "RIASEC Master",
-    description: "Complete the RIASEC career assessment",
-    category: "assessment",
-    icon: "brain",
-    rarity: "rare",
-    earnedDate: "2025-01-20T14:15:00",
-    progress: 1,
-    maxProgress: 1,
-    xpReward: 100,
-    isUnlocked: true,
-  },
-  {
-    id: "all_assessments",
-    title: "Assessment Champion",
-    description: "Complete all available career assessments",
-    category: "assessment",
-    icon: "clipboard-check",
-    rarity: "epic",
-    earnedDate: null,
-    progress: 3,
-    maxProgress: 5,
-    xpReward: 500,
-    isUnlocked: false,
-  },
-  {
-    id: "first_module",
-    title: "Knowledge Seeker",
-    description: "Complete your first learning module",
-    category: "learning",
-    icon: "book",
-    rarity: "common",
-    earnedDate: "2025-02-01T09:00:00",
-    progress: 1,
-    maxProgress: 1,
-    xpReward: 75,
-    isUnlocked: true,
-  },
-  {
-    id: "module_streak",
-    title: "Dedicated Learner",
-    description: "Complete 5 learning modules in a row",
-    category: "learning",
-    icon: "fire",
-    rarity: "rare",
-    earnedDate: null,
-    progress: 2,
-    maxProgress: 5,
-    xpReward: 200,
-    isUnlocked: false,
-  },
-  {
-    id: "perfect_score",
-    title: "Perfect Score",
-    description: "Score 100% on any homework assignment",
-    category: "homework",
-    icon: "star",
-    rarity: "epic",
-    earnedDate: "2025-02-05T16:45:00",
-    progress: 1,
-    maxProgress: 1,
-    xpReward: 300,
-    isUnlocked: true,
-  },
-  {
-    id: "homework_streak",
-    title: "Consistent Student",
-    description: "Submit homework on time for 4 consecutive weeks",
-    category: "streak",
-    icon: "calendar-check",
-    rarity: "rare",
-    earnedDate: null,
-    progress: 2,
-    maxProgress: 4,
-    xpReward: 150,
-    isUnlocked: false,
-  },
-  {
-    id: "early_bird",
-    title: "Early Bird",
-    description: "Submit homework before the deadline 10 times",
-    category: "homework",
-    icon: "sunrise",
-    rarity: "common",
-    earnedDate: "2025-02-08T11:30:00",
-    progress: 10,
-    maxProgress: 10,
-    xpReward: 100,
-    isUnlocked: true,
-  },
-  {
-    id: "career_plan",
-    title: "Pathfinder",
-    description: "Create your first career plan",
-    category: "special",
-    icon: "map",
-    rarity: "rare",
-    earnedDate: "2025-01-25T13:20:00",
-    progress: 1,
-    maxProgress: 1,
-    xpReward: 150,
-    isUnlocked: true,
-  },
-  {
-    id: "saved_careers",
-    title: "Career Collector",
-    description: "Save 10 different career paths to your profile",
-    category: "special",
-    earnedDate: null,
-    progress: 7,
-    maxProgress: 10,
-    xpReward: 100,
-    isUnlocked: false,
-    icon: "bookmark",
-    rarity: "common",
-  },
-  {
-    id: "journal_entry",
-    title: "Reflective Thinker",
-    description: "Write 10 journal entries about your career journey",
-    category: "special",
-    earnedDate: null,
-    progress: 5,
-    maxProgress: 10,
-    xpReward: 200,
-    isUnlocked: false,
-    icon: "pen",
-    rarity: "rare",
-  },
-  {
-    id: "legendary_student",
-    title: "Legendary Student",
-    description: "Achieve Level 10 by earning 5000+ XP",
-    category: "special",
-    earnedDate: null,
-    progress: 1450,
-    maxProgress: 5000,
-    xpReward: 1000,
-    isUnlocked: false,
-    icon: "crown",
-    rarity: "legendary",
-  },
-];
-
-// Mock milestones
-const mockMilestones: Milestone[] = [
-  { level: 1, xpRequired: 0, rewards: ["Welcome Badge"], isUnlocked: true, currentXP: 1450 },
-  { level: 2, xpRequired: 200, rewards: ["+50 XP Bonus"], isUnlocked: true, currentXP: 1450 },
-  { level: 3, xpRequired: 500, rewards: ["Bronze Badge"], isUnlocked: true, currentXP: 1450 },
-  { level: 4, xpRequired: 1000, rewards: ["Silver Badge"], isUnlocked: true, currentXP: 1450 },
-  { level: 5, xpRequired: 1500, rewards: ["Gold Badge", "Certificate"], isUnlocked: false, currentXP: 1450 },
-  { level: 6, xpRequired: 2500, rewards: ["Platinum Badge", "Profile Theme"], isUnlocked: false, currentXP: 1450 },
-  { level: 7, xpRequired: 3500, rewards: ["Diamond Badge", "Mentor Access"], isUnlocked: false, currentXP: 1450 },
-  { level: 8, xpRequired: 5000, rewards: ["Legendary Status", "Exclusive Content"], isUnlocked: false, currentXP: 1450 },
-];
-
-const currentXP = 1450;
-const currentLevel = 5;
-const nextLevelXP = 1500;
-const prevLevelXP = 1000;
-const levelProgress = ((currentXP - prevLevelXP) / (nextLevelXP - prevLevelXP)) * 100;
+interface StudentProgress {
+  currentXP: number;
+  currentLevel: number;
+  nextLevelXP: number;
+  prevLevelXP: number;
+}
 
 const categoryIcons: Record<string, React.JSX.Element> = {
   compass: <Target className="w-8 h-8" />,
@@ -259,6 +91,61 @@ const rarityBgColors = {
 export default function StudentAchievementsPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [filterType, setFilterType] = useState<"all" | "earned" | "locked">("all");
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [milestones, setMilestones] = useState<Milestone[]>([]);
+  const [studentProgress, setStudentProgress] = useState<StudentProgress>({
+    currentXP: 0,
+    currentLevel: 1,
+    nextLevelXP: 100,
+    prevLevelXP: 0,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+
+        // Fetch achievements, milestones, and progress from API
+        const [achievementsRes, milestonesRes, progressRes] = await Promise.all([
+          fetch("/api/student/achievements"),
+          fetch("/api/student/milestones"),
+          fetch("/api/student/progress"),
+        ]);
+
+        if (achievementsRes.ok) {
+          const data = await achievementsRes.json();
+          setAchievements(data.achievements || []);
+        }
+
+        if (milestonesRes.ok) {
+          const data = await milestonesRes.json();
+          setMilestones(data.milestones || []);
+        }
+
+        if (progressRes.ok) {
+          const data = await progressRes.json();
+          setStudentProgress(data.progress || studentProgress);
+        }
+
+        if (!achievementsRes.ok && !milestonesRes.ok && !progressRes.ok) {
+          setError("Failed to load achievements data");
+        }
+      } catch (err) {
+        logger.error("Error fetching achievements:", err);
+        setError("Failed to load achievements");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const levelProgress = studentProgress.nextLevelXP > studentProgress.prevLevelXP
+    ? ((studentProgress.currentXP - studentProgress.prevLevelXP) / (studentProgress.nextLevelXP - studentProgress.prevLevelXP)) * 100
+    : 0;
 
   const categories = [
     { id: "all", label: "All", icon: Trophy },
@@ -269,15 +156,40 @@ export default function StudentAchievementsPage() {
     { id: "special", label: "Special", icon: Award },
   ];
 
-  const filteredAchievements = mockAchievements.filter((achievement) => {
+  const filteredAchievements = achievements.filter((achievement) => {
     const categoryMatch = selectedCategory === "all" || achievement.category === selectedCategory;
     const statusMatch = filterType === "all" || (filterType === "earned" && achievement.isUnlocked) || (filterType === "locked" && !achievement.isUnlocked);
     return categoryMatch && statusMatch;
   });
 
-  const earnedCount = mockAchievements.filter((a) => a.isUnlocked).length;
-  const totalCount = mockAchievements.length;
-  const totalXPReward = mockAchievements.filter((a) => a.isUnlocked).reduce((sum, a) => sum + a.xpReward, 0);
+  const earnedCount = achievements.filter((a) => a.isUnlocked).length;
+  const totalCount = achievements.length;
+  const totalXPReward = achievements.filter((a) => a.isUnlocked).reduce((sum, a) => sum + a.xpReward, 0);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-orange-600 mr-3" />
+        <span className="text-gray-600">Loading achievements...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="border-red-200 bg-red-50">
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600" />
+            <div>
+              <p className="font-medium text-red-900">Failed to load achievements</p>
+              <p className="text-sm text-red-700">{error}</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -290,20 +202,20 @@ export default function StudentAchievementsPage() {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <p className="text-orange-100 text-sm">Current Level</p>
-                <p className="text-4xl font-bold">{currentLevel}</p>
+                <p className="text-4xl font-bold">{studentProgress.currentLevel}</p>
               </div>
               <div className="text-right">
                 <p className="text-orange-100 text-sm">Total XP</p>
-                <p className="text-4xl font-bold">{currentXP.toLocaleString()}</p>
+                <p className="text-4xl font-bold">{studentProgress.currentXP.toLocaleString()}</p>
               </div>
             </div>
             <div className="mb-2 flex items-center justify-between text-sm">
-              <span>Level {currentLevel} Progress</span>
+              <span>Level {studentProgress.currentLevel} Progress</span>
               <span>{Math.round(levelProgress)}%</span>
             </div>
             <Progress value={levelProgress} className="h-3 bg-orange-900/30" />
             <p className="text-orange-100 text-sm mt-2">
-              {nextLevelXP - currentXP} XP to Level {currentLevel + 1}
+              {studentProgress.nextLevelXP - studentProgress.currentXP} XP to Level {studentProgress.currentLevel + 1}
             </p>
           </CardContent>
         </Card>
@@ -362,7 +274,7 @@ export default function StudentAchievementsPage() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-purple-600">
-                    {mockAchievements.filter((a) => a.rarity === "legendary" && a.isUnlocked).length}
+                    {achievements.filter((a) => a.rarity === "legendary" && a.isUnlocked).length}
                   </p>
                   <p className="text-sm text-muted-foreground">Legendary Badges</p>
                 </div>
@@ -520,13 +432,16 @@ export default function StudentAchievementsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {mockMilestones.map((milestone, index) => (
+              {milestones.length === 0 ? (
+                <p className="text-center text-gray-500 py-4">No milestones available yet</p>
+              ) : (
+                milestones.map((milestone, index) => (
                 <div
                   key={milestone.level}
                   className={`flex items-center gap-4 p-4 rounded-lg border ${
                     milestone.isUnlocked
                       ? "bg-green-50 border-green-200"
-                      : index === currentLevel - 1
+                      : index === studentProgress.currentLevel - 1
                       ? "bg-orange-50 border-orange-200"
                       : "bg-gray-50 border-gray-200"
                   }`}
@@ -535,7 +450,7 @@ export default function StudentAchievementsPage() {
                     className={`w-12 h-12 rounded-full flex items-center justify-center ${
                       milestone.isUnlocked
                         ? "bg-green-500"
-                        : index === currentLevel - 1
+                        : index === studentProgress.currentLevel - 1
                         ? "bg-orange-500"
                         : "bg-gray-300"
                     }`}
@@ -562,14 +477,15 @@ export default function StudentAchievementsPage() {
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-medium">{milestone.xpRequired} XP</p>
-                    {index === currentLevel - 1 && (
+                    {index === studentProgress.currentLevel - 1 && (
                       <p className="text-xs text-orange-600">
-                        {milestone.xpRequired - currentXP} XP to go
+                        {milestone.xpRequired - studentProgress.currentXP} XP to go
                       </p>
                     )}
                   </div>
                 </div>
-              ))}
+              ))
+              )}
             </div>
           </CardContent>
         </Card>

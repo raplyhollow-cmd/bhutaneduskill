@@ -1,5 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import {
   assessments,
@@ -8,27 +7,18 @@ import {
   careerMatches,
   users,
 } from "@/lib/db/schema";
-import { eq, desc, and, isNotNull, gt, sql } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 /**
  * Student Assessment Profile API
  *
- * Returns comprehensive assessment data for the student dashboard including:
- * - Completed assessments count
- * - RIASEC results with Holland code
- * - MBTI personality type
- * - Top career matches
- * - User profile context (grade, interests, goals)
- * - Journal entry count for AI analysis
+ * Returns comprehensive assessment data for the student dashboard
  */
-export async function GET(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(['student']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status || 401 });
-    }
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId } = auth;
 
     // Get completed assessments
     const userAssessments = await db
@@ -52,9 +42,13 @@ export async function GET(req: NextRequest) {
       .limit(1);
 
     // Get top career matches (if RIASEC completed)
-    let topCareers: any[] = [];
+    interface CareerMatch {
+      id: string;
+      title: string;
+      matchScore: number;
+    }
+    let topCareers: CareerMatch[] = [];
     if (riasecResult.length > 0) {
-      // Get the RIASEC assessment ID to find career matches
       const riasecAssessment = userAssessments.find(a => a.type === 'riasec');
 
       if (riasecAssessment) {
@@ -68,9 +62,7 @@ export async function GET(req: NextRequest) {
           .orderBy(desc(careerMatches.matchScore))
           .limit(5);
 
-        // Get career details from the careers table (if exists)
         for (const match of matches) {
-          // If tenant module fails, create basic entry
           topCareers.push({
             id: match.careerId,
             title: match.careerId.replace(/-/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
@@ -80,7 +72,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Get user profile for context (including journal entries from settings)
+    // Get user profile for context
     const [user] = await db
       .select({
         id: users.id,
@@ -96,26 +88,25 @@ export async function GET(req: NextRequest) {
       .limit(1);
 
     // Extract journal stats from user.settings
-    // Journal entries are stored in users.settings.journalEntries as JSON array
-    const settings = (user?.settings as any) || {};
+    interface UserSettings {
+      journalEntries?: Array<{ date: string; entry: string }>;
+    }
+    const settings = (user?.settings as UserSettings | null) || {};
     const journalEntries = settings.journalEntries || [];
 
-    // Calculate journal stats
     let totalEntries = journalEntries.length;
     let lastEntryAt: string | null = null;
 
     if (journalEntries.length > 0) {
-      // Sort entries by date descending to get the most recent
-      const sortedEntries = [...journalEntries].sort((a: any, b: any) =>
+      interface JournalEntry {
+        date: string;
+        entry: string;
+      }
+      const sortedEntries = [...journalEntries].sort((a: JournalEntry, b: JournalEntry) =>
         new Date(b.date).getTime() - new Date(a.date).getTime()
       );
       lastEntryAt = sortedEntries[0].date;
     }
-
-    const journalStats = {
-      totalEntries,
-      lastEntryAt,
-    };
 
     // Get Holland Code description
     const getHollandCodeDescription = (code: string): string => {
@@ -146,7 +137,6 @@ export async function GET(req: NextRequest) {
       return descriptions[code] || "Unique combination of interests and abilities";
     };
 
-    // Format response
     const response = {
       completedAssessments: userAssessments.length,
       assessmentTypes: userAssessments.map(a => a.type),
@@ -169,15 +159,15 @@ export async function GET(req: NextRequest) {
         fullName: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Student',
       },
       journal: {
-        totalEntries: journalStats?.totalEntries || 0,
-        lastEntryAt: journalStats?.lastEntryAt || null,
-        hasRecentEntries: !!journalStats?.lastEntryAt,
+        totalEntries,
+        lastEntryAt,
+        hasRecentEntries: !!lastEntryAt,
       },
       recommendations: {
-        hasEnoughData: (userAssessments.length >= 2 && (journalStats?.totalEntries || 0) >= 3),
+        hasEnoughData: (userAssessments.length >= 2 && totalEntries >= 3),
         message: (userAssessments.length < 2)
           ? "Complete more assessments to unlock personalized AI insights"
-          : (journalStats?.totalEntries || 0) < 3
+          : totalEntries < 3
           ? "Write at least 3 journal entries to unlock AI-powered emotional insights"
           : "Your profile is ready for AI-powered insights!",
       }
@@ -190,12 +180,7 @@ export async function GET(req: NextRequest) {
       hasMBTI: !!response.mbti,
     });
 
-    return NextResponse.json(response);
-  } catch (error) {
-    logger.error(error, { route: "/api/student/assessment-profile", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch assessment profile" },
-      { status: 500 }
-    );
-  }
-}
+    return response;
+  },
+  ['student']
+);

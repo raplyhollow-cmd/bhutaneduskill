@@ -195,7 +195,27 @@ export async function updateCollege(
   const { userId } = authResult;
 
   try {
-    const updateData: any = {
+    type CollegeUpdateData = {
+      updatedAt: Date;
+      name?: string;
+      code?: string;
+      type?: string;
+      dzongkhag?: string;
+      location?: string;
+      latitude?: number | null;
+      longitude?: number | null;
+      website?: string | null;
+      email?: string | null;
+      phone?: string | null;
+      programs?: string[];
+      hasHostel?: boolean;
+      hasLibrary?: boolean | null;
+      hasLab?: boolean;
+      hasSports?: boolean;
+      description?: string | null;
+      isActive?: boolean;
+    };
+    const updateData: CollegeUpdateData = {
       updatedAt: new Date(),
     };
 
@@ -454,7 +474,31 @@ export async function updateScholarship(
   const { userId } = authResult;
 
   try {
-    const updateData: any = {
+    type ScholarshipUpdateData = {
+      updatedAt: Date;
+      name?: string;
+      code?: string;
+      type?: string;
+      provider?: string;
+      providerName?: string | null;
+      coversTuition?: boolean;
+      coversHostel?: boolean;
+      coversBooks?: boolean;
+      coversLiving?: boolean;
+      coveragePercentage?: number | null;
+      minPercentage?: number | null;
+      annualIncomeLimit?: number | null;
+      categories?: string[] | null;
+      duration?: string | null;
+      applicationOpenDate?: string | null;
+      applicationCloseDate?: string | null;
+      requiredDocuments?: string[] | null;
+      description?: string | null;
+      termsAndConditions?: string | null;
+      academicYear?: string | null;
+      isActive?: boolean;
+    };
+    const updateData: ScholarshipUpdateData = {
       updatedAt: new Date(),
     };
 
@@ -701,7 +745,7 @@ export async function updateRUBProgram(
     }>;
     minPercentage?: number;
     requiredSubjects?: string[];
-    eligibilityCriteria?: Record<string, any>;
+    eligibilityCriteria?: Record<string, unknown>;
     tuitionFee?: number;
     hostelFee?: number;
     otherFees?: number;
@@ -720,7 +764,32 @@ export async function updateRUBProgram(
   const { userId } = authResult;
 
   try {
-    const updateData: any = {
+    type RUBProgramUpdateData = {
+      updatedAt: Date;
+      name?: string;
+      code?: string;
+      collegeId?: string;
+      level?: string;
+      field?: string;
+      discipline?: string | null;
+      duration?: number;
+      durationType?: string;
+      totalSeats?: number;
+      reservedSeats?: Array<{ category: string; seats: number }> | null;
+      minPercentage?: number | null;
+      requiredSubjects?: string[] | null;
+      eligibilityCriteria?: Record<string, unknown>;
+      tuitionFee?: number | null;
+      hostelFee?: number | null;
+      otherFees?: number | null;
+      totalFee?: number | null;
+      description?: string | null;
+      careerProspects?: string[] | null;
+      isActive?: boolean;
+      admissionOpen?: boolean;
+      academicYear?: string | null;
+    };
+    const updateData: RUBProgramUpdateData = {
       updatedAt: new Date(),
     };
 

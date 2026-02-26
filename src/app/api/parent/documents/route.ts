@@ -1,42 +1,83 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
-import { users, fileStorage, examResults } from "@/lib/db/schema";
+import { users, fileStorage, examResults, parents, parentToStudent } from "@/lib/db/schema";
 import { eq, and, or, desc } from "drizzle-orm";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse, notFoundResponse } from "@/lib/api/response-helpers";
 
 /**
  * GET /api/parent/documents - Get parent's child documents
  *
+ * SECURITY: FERPA COMPLIANCE
+ * - Uses parent_to_student join table for verification
+ * - Only returns documents for verified children
+ *
  * Returns:
  * - All documents for a specific child
  * - Includes report cards, certificates, consent forms, assessments
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['parent']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId, user } = authResult;
+
+    const { userId } = auth;
 
     const { searchParams } = new URL(request.url);
     const childId = searchParams.get("childId");
 
     if (!childId) {
-      return NextResponse.json({ error: "Child ID is required" }, { status: 400 });
+      return badRequestResponse("Child ID is required");
     }
 
-    // Verify the child belongs to this parent
+    // FERPA COMPLIANCE: Get parent record first
+    const [parentRecord] = await db
+      .select()
+      .from(parents)
+      .where(eq(parents.userId, userId))
+      .limit(1);
+
+    if (!parentRecord) {
+      logger.warn("No parent record found for user", { userId });
+      return errorResponse("Parent record not found", 403);
+    }
+
+    // FERPA COMPLIANCE: Verify parent-child relationship via parent_to_student join table
+    const [relationship] = await db
+      .select()
+      .from(parentToStudent)
+      .where(
+        and(
+          eq(parentToStudent.parentId, parentRecord.id),
+          eq(parentToStudent.studentId, childId)
+        )
+      )
+      .limit(1);
+
+    if (!relationship) {
+      logger.security("ferpa_violation_attempt", {
+        parentId: parentRecord.id,
+        childId,
+        route: "/api/parent/documents",
+      });
+      return errorResponse("Child not found or access denied", 403);
+    }
+
+    // Verify the child exists
     const child = await db.query.users.findFirst({
       where: and(
         eq(users.id, childId),
-        eq(users.parentId, user.id)
+        eq(users.type, "student")
       ),
     });
 
     if (!child) {
-      return NextResponse.json({ error: "Child not found or access denied" }, { status: 403 });
+      return notFoundResponse("Child");
     }
 
     // Get all files uploaded for this child (consent forms uploaded by parent)
@@ -81,7 +122,7 @@ export async function GET(request: NextRequest) {
     // Combine all documents
     const allDocuments = [...reportCards, ...uploadedDocuments];
 
-    return NextResponse.json({
+    return successResponse({
       documents: allDocuments,
       child: {
         id: child.id,
@@ -90,11 +131,6 @@ export async function GET(request: NextRequest) {
         lastName: child.lastName,
       },
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch documents", documents: [] },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['parent']
+);

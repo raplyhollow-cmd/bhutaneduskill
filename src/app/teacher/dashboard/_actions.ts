@@ -89,11 +89,12 @@ export async function getTeacherDashboardData(): Promise<TeacherDashboardData | 
 
     const { userId, user } = authResult;
 
-    // Get teacher's classes
-    const teacherClasses = await db.query.classes.findMany({
-      where: eq(classes.teacherId, user.id),
-      orderBy: [desc(classes.createdAt)],
-    });
+    // Get teacher's classes using db.select() - neon-http doesn't support query API
+    const teacherClasses = await db
+      .select()
+      .from(classes)
+      .where(eq(classes.teacherId, userId))
+      .orderBy(desc(classes.createdAt));
 
     const classIds = teacherClasses.map((c) => c.id);
 
@@ -102,12 +103,15 @@ export async function getTeacherDashboardData(): Promise<TeacherDashboardData | 
     const enrollmentMap = new Map<string, string[]>(); // classId -> studentIds
 
     if (classIds.length > 0) {
-      const enrollmentsData = await db.query.enrollments.findMany({
-        where: and(
-          inArray(enrollments.classId, classIds),
-          eq(enrollments.status, "active")
-        ),
-      });
+      const enrollmentsData = await db
+        .select()
+        .from(enrollments)
+        .where(
+          and(
+            inArray(enrollments.classId, classIds),
+            eq(enrollments.status, "active")
+          )
+        );
 
       totalStudents = enrollmentsData.length;
 
@@ -129,12 +133,15 @@ export async function getTeacherDashboardData(): Promise<TeacherDashboardData | 
     let attendanceCount = 0;
 
     if (classIds.length > 0) {
-      const attendanceRecords = await db.query.attendance.findMany({
-        where: and(
-          inArray(attendance.classId, classIds),
-          gte(attendance.date, thirtyDaysAgoStr)
-        ),
-      });
+      const attendanceRecords = await db
+        .select()
+        .from(attendance)
+        .where(
+          and(
+            inArray(attendance.classId, classIds),
+            gte(attendance.date, thirtyDaysAgoStr)
+          )
+        );
 
       const presentCount = attendanceRecords.filter(
         (a) => a.status === "present" || a.status === "late"
@@ -154,22 +161,26 @@ export async function getTeacherDashboardData(): Promise<TeacherDashboardData | 
 
     if (classIds.length > 0) {
       // Get homework for teacher's classes
-      const classHomework = await db.query.homework.findMany({
-        where: inArray(homework.classId, classIds),
-      });
+      const classHomework = await db
+        .select()
+        .from(homework)
+        .where(inArray(homework.classId, classIds));
 
       const homeworkIds = classHomework.map((h) => h.id);
 
       if (homeworkIds.length > 0) {
         // Get submitted but not graded submissions
-        const submittedNotGraded = await db.query.homeworkSubmissions.findMany({
-          where: and(
-            inArray(homeworkSubmissions.homeworkId, homeworkIds),
-            sql`${homeworkSubmissions.status} = 'submitted'`
-          ),
-          orderBy: [desc(homeworkSubmissions.submittedAt)],
-          limit: 20,
-        });
+        const submittedNotGraded = await db
+          .select()
+          .from(homeworkSubmissions)
+          .where(
+            and(
+              inArray(homeworkSubmissions.homeworkId, homeworkIds),
+              sql`${homeworkSubmissions.status} = 'submitted'`
+            )
+          )
+          .orderBy(desc(homeworkSubmissions.submittedAt))
+          .limit(20);
 
         pendingHomework = submittedNotGraded.length;
 
@@ -178,12 +189,18 @@ export async function getTeacherDashboardData(): Promise<TeacherDashboardData | 
           const hw = classHomework.find((h) => h.id === submission.homeworkId);
           if (!hw) continue;
 
-          const student = await db.query.users.findFirst({
-            where: eq(users.id, submission.studentId),
-            columns: { id: true, firstName: true, lastName: true },
-          });
+          const studentData = await db
+            .select({
+              id: users.id,
+              firstName: users.firstName,
+              lastName: users.lastName,
+            })
+            .from(users)
+            .where(eq(users.id, submission.studentId))
+            .limit(1);
 
-          if (student) {
+          if (studentData.length > 0) {
+            const student = studentData[0];
             pendingGradingItems.push({
               id: submission.id,
               homeworkId: hw.id,
@@ -210,15 +227,17 @@ export async function getTeacherDashboardData(): Promise<TeacherDashboardData | 
       // Calculate completion rate based on homework submissions
       let completionRate = 0;
       if (studentCount > 0) {
-        const classHomework = await db.query.homework.findMany({
-          where: eq(homework.classId, cls.id),
-        });
+        const classHomework = await db
+          .select()
+          .from(homework)
+          .where(eq(homework.classId, cls.id));
 
         if (classHomework.length > 0) {
           const homeworkIds = classHomework.map((h) => h.id);
-          const submissions = await db.query.homeworkSubmissions.findMany({
-            where: inArray(homeworkSubmissions.homeworkId, homeworkIds),
-          });
+          const submissions = await db
+            .select()
+            .from(homeworkSubmissions)
+            .where(inArray(homeworkSubmissions.homeworkId, homeworkIds));
 
           const uniqueSubmissions = new Set(submissions.map((s) => s.studentId));
           completionRate = Math.round(
@@ -244,12 +263,15 @@ export async function getTeacherDashboardData(): Promise<TeacherDashboardData | 
       // Get students with low attendance
       const studentAttendanceMap = new Map<string, { present: number; total: number }>();
 
-      const allAttendance = await db.query.attendance.findMany({
-        where: and(
-          inArray(attendance.classId, classIds),
-          gte(attendance.date, thirtyDaysAgoStr)
-        ),
-      });
+      const allAttendance = await db
+        .select()
+        .from(attendance)
+        .where(
+          and(
+            inArray(attendance.classId, classIds),
+            gte(attendance.date, thirtyDaysAgoStr)
+          )
+        );
 
       for (const record of allAttendance) {
         if (!studentAttendanceMap.has(record.studentId)) {
@@ -267,12 +289,20 @@ export async function getTeacherDashboardData(): Promise<TeacherDashboardData | 
         if (stats.total >= 5) { // Only if they have at least 5 records
           const rate = (stats.present / stats.total) * 100;
           if (rate < 70) {
-            const student = await db.query.users.findFirst({
-              where: eq(users.id, studentId),
-              columns: { id: true, firstName: true, lastName: true, classGrade: true, section: true },
-            });
+            const studentData = await db
+              .select({
+                id: users.id,
+                firstName: users.firstName,
+                lastName: users.lastName,
+                classGrade: users.classGrade,
+                section: users.section,
+              })
+              .from(users)
+              .where(eq(users.id, studentId))
+              .limit(1);
 
-            if (student) {
+            if (studentData.length > 0) {
+              const student = studentData[0];
               needsAttention.push({
                 id: student.id,
                 name: `${student.firstName} ${student.lastName || ""}`.trim(),
@@ -297,19 +327,23 @@ export async function getTeacherDashboardData(): Promise<TeacherDashboardData | 
     let scoreCount = 0;
 
     if (classIds.length > 0) {
-      const classHomework = await db.query.homework.findMany({
-        where: inArray(homework.classId, classIds),
-      });
+      const classHomework = await db
+        .select()
+        .from(homework)
+        .where(inArray(homework.classId, classIds));
 
       const homeworkIds = classHomework.map((h) => h.id);
 
       if (homeworkIds.length > 0) {
-        const gradedSubmissions = await db.query.homeworkSubmissions.findMany({
-          where: and(
-            inArray(homeworkSubmissions.homeworkId, homeworkIds),
-            sql`${homeworkSubmissions.status} = 'graded'`
-          ),
-        });
+        const gradedSubmissions = await db
+          .select()
+          .from(homeworkSubmissions)
+          .where(
+            and(
+              inArray(homeworkSubmissions.homeworkId, homeworkIds),
+              sql`${homeworkSubmissions.status} = 'graded'`
+            )
+          );
 
         if (gradedSubmissions.length > 0) {
           const totalScore = gradedSubmissions.reduce((sum, s) => sum + (s.score || 0), 0);
@@ -338,30 +372,47 @@ export async function getTeacherDashboardData(): Promise<TeacherDashboardData | 
     // Fetch recent behavior logs for teacher's students
     let recentBehaviorLogs: RecentBehaviorLog[] = [];
     if (classIds.length > 0) {
-      const behaviorLogsData = await db.query.teacherBehaviorLogs.findMany({
-        where: inArray(teacherBehaviorLogs.classId, classIds),
-        orderBy: [desc(teacherBehaviorLogs.createdAt)],
-        limit: 5,
+      const behaviorLogsData = await db
+        .select()
+        .from(teacherBehaviorLogs)
+        .where(inArray(teacherBehaviorLogs.classId, classIds))
+        .orderBy(desc(teacherBehaviorLogs.createdAt))
+        .limit(5);
+
+      // Get unique student IDs
+      const studentIds = [...new Set(behaviorLogsData.map((log) => log.studentId))];
+
+      // Fetch student data for all students
+      let studentsMap = new Map<string, { firstName: string | null; lastName: string | null }>();
+      if (studentIds.length > 0) {
+        const studentsData = await db
+          .select({
+            id: users.id,
+            firstName: users.firstName,
+            lastName: users.lastName,
+          })
+          .from(users)
+          .where(inArray(users.id, studentIds));
+
+        studentsMap = new Map(
+          studentsData.map((s) => [s.id, { firstName: s.firstName, lastName: s.lastName }])
+        );
+      }
+
+      recentBehaviorLogs = behaviorLogsData.map((log) => {
+        const student = studentsMap.get(log.studentId);
+        return {
+          id: log.id,
+          studentName: student
+            ? `${student.firstName} ${student.lastName || ""}`.trim()
+            : "Unknown",
+          type: log.type as "merit" | "demerit",
+          category: log.category,
+          description: log.description,
+          points: log.points,
+          createdAt: log.createdAt.toISOString(),
+        };
       });
-
-      recentBehaviorLogs = await Promise.all(
-        behaviorLogsData.map(async (log) => {
-          const student = await db.query.users.findFirst({
-            where: eq(users.id, log.studentId),
-            columns: { id: true, firstName: true, lastName: true },
-          });
-
-          return {
-            id: log.id,
-            studentName: student ? `${student.firstName} ${student.lastName || ""}`.trim() : "Unknown",
-            type: log.type as "merit" | "demerit",
-            category: log.category,
-            description: log.description,
-            points: log.points,
-            createdAt: log.createdAt.toISOString(),
-          };
-        })
-      );
     }
 
     return {

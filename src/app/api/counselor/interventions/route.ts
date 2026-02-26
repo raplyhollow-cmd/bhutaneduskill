@@ -1,76 +1,40 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
-import { logger } from "@/lib/logger";
+/**
+ * COUNSELOR INTERVENTIONS API
+ *
+ * GET /api/counselor/interventions - List interventions with stats
+ * POST /api/counselor/interventions - Create new intervention
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { users, schools, studentInterventions, interventionNotes } from "@/lib/db/schema";
+import { users, schools, studentInterventions } from "@/lib/db/schema";
 import { eq, and, desc, count, gte, sql } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse, notFoundResponse, createdResponse } from "@/lib/api/response-helpers";
+import { logger } from "@/lib/logger";
 import { nanoid } from "nanoid";
+import type { SQL } from "drizzle-orm";
+import type {
+  StudentIntervention,
+  InterventionGoal,
+  CreateInterventionRequest
+} from "@/types";
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
-interface InterventionGoal {
-  id: string;
-  text: string;
-  status: "pending" | "in_progress" | "completed";
-  targetDate?: string;
-}
-
-interface InterventionNote {
-  id: string;
-  content: string;
-  createdBy: string;
-  createdAt: string;
-}
-
-interface CreateInterventionRequest {
-  studentId: string;
-  type: "academic" | "behavioral" | "personal" | "career" | "social";
-  category: string;
-  priority: "low" | "medium" | "high" | "urgent";
-  description: string;
-  startDate: string;
-  targetDate: string;
-  followUpDate?: string;
-  goals?: InterventionGoal[];
-  tags?: string[];
-}
-
-interface UpdateInterventionRequest {
-  id: string;
-  status?: "planned" | "active" | "monitoring" | "completed" | "cancelled";
-  progress?: number;
-  outcome?: string;
-  outcomeRating?: "successful" | "partially_successful" | "unsuccessful";
-  completedAt?: string;
-}
-
-interface AddNoteRequest {
-  interventionId: string;
-  content: string;
-  progressUpdate?: number;
-  statusChange?: string;
-  milestoneReached?: boolean;
-  milestoneDescription?: string;
-  isConfidential?: boolean;
-}
+type WhereCondition = SQL | undefined;
 
 // ============================================================================
 // GET - List interventions with stats
 // ============================================================================
 
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["counselor", "admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } ,
-        { status: authResult.status }
-      );
-    }
-
-    const { user, userId } = authResult;
+export const GET = createApiRoute(
+  async (request, auth) => {
+    const { user, userId } = auth;
     const { searchParams } = new URL(request.url);
 
     // Get filter parameters
@@ -80,7 +44,7 @@ export async function GET(request: NextRequest) {
     const studentId = searchParams.get("studentId");
 
     // Build query conditions
-    const conditions: any[] = [];
+    const conditions: WhereCondition[] = [];
 
     // Counselors can only see their own interventions
     if (user.type === "counselor") {
@@ -189,65 +153,40 @@ export async function GET(request: NextRequest) {
 
     logger.info("Retrieved counselor interventions", { userId, count: formattedInterventions.length });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        interventions: formattedInterventions,
-        stats,
-      },
+    return successResponse({
+      interventions: formattedInterventions,
+      stats,
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/counselor/interventions", method: "GET" });
-    return NextResponse.json(
-      { success: false, error: "Failed to retrieve interventions", status: 500 },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['counselor', 'admin']
+);
 
 // ============================================================================
 // POST - Create new intervention
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["counselor", "admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } ,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId, user } = authResult;
-    const body = await request.json();
+export const POST = createApiRoute(
+  async (request, auth) => {
+    const { userId, user } = auth;
+    const body = await request.json() as CreateInterventionRequest;
 
     // Validate required fields
     const { studentId, type, category, priority, description, startDate, targetDate, goals } = body;
 
     if (!studentId || !type || !category || !description || !startDate || !targetDate) {
-      return NextResponse.json(
-        { error: "Missing required fields: studentId, type, category, description, startDate, targetDate", status: 400 } ,
-        { status: 400 }
-      );
+      return badRequestResponse("Missing required fields: studentId, type, category, description, startDate, targetDate");
     }
 
     // Validate type
     const validTypes = ["academic", "behavioral", "personal", "career", "social"];
     if (!validTypes.includes(type)) {
-      return NextResponse.json(
-        { error: "Invalid intervention type. Must be one of: " + validTypes.join(", "), status: 400 } ,
-        { status: 400 }
-      );
+      return badRequestResponse("Invalid intervention type. Must be one of: " + validTypes.join(", "));
     }
 
     // Validate priority
     const validPriorities = ["low", "medium", "high", "urgent"];
     if (priority && !validPriorities.includes(priority)) {
-      return NextResponse.json(
-        { error: "Invalid priority. Must be one of: " + validPriorities.join(", "), status: 400 } ,
-        { status: 400 }
-      );
+      return badRequestResponse("Invalid priority. Must be one of: " + validPriorities.join(", "));
     }
 
     // Get student info to determine school
@@ -258,10 +197,7 @@ export async function POST(request: NextRequest) {
       .limit(1);
 
     if (studentData.length === 0) {
-      return NextResponse.json(
-        { error: "Student not found", status: 404 } ,
-        { status: 404 }
-      );
+      return notFoundResponse("Student");
     }
 
     // Generate unique ID
@@ -323,25 +259,14 @@ export async function POST(request: NextRequest) {
       category,
     });
 
-    return NextResponse.json(
-      {
-        success: true,
-        data: {
-          intervention: {
-            ...newIntervention,
-            studentName,
-            grade: student.classGrade,
-            school: "",
-          },
-        },
+    return createdResponse({
+      intervention: {
+        ...newIntervention,
+        studentName,
+        grade: student.classGrade,
+        school: "",
       },
-      { status: 201 }
-    );
-  } catch (error) {
-    logger.apiError(error, { route: "/api/counselor/interventions", method: "POST" });
-    return NextResponse.json(
-      { success: false, error: "Failed to create intervention", status: 500 },
-      { status: 500 }
-    );
-  }
-}
+    });
+  },
+  ['counselor', 'admin']
+);

@@ -652,7 +652,10 @@ export const rubColleges = [
 /**
  * Seed function to initialize database with Bhutan data
  */
-export async function seedBhutanData(db: any) {
+import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import * as schema from "@/lib/db/schema";
+
+export async function seedBhutanData(db: PostgresJsDatabase<typeof schema>) {
   const now = Date.now();
 
   // Seed districts

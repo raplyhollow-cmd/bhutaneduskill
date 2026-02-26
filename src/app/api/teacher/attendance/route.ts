@@ -1,54 +1,85 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+/**
+ * TEACHER ATTENDANCE API
+ *
+ * GET /api/teacher/attendance - Get classes for attendance marking
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
+import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { users, classes, enrollments, teacherAssignments } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse } from "@/lib/api/response-helpers";
 
+// ============================================================================
 // GET /api/teacher/attendance - Get classes for attendance marking
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['teacher']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+// ============================================================================
+
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId, user } = authResult;
 
-    // Get classes assigned to this teacher
-    const assignments = await db.query.teacherAssignments.findMany({
-      where: and(
-        eq(teacherAssignments.teacherId, user.id),
-        eq(teacherAssignments.isActive, true)
-      ),
-      with: {
-        class: true,
-      },
-    });
+    const { userId, user } = auth;
 
-    const classesWithStudents = await Promise.all(
-      assignments.map(async (assignment) => {
-        // Get enrolled students for this class
-        const classEnrollments = await db.query.enrollments.findMany({
-          where: and(
-            eq(enrollments.classId, assignment.classId),
-            eq(enrollments.status, "active")
-          ),
-          with: {
-            student: true,
-          },
-        });
+    try {
+      // Get assignments using db.select() - neon-http doesn't support query API
+      const assignmentsResult = await db
+        .select()
+        .from(teacherAssignments)
+        .where(
+          and(
+            eq(teacherAssignments.teacherId, user.id),
+            eq(teacherAssignments.isActive, true)
+          )
+        );
 
-        return {
-          ...assignment.class,
-          students: classEnrollments.map(e => e.student),
-          role: assignment.role,
-        };
-      })
-    );
+      const classesWithStudents = await Promise.all(
+        assignmentsResult.map(async (assignment) => {
+          // Get enrolled students for this class using db.select()
+          const classEnrollmentsResult = await db
+            .select()
+            .from(enrollments)
+            .where(
+              and(
+                eq(enrollments.classId, assignment.classId),
+                eq(enrollments.status, "active")
+              )
+            );
 
-    return NextResponse.json({ classes: classesWithStudents });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/teacher/attendance", method: "GET" });
-    return NextResponse.json({ error: "Failed to fetch classes" }, { status: 500 });
-  }
-}
+          // Get student details for each enrollment - batch fetch all students
+          const studentIds = classEnrollmentsResult.map(e => e.studentId).filter(Boolean);
+          const studentsData = studentIds.length > 0
+            ? await db
+                .select()
+                .from(users)
+                .where(inArray(users.id, studentIds))
+            : [];
+
+          return {
+            classId: assignment.classId,
+            role: assignment.role,
+            studentsCount: classEnrollmentsResult.length,
+            students: studentsData.map(s => ({
+              id: s.id,
+              name: s.name,
+              rollNumber: s.rollNumber || "",
+              classId: assignment.classId,
+            })),
+          };
+        })
+      );
+
+      return successResponse({ classes: classesWithStudents });
+    } catch (error) {
+      logger.apiError(error, { route: "/api/teacher/attendance", method: "GET" });
+      return errorResponse("Failed to fetch classes", 500);
+    }
+  },
+  ['teacher']
+);

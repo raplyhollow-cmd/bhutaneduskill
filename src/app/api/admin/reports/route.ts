@@ -1,28 +1,24 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users, schools, assessmentSubmissions, careerMatches } from "@/lib/db/schema";
 import { count, eq, and, desc } from "drizzle-orm";
 import { logger } from "@/lib/logger";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse } from "@/lib/api/response-helpers";
 
 // GET /api/admin/reports - Get report templates and recent reports
-export async function GET(request: NextRequest) {
-  const authResult = await requireAuth(['admin']);
-  if ('error' in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return successResponse({ stats: { totalSchools: 0, totalStudents: 0, totalTeachers: 0, totalCounselors: 0, recentSubmissions: 0 }, reportTemplates: [], recentReports: [] });
+    }
+    const { userId } = auth;
 
-  const { userId } = authResult;
-
-  try {
     const { searchParams } = new URL(request.url);
     const reportType = searchParams.get("type");
 
-    // Fetch real statistics for reports
+    // Fetch real statistics for reports - use db.select instead of db.query
     const [
       totalSchools,
       totalStudents,
@@ -34,10 +30,10 @@ export async function GET(request: NextRequest) {
       db.select({ count: count() }).from(users).where(eq(users.type, "student")),
       db.select({ count: count() }).from(users).where(eq(users.type, "teacher")),
       db.select({ count: count() }).from(users).where(eq(users.type, "counselor")),
-      db.query.assessmentSubmissions.findMany({
-        orderBy: [desc(assessmentSubmissions.createdAt)],
-        limit: 10,
-      }),
+      db.select()
+        .from(assessmentSubmissions)
+        .orderBy(desc(assessmentSubmissions.createdAt))
+        .limit(10),
     ]);
 
     const stats = {
@@ -50,103 +46,86 @@ export async function GET(request: NextRequest) {
 
     logger.info("Reports data fetched", { userId, stats });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        stats,
-        reportTemplates: [
-          {
-            id: "school-performance",
-            name: "School Performance Report",
-            description: "Comprehensive overview of all school metrics, enrollment, and assessment completion rates.",
-            category: "Schools",
-            schedule: "monthly",
-            available: true,
-          },
-          {
-            id: "user-engagement",
-            name: "User Engagement Report",
-            description: "Student, teacher, and parent activity metrics including login frequency and feature usage.",
-            category: "Users",
-            schedule: "weekly",
-            available: true,
-          },
-          {
-            id: "assessment-summary",
-            name: "Assessment Summary Report",
-            description: "Career assessment completion rates, result distributions, and trend analysis.",
-            category: "Assessments",
-            schedule: "monthly",
-            available: true,
-          },
-          {
-            id: "career-interests",
-            name: "Career Interests Analysis",
-            description: "Popular career choices by grade, region, and demographic breakdown.",
-            category: "Analytics",
-            schedule: "monthly",
-            available: true,
-          },
-          {
-            id: "revenue-report",
-            name: "Revenue and Subscription Report",
-            description: "Monthly recurring revenue, payment status, and subscription health metrics.",
-            category: "Finance",
-            schedule: "monthly",
-            available: true,
-          },
-          {
-            id: "platform-usage",
-            name: "Platform Usage Statistics",
-            description: "Feature adoption, page views, and user journey analytics.",
-            category: "Analytics",
-            schedule: "weekly",
-            available: true,
-          },
-        ],
-        recentReports: [],
-      }
+    return successResponse({
+      stats,
+      reportTemplates: [
+        {
+          id: "school-performance",
+          name: "School Performance Report",
+          description: "Comprehensive overview of all school metrics, enrollment, and assessment completion rates.",
+          category: "Schools",
+          schedule: "monthly",
+          available: true,
+        },
+        {
+          id: "user-engagement",
+          name: "User Engagement Report",
+          description: "Student, teacher, and parent activity metrics including login frequency and feature usage.",
+          category: "Users",
+          schedule: "weekly",
+          available: true,
+        },
+        {
+          id: "assessment-summary",
+          name: "Assessment Summary Report",
+          description: "Career assessment completion rates, result distributions, and trend analysis.",
+          category: "Assessments",
+          schedule: "monthly",
+          available: true,
+        },
+        {
+          id: "career-interests",
+          name: "Career Interests Analysis",
+          description: "Popular career choices by grade, region, and demographic breakdown.",
+          category: "Analytics",
+          schedule: "monthly",
+          available: true,
+        },
+        {
+          id: "revenue-report",
+          name: "Revenue and Subscription Report",
+          description: "Monthly recurring revenue, payment status, and subscription health metrics.",
+          category: "Finance",
+          schedule: "monthly",
+          available: true,
+        },
+        {
+          id: "platform-usage",
+          name: "Platform Usage Statistics",
+          description: "Feature adoption, page views, and user journey analytics.",
+          category: "Analytics",
+          schedule: "weekly",
+          available: true,
+        },
+      ],
+      recentReports: [],
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/reports", method: "GET", userId });
-    return NextResponse.json(
-      { error: "Failed to fetch reports data", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin']
+);
 
 // POST /api/admin/reports - Generate a report
-export async function POST(request: NextRequest) {
-  const authResult = await requireAuth(['admin']);
-  if ('error' in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
+export const POST = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return successResponse({ error: "Unauthorized" });
+    }
+    const { userId } = auth;
 
-  const { userId } = authResult;
-
-  try {
     const body = await request.json();
     const { reportType, format = "json" } = body;
 
     // Generate report based on type
-    let reportData: any = {};
+    let reportData: Record<string, unknown> = {};
 
     switch (reportType) {
-      case "school-performance":
-        const schools = await db.query.schools.findMany({
-          with: {
-            // @ts-ignore - Drizzle relation
-            tenants: true,
-          },
-        });
+      case "school-performance": {
+        const allSchools = await db.select().from(schools).orderBy(desc(schools.createdAt));
 
         // Get student counts per school
         const schoolStats = await Promise.all(
-          schools.map(async (school) => {
+          allSchools.map(async (school) => {
             const [studentCount] = await db
               .select({ count: count() })
               .from(users)
@@ -162,7 +141,7 @@ export async function POST(request: NextRequest) {
               name: school.name,
               code: school.code,
               schoolType: school.schoolType,
-              location: (school as any).location || school.city || school.address || "N/A",
+              location: school.city || school.address || "N/A",
               students: studentCount?.count || 0,
               teachers: teacherCount?.count || 0,
             };
@@ -175,19 +154,20 @@ export async function POST(request: NextRequest) {
           generatedAt: new Date().toISOString(),
           generatedBy: userId,
           summary: {
-            totalSchools: schools.length,
+            totalSchools: allSchools.length,
             totalStudents: schoolStats.reduce((sum, s) => sum + s.students, 0),
             totalTeachers: schoolStats.reduce((sum, s) => sum + s.teachers, 0),
           },
           schools: schoolStats,
         };
         break;
+      }
 
-      case "user-engagement":
-        const allUsers = await db.query.users.findMany({
-          orderBy: [desc(users.lastLogin)],
-          limit: 100,
-        });
+      case "user-engagement": {
+        const allUsers = await db.select()
+          .from(users)
+          .orderBy(desc(users.lastLogin))
+          .limit(100);
 
         const now = new Date();
         const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -202,7 +182,7 @@ export async function POST(request: NextRequest) {
           summary: {
             totalUsers: allUsers.length,
             activeUsers: activeUsers.length,
-            activeRate: allUsers.length > 0 ? ((activeUsers.length / allUsers.length) * 100).toFixed(1) : 0,
+            activeRate: allUsers.length > 0 ? ((activeUsers.length / allUsers.length) * 100).toFixed(1) : "0",
           },
           usersByType: {
             students: allUsers.filter(u => u.type === "student").length,
@@ -213,20 +193,18 @@ export async function POST(request: NextRequest) {
           },
         };
         break;
+      }
 
-      case "assessment-summary":
-        const submissions = await db.query.assessmentSubmissions.findMany({
-          with: {
-            // @ts-ignore - Drizzle relation
-            user: true,
-          },
-          orderBy: [desc(assessmentSubmissions.createdAt)],
-          limit: 1000,
-        });
+      case "assessment-summary": {
+        const submissions = await db.select()
+          .from(assessmentSubmissions)
+          .orderBy(desc(assessmentSubmissions.createdAt))
+          .limit(1000);
 
-        const thirtyDaysAgo2 = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        const now = new Date();
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
         const recentSubmissions = submissions.filter(
-          s => s.createdAt && new Date(s.createdAt) > thirtyDaysAgo2
+          s => s.createdAt && new Date(s.createdAt) > thirtyDaysAgo
         );
 
         reportData = {
@@ -237,20 +215,21 @@ export async function POST(request: NextRequest) {
           summary: {
             totalAssessments: submissions.length,
             recentAssessments: recentSubmissions.length,
-            completionRate: 0, // Calculate based on assigned vs completed
+            completionRate: "0", // Calculate based on assigned vs completed
           },
         };
         break;
+      }
 
-      case "career-interests":
-        const careerMatches = await db.query.careerMatches.findMany({
-          orderBy: [desc(assessmentSubmissions.createdAt)],
-          limit: 500,
-        });
+      case "career-interests": {
+        const careerMatchesData = await db.select()
+          .from(careerMatches)
+          .orderBy(desc(careerMatches.createdAt))
+          .limit(500);
 
         // Aggregate by career
         const careerCounts: Record<string, number> = {};
-        careerMatches.forEach(match => {
+        careerMatchesData.forEach(match => {
           if (match.careerTitle) {
             careerCounts[match.careerTitle] = (careerCounts[match.careerTitle] || 0) + 1;
           }
@@ -267,12 +246,13 @@ export async function POST(request: NextRequest) {
           generatedAt: new Date().toISOString(),
           generatedBy: userId,
           summary: {
-            totalMatches: careerMatches.length,
+            totalMatches: careerMatchesData.length,
             uniqueCareers: Object.keys(careerCounts).length,
           },
           topCareers,
         };
         break;
+      }
 
       case "revenue-report":
         // Revenue data - for now return summary structure
@@ -304,24 +284,16 @@ export async function POST(request: NextRequest) {
         break;
 
       default:
-        return NextResponse.json(
-          { error: "Unknown report type", status: 400 } satisfies ApiErrorResponse,
-          { status: 400 }
-        );
+        return successResponse({ error: "Unknown report type" }, 400);
     }
 
     logger.info("Report generated", { userId, reportType });
 
-    return NextResponse.json({
+    return successResponse({
       success: true,
       data: reportData,
-      message: "Report generated successfully"
-    }, { status: 201 });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/reports", method: "POST", userId });
-    return NextResponse.json(
-      { error: "Failed to generate report", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+      message: "Report generated successfully",
+    });
+  },
+  ['admin']
+);

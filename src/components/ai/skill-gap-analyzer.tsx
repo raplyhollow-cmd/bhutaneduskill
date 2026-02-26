@@ -32,6 +32,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { portal } from "@/styles/design-tokens";
 
 // ============================================================================
 // TYPES
@@ -273,7 +274,7 @@ export function AISkillGapAnalyzer({
             disabled={isLoading || !targetCareer.trim()}
             className="w-full"
             style={{
-              background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)',
+              background: portal.student.gradient,
             }}
           >
             {isLoading ? (

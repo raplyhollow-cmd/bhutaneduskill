@@ -3,6 +3,8 @@
  *
  * Handles leave request CRUD operations for students and teachers
  *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ *
  * Endpoints:
  * - GET: List leave requests (filtered by user role)
  * - POST: Create new leave request
@@ -10,10 +12,11 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import { leaveRequests, users, leaveBalances } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
+import { successResponse, errorResponse, badRequestResponse, forbiddenResponse } from "@/lib/api/response-helpers";
 
 type LeaveStatus = "pending" | "approved" | "rejected" | "cancelled";
 type LeaveType = "sick" | "vacation" | "emergency" | "family" | "other" | "casual" | "official";
@@ -74,16 +77,14 @@ const DEFAULT_LEAVE_BALANCE: Record<string, number> = {
  * GET /api/leave
  * List leave requests with optional filtering
  */
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['student', 'teacher', 'admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId } = authResult;
+
+    const { userId } = auth;
 
     // Get current user
     const currentUser = await db.query.users.findFirst({
@@ -92,7 +93,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return errorResponse("User not found", 404);
     }
 
     const { searchParams } = new URL(request.url);
@@ -168,29 +169,22 @@ export async function GET(request: NextRequest) {
         canApprove: isAdmin,
       },
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/leave", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch leave requests" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['student', 'teacher', 'admin', 'school-admin']
+);
 
 /**
  * POST /api/leave
  * Create a new leave request
  */
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['student', 'teacher', 'admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
+export const POST = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId } = authResult;
+
+    const { userId } = auth;
 
     const currentUser = await db.query.users.findFirst({
       where: eq(users.id, userId),
@@ -198,15 +192,12 @@ export async function POST(request: NextRequest) {
     });
 
     if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return errorResponse("User not found", 404);
     }
 
     // Only students and teachers can create leave requests
     if (currentUser.type !== "student" && currentUser.type !== "teacher") {
-      return NextResponse.json(
-        { error: "Only students and teachers can create leave requests" },
-        { status: 403 }
-      );
+      return forbiddenResponse("Only students and teachers can create leave requests");
     }
 
     const body = await request.json();
@@ -230,20 +221,14 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!type || !reason || !startDate || !endDate) {
-      return NextResponse.json(
-        { error: "Missing required fields: type, reason, startDate, endDate" },
-        { status: 400 }
-      );
+      return badRequestResponse("Missing required fields: type, reason, startDate, endDate");
     }
 
     // Validate dates
     const start = new Date(startDate);
     const end = new Date(endDate);
     if (end < start) {
-      return NextResponse.json(
-        { error: "End date must be after start date" },
-        { status: 400 }
-      );
+      return badRequestResponse("End date must be after start date");
     }
 
     // Calculate number of days
@@ -254,12 +239,7 @@ export async function POST(request: NextRequest) {
       const currentBalance = await calculateLeaveBalance(userId, new Date().getFullYear().toString());
       const typeBalance = currentBalance.byType[type] || { remaining: 0 };
       if (typeBalance.remaining < numberOfDays) {
-        return NextResponse.json(
-          {
-            error: `Insufficient leave balance. You have ${typeBalance.remaining} ${type} days remaining.`,
-          },
-          { status: 400 }
-        );
+        return badRequestResponse(`Insufficient leave balance. You have ${typeBalance.remaining} ${type} days remaining.`);
       }
     }
 
@@ -297,14 +277,9 @@ export async function POST(request: NextRequest) {
       success: true,
       leaveRequest,
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/leave", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to create leave request" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['student', 'teacher', 'admin', 'school-admin']
+);
 
 /**
  * Helper function to calculate leave balance for a user

@@ -15,6 +15,7 @@ import { eq, and, desc, sql } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { CardGridSkeleton } from "@/components/ui/skeleton/card-skeleton";
 import {
   ArrowLeft,
   User,
@@ -44,6 +45,16 @@ import {
 import Link from "next/link";
 import { Suspense } from "react";
 
+type HomeworkSubmission = {
+  id: string;
+  homework?: {
+    title: string;
+  } | null;
+  submittedAt?: Date | null;
+  score?: number | null;
+  maxScore?: number | null;
+};
+
 interface StudentDetailPageProps {
   params: Promise<{ id: string }>;
 }
@@ -54,32 +65,57 @@ async function getStudentData(studentId: string) {
     return null;
   }
 
-  // Get student basic info
-  const student = await db.query.users.findFirst({
-    where: eq(users.id, studentId),
-  });
+  // Get student basic info using db.select
+  const studentResult = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, studentId))
+    .limit(1);
+
+  const student = studentResult[0];
 
   if (!student || student.type !== "student") {
     return null;
   }
 
-  // Get enrollment
-  const enrollment = await db.query.enrollments.findFirst({
-    where: and(
+  // Get enrollment with class details using explicit join
+  const enrollmentResult = await db
+    .select({
+      id: enrollments.id,
+      studentId: enrollments.studentId,
+      classId: enrollments.classId,
+      rollNumber: enrollments.rollNumber,
+      status: enrollments.status,
+      section: enrollments.section,
+      academicYear: enrollments.academicYear,
+      enrollmentDate: enrollments.enrollmentDate,
+      className: classes.name,
+      grade: classes.grade,
+    })
+    .from(enrollments)
+    .innerJoin(classes, eq(enrollments.classId, classes.id))
+    .where(and(
       eq(enrollments.studentId, studentId),
       eq(enrollments.status, "active")
-    ),
-    with: {
-      class: true,
-    },
-  }) as any;
+    ))
+    .limit(1);
+
+  const enrollment = enrollmentResult[0] ? {
+    ...enrollmentResult[0],
+    class: enrollmentResult[0] ? {
+      id: enrollmentResult[0].classId,
+      name: enrollmentResult[0].className,
+      grade: enrollmentResult[0].grade,
+    } : null,
+  } : null;
 
   // Get attendance stats (last 30 days)
-  const attendanceRecords = await db.query.attendance.findMany({
-    where: eq(attendance.studentId, studentId),
-    orderBy: [desc(attendance.date)],
-    limit: 30,
-  });
+  const attendanceRecords = await db
+    .select()
+    .from(attendance)
+    .where(eq(attendance.studentId, studentId))
+    .orderBy(desc(attendance.date))
+    .limit(30);
 
   const attendanceStats = {
     present: attendanceRecords.filter((a) => a.status === "present").length,
@@ -93,49 +129,92 @@ async function getStudentData(studentId: string) {
   };
 
   // Get fee information
-  const feeRecords = await db.query.studentFees.findMany({
-    where: eq(studentFees.studentId, studentId),
-    orderBy: [desc(studentFees.createdAt)],
-    with: {
-      payments: true,
-    },
-  });
+  const feeRecords = await db
+    .select()
+    .from(studentFees)
+    .where(eq(studentFees.studentId, studentId))
+    .orderBy(desc(studentFees.createdAt));
+
+  // Get payments for each fee
+  const feeIds = feeRecords.map(f => f.id);
+  const paymentsMap = new Map<string, any[]>();
+
+  if (feeIds.length > 0) {
+    const payments = await db
+      .select()
+      .from(feePayments)
+      .where(sql`${feePayments.feeId} = ANY(${feeIds})`);
+
+    payments.forEach(p => {
+      if (!paymentsMap.has(p.feeId)) {
+        paymentsMap.set(p.feeId, []);
+      }
+      paymentsMap.get(p.feeId)!.push(p);
+    });
+  }
+
+  const feeRecordsWithPayments = feeRecords.map(f => ({
+    ...f,
+    payments: paymentsMap.get(f.id) || [],
+  }));
 
   const totalFees = feeRecords.reduce((sum, f) => sum + (f.totalAmount || 0), 0);
   const totalPaid = feeRecords.reduce((sum, f) => sum + (f.amountPaid || 0), 0);
   const totalPending = totalFees - totalPaid;
 
-  // Get assessment results
-  const assessmentResults = await db.query.assessments.findMany({
-    where: eq(assessments.userId, studentId),
-    orderBy: [desc(assessments.completedAt)],
-    with: {
-      riasecResults: true,
-    },
-  });
+  // Get assessment results - using direct select since riasecResults is in a separate table
+  const assessmentResults = await db
+    .select()
+    .from(assessments)
+    .where(eq(assessments.userId, studentId))
+    .orderBy(desc(assessments.completedAt));
 
   // Get exam results
-  const examResults = await db.query.examResultsEnhanced.findMany({
-    where: eq(examResultsEnhanced.studentId, studentId),
-    orderBy: [desc(examResultsEnhanced.examYear)],
-  });
+  const examResults = await db
+    .select()
+    .from(examResultsEnhanced)
+    .where(eq(examResultsEnhanced.studentId, studentId))
+    .orderBy(desc(examResultsEnhanced.examYear));
 
-  // Get homework submissions
-  const homeworkSubs = await db.query.homeworkSubmissions.findMany({
-    where: eq(homeworkSubmissions.studentId, studentId),
-    orderBy: [desc(homeworkSubmissions.submittedAt)],
-    with: {
-      homework: true,
+  // Get homework submissions with homework details
+  const submissionsResult = await db
+    .select({
+      submissionId: homeworkSubmissions.id,
+      studentId: homeworkSubmissions.studentId,
+      homeworkId: homeworkSubmissions.homeworkId,
+      submittedAt: homeworkSubmissions.submittedAt,
+      grade: homeworkSubmissions.grade,
+      feedback: homeworkSubmissions.feedback,
+      homeworkId: homework.id,
+      homeworkTitle: homework.title,
+      homeworkDueDate: homework.dueDate,
+    })
+    .from(homeworkSubmissions)
+    .innerJoin(homework, eq(homeworkSubmissions.homeworkId, homework.id))
+    .where(eq(homeworkSubmissions.studentId, studentId))
+    .orderBy(desc(homeworkSubmissions.submittedAt))
+    .limit(10);
+
+  const homeworkSubs = submissionsResult.map(s => ({
+    id: s.submissionId,
+    studentId: s.studentId,
+    homeworkId: s.homeworkId,
+    submittedAt: s.submittedAt,
+    grade: s.grade,
+    feedback: s.feedback,
+    homework: {
+      id: s.homeworkId,
+      title: s.homeworkTitle,
+      dueDate: s.homeworkDueDate,
     },
-    limit: 10,
-  }) as any;
+  }));
 
   return {
     student,
     enrollment,
     attendanceStats,
     attendanceRecords: attendanceRecords.slice(0, 10),
-    feeRecords,
+    feeRecords: feeRecordsWithPayments,
     feeStats: {
       totalFees,
       totalPaid,
@@ -151,11 +230,17 @@ async function getStudentData(studentId: string) {
 function LoadingSkeleton() {
   return (
     <div className="space-y-6">
-      <div className="h-8 bg-gray-200 rounded animate-pulse w-1/3" />
-      <div className="grid md:grid-cols-3 gap-6">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="h-40 bg-gray-200 rounded animate-pulse" />
-        ))}
+      <div className="h-8 w-1/3 animate-pulse rounded-lg bg-muted duration-500" />
+      <CardGridSkeleton count={4} />
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="space-y-6">
+          <div className="h-64 animate-pulse rounded-lg bg-muted duration-500" />
+          <div className="h-64 animate-pulse rounded-lg bg-muted duration-500" />
+        </div>
+        <div className="lg:col-span-2 space-y-6">
+          <div className="h-96 animate-pulse rounded-lg bg-muted duration-500" />
+          <div className="h-80 animate-pulse rounded-lg bg-muted duration-500" />
+        </div>
       </div>
     </div>
   );
@@ -612,7 +697,7 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
             <CardContent>
               {homeworkSubmissions.length > 0 ? (
                 <div className="space-y-3">
-                  {homeworkSubmissions.map((submission: any) => (
+                  {homeworkSubmissions.map((submission: HomeworkSubmission) => (
                     <div key={submission.id} className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">

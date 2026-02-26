@@ -302,6 +302,20 @@ export function generateDailyGoals(): DailyGoal[] {
 // ============================================================================
 
 /**
+ * User statistics for gamification
+ */
+export interface UserStats {
+  assessmentsCompleted?: number;
+  careersViewed?: number;
+  aiQueries?: number;
+  journalEntries?: number;
+  goalsCompleted?: number;
+  goalsSet?: number;
+  plansCreated?: number;
+  currentStreak?: number;
+}
+
+/**
  * Calculate level from XP
  */
 export function getLevelFromXP(xp: number): number {
@@ -334,7 +348,7 @@ export function getLevelProgress(xp: number): { current: number; total: number; 
 /**
  * Check if badge is earned
  */
-export function checkBadgeProgress(badgeId: string, userStats: any): Badge | null {
+export function checkBadgeProgress(badgeId: string, userStats: UserStats): Badge | null {
   const badge = allBadges.find((b) => b.id === badgeId);
   if (!badge) return null;
 
@@ -424,7 +438,7 @@ export async function awardXP(userId: string, actionId: string): Promise<{
 /**
  * Check and award badges
  */
-export async function checkBadges(userId: string, userStats: any): Promise<Badge[]> {
+export async function checkBadges(userId: string, userStats: UserStats): Promise<Badge[]> {
   const newBadges: Badge[] = [];
 
   for (const badge of allBadges) {

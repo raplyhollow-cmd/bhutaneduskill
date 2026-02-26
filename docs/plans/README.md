@@ -7,6 +7,7 @@ Active implementation plans and feature roadmap.
 | Plan | Status | Description |
 |------|--------|-------------|
 | [Roadmap](roadmap.md) | Active | Feature roadmap and priorities |
+| [API & Schema Optimization](api-schema-optimization.md) | **Proposed** | Make project smaller, smarter, faster (~2,200 lines reduction) |
 | [AI Features](ai-features.md) | Planned | 10 AI features with Gemini integration |
 | [Ministry Portal](ministry-portal.md) | Planned | Ministry of Education portal |
 | [Mobile App](mobile-app.md) | In Progress | Mobile-first redesign (Phases 0-4 complete) |

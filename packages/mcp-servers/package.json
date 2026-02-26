@@ -1,0 +1,5 @@
+{
+  "devDependencies": {
+    "@modelcontextprotocol/servers": "github:modelcontextprotocol/servers#main"
+  }
+}

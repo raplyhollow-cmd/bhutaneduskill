@@ -3,6 +3,10 @@
  *
  * Environment Variables:
  * - DATABASE_URL: Neon PostgreSQL connection string (required)
+ *
+ * NOTE: Using neon-http driver. db.query API is NOT available because
+ * relations are disabled in schema.ts due to circular reference issues.
+ * Use db.select() with explicit joins instead.
  */
 
 import { drizzle } from "drizzle-orm/neon-http";
@@ -22,7 +26,7 @@ if (!databaseUrl.startsWith("postgres://") && !databaseUrl.startsWith("postgresq
   throw new Error("DATABASE_URL must be a PostgreSQL connection string");
 }
 
-// Create Neon client
+// Create Neon client with HTTP connection
 const neonClient = neon(databaseUrl, {
   fetchOptions: {
     cache: "no-store",
@@ -30,6 +34,7 @@ const neonClient = neon(databaseUrl, {
 });
 
 // Create and export database instance
+// NOTE: db.query is NOT available - use db.select() with explicit joins
 export const db = drizzle(neonClient, { schema });
 
 /**

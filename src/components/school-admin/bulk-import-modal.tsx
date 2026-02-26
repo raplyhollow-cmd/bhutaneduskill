@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@/components/ui/toaster";
 import {
   Dialog,
   DialogContent,
@@ -232,7 +232,7 @@ export function BulkImportModal({ open, onClose, schoolId }: BulkImportModalProp
     } catch (error) {
       toast({
         title: "Import Failed",
-        description: error instanceof Error ? error.message : "An unknown error occurred",
+        description: error instanceof Error ? error instanceof Error ? error.message : String(error) : "An unknown error occurred",
         variant: "error",
       });
     } finally {

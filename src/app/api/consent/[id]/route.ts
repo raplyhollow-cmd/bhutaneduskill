@@ -4,6 +4,7 @@ import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { consentRecords, users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import type { ConsentRecord } from "@/lib/db/schema";
 
 // PATCH /api/consent/[id] - Update consent status (approve/revoke)
 export async function PATCH(
@@ -25,9 +26,11 @@ export async function PATCH(
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
 
-    const record = await db.query.consentRecords.findFirst({
-      where: eq(consentRecords.id, id),
-    });
+    const [record] = await db
+      .select()
+      .from(consentRecords)
+      .where(eq(consentRecords.id, id))
+      .limit(1);
 
     if (!record) {
       return NextResponse.json({ error: "Consent record not found" }, { status: 404 });
@@ -38,7 +41,13 @@ export async function PATCH(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const updateData: any = {
+    type ConsentUpdateData = {
+      status: string;
+      consentedAt?: Date;
+      revokedAt?: Date;
+    };
+
+    const updateData: ConsentUpdateData = {
       status,
     };
 
@@ -74,9 +83,11 @@ export async function GET(
     }
     const { userId, user } = authResult;
 
-    const record = await db.query.consentRecords.findFirst({
-      where: eq(consentRecords.id, id),
-    });
+    const [record] = await db
+      .select()
+      .from(consentRecords)
+      .where(eq(consentRecords.id, id))
+      .limit(1);
 
     if (!record) {
       return NextResponse.json({ error: "Consent record not found" }, { status: 404 });

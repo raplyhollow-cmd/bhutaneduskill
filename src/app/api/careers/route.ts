@@ -1,14 +1,26 @@
-import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
-import { CAREERS_DATABASE } from "@/lib/tenant";
+/**
+ * CAREERS API
+ *
+ * GET /api/careers - Get all careers or user's matched careers
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
 
+import { logger } from "@/lib/logger";
+import { NextRequest } from "next/server";
+import { CAREERS_DATABASE } from "@/lib/tenant";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse } from "@/lib/api/response-helpers";
+
+// ============================================================================
 // GET /api/careers - Get all careers or user's matched careers
-export async function GET(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(['student', 'teacher', 'admin', 'counselor']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+// ============================================================================
+
+export const GET = createApiRoute(
+  async (req: NextRequest) => {
+    const auth = getAuth(req);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
 
     const { searchParams } = new URL(req.url);
@@ -34,12 +46,10 @@ export async function GET(req: NextRequest) {
       careers = careers.filter((c) => c.riasecCode.includes(category.toUpperCase()));
     }
 
-    return NextResponse.json({
+    return successResponse({
       careers,
       total: careers.length,
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json({ error: "Failed to fetch careers" }, { status: 500 });
-  }
-}
+  },
+  ['student', 'teacher', 'admin', 'counselor']
+);

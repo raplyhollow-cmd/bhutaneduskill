@@ -1,0 +1,29 @@
+src/app/api/reports/report-card/route.ts(187,5): error TS1005: ',' expected.
+src/app/api/reports/report-card/route.ts(191,1): error TS1128: Declaration or statement expected.
+src/app/api/reports/report-card/route.ts(191,2): error TS1128: Declaration or statement expected.
+src/app/api/reports/report-card/route.ts(193,1): error TS1128: Declaration or statement expected.
+src/app/api/reports/route.ts(313,5): error TS1005: ',' expected.
+src/app/api/reports/route.ts(320,1): error TS1128: Declaration or statement expected.
+src/app/api/reports/route.ts(320,2): error TS1128: Declaration or statement expected.
+src/app/api/reports/route.ts(322,1): error TS1128: Declaration or statement expected.
+src/app/api/reports/route.ts(422,5): error TS1005: ',' expected.
+src/app/api/reports/route.ts(429,1): error TS1128: Declaration or statement expected.
+src/app/api/reports/route.ts(429,2): error TS1128: Declaration or statement expected.
+src/app/api/reports/route.ts(431,1): error TS1128: Declaration or statement expected.
+src/app/api/rub/predictor/route.ts(178,5): error TS1005: ',' expected.
+src/app/api/rub/predictor/route.ts(182,1): error TS1128: Declaration or statement expected.
+src/app/api/rub/predictor/route.ts(182,2): error TS1128: Declaration or statement expected.
+src/app/api/rub/predictor/route.ts(184,1): error TS1128: Declaration or statement expected.
+src/app/api/rub/predictor/route.ts(334,5): error TS1005: ',' expected.
+src/app/api/rub/predictor/route.ts(338,1): error TS1128: Declaration or statement expected.
+src/app/api/rub/predictor/route.ts(338,2): error TS1128: Declaration or statement expected.
+src/app/api/rub/predictor/route.ts(340,1): error TS1128: Declaration or statement expected.
+src/app/api/student/content/colleges/route.ts(73,4): error TS1128: Declaration or statement expected.
+src/app/api/student/content/colleges/route.ts(75,1): error TS1128: Declaration or statement expected.
+src/app/api/student/homework/[id]/route.ts(132,4): error TS1128: Declaration or statement expected.
+src/app/api/student/homework/[id]/route.ts(134,1): error TS1128: Declaration or statement expected.
+src/app/api/student/homework/[id]/route.ts(269,4): error TS1128: Declaration or statement expected.
+src/app/api/student/homework/[id]/route.ts(271,1): error TS1128: Declaration or statement expected.
+src/app/api/student/modules/[id]/progress/route.ts(167,5): error TS1005: ',' expected.
+src/app/api/student/modules/[id]/progress/route.ts(170,4): error TS1128: Declaration or statement expected.
+src/app/api/student/modules/[id]/progress/route.ts(172,1): error TS1128: Declaration or statement expected.

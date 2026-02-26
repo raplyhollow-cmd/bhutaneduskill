@@ -51,7 +51,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
 
     // Check permissions
-    const canView = user.role === "admin" || (user.schoolId && event.schoolId === user.schoolId);
+    const canView = user.type === "admin" || (user.schoolId && event.schoolId === user.schoolId);
     if (!canView) {
       return NextResponse.json(
         { error: "You don't have permission to view registrations for this event" },
@@ -262,7 +262,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     // Check permissions
-    const canEdit = user.role === "admin" || (user.schoolId && event.schoolId === user.schoolId);
+    const canEdit = user.type === "admin" || (user.schoolId && event.schoolId === user.schoolId);
     if (!canEdit) {
       return NextResponse.json(
         { error: "You don't have permission to update registrations for this event" },
@@ -271,7 +271,12 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     // Build update data
-    const updateData: any = {
+    const updateData: {
+      updatedAt: Date;
+      status?: string;
+      checkedInAt?: Date | null;
+      checkedInBy?: string | null;
+    } = {
       updatedAt: new Date(),
     };
 
@@ -361,8 +366,8 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
     // Check ownership or admin
     const canCancel =
-      user.role === "admin" ||
-      user.role === "school-admin" ||
+      user.type === "admin" ||
+      user.type === "school_admin" ||
       registration.userId === user.id;
 
     if (!canCancel) {

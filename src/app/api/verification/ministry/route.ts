@@ -17,7 +17,7 @@ async function getTenantByName(name: string) {
 }
 
 // Update tenant settings helper
-async function updateTenantSettings(name: string, newSettings: Record<string, any>) {
+async function updateTenantSettings(name: string, newSettings: Record<string, unknown>) {
   const existing = await getTenantByName(name);
   if (!existing) return null;
 
@@ -44,12 +44,26 @@ interface VerificationRequest {
   ministryData?: MinistryData;
   adminData?: AdminData;
   documents?: DocumentData;
-  schoolData?: any;
+  schoolData?: SchoolData;
   submittedAt: Date;
   reviewedAt?: Date;
   reviewedBy?: string;
   notes?: string;
   rejectionReason?: string;
+}
+
+interface SchoolData {
+  name: string;
+  code: string;
+  level: "primary" | "middle" | "secondary" | "higher_secondary";
+  address: string;
+  city: string;
+  district: string;
+  country: string;
+  postalCode: string;
+  phone: string;
+  email: string;
+  principalName: string;
 }
 
 interface MinistryData {
@@ -372,16 +386,16 @@ export async function PATCH(req: NextRequest) {
             dateOfBirth: "",
             gender: "",
             grade: 0,
-            section: "",
+            section: null, // JSON column
             rollNumber: "",
             address: request.ministryData?.address || "",
             city: request.ministryData?.city || "",
             state: request.ministryData?.region || "",
             postalCode: request.ministryData?.postalCode || "",
             country: request.ministryData?.country || "",
-            parentContact: "",
-            parentPhone: "",
-            emergencyContact: "",
+            parentContact: null, // JSON column
+            parentPhone: null, // JSON column
+            emergencyContact: null, // JSON column
             bloodGroup: "",
             enrollmentDate: new Date().toISOString().split("T")[0],
             lastLogin: "",

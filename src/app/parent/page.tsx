@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,53 +18,77 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+type ChildData = {
+  id: string;
+  firstName: string;
+  lastName?: string;
+  classGrade?: number;
+  section?: string;
+  profilePicture?: string;
+};
+
+type NoteData = {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: string;
+};
+
 export default function ParentDashboardPage() {
-  // Mock data - will be replaced with real data from database
-  const [child] = useState({
-    name: "Tashi Dorji",
-    grade: "Class 10",
-    age: 15,
-    school: "Yangchenphug HSS",
-    assessmentCompleted: true,
-    riasecCode: "AIR",
-    topCareerMatches: [
-      { career: "Software Developer", match: 87 },
-      { career: "UX Designer", match: 82 },
-      { career: "Data Analyst", match: 78 },
-    ],
-    skillsInProgress: [
-      { name: "Problem Solving", level: 65 },
-      { name: "Communication", level: 45 },
-      { name: "Technical Skills", level: 30 },
-    ],
-    recentActivity: [
-      { type: "assessment", description: "Completed RIASEC assessment", time: "2 days ago" },
-      { type: "career", description: "Explored Software Developer career", time: "1 day ago" },
-      { type: "learning", description: "Started Python basics course", time: "5 hours ago" },
-    ],
-    studyAbroadReadiness: 55,
-  });
+  const [child, setChild] = useState<ChildData | null>(null);
+  const [recentNotes, setRecentNotes] = useState<NoteData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const recentNotes = [
-    {
-      id: 1,
-      date: "2025-02-05",
-      note: "Tashi was very excited about the coding project today. Spent 2 hours voluntarily working on it.",
-      sentiment: "positive",
-    },
-    {
-      id: 2,
-      date: "2025-02-03",
-      note: "Showed interest in the IT career discussion during class. Asked good questions about programming.",
-      sentiment: "positive",
-    },
-  ];
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const [childRes, notesRes] = await Promise.all([
+          fetch("/api/parent/children"),
+          fetch("/api/parent/recent-notes"),
+        ]);
 
-  const expectationsVsReality = {
-    parentExpectations: ["Doctor", "Engineer"],
-    childInterests: ["Software Developer", "UX Designer", "Data Analyst"],
-    alignmentScore: 65,
-  };
+        if (childRes.ok) {
+          const data = await childRes.json();
+          setChild(data.children?.[0] || null);
+        }
+
+        if (notesRes.ok) {
+          const data = await notesRes.json();
+          setRecentNotes(data.notes || []);
+        }
+      } catch (error) {
+        console.error("Error fetching parent dashboard data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-gray-600 mr-3" />
+        <span className="text-gray-600">Loading dashboard...</span>
+      </div>
+    );
+  }
+
+  if (!child) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+          <p className="text-gray-600">No child data found</p>
+          <Link href="/setup/parent">
+            <Button className="mt-4">Add a Child</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
@@ -74,7 +98,7 @@ export default function ParentDashboardPage() {
           Parent Dashboard
         </h1>
         <p className="text-gray-600">
-          Track {child.name}&apos;s career exploration journey
+          Track {child.firstName} {child.lastName}&apos;s career exploration journey
         </p>
       </div>
 
@@ -84,11 +108,11 @@ export default function ParentDashboardPage() {
           <div className="flex items-center gap-6">
             <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
               <span className="text-white text-2xl font-bold">
-                {child.name.split(" ").map(n => n[0]).join("")}
+                {child.firstName} {child.lastName ? child.lastName[0] : ''}.
               </span>
             </div>
             <div className="flex-1">
-              <h2 className="text-2xl font-bold text-gray-900">{child.name}</h2>
+              <h2 className="text-2xl font-bold text-gray-900">{child.firstName} {child.lastName || ''}</h2>
               <p className="text-gray-600">{child.grade} • {child.age} years old</p>
               <p className="text-sm text-gray-500">{child.school}</p>
               <div className="flex gap-2 mt-2">

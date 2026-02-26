@@ -1,18 +1,123 @@
-import { NextRequest, NextResponse } from "next/server";
-import { currentUser } from "@clerk/nextjs/server";
+/**
+ * STUDENT SETUP API
+ *
+ * POST /api/setup/student - Handle student onboarding/setup
+ *
+ * Note: Uses Clerk auth directly to handle new users not in DB yet
+ * This is intentional as setup happens before database user creation
+ */
+
+import { NextRequest } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { users, wizardProgress, studentApplications, notifications, notificationDeliveries, schools } from "@/lib/db/schema";
-import { eq, sql, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { logger } from "@/lib/logger";
 
+/**
+ * Notify school admins when a new student applies for enrollment
+ */
+async function notifySchoolAdminsAboutNewStudent(schoolId: string, student: typeof users.$inferSelect) {
+  try {
+    // Get all school admins for this school
+    const schoolAdmins = await db
+      .select()
+      .from(users)
+      .where(eq(users.schoolId, schoolId))
+      .then((admins) => admins.filter((a) => a.type === "school_admin"));
+
+    if (schoolAdmins.length === 0) {
+      logger.warn("No school admins found to notify", { schoolId });
+      return;
+    }
+
+    // Create notification for each school admin
+    const studentName = student.firstName && student.lastName
+      ? `${student.firstName} ${student.lastName}`
+      : student.name;
+    const gradeText = student.classGrade || student.grade
+      ? `Grade ${student.classGrade || student.grade}${student.section ? " " + student.section : ""}`
+      : "Grade not specified";
+
+    // Create a single notification for all school admins
+    const notificationId = `notif-${Date.now()}-${nanoid(8)}`;
+    const now = new Date();
+
+    await db.insert(notifications).values({
+      id: notificationId,
+      title: "New Student Application",
+      message: `${studentName} (${gradeText}) has applied for enrollment and needs your approval.`,
+      type: "alert",
+      category: "enrollment",
+      targetAudience: "specific",
+      targetUserIds: JSON.stringify(schoolAdmins.map(a => a.id)),
+      priority: "high",
+      status: "sent",
+      senderId: student.id,
+      senderName: studentName,
+      senderRole: "student",
+      actionUrl: "/school-admin/students/pending",
+      actionLabel: "Review Application",
+      sentAt: now,
+      totalRecipients: schoolAdmins.length,
+      deliveredCount: schoolAdmins.length,
+      readCount: 0,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Create delivery records for each admin
+    for (const admin of schoolAdmins) {
+      try {
+        const deliveryId = `delivery-${Date.now()}-${nanoid(8)}`;
+        await db.insert(notificationDeliveries).values({
+          id: deliveryId,
+          notificationId,
+          userId: admin.id,
+          status: "delivered",
+          deliveredAt: now,
+          deliveryMethod: "in_app",
+          createdAt: now,
+          updatedAt: now,
+        });
+        logger.info("Created notification delivery for school admin", { deliveryId, adminId: admin.id });
+      } catch (error) {
+        logger.error("Failed to create notification delivery for admin", { adminId: admin.id, error });
+      }
+    }
+
+    logger.info("Notified school admins about new student application", {
+      schoolId,
+      studentId: student.id,
+      adminsNotified: schoolAdmins.length
+    });
+  } catch (error) {
+    logger.error("Failed to notify school admins", { error });
+  }
+}
+
+// ============================================================================
+// POST /api/setup/student - Handle student setup
+// ============================================================================
+
 export async function POST(request: NextRequest) {
   try {
-    const user = await currentUser();
+    const { userId } = await auth();
 
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
     }
+
+    // Get user from Clerk
+    const clerkUser = await fetch(`https://api.clerk.com/v1/users/${userId}`, {
+      headers: {
+        Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}`,
+      },
+    }).then((res) => res.json());
 
     const body = await request.json();
     const { step, data } = body;
@@ -23,57 +128,54 @@ export async function POST(request: NextRequest) {
     const userRecord = await db
       .select()
       .from(users)
-      .where(eq(users.clerkUserId, user.id))
+      .where(eq(users.clerkUserId, userId))
       .limit(1);
 
     let dbUser;
 
     if (userRecord.length === 0) {
-      // User doesn't exist - create them with default values
-      logger.info("Creating new student user", { clerkUserId: user.id });
+      // User doesn't exist - create them
+      logger.info("Creating new student user", { clerkUserId: userId });
 
       const newUserId = `user-${Date.now()}`;
-      const firstName = user.firstName || "";
-      const lastName = user.lastName || "";
-      // Defensive email extraction - try multiple methods
-      const email = user.primaryEmailAddress?.emailAddress
-        || user.emailAddresses?.find((e: { id: string; emailAddress?: string }) => e.id === user.primaryEmailAddressId)?.emailAddress
-        || user.emailAddresses?.[0]?.emailAddress
+      const firstName = clerkUser.first_name || "";
+      const lastName = clerkUser.last_name || "";
+      // Defensive email extraction
+      const email = clerkUser.email_addresses?.[0]?.email_address
+        || clerkUser.primary_email_address?.email_address
         || "";
 
       // Create the user with minimum required fields
       await db.insert(users).values({
         id: newUserId,
-        clerkUserId: user.id,
+        clerkUserId: userId,
         type: "student",
         role: "student",
         name: `${firstName} ${lastName}`.trim() || "Student",
         firstName,
         lastName,
         email,
-        // Required fields with defaults
         phone: "",
-        profileImage: user.imageUrl || "",
+        profileImage: clerkUser.image_url || "",
         gender: "",
         grade: 0,
-        section: "",
+        section: null,
         rollNumber: "",
         address: "",
         city: "",
         state: "",
         postalCode: "",
         country: "Bhutan",
-        parentContact: "",
-        parentPhone: "",
-        emergencyContact: "",
+        parentContact: null,
+        parentPhone: null,
+        emergencyContact: null,
         bloodGroup: "",
         enrollmentDate: new Date().toISOString().split('T')[0],
         lastLogin: new Date().toISOString(),
         onboardingComplete: step === "complete",
-        onboardingStatus: "pending_enrollment", // Students start as pending until school admin approves
+        onboardingStatus: "pending_enrollment",
         createdAt: new Date(),
         updatedAt: new Date(),
-        // Optional fields - will be updated from form data
         ...(data.personalDetails?.fullName && {
           firstName: data.personalDetails.fullName.split(" ")[0],
           lastName: data.personalDetails.fullName.split(" ").slice(1).join(" "),
@@ -113,7 +215,37 @@ export async function POST(request: NextRequest) {
       dbUser = userRecord[0];
     }
 
-    // Update or create wizard progress (gracefully handle missing table)
+    // Verify school code if provided and link user to school
+    if (data?.schoolCode) {
+      const schoolRecord = await db
+        .select()
+        .from(schools)
+        .where(eq(schools.code, data.schoolCode))
+        .limit(1);
+
+      if (schoolRecord.length === 0) {
+        return new Response(
+          JSON.stringify({ error: "Invalid school code" }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+
+      // Link user to school
+      await db
+        .update(users)
+        .set({ schoolId: schoolRecord[0].id })
+        .where(eq(users.id, dbUser.id));
+
+      dbUser.schoolId = schoolRecord[0].id;
+
+      logger.info("Linked student to school", {
+        userId: dbUser.id,
+        schoolId: schoolRecord[0].id,
+        schoolCode: data.schoolCode,
+      });
+    }
+
+    // Update or create wizard progress
     let existingProgress: Array<{ id: string; currentStep: string; data: Record<string, unknown> }> = [];
     try {
       existingProgress = await db
@@ -121,8 +253,7 @@ export async function POST(request: NextRequest) {
         .from(wizardProgress)
         .where(eq(wizardProgress.userId, dbUser.id))
         .limit(1);
-    } catch (error) {
-      // wizard_progress table doesn't exist - skip progress tracking
+    } catch {
       logger.warn("wizard_progress table not available, skipping progress tracking");
     }
 
@@ -152,8 +283,8 @@ export async function POST(request: NextRequest) {
           createdAt: new Date(),
           updatedAt: new Date(),
         });
-      } catch (error) {
-        logger.warn("Could not insert wizard_progress", { error });
+      } catch {
+        logger.warn("Could not insert wizard_progress");
       }
     }
 
@@ -202,11 +333,10 @@ export async function POST(request: NextRequest) {
         .where(eq(users.id, dbUser.id));
       logger.info("Marked onboarding as complete for student", { userId: dbUser.id });
 
-      // Create student application record for school admin approval
-      // Only if schoolId is available (from school verification step)
+      // Create student application record if schoolId is available
       if (dbUser.schoolId) {
         try {
-          // SEAT LIMIT CHECK: Verify school has capacity before allowing enrollment
+          // SEAT LIMIT CHECK: Verify school has capacity
           const schoolRecords = await db
             .select({
               maxStudents: schools.maxStudents,
@@ -219,9 +349,9 @@ export async function POST(request: NextRequest) {
 
           if (schoolRecords.length === 0) {
             logger.error("School not found during student setup", { schoolId: dbUser.schoolId });
-            return NextResponse.json(
-              { error: "School not found. Please contact support." },
-              { status: 404 }
+            return new Response(
+              JSON.stringify({ error: "School not found. Please contact support." }),
+              { status: 404, headers: { "Content-Type": "application/json" } }
             );
           }
 
@@ -230,9 +360,9 @@ export async function POST(request: NextRequest) {
           // Check if school is active
           if (!school.isActive) {
             logger.warn("Student attempted to join inactive school", { schoolId: dbUser.schoolId });
-            return NextResponse.json(
-              { error: "This school is currently inactive. Please contact your school administrator." },
-              { status: 403 }
+            return new Response(
+              JSON.stringify({ error: "This school is currently inactive. Please contact your school administrator." }),
+              { status: 403, headers: { "Content-Type": "application/json" } }
             );
           }
 
@@ -242,13 +372,13 @@ export async function POST(request: NextRequest) {
               schoolId: dbUser.schoolId,
               subscriptionStatus: school.subscriptionStatus,
             });
-            return NextResponse.json(
-              { error: "This school's subscription is not active. Please contact your school administrator." },
-              { status: 403 }
+            return new Response(
+              JSON.stringify({ error: "This school's subscription is not active. Please contact your school administrator." }),
+              { status: 403, headers: { "Content-Type": "application/json" } }
             );
           }
 
-          // Count current students at the school (excluding pending applications)
+          // Count current enrolled students
           const currentStudentsResult = await db
             .select({ count: sql<number>`count(*)` })
             .from(users)
@@ -256,7 +386,7 @@ export async function POST(request: NextRequest) {
               and(
                 eq(users.schoolId, dbUser.schoolId),
                 eq(users.type, "student"),
-                eq(users.onboardingStatus, "enrolled") // Only count enrolled students
+                eq(users.onboardingStatus, "enrolled")
               )
             );
 
@@ -269,15 +399,15 @@ export async function POST(request: NextRequest) {
               currentStudents: currentStudentCount,
               maxStudents: school.maxStudents,
             });
-            return NextResponse.json(
-              {
+            return new Response(
+              JSON.stringify({
                 error: "This school has reached its student capacity limit.",
                 details: {
                   currentStudents: currentStudentCount,
                   maxStudents: school.maxStudents,
                 },
-              },
-              { status: 403 }
+              }),
+              { status: 403, headers: { "Content-Type": "application/json" } }
             );
           }
 
@@ -312,102 +442,22 @@ export async function POST(request: NextRequest) {
           await notifySchoolAdminsAboutNewStudent(dbUser.schoolId, dbUser);
         } catch (error) {
           logger.error("Failed to create student application or notify admins", { error });
-          // Don't fail the request if notification fails
         }
       }
     }
 
-    return NextResponse.json({ success: true });
+    return new Response(
+      JSON.stringify({ success: true }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
   } catch (error) {
     logger.error("Student setup error:", error);
-    return NextResponse.json(
-      {
+    return new Response(
+      JSON.stringify({
         error: "Failed to process setup",
         details: error instanceof Error ? error.message : "Unknown error"
-      },
-      { status: 500 }
+      }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
     );
-  }
-}
-
-/**
- * Notify school admins when a new student applies for enrollment
- */
-async function notifySchoolAdminsAboutNewStudent(schoolId: string, student: typeof users.$inferSelect) {
-  try {
-    // Get all school admins for this school
-    const schoolAdmins = await db
-      .select()
-      .from(users)
-      .where(eq(users.schoolId, schoolId))
-      .then((admins) => admins.filter((a) => a.type === "school_admin"));
-
-    if (schoolAdmins.length === 0) {
-      logger.warn("No school admins found to notify", { schoolId });
-      return;
-    }
-
-    // Create notification for each school admin
-    const studentName = student.firstName && student.lastName
-      ? `${student.firstName} ${student.lastName}`
-      : student.name;
-    const gradeText = student.classGrade || student.grade
-      ? `Grade ${student.classGrade || student.grade}${student.section ? " " + student.section : ""}`
-      : "Grade not specified";
-
-    // Create a single notification for all school admins
-    const notificationId = `notif-${Date.now()}-${nanoid(8)}`;
-    const now = new Date();
-
-    await db.insert(notifications).values({
-      id: notificationId,
-      title: "New Student Application",
-      message: `${studentName} (${gradeText}) has applied for enrollment and needs your approval.`,
-      type: "alert", // Using alert type for urgent notifications
-      category: "enrollment",
-      targetAudience: "specific",
-      targetUserIds: JSON.stringify(schoolAdmins.map(a => a.id)),
-      priority: "high",
-      status: "sent",
-      senderId: student.id,
-      senderName: studentName,
-      senderRole: "student",
-      actionUrl: "/school-admin/students/pending",
-      actionLabel: "Review Application",
-      sentAt: now,
-      totalRecipients: schoolAdmins.length,
-      deliveredCount: schoolAdmins.length,
-      readCount: 0,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    // Create delivery records for each admin
-    for (const admin of schoolAdmins) {
-      try {
-        const deliveryId = `delivery-${Date.now()}-${nanoid(8)}`;
-        await db.insert(notificationDeliveries).values({
-          id: deliveryId,
-          notificationId,
-          userId: admin.id,
-          status: "delivered",
-          deliveredAt: now,
-          deliveryMethod: "in_app",
-          createdAt: now,
-          updatedAt: now,
-        });
-        logger.info("Created notification delivery for school admin", { deliveryId, adminId: admin.id });
-      } catch (error) {
-        logger.error("Failed to create notification delivery for admin", { adminId: admin.id, error });
-      }
-    }
-
-    logger.info("Notified school admins about new student application", {
-      schoolId,
-      studentId: student.id,
-      adminsNotified: schoolAdmins.length
-    });
-  } catch (error) {
-    logger.error("Failed to notify school admins", { error });
   }
 }

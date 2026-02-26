@@ -29,7 +29,7 @@ interface CommandResult {
   success: boolean;
   action: string;
   entityName: string;
-  result: any;
+  result: unknown;
   message: string;
 }
 

@@ -3,6 +3,8 @@
  * GET /api/ministry/schools - List all schools with filtering
  * PATCH /api/ministry/schools/bulk-status - Update status of multiple schools
  *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ *
  * Provides school management for Ministry of Education:
  * - List all schools with search and filter
  * - Update school status (active, inactive, suspended)
@@ -10,12 +12,13 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { schools, users } from "@/lib/db/schema";
 import { eq, or, like, desc, inArray, and, count, sql } from "drizzle-orm";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { successResponse, errorResponse, badRequestResponse } from "@/lib/api/response-helpers";
 
 // ============================================================================
 // TYPES
@@ -55,18 +58,14 @@ interface BulkStatusResponse {
 // GET HANDLER - List Schools
 // ============================================================================
 
-export async function GET(req: NextRequest) {
-  try {
-    // Authenticate and authorize - only ministry and admin users can access
-    const authResult = await requireAuth(["ministry", "admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } as ApiErrorResponse,
-        { status: authResult.status }
-      );
+export const GET = createApiRoute(
+  async (req: NextRequest) => {
+    const auth = getAuth(req);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
 
-    const { userId } = authResult;
+    const { userId } = auth;
 
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search");
@@ -118,50 +117,65 @@ export async function GET(req: NextRequest) {
       orderBy: desc(schools.createdAt),
     });
 
-    // Enrich with student and teacher counts
-    const enrichedSchools: SchoolListResponse[] = await Promise.all(
-      schoolList.map(async (school) => {
-        // Get student count
-        const studentCount = await db
-          .select({ count: count() })
-          .from(users)
-          .where(
-            and(
-              eq(users.schoolId, school.id),
-              eq(users.type, "student"),
-              eq(users.isActive, true)
-            )
-          );
+    // OPTIMIZATION: Batch fetch student and teacher counts instead of N queries
+    const schoolIds = schoolList.map((s) => s.id);
 
-        // Get teacher count
-        const teacherCount = await db
-          .select({ count: count() })
-          .from(users)
-          .where(
-            and(
-              eq(users.schoolId, school.id),
-              eq(users.type, "teacher"),
-              eq(users.isActive, true)
-            )
-          );
-
-        return {
-          id: school.id,
-          name: school.name,
-          code: school.code,
-          state: school.state || "",
-          city: school.city || "",
-          schoolType: school.schoolType,
-          level: school.level,
-          contactEmail: school.contactEmail,
-          contactPhone: school.contactPhone,
-          isActive: school.isActive ?? false,
-          students: studentCount[0]?.count || 0,
-          teachers: teacherCount[0]?.count || 0,
-          createdAt: school.createdAt,
-        };
+    // Batch fetch student counts
+    const studentCounts = await db
+      .select({
+        schoolId: users.schoolId,
+        count: count(),
       })
+      .from(users)
+      .where(
+        and(
+          sql`${users.schoolId} IN ${sql.raw(`('${schoolIds.join("','")}')`)}`,
+          eq(users.type, "student"),
+          eq(users.isActive, true)
+        )
+      )
+      .groupBy(users.schoolId);
+
+    const studentCountMap = new Map(
+      studentCounts.map((c) => [c.schoolId || "", c.count])
     );
+
+    // Batch fetch teacher counts
+    const teacherCounts = await db
+      .select({
+        schoolId: users.schoolId,
+        count: count(),
+      })
+      .from(users)
+      .where(
+        and(
+          sql`${users.schoolId} IN ${sql.raw(`('${schoolIds.join("','")}')`)}`,
+          eq(users.type, "teacher"),
+          eq(users.isActive, true)
+        )
+      )
+      .groupBy(users.schoolId);
+
+    const teacherCountMap = new Map(
+      teacherCounts.map((c) => [c.schoolId || "", c.count])
+    );
+
+    // Enrich with batched counts (no more queries!)
+    const enrichedSchools: SchoolListResponse[] = schoolList.map((school) => ({
+      id: school.id,
+      name: school.name,
+      code: school.code,
+      state: school.state || "",
+      city: school.city || "",
+      schoolType: school.schoolType,
+      level: school.level,
+      contactEmail: school.contactEmail,
+      contactPhone: school.contactPhone,
+      isActive: school.isActive ?? false,
+      students: studentCountMap.get(school.id) || 0,
+      teachers: teacherCountMap.get(school.id) || 0,
+      createdAt: school.createdAt,
+    }));
 
     // Get total count for pagination
     const totalCount = await db
@@ -184,52 +198,32 @@ export async function GET(req: NextRequest) {
       },
       status: 200,
     } satisfies ApiSuccess<{ schools: SchoolListResponse[]; total: number; limit: number; offset: number }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/ministry/schools", method: "GET" });
-
-    return NextResponse.json(
-      {
-        error: "Failed to fetch schools",
-        status: 500,
-        details: process.env.NODE_ENV === "development" ? String(error) : undefined,
-      } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['ministry', 'admin']
+);
 
 // ============================================================================
 // PATCH HANDLER - Bulk Status Update
 // ============================================================================
 
-export async function PATCH(req: NextRequest) {
-  try {
-    // Authenticate and authorize - only ministry users can access
-    const authResult = await requireAuth(["ministry", "admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } as ApiErrorResponse,
-        { status: authResult.status }
-      );
+export const PATCH = createApiRoute(
+  async (req: NextRequest) => {
+    const auth = getAuth(req);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
 
-    const { userId } = authResult;
+    const { userId } = auth;
 
     const body = await req.json();
     const { schoolIds, status } = body as BulkStatusRequest;
 
     if (!schoolIds || !Array.isArray(schoolIds) || schoolIds.length === 0) {
-      return NextResponse.json(
-        { error: "schoolIds is required and must be a non-empty array", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("schoolIds is required and must be a non-empty array");
     }
 
     if (!status || !["active", "inactive", "suspended"].includes(status)) {
-      return NextResponse.json(
-        { error: "status must be one of: active, inactive, suspended", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("status must be one of: active, inactive, suspended");
     }
 
     logger.info("Ministry bulk school status update", {
@@ -286,16 +280,6 @@ export async function PATCH(req: NextRequest) {
       data: response,
       status: 200,
     } satisfies ApiSuccess<BulkStatusResponse>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/ministry/schools", method: "PATCH" });
-
-    return NextResponse.json(
-      {
-        error: "Failed to update school status",
-        status: 500,
-        details: process.env.NODE_ENV === "development" ? String(error) : undefined,
-      } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['ministry', 'admin']
+);

@@ -11,8 +11,7 @@
  * - Monitor student progress
  */
 
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,109 +39,33 @@ import {
   Download,
   Users,
   Lightbulb,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
+import { logger } from "@/lib/logger";
 
-// Mock career plan data
-const mockCareerPlans = [
-  {
-    id: "CP001",
-    studentId: "STU001",
-    studentName: "Tashi Dorji",
-    studentGrade: 12,
-    studentSchool: "Thimphu HSS",
-    targetCareer: "Software Engineer",
-    matchPercentage: 92,
-    status: "in_progress",
-    completionPercentage: 65,
-    milestones: [
-      { title: "Complete RIASEC Assessment", completed: true, date: "2024-01-15" },
-      { title: "Research Software Engineering Careers", completed: true, date: "2024-01-20" },
-      { title: "Explore RUB College of Science & Technology", completed: true, date: "2024-01-25" },
-      { title: "Prepare for Class 12 Exams", completed: false, date: "2024-03-01" },
-      { title: "Apply to RUB CST", completed: false, date: "2024-04-15" },
-      { title: "Attend Career Counseling Sessions", completed: true, date: "2024-02-01" },
-    ],
-    shortTermGoals: ["Score above 75% in Class 12 exams", "Learn Python programming", "Participate in coding competitions"],
-    longTermGoals: ["Complete B.E. in Software Engineering", "Work at a tech company", "Pursue higher studies abroad"],
-    counselorNotes: "Student shows strong aptitude for programming. Recommend focusing on mathematics and computer science fundamentals.",
-    lastUpdated: "2024-02-08",
-    nextReview: "2024-03-01",
-    riasecCode: "IAR",
-  },
-  {
-    id: "CP002",
-    studentId: "STU004",
-    studentName: "Dorji Wangchuk",
-    studentGrade: 12,
-    studentSchool: "Pelkhil HSS",
-    targetCareer: "Civil Engineer",
-    matchPercentage: 88,
-    status: "completed",
-    completionPercentage: 100,
-    milestones: [
-      { title: "Complete RIASEC Assessment", completed: true, date: "2024-01-10" },
-      { title: "Research Civil Engineering Careers", completed: true, date: "2024-01-15" },
-      { title: "Explore College Options", completed: true, date: "2024-01-20" },
-      { title: "Prepare for Class 12 Exams", completed: true, date: "2024-02-01" },
-      { title: "Apply to Engineering Colleges", completed: true, date: "2024-02-15" },
-    ],
-    shortTermGoals: ["Excel in Class 12 exams", "Visit construction sites", "Learn CAD software"],
-    longTermGoals: ["Complete B.E. in Civil Engineering", "Get licensed as P.E.", "Start own firm"],
-    counselorNotes: "Student has completed all planned milestones. Ready for application phase.",
-    lastUpdated: "2024-02-10",
-    nextReview: "2024-04-01",
-    riasecCode: "RIE",
-  },
-  {
-    id: "CP003",
-    studentId: "STU005",
-    studentName: "Sonam Yangdon",
-    studentGrade: 10,
-    studentSchool: "Rigsum HSS",
-    targetCareer: "Nurse",
-    matchPercentage: 85,
-    status: "in_progress",
-    completionPercentage: 40,
-    milestones: [
-      { title: "Complete RIASEC Assessment", completed: true, date: "2024-01-25" },
-      { title: "Research Nursing Careers", completed: true, date: "2024-01-28" },
-      { title: "Explore Health Science Programs", completed: false, date: "2024-03-01" },
-      { title: "Volunteer at Hospital", completed: false, date: "2024-04-01" },
-      { title: "Focus on Science Subjects", completed: true, date: "2024-02-01" },
-    ],
-    shortTermGoals: ["Maintain good grades in science", "Volunteer at local hospital", "Learn about healthcare programs"],
-    longTermGoals: ["Complete B.Sc. Nursing", "Work at hospital", "Specialize in pediatrics"],
-    counselorNotes: "Student shows strong interest in healthcare. Encourage to gain volunteer experience.",
-    lastUpdated: "2024-02-05",
-    nextReview: "2024-03-15",
-    riasecCode: "SIE",
-  },
-  {
-    id: "CP004",
-    studentId: "STU007",
-    studentName: "Tshering Yangdon",
-    studentGrade: 12,
-    studentSchool: "Yangchenphug HSS",
-    targetCareer: "Data Scientist",
-    matchPercentage: 90,
-    status: "completed",
-    completionPercentage: 100,
-    milestones: [
-      { title: "Complete All Assessments", completed: true, date: "2024-01-05" },
-      { title: "Research Data Science Careers", completed: true, date: "2024-01-10" },
-      { title: "Learn Programming Basics", completed: true, date: "2024-01-20" },
-      { title: "Prepare for Exams", completed: true, date: "2024-02-01" },
-      { title: "Apply to Universities", completed: true, date: "2024-02-10" },
-    ],
-    shortTermGoals: ["Score top 10% in Class 12", "Complete online data science course", "Build programming portfolio"],
-    longTermGoals: ["Complete B.Tech in Computer Science", "Work as Data Analyst", "Pursue M.S. in Data Science"],
-    counselorNotes: "Exceptionally motivated student with clear goals. Recommend for mentorship program.",
-    lastUpdated: "2024-02-10",
-    nextReview: "2024-06-01",
-    riasecCode: "IAR",
-  },
-];
+interface CareerPlan {
+  id: string;
+  studentId: string;
+  studentName: string;
+  studentGrade: number;
+  studentSchool: string;
+  targetCareer: string;
+  matchPercentage: number;
+  status: "not_started" | "in_progress" | "completed";
+  completionPercentage: number;
+  milestones: Array<{
+    title: string;
+    completed: boolean;
+    date: string;
+  }>;
+  shortTermGoals: string[];
+  longTermGoals: string[];
+  counselorNotes: string;
+  lastUpdated: string;
+  nextReview: string;
+  riasecCode: string;
+}
 
 const statusOptions = ["All", "Not Started", "In Progress", "Completed"];
 const gradeOptions = ["All", "9", "10", "11", "12"];
@@ -152,9 +75,37 @@ export default function CounselorPlansPage() {
   const [selectedStatus, setSelectedStatus] = useState("All");
   const [selectedGrade, setSelectedGrade] = useState("All");
   const [currentPage, setCurrentPage] = useState(1);
+  const [careerPlans, setCareerPlans] = useState<CareerPlan[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchCareerPlans = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch("/api/counselor/career-plans");
+
+        if (response.ok) {
+          const data = await response.json();
+          setCareerPlans(data.plans || []);
+        } else {
+          logger.error("Failed to fetch career plans", { status: response.status });
+          setCareerPlans([]);
+        }
+      } catch (err) {
+        logger.error("Error fetching career plans:", err);
+        setError("Failed to load career plans");
+        setCareerPlans([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCareerPlans();
+  }, []);
 
   // Filter plans
-  const filteredPlans = mockCareerPlans.filter((plan) => {
+  const filteredPlans = careerPlans.filter((plan) => {
     const matchesSearch =
       plan.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       plan.targetCareer.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -187,10 +138,30 @@ export default function CounselorPlansPage() {
   };
 
   // Stats
-  const totalPlans = mockCareerPlans.length;
-  const completedPlans = mockCareerPlans.filter((p) => p.status === "completed").length;
-  const inProgressPlans = mockCareerPlans.filter((p) => p.status === "in_progress").length;
-  const avgCompletion = Math.round(mockCareerPlans.reduce((sum, p) => sum + p.completionPercentage, 0) / totalPlans);
+  const totalPlans = careerPlans.length;
+  const completedPlans = careerPlans.filter((p) => p.status === "completed").length;
+  const inProgressPlans = careerPlans.filter((p) => p.status === "in_progress").length;
+  const avgCompletion = totalPlans > 0 ? Math.round(careerPlans.reduce((sum, p) => sum + p.completionPercentage, 0) / totalPlans) : 0;
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-purple-600 mr-3" />
+        <span className="text-gray-600">Loading career plans...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <p className="text-red-600">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -359,8 +330,8 @@ export default function CounselorPlansPage() {
                 <div>
                   <div className="flex items-center justify-between text-sm mb-1">
                     <span className="text-gray-600">Progress</span>
-                    <span className="font-medium">{plan.completionPercentage}%</span>
-                  </div>
+                      <span className="font-medium">{plan.completionPercentage}%</span>
+                    </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div
                       className="h-2 rounded-full transition-all"
@@ -398,7 +369,7 @@ export default function CounselorPlansPage() {
                     <Lightbulb className="w-3 h-3" />
                     <span className="font-medium">Short-term:</span>
                   </div>
-                  <p className="text-xs text-gray-700 line-clamp-2">{plan.shortTermGoals[0]}</p>
+                  <p className="text-xs text-gray-700 line-clamp-2">{plan.shortTermGoals[0] || "No short-term goals yet"}</p>
                 </div>
 
                 {/* Dates */}

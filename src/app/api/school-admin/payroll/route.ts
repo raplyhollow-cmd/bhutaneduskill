@@ -9,7 +9,8 @@ import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
-import { users, schools } from "@/lib/db/schema";
+import { users, schools, teachers } from "@/lib/db/schema";
+import type { PayrollRecord, Teacher } from "@/lib/db/payroll-schema";
 import {
   payrollRecords,
   payrollRuns,
@@ -19,6 +20,60 @@ import {
   deductionTypes,
 } from "@/lib/db/payroll-schema";
 import { eq, and, desc, sql, like, or, gte, lte } from "drizzle-orm";
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface PayrollAllowanceInput {
+  allowanceTypeId?: string;
+  code?: string;
+  name?: string;
+  amount: number;
+  isPercentage?: boolean;
+  percentage?: number;
+}
+
+interface PayrollDeductionInput {
+  deductionTypeId?: string;
+  code?: string;
+  name?: string;
+  amount: number;
+  isPercentage?: boolean;
+  percentage?: number;
+}
+
+interface CreatePayrollRequest {
+  employeeId: string;
+  month: string;
+  year: string;
+  basicSalary: number;
+  gradePay?: number;
+  allowances?: PayrollAllowanceInput[];
+  deductions?: PayrollDeductionInput[];
+  bonus?: number;
+  arrears?: number;
+  paymentMethod?: string;
+  notes?: string;
+}
+
+interface PayrollSummary {
+  totalRecords: number;
+  totalAmount: number;
+  paidCount: number;
+  pendingCount: number;
+}
+
+interface PayrollListResponse {
+  success: true;
+  records: PayrollRecord[];
+  summary: PayrollSummary;
+}
+
+interface PayrollCreateResponse {
+  success: true;
+  record: PayrollRecord;
+}
 
 // GET /api/school-admin/payroll - List payroll records
 export async function GET(request: NextRequest) {
@@ -78,18 +133,20 @@ export async function GET(request: NextRequest) {
     }
 
     // Get summary statistics
-    const summary = {
+    const summary: PayrollSummary = {
       totalRecords: filteredRecords.length,
       totalAmount: filteredRecords.reduce((sum, r) => sum + (r.netPay || 0), 0),
       paidCount: filteredRecords.filter((r) => r.paymentStatus === "paid").length,
       pendingCount: filteredRecords.filter((r) => r.paymentStatus === "pending").length,
     };
 
-    return NextResponse.json({
+    const response: PayrollListResponse = {
       success: true,
       records: filteredRecords,
       summary,
-    });
+    };
+
+    return NextResponse.json(response);
   } catch (error) {
     logger.apiError(error, { route: "/api/school-admin/payroll", method: "GET" });
     return NextResponse.json({ error: "Failed to fetch payroll records" }, { status: 500 });
@@ -105,7 +162,7 @@ export async function POST(request: NextRequest) {
     }
     const { user } = authResult;
 
-    const body = await request.json();
+    const body = await request.json() as CreatePayrollRequest;
     const {
       employeeId,
       month,
@@ -148,9 +205,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Employee not found" }, { status: 404 });
     }
 
+    // Get teacher details for designation and department
+    const teacherRecord = await db.query.teachers.findFirst({
+      where: eq(teachers.userId, employeeId),
+    });
+
+    const designation = teacherRecord?.designation || "Teacher";
+    const department = teacherRecord?.department || employee.department || "Teaching";
+
     // Calculate totals
-    const totalAllowances = allowances.reduce((sum: number, a: any) => sum + (a.amount || 0), 0);
-    const totalDeductions = deductions.reduce((sum: number, d: any) => sum + (d.amount || 0), 0);
+    const totalAllowances = allowances.reduce((sum: number, a) => sum + (a.amount || 0), 0);
+    const totalDeductions = deductions.reduce((sum: number, d) => sum + (d.amount || 0), 0);
     const totalEarnings = basicSalary + gradePay + totalAllowances + bonus + arrears;
     const netPay = totalEarnings - totalDeductions;
 
@@ -178,12 +243,12 @@ export async function POST(request: NextRequest) {
         payrollYear: parseInt(year),
         employeeName: employee.name || `${employee.firstName} ${employee.lastName}`.trim(),
         employeeCode: employee.employeeId,
-        designation: (employee as any).designation || "Teacher",
-        department: (employee as any).department || "Teaching",
+        designation,
+        department,
         basicSalary,
         gradePay,
         grossEarnings: basicSalary + gradePay,
-        allowances: allowances.map((a: any) => ({
+        allowances: allowances.map((a) => ({
           allowanceTypeId: a.allowanceTypeId || "custom",
           allowanceCode: a.code || "CUSTOM",
           allowanceName: a.name || "Custom Allowance",
@@ -196,7 +261,7 @@ export async function POST(request: NextRequest) {
         arrears,
         otherEarnings: 0,
         totalEarnings,
-        deductions: deductions.map((d: any) => ({
+        deductions: deductions.map((d) => ({
           deductionTypeId: d.deductionTypeId || "custom",
           deductionCode: d.code || "CUSTOM",
           deductionName: d.name || "Custom Deduction",
@@ -206,10 +271,10 @@ export async function POST(request: NextRequest) {
           employeeShare: d.amount || 0,
         })),
         totalDeductions,
-        pfDeduction: deductions.find((d: any) => d.code === "PF")?.amount || 0,
-        taxDeduction: deductions.find((d: any) => d.code === "TAX")?.amount || 0,
-        insuranceDeduction: deductions.find((d: any) => d.code === "INS")?.amount || 0,
-        loanDeduction: deductions.find((d: any) => d.code === "LOAN")?.amount || 0,
+        pfDeduction: deductions.find((d) => d.code === "PF")?.amount || 0,
+        taxDeduction: deductions.find((d) => d.code === "TAX")?.amount || 0,
+        insuranceDeduction: deductions.find((d) => d.code === "INS")?.amount || 0,
+        loanDeduction: deductions.find((d) => d.code === "LOAN")?.amount || 0,
         otherDeductions: 0,
         netPay,
         paymentMethod,
@@ -228,10 +293,12 @@ export async function POST(request: NextRequest) {
       year,
     });
 
-    return NextResponse.json({
+    const response: PayrollCreateResponse = {
       success: true,
       record: newRecord,
-    });
+    };
+
+    return NextResponse.json(response);
   } catch (error) {
     logger.apiError(error, { route: "/api/school-admin/payroll", method: "POST" });
     return NextResponse.json({ error: "Failed to create payroll entry" }, { status: 500 });

@@ -99,85 +99,12 @@ export default function TeacherLiveSessionsPage() {
           const data = await response.json();
           setSessions(data.sessions || []);
         } else {
-          // Mock data
-          setSessions([
-            {
-              id: "ls1",
-              title: "Mathematics - Quadratic Equations",
-              description: "Live lesson on solving quadratic equations",
-              subject: "Mathematics",
-              classId: "c1",
-              className: "Class 10 A",
-              scheduledDate: new Date().toISOString().split("T")[0],
-              startTime: "14:00",
-              endTime: "15:00",
-              duration: 60,
-              platform: "google_meet",
-              meetingLink: "https://meet.google.com/abc-defg-hij",
-              status: "scheduled",
-              maxParticipants: 42,
-              currentParticipants: 0,
-              isRecorded: true,
-              recurringDays: ["Monday", "Wednesday"],
-            },
-            {
-              id: "ls2",
-              title: "Physics - Newton's Laws",
-              description: "Interactive session on Newton's three laws",
-              subject: "Physics",
-              classId: "c3",
-              className: "Class 9 A",
-              scheduledDate: new Date(Date.now() + 86400000).toISOString().split("T")[0],
-              startTime: "10:00",
-              endTime: "11:00",
-              duration: 60,
-              platform: "zoom",
-              meetingLink: "https://zoom.us/j/123456789",
-              meetingPassword: "abc123",
-              status: "scheduled",
-              maxParticipants: 40,
-              currentParticipants: 0,
-              isRecorded: true,
-            },
-            {
-              id: "ls3",
-              title: "Mathematics - Trigonometry Basics",
-              subject: "Mathematics",
-              classId: "c2",
-              className: "Class 10 B",
-              scheduledDate: new Date(Date.now() - 86400000).toISOString().split("T")[0],
-              startTime: "09:00",
-              endTime: "10:00",
-              duration: 60,
-              platform: "google_meet",
-              meetingLink: "https://meet.google.com/xyz-uvwx-yz",
-              status: "completed",
-              maxParticipants: 38,
-              currentParticipants: 35,
-              isRecorded: true,
-              recordingUrl: "https://drive.google.com/file/d/example",
-            },
-            {
-              id: "ls4",
-              title: "Career Guidance - Engineering Pathways",
-              description: "Guest lecture from engineering professionals",
-              subject: "Career Guidance",
-              classId: "c1",
-              className: "All Sections",
-              scheduledDate: new Date(Date.now() + 172800000).toISOString().split("T")[0],
-              startTime: "14:00",
-              endTime: "15:30",
-              duration: 90,
-              platform: "teams",
-              status: "scheduled",
-              maxParticipants: 100,
-              currentParticipants: 0,
-              isRecorded: true,
-            },
-          ]);
+          logger.error("Failed to fetch sessions", { status: response.status });
+          setSessions([]);
         }
       } catch (error) {
         logger.error("Error fetching sessions:", error);
+        setSessions([]);
       } finally {
         setIsLoading(false);
       }
@@ -650,7 +577,7 @@ export default function TeacherLiveSessionsPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Platform</label>
                 <Select
                   value={newSession.platform}
-                  onValueChange={(value: any) => setNewSession({ ...newSession, platform: value })}
+                  onValueChange={(value: "zoom" | "google_meet" | "teams" | "in_app") => setNewSession({ ...newSession, platform: value })}
                 >
                   <SelectTrigger>
                     <SelectValue />

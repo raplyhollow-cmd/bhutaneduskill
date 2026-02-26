@@ -8,12 +8,11 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
-import { logger } from "@/lib/logger";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { chatWithGemini } from "@/lib/ai/gemini-server";
 import { RUB_PREDICTOR_SYSTEM } from "@/lib/ai/prompts";
 import { safeTrackAIInteraction, AI_FEATURE_IDS } from "@/lib/ai/track-interaction";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import type { ApiSuccess } from "@/types";
 
 // ============================================================================
 // RUB COLLEGES DATA
@@ -204,23 +203,13 @@ export interface RUBPredictorResponse {
 // POST - Predict RUB Admission
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  let requestData: RUBPredictorRequest = {};
-  let userId = "";
+export const POST = createApiRoute<RUBPredictorRequest, RUBPredictorResponse>(
+  async (request) => {
+    const auth = await requireAuth([]);
+    const { userId } = auth;
 
-  try {
-    const authResult = await requireAuth();
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-
-    userId = authResult.userId;
-
-    const body = await request.json();
-    requestData = body as RUBPredictorRequest;
+    const body = await request.json() as RUBPredictorRequest;
+    const requestData = body;
 
     const {
       class10Marks = {},
@@ -229,7 +218,7 @@ export async function POST(request: NextRequest) {
       preferredPrograms = [],
       eligibilityCriteria = true,
       stream,
-    } = requestData;
+    } = body;
 
     // Build the prompt for AI
     const prompt = buildRUBPredictorPrompt({
@@ -250,14 +239,6 @@ export async function POST(request: NextRequest) {
       class12Marks,
       preferredPrograms
     );
-
-    logger.info("RUB admission prediction generated", {
-      route: "/api/ai/rub-predictor",
-      method: "POST",
-      userId,
-      hasClass12Marks: Object.keys(class12Marks).length > 0,
-      predictionCount: predictions.predictions.length,
-    });
 
     // Calculate aggregate for tracking
     const marks = Object.values(class12Marks).filter((m): m is number => m !== undefined);
@@ -290,50 +271,9 @@ export async function POST(request: NextRequest) {
       status: 200,
       message: "RUB admission predictions generated successfully",
     } satisfies ApiSuccess<RUBPredictorResponse>);
-
-  } catch (error: any) {
-    logger.apiError(error, {
-      route: "/api/ai/rub-predictor",
-      method: "POST",
-    });
-
-    // Check if it's an API key error
-    if (error?.message === "Gemini API key not configured") {
-      const fallback = generateFallbackPrediction(requestData);
-
-      // Track fallback usage (non-blocking)
-      safeTrackAIInteraction({
-        userId,
-        featureId: AI_FEATURE_IDS.RUB_PREDICTOR,
-        interactionData: {
-          hasClass12Marks: Object.keys(requestData.class12Marks || {}).length > 0,
-          stream: requestData.stream || "unknown",
-          fallbackEligibleCount: fallback.eligibilitySummary.eligibleCount,
-        },
-        metadata: {
-          usedFallback: true,
-          errorReason: "API key not configured",
-          responseTimestamp: new Date().toISOString(),
-        },
-      });
-
-      return NextResponse.json({
-        data: fallback,
-        status: 200,
-        message: "Using offline prediction model",
-      } satisfies ApiSuccess<RUBPredictorResponse>);
-    }
-
-    return NextResponse.json(
-      {
-        error: "Failed to generate RUB admission predictions",
-        status: 500,
-        details: process.env.NODE_ENV === "development" ? error.message : undefined,
-      } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+  },
+  [] // No specific role requirement
+);
 
 // ============================================================================
 // PROMPT BUILDER
@@ -583,98 +523,6 @@ function generateDefaultRecommendations(predictions: CollegePrediction[], aggreg
   }
 
   return rec;
-}
-
-// ============================================================================
-// FALLBACK PREDICTION (when AI is unavailable)
-// ============================================================================
-
-function generateFallbackPrediction(data: RUBPredictorRequest): RUBPredictorResponse {
-  const { class12Marks = {}, preferredPrograms = [], stream = "Science" } = data;
-
-  const marks = Object.values(class12Marks).filter((m): m is number => m !== undefined);
-  const aggregate = marks.length > 0
-    ? Math.round(marks.reduce((sum, m) => sum + m, 0) / marks.length)
-    : 60;
-
-  // Stream-based college matching
-  const streamColleges: Record<string, string[]> = {
-    Science: ["CST", "CNR", "SHERUBTSE"],
-    Commerce: ["GCBS", "SHERUBTSE"],
-    Arts: ["SHERUBTSE", "PCE", "SCE", "NRC"],
-  };
-
-  const relevantColleges = streamColleges[stream] || streamColleges.Science;
-
-  const predictions: CollegePrediction[] = RUB_COLLEGES
-    .filter((college) => relevantColleges.includes(college.code))
-    .map((college) => {
-      const isEligible = aggregate >= college.minAggregate;
-      let probability = isEligible ? 65 : 25;
-
-      if (aggregate >= 70) probability += 10;
-      if (aggregate >= 80) probability += 10;
-
-      return {
-        college: college.name,
-        collegeCode: college.code,
-        program: college.programs[0],
-        probability: Math.min(probability, 90),
-        eligibility: isEligible,
-        strengths: isEligible
-          ? [
-              `Meets ${college.minAggregate}% minimum requirement`,
-              "Strong academic background",
-              `Matches ${stream} stream`,
-            ]
-          : [],
-        areasToImprove: isEligible
-          ? []
-          : [`Need ${college.minAggregate - aggregate}% more aggregate`],
-        requiredMarks: {
-          current: aggregate,
-          required: college.minAggregate,
-          gap: Math.max(0, college.minAggregate - aggregate),
-        },
-      };
-    })
-    .sort((a, b) => b.probability - a.probability);
-
-  const backupOptions: BackupOption[] = [
-    {
-      college: "Sherubtse College",
-      program: "B.A in Economics & Political Science",
-      reason: "Lower aggregate requirement, diverse program options",
-      eligibility: true,
-    },
-    {
-      college: "Norbuling Rigter College",
-      program: "B.A in Political Science & Sociology",
-      reason: "Good alternative for Arts students",
-      eligibility: true,
-    },
-  ];
-
-  return {
-    predictions: predictions.slice(0, 5),
-    backupOptions,
-    recommendations: `Based on your aggregate of ${aggregate}%, focus on colleges that match your stream. Apply to multiple options to secure admission.`,
-    eligibilitySummary: {
-      eligibleCount: predictions.filter((p) => p.eligibility).length,
-      totalColleges: relevantColleges.length,
-      topRecommendation: predictions[0]?.college || "Sherubtse College",
-    },
-    overallProbability: Math.round(
-      predictions.reduce((sum, p) => sum + p.probability, 0) / predictions.length
-    ),
-    tips: [
-      "Apply to all eligible colleges",
-      "Prepare well for college entrance tests",
-      "Keep documents ready for admission",
-      "Consider scholarship opportunities",
-    ],
-    disclaimer: "Predictions are based on offline analysis using RUB eligibility criteria. For accurate predictions, complete the form with all marks.",
-  };
 }
 
 // ============================================================================

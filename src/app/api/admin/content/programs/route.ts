@@ -211,7 +211,30 @@ export async function PUT(request: NextRequest) {
     }
 
     // Build update data with only provided fields
-    const updateData: any = {
+    type RUBProgramUpdateFields = {
+      updatedAt: Date;
+      name?: string;
+      code?: string;
+      collegeId?: string;
+      level?: string;
+      field?: string;
+      discipline?: string | null;
+      duration?: number;
+      durationType?: string;
+      totalSeats?: number;
+      minPercentage?: number | null;
+      requiredSubjects?: string[] | null;
+      eligibilityCriteria?: Record<string, unknown> | null;
+      tuitionFee?: number | null;
+      hostelFee?: number | null;
+      otherFees?: number | null;
+      totalFee?: number | null;
+      description?: string | null;
+      careerProspects?: string[] | null;
+      isActive?: boolean;
+      admissionOpen?: boolean;
+    };
+    const updateData: RUBProgramUpdateFields = {
       updatedAt: new Date(),
     };
 

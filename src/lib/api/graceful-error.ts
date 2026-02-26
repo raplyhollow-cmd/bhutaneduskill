@@ -39,7 +39,7 @@ function classifyError(error: unknown): ErrorType {
     return "unknown";
   }
 
-  const message = error.message.toLowerCase();
+  const message = error instanceof Error ? error.message : "Unknown error".toLowerCase();
 
   // Database connection errors
   if (

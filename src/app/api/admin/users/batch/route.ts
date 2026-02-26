@@ -65,7 +65,7 @@ interface BatchResponse {
   succeeded: string[];
   failed: Array<{ id: string; error: string }>;
   message?: string;
-  data?: any;
+  data?: Record<string, unknown>;
 }
 
 // ============================================================================
@@ -737,7 +737,8 @@ async function handleExport(params: BatchRequest['params'], adminId: string): Pr
   // Build query with filters
   const { and, or, like, inArray } = await import('drizzle-orm');
 
-  const conditions: any[] = [];
+  type QueryCondition = ReturnType<typeof eq | typeof inArray>;
+  const conditions: QueryCondition[] = [];
 
   if (filters?.role) {
     const roles = filters.role.split(',');
@@ -789,7 +790,7 @@ async function handleExport(params: BatchRequest['params'], adminId: string): Pr
   const headers = fields.join(',');
   const rows = usersList.map(user => {
     return fields.map(field => {
-      const value = (user as any)[field];
+      const value = (user as Record<string, unknown>)[field];
       // Handle null/undefined, escape commas and quotes
       if (value === null || value === undefined) return '';
       const stringValue = String(value);

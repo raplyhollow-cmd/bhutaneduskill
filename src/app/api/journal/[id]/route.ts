@@ -5,6 +5,25 @@ import { users } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth-utils";
 import { eq } from "drizzle-orm";
 
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface JournalEntry {
+  id: string;
+  date: string;
+  title: string;
+  content: string;
+  mood: string;
+  tags: string[];
+  updatedAt?: string;
+}
+
+interface UserSettings {
+  journalEntries?: JournalEntry[];
+  [key: string]: unknown;
+}
+
 // GET /api/journal/[id] - Get a single journal entry
 export async function GET(
   req: NextRequest,
@@ -19,10 +38,10 @@ export async function GET(
     const { user } = authResult;
     const { id } = await params;
 
-    const settings = (user?.settings as any) || {};
+    const settings = (user?.settings as UserSettings) || {};
     const entries = settings.journalEntries || [];
 
-    const entry = entries.find((e: any) => e.id === id);
+    const entry = entries.find((e: JournalEntry) => e.id === id);
 
     if (!entry) {
       return NextResponse.json({ error: "Entry not found" }, { status: 404 });
@@ -51,10 +70,10 @@ export async function PUT(
     const body = await req.json();
     const { title, content, mood, tags, date } = body;
 
-    const settings = (user?.settings as any) || {};
-    const entries = settings.journalEntries || [];
+    const settings = (user?.settings as UserSettings) || {};
+    const entries: JournalEntry[] = settings.journalEntries || [];
 
-    const entryIndex = entries.findIndex((e: any) => e.id === id);
+    const entryIndex = entries.findIndex((e: JournalEntry) => e.id === id);
 
     if (entryIndex === -1) {
       return NextResponse.json({ error: "Entry not found" }, { status: 404 });
@@ -98,10 +117,10 @@ export async function DELETE(
     const { user } = authResult;
     const { id } = await params;
 
-    const settings = (user?.settings as any) || {};
-    const entries = settings.journalEntries || [];
+    const settings = (user?.settings as UserSettings) || {};
+    const entries: JournalEntry[] = settings.journalEntries || [];
 
-    const filteredEntries = entries.filter((e: any) => e.id !== id);
+    const filteredEntries = entries.filter((e: JournalEntry) => e.id !== id);
 
     await db
       .update(users)

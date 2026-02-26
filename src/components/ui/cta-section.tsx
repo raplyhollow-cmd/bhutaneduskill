@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, Sparkles, Zap, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { portal } from "@/styles/design-tokens";
 
 interface CTASectionProps {
   title?: string;
@@ -23,21 +24,21 @@ interface CTASectionProps {
 
 const variants = {
   orange: {
-    background: "linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)",
+    background: portal.student.gradient,
     textColor: "text-white",
     descriptionColor: "text-white/80",
     badgeBg: "bg-white/20",
     badgeText: "text-white",
   },
   purple: {
-    background: "linear-gradient(135deg, rgb(168 85 247) 0%, rgb(147 51 234) 100%)",
+    background: portal.counselor.gradient,
     textColor: "text-white",
     descriptionColor: "text-white/80",
     badgeBg: "bg-white/20",
     badgeText: "text-white",
   },
   blue: {
-    background: "linear-gradient(135deg, rgb(59 130 246) 0%, rgb(37 99 235) 100%)",
+    background: portal.teacher.gradient,
     textColor: "text-white",
     descriptionColor: "text-white/80",
     badgeBg: "bg-white/20",
@@ -51,14 +52,14 @@ const variants = {
     badgeText: "text-white",
   },
   gradient: {
-    background: "linear-gradient(135deg, rgb(249 115 22) 0%, rgb(168 85 247) 50%, rgb(59 130 246) 100%)",
+    background: `linear-gradient(135deg, ${portal.student.primary} 0%, ${portal.counselor.primary} 50%, ${portal.teacher.primary} 100%)`,
     textColor: "text-white",
     descriptionColor: "text-white/80",
     badgeBg: "bg-white/20",
     badgeText: "text-white",
   },
   ceramic: {
-    background: "linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)",
+    background: portal.student.gradient,
     textColor: "text-white",
     descriptionColor: "text-white/80",
     badgeBg: "bg-white/20",

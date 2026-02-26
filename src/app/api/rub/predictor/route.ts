@@ -9,6 +9,8 @@ import { logger } from "@/lib/logger";
 import { bcseResults, rubPrograms, rubColleges, users } from "@/lib/db/schema";
 import { db } from "@/lib/db";
 import { eq, and, sql } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse, forbiddenResponse, notFoundResponse } from "@/lib/api/response-helpers";
 
 interface AdmissionPrediction {
   collegeId: string;
@@ -29,13 +31,10 @@ interface AdmissionPrediction {
  * POST /api/rub/predictor
  * Predict admission chances based on BCSE results
  */
-export async function POST(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["student", "parent", "counselor", "admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId, user } = authResult;
+export const POST = createApiRoute(
+  async (req: NextRequest, auth) => {
+    try {
+      const { userId, user } = auth;
 
     const body = await req.json();
     const { studentId, programIds, examType } = body;
@@ -81,7 +80,16 @@ export async function POST(req: NextRequest) {
     }
 
     // Get programs to predict for
-    let targetPrograms: any[] = [];
+    interface RubProgram {
+      id: string;
+      collegeId: string;
+      name: string;
+      level: string;
+      field: string;
+      minPercentage: number;
+      requiredSubjects?: string[];
+    }
+    let targetPrograms: RubProgram[] = [];
 
     if (Array.isArray(programIds) && programIds.length > 0) {
       // Specific programs requested
@@ -167,14 +175,13 @@ export async function POST(req: NextRequest) {
         },
       },
     });
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/rub/predictor", method: "POST" });
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : "Failed to generate predictions",
-    }, { status: 500 });
-  }
-}
+    } catch (error) {
+      logger.apiError(error, { route: "/api/rub/predictor", method: "POST" });
+      return errorResponse(error instanceof Error ? error.message : "Failed to generate predictions", 500);
+    }
+  },
+  ["student", "parent", "counselor", "admin"]
+);
 
 /**
  * Calculate admission probability for a single program
@@ -183,8 +190,8 @@ function calculateAdmissionProbability(
   studentPercentage: number,
   studentDivision: string,
   subjectStrengths: Record<string, number>,
-  program: any,
-  college: any
+  program: RubProgram,
+  college: { id: string; name: string; location: string }
 ): AdmissionPrediction {
   let probability = 0;
   const reasons: string[] = [];
@@ -276,12 +283,10 @@ function calculateAdmissionProbability(
  * GET /api/rub/predictor
  * Get general information about RUB admission requirements
  */
-export async function GET(req: NextRequest) {
-  try {
-    const authResult = await requireAuth();
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
+export const GET = createApiRoute(
+  async (req: NextRequest, auth) => {
+    try {
+      const { userId, user } = auth;
 
     // Get aggregate statistics about programs
     const [stats] = await db
@@ -326,11 +331,10 @@ export async function GET(req: NextRequest) {
         ],
       },
     });
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/rub/predictor", method: "GET" });
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : "Failed to fetch predictor info",
-    }, { status: 500 });
-  }
-}
+    } catch (error) {
+      logger.apiError(error, { route: "/api/rub/predictor", method: "GET" });
+      return errorResponse(error instanceof Error ? error.message : "Failed to fetch predictor info", 500);
+    }
+  },
+  [] // Public endpoint
+);

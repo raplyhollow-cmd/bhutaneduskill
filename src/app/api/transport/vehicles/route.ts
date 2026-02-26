@@ -8,13 +8,14 @@
  * - DELETE: Delete vehicle
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { vehicles, users, transportRoutes, drivers } from "@/lib/db/schema";
 import { eq, and, desc, like, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { logger } from "@/lib/logger";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse, notFoundResponse } from "@/lib/api/response-helpers";
 
 // Types for proper TypeScript safety
 interface CreateVehicleBody {
@@ -76,13 +77,14 @@ interface UpdateVehicleBody {
 // GET - Fetch transport vehicles
 // ============================================================================
 
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth();
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId } = authResult;
+
+    const { userId } = auth;
 
     const currentUser = await db.query.users.findFirst({
       where: eq(users.id, userId),
@@ -90,7 +92,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return notFoundResponse("User");
     }
 
     const { searchParams } = new URL(request.url);
@@ -106,12 +108,12 @@ export async function GET(request: NextRequest) {
       });
 
       if (!vehicle) {
-        return NextResponse.json({ error: "Vehicle not found" }, { status: 404 });
+        return notFoundResponse("Vehicle");
       }
 
       // Check user has access to this vehicle (same school)
       if (vehicle.schoolId !== currentUser.schoolId && currentUser.role !== "admin") {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        return errorResponse("Forbidden", 403);
       }
 
       // Get route info if requested
@@ -122,7 +124,7 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      return NextResponse.json({
+      return successResponse({
         vehicle: {
           ...vehicle,
           route: routeData,
@@ -148,7 +150,7 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(vehicles.vehicleType, vehicleType));
     }
 
-    const whereClause = conditions.length > 0 ? and(...conditions as Array<any>) : undefined;
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
     // Get all vehicles
     const vehicleList = await db.query.vehicles.findMany({
@@ -156,7 +158,7 @@ export async function GET(request: NextRequest) {
       orderBy: [vehicles.registrationNumber],
     });
 
-    // Enrich with route data and student count if requested
+    // Enrich with route data if requested
     const enrichedVehicles: Array<Record<string, unknown>> = [];
     for (const vehicle of vehicleList) {
       const enrichedVehicle: Record<string, unknown> = {
@@ -174,30 +176,26 @@ export async function GET(request: NextRequest) {
       enrichedVehicles.push(enrichedVehicle);
     }
 
-    return NextResponse.json({
+    return successResponse({
       vehicles: enrichedVehicles,
       total: enrichedVehicles.length,
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/transport/vehicles", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch transport vehicles" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin', 'school-admin']
+);
 
 // ============================================================================
 // POST - Create transport vehicle
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin", "school-admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const POST = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId } = authResult;
+
+    const { userId } = auth;
 
     const currentUser = await db.query.users.findFirst({
       where: eq(users.id, userId),
@@ -205,7 +203,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return notFoundResponse("User");
     }
 
     const body: CreateVehicleBody = await request.json();
@@ -237,10 +235,7 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!registrationNumber || !vehicleType || !seatingCapacity) {
-      return NextResponse.json(
-        { error: "Missing required fields: registrationNumber, vehicleType, seatingCapacity" },
-        { status: 400 }
-      );
+      return badRequestResponse("Missing required fields: registrationNumber, vehicleType, seatingCapacity");
     }
 
     // Check if registration number already exists
@@ -249,10 +244,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingVehicle) {
-      return NextResponse.json(
-        { error: "Vehicle with this registration number already exists" },
-        { status: 400 }
-      );
+      return badRequestResponse("Vehicle with this registration number already exists");
     }
 
     // Create vehicle
@@ -298,39 +290,32 @@ export async function POST(request: NextRequest) {
       createdBy: userId,
     });
 
-    return NextResponse.json({
+    return successResponse({
       success: true,
       vehicle: newVehicle,
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/transport/vehicles", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to create transport vehicle" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin', 'school-admin']
+);
 
 // ============================================================================
 // PATCH - Update transport vehicle
 // ============================================================================
 
-export async function PATCH(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin", "school-admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const PATCH = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId } = authResult;
+
+    const { userId } = auth;
 
     const body: UpdateVehicleBody = await request.json();
     const { vehicleId, ...updateData } = body;
 
     if (!vehicleId) {
-      return NextResponse.json(
-        { error: "vehicleId is required" },
-        { status: 400 }
-      );
+      return badRequestResponse("vehicleId is required");
     }
 
     // Update seatingCapacity alias if provided
@@ -350,7 +335,7 @@ export async function PATCH(request: NextRequest) {
       .returning();
 
     if (!updatedVehicle) {
-      return NextResponse.json({ error: "Vehicle not found" }, { status: 404 });
+      return notFoundResponse("Vehicle");
     }
 
     logger.info("Transport vehicle updated", {
@@ -358,39 +343,32 @@ export async function PATCH(request: NextRequest) {
       updatedBy: userId,
     });
 
-    return NextResponse.json({
+    return successResponse({
       success: true,
       vehicle: updatedVehicle,
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/transport/vehicles", method: "PATCH" });
-    return NextResponse.json(
-      { error: "Failed to update transport vehicle" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin', 'school-admin']
+);
 
 // ============================================================================
 // DELETE - Delete transport vehicle
 // ============================================================================
 
-export async function DELETE(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin", "school-admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const DELETE = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId } = authResult;
+
+    const { userId } = auth;
 
     const { searchParams } = new URL(request.url);
     const vehicleId = searchParams.get("id");
 
     if (!vehicleId) {
-      return NextResponse.json(
-        { error: "Vehicle id is required" },
-        { status: 400 }
-      );
+      return badRequestResponse("Vehicle id is required");
     }
 
     // Check if vehicle is assigned to any active route
@@ -399,7 +377,7 @@ export async function DELETE(request: NextRequest) {
     });
 
     if (!vehicle) {
-      return NextResponse.json({ error: "Vehicle not found" }, { status: 404 });
+      return notFoundResponse("Vehicle");
     }
 
     if (vehicle.routeId) {
@@ -411,13 +389,7 @@ export async function DELETE(request: NextRequest) {
       });
 
       if (activeRoute) {
-        return NextResponse.json(
-          {
-            error: "Cannot delete vehicle assigned to an active route",
-            routeId: vehicle.routeId,
-          },
-          { status: 400 }
-        );
+        return badRequestResponse("Cannot delete vehicle assigned to an active route");
       }
     }
 
@@ -433,15 +405,10 @@ export async function DELETE(request: NextRequest) {
       deletedBy: userId,
     });
 
-    return NextResponse.json({
+    return successResponse({
       success: true,
       message: "Vehicle deleted successfully",
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/transport/vehicles", method: "DELETE" });
-    return NextResponse.json(
-      { error: "Failed to delete transport vehicle" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin', 'school-admin']
+);

@@ -40,6 +40,7 @@ import {
   Info,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { portal } from "@/styles/design-tokens";
 
 // ============================================================================
 // TYPES - Imported from API route
@@ -236,7 +237,7 @@ export function AIRUBPredictor({
           {/* Stream Selection */}
           <div className="space-y-2">
             <Label htmlFor="stream">Select Your Stream</Label>
-            <Select value={stream} onValueChange={(value: any) => setStream(value)}>
+            <Select value={stream} onValueChange={(value: "Science" | "Commerce" | "Arts") => setStream(value)}>
               <SelectTrigger id="stream">
                 <SelectValue placeholder="Select stream" />
               </SelectTrigger>
@@ -310,7 +311,7 @@ export function AIRUBPredictor({
             className="w-full"
             disabled={calculateAggregate() === 0}
             style={{
-              background: 'linear-gradient(135deg, rgb(59 130 246) 0%, rgb(37 99 235) 100%)',
+              background: portal.teacher.gradient,
             }}
           >
             <Sparkles className="w-4 h-4 mr-2" />
@@ -333,7 +334,7 @@ export function AIRUBPredictor({
       {/* Header Summary */}
       <Card
         className="border-blue-200"
-        style={{ background: 'linear-gradient(to right, rgb(59 130 246), rgb(37 99 235))' }}
+        style={{ background: `linear-gradient(to right, ${portal.teacher.primary}, ${portal.teacher.primaryDark})` }}
       >
         <CardContent className="p-6">
           <div className="flex items-center justify-between text-white">

@@ -114,9 +114,9 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   try {
     const body = await request.json();
 
-    // Get user's school and role
+    // Get user's school and type
     const [user] = await db
-      .select({ schoolId: users.schoolId, role: users.role })
+      .select({ schoolId: users.schoolId, type: users.type })
       .from(users)
       .where(eq(users.id, userId))
       .limit(1);
@@ -142,7 +142,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     // Check permissions
-    const canEdit = user.role === "school_admin" || user.role === "admin" || (existing as any).authorId === userId;
+    const canEdit = user.type === "school_admin" || user.type === "admin" || (existing as any).authorId === userId;
     if (!canEdit) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -203,9 +203,9 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
   const { id } = await context.params;
 
   try {
-    // Get user's school and role
+    // Get user's school and type
     const [user] = await db
-      .select({ schoolId: users.schoolId, role: users.role })
+      .select({ schoolId: users.schoolId, type: users.type })
       .from(users)
       .where(eq(users.id, userId))
       .limit(1);
@@ -231,7 +231,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     }
 
     // Check permissions
-    const canDelete = user.role === "school_admin" || user.role === "admin" || (existing as any).authorId === userId;
+    const canDelete = user.type === "school_admin" || user.type === "admin" || (existing as any).authorId === userId;
     if (!canDelete) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

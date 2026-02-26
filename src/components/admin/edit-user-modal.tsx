@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useToast } from "@/components/ui/toaster";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { portal } from "@/styles/design-tokens";
 
 interface User {
   id: string;
@@ -41,6 +43,7 @@ interface EditUserModalProps {
 }
 
 export function EditUserModal({ open, onClose, user, onSuccess }: EditUserModalProps) {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [schools, setSchools] = useState<School[]>([]);
   const [formData, setFormData] = useState({
@@ -104,10 +107,20 @@ export function EditUserModal({ open, onClose, user, onSuccess }: EditUserModalP
         throw new Error(data.error || "Failed to update user");
       }
 
+      toast({
+        title: "User updated",
+        description: `${formData.firstName} ${formData.lastName} has been updated successfully.`,
+        variant: "success",
+      });
       onSuccess();
       onClose();
-    } catch (error: any) {
-      alert(error.message || "Failed to update user");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error instanceof Error ? error.message : String(error) : "Please try again.";
+      toast({
+        title: "Failed to update user",
+        description: message,
+        variant: "error",
+      });
     } finally {
       setLoading(false);
     }
@@ -222,7 +235,7 @@ export function EditUserModal({ open, onClose, user, onSuccess }: EditUserModalP
           <Button
             onClick={handleSubmit}
             disabled={loading}
-            style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
+            style={{ background: portal.admin.gradient }}
             className="text-white"
           >
             {loading ? "Saving..." : "Save Changes"}

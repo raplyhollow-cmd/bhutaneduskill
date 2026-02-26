@@ -31,6 +31,7 @@ import {
   Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { portal } from "@/styles/design-tokens";
 
 // ============================================================================
 // TYPES
@@ -337,7 +338,7 @@ Tips for a great essay:
           disabled={isLoading || essayText.trim().length < 50}
           className="w-full"
           style={{
-            background: 'linear-gradient(135deg, rgb(59 130 246) 0%, rgb(37 99 235) 100%)',
+            background: portal.teacher.gradient,
           }}
         >
           {isLoading ? (

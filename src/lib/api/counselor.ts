@@ -361,7 +361,7 @@ export async function createCounselorNote(data: {
   const [newNote] = await db
     .insert(counselorNotes)
     .values({
-      id: `note_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `note_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
       counselorId: data.counselorId,
       studentId: data.studentId,
       note: metadata,

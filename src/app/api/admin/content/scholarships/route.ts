@@ -1,12 +1,23 @@
-import { NextRequest, NextResponse } from "next/server";
+/**
+ * ADMIN SCHOLARSHIPS API
+ *
+ * GET /api/admin/content/scholarships - List scholarships
+ * POST /api/admin/content/scholarships - Add scholarship
+ * PUT /api/admin/content/scholarships - Update scholarship
+ * DELETE /api/admin/content/scholarships - Delete scholarship
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { scholarships } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse, createdResponse, notFoundResponse } from "@/lib/api/response-helpers";
 import { logger } from "@/lib/logger";
 import { logContentModified, AuditActions } from "@/lib/audit-log";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
 
 // Schema matching the database rubScholarships table and form data
 const scholarshipSchema = z.object({
@@ -33,63 +44,6 @@ const scholarshipSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
-// GET /api/admin/content/scholarships - List scholarships
-export async function GET(request: NextRequest) {
-  const authResult = await requireAuth(['admin']);
-  if ('error' in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
-
-  const { userId } = authResult;
-
-  try {
-    const { searchParams } = new URL(request.url);
-    const category = searchParams.get("category");
-    const active = searchParams.get("active") === "true";
-
-    const allScholarships = await db.query.scholarships.findMany({
-      orderBy: [desc(scholarships.createdAt)],
-    });
-
-    let filtered = allScholarships;
-
-    if (category) {
-      filtered = filtered.filter((s: any) => {
-        const categories = (s as any).categories || [];
-        return Array.isArray(categories) && categories.includes(category);
-      });
-    }
-
-    if (active) {
-      const now = new Date();
-      filtered = filtered.filter((s: any) => {
-        // Check isActive flag
-        if ((s as any).isActive === false) return false;
-        // Check close date if provided
-        const closeDate = (s as any).applicationCloseDate;
-        if (!closeDate) return true;
-        return new Date(closeDate) > now;
-      });
-    }
-
-    logger.info("Scholarships fetched", { userId, count: filtered.length });
-
-    return NextResponse.json({
-      data: { scholarships: filtered },
-      status: 200
-    } satisfies ApiSuccess<{ scholarships: typeof filtered }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/content/scholarships", method: "GET", userId });
-    return NextResponse.json(
-      { error: "Failed to fetch scholarships", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
-
 // Helper function to generate code from name
 function generateCode(name: string): string {
   return name
@@ -99,254 +53,300 @@ function generateCode(name: string): string {
     .substring(0, 50);
 }
 
+// ============================================================================
+// GET /api/admin/content/scholarships - List scholarships
+// ============================================================================
+
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
+    }
+
+    const { userId } = auth;
+
+    try {
+      const { searchParams } = new URL(request.url);
+      const category = searchParams.get("category");
+      const active = searchParams.get("active") === "true";
+
+      // Using db.select() instead of db.query (neon-http driver)
+      const allScholarships = await db
+        .select()
+        .from(scholarships)
+        .orderBy(desc(scholarships.createdAt));
+
+      let filtered = allScholarships;
+
+      if (category) {
+        filtered = filtered.filter((s) => {
+          const categories = s.categories || [];
+          return Array.isArray(categories) && categories.includes(category);
+        });
+      }
+
+      if (active) {
+        const now = new Date();
+        filtered = filtered.filter((s) => {
+          // Check isActive flag
+          if (s.isActive === false) return false;
+          // Check close date if provided
+          const closeDate = s.applicationCloseDate;
+          if (!closeDate) return true;
+          return new Date(closeDate) > now;
+        });
+      }
+
+      logger.info("Scholarships fetched", { userId, count: filtered.length });
+
+      return successResponse({ scholarships: filtered });
+    } catch (error) {
+      logger.apiError(error, { route: "/api/admin/content/scholarships", method: "GET", userId });
+      return errorResponse("Failed to fetch scholarships", 500);
+    }
+  },
+  ['admin']
+);
+
+// ============================================================================
 // POST /api/admin/content/scholarships - Add scholarship
-export async function POST(request: NextRequest) {
-  const authResult = await requireAuth(['admin']);
-  if ('error' in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
+// ============================================================================
 
-  const { userId } = authResult;
-
-  try {
-    const body = await request.json();
-    const validatedData = scholarshipSchema.parse(body);
-
-    // Generate code if not provided
-    const code = validatedData.code || generateCode(validatedData.name);
-
-    // Create scholarship with proper field mapping
-    const [newScholarship] = await db.insert(scholarships).values({
-      id: `scholarship_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
-      name: validatedData.name,
-      code: code,
-      type: validatedData.type || "merit",
-      provider: validatedData.provider || "",
-      providerName: validatedData.providerName || null,
-      coversTuition: validatedData.coversTuition || false,
-      coversHostel: validatedData.coversHostel || false,
-      coversBooks: validatedData.coversBooks || false,
-      coversLiving: validatedData.coversLiving || false,
-      coveragePercentage: validatedData.coveragePercentage || null,
-      minPercentage: validatedData.minPercentage || null,
-      annualIncomeLimit: validatedData.annualIncomeLimit || null,
-      categories: validatedData.categories || null,
-      duration: validatedData.duration || null,
-      applicationOpenDate: validatedData.applicationOpenDate || null,
-      applicationCloseDate: validatedData.applicationCloseDate || null,
-      requiredDocuments: validatedData.requiredDocuments || null,
-      description: validatedData.description || null,
-      termsAndConditions: validatedData.termsAndConditions || null,
-      academicYear: validatedData.academicYear || null,
-      isActive: validatedData.isActive ?? true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    } as any).returning();
-
-    logger.info("Scholarship created", { scholarshipId: newScholarship.id, userId });
-
-    // Log audit event for scholarship creation
-    await logContentModified(
-      AuditActions.SCHOLARSHIP_CREATED,
-      "scholarship",
-      newScholarship.id,
-      undefined,
-      {
-        name: newScholarship.name,
-        code: newScholarship.code,
-        type: newScholarship.type,
-        provider: newScholarship.provider,
-      },
-      userId,
-      request
-    );
-
-    return NextResponse.json(
-      {
-        data: { scholarship: newScholarship, message: "Scholarship created successfully" },
-        status: 201
-      } satisfies ApiSuccess<{ scholarship: typeof newScholarship; message: string }>,
-      { status: 201 }
-    );
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: "Validation failed", status: 400, details: error.issues } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+export const POST = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    logger.apiError(error, { route: "/api/admin/content/scholarships", method: "POST", userId });
-    return NextResponse.json(
-      { error: "Failed to create scholarship", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
 
+    const { userId } = auth;
+
+    try {
+      const body = await request.json();
+      const validatedData = scholarshipSchema.parse(body);
+
+      // Generate code if not provided
+      const code = validatedData.code || generateCode(validatedData.name);
+
+      // Create scholarship with proper field mapping
+      const [newScholarship] = await db.insert(scholarships).values({
+        id: `scholarship_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+        name: validatedData.name,
+        code: code,
+        type: validatedData.type || "merit",
+        provider: validatedData.provider || "",
+        providerName: validatedData.providerName || null,
+        coversTuition: validatedData.coversTuition || false,
+        coversHostel: validatedData.coversHostel || false,
+        coversBooks: validatedData.coversBooks || false,
+        coversLiving: validatedData.coversLiving || false,
+        coveragePercentage: validatedData.coveragePercentage || null,
+        minPercentage: validatedData.minPercentage || null,
+        annualIncomeLimit: validatedData.annualIncomeLimit || null,
+        categories: validatedData.categories || null,
+        duration: validatedData.duration || null,
+        applicationOpenDate: validatedData.applicationOpenDate || null,
+        applicationCloseDate: validatedData.applicationCloseDate || null,
+        requiredDocuments: validatedData.requiredDocuments || null,
+        description: validatedData.description || null,
+        termsAndConditions: validatedData.termsAndConditions || null,
+        academicYear: validatedData.academicYear || null,
+        isActive: validatedData.isActive ?? true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as typeof scholarships.$inferInsert).returning();
+
+      logger.info("Scholarship created", { scholarshipId: newScholarship.id, userId });
+
+      // Log audit event for scholarship creation
+      await logContentModified(
+        AuditActions.SCHOLARSHIP_CREATED,
+        "scholarship",
+        newScholarship.id,
+        undefined,
+        {
+          name: newScholarship.name,
+          code: newScholarship.code,
+          type: newScholarship.type,
+          provider: newScholarship.provider,
+        },
+        userId,
+        request
+      );
+
+      return createdResponse({
+        scholarship: newScholarship,
+        message: "Scholarship created successfully"
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return badRequestResponse("Validation failed: " + error.issues.map(i => i.message).join(", "));
+      }
+      logger.apiError(error, { route: "/api/admin/content/scholarships", method: "POST", userId });
+      return errorResponse("Failed to create scholarship", 500);
+    }
+  },
+  ['admin']
+);
+
+// ============================================================================
 // PUT /api/admin/content/scholarships - Update scholarship
-export async function PUT(request: NextRequest) {
-  const authResult = await requireAuth(['admin']);
-  if ('error' in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
+// ============================================================================
 
-  const { userId } = authResult;
-
-  try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-
-    if (!id) {
-      return NextResponse.json(
-        { error: "Scholarship ID is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+export const PUT = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
 
-    const body = await request.json();
-    const validatedData = scholarshipSchema.partial().parse(body);
+    const { userId } = auth;
 
-    // Check if scholarship exists
-    const existing = await db.query.scholarships.findFirst({
-      where: eq(scholarships.id, id),
-    });
+    try {
+      const { searchParams } = new URL(request.url);
+      const id = searchParams.get("id");
 
-    if (!existing) {
-      return NextResponse.json(
-        { error: "Scholarship not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
+      if (!id) {
+        return badRequestResponse("Scholarship ID is required");
+      }
+
+      const body = await request.json();
+      const validatedData = scholarshipSchema.partial().parse(body);
+
+      // Check if scholarship exists using db.select()
+      const existingResult = await db
+        .select()
+        .from(scholarships)
+        .where(eq(scholarships.id, id))
+        .limit(1);
+
+      const existing = existingResult[0];
+
+      if (!existing) {
+        return notFoundResponse("Scholarship");
+      }
+
+      // Build update data with only provided fields
+      type ScholarshipUpdateData = {
+        [K in keyof typeof scholarships.$inferInsert]?: (typeof scholarships.$inferInsert)[K];
+      };
+      const updateData: ScholarshipUpdateData = {
+        updatedAt: new Date(),
+      };
+
+      if (validatedData.name !== undefined) updateData.name = validatedData.name;
+      if (validatedData.code !== undefined) updateData.code = validatedData.code;
+      if (validatedData.type !== undefined) updateData.type = validatedData.type;
+      if (validatedData.provider !== undefined) updateData.provider = validatedData.provider;
+      if (validatedData.providerName !== undefined) updateData.providerName = validatedData.providerName;
+      if (validatedData.coversTuition !== undefined) updateData.coversTuition = validatedData.coversTuition;
+      if (validatedData.coversHostel !== undefined) updateData.coversHostel = validatedData.coversHostel;
+      if (validatedData.coversBooks !== undefined) updateData.coversBooks = validatedData.coversBooks;
+      if (validatedData.coversLiving !== undefined) updateData.coversLiving = validatedData.coversLiving;
+      if (validatedData.coveragePercentage !== undefined) updateData.coveragePercentage = validatedData.coveragePercentage;
+      if (validatedData.minPercentage !== undefined) updateData.minPercentage = validatedData.minPercentage;
+      if (validatedData.annualIncomeLimit !== undefined) updateData.annualIncomeLimit = validatedData.annualIncomeLimit;
+      if (validatedData.categories !== undefined) updateData.categories = validatedData.categories;
+      if (validatedData.duration !== undefined) updateData.duration = validatedData.duration;
+      if (validatedData.applicationOpenDate !== undefined) updateData.applicationOpenDate = validatedData.applicationOpenDate;
+      if (validatedData.applicationCloseDate !== undefined) updateData.applicationCloseDate = validatedData.applicationCloseDate;
+      if (validatedData.requiredDocuments !== undefined) updateData.requiredDocuments = validatedData.requiredDocuments;
+      if (validatedData.description !== undefined) updateData.description = validatedData.description;
+      if (validatedData.termsAndConditions !== undefined) updateData.termsAndConditions = validatedData.termsAndConditions;
+      if (validatedData.academicYear !== undefined) updateData.academicYear = validatedData.academicYear;
+      if (validatedData.isActive !== undefined) updateData.isActive = validatedData.isActive;
+
+      const [updatedScholarship] = await db.update(scholarships)
+        .set(updateData)
+        .where(eq(scholarships.id, id))
+        .returning();
+
+      logger.info("Scholarship updated", { scholarshipId: id, userId });
+
+      // Log audit event for scholarship update
+      await logContentModified(
+        AuditActions.SCHOLARSHIP_UPDATED,
+        "scholarship",
+        id,
+        { name: existing.name, code: existing.code },
+        { name: updatedScholarship.name, code: updatedScholarship.code },
+        userId,
+        request
       );
+
+      return successResponse({
+        scholarship: updatedScholarship,
+        message: "Scholarship updated successfully"
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return badRequestResponse("Validation failed: " + error.issues.map(i => i.message).join(", "));
+      }
+      logger.apiError(error, { route: "/api/admin/content/scholarships", method: "PUT", userId });
+      return errorResponse("Failed to update scholarship", 500);
     }
+  },
+  ['admin']
+);
 
-    // Build update data with only provided fields
-    const updateData: any = {
-      updatedAt: new Date(),
-    };
-
-    if (validatedData.name !== undefined) updateData.name = validatedData.name;
-    if (validatedData.code !== undefined) updateData.code = validatedData.code;
-    if (validatedData.type !== undefined) updateData.type = validatedData.type;
-    if (validatedData.provider !== undefined) updateData.provider = validatedData.provider;
-    if (validatedData.providerName !== undefined) updateData.providerName = validatedData.providerName;
-    if (validatedData.coversTuition !== undefined) updateData.coversTuition = validatedData.coversTuition;
-    if (validatedData.coversHostel !== undefined) updateData.coversHostel = validatedData.coversHostel;
-    if (validatedData.coversBooks !== undefined) updateData.coversBooks = validatedData.coversBooks;
-    if (validatedData.coversLiving !== undefined) updateData.coversLiving = validatedData.coversLiving;
-    if (validatedData.coveragePercentage !== undefined) updateData.coveragePercentage = validatedData.coveragePercentage;
-    if (validatedData.minPercentage !== undefined) updateData.minPercentage = validatedData.minPercentage;
-    if (validatedData.annualIncomeLimit !== undefined) updateData.annualIncomeLimit = validatedData.annualIncomeLimit;
-    if (validatedData.categories !== undefined) updateData.categories = validatedData.categories;
-    if (validatedData.duration !== undefined) updateData.duration = validatedData.duration;
-    if (validatedData.applicationOpenDate !== undefined) updateData.applicationOpenDate = validatedData.applicationOpenDate;
-    if (validatedData.applicationCloseDate !== undefined) updateData.applicationCloseDate = validatedData.applicationCloseDate;
-    if (validatedData.requiredDocuments !== undefined) updateData.requiredDocuments = validatedData.requiredDocuments;
-    if (validatedData.description !== undefined) updateData.description = validatedData.description;
-    if (validatedData.termsAndConditions !== undefined) updateData.termsAndConditions = validatedData.termsAndConditions;
-    if (validatedData.academicYear !== undefined) updateData.academicYear = validatedData.academicYear;
-    if (validatedData.isActive !== undefined) updateData.isActive = validatedData.isActive;
-
-    const [updatedScholarship] = await db.update(scholarships)
-      .set(updateData)
-      .where(eq(scholarships.id, id))
-      .returning();
-
-    logger.info("Scholarship updated", { scholarshipId: id, userId });
-
-    // Log audit event for scholarship update
-    await logContentModified(
-      AuditActions.SCHOLARSHIP_UPDATED,
-      "scholarship",
-      id,
-      { name: existing.name, code: existing.code },
-      { name: updatedScholarship.name, code: updatedScholarship.code },
-      userId,
-      request
-    );
-
-    return NextResponse.json({
-      data: { scholarship: updatedScholarship, message: "Scholarship updated successfully" },
-      status: 200
-    } satisfies ApiSuccess<{ scholarship: typeof updatedScholarship; message: string }>);
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: "Validation failed", status: 400, details: error.issues } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
-    }
-    logger.apiError(error, { route: "/api/admin/content/scholarships", method: "PUT", userId });
-    return NextResponse.json(
-      { error: "Failed to update scholarship", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
-
+// ============================================================================
 // DELETE /api/admin/content/scholarships - Delete scholarship
-export async function DELETE(request: NextRequest) {
-  const authResult = await requireAuth(['admin']);
-  if ('error' in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
+// ============================================================================
 
-  const { userId } = authResult;
-
-  try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get("id");
-
-    if (!id) {
-      return NextResponse.json(
-        { error: "Scholarship ID is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+export const DELETE = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
 
-    // Check if scholarship exists
-    const existing = await db.query.scholarships.findFirst({
-      where: eq(scholarships.id, id),
-    });
+    const { userId } = auth;
 
-    if (!existing) {
-      return NextResponse.json(
-        { error: "Scholarship not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
+    try {
+      const { searchParams } = new URL(request.url);
+      const id = searchParams.get("id");
+
+      if (!id) {
+        return badRequestResponse("Scholarship ID is required");
+      }
+
+      // Check if scholarship exists using db.select()
+      const existingResult = await db
+        .select()
+        .from(scholarships)
+        .where(eq(scholarships.id, id))
+        .limit(1);
+
+      const existing = existingResult[0];
+
+      if (!existing) {
+        return notFoundResponse("Scholarship");
+      }
+
+      await db.delete(scholarships).where(eq(scholarships.id, id));
+
+      logger.info("Scholarship deleted", { scholarshipId: id, userId });
+
+      // Log audit event for scholarship deletion
+      await logContentModified(
+        AuditActions.SCHOLARSHIP_DELETED,
+        "scholarship",
+        id,
+        { name: existing.name, code: existing.code },
+        undefined,
+        userId,
+        request
       );
+
+      return successResponse({
+        success: true,
+        message: "Scholarship deleted successfully"
+      });
+    } catch (error) {
+      logger.apiError(error, { route: "/api/admin/content/scholarships", method: "DELETE", userId });
+      return errorResponse("Failed to delete scholarship", 500);
     }
-
-    await db.delete(scholarships).where(eq(scholarships.id, id));
-
-    logger.info("Scholarship deleted", { scholarshipId: id, userId });
-
-    // Log audit event for scholarship deletion
-    await logContentModified(
-      AuditActions.SCHOLARSHIP_DELETED,
-      "scholarship",
-      id,
-      { name: existing.name, code: existing.code },
-      undefined,
-      userId,
-      request
-    );
-
-    return NextResponse.json({
-      data: { success: true, message: "Scholarship deleted successfully" },
-      status: 200
-    } satisfies ApiSuccess<{ success: boolean; message: string }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/content/scholarships", method: "DELETE", userId });
-    return NextResponse.json(
-      { error: "Failed to delete scholarship", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin']
+);

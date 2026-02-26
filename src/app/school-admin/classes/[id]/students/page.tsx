@@ -563,7 +563,7 @@ export default function ClassStudentsPage() {
           </div>
           <Select
             value={statusFilter}
-            onValueChange={(value: any) => {
+            onValueChange={(value: "all" | "active" | "withdrawn") => {
               setStatusFilter(value);
               setCurrentPage(1);
             }}

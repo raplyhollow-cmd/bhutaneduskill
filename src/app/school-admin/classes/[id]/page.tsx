@@ -43,6 +43,21 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { ClassDetailClient } from "@/components/school-admin/class-detail-client";
+import { AssignTeacherButton } from "@/components/school-admin/assign-teacher-button";
+import { SubjectTeachersCard } from "@/components/school-admin/subject-teachers-card";
+
+type HomeworkItem = {
+  id: string;
+  title: string;
+  dueDate: Date;
+  isPublished: boolean;
+};
+
+type AttendanceItem = {
+  id: string;
+  status: string;
+  date: Date;
+};
 
 interface ClassDetailPageProps {
   params: Promise<{ id: string }>;
@@ -119,77 +134,229 @@ async function getClassData(classId: string) {
     return null;
   }
 
-  // Get class details
-  const classInfo = await db.query.classes.findFirst({
-    where: eq(classes.id, classId),
-  }) as ClassInfo | null;
+  // Get class details using db.select
+  let classInfoResult: ClassInfo[] = [];
+  let classInfo: ClassInfo | null = null;
+
+  try {
+    classInfoResult = await db
+      .select()
+      .from(classes)
+      .where(eq(classes.id, classId))
+      .limit(1);
+    classInfo = classInfoResult[0] as ClassInfo | null;
+  } catch (error) {
+    console.error("Failed to fetch class info:", error);
+    return null;
+  }
 
   if (!classInfo) {
     return null;
   }
 
   // Get class teacher
-  const classTeacher = await db.query.users.findFirst({
-    where: eq(users.id, classInfo.teacherId),
-  }) as Teacher | null;
+  let classTeacher: Teacher | null = null;
+  if (classInfo.teacherId) {
+    try {
+      const teacherResult = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, classInfo.teacherId))
+        .limit(1);
+      classTeacher = teacherResult[0] as Teacher | null;
+    } catch (error) {
+      console.error("Failed to fetch class teacher:", error);
+    }
+  }
 
-  // Get enrolled students
-  const enrollmentList = await db.query.enrollments.findMany({
-    where: and(
-      eq(enrollments.classId, classId),
-      eq(enrollments.status, "active")
-    ),
-    with: {
-      student: true,
-    },
-    orderBy: [enrollments.rollNumber],
-  }) as DrizzleEnrollmentResult[];
+  // Get enrolled students with explicit join
+  let enrollmentList: DrizzleEnrollmentResult[] = [];
+  try {
+    enrollmentList = await db
+      .select({
+        id: enrollments.id,
+        studentId: enrollments.studentId,
+        rollNumber: enrollments.rollNumber,
+        status: enrollments.status,
+        section: enrollments.section,
+        academicYear: enrollments.academicYear,
+        enrollmentDate: enrollments.enrollmentDate,
+        classId: enrollments.classId,
+        createdAt: enrollments.createdAt,
+        updatedAt: enrollments.updatedAt,
+      })
+      .from(enrollments)
+      .where(and(
+        eq(enrollments.classId, classId),
+        eq(enrollments.status, "active")
+      ))
+      .orderBy(enrollments.rollNumber);
+  } catch (error) {
+    console.error("Failed to fetch enrollments:", error);
+    enrollmentList = [];
+  }
+
+  // Get student IDs for fetching student details
+  const studentIds = enrollmentList.map(e => e.studentId);
+  const studentsMap = new Map<string, Student>();
+
+  if (studentIds.length > 0) {
+    try {
+      const studentsResult = await db
+        .select({
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+          phone: users.phone,
+        })
+        .from(users)
+        .where(eq(users.type, "student"));
+
+      studentsResult.forEach((s: Student) => {
+        studentsMap.set(s.id, s);
+      });
+    } catch (error) {
+      console.error("Failed to fetch students:", error);
+    }
+  }
+
+  // Combine enrollment with student data
+  const enrollmentListWithStudents = enrollmentList.map(e => ({
+    ...e,
+    student: studentsMap.get(e.studentId) ? [studentsMap.get(e.studentId)!] : [],
+  })) as DrizzleEnrollmentResult[];
 
   // Get subjects for this grade
-  const gradeSubjects = await db.query.subjects.findMany({
-    where: eq(subjects.grade, classInfo.grade),
-  });
+  type SubjectRecord = typeof subjects.$inferSelect;
+  let gradeSubjects: SubjectRecord[] = [];
+  try {
+    gradeSubjects = await db
+      .select()
+      .from(subjects)
+      .where(eq(subjects.grade, classInfo.grade));
+  } catch (error) {
+    console.error("Failed to fetch subjects:", error);
+    // Continue with empty subjects array
+    gradeSubjects = [];
+  }
 
-  // Get other teacher assignments
-  const otherTeachers = await db.query.teacherAssignments.findMany({
-    where: and(
-      eq(teacherAssignments.classId, classId),
-      eq(teacherAssignments.isActive, true)
-    ),
-    with: {
-      teacher: true,
-    },
-  }) as DrizzleTeacherAssignmentResult[];
+  // Get teacher assignments with teacher details
+  type TeacherAssignmentRecord = typeof teacherAssignments.$inferSelect;
+  let assignmentResults: TeacherAssignmentRecord[] = [];
+  try {
+    assignmentResults = await db
+      .select({
+        id: teacherAssignments.id,
+        teacherId: teacherAssignments.teacherId,
+        classId: teacherAssignments.classId,
+        subjectId: teacherAssignments.subjectId,
+        role: teacherAssignments.role,
+        isPrimary: teacherAssignments.isPrimary,
+        isActive: teacherAssignments.isActive,
+        academicYear: teacherAssignments.academicYear,
+        createdAt: teacherAssignments.createdAt,
+        updatedAt: teacherAssignments.updatedAt,
+      })
+      .from(teacherAssignments)
+      .where(and(
+        eq(teacherAssignments.classId, classId),
+        eq(teacherAssignments.isActive, true)
+      ));
+  } catch (error) {
+    console.error("Failed to fetch teacher assignments:", error);
+    assignmentResults = [];
+  }
+
+  // Get teacher details
+  const teacherIds = assignmentResults.map(a => a.teacherId).filter(Boolean);
+  const teachersMap = new Map<string, Teacher>();
+
+  if (teacherIds.length > 0) {
+    try {
+      const teachersResult = await db
+        .select({
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          employeeId: users.employeeId,
+          email: users.email,
+        })
+        .from(users)
+        .where(eq(users.type, "teacher"));
+
+      teachersResult.forEach((t: Teacher) => {
+        teachersMap.set(t.id, t);
+      });
+    } catch (error) {
+      console.error("Failed to fetch teachers:", error);
+    }
+  }
+
+  const otherTeachers = assignmentResults.map(a => ({
+    ...a,
+    teacher: a.teacherId && teachersMap.has(a.teacherId) ? [teachersMap.get(a.teacherId)!] : [],
+  })) as DrizzleTeacherAssignmentResult[];
 
   // Get recent homework for this class
-  const recentHomework = await db.query.homework.findMany({
-    where: eq(homework.classId, classId),
-    orderBy: [desc(homework.createdAt)],
-    limit: 5,
-  }) as HomeworkItem[];
+  let recentHomework: HomeworkItem[] = [];
+  try {
+    recentHomework = await db
+      .select({
+        id: homework.id,
+        title: homework.title,
+        dueDate: homework.dueDate,
+        isPublished: homework.isPublished,
+      })
+      .from(homework)
+      .where(eq(homework.classId, classId))
+      .orderBy(desc(homework.createdAt))
+      .limit(5);
+  } catch (error) {
+    console.error("Failed to fetch homework:", error);
+    recentHomework = [];
+  }
 
-  // Get attendance summary for today
-  const today = new Date().toISOString().split("T")[0];
-  const todayAttendance = await db.query.attendance.findMany({
-    where: eq(attendance.classId, classId),
-  });
+  // Get attendance summary
+  let attendanceResults: AttendanceItem[] = [];
+  try {
+    attendanceResults = await db
+      .select()
+      .from(attendance)
+      .where(eq(attendance.classId, classId));
+  } catch (error) {
+    console.error("Failed to fetch attendance:", error);
+    attendanceResults = [];
+  }
 
   const todayStats = {
-    present: todayAttendance.filter((a) => a.status === "present").length,
-    absent: todayAttendance.filter((a) => a.status === "absent").length,
-    total: todayAttendance.length,
+    present: attendanceResults.filter((a) => a.status === "present").length,
+    absent: attendanceResults.filter((a) => a.status === "absent").length,
+    total: attendanceResults.length,
   };
 
-  // Get available students (not enrolled in this class but in same grade)
-  // Note: Disable ts-expect for Drizzle ORM query results
-  const availableStudents = await db.query.users.findMany({
-    where: eq(users.type, "student"),
-  }) as Student[];
+  // Get available students
+  let availableStudents: Student[] = [];
+  try {
+    availableStudents = await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        phone: users.phone,
+      })
+      .from(users)
+      .where(eq(users.type, "student")) as Student[];
+  } catch (error) {
+    console.error("Failed to fetch students:", error);
+    availableStudents = [];
+  }
 
   return {
     classInfo,
     classTeacher,
-    enrolledStudents: enrollmentList,
+    enrolledStudents: enrollmentListWithStudents,
     gradeSubjects,
     otherTeachers,
     recentHomework,
@@ -379,40 +546,22 @@ export default async function ClassDetailPage({ params, searchParams }: ClassDet
                 <div className="text-center py-4">
                   <AlertCircle className="w-8 h-8 mx-auto text-yellow-500 mb-2" />
                   <p className="text-sm text-gray-500">No class teacher assigned</p>
-                  <Button variant="outline" size="sm" className="mt-2">
-                    Assign Teacher
-                  </Button>
+                  <AssignTeacherButton
+                    classId={classInfo.id}
+                    className={`Grade ${classInfo.grade} - Section ${classInfo.section}`}
+                    currentTeacherId={classInfo.teacherId}
+                  />
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Subjects */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BookOpen className="w-5 h-5" />
-                Subjects
-              </CardTitle>
-              <CardDescription>Grade {classInfo.grade} curriculum</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {gradeSubjects.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {gradeSubjects.map((subject) => (
-                    <Badge key={subject.id} variant="outline" className="px-3 py-1">
-                      {subject.name}
-                    </Badge>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500">No subjects configured for this grade</p>
-              )}
-              <Button variant="outline" className="w-full mt-4" size="sm" asChild>
-                <Link href="/school-admin/subjects">Manage Subjects</Link>
-              </Button>
-            </CardContent>
-          </Card>
+          {/* Subjects & Teachers - PHASE 6: Subject-Teacher Mapping */}
+          <SubjectTeachersCard
+            classId={classInfo.id}
+            grade={classInfo.grade}
+            initialSubjects={gradeSubjects}
+          />
 
           {/* Other Teachers */}
           {otherTeachers.length > 0 && (

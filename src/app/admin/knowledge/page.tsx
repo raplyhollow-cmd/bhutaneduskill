@@ -46,12 +46,19 @@ interface KnowledgeDraft {
   sourceType: string;
   sourceName: string;
   sourceUrl: string;
-  structuredData: any[];
+  structuredData: Array<Record<string, unknown>>;
   confidenceScore: number;
   status: "pending" | "approved" | "rejected";
   estimatedRecords: number;
   createdAt: string;
 }
+
+type IngestResult = {
+  success: boolean;
+  draftId?: string;
+  recordsExtracted?: number;
+  message?: string;
+};
 
 const sourceTypes = [
   { value: "rub", label: "RUB Requirements", icon: GraduationCap, color: "text-purple-500 bg-purple-50" },
@@ -72,7 +79,7 @@ export default function KnowledgeManagementPage() {
   const [selectedSourceType, setSelectedSourceType] = useState("rub");
   const [ingestContent, setIngestContent] = useState("");
   const [ingestUrl, setIngestUrl] = useState("");
-  const [ingestResult, setIngestResult] = useState<any>(null);
+  const [ingestResult, setIngestResult] = useState<IngestResult | null>(null);
 
   // Draft detail modal
   const [selectedDraft, setSelectedDraft] = useState<KnowledgeDraft | null>(null);

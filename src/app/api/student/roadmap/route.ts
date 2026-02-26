@@ -183,7 +183,7 @@ export async function GET(request: NextRequest) {
     };
 
     return NextResponse.json(roadmap);
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.apiError(error, { route: "/api/student/roadmap", method: "GET" });
 
     // Return default roadmap on error

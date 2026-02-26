@@ -86,76 +86,14 @@ export default function TeacherAssessmentsPage() {
           setClasses(data.classes || []);
           setAssessments(data.assessments || []);
         } else {
-          // Mock data
-          const mockClasses: ClassData[] = [
-            { id: "c1", name: "Class 10 A", grade: 10, section: "A" },
-            { id: "c2", name: "Class 10 B", grade: 10, section: "B" },
-            { id: "c3", name: "Class 9 A", grade: 9, section: "A" },
-          ];
-
-          const mockAssessments: Assessment[] = [
-            {
-              id: "a1",
-              title: "RIASEC Career Assessment - Term 1",
-              type: "riasec",
-              classId: "c1",
-              className: "Class 10 A",
-              assignedDate: "2025-02-01",
-              dueDate: "2025-02-15",
-              totalStudents: 42,
-              completedStudents: 35,
-              pendingStudents: 7,
-              status: "active",
-              averageScore: 78,
-            },
-            {
-              id: "a2",
-              title: "MBTI Personality Test",
-              type: "mbti",
-              classId: "c2",
-              className: "Class 10 B",
-              assignedDate: "2025-02-05",
-              dueDate: "2025-02-20",
-              totalStudents: 38,
-              completedStudents: 12,
-              pendingStudents: 26,
-              status: "active",
-              averageScore: 72,
-            },
-            {
-              id: "a3",
-              title: "DISC Behavior Assessment",
-              type: "disc",
-              classId: "c3",
-              className: "Class 9 A",
-              assignedDate: "2025-01-15",
-              dueDate: "2025-01-30",
-              totalStudents: 40,
-              completedStudents: 40,
-              pendingStudents: 0,
-              status: "completed",
-              averageScore: 81,
-            },
-            {
-              id: "a4",
-              title: "SPARK Career Explorer - Mid Term",
-              type: "spark_career",
-              classId: "c1",
-              className: "Class 10 A",
-              assignedDate: "2025-03-01",
-              dueDate: "2025-03-15",
-              totalStudents: 42,
-              completedStudents: 0,
-              pendingStudents: 42,
-              status: "draft",
-            },
-          ];
-
-          setClasses(mockClasses);
-          setAssessments(mockAssessments);
+          logger.error("Failed to fetch assessments", { status: response.status });
+          setClasses([]);
+          setAssessments([]);
         }
       } catch (error) {
         logger.error("Error fetching assessments:", error);
+        setClasses([]);
+        setAssessments([]);
       } finally {
         setIsLoading(false);
       }

@@ -29,23 +29,13 @@ interface SchoolData {
   level?: string;
 }
 
-// Mock data fetch
+// Fetch school profile from API
 async function fetchSchoolProfile(id: string): Promise<SchoolData> {
-  await new Promise((resolve) => setTimeout(resolve, 300));
-
-  return {
-    id,
-    name: "Motithang Higher Secondary School",
-    code: "MHSS-001",
-    email: "info@motithang.edu.bt",
-    phone: "+975 2 322 345",
-    city: "Thimphu",
-    district: "Thimphu",
-    studentsCount: 850,
-    teachersCount: 45,
-    type: "Public",
-    level: "Higher Secondary",
-  };
+  const response = await fetch(`/api/schools/${id}`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch school profile");
+  }
+  return await response.json();
 }
 
 function StatCard({

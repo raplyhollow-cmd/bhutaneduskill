@@ -1,66 +1,76 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
-import { logger } from "@/lib/logger";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { colleges, rubPrograms } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse } from "@/lib/api/response-helpers";
+import { logger } from "@/lib/logger";
+
+interface College extends Record<string, unknown> {
+  id: string;
+  name: string;
+  isBhutanCollege?: boolean;
+  bhutanCollegeType?: string;
+}
+
+interface Program {
+  collegeId: string;
+  id: string;
+}
+
+interface CollegeWithPrograms extends College {
+  programsList?: Program[];
+}
 
 // GET /api/student/content/colleges - Discover colleges
-export async function GET(request: NextRequest) {
-  const authResult = await requireAuth(['student', 'admin']);
-  if ('error' in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
 
-  const { userId } = authResult;
-
-  try {
+    try {
 
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type"); // "bhutan", "international"
     const careerCluster = searchParams.get("careerCluster");
 
-    const allColleges = await db.query.colleges.findMany({
-      where: eq(colleges.isActive, true),
-      orderBy: [desc(colleges.createdAt)],
-    });
+    const allColleges = await db
+      .select()
+      .from(colleges)
+      .where(eq(colleges.isActive, true))
+      .orderBy(desc(colleges.createdAt))
+      .limit(100);
 
-    let filtered = allColleges;
+    let filtered = allColleges as College[];
 
     if (type === "bhutan") {
-      filtered = allColleges.filter(c => (c as any).isBhutanCollege);
+      filtered = allColleges.filter((c): c is College => (c as College).isBhutanCollege);
     } else if (type === "international") {
-      filtered = allColleges.filter(c => !(c as any).isBhutanCollege);
+      filtered = allColleges.filter((c): c is College => !(c as College).isBhutanCollege);
     }
 
     // Get programs for Bhutan colleges
     if (type === "bhutan" || !type) {
       const bhutanCollegeIds = filtered
-        .filter(c => (c as any).bhutanCollegeType === "rub")
+        .filter(c => c.bhutanCollegeType === "rub")
         .map(c => c.id);
 
-      const programs = await db.query.rubPrograms.findMany();
-      filtered = filtered.map((college: any) => {
+      const programs = await db.select().from(rubPrograms);
+      filtered = filtered.map((college): CollegeWithPrograms => {
         if (college.isBhutanCollege) {
           return {
             ...college,
-            programsList: programs.filter((p: any) => p.collegeId === college.id),
+            programsList: programs.filter((p: Program) => p.collegeId === college.id),
           };
         }
         return college;
       });
     }
 
-    return NextResponse.json({ colleges: filtered });
+    return successResponse({ colleges: filtered });
   } catch (error) {
-    logger.apiError(error, { route: "/api/student/content/colleges", method: "GET", userId });
-    return NextResponse.json(
-      { error: "Failed to discover colleges", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
+    logger.error("Colleges retrieval error:", error);
+    return errorResponse("Failed to retrieve colleges", 500);
   }
-}
+  },
+  ['student', 'admin']
+);

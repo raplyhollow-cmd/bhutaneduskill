@@ -39,13 +39,13 @@ export default async function SchoolAdminAttendancePage({
     status: selectedStatus !== "All" ? selectedStatus : undefined,
   });
 
-  // Get class options
-  const allClasses = await db.query.classes.findMany({
-    columns: { id: true, name: true },
-    limit: 100,
-  });
+  // Get class options using db.select
+  const allClasses = await db
+    .select({ id: classes.id, name: classes.name })
+    .from(classes)
+    .limit(100);
 
-  const classOptions = ["All", ...allClasses.map((c) => c.name)];
+  const classOptions = ["All", ...allClasses.map((c) => c.name || `${c.id}`)];
 
   const statusOptions = ["All", "Completed", "Pending"];
 

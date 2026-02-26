@@ -190,8 +190,8 @@ export interface AutoGradingConfig {
   codeGrading: {
     // Run automated tests
     testCases: Array<{
-      input: any;
-      expectedOutput: any;
+      input: unknown;
+      expectedOutput: unknown;
       points: number;
     }>;
     styleChecking: boolean; // Linting

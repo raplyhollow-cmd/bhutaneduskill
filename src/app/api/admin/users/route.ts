@@ -3,18 +3,29 @@
  *
  * GET /api/admin/users - List all users with pagination, filtering, sorting
  * POST /api/admin/users - Create new user
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for cleaner code
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { nanoid } from "nanoid";
 import { createClerkClient } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { users, schools } from "@/lib/db/schema";
-import { eq, desc, like, or, and, count, sql, inArray } from "drizzle-orm";
-import { requireAuth, invalidateUserRoleCache } from "@/lib/auth-utils";
+import { eq, desc, like, or, and, count, inArray } from "drizzle-orm";
+import { invalidateUserRoleCache } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
 import { logUserCreated } from "@/lib/audit-log";
 import type { ApiSuccess, ApiErrorResponse, PaginatedResponse, Pagination } from "@/types";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { errorResponse, successResponse, createdResponse, badRequestResponse, conflictResponse, notFoundResponse } from "@/lib/api/response-helpers";
+import type { SQL } from "drizzle-orm";
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+type WhereCondition = SQL | undefined;
 
 // ============================================================================
 // TYPES
@@ -45,15 +56,17 @@ interface UserWithDetails {
   isActive: boolean;
   emailVerified: boolean;
   onboardingComplete: boolean;
+  onboardingStatus?: string | null;
   lastLogin?: string | null;
   createdAt: Date;
   updatedAt: Date;
-  // Joined fields
   school?: {
     id: string;
     name: string;
     code: string;
   } | null;
+  approvedBy?: string | null;
+  approvedAt?: Date | null;
 }
 
 interface CreateUserRequest {
@@ -76,19 +89,11 @@ interface CreateUserRequest {
 // GET /api/admin/users - List all users
 // ============================================================================
 
-export async function GET(request: NextRequest) {
-  const authResult = await requireAuth(['admin']);
-  if ('error' in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } as ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
+export const GET = createApiRoute(
+  async (req, auth) => {
+    const { userId } = auth;
 
-  const { userId } = authResult;
-
-  try {
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(req.url);
     const query: UserListQuery = {
       page: searchParams.get('page') || '1',
       limit: searchParams.get('limit') || '20',
@@ -105,9 +110,8 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit;
 
     // Build where conditions
-    const conditions: any[] = [];
+    const conditions: WhereCondition[] = [];
 
-    // Search filter (name, email)
     if (query.search) {
       conditions.push(
         or(
@@ -119,18 +123,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Role filter
     if (query.role) {
       const roles = query.role.split(',');
       conditions.push(inArray(users.type, roles));
     }
 
-    // School filter
     if (query.schoolId) {
       conditions.push(eq(users.schoolId, query.schoolId));
     }
 
-    // Status filter
     if (query.status) {
       if (query.status === 'active') {
         conditions.push(eq(users.isActive, true));
@@ -150,14 +151,13 @@ export async function GET(request: NextRequest) {
       .where(whereClause);
 
     // Build sorting
-    let orderByClause;
     const sortColumn = query.sortBy === 'name' ? users.name :
                        query.sortBy === 'email' ? users.email :
                        query.sortBy === 'type' ? users.type :
                        query.sortBy === 'createdAt' ? users.createdAt :
                        users.createdAt;
 
-    orderByClause = query.sortOrder === 'asc' ? sortColumn : desc(sortColumn);
+    const orderByClause = query.sortOrder === 'asc' ? sortColumn : desc(sortColumn);
 
     // Fetch users with joined data
     const usersList = await db
@@ -176,6 +176,7 @@ export async function GET(request: NextRequest) {
         isActive: users.isActive,
         emailVerified: users.emailVerified,
         onboardingComplete: users.onboardingComplete,
+        onboardingStatus: users.onboardingStatus,
         lastLogin: users.lastLogin,
         createdAt: users.createdAt,
         updatedAt: users.updatedAt,
@@ -207,6 +208,7 @@ export async function GET(request: NextRequest) {
       isActive: u.isActive,
       emailVerified: u.emailVerified,
       onboardingComplete: u.onboardingComplete,
+      onboardingStatus: u.onboardingStatus,
       lastLogin: u.lastLogin,
       createdAt: u.createdAt,
       updatedAt: u.updatedAt,
@@ -217,7 +219,6 @@ export async function GET(request: NextRequest) {
       } : null,
     }));
 
-    // Pagination metadata
     const pagination: Pagination = {
       page,
       limit,
@@ -227,55 +228,35 @@ export async function GET(request: NextRequest) {
 
     logger.info("Users list fetched", { userId, page, limit, total });
 
-    return NextResponse.json({
+    return successResponse({
       data: formattedUsers,
       pagination,
-    } satisfies PaginatedResponse<UserWithDetails>);
-
-  } catch (error) {
-    logger.apiError(error, { route: '/api/admin/users', method: 'GET', userId });
-    return NextResponse.json(
-      { error: 'Failed to fetch users', status: 500, details: error instanceof Error ? error.message : undefined } as ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    } as PaginatedResponse<UserWithDetails>);
+  },
+  ['admin']
+);
 
 // ============================================================================
 // POST /api/admin/users - Create new user
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  const authResult = await requireAuth(['admin']);
-  if ('error' in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } as ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
+export const POST = createApiRoute(
+  async (req, auth) => {
+    const { userId } = auth;
 
-  const { userId } = authResult;
-
-  try {
-    const body: CreateUserRequest = await request.json();
+    const body: CreateUserRequest = await req.json();
 
     // Validate required fields
     const { email, firstName, lastName, type, role } = body;
 
     if (!email || !firstName || !lastName || !type || !role) {
-      return NextResponse.json(
-        { error: 'Email, firstName, lastName, type, and role are required', status: 400 } as ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse('Email, firstName, lastName, type, and role are required');
     }
 
     // Validate user type
     const validTypes = ['student', 'teacher', 'parent', 'school_admin', 'admin', 'counselor', 'ministry'];
     if (!validTypes.includes(type)) {
-      return NextResponse.json(
-        { error: `Invalid user type. Must be one of: ${validTypes.join(', ')}`, status: 400 } as ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse(`Invalid user type. Must be one of: ${validTypes.join(', ')}`);
     }
 
     // Check email uniqueness
@@ -286,10 +267,7 @@ export async function POST(request: NextRequest) {
       .limit(1);
 
     if (existingUser.length > 0) {
-      return NextResponse.json(
-        { error: 'A user with this email already exists', status: 409 } as ApiErrorResponse,
-        { status: 409 }
-      );
+      return conflictResponse('A user with this email already exists');
     }
 
     // Verify school exists if provided
@@ -301,17 +279,14 @@ export async function POST(request: NextRequest) {
         .limit(1);
 
       if (school.length === 0) {
-        return NextResponse.json(
-          { error: 'Specified school not found', status: 404 } as ApiErrorResponse,
-          { status: 404 }
-        );
+        return notFoundResponse('Specified school');
       }
     }
 
     // Generate user ID
     const newUserId = `user_${nanoid()}`;
 
-    // Create user in Clerk.com FIRST (so they can actually sign in)
+    // Create user in Clerk.com FIRST
     let clerkUser;
     try {
       const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
@@ -319,19 +294,16 @@ export async function POST(request: NextRequest) {
         emailAddress: [email],
         firstName,
         lastName,
-        skipPasswordRequirement: true, // User will set password via email
+        skipPasswordRequirement: true,
       });
       logger.info("[Admin] Created Clerk user", { userId: clerkUser.id, email });
-    } catch (clerkError: any) {
+    } catch (clerkError: unknown) {
       logger.error("[Admin] Failed to create Clerk user", clerkError);
-      return NextResponse.json(
-        { error: `Failed to create user in Clerk: ${clerkError.errors?.[0]?.message || clerkError.message || 'Unknown error'}` },
-        { status: 400 }
-      );
+      return badRequestResponse(`Failed to create user in Clerk: ${clerkError.errors?.[0]?.message || (clerkError instanceof Error ? clerkError.message : 'Unknown error') || 'Unknown error'}`);
     }
 
-    // Prepare user data with defaults
-    const newClerkUserId = clerkUser.id; // REAL Clerk ID from Clerk.com
+    // Prepare user data
+    const newClerkUserId = clerkUser.id;
     const now = new Date();
     const userData = {
       id: newUserId,
@@ -382,7 +354,7 @@ export async function POST(request: NextRequest) {
 
     logger.info('User created', { userId: createdUser.id, createdBy: userId, type });
 
-    // Log audit event for user creation
+    // Log audit event
     await logUserCreated(
       createdUser.id,
       {
@@ -397,22 +369,13 @@ export async function POST(request: NextRequest) {
       request
     );
 
-    // TODO: Create Clerk user via Clerk API if sendInvitation is true
-    // TODO: Send welcome email
-
     // Return created user without sensitive fields
     const { clerkUserId: _, ...safeUser } = createdUser;
 
-    return NextResponse.json({
-      data: safeUser,
+    return createdResponse({
+      ...safeUser,
       message: 'User created successfully',
-    } satisfies ApiSuccess<typeof safeUser>, { status: 201 });
-
-  } catch (error) {
-    logger.apiError(error, { route: '/api/admin/users', method: 'POST', userId });
-    return NextResponse.json(
-      { error: 'Failed to create user', status: 500, details: error instanceof Error ? error.message : undefined } as ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    });
+  },
+  ['admin']
+);

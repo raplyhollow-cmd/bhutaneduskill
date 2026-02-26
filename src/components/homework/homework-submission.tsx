@@ -51,7 +51,7 @@ export function HomeworkSubmission({ homework, onSaveDraft, onSubmit }: Homework
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [saving, setSaving] = useState(false);
 
-  const handleAnswerChange = (questionId: string, answer: any) => {
+  const handleAnswerChange = (questionId: string, answer: string | string[] | boolean | number) => {
     setAnswers((prev) => ({ ...prev, [questionId]: answer }));
   };
 

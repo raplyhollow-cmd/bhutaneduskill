@@ -155,7 +155,7 @@ export async function getStudentAcademicProfile(
     passed: result.passed,
     examType: result.examType as "BCSE_10" | "BCSE_12",
     examYear: result.examYear,
-    subjectResults: (result.subjectResults || []).map((s: any) => ({
+    subjectResults: (result.subjectResults || []).map((s: { subjectName: string; marksObtained: number; totalMarks: number; grade: string }) => ({
       subjectName: s.subjectName,
       marksObtained: s.marksObtained,
       totalMarks: s.totalMarks,
@@ -199,7 +199,7 @@ export async function calculateScholarshipEligibility(
  */
 function calculateSingleScholarship(
   profile: AcademicProfile,
-  scholarship: any,
+  scholarship: BCSEScholarship,
   annualIncome?: number
 ): ScholarshipEligibility {
   const requirementsMet: string[] = [];

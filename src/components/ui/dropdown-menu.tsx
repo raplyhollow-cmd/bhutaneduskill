@@ -7,14 +7,14 @@ import { DropdownMenu as DropdownMenuPrimitive } from "radix-ui"
 import { cn } from "@/lib/utils"
 
 // Types for ceramic variant
-export type DropdownMenuVariant = "default" | "ceramic"
+export type DropdownMenuVariant = "default" | "ceramic" | "hidden"
 
 interface DropdownMenuProps extends React.ComponentProps<typeof DropdownMenuPrimitive.Root> {
-  variant?: DropdownMenuVariant
+  // Note: variant prop is not used in DropdownMenu itself.
+  // Pass variant to DropdownMenuContent if needed.
 }
 
 function DropdownMenu({
-  variant = "default",
   ...props
 }: DropdownMenuProps) {
   return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />

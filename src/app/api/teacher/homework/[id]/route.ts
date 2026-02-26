@@ -1,32 +1,41 @@
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
 import { requirePermission } from "@/lib/rbac";
 import { db } from "@/lib/db";
 import { homework, homeworkSubmissions } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
-import { logger } from "@/lib/logger";
+import { eq } from "drizzle-orm";
+import { createApiRoute, successResponse, errorResponse } from "@/lib/api/route-handler";
 
 interface Params {
   params: Promise<{ id: string }>;
 }
 
+/**
+ * Homework record with teacher ownership
+ */
+interface HomeworkWithTeacher {
+  id: string;
+  teacherId: string;
+  title: string;
+  [key: string]: unknown;
+}
+
+/**
+ * Homework statistics
+ */
+interface HomeworkStats {
+  total: number;
+  submitted: number;
+  graded: number;
+  pending: number;
+}
+
 // GET /api/teacher/homework/[id] - Get homework details
-export async function GET(request: NextRequest, { params }: Params) {
-  let id: string | undefined;
-  try {
-    const resolvedParams = await params;
-    id = resolvedParams.id;
-
-    const authResult = await requireAuth(['teacher', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { user: currentUser, userId } = authResult;
-
-    // Check homework.read permission
-    const permCheck = await requirePermission(userId, "homework.read");
-    if (permCheck) return permCheck;
+export const GET = createApiRoute(
+  async (request, auth, context?: Params) => {
+    const { user } = auth;
+    const resolvedParams = await context!.params;
+    const id = resolvedParams.id;
 
     const homeworkData = await db.query.homework.findFirst({
       where: eq(homework.id, id),
@@ -37,12 +46,12 @@ export async function GET(request: NextRequest, { params }: Params) {
     });
 
     if (!homeworkData) {
-      return NextResponse.json({ error: "Homework not found" }, { status: 404 });
+      return errorResponse("Homework not found", 404);
     }
 
     // Verify ownership
-    if ((homeworkData as any).teacherId !== currentUser.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if ((homeworkData as HomeworkWithTeacher).teacherId !== user.id) {
+      return errorResponse("Forbidden", 403);
     }
 
     // Get submission stats
@@ -50,39 +59,26 @@ export async function GET(request: NextRequest, { params }: Params) {
       where: eq(homeworkSubmissions.homeworkId, id),
     });
 
-    const stats = {
-      total: 0,
+    const stats: HomeworkStats = {
+      total: submissions.length,
       submitted: submissions.filter(s => s.status === "submitted").length,
       graded: submissions.filter(s => s.status === "graded").length,
-      pending: submissions.filter(s => s.status === "submitted").length,
+      pending: submissions.filter(s => s.status === "draft").length,
     };
 
-    return NextResponse.json({ homework: homeworkData, stats });
-  } catch (error) {
-    logger.error(error, { route: "/api/teacher/homework/[id]", method: "GET", id });
-    return NextResponse.json({ error: "Failed to fetch homework" }, { status: 500 });
-  }
-}
+    return successResponse({ homework: homeworkData, stats });
+  },
+  ['teacher', 'admin']
+);
 
-// PUT /api/teacher/homework/[id] - Update homework
-export async function PUT(request: NextRequest, { params }: Params) {
-  let id: string | undefined;
-  try {
-    const resolvedParams = await params;
-    id = resolvedParams.id;
-
-    const authResult = await requireAuth(['teacher', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { user: currentUser, userId } = authResult;
-
-    // Check homework.update permission
-    const permCheck = await requirePermission(userId, "homework.update");
-    if (permCheck) return permCheck;
-
+// PATCH /api/teacher/homework/[id] - Update homework
+export const PATCH = createApiRoute(
+  async (request, auth, context?: Params) => {
+    const { user } = auth;
+    const resolvedParams = await context!.params;
+    const id = resolvedParams.id;
     const body = await request.json();
+
     const { title, description, instructions, questions, attachments, externalLinks, dueDate, lateSubmissionDeadline, maxPoints, passingPoints, timeLimit, attemptsAllowed, showAnswersAfter } = body;
 
     // Verify ownership
@@ -91,11 +87,11 @@ export async function PUT(request: NextRequest, { params }: Params) {
     });
 
     if (!existingHomework) {
-      return NextResponse.json({ error: "Homework not found" }, { status: 404 });
+      return errorResponse("Homework not found", 404);
     }
 
-    if ((existingHomework as any).teacherId !== currentUser.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if ((existingHomework as any).teacherId !== user.id) {
+      return errorResponse("Forbidden", 403);
     }
 
     const [updatedHomework] = await db.update(homework)
@@ -118,30 +114,17 @@ export async function PUT(request: NextRequest, { params }: Params) {
       .where(eq(homework.id, id))
       .returning();
 
-    return NextResponse.json({ homework: updatedHomework });
-  } catch (error) {
-    logger.error(error, { route: "/api/teacher/homework/[id]", method: "PUT", id });
-    return NextResponse.json({ error: "Failed to update homework" }, { status: 500 });
-  }
-}
+    return successResponse({ homework: updatedHomework });
+  },
+  ['teacher', 'admin']
+);
 
 // DELETE /api/teacher/homework/[id] - Delete homework
-export async function DELETE(request: NextRequest, { params }: Params) {
-  let id: string | undefined;
-  try {
-    const resolvedParams = await params;
-    id = resolvedParams.id;
-
-    const authResult = await requireAuth(['teacher', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { user: currentUser, userId } = authResult;
-
-    // Check homework.delete permission
-    const permCheck = await requirePermission(userId, "homework.delete");
-    if (permCheck) return permCheck;
+export const DELETE = createApiRoute(
+  async (request, auth, context?: Params) => {
+    const { user } = auth;
+    const resolvedParams = await context!.params;
+    const id = resolvedParams.id;
 
     // Verify ownership
     const existingHomework = await db.query.homework.findFirst({
@@ -149,11 +132,11 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     });
 
     if (!existingHomework) {
-      return NextResponse.json({ error: "Homework not found" }, { status: 404 });
+      return errorResponse("Homework not found", 404);
     }
 
-    if ((existingHomework as any).teacherId !== currentUser.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if ((existingHomework as HomeworkWithTeacher).teacherId !== user.id) {
+      return errorResponse("Forbidden", 403);
     }
 
     // Check if there are submissions
@@ -162,37 +145,23 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     });
 
     if (submissions.length > 0) {
-      return NextResponse.json({ error: "Cannot delete homework with submissions" }, { status: 400 });
+      return errorResponse("Cannot delete homework with submissions", 400);
     }
 
     await db.delete(homework).where(eq(homework.id, id));
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    logger.error(error, { route: "/api/teacher/homework/[id]", method: "DELETE", id });
-    return NextResponse.json({ error: "Failed to delete homework" }, { status: 500 });
-  }
-}
+    return successResponse({ success: true });
+  },
+  ['teacher', 'admin']
+);
 
 // POST /api/teacher/homework/[id] - Publish homework
-export async function POST(request: NextRequest, { params }: Params) {
-  let id: string | undefined;
-  try {
-    const resolvedParams = await params;
-    id = resolvedParams.id;
-
-    const authResult = await requireAuth(['teacher', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { user: currentUser, userId } = authResult;
-
-    // Check homework.update permission (for publish/unpublish actions)
-    const permCheck = await requirePermission(userId, "homework.update");
-    if (permCheck) return permCheck;
-
+export const POST = createApiRoute(
+  async (request, auth, context?: Params) => {
+    const { user } = auth;
+    const resolvedParams = await context!.params;
+    const id = resolvedParams.id;
     const body = await request.json();
+
     const { action } = body;
 
     // Verify ownership
@@ -201,11 +170,11 @@ export async function POST(request: NextRequest, { params }: Params) {
     });
 
     if (!existingHomework) {
-      return NextResponse.json({ error: "Homework not found" }, { status: 404 });
+      return errorResponse("Homework not found", 404);
     }
 
-    if ((existingHomework as any).teacherId !== currentUser.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if ((existingHomework as HomeworkWithTeacher).teacherId !== user.id) {
+      return errorResponse("Forbidden", 403);
     }
 
     if (action === "publish") {
@@ -213,8 +182,7 @@ export async function POST(request: NextRequest, { params }: Params) {
         .set({ isPublished: true, updatedAt: new Date() })
         .where(eq(homework.id, id))
         .returning();
-
-      return NextResponse.json({ homework: publishedHomework });
+      return successResponse({ homework: publishedHomework });
     }
 
     if (action === "unpublish") {
@@ -222,8 +190,7 @@ export async function POST(request: NextRequest, { params }: Params) {
         .set({ isPublished: false, updatedAt: new Date() })
         .where(eq(homework.id, id))
         .returning();
-
-      return NextResponse.json({ homework: unpublishedHomework });
+      return successResponse({ homework: unpublishedHomework });
     }
 
     if (action === "duplicate") {
@@ -237,13 +204,10 @@ export async function POST(request: NextRequest, { params }: Params) {
           updatedAt: new Date(),
         })
         .returning();
-
-      return NextResponse.json({ homework: duplicatedHomework }, { status: 201 });
+      return successResponse({ homework: duplicatedHomework });
     }
 
-    return NextResponse.json({ error: "Invalid action" }, { status: 400 });
-  } catch (error) {
-    logger.error(error, { route: "/api/teacher/homework/[id]", method: "POST", id });
-    return NextResponse.json({ error: "Failed to perform action" }, { status: 500 });
-  }
-}
+    return errorResponse("Invalid action", 400);
+  },
+  ['teacher', 'admin']
+);

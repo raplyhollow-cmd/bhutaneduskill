@@ -206,8 +206,9 @@ export default function MinistrySignUpPage() {
 
       setVerificationId(data.verificationId);
       setCurrentStep("success");
-    } catch (err: any) {
-      setError(err.message || "An error occurred while submitting your request");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "An error occurred while submitting your request";
+      setError(message);
     } finally {
       setIsSubmitting(false);
       setUploadProgress(0);
@@ -236,7 +237,7 @@ export default function MinistrySignUpPage() {
           <Label htmlFor="ministryLevel">Level *</Label>
           <Select
             value={ministryData.level}
-            onValueChange={(value: any) => setMinistryData({ ...ministryData, level: value })}
+            onValueChange={(value: "national" | "district" | "regional") => setMinistryData({ ...ministryData, level: value })}
           >
             <SelectTrigger id="ministryLevel">
               <SelectValue placeholder="Select level" />

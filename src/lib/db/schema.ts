@@ -2,6 +2,7 @@ import { pgTable, text, integer, boolean, timestamp, json, jsonb, index, decimal
 import { relations, sql, eq, and, or, desc, like, inArray } from "drizzle-orm";
 import { rubColleges, rubScholarships } from "./rub-schema";
 import { tenants } from "./tenancy-schema";
+import type { CounselorContent, LearningModuleContent, HomeworkContent } from "@/types";
 
 // Re-export tables from separate schema files
 export {
@@ -144,6 +145,27 @@ export type {
 } from "./notifications-schema";
 
 // ============================================================================
+// PUSH NOTIFICATIONS
+// ============================================================================
+
+export {
+  pushSubscriptions,
+  pushNotifications,
+  pushNotificationSettings,
+  pushNotificationTypeEnum,
+  pushNotificationStatusEnum,
+} from "./push-schema";
+
+export type {
+  PushSubscription,
+  NewPushSubscription,
+  PushNotification,
+  NewPushNotification,
+  PushNotificationSettings,
+  NewPushNotificationSettings,
+} from "./push-schema";
+
+// ============================================================================
 // MULTI-TENANCY & BILLING
 // ============================================================================
 
@@ -218,24 +240,23 @@ export const users = pgTable("users", {
   dateOfBirth: text("date_of_birth"),
   gender: text("gender"),
   grade: integer("grade").notNull(),
-  section: text("section"),
+  section: json("section"), // Database has json type
   rollNumber: text("roll_number"),
   address: text("address"),
   city: text("city"),
   state: text("state"),
   postalCode: text("postal_code"),
   country: text("country").notNull(),
-  parentContact: text("parent_contact"),
-  parentPhone: text("parent_phone"),
-  emergencyContact: text("emergency_contact"),
+  parentContact: json("parent_contact"), // Database has json type
+  parentPhone: json("parent_phone"), // Database has json type
+  emergencyContact: json("emergency_contact"), // Database has json type
   bloodGroup: text("blood_group"),
   enrollmentDate: text("enrollment_date").notNull(),
   lastLogin: text("last_login"),
   employeeId: text("employee_id"),
-  // subjects: json("subjects").$type<string[]>(), // REMOVED: DB has text type, not json
-  subjects: text("subjects"), // Database has text type
+  subjects: json("subjects"), // Database has json type (not text)
   clerkId: text("clerk_id").unique(), // Clerk user ID (legacy, kept for compatibility)
-  tenantId: text("tenant_id"), // Multi-tenant isolation
+  tenantId: json("tenant_id"), // Database has json type (not text)
   emailVerified: boolean("email_verified").default(false),
   onboardingComplete: boolean("onboarding_complete").default(false),
   onboardingStatus: text("onboarding_status").default("restricted"),
@@ -245,11 +266,11 @@ export const users = pgTable("users", {
   department: text("department"), // Department for staff users
   // Additional profile fields (optional)
   school: text("school"), // School reference for compatibility
-  interests: text("interests"), // User interests as text
-  goals: text("goals"), // User goals
-  settings: text("settings"), // User settings as text (JSON stored as text)
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+  interests: json("interests"), // Database has json type
+  goals: json("goals"), // Database has json type
+  settings: json("settings"), // Database has json type
+  createdAt: timestamp("created_at").notNull(), // Database has timestamp without time zone
+  updatedAt: timestamp("updated_at").notNull(), // Database has timestamp without time zone
 }, (table) => ({
   // Indexes for frequently queried columns
   clerkUserIdIdx: index("idx_users_clerk_user_id").on(table.clerkUserId),
@@ -467,14 +488,18 @@ export const schools = pgTable("schools", {
 
 export type School = typeof schools.$inferSelect;
 
-export const schoolsRelations = relations(schools, ({ many }) => ({
-  users: many(users),
-  books: many(books),
-  libraryMembers: many(libraryMembers),
-  reservations: many(libraryReservations),
-  digitalResources: many(digitalResources),
-  invoices: many(invoices),
-}));
+/*
+ * RELATIONS DISABLED to avoid circular reference issues
+ * schoolsRelations
+ * 
+ *   users: many(users),
+ *   books: many(books),
+ *   libraryMembers: many(libraryMembers),
+ *   reservations: many(libraryReservations),
+ *   digitalResources: many(digitalResources),
+ *   invoices: many(invoices),
+ * }
+ */
 
 // ============================================================================
 // SCHOOL INVOICES TABLE
@@ -539,12 +564,16 @@ export const invoices = pgTable("invoices", {
 
 export type Invoice = typeof invoices.$inferSelect;
 
-export const invoicesRelations = relations(invoices, ({ one }) => ({
-  school: one(schools, {
-    fields: [invoices.schoolId],
-    references: [schools.id],
-  }),
-}));
+/*
+ * RELATIONS DISABLED to avoid circular reference issues
+ * invoicesRelations
+ * 
+ *   school: one(schools, {
+ *     fields: [invoices.schoolId],
+ *     references: [schools.id],
+ *   }),
+ * }
+ */
 
 // ============================================================================
 // STUDENTS TABLE
@@ -576,20 +605,26 @@ export const students = pgTable("students", {
   schoolIdIdx: index("idx_students_school_id").on(table.schoolId),
   studentCodeIdx: index("idx_students_student_code").on(table.studentCode),
   statusIdx: index("idx_students_status").on(table.status),
+  // Composite index for school + class queries
+  schoolClassIdx: index("idx_students_school_class").on(table.schoolId, table.currentClass),
 }));
 
 export type Student = typeof students.$inferSelect;
 
-export const studentsRelations = relations(students, ({ one }) => ({
-  user: one(users, {
-    fields: [students.userId],
-    references: [users.id],
-  }),
-  school: one(schools, {
-    fields: [students.schoolId],
-    references: [schools.id],
-  }),
-}));
+/*
+ * RELATIONS DISABLED to avoid circular reference issues
+ * studentsRelations
+ * 
+ *   user: one(users, {
+ *     fields: [students.userId],
+ *     references: [users.id],
+ *   }),
+ *   school: one(schools, {
+ *     fields: [students.schoolId],
+ *     references: [schools.id],
+ *   }),
+ * }
+ */
 
 // ============================================================================
 // TEACHERS TABLE
@@ -620,16 +655,20 @@ export const teachers = pgTable("teachers", {
 
 export type Teacher = typeof teachers.$inferSelect;
 
-export const teachersRelations = relations(teachers, ({ one }) => ({
-  user: one(users, {
-    fields: [teachers.userId],
-    references: [users.id],
-  }),
-  school: one(schools, {
-    fields: [teachers.schoolId],
-    references: [schools.id],
-  }),
-}));
+/*
+ * RELATIONS DISABLED to avoid circular reference issues
+ * teachersRelations
+ * 
+ *   user: one(users, {
+ *     fields: [teachers.userId],
+ *     references: [users.id],
+ *   }),
+ *   school: one(schools, {
+ *     fields: [teachers.schoolId],
+ *     references: [schools.id],
+ *   }),
+ * }
+ */
 
 // ============================================================================
 // PARENTS TABLE
@@ -654,13 +693,17 @@ export const parents = pgTable("parents", {
 
 export type Parent = typeof parents.$inferSelect;
 
-export const parentsRelations = relations(parents, ({ one, many }) => ({
-  user: one(users, {
-    fields: [parents.userId],
-    references: [users.id],
-  }),
-  studentRelationships: many(parentToStudent),
-}));
+/*
+ * RELATIONS DISABLED to avoid circular reference issues
+ * parentsRelations
+ * 
+ *   user: one(users, {
+ *     fields: [parents.userId],
+ *     references: [users.id],
+ *   }),
+ *   studentRelationships: many(parentToStudent),
+ * }
+ */
 
 // ============================================================================
 // PARENT TO STUDENT JOIN TABLE
@@ -684,16 +727,20 @@ export const parentToStudent = pgTable("parent_to_student", {
 
 export type ParentToStudent = typeof parentToStudent.$inferSelect;
 
-export const parentToStudentRelations = relations(parentToStudent, ({ one }) => ({
-  parent: one(parents, {
-    fields: [parentToStudent.parentId],
-    references: [parents.id],
-  }),
-  student: one(students, {
-    fields: [parentToStudent.studentId],
-    references: [students.id],
-  }),
-}));
+/*
+ * RELATIONS DISABLED to avoid circular reference issues
+ * parentToStudentRelations
+ * 
+ *   parent: one(parents, {
+ *     fields: [parentToStudent.parentId],
+ *     references: [parents.id],
+ *   }),
+ *   student: one(students, {
+ *     fields: [parentToStudent.studentId],
+ *     references: [students.id],
+ *   }),
+ * }
+ */
 
 // ============================================================================
 // LIBRARY BOOKS TABLE
@@ -734,13 +781,17 @@ export const libraryBooks = pgTable("library_books", {
 
 export type LibraryBook = typeof libraryBooks.$inferSelect;
 
-export const libraryBooksRelations = relations(libraryBooks, ({ one, many }) => ({
-  school: one(schools, {
-    fields: [libraryBooks.schoolId],
-    references: [schools.id],
-  }),
-  circulation: many(libraryCirculation),
-}));
+/*
+ * RELATIONS DISABLED to avoid circular reference issues
+ * libraryBooksRelations
+ * 
+ *   school: one(schools, {
+ *     fields: [libraryBooks.schoolId],
+ *     references: [schools.id],
+ *   }),
+ *   circulation: many(libraryCirculation),
+ * }
+ */
 
 // ============================================================================
 // LIBRARY MEMBERS TABLE
@@ -775,16 +826,20 @@ export const libraryMembers = pgTable("library_members", {
 
 export type LibraryMember = typeof libraryMembers.$inferSelect;
 
-export const libraryMembersRelations = relations(libraryMembers, ({ one }) => ({
-  school: one(schools, {
-    fields: [libraryMembers.schoolId],
-    references: [schools.id],
-  }),
-  user: one(users, {
-    fields: [libraryMembers.userId],
-    references: [users.id],
-  }),
-}));
+/*
+ * RELATIONS DISABLED to avoid circular reference issues
+ * libraryMembersRelations
+ * 
+ *   school: one(schools, {
+ *     fields: [libraryMembers.schoolId],
+ *     references: [schools.id],
+ *   }),
+ *   user: one(users, {
+ *     fields: [libraryMembers.userId],
+ *     references: [users.id],
+ *   }),
+ * }
+ */
 
 // ============================================================================
 // LIBRARY CIRCULATION TABLE
@@ -821,20 +876,24 @@ export const libraryCirculation = pgTable("library_circulation", {
 
 export type LibraryCirculation = typeof libraryCirculation.$inferSelect;
 
-export const libraryCirculationRelations = relations(libraryCirculation, ({ one }) => ({
-  book: one(libraryBooks, {
-    fields: [libraryCirculation.bookId],
-    references: [libraryBooks.id],
-  }),
-  member: one(libraryMembers, {
-    fields: [libraryCirculation.memberId],
-    references: [libraryMembers.id],
-  }),
-  school: one(schools, {
-    fields: [libraryCirculation.schoolId],
-    references: [schools.id],
-  }),
-}));
+/*
+ * RELATIONS DISABLED to avoid circular reference issues
+ * libraryCirculationRelations
+ * 
+ *   book: one(libraryBooks, {
+ *     fields: [libraryCirculation.bookId],
+ *     references: [libraryBooks.id],
+ *   }),
+ *   member: one(libraryMembers, {
+ *     fields: [libraryCirculation.memberId],
+ *     references: [libraryMembers.id],
+ *   }),
+ *   school: one(schools, {
+ *     fields: [libraryCirculation.schoolId],
+ *     references: [schools.id],
+ *   }),
+ * }
+ */
 
 // ============================================================================
 // STUDENT PORTFOLIOS TABLE
@@ -876,16 +935,20 @@ export const studentPortfolios = pgTable("student_portfolios", {
 
 export type StudentPortfolio = typeof studentPortfolios.$inferSelect;
 
-export const studentPortfoliosRelations = relations(studentPortfolios, ({ one }) => ({
-  student: one(users, {
-    fields: [studentPortfolios.studentId],
-    references: [users.id],
-  }),
-  school: one(schools, {
-    fields: [studentPortfolios.schoolId],
-    references: [schools.id],
-  }),
-}));
+/*
+ * RELATIONS DISABLED to avoid circular reference issues
+ * studentPortfoliosRelations
+ * 
+ *   student: one(users, {
+ *     fields: [studentPortfolios.studentId],
+ *     references: [users.id],
+ *   }),
+ *   school: one(schools, {
+ *     fields: [studentPortfolios.schoolId],
+ *     references: [schools.id],
+ *   }),
+ * }
+ */
 
 // ============================================================================
 // SCHOOL SETTINGS TABLE
@@ -1072,11 +1135,6 @@ export const classes = pgTable("classes", {
   classTeacherName: text("class_teacher_name").notNull(),
   teacherId: text("teacher_id").references(() => users.id),
   academicYear: text("academic_year"),
-  students: json("students").$type<Array<{
-    id: string;
-    name: string;
-    rollNumber: string;
-  }>>(),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
@@ -1101,7 +1159,6 @@ export const subjects = pgTable("subjects", {
   schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }),
   departmentId: text("department_id").references(() => departments.id, { onDelete: "set null" }),
   name: text("name").notNull(),
-  nameDzongkha: text("name_dzongkha"), // Dzongkha translation
   code: text("code").unique().notNull(),
   type: text("type").notNull(), // "core" | "elective" | "language" | "additional"
   subjectType: text("subject_type").default("core"), // "core" | "elective" | "language"
@@ -1149,7 +1206,7 @@ export const assessmentQuestions = pgTable("assessment_questions", {
   id: text("id").primaryKey(),
   assessmentTypeId: text("assessment_type_id").references(() => assessmentTypes.id, { onDelete: "cascade" }),
   questionText: text("question_text").notNull(),
-  questionData: json("question_data").$type<any>(),
+  questionData: json("question_data").$type<QuestionData>(),
   options: json("options").$type<string[]>(),
   correctAnswer: text("correct_answer").notNull(),
   points: integer("points").notNull(),
@@ -1366,7 +1423,11 @@ export const feePayments = pgTable("fee_payments", {
   notes: text("notes"), // Payment notes
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }),
-});
+}, (table) => ({
+  schoolIdIdx: index("idx_fee_payments_school_id").on(table.schoolId),
+  schoolStatusIdx: index("idx_fee_payments_school_status").on(table.schoolId, table.status),
+  schoolStatusPaidAtIdx: index("idx_fee_payments_school_status_paid").on(table.schoolId, table.status, table.paidAt),
+}));
 
 export type FeePayment = typeof feePayments.$inferSelect;
 
@@ -1457,7 +1518,7 @@ export const homeworkSubmissions = pgTable("homework_submissions", {
   homeworkId: text("homework_id").references(() => homework.id, { onDelete: "cascade" }),
   studentId: text("student_id").references(() => users.id, { onDelete: "cascade" }),
   submittedAt: timestamp("submitted_at", { withTimezone: true }).notNull(),
-  content: json("content").$type<any>(),
+  content: json("content").$type<HomeworkContent>(),
   gradedAt: timestamp("graded_at", { withTimezone: true }).notNull(),
   score: integer("score").notNull(),
   feedback: text("feedback").notNull(),
@@ -1646,7 +1707,7 @@ export const counselorResources = pgTable("counselor_resources", {
   type: text("type").notNull(),
   category: text("category").notNull(),
   url: text("url").notNull(),
-  content: json("content").$type<any>(),
+  content: json("content").$type<CounselorContent>(),
   tags: json("tags").$type<string[]>(),
   targetAudience: text("target_audience").notNull(),
   isPublic: boolean("is_public").default(false),
@@ -1796,7 +1857,10 @@ export const examResultsEnhanced = pgTable("exam_results_enhanced", {
   isVerified: boolean("is_verified").default(false), // Whether results are verified
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
+}, (table) => ({
+  userIdIdx: index("idx_exam_results_enhanced_user_id").on(table.userId),
+  userExamYearIdx: index("idx_exam_results_enhanced_user_year").on(table.userId, table.examYear),
+}));
 
 export type ExamResultEnhanced = typeof examResultsEnhanced.$inferSelect;
 
@@ -1868,7 +1932,10 @@ export const careerMatches = pgTable("career_matches", {
   assessmentType: text("assessment_type").notNull(), // "riasec" | "mbti" | "work_values"
   assessmentId: text("assessment_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
-});
+}, (table) => ({
+  assessmentIdIdx: index("idx_career_matches_assessment_id").on(table.assessmentId),
+  assessmentMatchScoreIdx: index("idx_career_matches_assessment_score").on(table.assessmentId, table.matchScore),
+}));
 
 export type CareerMatch = typeof careerMatches.$inferSelect;
 
@@ -1933,7 +2000,10 @@ export const riasecResults = pgTable("riasec_results", {
   // traits column removed - doesn't exist in actual database
   completedAt: timestamp("completed_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
-});
+}, (table) => ({
+  userIdIdx: index("idx_riasec_results_user_id").on(table.userId),
+  userCreatedAtIdx: index("idx_riasec_results_user_created").on(table.userId, table.createdAt),
+}));
 
 export type RiasecResult = typeof riasecResults.$inferSelect;
 
@@ -1962,7 +2032,9 @@ export const mbtiResults = pgTable("mbti_results", {
   recommendedCareers: json("recommended_careers").$type<string[]>().notNull(),
   completedAt: timestamp("completed_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
-});
+}, (table) => ({
+  userIdIdx: index("idx_mbti_results_user_id").on(table.userId),
+}));
 
 export type MBTIResult = typeof mbtiResults.$inferSelect;
 
@@ -1987,7 +2059,9 @@ export const discResults = pgTable("disc_results", {
   recommendedCareers: json("recommended_careers").$type<string[]>().notNull(),
   completedAt: timestamp("completed_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
-});
+}, (table) => ({
+  userIdIdx: index("idx_disc_results_user_id").on(table.userId),
+}));
 
 export type DiscResult = typeof discResults.$inferSelect;
 
@@ -2007,7 +2081,9 @@ export const workValuesResults = pgTable("work_values_results", {
   recommendedCareers: json("recommended_careers").$type<string[]>().notNull(),
   completedAt: timestamp("completed_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
-});
+}, (table) => ({
+  userIdIdx: index("idx_work_values_results_user_id").on(table.userId),
+}));
 
 export type WorkValuesResult = typeof workValuesResults.$inferSelect;
 
@@ -2026,7 +2102,9 @@ export const learningStylesResults = pgTable("learning_styles_results", {
   recommendations: json("recommendations").$type<string[]>().notNull(),
   completedAt: timestamp("completed_at", { withTimezone: true }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
-});
+}, (table) => ({
+  userIdIdx: index("idx_learning_styles_results_user_id").on(table.userId),
+}));
 
 export type LearningStylesResult = typeof learningStylesResults.$inferSelect;
 
@@ -2044,7 +2122,7 @@ export const learningModules = pgTable("learning_modules", {
   category: text("category").notNull(), // "subject" | "skill" | "exam_prep" | "career"
   level: text("level").notNull(), // "beginner" | "intermediate" | "advanced"
   duration: integer("duration").notNull(), // in minutes
-  content: json("content").$type<any>(),
+  content: json("content").$type<LearningModuleContent>(),
   thumbnail: text("thumbnail").notNull(),
   isPublic: boolean("is_public").default(false),
   isPremium: boolean("is_premium").default(false),
@@ -3019,6 +3097,22 @@ export type {
 } from "./messaging-schema";
 
 // ============================================================================
+// PARENT-TEACHER CHAT
+// ============================================================================
+
+export {
+  parentTeacherConversations,
+  parentTeacherMessages,
+} from "./parent-teacher-chat-schema";
+
+export type {
+  ParentTeacherConversation,
+  NewParentTeacherConversation,
+  ParentTeacherMessage,
+  NewParentTeacherMessage,
+} from "./parent-teacher-chat-schema";
+
+// ============================================================================
 // AI INTERACTIONS TABLE
 // ============================================================================
 
@@ -3893,167 +3987,209 @@ export type NewMedicalReferral = typeof medicalReferrals.$inferInsert;
 // All relations are defined at the end to ensure all referenced tables exist
 
 // Users relations
-export const usersRelations = relations(users, ({ one, many }) => ({
-  school: one(schools, {
-    fields: [users.schoolId],
-    references: [schools.id],
-  }),
-  parent: one(users, {
-    fields: [users.parentId],
-    references: [users.id],
-  }),
-  circulationAsBorrower: many(circulation),
-  circulationAsStudent: many(circulation),
-  libraryMembers: many(libraryMembers),
-  reservations: many(libraryReservations),
-}));
+// NOTE: Self-referential 'parent' relation removed due to circular reference issues
+// with Drizzle's query API. Use explicit joins instead for parent-child queries.
+/*
+ * RELATIONS DISABLED to avoid circular reference issues
+ * usersRelations
+ * 
+ *   school: one(schools, {
+ *     fields: [users.schoolId],
+ *     references: [schools.id],
+ *   }),
+ *   circulationAsBorrower: many(circulation),
+ *   circulationAsStudent: many(circulation),
+ *   libraryMembers: many(libraryMembers),
+ *   reservations: many(libraryReservations),
+ * }
+ */
 
 // Student applications relations
-export const studentApplicationsRelations = relations(studentApplications, ({ one }) => ({
-  student: one(users, {
-    fields: [studentApplications.studentId],
-    references: [users.id],
-  }),
-  school: one(schools, {
-    fields: [studentApplications.schoolId],
-    references: [schools.id],
-  }),
-  reviewer: one(users, {
-    fields: [studentApplications.reviewedBy],
-    references: [users.id],
-  }),
-}));
+/*
+ * RELATIONS DISABLED to avoid circular reference issues
+ * studentApplicationsRelations
+ * 
+ *   student: one(users, {
+ *     fields: [studentApplications.studentId],
+ *     references: [users.id],
+ *   }),
+ *   school: one(schools, {
+ *     fields: [studentApplications.schoolId],
+ *     references: [schools.id],
+ *   }),
+ *   reviewer: one(users, {
+ *     fields: [studentApplications.reviewedBy],
+ *     references: [users.id],
+ *   }),
+ * }
+ */
 
 // School admin applications relations
-export const schoolAdminApplicationsRelations = relations(schoolAdminApplications, ({ one }) => ({
-  user: one(users, {
-    fields: [schoolAdminApplications.userId],
-    references: [users.id],
-  }),
-  school: one(schools, {
-    fields: [schoolAdminApplications.schoolId],
-    references: [schools.id],
-  }),
-  reviewer: one(users, {
-    fields: [schoolAdminApplications.reviewedBy],
-    references: [users.id],
-  }),
-  paymentVerifier: one(users, {
-    fields: [schoolAdminApplications.paymentVerifiedBy],
-    references: [users.id],
-  }),
-}));
+/*
+ * RELATIONS DISABLED to avoid circular reference issues
+ * schoolAdminApplicationsRelations
+ * 
+ *   user: one(users, {
+ *     fields: [schoolAdminApplications.userId],
+ *     references: [users.id],
+ *   }),
+ *   school: one(schools, {
+ *     fields: [schoolAdminApplications.schoolId],
+ *     references: [schools.id],
+ *   }),
+ *   reviewer: one(users, {
+ *     fields: [schoolAdminApplications.reviewedBy],
+ *     references: [users.id],
+ *   }),
+ *   paymentVerifier: one(users, {
+ *     fields: [schoolAdminApplications.paymentVerifiedBy],
+ *     references: [users.id],
+ *   }),
+ * }
+ */
 
 // Teacher applications relations
-export const teacherApplicationsRelations = relations(teacherApplications, ({ one }) => ({
-  user: one(users, {
-    fields: [teacherApplications.userId],
-    references: [users.id],
-  }),
-  school: one(schools, {
-    fields: [teacherApplications.schoolId],
-    references: [schools.id],
-  }),
-  reviewer: one(users, {
-    fields: [teacherApplications.reviewedBy],
-    references: [users.id],
-  }),
-}));
+/*
+ * RELATIONS DISABLED to avoid circular reference issues
+ * teacherApplicationsRelations
+ * 
+ *   user: one(users, {
+ *     fields: [teacherApplications.userId],
+ *     references: [users.id],
+ *   }),
+ *   school: one(schools, {
+ *     fields: [teacherApplications.schoolId],
+ *     references: [schools.id],
+ *   }),
+ *   reviewer: one(users, {
+ *     fields: [teacherApplications.reviewedBy],
+ *     references: [users.id],
+ *   }),
+ * }
+ */
 
 // Departments relations
-export const departmentsRelations = relations(departments, ({ one, many }) => ({
-  school: one(schools, {
-    fields: [departments.schoolId],
-    references: [schools.id],
-  }),
-  head: one(users, {
-    fields: [departments.headOfDepartment],
-    references: [users.id],
-  }),
-}));
+/*
+ * RELATIONS DISABLED to avoid circular reference issues
+ * departmentsRelations
+ * 
+ *   school: one(schools, {
+ *     fields: [departments.schoolId],
+ *     references: [schools.id],
+ *   }),
+ *   head: one(users, {
+ *     fields: [departments.headOfDepartment],
+ *     references: [users.id],
+ *   }),
+ * }
+ */
 
 // Books relations
-export const booksRelations = relations(books, ({ one, many }) => ({
-  school: one(schools, {
-    fields: [books.schoolId],
-    references: [schools.id],
-  }),
-  circulation: many(circulation),
-  reservations: many(libraryReservations),
-}));
+/*
+ * RELATIONS DISABLED to avoid circular reference issues
+ * booksRelations
+ * 
+ *   school: one(schools, {
+ *     fields: [books.schoolId],
+ *     references: [schools.id],
+ *   }),
+ *   circulation: many(circulation),
+ *   reservations: many(libraryReservations),
+ * }
+ */
 
 // Library relations
-export const circulationRelations = relations(circulation, ({ one }) => ({
-  book: one(books, {
-    fields: [circulation.bookId],
-    references: [books.id],
-  }),
-  borrower: one(users, {
-    fields: [circulation.borrowerId],
-    references: [users.id],
-  }),
-  student: one(users, {
-    fields: [circulation.studentId],
-    references: [users.id],
-  }),
-}));
+/*
+ * RELATIONS DISABLED to avoid circular reference issues
+ * circulationRelations
+ * 
+ *   book: one(books, {
+ *     fields: [circulation.bookId],
+ *     references: [books.id],
+ *   }),
+ *   borrower: one(users, {
+ *     fields: [circulation.borrowerId],
+ *     references: [users.id],
+ *   }),
+ *   student: one(users, {
+ *     fields: [circulation.studentId],
+ *     references: [users.id],
+ *   }),
+ * }
+ */
 
 
-export const libraryReservationsRelations = relations(libraryReservations, ({ one }) => ({
-  book: one(books, {
-    fields: [libraryReservations.bookId],
-    references: [books.id],
-  }),
-  user: one(users, {
-    fields: [libraryReservations.userId],
-    references: [users.id],
-  }),
-  school: one(schools, {
-    fields: [libraryReservations.schoolId],
-    references: [schools.id],
-  }),
-}));
+/*
+ * RELATIONS DISABLED to avoid circular reference issues
+ * libraryReservationsRelations
+ * 
+ *   book: one(books, {
+ *     fields: [libraryReservations.bookId],
+ *     references: [books.id],
+ *   }),
+ *   user: one(users, {
+ *     fields: [libraryReservations.userId],
+ *     references: [users.id],
+ *   }),
+ *   school: one(schools, {
+ *     fields: [libraryReservations.schoolId],
+ *     references: [schools.id],
+ *   }),
+ * }
+ */
 
 // Digital resources relations
-export const digitalResourcesRelations = relations(digitalResources, ({ one }) => ({
-  school: one(schools, {
-    fields: [digitalResources.schoolId],
-    references: [schools.id],
-  }),
-}));
+/*
+ * RELATIONS DISABLED to avoid circular reference issues
+ * digitalResourcesRelations
+ * 
+ *   school: one(schools, {
+ *     fields: [digitalResources.schoolId],
+ *     references: [schools.id],
+ *   }),
+ * }
+ */
 
 // ============================================================================
 // COUNSELOR PORTAL RELATIONS
 // ============================================================================
 
 // Red Flags relations
-export const redFlagsRelations = relations(redFlags, ({ one }) => ({
-  student: one(users, {
-    fields: [redFlags.studentId],
-    references: [users.id],
-  }),
-  counselor: one(users, {
-    fields: [redFlags.counselorId],
-    references: [users.id],
-  }),
-  school: one(schools, {
-    fields: [redFlags.schoolId],
-    references: [schools.id],
-  }),
-  reviewer: one(users, {
-    fields: [redFlags.reviewedBy],
-    references: [users.id],
-  }),
-}));
+/*
+ * RELATIONS DISABLED to avoid circular reference issues
+ * redFlagsRelations
+ * 
+ *   student: one(users, {
+ *     fields: [redFlags.studentId],
+ *     references: [users.id],
+ *   }),
+ *   counselor: one(users, {
+ *     fields: [redFlags.counselorId],
+ *     references: [users.id],
+ *   }),
+ *   school: one(schools, {
+ *     fields: [redFlags.schoolId],
+ *     references: [schools.id],
+ *   }),
+ *   reviewer: one(users, {
+ *     fields: [redFlags.reviewedBy],
+ *     references: [users.id],
+ *   }),
+ * }
+ */
 
 // Career Approvals relations
-export const careerApprovalsRelations = relations(careerApprovals, ({ one }) => ({
-  student: one(users, {
-    fields: [careerApprovals.studentId],
-    references: [users.id],
-  }),
-  counselor: one(users, {
-    fields: [careerApprovals.counselorId],
-    references: [users.id],
-  }),
-}));
+/*
+ * RELATIONS DISABLED to avoid circular reference issues
+ * careerApprovalsRelations
+ * 
+ *   student: one(users, {
+ *     fields: [careerApprovals.studentId],
+ *     references: [users.id],
+ *   }),
+ *   counselor: one(users, {
+ *     fields: [careerApprovals.counselorId],
+ *     references: [users.id],
+ *   }),
+ * }
+ */

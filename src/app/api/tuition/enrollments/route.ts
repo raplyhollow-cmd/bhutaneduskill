@@ -1,24 +1,61 @@
+/**
+ * TUITION ENROLLMENTS API
+ *
+ * GET /api/tuition/enrollments - List enrollments
+ * POST /api/tuition/enrollments - Enroll in course
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
+import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { tuitionEnrollments, tuitionCourses, users, tutors } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse, notFoundResponse } from "@/lib/api/response-helpers";
 
 // GET /api/tuition/enrollments - List enrollments
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['student', 'admin', 'school-admin', 'teacher']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { user: currentUser, userId: currentUserId } = authResult;
+
+    const { user: currentUser, userId: currentUserId } = auth;
 
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type"); // "tutor", "student", or "all" for school-admin
     const schoolId = searchParams.get("schoolId");
 
-    let enrollments: any[];
+    interface EnrollmentWithRelations {
+      id: string;
+      studentId: string;
+      courseId: string;
+      tutorId: string;
+      status: string;
+      enrollmentDate: string;
+      student?: {
+        id: string;
+        name: string | null;
+        email: string | null;
+      };
+      course?: {
+        id: string;
+        title: string;
+        schoolId: string;
+      };
+      tutor?: {
+        id: string;
+        user?: {
+          id: string;
+          name: string | null;
+        };
+      };
+    }
+    let enrollments: EnrollmentWithRelations[];
 
     if (type === "all" || (currentUser.type === 'school-admin' || currentUser.type === 'admin')) {
       // School-admin can see all enrollments for their school
@@ -50,7 +87,7 @@ export async function GET(request: NextRequest) {
       });
 
       if (!tutor) {
-        return NextResponse.json({ error: "Tutor profile not found" }, { status: 404 });
+        return notFoundResponse("Tutor profile");
       }
 
       enrollments = await db.query.tuitionEnrollments.findMany({
@@ -77,21 +114,20 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ enrollments });
-  } catch (error) {
-    logger.error("Enrollments fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch enrollments" }, { status: 500 });
-  }
-}
+    return successResponse({ enrollments });
+  },
+  ['student', 'admin', 'school-admin', 'teacher']
+);
 
 // POST /api/tuition/enrollments - Enroll in course
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['student', 'admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const POST = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { user: currentUser } = authResult;
+
+    const { user: currentUser } = auth;
 
     const body = await request.json();
     const { courseId, paymentMethod, paymentId } = body;
@@ -102,11 +138,11 @@ export async function POST(request: NextRequest) {
     });
 
     if (!course) {
-      return NextResponse.json({ error: "Course not found" }, { status: 404 });
+      return notFoundResponse("Course");
     }
 
     if (course.status !== "published") {
-      return NextResponse.json({ error: "Course is not available" }, { status: 400 });
+      return badRequestResponse("Course is not available");
     }
 
     // Check if already enrolled
@@ -118,12 +154,12 @@ export async function POST(request: NextRequest) {
     });
 
     if (existing) {
-      return NextResponse.json({ error: "Already enrolled" }, { status: 400 });
+      return badRequestResponse("Already enrolled");
     }
 
     // Check enrollment limit
     if (course.maxStudents && (course.currentEnrollments || 0) >= course.maxStudents) {
-      return NextResponse.json({ error: "Course is full" }, { status: 400 });
+      return badRequestResponse("Course is full");
     }
 
     const price = course.discountPrice || course.price;
@@ -159,9 +195,7 @@ export async function POST(request: NextRequest) {
       })
       .where(eq(tuitionCourses.id, courseId));
 
-    return NextResponse.json({ enrollment }, { status: 201 });
-  } catch (error) {
-    logger.error("Enrollment error:", error);
-    return NextResponse.json({ error: "Failed to enroll" }, { status: 500 });
-  }
-}
+    return successResponse(enrollment);
+  },
+  ['student', 'admin', 'school-admin']
+);

@@ -5,6 +5,13 @@ import { Avatar as AvatarPrimitive } from "radix-ui"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
+import { radius, portal } from "@/styles/design-tokens"
+
+/**
+ * Avatar Component with Design Token Integration
+ *
+ * Uses design tokens for consistent border radius and transitions.
+ */
 
 const avatarVariants = cva(
   "group/avatar relative flex shrink-0 overflow-hidden rounded-full select-none",
@@ -18,6 +25,14 @@ const avatarVariants = cva(
         "ceramic-success": "[background-color:var(--ceramic-green-100)] [color:var(--ceramic-green-700)] dark:[background-color:var(--ceramic-green-900)] dark:[color:var(--ceramic-green-300)]",
         "ceramic-brand": "[background-color:rgba(132,107,255,0.15)] [color:var(--ceramic-brand)]",
         "ceramic-outline": "[background-color:transparent] [border:1px_solid_var(--border-color-primary)]",
+        // Portal-specific variants
+        student: "",
+        teacher: "",
+        parent: "",
+        counselor: "",
+        admin: "",
+        "school-admin": "",
+        ministry: "",
       },
       size: {
         xs: "size-5 [&>svg]:size-3 text-[0.625rem]",
@@ -40,19 +55,63 @@ const avatarVariants = cva(
   }
 )
 
+/**
+ * Get inline styles for avatar variants
+ * Uses design tokens for consistent styling
+ */
+function getAvatarStyles(variant?: string): React.CSSProperties {
+  const styles: React.CSSProperties = {
+    borderRadius: radius.avatar,
+  }
+
+  // Portal-specific background colors using design tokens
+  if (variant === 'student') {
+    styles.background = portal.student.primary
+    styles.color = '#ffffff'
+  } else if (variant === 'teacher') {
+    styles.background = portal.teacher.primary
+    styles.color = '#ffffff'
+  } else if (variant === 'parent') {
+    styles.background = portal.parent.primary
+    styles.color = '#ffffff'
+  } else if (variant === 'counselor') {
+    styles.background = portal.counselor.primary
+    styles.color = '#ffffff'
+  } else if (variant === 'admin') {
+    styles.background = portal.admin.primary
+    styles.color = '#ffffff'
+  } else if (variant === 'school-admin') {
+    styles.background = portal.schoolAdmin.primary
+    styles.color = '#ffffff'
+  } else if (variant === 'ministry') {
+    styles.background = portal.ministry.primary
+    styles.color = '#ffffff'
+  }
+
+  return styles
+}
+
+interface AvatarProps extends React.ComponentProps<typeof AvatarPrimitive.Root>, VariantProps<typeof avatarVariants> {
+  variant?: "default" | "ceramic" | "ceramic-gray" | "ceramic-success" | "ceramic-brand" | "ceramic-outline" | "student" | "teacher" | "parent" | "counselor" | "admin" | "school-admin" | "ministry";
+}
+
 function Avatar({
   className,
   variant = "default",
   size = "default",
   clickable = false,
+  style,
   ...props
-}: React.ComponentProps<typeof AvatarPrimitive.Root> & VariantProps<typeof avatarVariants>) {
+}: AvatarProps) {
+  const tokenStyles = getAvatarStyles(variant)
+
   return (
     <AvatarPrimitive.Root
       data-slot="avatar"
       data-variant={variant}
       data-size={size}
       className={cn(avatarVariants({ variant, size, clickable }), className)}
+      style={{ ...tokenStyles, ...style }}
       {...props}
     />
   )
@@ -74,8 +133,11 @@ function AvatarImage({
 function AvatarFallback({
   className,
   variant = "default",
+  style,
   ...props
 }: React.ComponentProps<typeof AvatarPrimitive.Fallback> & VariantProps<typeof avatarVariants>) {
+  const tokenStyles = getAvatarStyles(variant)
+
   return (
     <AvatarPrimitive.Fallback
       data-slot="avatar-fallback"
@@ -86,6 +148,7 @@ function AvatarFallback({
         variant === "default" && "bg-muted text-muted-foreground",
         className
       )}
+      style={{ ...tokenStyles, ...style }}
       {...props}
     />
   )
@@ -123,8 +186,11 @@ function AvatarGroup({ className, ...props }: React.ComponentProps<"div">) {
 function AvatarGroupCount({
   className,
   variant = "default",
+  style,
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof avatarVariants>) {
+  const tokenStyles = getAvatarStyles(variant)
+
   return (
     <div
       data-slot="avatar-group-count"
@@ -138,6 +204,7 @@ function AvatarGroupCount({
         variant === "default" && "bg-muted text-muted-foreground",
         className
       )}
+      style={{ ...tokenStyles, ...style }}
       {...props}
     />
   )

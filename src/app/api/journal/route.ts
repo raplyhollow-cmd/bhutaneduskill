@@ -5,6 +5,25 @@ import { users } from "@/lib/db/schema";
 import { requireAuth } from "@/lib/auth-utils";
 import { eq } from "drizzle-orm";
 
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface JournalEntry {
+  id: string;
+  date: string;
+  title: string;
+  content: string;
+  mood: string;
+  tags: string[];
+  updatedAt?: string;
+}
+
+interface UserSettings {
+  journalEntries?: JournalEntry[];
+  [key: string]: unknown;
+}
+
 // GET /api/journal - Get user's journal entries
 export async function GET(req: NextRequest) {
   const authResult = await requireAuth(['student']);
@@ -14,7 +33,7 @@ export async function GET(req: NextRequest) {
 
   const { user } = authResult;
 
-  const settings = (user?.settings as any) || {};
+  const settings = (user?.settings as UserSettings) || {};
   const entries = settings.journalEntries || [];
 
   return NextResponse.json({ entries });
@@ -33,12 +52,12 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { title, content, mood, tags, date } = body;
 
-    const settings = (user?.settings as any) || {};
-    const entries = settings.journalEntries || [];
+    const settings = (user?.settings as UserSettings) || {};
+    const entries: JournalEntry[] = settings.journalEntries || [];
 
     // DAILY LIMIT: Check if user already has an entry for today
     const today = new Date().toISOString().split('T')[0];
-    const existingToday = entries.find((e: any) => {
+    const existingToday = entries.find((e: JournalEntry) => {
       const entryDate = new Date(e.date).toISOString().split('T')[0];
       return entryDate === today;
     });
@@ -51,7 +70,7 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    const newEntry = {
+    const newEntry: JournalEntry = {
       id: `journal-${Date.now()}`,
       date: date || new Date().toISOString(),
       title,
@@ -71,7 +90,7 @@ export async function POST(req: NextRequest) {
       .where(eq(users.id, user.id));
 
     return NextResponse.json({ success: true, entry: newEntry });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.apiError(error, { route: "/api/journal", method: "POST" });
     return NextResponse.json({ error: "Failed to save entry" }, { status: 500 });
   }

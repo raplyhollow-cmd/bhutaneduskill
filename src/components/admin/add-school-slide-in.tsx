@@ -34,7 +34,7 @@ export function AddSchoolSlideIn({ isOpen, onClose, onSuccess }: AddSchoolSlideI
 
   const [generatedCode, setGeneratedCode] = useState("");
 
-  const handleChange = (field: string, value: any) => {
+  const handleChange = (field: string, value: string | number) => {
     setFormData((prev) => {
       const updated = { ...prev, [field]: value };
 

@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { hostelRooms, hostelBuildings, hostelAllocations } from "@/lib/db/hostel-schema";
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
 import { requirePermission } from "@/lib/rbac";
 import { logger } from "@/lib/logger";
+import { successResponse, errorResponse, badRequestResponse, notFoundResponse } from "@/lib/api/response-helpers";
 import { eq, and, sql, desc } from "drizzle-orm";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
 
 // ============================================================================
 // TYPES
@@ -31,16 +31,9 @@ interface RoomAllocationResult {
 // POST /api/school-admin/hostels/allocate - Allocate student to hostel room
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["school-admin", "admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { userId, user } = authResult;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId, user } = auth;
 
     const permCheck = await requirePermission(userId, "hostels.allocate");
     if (permCheck) return permCheck;
@@ -49,10 +42,7 @@ export async function POST(request: NextRequest) {
     const { studentId, studentName, roomId, bedNumber } = body;
 
     if (!studentId || !roomId) {
-      return NextResponse.json(
-        { error: "studentId and roomId are required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("studentId and roomId are required");
     }
 
     const schoolId = user.type === "admin"
@@ -60,10 +50,7 @@ export async function POST(request: NextRequest) {
       : user.schoolId;
 
     if (!schoolId) {
-      return NextResponse.json(
-        { error: "School ID not found", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("School ID not found");
     }
 
     const result = await db.transaction(async (tx) => {
@@ -172,50 +159,31 @@ export async function POST(request: NextRequest) {
       result,
     });
 
-    return NextResponse.json({
-      data: {
+    return successResponse(
+      {
         success: true,
         ...result,
       } satisfies RoomAllocationResult,
-      message: `Student allocated to room ${result.roomNumber} in ${result.hostelName}`,
-    } satisfies ApiSuccess<RoomAllocationResult>);
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/hostels/allocate", method: "POST" });
-
-    const message = error instanceof Error ? error.message : "Failed to allocate room";
-
-    return NextResponse.json(
-      { error: message, status: message.includes("not found") ? 404 : 400 } satisfies ApiErrorResponse,
-      { status: message.includes("not found") ? 404 : 400 }
+      `Student allocated to room ${result.roomNumber} in ${result.hostelName}`
     );
-  }
-}
+  },
+  ["school-admin", "admin"]
+);
 
 // ============================================================================
 // GET /api/school-admin/hostels/allocate - Get hostel occupancy report
 // ============================================================================
 
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["school-admin", "admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { user } = authResult;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user } = auth;
 
     const schoolId = user.type === "admin"
       ? request.headers.get("x-school-id")
       : user.schoolId;
 
     if (!schoolId) {
-      return NextResponse.json(
-        { error: "School ID not found", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("School ID not found");
     }
 
     const buildings = await db
@@ -224,20 +192,38 @@ export async function GET(request: NextRequest) {
       .where(eq(hostelBuildings.schoolId, schoolId));
 
     if (buildings.length === 0) {
-      return NextResponse.json({
-        data: {
-          hostels: [],
-          summary: {
-            totalHostels: 0,
-            totalRooms: 0,
-            totalCapacity: 0,
-            totalOccupied: 0,
-            totalAvailable: 0,
-            overallOccupancyRate: 0,
-          },
+      return successResponse({
+        hostels: [],
+        summary: {
+          totalHostels: 0,
+          totalRooms: 0,
+          totalCapacity: 0,
+          totalOccupied: 0,
+          totalAvailable: 0,
+          overallOccupancyRate: 0,
         },
-      } satisfies ApiSuccess<any>);
+      } satisfies HostelAllocationReportData);
     }
+
+    type HostelAllocationReportData = {
+      buildings: Array<{
+        id: string;
+        name: string;
+        type: string;
+        capacity: number;
+        occupied: number;
+        available: number;
+        occupancyRate: number;
+      }>;
+      summary: {
+        totalHostels: number;
+        totalRooms: number;
+        totalCapacity: number;
+        totalOccupied: number;
+        totalAvailable: number;
+        overallOccupancyRate: number;
+      };
+    };
 
     const buildingIds = buildings.map((b) => b.id);
     const allRooms = await db
@@ -273,43 +259,28 @@ export async function GET(request: NextRequest) {
     const totalCapacity = report.reduce((sum, h) => sum + h.capacity, 0);
     const totalOccupied = report.reduce((sum, h) => sum + h.occupied, 0);
 
-    return NextResponse.json({
-      data: {
-        hostels: report,
-        summary: {
-          totalHostels: buildings.length,
-          totalRooms: allRooms.length,
-          totalCapacity,
-          totalOccupied,
-          totalAvailable: totalCapacity - totalOccupied,
-          overallOccupancyRate: totalCapacity > 0 ? Math.round((totalOccupied / totalCapacity) * 100) : 0,
-        },
+    return successResponse({
+      hostels: report,
+      summary: {
+        totalHostels: buildings.length,
+        totalRooms: allRooms.length,
+        totalCapacity,
+        totalOccupied,
+        totalAvailable: totalCapacity - totalOccupied,
+        overallOccupancyRate: totalCapacity > 0 ? Math.round((totalOccupied / totalCapacity) * 100) : 0,
       },
-    } satisfies ApiSuccess<any>);
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/hostels/allocate", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch occupancy report", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    } satisfies HostelAllocationReportData);
+  },
+  ["school-admin", "admin"]
+);
 
 // ============================================================================
 // DELETE /api/school-admin/hostels/allocate - Deallocate student from room
 // ============================================================================
 
-export async function DELETE(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["school-admin", "admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { userId, user } = authResult;
+export const DELETE = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId, user } = auth;
 
     const permCheck = await requirePermission(userId, "hostels.allocate");
     if (permCheck) return permCheck;
@@ -318,10 +289,7 @@ export async function DELETE(request: NextRequest) {
     const studentId = searchParams.get("studentId");
 
     if (!studentId) {
-      return NextResponse.json(
-        { error: "studentId is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("studentId is required");
     }
 
     const schoolId = user.type === "admin"
@@ -329,10 +297,7 @@ export async function DELETE(request: NextRequest) {
       : user.schoolId;
 
     if (!schoolId) {
-      return NextResponse.json(
-        { error: "School ID not found", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("School ID not found");
     }
 
     const [allocation] = await db
@@ -348,10 +313,7 @@ export async function DELETE(request: NextRequest) {
       .limit(1);
 
     if (!allocation) {
-      return NextResponse.json(
-        { error: "Student is not allocated to any room", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("Student is not allocated to any room");
     }
 
     await db.transaction(async (tx) => {
@@ -378,16 +340,10 @@ export async function DELETE(request: NextRequest) {
       deallocatedBy: userId,
     });
 
-    return NextResponse.json({
-      data: { success: true },
-      message: `Student removed from room successfully`,
-    } satisfies ApiSuccess<{ success: boolean }>);
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/hostels/allocate", method: "DELETE" });
-    return NextResponse.json(
-      { error: "Failed to deallocate room", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
+    return successResponse(
+      { success: true },
+      `Student removed from room successfully`
     );
-  }
-}
+  },
+  ["school-admin", "admin"]
+);

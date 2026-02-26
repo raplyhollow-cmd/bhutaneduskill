@@ -20,14 +20,15 @@ export async function GET(req: NextRequest) {
     const { userId } = authResult;
 
     // Get student's completed assessments
-    const userAssessments = await db.query.assessments.findMany({
-      where: and(
+    const userAssessments = await db
+      .select()
+      .from(assessments)
+      .where(and(
         eq(assessments.userId, userId),
         eq(assessments.status, 'completed')
-      ),
-      orderBy: [desc(assessments.completedAt)],
-      limit: 10,
-    });
+      ))
+      .orderBy(desc(assessments.completedAt))
+      .limit(10);
 
     if (userAssessments.length === 0) {
       return NextResponse.json({
@@ -41,30 +42,34 @@ export async function GET(req: NextRequest) {
     const assessmentIds = userAssessments.map(a => a.id);
 
     // Get student's career matches - CRITICAL: Filter by studentId
-    const matches = await db.query.careerMatches.findMany({
-      where: and(
+    const matches = await db
+      .select()
+      .from(careerMatches)
+      .where(and(
         inArray(careerMatches.assessmentId, assessmentIds),
         eq(careerMatches.studentId, userId) // CRITICAL: Only get this student's matches
-      ),
-      orderBy: [desc(careerMatches.matchScore)],
-      limit: 20,
-    });
+      ))
+      .orderBy(desc(careerMatches.matchScore))
+      .limit(20);
 
     // Get RIASEC results for additional context
-    const riasecResult = await db.query.riasecResults.findFirst({
-      where: eq(riasecResults.userId, userId),
-      orderBy: [desc(riasecResults.createdAt)],
-    });
+    const [riasecResult] = await db
+      .select()
+      .from(riasecResults)
+      .where(eq(riasecResults.userId, userId))
+      .orderBy(desc(riasecResults.createdAt))
+      .limit(1);
 
     // Get user profile for context
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: {
-        firstName: true,
-        lastName: true,
-        classGrade: true,
-      },
-    });
+    const [user] = await db
+      .select({
+        firstName: users.firstName,
+        lastName: users.lastName,
+        classGrade: users.classGrade,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
 
     // Transform matches with full career details
     const careerMatchesWithDetails = matches.map((match) => {

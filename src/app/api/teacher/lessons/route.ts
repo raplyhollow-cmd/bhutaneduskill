@@ -3,18 +3,18 @@
  *
  * POST /api/teacher/lessons - Create a new lesson plan
  * GET /api/teacher/lessons - Get lesson plans for teacher's classes
- * PATCH /api/teacher/lessons/:id - Update a lesson plan
- * DELETE /api/teacher/lessons/:id - Delete a lesson plan
  */
 
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { lessonPlans, syllabusProgress } from "@/lib/db/lesson-plan-schema";
 import { users, classes } from "@/lib/db/schema";
 import { eq, desc, and, or, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { createApiRoute, type AuthenticatedRequest, type AuthContext } from "@/lib/api/route-handler";
+import { successResponse, errorResponse } from "@/lib/api/response-helpers";
+import type { ApiSuccess, ApiErrorResponse } from "@/types";
 
 /**
  * GET - Retrieve lesson plans
@@ -24,15 +24,11 @@ import { nanoid } from "nanoid";
  * - upcoming: Get upcoming lessons only
  * - limit: Number of records (default: 50)
  */
-export async function GET(request: NextRequest) {
-  const authResult = await requireAuth(['teacher', 'admin', 'school-admin']);
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
+export const GET = createApiRoute(
+  ['teacher', 'admin', 'school-admin'],
+  async (request: AuthenticatedRequest, auth: AuthContext) => {
+    const { userId, user: currentUser } = auth;
 
-  const { userId, user: currentUser } = authResult;
-
-  try {
     const { searchParams } = new URL(request.url);
     const classId = searchParams.get('classId');
     const status = searchParams.get('status');
@@ -49,11 +45,7 @@ export async function GET(request: NextRequest) {
       teacherClassIds = teacherClasses.map((c) => c.id);
 
       if (teacherClassIds.length === 0) {
-        return NextResponse.json({
-          success: true,
-          data: [],
-          count: 0,
-        });
+        return successResponse([], 200);
       }
     }
 
@@ -76,8 +68,6 @@ export async function GET(request: NextRequest) {
       const today = new Date().toISOString().split('T')[0];
       conditions.push(or(
         eq(lessonPlans.scheduledDate, today),
-        // For scheduled dates >= today
-        // Note: This is a simple comparison, would need proper date handling
       ));
     }
 
@@ -115,32 +105,21 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    return NextResponse.json({
-      success: true,
+    return successResponse({
       data: enrichedPlans,
       count: enrichedPlans.length,
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/teacher/lessons", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch lesson plans" },
-      { status: 500 }
-    );
+    }, 200);
   }
-}
+);
 
 /**
  * POST - Create a new lesson plan
  */
-export async function POST(request: NextRequest) {
-  const authResult = await requireAuth(['teacher']);
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
+export const POST = createApiRoute(
+  ['teacher'],
+  async (request: AuthenticatedRequest, auth: AuthContext) => {
+    const { userId, user: currentUser } = auth;
 
-  const { userId } = authResult;
-
-  try {
     const body = await request.json();
     const {
       classId,
@@ -159,10 +138,7 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!classId || !title || !chapter) {
-      return NextResponse.json(
-        { error: "Missing required fields: classId, title, chapter" },
-        { status: 400 }
-      );
+      return errorResponse("Missing required fields: classId, title, chapter", 400);
     }
 
     // Verify teacher teaches this class
@@ -171,10 +147,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!classRecord || classRecord.teacherId !== userId) {
-      return NextResponse.json(
-        { error: "You do not teach this class" },
-        { status: 403 }
-      );
+      return errorResponse("You do not teach this class", 403);
     }
 
     const lessonId = `lesson-${nanoid()}`;
@@ -242,19 +215,12 @@ export async function POST(request: NextRequest) {
       title,
     });
 
-    return NextResponse.json({
-      success: true,
+    return successResponse({
       data: {
         ...newLesson,
         objectives: objectives || [],
         resources: resources || [],
       },
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/teacher/lessons", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to create lesson plan" },
-      { status: 500 }
-    );
+    }, 201);
   }
-}
+);

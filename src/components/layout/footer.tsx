@@ -43,9 +43,9 @@ const footerSections = {
     { name: "FAQ", href: "/faq" },
   ],
   legal: [
-    { name: "Privacy Policy", href: "/privacy" },
-    { name: "Terms of Service", href: "/terms" },
-    { name: "Cookie Policy", href: "/cookies" },
+    { name: "Privacy Policy", href: "/privacy-policy" },
+    { name: "Terms of Service", href: "/terms-of-service" },
+    { name: "Cookie Policy", href: "/cookie-policy" },
   ],
   social: [
     { name: "Facebook", icon: Facebook, href: "#", followers: "12K+" },
@@ -136,7 +136,7 @@ function NewsletterForm() {
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-500">
             No spam, unsubscribe anytime. Read our{" "}
-            <Link href="/privacy" className="text-orange-600 dark:text-orange-400 hover:underline">
+            <Link href="/privacy-policy" className="text-orange-600 dark:text-orange-400 hover:underline">
               Privacy Policy
             </Link>
           </p>

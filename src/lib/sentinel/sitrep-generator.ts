@@ -138,7 +138,7 @@ export async function generateSITREP(
     growth: growthData,
     revenue: revenueData,
     activity: activityData,
-    anomalies: anomalyResult as any,
+    anomalies: anomalyResult as Awaited<ReturnType<typeof detectAllAnomalies>>,
     summary,
   };
 
@@ -360,10 +360,10 @@ function determineHealthStatus(summary: { critical: number; high: number; medium
  * Generate basic summary without AI
  */
 function generateBasicSummary(data: {
-  growth: any;
-  revenue: any;
-  activity: any;
-  anomalies: any;
+  growth: ReturnType<typeof gatherGrowthData> extends Promise<infer T> ? T : never;
+  revenue: ReturnType<typeof gatherRevenueData> extends Promise<infer T> ? T : never;
+  activity: ReturnType<typeof gatherActivityData> extends Promise<infer T> ? T : never;
+  anomalies: Awaited<ReturnType<typeof detectAllAnomalies>>;
   healthStatus: string;
 }): string {
   const { growth, revenue, activity, anomalies, healthStatus } = data;
@@ -401,10 +401,10 @@ function generateBasicSummary(data: {
  * Generate AI summary using Gemini
  */
 async function generateAISummary(data: {
-  growth: any;
-  revenue: any;
-  activity: any;
-  anomalies: any;
+  growth: ReturnType<typeof gatherGrowthData> extends Promise<infer T> ? T : never;
+  revenue: ReturnType<typeof gatherRevenueData> extends Promise<infer T> ? T : never;
+  activity: ReturnType<typeof gatherActivityData> extends Promise<infer T> ? T : never;
+  anomalies: Awaited<ReturnType<typeof detectAllAnomalies>>;
   healthStatus: string;
 }): Promise<string> {
   // Import dynamically to avoid circular dependencies
@@ -481,7 +481,17 @@ async function saveSITREP(data: SITREPData) {
 /**
  * Parse existing SITREP from database
  */
-function parseExistingSITREP(record: any): SITREPData {
+interface SITREPDatabaseRecord {
+  reportDate: string;
+  createdAt: Date;
+  healthStatus: string;
+  growthData: Record<string, unknown>;
+  revenueData: Record<string, unknown>;
+  activityData: Record<string, unknown>;
+  anomalyCount: number;
+  aiGeneratedSummary: string;
+}
+function parseExistingSITREP(record: SITREPDatabaseRecord): SITREPData {
   return {
     reportDate: record.reportDate,
     timestamp: record.createdAt,

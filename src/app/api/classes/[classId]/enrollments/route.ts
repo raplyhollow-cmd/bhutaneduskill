@@ -1,55 +1,87 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
-import { logger } from "@/lib/logger";
+/**
+ * CLASS ENROLLMENTS API
+ *
+ * GET /api/classes/[classId]/enrollments - Get all students enrolled in a class
+ * POST /api/classes/[classId]/enrollments - Add students to a class
+ * DELETE /api/classes/[classId]/enrollments - Remove a student from a class
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ * FIXED: Removed db.query usage (disabled in neon-http driver)
+ */
+
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { enrollments, users, classes } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, createdResponse, badRequestResponse } from "@/lib/api/response-helpers";
 
-/**
- * GET /api/classes/[classId]/enrollments
- * Get all students enrolled in a class
- */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ classId: string }> }
-) {
-  try {
-    const authResult = await requireAuth(['school-admin', 'admin', 'teacher']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+// ============================================================================
+// GET /api/classes/[classId]/enrollments - Get all students enrolled in a class
+// ============================================================================
+
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId, user } = auth;
+    const { searchParams } = new URL(request.url);
+    const classId = searchParams.get("classId");
+
+    if (!classId) {
+      return badRequestResponse("classId is required");
     }
 
-    const { userId, user } = authResult;
-    const { classId } = await params;
-
     // Verify the class exists
-    const classRecord = await db.query.classes.findFirst({
-      where: eq(classes.id, classId),
-    });
+    const classRecord = await db
+      .select()
+      .from(classes)
+      .where(eq(classes.id, classId))
+      .limit(1);
 
-    if (!classRecord) {
-      return NextResponse.json({ error: "Class not found" }, { status: 404 });
+    if (classRecord.length === 0) {
+      return errorResponse("Class not found", 404);
     }
 
     // Teachers can only view enrollments for their own classes
-    if (user.type === 'teacher' && classRecord.teacherId !== userId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (user.type === 'teacher' && classRecord[0].teacherId !== userId) {
+      return errorResponse("Forbidden", 403);
     }
 
     // Get all enrollments for this class
-    const enrollmentRecords = await db.query.enrollments.findMany({
-      where: and(
+    const enrollmentRecords = await db
+      .select()
+      .from(enrollments)
+      .where(and(
         eq(enrollments.classId, classId),
         eq(enrollments.status, 'active')
-      ),
-      with: {
+      ))
+      .with({
         student: true,
-      },
-      orderBy: desc(enrollments.createdAt),
-    });
+      })
+      .orderBy(desc(enrollments.createdAt));
 
     // Transform the response to include student details
-    const enrollmentsWithStudents = enrollmentRecords.map((enrollment: any) => ({
+    interface EnrollmentWithStudent {
+      id: string;
+      studentId: string;
+      classId: string;
+      academicYear: string;
+      enrollmentDate: string;
+      status: string;
+      rollNumber: string | null;
+      section: string | null;
+      createdAt: Date;
+      updatedAt: Date;
+      student: {
+        id: string;
+        name: string;
+        firstName: string | null;
+        lastName: string | null;
+        email: string | null;
+        clerkUserId: string;
+        type: string;
+      } | null;
+    }
+    const enrollmentsWithStudents = enrollmentRecords.map((enrollment): EnrollmentWithStudent => ({
       id: enrollment.id,
       studentId: enrollment.studentId,
       classId: enrollment.classId,
@@ -71,63 +103,43 @@ export async function GET(
       } : null,
     }));
 
-    logger.info("Fetched class enrollments", { classId, count: enrollmentsWithStudents.length, userId });
+    return successResponse({ enrollments: enrollmentsWithStudents });
+  },
+  ['school-admin', 'admin', 'teacher']
+);
 
-    return NextResponse.json({
-      success: true,
-      enrollments: enrollmentsWithStudents,
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/classes/[classId]/enrollments", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch enrollments" },
-      { status: 500 }
-    );
-  }
-}
+// ============================================================================
+// POST /api/classes/[classId]/enrollments - Add students to a class
+// ============================================================================
 
-/**
- * POST /api/classes/[classId]/enrollments
- * Add students to a class
- */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ classId: string }> }
-) {
-  try {
-    const authResult = await requireAuth(['school-admin', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { userId } = authResult;
-    const { classId } = await params;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
     const body = await request.json();
-
-    const { studentIds, academicYear, rollNumbers, section } = body;
+    const { classId, studentIds, academicYear, rollNumbers, section } = body;
 
     // Validate required fields
+    if (!classId) {
+      return badRequestResponse("classId is required");
+    }
+
     if (!studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
-      return NextResponse.json(
-        { error: "studentIds is required and must be a non-empty array" },
-        { status: 400 }
-      );
+      return badRequestResponse("studentIds is required and must be a non-empty array");
     }
 
     if (!academicYear) {
-      return NextResponse.json(
-        { error: "academicYear is required" },
-        { status: 400 }
-      );
+      return badRequestResponse("academicYear is required");
     }
 
     // Verify the class exists
-    const classRecord = await db.query.classes.findFirst({
-      where: eq(classes.id, classId),
-    });
+    const classRecord = await db
+      .select()
+      .from(classes)
+      .where(eq(classes.id, classId))
+      .limit(1);
 
-    if (!classRecord) {
-      return NextResponse.json({ error: "Class not found" }, { status: 404 });
+    if (classRecord.length === 0) {
+      return errorResponse("Class not found", 404);
     }
 
     // Create enrollment records for each student
@@ -152,76 +164,49 @@ export async function POST(
     const results = await Promise.all(enrollmentPromises);
     const newEnrollments = results.flat();
 
-    logger.info("Created enrollments", { classId, count: newEnrollments.length, userId });
+    return createdResponse({ enrollments: newEnrollments });
+  },
+  ['school-admin', 'admin']
+);
 
-    return NextResponse.json({
-      success: true,
-      enrollments: newEnrollments,
-    }, { status: 201 });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/classes/[classId]/enrollments", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to create enrollments" },
-      { status: 500 }
-    );
-  }
-}
+// ============================================================================
+// DELETE /api/classes/[classId]/enrollments - Remove a student from a class
+// ============================================================================
 
-/**
- * DELETE /api/classes/[classId]/enrollments/[studentId]
- * Note: This handler is for the dynamic route at /api/classes/[classId]/enrollments/[studentId]
- * Delete functionality should be implemented in a separate route file
- */
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ classId: string }> }
-) {
-  try {
-    const authResult = await requireAuth(['school-admin', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { userId } = authResult;
-    const { classId } = await params;
+export const DELETE = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
     const { searchParams } = new URL(request.url);
-    const studentId = searchParams.get('studentId');
+    const classId = searchParams.get("classId");
+    const studentId = searchParams.get("studentId");
 
-    if (!studentId) {
-      return NextResponse.json(
-        { error: "studentId query parameter is required" },
-        { status: 400 }
-      );
+    if (!classId || !studentId) {
+      return badRequestResponse("classId and studentId query parameters are required");
     }
 
     // Find the enrollment record
-    const enrollmentRecord = await db.query.enrollments.findFirst({
-      where: and(
+    const enrollmentRecord = await db
+      .select()
+      .from(enrollments)
+      .where(and(
         eq(enrollments.classId, classId),
         eq(enrollments.studentId, studentId)
-      ),
-    });
+      ))
+      .limit(1);
 
-    if (!enrollmentRecord) {
-      return NextResponse.json({ error: "Enrollment not found" }, { status: 404 });
+    if (enrollmentRecord.length === 0) {
+      return errorResponse("Enrollment not found", 404);
     }
 
     // Delete the enrollment
     await db
       .delete(enrollments)
-      .where(eq(enrollments.id, enrollmentRecord.id));
+      .where(eq(enrollments.id, enrollmentRecord[0].id));
 
-    logger.info("Deleted enrollment", { classId, studentId, userId });
-
-    return NextResponse.json({
-      success: true,
+    return successResponse({
       message: "Student removed from class successfully",
+      enrollment: enrollmentRecord[0]
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/classes/[classId]/enrollments", method: "DELETE" });
-    return NextResponse.json(
-      { error: "Failed to delete enrollment" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['school-admin', 'admin']
+);

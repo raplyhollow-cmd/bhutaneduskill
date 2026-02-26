@@ -10,6 +10,7 @@ import { logger } from "@/lib/logger";
  * - Notification preferences with database persistence
  * - Account management (links to Clerk)
  * - Preferences (theme, notifications)
+ * - In-place editing for common fields
  */
 
 
@@ -34,8 +35,9 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@/components/ui/toaster";
 import { UnsavedChangesModal } from "@/components/forms/unsaved-changes-modal";
+import { InPlaceText, InPlaceTextarea } from "@/components/ui/in-place-editor";
 
 // Types for our data structures
 type UserProfile = {
@@ -307,11 +309,11 @@ export default function StudentSettingsPage() {
       });
     } catch (error) {
       logger.error("Upload error:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to upload profile picture";
+      const errorMessage = error instanceof Error ? error instanceof Error ? error.message : String(error) : "Failed to upload profile picture";
       toast({
         title: "Upload failed",
         description: errorMessage,
-        variant: "destructive",
+        variant: "error",
       });
     } finally {
       setIsSaving(false);
@@ -440,11 +442,11 @@ export default function StudentSettingsPage() {
       });
     } catch (error) {
       logger.error("Save error:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to save settings";
+      const errorMessage = error instanceof Error ? error instanceof Error ? error.message : String(error) : "Failed to save settings";
       toast({
         title: "Save failed",
         description: errorMessage,
-        variant: "destructive",
+        variant: "error",
       });
     } finally {
       setIsSaving(false);
@@ -500,6 +502,40 @@ export default function StudentSettingsPage() {
     return await response.json();
   };
 
+  // In-place editors for frequently updated fields
+  const saveFirstName = async (value: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await saveSettingsInternal({ firstName: value });
+      setFirstName(value);
+      originalValues.current.firstName = value;
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error instanceof Error ? error.message : String(error) : "Failed to update" };
+    }
+  };
+
+  const saveLastName = async (value: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await saveSettingsInternal({ lastName: value });
+      setLastName(value);
+      originalValues.current.lastName = value;
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error instanceof Error ? error.message : String(error) : "Failed to update" };
+    }
+  };
+
+  const saveBio = async (value: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      await saveSettingsInternal({ bio: value });
+      setBio(value);
+      originalValues.current.bio = value;
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error instanceof Error ? error.message : String(error) : "Failed to update" };
+    }
+  };
+
   // Handle form submission
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -516,11 +552,11 @@ export default function StudentSettingsPage() {
       });
     } catch (error) {
       logger.error("Save error:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to save settings";
+      const errorMessage = error instanceof Error ? error instanceof Error ? error.message : String(error) : "Failed to save settings";
       toast({
         title: "Save failed",
         description: errorMessage,
-        variant: "destructive",
+        variant: "error",
       });
     } finally {
       setIsSaving(false);
@@ -579,6 +615,48 @@ export default function StudentSettingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            {/* Quick Edit Section - InPlaceEditors for frequently changed fields */}
+            <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-800">
+              <h3 className="text-sm font-medium text-orange-900 dark:text-orange-100 mb-3">Quick Edit (Click to edit)</h3>
+              <div className="space-y-3">
+                <div className="flex items-center gap-4">
+                  <span className="text-sm text-gray-600 dark:text-gray-400 w-24">Name:</span>
+                  <div className="flex items-center gap-2">
+                    <InPlaceText
+                      value={firstName}
+                      onSave={saveFirstName}
+                      onChange={setFirstName}
+                      placeholder="First name"
+                      minLength={1}
+                      maxLength={50}
+                      required={true}
+                    />
+                    <InPlaceText
+                      value={lastName}
+                      onSave={saveLastName}
+                      onChange={setLastName}
+                      placeholder="Last name"
+                      minLength={1}
+                      maxLength={50}
+                      required={true}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Bio:</span>
+                  <InPlaceTextarea
+                    multiline={true}
+                    rows={2}
+                    value={bio}
+                    onSave={saveBio}
+                    onChange={setBio}
+                    placeholder="Click to add your bio..."
+                    maxLength={500}
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Profile Picture */}
             <div className="flex items-center gap-6">
               <div className="relative">

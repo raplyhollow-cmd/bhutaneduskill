@@ -1,10 +1,20 @@
+/**
+ * LIBRARY ISSUE/CIRCULATION API
+ *
+ * Handles book borrowing, renewals, and returns
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
+import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { books, users, circulation, libraryMembers, libraryReservations } from "@/lib/db/schema";
-import { eq, and, sql, desc, gt } from "drizzle-orm";
+import { eq, and, sql, desc } from "drizzle-orm";
 import { z } from "zod";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse, notFoundResponse } from "@/lib/api/response-helpers";
 
 // Fine rate: Nu. 2 per day (Bhutanese Ngultrum)
 const FINE_RATE_PER_DAY = 2;
@@ -32,7 +42,21 @@ function calculateFine(dueDate: string, returnDate: string = new Date().toISOStr
 }
 
 // Helper: Check if user has library membership
-async function checkLibraryMembership(userId: string, schoolId: string): Promise<{ valid: boolean; member?: any; error?: string }> {
+interface LibraryMembershipResult {
+  valid: boolean;
+  member?: {
+    id: string;
+    userId: string;
+    schoolId: string;
+    memberType: string;
+    membershipStatus: string;
+    borrowingLimit: number;
+    fineDue: number | string;
+  };
+  error?: string;
+}
+
+async function checkLibraryMembership(userId: string, schoolId: string): Promise<LibraryMembershipResult> {
   const member = await db.query.libraryMembers.findFirst({
     where: and(
       eq(libraryMembers.userId, userId),
@@ -64,18 +88,36 @@ async function checkLibraryMembership(userId: string, schoolId: string): Promise
     return { valid: false, error: `Please pay outstanding fines (Nu. ${fineDue}) before borrowing` };
   }
 
-  return { valid: true, member };
+  return {
+    valid: true,
+    member: {
+      id: member.id,
+      userId: member.userId,
+      schoolId: member.schoolId,
+      memberType: member.memberType,
+      membershipStatus: member.membershipStatus,
+      borrowingLimit: member.borrowingLimit,
+      fineDue: member.fineDue,
+    },
+  };
 }
 
+const borrowSchema = z.object({
+  action: z.enum(["borrow", "renew", "return"]),
+  bookId: z.string().optional(),
+  circulationId: z.string().optional(),
+  borrowDays: z.number().min(1).max(30).default(DEFAULT_BORROW_DAYS),
+});
+
 // GET /api/library/issue - Get circulation records
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin', 'student', 'teacher']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
 
-    const { user } = authResult;
+    const { user } = auth;
     const { searchParams } = new URL(request.url);
 
     const status = searchParams.get("status") || "";
@@ -95,7 +137,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (status) {
-      conditions.push(eq(circulation.status, status as any));
+      conditions.push(eq(circulation.status, status as "borrowed" | "returned" | "overdue" | "lost"));
     }
 
     if (bookId) {
@@ -140,43 +182,28 @@ export async function GET(request: NextRequest) {
       ? circulationWithCalcs
       : circulationWithCalcs.filter((r) => r.status !== "returned");
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        circulation: filteredRecords,
-        stats: {
-          total: circulationWithCalcs.length,
-          borrowed: circulationWithCalcs.filter((r) => r.status === "borrowed").length,
-          overdue: circulationWithCalcs.filter((r) => r.isOverdue).length,
-          returned: circulationWithCalcs.filter((r) => r.status === "returned").length,
-        },
+    return successResponse({
+      circulation: filteredRecords,
+      stats: {
+        total: circulationWithCalcs.length,
+        borrowed: circulationWithCalcs.filter((r) => r.status === "borrowed").length,
+        overdue: circulationWithCalcs.filter((r) => r.isOverdue).length,
+        returned: circulationWithCalcs.filter((r) => r.status === "returned").length,
       },
     });
-  } catch (error) {
-    logger.error("Circulation fetch error:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch circulation records" },
-      { status: 500 }
-    );
-  }
-}
-
-const borrowSchema = z.object({
-  action: z.enum(["borrow", "renew", "return"]),
-  bookId: z.string().optional(),
-  circulationId: z.string().optional(),
-  borrowDays: z.number().min(1).max(30).default(DEFAULT_BORROW_DAYS),
-});
+  },
+  ['admin', 'school-admin', 'student', 'teacher']
+);
 
 // POST /api/library/issue - Handle book borrow, renew, return
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin', 'student', 'teacher']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const POST = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
 
-    const { user } = authResult;
+    const { user } = auth;
     const body = await request.json();
     const validatedData = borrowSchema.parse(body);
 
@@ -184,10 +211,7 @@ export async function POST(request: NextRequest) {
 
     if (action === "borrow") {
       if (!bookId) {
-        return NextResponse.json(
-          { success: false, error: "Book ID is required for borrowing" },
-          { status: 400 }
-        );
+        return badRequestResponse("Book ID is required for borrowing");
       }
 
       // Check book availability
@@ -196,26 +220,17 @@ export async function POST(request: NextRequest) {
       });
 
       if (!book) {
-        return NextResponse.json(
-          { success: false, error: "Book not found" },
-          { status: 404 }
-        );
+        return notFoundResponse("Book");
       }
 
       if (book.status !== "available") {
-        return NextResponse.json(
-          { success: false, error: `Book is currently ${book.status}` },
-          { status: 400 }
-        );
+        return badRequestResponse(`Book is currently ${book.status}`);
       }
 
       // Check library membership
       const membershipCheck = await checkLibraryMembership(user.id, user.schoolId || "");
       if (!membershipCheck.valid) {
-        return NextResponse.json(
-          { success: false, error: membershipCheck.error },
-          { status: 400 }
-        );
+        return badRequestResponse(membershipCheck.error || "Membership check failed");
       }
 
       // Calculate due date
@@ -224,10 +239,10 @@ export async function POST(request: NextRequest) {
       dueDate.setDate(dueDate.getDate() + borrowDays);
 
       // Create circulation record
-      const circulationId = `circ_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+      const newCirculationId = `circ_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
       const [newCirculation] = await db.insert(circulation).values({
-        id: circulationId,
+        id: newCirculationId,
         bookId: book.id,
         studentId: user.id,
         borrowerId: user.id,
@@ -257,28 +272,22 @@ export async function POST(request: NextRequest) {
         .where(eq(libraryMembers.id, membershipCheck.member!.id));
 
       logger.info("Book borrowed", {
-        circulationId,
+        circulationId: newCirculationId,
         bookId: book.id,
         userId: user.id,
         dueDate: dueDate.toISOString(),
       });
 
-      return NextResponse.json({
-        success: true,
-        data: {
-          circulation: newCirculation,
-          dueDate: dueDate.toISOString(),
-          message: `Book borrowed successfully. Due date: ${dueDate.toLocaleDateString()}`,
-        },
+      return successResponse({
+        circulation: newCirculation,
+        dueDate: dueDate.toISOString(),
+        message: `Book borrowed successfully. Due date: ${dueDate.toLocaleDateString()}`,
       });
     }
 
     if (action === "renew") {
       if (!circulationId) {
-        return NextResponse.json(
-          { success: false, error: "Circulation ID is required for renewal" },
-          { status: 400 }
-        );
+        return badRequestResponse("Circulation ID is required for renewal");
       }
 
       // Get circulation record
@@ -290,32 +299,20 @@ export async function POST(request: NextRequest) {
       });
 
       if (!record) {
-        return NextResponse.json(
-          { success: false, error: "Circulation record not found" },
-          { status: 404 }
-        );
+        return notFoundResponse("Circulation record");
       }
 
       // Verify ownership
       if (record.borrowerId !== user.id && user.type !== 'admin' && user.type !== 'school-admin') {
-        return NextResponse.json(
-          { success: false, error: "You can only renew your own borrowed books" },
-          { status: 403 }
-        );
+        return badRequestResponse("You can only renew your own borrowed books");
       }
 
       if (record.status !== "borrowed") {
-        return NextResponse.json(
-          { success: false, error: "This book is not currently borrowed" },
-          { status: 400 }
-        );
+        return badRequestResponse("This book is not currently borrowed");
       }
 
       if (record.renewals >= record.maxRenewals) {
-        return NextResponse.json(
-          { success: false, error: "Maximum renewals reached" },
-          { status: 400 }
-        );
+        return badRequestResponse("Maximum renewals reached");
       }
 
       // Check if overdue
@@ -324,10 +321,7 @@ export async function POST(request: NextRequest) {
         // Calculate fine first
         const fine = calculateFine(record.dueDate);
         if (fine > 0) {
-          return NextResponse.json(
-            { success: false, error: `Cannot renew overdue book. Please pay fine of Nu. ${fine} first` },
-            { status: 400 }
-          );
+          return badRequestResponse(`Cannot renew overdue book. Please pay fine of Nu. ${fine} first`);
         }
       }
 
@@ -352,22 +346,16 @@ export async function POST(request: NextRequest) {
         renewals: record.renewals + 1,
       });
 
-      return NextResponse.json({
-        success: true,
-        data: {
-          circulation: updatedCirculation,
-          newDueDate: newDueDate.toISOString(),
-          message: `Book renewed successfully. New due date: ${newDueDate.toLocaleDateString()}`,
-        },
+      return successResponse({
+        circulation: updatedCirculation,
+        newDueDate: newDueDate.toISOString(),
+        message: `Book renewed successfully. New due date: ${newDueDate.toLocaleDateString()}`,
       });
     }
 
     if (action === "return") {
       if (!circulationId) {
-        return NextResponse.json(
-          { success: false, error: "Circulation ID is required for return" },
-          { status: 400 }
-        );
+        return badRequestResponse("Circulation ID is required for return");
       }
 
       // Get circulation record
@@ -379,17 +367,11 @@ export async function POST(request: NextRequest) {
       });
 
       if (!record) {
-        return NextResponse.json(
-          { success: false, error: "Circulation record not found" },
-          { status: 404 }
-        );
+        return notFoundResponse("Circulation record");
       }
 
       if (record.status !== "borrowed") {
-        return NextResponse.json(
-          { success: false, error: "This book is not currently borrowed" },
-          { status: 400 }
-        );
+        return badRequestResponse("This book is not currently borrowed");
       }
 
       const returnDate = new Date();
@@ -450,33 +432,16 @@ export async function POST(request: NextRequest) {
         returnDate: returnDate.toISOString(),
       });
 
-      return NextResponse.json({
-        success: true,
-        data: {
-          circulation: updatedCirculation,
-          fine,
-          message: fine > 0
-            ? `Book returned with a fine of Nu. ${fine}`
-            : "Book returned successfully",
-        },
+      return successResponse({
+        circulation: updatedCirculation,
+        fine,
+        message: fine > 0
+          ? `Book returned with a fine of Nu. ${fine}`
+          : "Book returned successfully",
       });
     }
 
-    return NextResponse.json(
-      { success: false, error: "Invalid action" },
-      { status: 400 }
-    );
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { success: false, error: "Validation failed", details: error.issues },
-        { status: 400 }
-      );
-    }
-    logger.error("Circulation action error:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to process circulation action" },
-      { status: 500 }
-    );
-  }
-}
+    return badRequestResponse("Invalid action");
+  },
+  ['admin', 'school-admin', 'student', 'teacher']
+);

@@ -39,7 +39,7 @@ import {
   Receipt,
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@/components/ui/toaster";
 
 // ============================================================================
 // TYPES
@@ -258,7 +258,7 @@ export default function MinistryBillingPage() {
       const message = err instanceof Error ? err.message : "Failed to load billing data";
       setError(message);
       toast({
-        variant: "destructive",
+        variant: "error",
         title: "Error",
         description: message,
       });
@@ -336,7 +336,7 @@ export default function MinistryBillingPage() {
       }
     } catch (err) {
       toast({
-        variant: "destructive",
+        variant: "error",
         title: "Error",
         description: "Failed to download invoice",
       });
@@ -388,7 +388,7 @@ export default function MinistryBillingPage() {
       });
     } catch (err) {
       toast({
-        variant: "destructive",
+        variant: "error",
         title: "Error",
         description: "Failed to export report",
       });
@@ -432,7 +432,7 @@ export default function MinistryBillingPage() {
       }
     } catch (err) {
       toast({
-        variant: "destructive",
+        variant: "error",
         title: "Error",
         description: err instanceof Error ? err.message : "Failed to generate invoice",
       });

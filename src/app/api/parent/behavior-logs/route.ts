@@ -3,25 +3,22 @@
  *
  * API for parents to fetch their children's behavior logs
  * (merit/demerit logs created by teachers).
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse } from "@/lib/api/response-helpers";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { users, parents, parentToStudent } from "@/lib/db/schema";
 import { teacherBehaviorLogs } from "@/lib/db/teacher-logs-schema";
 import { eq, and, desc, inArray } from "drizzle-orm";
 
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['parent']);
-
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
 
     // Get parent record
     const parentRecord = await db.query.parents.findFirst({
@@ -29,7 +26,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!parentRecord) {
-      return NextResponse.json({ error: "Parent record not found" }, { status: 404 });
+      return errorResponse("Parent record not found", 404);
     }
 
     // Get linked children
@@ -38,8 +35,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (relationships.length === 0) {
-      return NextResponse.json({
-        success: true,
+      return successResponse({
         logs: [],
         children: [],
       });
@@ -97,17 +93,10 @@ export async function GET(request: NextRequest) {
       logCount: enrichedLogs.length,
     });
 
-    return NextResponse.json({
-      success: true,
+    return successResponse({
       logs: enrichedLogs,
       children: studentRecords,
     });
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/parent/behavior-logs", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch behavior logs", details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['parent']
+);

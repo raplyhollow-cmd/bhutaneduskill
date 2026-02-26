@@ -7,6 +7,27 @@ import { nanoid } from "nanoid";
 import { neon } from "@neondatabase/serverless";
 import { logger } from "@/lib/logger";
 
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface ClerkJSEmailAddress {
+  id: string;
+  emailAddress: string;
+}
+
+interface WizardProgressRecord {
+  id: string;
+  userId: string;
+  currentStep: string;
+  completedSteps: string[];
+  data: Record<string, unknown>;
+  isCompleted: boolean;
+  lastUpdated: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 const sql = neon(process.env.DATABASE_URL!);
 
 export async function POST(request: NextRequest) {
@@ -38,7 +59,7 @@ export async function POST(request: NextRequest) {
       const lastName = user.lastName || "";
       // Defensive email extraction - try multiple methods
       const email = user.primaryEmailAddress?.emailAddress
-        || user.emailAddresses?.find((e: any) => e.id === user.primaryEmailAddressId)?.emailAddress
+        || user.emailAddresses?.find((e: ClerkJSEmailAddress) => e.id === user.primaryEmailAddressId)?.emailAddress
         || user.emailAddresses?.[0]?.emailAddress
         || "";
 
@@ -96,16 +117,16 @@ export async function POST(request: NextRequest) {
         profileImage: user.imageUrl || "",
         gender: "",
         grade: 0,
-        section: "",
+        section: null, // JSON column
         rollNumber: "",
         address: "",
         city: "",
         state: "",
         postalCode: "",
         country: "Bhutan",
-        parentContact: "",
-        parentPhone: "",
-        emergencyContact: "",
+        parentContact: null, // JSON column
+        parentPhone: null, // JSON column
+        emergencyContact: null, // JSON column
         bloodGroup: "",
         enrollmentDate: new Date().toISOString().split('T')[0],
         lastLogin: new Date().toISOString(),
@@ -144,7 +165,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update or create wizard progress (gracefully handle missing table)
-    let existingProgress: any[] = [];
+    let existingProgress: WizardProgressRecord[] = [];
     try {
       existingProgress = await db
         .select()
@@ -162,7 +183,7 @@ export async function POST(request: NextRequest) {
           .update(wizardProgress)
           .set({
             currentStep: step === "complete" ? "4" : String((parseInt(existingProgress[0].currentStep as string) || 0) + 1),
-            data: { ...(existingProgress[0].data as any), ...data },
+            data: { ...(existingProgress[0]?.data || {}), ...data },
             updatedAt: new Date(),
           })
           .where(eq(wizardProgress.id, existingProgress[0].id));

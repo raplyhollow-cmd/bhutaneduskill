@@ -38,6 +38,27 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+type CollegeData = {
+  id: string;
+  name: string;
+  code: string;
+  type: string;
+  dzongkhag?: string;
+  location?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  website?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  programs?: string[];
+  hasHostel?: boolean;
+  hasLibrary?: boolean | null;
+  hasLab?: boolean;
+  hasSports?: boolean;
+  description?: string | null;
+  isActive?: boolean;
+};
+
 export default function AdminCollegesPage() {
   const [colleges, setColleges] = useState<any[]>([]);
   const [filteredColleges, setFilteredColleges] = useState<any[]>([]);
@@ -52,7 +73,7 @@ export default function AdminCollegesPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [editingCollege, setEditingCollege] = useState<any>(null);
+  const [editingCollege, setEditingCollege] = useState<CollegeData | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -170,7 +191,7 @@ export default function AdminCollegesPage() {
     }
   };
 
-  const openEditModal = (college: any) => {
+  const openEditModal = (college: CollegeData) => {
     setEditingCollege(college);
     setFormData({
       name: college.name || "",

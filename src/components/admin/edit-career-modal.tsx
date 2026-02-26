@@ -1,7 +1,7 @@
 "use client";
 
 import { logger } from "@/lib/logger";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@/components/ui/toaster";
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { updateCareer } from "@/app/admin/careers/actions";
+import { portal } from "@/styles/design-tokens";
 
 interface Career {
   id: string;
@@ -117,8 +118,8 @@ export function EditCareerModal({ open, onClose, onSuccess, career }: EditCareer
       logger.error("[EDIT CAREER] Error:", error);
       toast({
         title: "Failed to update career",
-        description: error instanceof Error ? error.message : "Please try again.",
-        variant: "destructive",
+        description: error instanceof Error ? error instanceof Error ? error.message : String(error) : "Please try again.",
+        variant: "error",
       });
     } finally {
       setIsLoading(false);
@@ -294,7 +295,7 @@ export function EditCareerModal({ open, onClose, onSuccess, career }: EditCareer
               type="submit"
               disabled={isLoading || !name || !slug}
               className="flex-1"
-              style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
+              style={{ background: portal.admin.gradient }}
             >
               {isLoading ? "Updating..." : "Update Career"}
             </Button>

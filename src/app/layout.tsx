@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "next-themes";
-import { ToastProvider } from "@/components/ui/toast";
+import { ToastProvider } from "@/components/ui/toaster";
 import { UnifiedAIAssistant } from "@/components/ai/unified-ai-assistant";
 import { UserProvider } from "@/hooks/use-current-user";
 import { AppErrorBoundary } from "@/components/error/app-error-boundary";
@@ -36,7 +36,7 @@ export default function RootLayout({
 
   return (
     <ClerkProvider publishableKey={publishableKey}>
-      <html lang="en" suppressHydrationWarning>
+      <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
@@ -47,8 +47,9 @@ export default function RootLayout({
                   <ToastProvider>
                     {children}
                   </ToastProvider>
-                  <UnifiedAIAssistant />
                 </TransitionProvider>
+                {/* Render UnifiedAIAssistant directly - it's already a client component */}
+                <UnifiedAIAssistant />
                 {/* Global UI Providers */}
                 <GlobalProviders />
               </UserProvider>

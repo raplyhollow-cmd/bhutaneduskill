@@ -23,6 +23,7 @@ import {
   TrendingUp,
   Lightbulb,
 } from "lucide-react";
+import { portal, semantic, semanticGradients } from "@/styles/design-tokens";
 import {
   getAssessmentQuestions,
   createAssessmentQuestion,
@@ -601,7 +602,7 @@ export function QuestionsModal({ open, onClose, assessmentType, onSuccess }: Que
                 <Button
                   onClick={handleAddQuestion}
                   disabled={isLoading || !newQuestion.questionText || (hasOptions && (!newQuestion.options || newQuestion.options.length < 2))}
-                  style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
+                  style={{ background: portal.admin.gradient }}
                   className="text-white"
                 >
                   {isLoading ? "Adding..." : "Add Question"}
@@ -612,7 +613,7 @@ export function QuestionsModal({ open, onClose, assessmentType, onSuccess }: Que
             <Button
               onClick={() => setShowAddForm(true)}
               className="w-full"
-              style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
+              style={{ background: portal.admin.gradient }}
             >
               <Plus className="w-4 h-4 mr-2" />
               Add New Question
@@ -660,7 +661,7 @@ export function QuestionsModal({ open, onClose, assessmentType, onSuccess }: Que
                                 size="sm"
                                 onClick={() => handleUpdateQuestion(index)}
                                 disabled={isLoading}
-                                style={{ background: "linear-gradient(135deg, rgb(34 197 94) 0%, rgb(22 163 74) 100%)" }}
+                                style={{ background: semanticGradients.success.gradient }}
                                 className="text-white"
                               >
                                 <Save className="w-3 h-3 mr-1" />

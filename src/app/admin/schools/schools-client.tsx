@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { PremiumCard, PremiumCardHeader, PremiumCardTitle, PremiumCardDescription, PremiumCardContent } from "@/components/admin/premium-card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ExpressAddModal, useExpressAdd } from "@/components/ui/express-add-modal";
+import { TableSkeleton } from "@/components/ui/skeleton/table-skeleton";
+import { StatCardSkeleton } from "@/components/ui/skeleton/card-skeleton";
 import {
   Building2,
   Users,
@@ -20,6 +23,7 @@ import {
   XCircle,
   Clock,
   TrendingUp,
+  Sparkles,
 } from "lucide-react";
 import { AddSchoolSlideIn } from "@/components/admin/add-school-slide-in";
 import { EditSchoolModal } from "@/components/admin/edit-school-modal";
@@ -75,6 +79,9 @@ export function SchoolsClient({
   const [statusFilter, setStatusFilter] = useState<FilterStatus>("all");
   const [typeFilter, setTypeFilter] = useState("");
 
+  // ExpressAddModal hook for quick school add
+  const quickAdd = useExpressAdd();
+
   const handleModalSuccess = () => {
     router.refresh();
   };
@@ -117,6 +124,36 @@ export function SchoolsClient({
     setDeleteConfirm(null);
   };
 
+  // Quick add school handler - creates school with minimal info
+  const handleQuickAddSchool = async (name: string) => {
+    try {
+      const response = await fetch("/api/schools", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          code: name.substring(0, 3).toUpperCase() + Date.now().toString().slice(-3),
+          schoolType: "MSS",
+          level: "Middle Secondary",
+          contactEmail: "contact@school.edu.bt",
+          contactPhone: "+975",
+          address: "Bhutan",
+          districtId: null, // Will need to be set later
+        }),
+      });
+
+      if (response.ok) {
+        router.refresh();
+        return { success: true };
+      } else {
+        const data = await response.json();
+        return { success: false, error: data.error || "Failed to add school" };
+      }
+    } catch (error) {
+      return { success: false, error: "Network error. Please try again." };
+    }
+  };
+
   // Filter schools
   const filteredSchools = schoolsWithStats.filter((school) => {
     const matchesSearch =
@@ -139,7 +176,7 @@ export function SchoolsClient({
   const activeSchools = schoolsWithStats.filter((s) => s.isActive !== false).length;
   const pendingSchools = schoolsWithStats.filter((s) => s.isActive === false).length;
 
-  const filterChips: { key: FilterStatus; label: string; count: number; icon: any }[] = [
+  const filterChips: { key: FilterStatus; label: string; count: number; icon: LucideIcon }[] = [
     { key: "all", label: "All Schools", count: totalSchools, icon: Building2 },
     { key: "active", label: "Active", count: activeSchools, icon: CheckCircle },
     { key: "pending", label: "Pending", count: pendingSchools, icon: Clock },
@@ -186,14 +223,24 @@ export function SchoolsClient({
             Manage all schools and tenants on the platform
           </p>
         </div>
-        <Button
-          onClick={() => setIsAddModalOpen(true)}
-          style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
-          className="text-white shadow-lg shadow-pink-500/30 hover:shadow-xl hover:shadow-pink-500/40 transition-all"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add School
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={quickAdd.open}
+            className="shadow-sm hover:shadow-md transition-all"
+          >
+            <Sparkles className="w-4 h-4 mr-2" />
+            Quick Add
+          </Button>
+          <Button
+            onClick={() => setIsAddModalOpen(true)}
+            style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
+            className="text-white shadow-lg shadow-pink-500/30 hover:shadow-xl hover:shadow-pink-500/40 transition-all"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add School
+          </Button>
+        </div>
       </div>
 
       {/* Quick Stats */}
@@ -600,6 +647,21 @@ export function SchoolsClient({
         onClose={handleCloseEditModal}
         onSuccess={handleModalSuccess}
         school={editingSchool}
+      />
+
+      {/* Quick Add School Modal */}
+      <ExpressAddModal
+        isOpen={quickAdd.isOpen}
+        onClose={quickAdd.close}
+        onSubmit={handleQuickAddSchool}
+        title="Quick Add School"
+        description="Enter school name (basic info will be auto-generated)"
+        placeholder="e.g., Thimphu Middle Secondary School"
+        successMessage="School added successfully! You can edit details later."
+        errorMessage="Failed to add school. Please try again."
+        icon={Building2}
+        minLength={3}
+        submitLabel="Press Enter to add school"
       />
 
       {/* Delete Confirmation Modal */}

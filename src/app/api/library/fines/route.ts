@@ -1,10 +1,20 @@
+/**
+ * LIBRARY FINES API
+ *
+ * Handles fine management for library books
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
+import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { circulation, libraryMembers, users, books } from "@/lib/db/schema";
-import { eq, and, sql, desc, gt } from "drizzle-orm";
+import { eq, and, sql, desc } from "drizzle-orm";
 import { z } from "zod";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse, notFoundResponse } from "@/lib/api/response-helpers";
 
 // Fine rate: Nu. 2 per day (Bhutanese Ngultrum)
 const FINE_RATE_PER_DAY = 2;
@@ -36,14 +46,14 @@ const payFineSchema = z.object({
 });
 
 // GET /api/library/fines - Get fines information
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin', 'student', 'teacher']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
 
-    const { user } = authResult;
+    const { user } = auth;
     const { searchParams } = new URL(request.url);
 
     const unpaidOnly = searchParams.get("unpaid") === "true";
@@ -94,7 +104,7 @@ export async function GET(request: NextRequest) {
       .orderBy(desc(circulation.dueDate));
 
     // Helper to convert decimal to number
-    const toNumber = (value: string | number | null | undefined): number => {
+    const toNumberInner = (value: string | number | null | undefined): number => {
       if (typeof value === 'number') return value;
       if (!value) return 0;
       return parseFloat(value as string) || 0;
@@ -104,10 +114,10 @@ export async function GET(request: NextRequest) {
     const finesWithCalc = circulationRecords.map((record) => {
       const calculatedFine = record.status === "borrowed"
         ? calculateFine(record.dueDate)
-        : toNumber(record.fine);
+        : toNumberInner(record.fine);
 
       const totalFine = calculatedFine;
-      const paid = record.finePaid ? toNumber(record.fine) : 0;
+      const paid = record.finePaid ? toNumberInner(record.fine) : 0;
       const outstanding = totalFine - paid;
 
       return {
@@ -141,7 +151,20 @@ export async function GET(request: NextRequest) {
     const totalPaid = finesWithCalc.reduce((sum, f) => sum + f.paid, 0);
 
     // Get library members with fine due
-    let membersWithFines: any[] = [];
+    interface LibraryMemberWithUser {
+      id: string;
+      userId: string;
+      membershipNumber: string;
+      fineDue: string;
+      membershipStatus: string;
+      user?: {
+        id: string;
+        name: string | null;
+        email: string | null;
+        type: string;
+      };
+    }
+    let membersWithFines: LibraryMemberWithUser[] = [];
     if (user.type === 'admin' || user.type === 'school-admin') {
       const memberConditions = [];
 
@@ -158,65 +181,82 @@ export async function GET(request: NextRequest) {
         ? and(...memberConditions)
         : sql`${libraryMembers.fineDue} > ${"0"}`;
 
-      membersWithFines = await db.query.libraryMembers.findMany({
-        where: memberWhereClause,
-        with: {
-          user: {
-            columns: {
-              id: true,
-              name: true,
-              email: true,
-              type: true,
-            },
-          },
-        },
-      });
+      // Use select instead of query to avoid type issues with relations
+      const memberData = await db
+        .select({
+          id: libraryMembers.id,
+          userId: libraryMembers.userId,
+          membershipNumber: libraryMembers.membershipNumber,
+          fineDue: libraryMembers.fineDue,
+          membershipStatus: libraryMembers.membershipStatus,
+          userIdCol: users.id,
+          userName: users.name,
+          userEmail: users.email,
+          userType: users.type,
+        })
+        .from(libraryMembers)
+        .leftJoin(users, eq(libraryMembers.userId, users.id))
+        .where(memberWhereClause);
+
+      // Map to correct interface
+      membersWithFines = memberData.map((m) => ({
+        id: m.id,
+        userId: m.userId,
+        membershipNumber: m.membershipNumber,
+        fineDue: m.fineDue,
+        membershipStatus: m.membershipStatus,
+        user: m.userIdCol ? {
+          id: m.userIdCol,
+          name: m.userName,
+          email: m.userEmail,
+          type: m.userType,
+        } : undefined,
+      }));
     }
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        fines: outstandingFines,
-        membersWithFines,
-        summary: {
-          totalOutstanding,
-          totalPaid,
-          overdueBooks: outstandingFines.filter((f) => f.isOverdue).length,
-          totalMembersWithFines: membersWithFines.length,
-        },
+    return successResponse({
+      fines: outstandingFines,
+      membersWithFines,
+      summary: {
+        totalOutstanding,
+        totalPaid,
+        overdueBooks: outstandingFines.filter((f) => f.isOverdue).length,
+        totalMembersWithFines: membersWithFines.length,
       },
     });
-  } catch (error) {
-    logger.error("Fines fetch error:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch fines" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin', 'school-admin', 'student', 'teacher']
+);
 
 // POST /api/library/fines - Pay fines (school-admin only)
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const POST = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
 
-    const { user } = authResult;
+    const { user } = auth;
     const body = await request.json();
     const validatedData = payFineSchema.parse(body);
 
     if (!validatedData.memberId && !validatedData.circulationId) {
-      return NextResponse.json(
-        { success: false, error: "Either memberId or circulationId is required" },
-        { status: 400 }
-      );
+      return badRequestResponse("Either memberId or circulationId is required");
     }
 
     let paidAmount = 0;
-    let updatedMember: any = null;
-    const updatedCirculations: any[] = [];
+    interface UpdatedMember {
+      id: string;
+      fineDue: string;
+      userId: string;
+    }
+    let updatedMember: UpdatedMember | null = null;
+    interface UpdatedCirculation {
+      id: string;
+      finePaid: boolean | null;
+      fine: number | null;
+    }
+    const updatedCirculations: UpdatedCirculation[] = [];
 
     if (validatedData.circulationId) {
       // Pay fine for specific circulation record
@@ -225,10 +265,7 @@ export async function POST(request: NextRequest) {
       });
 
       if (!circulationRecord) {
-        return NextResponse.json(
-          { success: false, error: "Circulation record not found" },
-          { status: 404 }
-        );
+        return notFoundResponse("Circulation record");
       }
 
       const calculatedFine = circulationRecord.status === "borrowed"
@@ -240,10 +277,7 @@ export async function POST(request: NextRequest) {
       const outstanding = totalFine - alreadyPaid;
 
       if (outstanding <= 0) {
-        return NextResponse.json(
-          { success: false, error: "No outstanding fine for this record" },
-          { status: 400 }
-        );
+        return badRequestResponse("No outstanding fine for this record");
       }
 
       const paymentAmount = Math.min(validatedData.amount, outstanding);
@@ -289,18 +323,12 @@ export async function POST(request: NextRequest) {
       });
 
       if (!member) {
-        return NextResponse.json(
-          { success: false, error: "Library member not found" },
-          { status: 404 }
-        );
+        return notFoundResponse("Library member");
       }
 
       const currentFineDue = toNumber(member.fineDue);
       if (currentFineDue <= 0) {
-        return NextResponse.json(
-          { success: false, error: "No outstanding fines for this member" },
-          { status: 400 }
-        );
+        return badRequestResponse("No outstanding fines for this member");
       }
 
       const paymentAmount = Math.min(validatedData.amount, currentFineDue);
@@ -345,48 +373,31 @@ export async function POST(request: NextRequest) {
       userId: user.id,
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        paidAmount,
-        remainingBalance: updatedMember ? toNumber(updatedMember.fineDue) : 0,
-        member: updatedMember,
-        circulations: updatedCirculations,
-        message: `Payment of Nu. ${paidAmount} recorded successfully`,
-      },
+    return successResponse({
+      paidAmount,
+      remainingBalance: updatedMember ? toNumber(updatedMember.fineDue) : 0,
+      member: updatedMember,
+      circulations: updatedCirculations,
+      message: `Payment of Nu. ${paidAmount} recorded successfully`,
     });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { success: false, error: "Validation failed", details: error.issues },
-        { status: 400 }
-      );
-    }
-    logger.error("Fine payment error:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to process fine payment" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin', 'school-admin']
+);
 
 // PATCH /api/library/fines - Update fine records (school-admin only)
-export async function PATCH(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const PATCH = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
 
-    const { user } = authResult;
+    const { user } = auth;
     const body = await request.json();
     const { circulationId, waiveAmount, reason } = body;
 
     if (!circulationId) {
-      return NextResponse.json(
-        { success: false, error: "Circulation ID is required" },
-        { status: 400 }
-      );
+      return badRequestResponse("Circulation ID is required");
     }
 
     // Get circulation record
@@ -395,10 +406,7 @@ export async function PATCH(request: NextRequest) {
     });
 
     if (!circulationRecord) {
-      return NextResponse.json(
-        { success: false, error: "Circulation record not found" },
-        { status: 404 }
-      );
+      return notFoundResponse("Circulation record");
     }
 
     const calculatedFine = circulationRecord.status === "borrowed"
@@ -442,19 +450,11 @@ export async function PATCH(request: NextRequest) {
       userId: user.id,
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        circulation: updatedCirculation,
-        waivedAmount: waiveAmt,
-        message: `Fine of Nu. ${waiveAmt} waived successfully`,
-      },
+    return successResponse({
+      circulation: updatedCirculation,
+      waivedAmount: waiveAmt,
+      message: `Fine of Nu. ${waiveAmt} waived successfully`,
     });
-  } catch (error) {
-    logger.error("Fine waiver error:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to waive fine" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin', 'school-admin']
+);

@@ -256,15 +256,30 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
   const { id: studentId, schoolId } = authData;
 
   // 1. Get student info
-  const studentRecord = await db.query.users.findFirst({
-    where: eq(users.id, studentId),
-  });
+  // IMPORTANT: Use db.select() to avoid loading relations (users has self-referential parent relation)
+  const studentRecords = await db
+    .select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      email: users.email,
+      phone: users.phone,
+      classGrade: users.classGrade,
+      section: users.section,
+      schoolId: users.schoolId,
+      dateOfBirth: users.dateOfBirth,
+      profileImage: users.profileImage,
+      onboardingStatus: users.onboardingStatus,
+    })
+    .from(users)
+    .where(eq(users.id, studentId))
+    .limit(1);
 
-  if (!studentRecord) {
+  if (studentRecords.length === 0) {
     throw new Error("Student not found");
   }
 
-  const userRecord = studentRecord as UserRecord;
+  const userRecord = studentRecords[0] as UserRecord;
   const studentName = `${userRecord.firstName} ${userRecord.lastName || ""}`.trim();
 
   // CRITICAL: Check if student is still pending enrollment
@@ -300,7 +315,7 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
       .where(eq(careerMatches.studentId, studentId));
 
     const studentInfo: StudentInfo = {
-      id: studentRecord.id,
+      id: studentRecords[0].id,
       firstName: userRecord.firstName,
       lastName: userRecord.lastName,
       name: studentName,
@@ -350,7 +365,7 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
   });
 
   const studentInfo: StudentInfo = {
-    id: studentRecord.id,
+    id: studentRecords[0].id,
     firstName: userRecord.firstName,
     lastName: userRecord.lastName,
     name: studentName,
@@ -388,12 +403,36 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
 
     homeworkSummary.total = allHomework.length;
 
-    for (const hw of allHomework) {
-      const submission = await db.query.homeworkSubmissions.findFirst({
-        where: eq(homeworkSubmissions.homeworkId, hw.id),
-      });
+    // OPTIMIZATION: Batch fetch all submissions for this student at once
+    const homeworkIds = allHomework.map(hw => hw.id);
+    let studentSubmissionsMap = new Map<string, { gradedAt: Date | null }>();
 
-      if (submission?.studentId === studentId) {
+    if (homeworkIds.length > 0) {
+      const studentSubmissions = await db
+        .select({
+          homeworkId: homeworkSubmissions.homeworkId,
+          studentId: homeworkSubmissions.studentId,
+          gradedAt: homeworkSubmissions.gradedAt,
+        })
+        .from(homeworkSubmissions)
+        .where(
+          and(
+            inArray(homeworkSubmissions.homeworkId, homeworkIds),
+            eq(homeworkSubmissions.studentId, studentId)
+          )
+        );
+
+      // Create a map for O(1) lookup
+      studentSubmissionsMap = new Map(
+        studentSubmissions.map(s => [s.homeworkId, { gradedAt: s.gradedAt }])
+      );
+    }
+
+    // Now iterate without additional queries
+    for (const hw of allHomework) {
+      const submission = studentSubmissionsMap.get(hw.id);
+
+      if (submission) {
         if (submission.gradedAt) {
           homeworkSummary.graded++;
         }
@@ -494,10 +533,24 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
     limit: 3,
   });
 
+  // OPTIMIZATION: Batch fetch all homework details at once
+  const homeworkIds = recentSubmissions.map(s => s.homeworkId);
+  let homeworkMap = new Map<string, { title: string }>();
+
+  if (homeworkIds.length > 0) {
+    const homeworkDetails = await db
+      .select({
+        id: homework.id,
+        title: homework.title,
+      })
+      .from(homework)
+      .where(inArray(homework.id, homeworkIds));
+
+    homeworkMap = new Map(homeworkDetails.map(hw => [hw.id, { title: hw.title }]));
+  }
+
   for (const sub of recentSubmissions) {
-    const hw = await db.query.homework.findFirst({
-      where: eq(homework.id, sub.homeworkId),
-    });
+    const hw = homeworkMap.get(sub.homeworkId);
 
     if (hw) {
       const subWithExtras = sub as HomeworkSubmissionWithExtras;
@@ -550,16 +603,27 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
       limit: 5,
     });
 
-    for (const hw of upcomingHomework) {
-      const submission = await db.query.homeworkSubmissions.findFirst({
-        where: and(
-          eq(homeworkSubmissions.homeworkId, hw.id),
-          eq(homeworkSubmissions.studentId, studentId)
-        ),
-      });
+    // OPTIMIZATION: Batch fetch all submissions for this student
+    const homeworkIds = upcomingHomework.map(hw => hw.id);
+    let submittedHomeworkIds = new Set<string>();
 
-      // Only add if not submitted
-      if (!submission) {
+    if (homeworkIds.length > 0) {
+      const studentSubmissions = await db
+        .select({ homeworkId: homeworkSubmissions.homeworkId })
+        .from(homeworkSubmissions)
+        .where(
+          and(
+            inArray(homeworkSubmissions.homeworkId, homeworkIds),
+            eq(homeworkSubmissions.studentId, studentId)
+          )
+        );
+
+      submittedHomeworkIds = new Set(studentSubmissions.map(s => s.homeworkId));
+    }
+
+    for (const hw of upcomingHomework) {
+      // Only add if not submitted (check from our pre-fetched set)
+      if (!submittedHomeworkIds.has(hw.id)) {
         const dueDate = new Date(hw.dueDate);
         const daysUntil = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
         const hwWithExtras = hw as HomeworkWithExtras;
@@ -743,15 +807,29 @@ export async function getStudentProgressData(): Promise<StudentProgressData> {
   const { id: studentId } = authData;
 
   // Get student info
-  const studentRecord = await db.query.users.findFirst({
-    where: eq(users.id, studentId),
-  });
+  // IMPORTANT: Use db.select() to avoid loading relations (users has self-referential parent relation)
+  const studentRecords = await db
+    .select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      email: users.email,
+      phone: users.phone,
+      classGrade: users.classGrade,
+      section: users.section,
+      schoolId: users.schoolId,
+      dateOfBirth: users.dateOfBirth,
+      profileImage: users.profileImage,
+    })
+    .from(users)
+    .where(eq(users.id, studentId))
+    .limit(1);
 
-  if (!studentRecord) {
+  if (studentRecords.length === 0) {
     throw new Error("Student not found");
   }
 
-  const userRecord = studentRecord as UserRecord;
+  const userRecord = studentRecords[0] as UserRecord;
   const studentName = `${userRecord.firstName} ${userRecord.lastName || ""}`.trim();
 
   // Get enrollment for class info
@@ -763,7 +841,7 @@ export async function getStudentProgressData(): Promise<StudentProgressData> {
   });
 
   const studentInfo: StudentInfo = {
-    id: studentRecord.id,
+    id: studentRecords[0].id,
     firstName: userRecord.firstName,
     lastName: userRecord.lastName,
     name: studentName,
@@ -857,14 +935,32 @@ export async function getStudentProgressData(): Promise<StudentProgressData> {
       where: eq(homework.classId, enrollment.classId),
     });
 
+    // OPTIMIZATION: Batch fetch all submissions for this student and class homework
+    const homeworkIds = classHomework.map(hw => hw.id);
+    let submissionsMap = new Map<string, { percentage: number | null }>();
+
+    if (homeworkIds.length > 0) {
+      const studentSubmissions = await db
+        .select({
+          homeworkId: homeworkSubmissions.homeworkId,
+          percentage: homeworkSubmissions.percentage,
+        })
+        .from(homeworkSubmissions)
+        .where(
+          and(
+            inArray(homeworkSubmissions.homeworkId, homeworkIds),
+            eq(homeworkSubmissions.studentId, studentId)
+          )
+        );
+
+      submissionsMap = new Map(
+        studentSubmissions.map(s => [s.homeworkId, { percentage: s.percentage }])
+      );
+    }
+
     for (const hw of classHomework) {
       const subjectName = hw.subjectId || "General";
-      const submission = await db.query.homeworkSubmissions.findFirst({
-        where: and(
-          eq(homeworkSubmissions.homeworkId, hw.id),
-          eq(homeworkSubmissions.studentId, studentId)
-        ),
-      });
+      const submission = submissionsMap.get(hw.id);
 
       if (!subjectsMap.has(subjectName)) {
         subjectsMap.set(subjectName, {
@@ -881,11 +977,10 @@ export async function getStudentProgressData(): Promise<StudentProgressData> {
       subject.totalAssignments++;
 
       if (submission) {
-        const subWithExtras = submission as HomeworkSubmissionWithExtras;
         subject.completedAssignments++;
-        if (subWithExtras.percentage) {
+        if (submission.percentage) {
           subject.averageScore = Math.round(
-            (subject.averageScore * (subject.completedAssignments - 1) + subWithExtras.percentage) /
+            (subject.averageScore * (subject.completedAssignments - 1) + submission.percentage) /
             subject.completedAssignments
           );
         }
@@ -983,13 +1078,28 @@ export async function getStudentHomework(options: {
 
   const result: StudentHomeworkItem[] = [];
 
+  // OPTIMIZATION: Batch fetch all submissions for this student at once
+  const homeworkIds = homeworkList.map(hw => hw.id);
+  let submissionsMap = new Map<string, HomeworkSubmissionWithExtras>();
+
+  if (homeworkIds.length > 0) {
+    const studentSubmissions = await db
+      .select()
+      .from(homeworkSubmissions)
+      .where(
+        and(
+          inArray(homeworkSubmissions.homeworkId, homeworkIds),
+          eq(homeworkSubmissions.studentId, studentId)
+        )
+      );
+
+    submissionsMap = new Map(
+      studentSubmissions.map(s => [s.homeworkId, s as HomeworkSubmissionWithExtras])
+    );
+  }
+
   for (const hw of homeworkList) {
-    const submission = await db.query.homeworkSubmissions.findFirst({
-      where: and(
-        eq(homeworkSubmissions.homeworkId, hw.id),
-        eq(homeworkSubmissions.studentId, studentId)
-      ),
-    });
+    const submission = submissionsMap.get(hw.id);
 
     let itemStatus: "pending" | "submitted" | "graded" = "pending";
     if (submission) {
@@ -1013,7 +1123,7 @@ export async function getStudentHomework(options: {
       status: itemStatus,
       submissionId: submission?.id || null,
       score: submission?.score || null,
-      percentage: (submission as HomeworkSubmissionWithExtras | undefined)?.percentage || null,
+      percentage: submission?.percentage || null,
       feedback: submission?.feedback || null,
       gradedAt: submission?.gradedAt ? new Date(submission.gradedAt).toISOString() : null,
       teacherName: "Unknown", // Relation removed - would need separate query

@@ -1,5 +1,5 @@
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
@@ -22,9 +22,9 @@ export async function POST(request: NextRequest) {
     const { userId } = await auth();
 
     if (!userId) {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 401 }
+      return new Response(
+        JSON.stringify({ success: false, error: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
       );
     }
 
@@ -72,22 +72,22 @@ export async function POST(request: NextRequest) {
           dateOfBirth: "",
           gender: "other",
           grade: 0,
-          section: "",
+          section: null, // JSON column
           rollNumber: "",
           address: "",
           city: data.officeLocation || "",
           state: "",
           postalCode: "",
           country: "Bhutan",
-          parentContact: "",
-          parentPhone: "",
-          emergencyContact: "",
+          parentContact: null, // JSON column
+          parentPhone: null, // JSON column
+          emergencyContact: null, // JSON column
           bloodGroup: "",
           enrollmentDate: new Date().toISOString().split('T')[0],
           lastLogin: new Date().toISOString(),
           employeeId: data.ministryId || "",
           department: data.department || "",
-          subjects: "",
+          subjects: null, // JSON column
           isActive: true,
           onboardingComplete: true,
           createdAt: new Date(),
@@ -119,27 +119,33 @@ export async function POST(request: NextRequest) {
         dbUser = userRecord[0];
       }
 
-      return NextResponse.json({
-        success: true,
-        message: "Ministry setup completed successfully",
-        user: {
-          id: dbUser.id,
-          name: dbUser.name,
-          email: dbUser.email,
-          type: "ministry",
-        },
-      });
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "Ministry setup completed successfully",
+          user: {
+            id: dbUser.id,
+            name: dbUser.name,
+            email: dbUser.email,
+            type: "ministry",
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      );
     }
 
-    return NextResponse.json(
-      { success: false, error: "Invalid step" },
-      { status: 400 }
+    return new Response(
+      JSON.stringify({ success: false, error: "Invalid step" }),
+      { status: 400, headers: { "Content-Type": "application/json" } }
     );
   } catch (error) {
     logger.error("Ministry setup error:", error);
-    return NextResponse.json(
-      { success: false, error: "Setup failed. Please try again." },
-      { status: 500 }
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: "Setup failed. Please try again."
+      }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
 }

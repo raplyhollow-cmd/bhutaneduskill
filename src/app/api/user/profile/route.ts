@@ -1,66 +1,60 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+/**
+ * USER PROFILE API
+ *
+ * GET /api/user/profile - Get user profile
+ * POST /api/user/profile - Create or update user profile
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse } from "@/lib/api/response-helpers";
 import { logger } from "@/lib/logger";
 
+// ============================================================================
 // GET /api/user/profile - Get user profile
-export async function GET(req: NextRequest) {
-  try {
-    const authResult = await requireAuth();
+// ============================================================================
 
-    // Handle user not found in DB (new signup case)
-    if ("error" in authResult) {
-      if (authResult.status === 404) {
-        // User exists in Clerk but not in DB - needs setup
-        return NextResponse.json({
-          profile: null,
-          needsSetup: true,
-          error: authResult.error
-        }, { status: 200 }); // Return 200 so client can handle gracefully
-      }
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
 
-    const { user } = authResult;
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const { user } = auth;
 
     // User already fetched from DB by requireAuth, just transform and return
+    // Note: user only contains selected fields from requireAuth (not full User type)
     const transformedProfile = {
       ...user,
-      bio: (user as any).settings?.bio || "",
+      // Safely access optional fields that may not be selected
+      bio: ((user as any).settings as Record<string, unknown> | null)?.bio as string || "",
       grade: (user as any).classGrade ? `Class ${(user as any).classGrade}` : "",
     };
 
-    return NextResponse.json({ profile: transformedProfile, needsSetup: false });
-  } catch (error) {
-    logger.error(error, { route: "/api/user/profile", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch profile" },
-      { status: 500 }
-    );
-  }
-}
+    return successResponse({ profile: transformedProfile, needsSetup: false });
+  },
+  [] // No role restriction - any authenticated user can access
+);
 
+// ============================================================================
 // POST /api/user/profile - Create or update user profile
-export async function POST(req: NextRequest) {
-  try {
-    const authResult = await requireAuth();
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { user } = authResult;
+// ============================================================================
 
-    if (!user) {
-      logger.security("unauthorized_access_attempt", { route: "/api/user/profile", method: "POST" });
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+export const POST = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
 
-    const body = await req.json();
+    const { user } = auth;
+    const body = await request.json();
     logger.info("Updating profile", { userId: user.id });
 
     const {
@@ -76,7 +70,7 @@ export async function POST(req: NextRequest) {
     } = body;
 
     // Build update object with only the fields that exist in schema
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
       updatedAt: new Date(),
     };
 
@@ -110,30 +104,10 @@ export async function POST(req: NextRequest) {
     // Return updated profile
     const updatedUser = { ...user, ...updateData };
 
-    return NextResponse.json({
+    return successResponse({
       success: true,
       profile: updatedUser
     });
-  } catch (error) {
-    logger.error(error, { route: "/api/user/profile", method: "POST" });
-
-    // Get more detailed error info
-    let errorMessage = "Unknown error";
-    if (error instanceof Error) {
-      errorMessage = error.message;
-      // Check for common database errors
-      if (error.message.includes("violates")) {
-        errorMessage = "Database constraint violation: " + error.message;
-      } else if (error.message.includes("null value in column")) {
-        errorMessage = "Missing required field: " + error.message;
-      } else if (error.message.includes("duplicate key")) {
-        errorMessage = "Duplicate entry: " + error.message;
-      }
-    }
-
-    return NextResponse.json(
-      { error: "Failed to save profile", details: errorMessage },
-      { status: 500 }
-    );
-  }
-}
+  },
+  [] // No role restriction - any authenticated user can access
+);

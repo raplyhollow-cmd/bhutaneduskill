@@ -14,8 +14,42 @@ import { users } from "@/lib/db/schema";
 import { payrollRecords } from "@/lib/db/payroll-schema";
 import { eq, and } from "drizzle-orm";
 
+// ============================================================================
+// TYPES
+// ============================================================================
+
 interface RouteContext {
   params: Promise<{ id: string }>;
+}
+
+interface PayrollUpdateData {
+  basicSalary?: number;
+  gradePay?: number;
+  allowances?: Array<{ amount?: number; [key: string]: unknown }>;
+  deductions?: Array<{ amount?: number; [key: string]: unknown }>;
+  bonus?: number;
+  arrears?: number;
+  otherEarnings?: number;
+  paymentMethod?: string;
+  paymentStatus?: string;
+  notes?: string;
+  updatedAt: Date;
+  paidAt?: Date;
+  grossEarnings?: number;
+  totalAllowances?: number;
+  totalDeductions?: number;
+  totalEarnings?: number;
+  netPay?: number;
+}
+
+interface AllowanceItem {
+  amount?: number;
+  [key: string]: unknown;
+}
+
+interface DeductionItem {
+  amount?: number;
+  [key: string]: unknown;
 }
 
 // GET /api/school-admin/payroll/[id] - Get a single payroll record
@@ -117,10 +151,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       "notes",
     ];
 
-    const updateData: any = { updatedAt: new Date() };
+    const updateData: PayrollUpdateData = { updatedAt: new Date() };
     for (const field of allowedUpdates) {
       if (body[field] !== undefined) {
-        updateData[field] = body[field];
+        (updateData as Record<string, unknown>)[field] = body[field];
       }
     }
 
@@ -132,13 +166,13 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       const deductions = body.deductions ?? existing.deductions;
 
       const totalAllowances =
-        typeof allowances === "object"
-          ? allowances.reduce((sum: number, a: any) => sum + (a.amount || 0), 0)
+        typeof allowances === "object" && Array.isArray(allowances)
+          ? allowances.reduce((sum: number, a: AllowanceItem) => sum + (a.amount || 0), 0)
           : existing.totalAllowances;
 
       const totalDeductions =
-        typeof deductions === "object"
-          ? deductions.reduce((sum: number, d: any) => sum + (d.amount || 0), 0)
+        typeof deductions === "object" && Array.isArray(deductions)
+          ? deductions.reduce((sum: number, d: DeductionItem) => sum + (d.amount || 0), 0)
           : existing.totalDeductions;
 
       const bonus = body.bonus ?? existing.bonus ?? 0;
@@ -157,6 +191,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     // Update payment status timestamp
     if (body.paymentStatus === "paid" && existing.paymentStatus !== "paid") {
       updateData.paidAt = new Date();
+      (updateData as Record<string, unknown>).paidAt = new Date();
     }
 
     const [updated] = await db

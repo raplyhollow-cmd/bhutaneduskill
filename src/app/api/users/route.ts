@@ -1,20 +1,42 @@
-import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
-import { requirePermission, requireAnyPermission } from "@/lib/rbac";
+/**
+ * USERS API
+ *
+ * GET /api/users - Get users with filtering
+ * PUT /api/users - Update user
+ * POST /api/users - Create user
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ * FIXED: No longer uses disabled db.query API
+ */
+
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq, and, like, or, desc } from "drizzle-orm";
+import { requirePermission } from "@/lib/rbac";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, createdResponse, badRequestResponse } from "@/lib/api/response-helpers";
+import type { SQL } from "drizzle-orm";
 
-// GET /api/users - Get users (with filters for role, school, etc.)
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin", "school-admin", "counselor", "teacher"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+// ============================================================================
+// TYPES
+// ============================================================================
+
+type UserRole = "student" | "teacher" | "parent" | "admin" | "counselor";
+type WhereCondition = SQL | undefined;
+
+// ============================================================================
+// GET /api/users - Get users with filters
+// ============================================================================
+
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
 
-    const { userId, user: currentUser } = authResult;
+    const { userId, user: currentUser } = auth;
 
     // Check RBAC permission for reading users
     const permCheck = await requirePermission(userId, "users.read");
@@ -26,18 +48,16 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search");
     const limit = parseInt(searchParams.get("limit") || "50");
 
-    let query = db.query.users;
+    // Build where conditions using db.select() instead of db.query()
+    const conditions: WhereCondition[] = [];
 
-    // Build where conditions based on filters
-    const conditions = [];
     if (role) {
-      // Type guard to ensure role is valid
-      const validRoles = ["student", "teacher", "parent", "admin", "counselor"] as const;
-      if (validRoles.includes(role as any)) {
-        conditions.push(eq(users.type, role as any));
+      const validRoles: UserRole[] = ["student", "teacher", "parent", "admin", "counselor"];
+      if (validRoles.includes(role as UserRole)) {
+        conditions.push(eq(users.type, role as UserRole));
       }
     }
-    if (schoolId && (currentUser as any).type !== "teacher") {
+    if (schoolId && currentUser.type !== "teacher") {
       conditions.push(eq(users.schoolId, schoolId));
     }
     if (search) {
@@ -50,41 +70,39 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // For teachers, only show students from their classes
+    // For teachers, only show students from their school
     if (currentUser.type === "teacher" && currentUser.schoolId) {
       conditions.push(eq(users.schoolId, currentUser.schoolId));
     }
 
-    let userList: any[];
-    if (conditions.length > 0) {
-      userList = await query.findMany({
-        where: conditions.length === 1 ? conditions[0] : and(...conditions),
-        limit,
-        orderBy: desc(users.createdAt),
-      });
-    } else {
-      userList = await query.findMany({
-        limit,
-        orderBy: desc(users.createdAt),
-      });
-    }
+    const whereClause = conditions.length > 0
+      ? conditions.length === 1 ? conditions[0] : and(...conditions)
+      : undefined;
 
-    return NextResponse.json({ users: userList });
-  } catch (error) {
-    logger.error("Users fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
-  }
-}
+    const userList = await db
+      .select()
+      .from(users)
+      .where(whereClause)
+      .limit(limit)
+      .orderBy(desc(users.createdAt));
 
+    return successResponse({ users: userList });
+  },
+  ["admin", "school-admin", "counselor", "teacher"]
+);
+
+// ============================================================================
 // PUT /api/users - Update user
-export async function PUT(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin", "school-admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+// ============================================================================
+
+export const PUT = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
 
-    const { userId } = authResult;
+    const { userId } = auth;
 
     // Check RBAC permission for updating users
     const permCheck = await requirePermission(userId, "users.update");
@@ -94,7 +112,7 @@ export async function PUT(request: NextRequest) {
     const { id, ...updateData } = body;
 
     if (!id) {
-      return NextResponse.json({ error: "User ID required" }, { status: 400 });
+      return badRequestResponse("User ID required");
     }
 
     const result = await db
@@ -104,22 +122,23 @@ export async function PUT(request: NextRequest) {
       .returning();
 
     const updatedUser = Array.isArray(result) ? result[0] : result;
-    return NextResponse.json({ user: updatedUser });
-  } catch (error) {
-    logger.error("User update error:", error);
-    return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
-  }
-}
+    return successResponse({ user: updatedUser });
+  },
+  ["admin", "school-admin"]
+);
 
-// POST /api/users - Create user (admin only)
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin", "school-admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+// ============================================================================
+// POST /api/users - Create user
+// ============================================================================
+
+export const POST = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
 
-    const { userId } = authResult;
+    const { userId } = auth;
 
     // Check RBAC permission for creating users
     const permCheck = await requirePermission(userId, "users.create");
@@ -138,9 +157,7 @@ export async function POST(request: NextRequest) {
 
     const newUser = Array.isArray(result) ? result[0] : result;
 
-    return NextResponse.json({ user: newUser }, { status: 201 });
-  } catch (error) {
-    logger.error("User creation error:", error);
-    return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
-  }
-}
+    return createdResponse({ user: newUser });
+  },
+  ["admin", "school-admin"]
+);

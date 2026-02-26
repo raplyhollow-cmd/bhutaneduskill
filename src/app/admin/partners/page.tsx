@@ -214,9 +214,9 @@ export default function AdminPartnersPage() {
 
       // Refresh the list
       await fetchPartners();
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error("[PARTNERS] Failed to create partner:", err);
-      setError(err.message || "Failed to create partner. Please try again.");
+      setError(err instanceof Error ? err.message : "Failed to create partner. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -252,9 +252,10 @@ export default function AdminPartnersPage() {
 
       // Refresh the list
       await fetchPartners();
-    } catch (err: any) {
+    } catch (err: unknown) {
       logger.error("Failed to update partner:", err);
-      setError(err.message || "Failed to update partner. Please try again.");
+      const message = err instanceof Error ? err.message : "Failed to update partner. Please try again.";
+      setError(message);
     } finally {
       setIsSubmitting(false);
     }

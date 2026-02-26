@@ -5,15 +5,18 @@
  * GET /api/admin/analytics-data
  *
  * Protected: Requires 'admin' role
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users, schools, assessments, assessmentResults, riasecResults, mbtiResults, discResults, careerMatches, examResultsEnhanced, attendance, feePayments, studentFees, subscriptions, invoices, homework, homeworkSubmissions, rubApplications } from "@/lib/db/schema";
-import { requireAuth } from "@/lib/auth-utils";
-import { logger } from "@/lib/logger";
 import { sql, eq, and, gte, lte, desc, count, avg, sum } from "drizzle-orm";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse } from "@/lib/api/response-helpers";
+import { logger } from "@/lib/logger";
 
 // ============================================================================
 // Types
@@ -136,67 +139,57 @@ function getMonthKey(date: Date): string {
 // API Handler
 // ============================================================================
 
-export async function GET(req: Request) {
-  const startTime = Date.now();
-
-  try {
-    // Authentication check
-    const authResult = await requireAuth(['admin']);
-    if ('error' in authResult) {
-      logger.security("unauthorized_access_attempt", {
-        route: "/api/admin/analytics-data",
-        method: "GET",
-      });
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
+export const GET = createApiRoute<Record<string, unknown>, AnalyticsData>(
+  async (request: NextRequest) => {
+    const startTime = Date.now();
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
 
-    const { userId } = authResult;
+    const { userId } = auth;
 
     logger.info("Fetching analytics data", { userId });
 
-    // Calculate all metrics in parallel for better performance
-    const [
-      schoolEngagement,
-      userGrowth,
-      careerInterests,
-      assessmentCompletion,
-      academicPerformance,
-      revenue,
-    ] = await Promise.all([
-      getSchoolEngagementMetrics(),
-      getUserGrowthTrends(),
-      getCareerInterestsDistribution(),
-      getAssessmentCompletionMetrics(),
-      getAcademicPerformanceMetrics(),
-      getRevenueMetrics(),
-    ]);
+    try {
+      // Calculate all metrics in parallel for better performance
+      const [
+        schoolEngagement,
+        userGrowth,
+        careerInterests,
+        assessmentCompletion,
+        academicPerformance,
+        revenue,
+      ] = await Promise.all([
+        getSchoolEngagementMetrics(),
+        getUserGrowthTrends(),
+        getCareerInterestsDistribution(),
+        getAssessmentCompletionMetrics(),
+        getAcademicPerformanceMetrics(),
+        getRevenueMetrics(),
+      ]);
 
-    const data: AnalyticsData = {
-      schoolEngagement,
-      userGrowth,
-      careerInterests,
-      assessmentCompletion,
-      academicPerformance,
-      revenue,
-      generatedAt: new Date().toISOString(),
-    };
+      const data: AnalyticsData = {
+        schoolEngagement,
+        userGrowth,
+        careerInterests,
+        assessmentCompletion,
+        academicPerformance,
+        revenue,
+        generatedAt: new Date().toISOString(),
+      };
 
-    const duration = Date.now() - startTime;
-    logger.info("Analytics data fetched successfully", { userId, duration: `${duration}ms` });
+      const duration = Date.now() - startTime;
+      logger.info("Analytics data fetched successfully", { userId, duration: `${duration}ms` });
 
-    return NextResponse.json({ data } satisfies ApiSuccess<AnalyticsData>);
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/analytics-data", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch analytics data", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+      return successResponse(data);
+    } catch (error) {
+      logger.apiError(error, { route: "/api/admin/analytics-data", method: "GET" });
+      return errorResponse("Failed to fetch analytics data", 500);
+    }
+  },
+  ['admin']
+);
 
 // ============================================================================
 // Metric Calculation Functions
@@ -252,36 +245,19 @@ async function getSchoolEngagementMetrics(): Promise<SchoolEngagementMetrics> {
     schoolsByLevel[row.level || 'unknown'] = row.count;
   }
 
-  // Top 10 schools by student count
-  const topSchoolsResult = await db
+  // Top 10 schools by student count - OPTIMIZED with single query
+  const topSchoolsByStudentCount = await db
     .select({
       schoolId: schools.id,
       schoolName: schools.name,
+      studentCount: count(),
     })
     .from(schools)
-    .orderBy(desc(sql`(
-      SELECT COUNT(*)
-      FROM ${users}
-      WHERE ${users.schoolId} = ${schools.id}
-      AND ${users.type} = 'student'
-    )`))
+    .innerJoin(users, eq(schools.id, users.schoolId))
+    .where(eq(users.type, 'student'))
+    .groupBy(schools.id, schools.name)
+    .orderBy(desc(count()))
     .limit(10);
-
-  // Get student counts for each school
-  const topSchoolsByStudentCount = await Promise.all(
-    topSchoolsResult.map(async (school) => {
-      const [studentCountResult] = await db
-        .select({ count: count() })
-        .from(users)
-        .where(and(eq(users.schoolId, school.schoolId), eq(users.type, 'student')));
-
-      return {
-        schoolId: school.schoolId,
-        schoolName: school.schoolName,
-        studentCount: studentCountResult?.count || 0,
-      };
-    })
-  );
 
   return {
     totalSchools,
@@ -463,33 +439,36 @@ async function getCareerInterestsDistribution(): Promise<CareerInterestsDistribu
     .orderBy(desc(count()))
     .limit(5);
 
-  const interestByGrade = await Promise.all(
-    studentGradesResult.map(async (row) => {
-      // Get top career category for this grade
-      // Join through assessments table to get reliable user data
-      const [topCategoryResult] = await db
-        .select({
-          category: careerMatches.careerTitle,
-          count: count(),
-        })
-        .from(careerMatches)
-        .innerJoin(assessments, eq(careerMatches.assessmentId, assessments.id))
-        .innerJoin(users, eq(assessments.userId, users.id))
-        .where(and(
-          eq(users.type, 'student'),
-          eq(users.grade, row.grade)
-        ))
-        .groupBy(careerMatches.careerTitle)
-        .orderBy(desc(count()))
-        .limit(1);
-
-      return {
-        grade: row.grade || 0,
-        topCategory: topCategoryResult?.category || 'N/A',
-        count: row.count,
-      };
+  // OPTIMIZATION: Batch fetch top categories for all grades at once
+  // Get all student grades with their career matches in one query
+  const gradeCareerData = await db
+    .select({
+      grade: users.grade,
+      category: careerMatches.careerTitle,
+      count: count(),
     })
-  );
+    .from(users)
+    .innerJoin(assessments, eq(users.id, assessments.userId))
+    .innerJoin(careerMatches, eq(assessments.id, careerMatches.assessmentId))
+    .where(eq(users.type, 'student'))
+    .groupBy(users.grade, careerMatches.careerTitle)
+    .orderBy(desc(count()));
+
+  // Group by grade and find top category for each
+  const gradeTopCategories = new Map<number | null, { category: string; count: number }>();
+  for (const row of gradeCareerData) {
+    const existing = gradeTopCategories.get(row.grade);
+    if (!existing || row.count > existing.count) {
+      gradeTopCategories.set(row.grade, { category: row.category, count: row.count });
+    }
+  }
+
+  // Combine with student count data
+  const interestByGrade = studentGradesResult.map((row) => ({
+    grade: row.grade || 0,
+    topCategory: gradeTopCategories.get(row.grade)?.category || 'N/A',
+    count: row.count,
+  }));
 
   // RIASEC distribution
   const riasecDistributionResult = await db
@@ -612,38 +591,25 @@ async function getAcademicPerformanceMetrics(): Promise<AcademicPerformanceMetri
     ? Math.round((passResult?.count || 0) / totalResult.count * 100)
     : 0;
 
-  // Top performing schools
-  const schoolPerformanceResult = await db
+  // Top performing schools - OPTIMIZED with single grouped query
+  const schoolPerformanceData = await db
     .select({
       schoolId: schools.id,
       schoolName: schools.name,
+      avgPercentage: avg(examResultsEnhanced.percentage),
     })
     .from(schools)
-    .orderBy(desc(sql`(
-      SELECT AVG(${examResultsEnhanced.percentage})
-      FROM ${examResultsEnhanced}
-      INNER JOIN ${users} ON ${examResultsEnhanced.userId} = ${users.id}
-      WHERE ${users.schoolId} = ${schools.id}
-    )`))
+    .innerJoin(users, eq(schools.id, users.schoolId))
+    .innerJoin(examResultsEnhanced, eq(users.id, examResultsEnhanced.userId))
+    .groupBy(schools.id, schools.name)
+    .orderBy(desc(avg(examResultsEnhanced.percentage)))
     .limit(10);
 
-  const topPerformingSchools = await Promise.all(
-    schoolPerformanceResult.map(async (school) => {
-      const [schoolAvgResult] = await db
-        .select({
-          avg: avg(examResultsEnhanced.percentage),
-        })
-        .from(examResultsEnhanced)
-        .innerJoin(users, eq(examResultsEnhanced.userId, users.id))
-        .where(eq(users.schoolId, school.schoolId));
-
-      return {
-        schoolId: school.schoolId,
-        schoolName: school.schoolName,
-        averagePercentage: schoolAvgResult?.avg ? Math.round(Number(schoolAvgResult.avg)) : 0,
-      };
-    })
-  );
+  const topPerformingSchools = schoolPerformanceData.map((school) => ({
+    schoolId: school.schoolId,
+    schoolName: school.schoolName,
+    averagePercentage: school.avgPercentage ? Math.round(Number(school.avgPercentage)) : 0,
+  }));
 
   return {
     averageGrade,
@@ -722,6 +688,3 @@ async function getRevenueMetrics(): Promise<RevenueMetrics> {
     },
   };
 }
-
-// Date reference for queries
-const thirtyDaysAgo = getDateDaysAgo(30);

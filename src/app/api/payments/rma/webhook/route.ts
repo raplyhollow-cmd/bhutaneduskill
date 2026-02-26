@@ -5,6 +5,17 @@ import { feePayments, studentFees } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 
+interface RMAWebhookPayload {
+  transaction_id: string;
+  merchant_transaction_id: string;
+  status: string;
+  amount?: number;
+  paid_amount?: number;
+  payment_method?: string;
+  paid_at?: string;
+  failure_reason?: string;
+}
+
 // ============================================================================
 // POST /api/payments/rma/webhook - RMA payment webhook
 // ============================================================================
@@ -17,10 +28,10 @@ export async function POST(request: NextRequest) {
   try {
     // Get raw body for signature verification
     const rawBody = await request.text();
-    let payload: any;
+    let payload: RMAWebhookPayload | null = null;
 
     try {
-      payload = JSON.parse(rawBody);
+      payload = JSON.parse(rawBody) as RMAWebhookPayload;
     } catch {
       return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
     }
@@ -51,7 +62,7 @@ export async function POST(request: NextRequest) {
       payment_method,
       paid_at,
       failure_reason,
-    } = payload;
+    } = payload || {};
 
     if (!transaction_id || !merchant_transaction_id) {
       return NextResponse.json({ error: "Missing transaction details" }, { status: 400 });

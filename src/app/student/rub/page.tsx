@@ -5,7 +5,7 @@
  * Search and filter RUB programs, view requirements, track applications
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,276 +27,68 @@ import {
   FileText,
   ArrowRight,
   Star,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
+import { logger } from "@/lib/logger";
 
-// Mock RUB colleges
-const mockRUBColleges = [
-  {
-    id: "c1",
-    name: "College of Science and Technology",
-    code: "CST",
-    dzongkhag: "Thimphu",
-    location: "Rinchending, Phuentsholing",
-    type: "constituent",
-    programs: 12,
-    hasHostel: true,
-    hasLab: true,
-    hasSports: true,
-    website: "www.cst.edu.bt",
-  },
-  {
-    id: "c2",
-    name: "Sherubtse College",
-    code: "SC",
-    dzongkhag: "Trashigang",
-    location: "Kanglung, Trashigang",
-    type: "constituent",
-    programs: 15,
-    hasHostel: true,
-    hasLab: true,
-    hasSports: true,
-    website: "www.sherubtse.edu.bt",
-  },
-  {
-    id: "c3",
-    name: "Gedu College of Business Studies",
-    code: "GCBS",
-    dzongkhag: "Chukha",
-    location: "Gedu, Chukha",
-    type: "constituent",
-    programs: 8,
-    hasHostel: true,
-    hasLab: false,
-    hasSports: true,
-    website: "www.gcbs.edu.bt",
-  },
-  {
-    id: "c4",
-    name: "College of Natural Resources",
-    code: "CNR",
-    dzongkhag: "Punakha",
-    location: "Lobesa, Punakha",
-    type: "constituent",
-    programs: 10,
-    hasHostel: true,
-    hasLab: true,
-    hasSports: true,
-    website: "www.cnr.edu.bt",
-  },
-  {
-    id: "c5",
-    name: "Paro College of Education",
-    code: "PCE",
-    dzongkhag: "Paro",
-    location: "Paro",
-    type: "constituent",
-    programs: 6,
-    hasHostel: true,
-    hasLab: false,
-    hasSports: true,
-    website: "www.pce.edu.bt",
-  },
-  {
-    id: "c6",
-    name: "Samtse College of Education",
-    code: "SCE",
-    dzongkhag: "Samtse",
-    location: "Samtse",
-    type: "constituent",
-    programs: 5,
-    hasHostel: true,
-    hasLab: false,
-    hasSports: true,
-    website: "www.sce.edu.bt",
-  },
-  {
-    id: "c7",
-    name: "Royal Thimphu College",
-    code: "RTC",
-    dzongkhag: "Thimphu",
-    location: "Ngabiphu, Thimphu",
-    type: "private",
-    programs: 10,
-    hasHostel: true,
-    hasLab: true,
-    hasSports: true,
-    website: "www.rtc.edu.bt",
-  },
-];
+// Types for RUB data
+interface RUBCollege {
+  id: string;
+  name: string;
+  code: string;
+  dzongkhag: string;
+  location: string;
+  type: "constituent" | "private";
+  programs: number;
+  hasHostel: boolean;
+  hasLab: boolean;
+  hasSports: boolean;
+  website: string;
+}
 
-// Mock RUB programs
-const mockRUBPrograms = [
-  {
-    id: "p1",
-    name: "Bachelor of Engineering in Civil Engineering",
-    code: "B.E-Civil",
-    collegeId: "c1",
-    collegeName: "College of Science and Technology",
-    level: "bachelor",
-    field: "engineering",
-    duration: 4,
-    durationType: "years",
-    totalSeats: 40,
-    minPercentage: 55,
-    requiredSubjects: ["English", "Mathematics", "Physics", "Chemistry"],
-    tuitionFee: 82500,
-    hostelFee: 22500,
-    otherFees: 15000,
-    totalFee: 120000,
-    admissionOpen: true,
-    description: "Learn to design, build, and maintain infrastructure projects",
-    careerProspects: ["Civil Engineer", "Structural Engineer", "Project Manager"],
-  },
-  {
-    id: "p2",
-    name: "Bachelor of Engineering in Computer Science",
-    code: "B.E-CS",
-    collegeId: "c1",
-    collegeName: "College of Science and Technology",
-    level: "bachelor",
-    field: "engineering",
-    duration: 4,
-    durationType: "years",
-    totalSeats: 35,
-    minPercentage: 60,
-    requiredSubjects: ["English", "Mathematics", "Physics"],
-    tuitionFee: 82500,
-    hostelFee: 22500,
-    otherFees: 15000,
-    totalFee: 120000,
-    admissionOpen: true,
-    description: "Study software development, algorithms, and computer systems",
-    careerProspects: ["Software Engineer", "Data Scientist", "System Analyst"],
-  },
-  {
-    id: "p3",
-    name: "Bachelor of Business Administration",
-    code: "BBA",
-    collegeId: "c3",
-    collegeName: "Gedu College of Business Studies",
-    level: "bachelor",
-    field: "business",
-    duration: 4,
-    durationType: "years",
-    totalSeats: 60,
-    minPercentage: 50,
-    requiredSubjects: ["English", "Mathematics", "Business Studies"],
-    tuitionFee: 66000,
-    hostelFee: 22500,
-    otherFees: 12000,
-    totalFee: 100500,
-    admissionOpen: true,
-    description: "Develop business management and entrepreneurship skills",
-    careerProspects: ["Business Manager", "Marketing Executive", "Entrepreneur"],
-  },
-  {
-    id: "p4",
-    name: "Bachelor of Science in Environmental Science",
-    code: "B.Env-Sc",
-    collegeId: "c4",
-    collegeName: "College of Natural Resources",
-    level: "bachelor",
-    field: "science",
-    duration: 4,
-    durationType: "years",
-    totalSeats: 30,
-    minPercentage: 50,
-    requiredSubjects: ["English", "Biology", "Chemistry", "Geography"],
-    tuitionFee: 66000,
-    hostelFee: 22500,
-    otherFees: 12000,
-    totalFee: 100500,
-    admissionOpen: true,
-    description: "Study environmental conservation and sustainable development",
-    careerProspects: ["Environmental Officer", "Conservationist", "Researcher"],
-  },
-  {
-    id: "p5",
-    name: "Bachelor of Education in Secondary Education",
-    code: "B.Ed-Sec",
-    collegeId: "c5",
-    collegeName: "Paro College of Education",
-    level: "bachelor",
-    field: "education",
-    duration: 4,
-    durationType: "years",
-    totalSeats: 50,
-    minPercentage: 50,
-    requiredSubjects: ["English", "and two teaching subjects"],
-    tuitionFee: 57000,
-    hostelFee: 22500,
-    otherFees: 12000,
-    totalFee: 91500,
-    admissionOpen: true,
-    description: "Train to become a secondary school teacher",
-    careerProspects: ["Secondary Teacher", "Education Administrator", "Curriculum Developer"],
-  },
-  {
-    id: "p6",
-    name: "Diploma in Electrical Engineering",
-    code: "Dip-EE",
-    collegeId: "c1",
-    collegeName: "College of Science and Technology",
-    level: "diploma",
-    field: "engineering",
-    duration: 3,
-    durationType: "years",
-    totalSeats: 30,
-    minPercentage: 45,
-    requiredSubjects: ["English", "Mathematics", "Physics"],
-    tuitionFee: 66000,
-    hostelFee: 22500,
-    otherFees: 12000,
-    totalFee: 100500,
-    admissionOpen: true,
-    description: "Learn electrical systems and electronics fundamentals",
-    careerProspects: ["Electrical Technician", "Maintenance Engineer", "Power Systems Operator"],
-  },
-];
+interface RUBProgram {
+  id: string;
+  name: string;
+  code: string;
+  collegeId: string;
+  collegeName: string;
+  level: "bachelor" | "diploma" | "certificate";
+  field: string;
+  duration: number;
+  durationType: string;
+  totalSeats: number;
+  minPercentage: number;
+  requiredSubjects: string[];
+  tuitionFee: number;
+  hostelFee: number;
+  otherFees: number;
+  totalFee: number;
+  admissionOpen: boolean;
+  description: string;
+  careerProspects: string[];
+}
 
-// Mock scholarships
-const mockScholarships = [
-  {
-    id: "sch1",
-    name: "Royal Merit Scholarship",
-    provider: "Royal Government of Bhutan",
-    type: "merit",
-    coveragePercentage: 100,
-    minPercentage: 75,
-    description: "Full scholarship for top performers in Class 12",
-    deadline: "2025-05-31",
-  },
-  {
-    id: "sch2",
-    name: "Need-Based Scholarship",
-    provider: "RUB",
-    type: "need_based",
-    coveragePercentage: 50,
-    annualIncomeLimit: 300000,
-    description: "Financial support for students from low-income families",
-    deadline: "2025-06-30",
-  },
-  {
-    id: "sch3",
-    name: "STEM Scholarship",
-    provider: "Ministry of Education",
-    type: "merit",
-    coveragePercentage: 75,
-    minPercentage: 70,
-    description: "Support for students pursuing STEM fields",
-    deadline: "2025-05-31",
-  },
-];
+interface Scholarship {
+  id: string;
+  name: string;
+  provider: string;
+  type: "merit" | "need_based";
+  coveragePercentage: number;
+  minPercentage?: number;
+  annualIncomeLimit?: number;
+  description: string;
+  deadline: string;
+}
 
-// Mock application status
-const mockApplicationStatus = {
-  hasApplication: false,
-  status: "not_started",
-  submittedDate: null,
-  preferences: [],
-  documents: [],
-};
+interface ApplicationStatus {
+  hasApplication: boolean;
+  status: string;
+  submittedDate: string | null;
+  preferences: Array<{ rank: number; program: string; college: string }>;
+  documents: Array<{ name: string; status: string }>;
+}
 
 const dzongkhags = ["All", "Thimphu", "Paro", "Punakha", "Chukha", "Trashigang", "Samtse"];
 const fields = ["All", "Engineering", "Science", "Business", "Education", "Arts"];
@@ -311,14 +103,71 @@ function StudentRUBPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [activeTab, setActiveTab] = useState<"programs" | "colleges" | "scholarships" | "application">("programs");
 
+  // Data from API
+  const [colleges, setColleges] = useState<RUBCollege[]>([]);
+  const [programs, setPrograms] = useState<RUBProgram[]>([]);
+  const [scholarships, setScholarships] = useState<Scholarship[]>([]);
+  const [applicationStatus, setApplicationStatus] = useState<ApplicationStatus>({
+    hasApplication: false,
+    status: "not_started",
+    submittedDate: null,
+    preferences: [],
+    documents: [],
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+
+        // Fetch RUB data from API
+        const [collegesRes, programsRes, scholarshipsRes, applicationRes] = await Promise.all([
+          fetch("/api/rub/colleges").catch(() => null),
+          fetch("/api/rub/programs").catch(() => null),
+          fetch("/api/rub/scholarships").catch(() => null),
+          fetch("/api/student/rub-application").catch(() => null),
+        ]);
+
+        if (collegesRes?.ok) {
+          const data = await collegesRes.json();
+          setColleges(data.colleges || []);
+        }
+
+        if (programsRes?.ok) {
+          const data = await programsRes.json();
+          setPrograms(data.programs || []);
+        }
+
+        if (scholarshipsRes?.ok) {
+          const data = await scholarshipsRes.json();
+          setScholarships(data.scholarships || []);
+        }
+
+        if (applicationRes?.ok) {
+          const data = await applicationRes.json();
+          setApplicationStatus(data.application || applicationStatus);
+        }
+      } catch (err) {
+        logger.error("Error fetching RUB data:", err);
+        setError("Failed to load RUB data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
   // Filter programs
-  const filteredPrograms = mockRUBPrograms.filter((program) => {
+  const filteredPrograms = programs.filter((program) => {
     const matchesSearch =
       program.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       program.collegeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       program.code.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const college = mockRUBColleges.find((c) => c.id === program.collegeId);
+    const college = colleges.find((c) => c.id === program.collegeId);
     const matchesDzongkhag = selectedDzongkhag === "All" || college?.dzongkhag === selectedDzongkhag;
     const matchesField = selectedField === "All" || program.field.toLowerCase() === selectedField.toLowerCase();
     const matchesLevel = selectedLevel === "All" || program.level.toLowerCase().includes(selectedLevel.toLowerCase());
@@ -327,7 +176,7 @@ function StudentRUBPage() {
   });
 
   // Filter colleges
-  const filteredColleges = mockRUBColleges.filter((college) => {
+  const filteredColleges = colleges.filter((college) => {
     const matchesSearch =
       college.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       college.code.toLowerCase().includes(searchQuery.toLowerCase());
@@ -372,22 +221,48 @@ function StudentRUBPage() {
 
   return (
     <div className="space-y-6">
+      {/* Loading State */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-orange-600 mr-3" />
+          <span className="text-gray-600">Loading RUB colleges and programs...</span>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && !isLoading && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600" />
+              <div>
+                <p className="font-medium text-red-900">Failed to load data</p>
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Content */}
+      {!isLoading && !error && (
+        <>
       {/* Application Status Banner */}
-        <Card className="mb-6" style={{ background: mockApplicationStatus.hasApplication ? 'linear-gradient(135deg, rgb(34 197 94) 0%, rgb(22 163 74) 100%)' : 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)' }}>
+        <Card className="mb-6" style={{ background: applicationStatus.hasApplication ? 'linear-gradient(135deg, rgb(34 197 94) 0%, rgb(22 163 74) 100%)' : 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)' }}>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between text-white">
               <div>
                 <h2 className="text-xl font-bold mb-1">
-                  {mockApplicationStatus.hasApplication ? "Application Submitted" : "Start Your RUB Application"}
+                  {applicationStatus.hasApplication ? "Application Submitted" : "Start Your RUB Application"}
                 </h2>
                 <p className="text-white/80">
-                  {mockApplicationStatus.hasApplication
+                  {applicationStatus.hasApplication
                     ? "Track your application status and updates"
                     : "Begin your journey to higher education with RUB"}
                 </p>
               </div>
               <Button size="lg" className="bg-white text-orange-600 hover:bg-white/90 min-h-[44px]">
-                {mockApplicationStatus.hasApplication ? (
+                {applicationStatus.hasApplication ? (
                   <>
                     <CheckCircle className="w-5 h-5 mr-2" />
                     View Status
@@ -733,7 +608,15 @@ function StudentRUBPage() {
         {/* Scholarships Tab */}
         {activeTab === "scholarships" && (
           <div className="grid md:grid-cols-2 gap-6">
-            {mockScholarships.map((scholarship) => (
+            {scholarships.length === 0 ? (
+              <Card className="col-span-full">
+                <CardContent className="py-12 text-center">
+                  <Award className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-muted-foreground">No scholarships found</p>
+                </CardContent>
+              </Card>
+            ) : (
+              scholarships.map((scholarship) => (
               <Card key={scholarship.id} className="hover:shadow-md transition-all">
                 <CardHeader>
                   <div className="flex items-start justify-between">
@@ -780,14 +663,15 @@ function StudentRUBPage() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              ))
+            )}
           </div>
         )}
 
         {/* Application Tab */}
         {activeTab === "application" && (
           <div className="max-w-3xl mx-auto">
-            {mockApplicationStatus.hasApplication ? (
+            {applicationStatus.hasApplication ? (
               <Card>
                 <CardHeader>
                   <CardTitle>Your Application</CardTitle>
@@ -873,7 +757,7 @@ function StudentRUBPage() {
               </Card>
             ) : (
               <Card>
-                <CardContent className="pt-12 text-center pb-12">
+                <CardContent className="pt-12 pb-12 text-center">
                   <FileText className="w-20 h-20 text-gray-300 mx-auto mb-6" />
                   <h2 className="text-2xl font-bold text-gray-900 mb-2">Start Your Application</h2>
                   <p className="text-gray-600 mb-8 max-w-md mx-auto">
@@ -916,6 +800,8 @@ function StudentRUBPage() {
             )}
           </div>
         )}
+        </>
+      )}
     </div>
   );
 }

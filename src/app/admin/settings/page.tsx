@@ -42,7 +42,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@/components/ui/toaster";
 
 // Types
 interface SettingsData {
@@ -314,7 +314,7 @@ export default function AdminSettingsPage() {
       toast({
         title: "Save failed",
         description: err instanceof Error ? err.message : "Failed to save settings. Please try again.",
-        variant: "destructive",
+        variant: "error",
       });
     } finally {
       setSaving(false);
@@ -358,7 +358,7 @@ export default function AdminSettingsPage() {
       toast({
         title: "Save failed",
         description: err instanceof Error ? err.message : "Failed to save settings. Please try again.",
-        variant: "destructive",
+        variant: "error",
       });
     } finally {
       setSaving(false);
@@ -398,7 +398,7 @@ export default function AdminSettingsPage() {
       toast({
         title: "Action failed",
         description: err instanceof Error ? err.message : "Failed to perform action. Please try again.",
-        variant: "destructive",
+        variant: "error",
       });
     }
   }

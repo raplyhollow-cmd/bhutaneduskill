@@ -8,8 +8,9 @@
  * to the school admin's own school based on their user.schoolId.
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, badRequestResponse, notFoundResponse, errorResponse } from "@/lib/api/response-helpers";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { schools, users, students, studentFees } from "@/lib/db/schema";
@@ -28,18 +29,12 @@ interface GenerateFeesRequest {
   notifyParents?: boolean;
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['school-admin']);
-
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { userId, user } = authResult;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId, user } = auth;
 
     if (!user.schoolId) {
-      return NextResponse.json({ error: "No school associated with your account" }, { status: 400 });
+      return badRequestResponse("No school associated with your account");
     }
 
     const schoolId = user.schoolId;
@@ -47,11 +42,11 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!body.sessionYear) {
-      return NextResponse.json({ error: "sessionYear is required" }, { status: 400 });
+      return badRequestResponse("sessionYear is required");
     }
 
     if (!body.feeBreakdown || body.feeBreakdown.length === 0) {
-      return NextResponse.json({ error: "feeBreakdown is required with at least one item" }, { status: 400 });
+      return badRequestResponse("feeBreakdown is required with at least one item");
     }
 
     // Validate school exists
@@ -66,7 +61,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!school) {
-      return NextResponse.json({ error: "School not found" }, { status: 404 });
+      return notFoundResponse("School not found");
     }
 
     logger.info("School admin starting fee generation", {
@@ -90,8 +85,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (studentRecords.length === 0) {
-      return NextResponse.json({
-        success: true,
+      return successResponse({
         message: "No active students found in this school",
         generated: 0,
         skipped: 0,
@@ -209,29 +203,17 @@ export async function POST(request: NextRequest) {
       schoolName: school.name,
       schoolType: school.type,
     });
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/fees/generate", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to generate fees", details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['school-admin']
+);
 
 // GET endpoint to retrieve current fee generation status
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['school-admin']);
-
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { user } = authResult;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user } = auth;
 
     if (!user.schoolId) {
-      return NextResponse.json({ error: "No school associated with your account" }, { status: 400 });
+      return badRequestResponse("No school associated with your account");
     }
 
     const schoolId = user.schoolId;
@@ -251,7 +233,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!school) {
-      return NextResponse.json({ error: "School not found" }, { status: 404 });
+      return notFoundResponse("School not found");
     }
 
     // Count active students
@@ -300,12 +282,6 @@ export async function GET(request: NextRequest) {
         paymentRate: totalAmount > 0 ? Math.round((totalPaid / totalAmount) * 100) : 0,
       },
     });
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/fees/generate", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch fee status", details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['school-admin']
+);

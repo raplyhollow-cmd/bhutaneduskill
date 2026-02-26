@@ -10,6 +10,8 @@ import { logger } from "@/lib/logger";
  * - Enhanced search and filters
  * - Better UX and accessibility
  * - Bulk import functionality with seat capacity checking
+ * - In-place editing for quick name updates
+ * - Quick add student with ExpressAddModal
  */
 
 import { useState, useEffect, useTransition } from "react";
@@ -19,6 +21,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { MobileCard, MobileCardGrid } from "@/components/ui/mobile-card";
+import { TableSkeleton } from "@/components/ui/skeleton/table-skeleton";
+import { CardGridSkeleton, StatCardSkeleton } from "@/components/ui/skeleton/card-skeleton";
+import { ExpressAddModal, useExpressAdd } from "@/components/ui/express-add-modal";
 import {
   Users,
   Plus,
@@ -38,11 +43,13 @@ import {
   Mail,
   Phone,
   MapPin,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { fetchStudents } from "../_actions";
 import type { StudentData } from "@/lib/api/school-admin";
+import { InPlaceText } from "@/components/ui/in-place-editor";
 
 interface StudentsClientProps {
   initialSearch: string;
@@ -80,6 +87,9 @@ export function StudentsClient({
   const [showBulkUploadModal, setShowBulkUploadModal] = useState(false);
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
 
+  // ExpressAddModal hook for quick student add
+  const quickAdd = useExpressAdd();
+
   const [isPending, startTransition] = useTransition();
   const [students, setStudents] = useState<StudentData[]>([]);
   const [total, setTotal] = useState(0);
@@ -104,6 +114,37 @@ export function StudentsClient({
       logger.error("Failed to load students:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Quick add student handler - creates student with minimal info
+  const handleQuickAddStudent = async (name: string) => {
+    try {
+      const [firstName, ...lastNameParts] = name.trim().split(" ");
+      const lastName = lastNameParts.join(" ") || "";
+
+      const response = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: `user_${Date.now()}`,
+          firstName,
+          lastName: lastName || "Student",
+          type: "student",
+          email: `${firstName.toLowerCase()}.student@school.edu.bt`,
+          status: "active",
+        }),
+      });
+
+      if (response.ok) {
+        await loadStudents();
+        return { success: true };
+      } else {
+        const data = await response.json();
+        return { success: false, error: data.error || "Failed to add student" };
+      }
+    } catch (error) {
+      return { success: false, error: "Network error. Please try again." };
     }
   };
 
@@ -156,6 +197,31 @@ export function StudentsClient({
     }
   };
 
+  // Save student name via API (for InPlaceEditor)
+  const saveStudentName = async (studentId: string, newName: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const response = await fetch(`/api/users/${studentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newName }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update student name");
+      }
+
+      // Update local state
+      setStudents((prev) =>
+        prev.map((s) => (s.id === studentId ? { ...s, name: newName } : s))
+      );
+
+      return { success: true };
+    } catch (error) {
+      logger.error("Failed to update student name:", error);
+      return { success: false, error: "Failed to update name" };
+    }
+  };
+
   const getFeeStatusBadge = (status: string) => {
     const styles = {
       paid: "bg-green-100 text-green-700 border-green-200",
@@ -202,6 +268,10 @@ export function StudentsClient({
             <span className="hidden sm:inline">Bulk Upload</span>
             <span className="sm:hidden">Upload</span>
           </Button>
+          <Button variant="outline" size="sm" onClick={quickAdd.open}>
+            <Sparkles className="w-4 h-4 mr-2" />
+            <span className="hidden sm:inline">Quick Add</span>
+          </Button>
           <Button
             size="sm"
             className="bg-violet-600 hover:bg-violet-700 text-white"
@@ -214,52 +284,56 @@ export function StudentsClient({
       </div>
 
       {/* Stats Cards - Premium Design */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-        <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-violet-100 rounded-lg flex items-center justify-center">
-              <Users className="w-5 h-5 text-violet-600" />
+      {loading ? (
+        <CardGridSkeleton count={4} />
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+          <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-violet-100 rounded-lg flex items-center justify-center">
+                <Users className="w-5 h-5 text-violet-600" />
+              </div>
+              <div>
+                <p className="text-xl font-bold text-gray-900">{total}</p>
+                <p className="text-xs text-gray-500">Total Students</p>
+              </div>
             </div>
-            <div>
-              <p className="text-xl font-bold text-gray-900">{total}</p>
-              <p className="text-xs text-gray-500">Total Students</p>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                <UserCheck className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-xl font-bold text-gray-900">{totalActive}</p>
+                <p className="text-xs text-gray-500">Active</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                <AlertCircle className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-xl font-bold text-gray-900">{totalFeePending}</p>
+                <p className="text-xs text-gray-500">Fee Pending</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                <GraduationCap className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-xl font-bold text-gray-900">{totalClasses}</p>
+                <p className="text-xs text-gray-500">Classes</p>
+              </div>
             </div>
           </div>
         </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-              <UserCheck className="w-5 h-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-xl font-bold text-gray-900">{totalActive}</p>
-              <p className="text-xs text-gray-500">Active</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-              <AlertCircle className="w-5 h-5 text-amber-600" />
-            </div>
-            <div>
-              <p className="text-xl font-bold text-gray-900">{totalFeePending}</p>
-              <p className="text-xs text-gray-500">Fee Pending</p>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition-shadow">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <GraduationCap className="w-5 h-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-xl font-bold text-gray-900">{totalClasses}</p>
-              <p className="text-xs text-gray-500">Classes</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* Filters - Enhanced */}
       <Card className="border-gray-200">
@@ -366,9 +440,12 @@ export function StudentsClient({
       {/* Students List - Responsive: MobileCardGrid on mobile, Table on desktop */}
       {loading ? (
         <Card className="border-gray-200">
-          <CardContent className="py-12 text-center text-gray-500">
-            <div className="w-8 h-8 border-4 border-violet-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            Loading students...
+          <CardHeader>
+            <CardTitle>Student List</CardTitle>
+            <CardDescription>Loading students...</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <TableSkeleton rows={10} columns={8} />
           </CardContent>
         </Card>
       ) : students.length === 0 ? (
@@ -391,48 +468,54 @@ export function StudentsClient({
           {/* Mobile View - Card Grid */}
           <div className="lg:hidden space-y-4">
             {students.map((student) => (
-              <Link
+              <div
                 key={student.id}
-                href={`/school-admin/students/${student.id}`}
-                className="block"
+                className="bg-white rounded-xl border border-gray-200 p-4 hover:border-violet-200 hover:shadow-md transition-all"
               >
-                <div className="bg-white rounded-xl border border-gray-200 p-4 hover:border-violet-200 hover:shadow-md transition-all">
-                  <div className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      checked={selectedStudents.includes(student.id)}
-                      onChange={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleSelectStudent(student.id);
-                      }}
-                      className="w-4 h-4 mt-1 rounded border-gray-300"
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={selectedStudents.includes(student.id)}
+                    onChange={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleSelectStudent(student.id);
+                    }}
+                    className="w-4 h-4 mt-1 rounded border-gray-300"
+                  />
+                  <div className="w-12 h-12 bg-violet-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-violet-700 font-semibold">
+                      {student.name.split(" ").map((n) => n[0]).join("").toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <InPlaceText
+                      value={student.name}
+                      onSave={async (newName) => saveStudentName(student.id, newName)}
+                      placeholder="Student name"
+                      minLength={2}
+                      maxLength={100}
+                      required={true}
+                      displayClassName="font-semibold text-gray-900 truncate"
+                      showIcon={true}
                     />
-                    <div className="w-12 h-12 bg-violet-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-violet-700 font-semibold">
-                        {student.name.split(" ").map((n) => n[0]).join("").toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-gray-900 truncate">{student.name}</p>
-                      <p className="text-sm text-gray-500 truncate">{student.id}</p>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        <Badge variant="outline" className="text-xs">
-                          {student.class || "No class"}
-                        </Badge>
-                        <Badge
-                          variant="outline"
-                          className={getFeeStatusBadge(student.feeStatus)}
-                        >
-                          {student.feeStatus}
-                        </Badge>
-                        <Badge
-                          variant="outline"
-                          className={getStatusBadge(student.status)}
-                        >
-                          {student.status}
-                        </Badge>
-                      </div>
+                    <p className="text-sm text-gray-500 truncate">{student.id}</p>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      <Badge variant="outline" className="text-xs">
+                        {student.class || "No class"}
+                      </Badge>
+                      <Badge
+                        variant="outline"
+                        className={getFeeStatusBadge(student.feeStatus)}
+                      >
+                        {student.feeStatus}
+                      </Badge>
+                      <Badge
+                        variant="outline"
+                        className={getStatusBadge(student.status)}
+                      >
+                        {student.status}
+                      </Badge>
                     </div>
                   </div>
                   <div className="mt-3 pt-3 border-t border-gray-100 grid grid-cols-2 gap-2 text-sm">
@@ -440,15 +523,16 @@ export function StudentsClient({
                       <UserCheck className="w-4 h-4" />
                       <span>{student.attendance}</span>
                     </div>
-                    {student.parentPhone && (
-                      <div className="flex items-center gap-1 text-gray-600">
-                        <Phone className="w-4 h-4" />
-                        <span className="truncate">{student.parentPhone}</span>
-                      </div>
-                    )}
+                    <Link
+                      href={`/school-admin/students/${student.id}`}
+                      className="flex items-center justify-center gap-1 text-violet-600 hover:text-violet-700 font-medium"
+                    >
+                      <Eye className="w-4 h-4" />
+                      <span>View Details</span>
+                    </Link>
                   </div>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
 
@@ -499,7 +583,16 @@ export function StudentsClient({
                               </span>
                             </div>
                             <div>
-                              <p className="font-medium text-gray-900">{student.name}</p>
+                              <InPlaceText
+                                value={student.name}
+                                onSave={async (newName) => saveStudentName(student.id, newName)}
+                                placeholder="Student name"
+                                minLength={2}
+                                maxLength={100}
+                                required={true}
+                                displayClassName="font-medium text-gray-900"
+                                showIcon={true}
+                              />
                               <div className="flex items-center gap-2 text-sm text-gray-500">
                                 <span>{student.id}</span>
                                 {student.email && <span>•</span>}
@@ -669,6 +762,21 @@ export function StudentsClient({
           setShowBulkUploadModal(false);
           loadStudents(); // Refresh after import
         }}
+      />
+
+      {/* Quick Add Student Modal */}
+      <ExpressAddModal
+        isOpen={quickAdd.isOpen}
+        onClose={quickAdd.close}
+        onSubmit={handleQuickAddStudent}
+        title="Quick Add Student"
+        description="Enter student name (basic info will be auto-generated)"
+        placeholder="e.g., Tashi Dorji"
+        successMessage="Student added successfully! You can edit details later."
+        errorMessage="Failed to add student. Please try again."
+        icon={Users}
+        minLength={2}
+        submitLabel="Press Enter to add student"
       />
     </div>
   );

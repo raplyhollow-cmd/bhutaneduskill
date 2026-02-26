@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 
 // Types for ceramic variant
-export type AlertDialogVariant = "default" | "ceramic"
+export type AlertDialogVariant = "default" | "ceramic" | "hidden"
 
 interface AlertDialogProps extends React.ComponentProps<typeof AlertDialogPrimitive.Root> {
   variant?: AlertDialogVariant

@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import { chatWithGemini } from "@/lib/ai/gemini-server";
 import { CAREER_PREDICTOR_SYSTEM } from "@/lib/ai/prompts";
@@ -54,24 +54,13 @@ export interface CareerPredictorResponse {
 // POST - Predict Career Path
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  // Parse body outside try block for fallback access
-  let requestData: CareerPredictorRequest = {};
-  let userId = "";
-
-  try {
-    const authResult = await requireAuth();
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-
-    userId = authResult.userId;
+export const POST = createApiRoute<CareerPredictorRequest, CareerPredictorResponse>(
+  async (request) => {
+    const auth = await requireAuth([]);
+    const { userId } = auth;
 
     const body = await request.json();
-    requestData = body as CareerPredictorRequest;
+    const requestData = body as CareerPredictorRequest;
 
     // Auto-fetch user's assessment data from database if not provided in request
     let {
@@ -130,7 +119,7 @@ export async function POST(request: NextRequest) {
         examResults.forEach((result) => {
           // examResultsEnhanced has a nested subjects array
           if (result.subjects && Array.isArray(result.subjects)) {
-            result.subjects.forEach((subject: any) => {
+            result.subjects.forEach((subject: { subjectName?: string; marksObtained?: number | null }) => {
               if (subject.subjectName && subject.marksObtained !== null) {
                 grades[subject.subjectName] = subject.marksObtained;
               }
@@ -199,52 +188,9 @@ export async function POST(request: NextRequest) {
       status: 200,
       message: "Career predictions generated successfully",
     } satisfies ApiSuccess<CareerPredictorResponse>);
-
-  } catch (error: any) {
-    logger.apiError(error, {
-      route: "/api/ai/career-predictor",
-      method: "POST",
-    });
-
-    // Check if it's an API key error
-    if (error?.message === "Gemini API key not configured") {
-      // Return fallback response
-      const fallback = generateFallbackPrediction(requestData);
-
-      // Track fallback usage (non-blocking)
-      safeTrackAIInteraction({
-        userId,
-        featureId: AI_FEATURE_IDS.CAREER_PREDICTOR,
-        interactionData: {
-          targetCareer: requestData.targetCareer || "none",
-          hasHollandCode: !!requestData.hollandCode,
-          fallbackPredictionCount: fallback.predictions.length,
-          fallbackConfidence: fallback.confidence,
-        },
-        metadata: {
-          usedFallback: true,
-          errorReason: "API key not configured",
-          responseTimestamp: new Date().toISOString(),
-        },
-      });
-
-      return NextResponse.json({
-        data: fallback,
-        status: 200,
-        message: "Using offline prediction model",
-      } satisfies ApiSuccess<CareerPredictorResponse>);
-    }
-
-    return NextResponse.json(
-      {
-        error: "Failed to generate career predictions",
-        status: 500,
-        details: process.env.NODE_ENV === "development" ? error.message : undefined,
-      } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+  },
+  [] // No specific role requirement
+);
 
 // ============================================================================
 // PROMPT BUILDER

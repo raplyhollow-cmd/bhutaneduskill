@@ -9,7 +9,7 @@ import { logger } from "@/lib/logger";
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute, type AuthContext } from "@/lib/api/route-handler";
 import { chatWithGemini } from "@/lib/ai/gemini-server";
 import { MOOD_TRACKER_SYSTEM } from "@/lib/ai/prompts";
 import { safeTrackAIInteraction, AI_FEATURE_IDS } from "@/lib/ai/track-interaction";
@@ -352,19 +352,12 @@ function generateFallbackResponse(request: MoodTrackerRequest): Omit<MoodTracker
 /**
  * POST - Get AI-powered wellness insights
  */
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["student"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
+export const POST = createApiRoute(
+  async (req) => {
+    const auth = await requireAuth(['student']);
+    const { userId } = auth;
 
-    const { user } = authResult;
-
-    const body = await request.json() as MoodTrackerRequest;
+    const body = await req.json() as MoodTrackerRequest;
 
     // Validate current entry
     if (!body.currentEntry) {
@@ -391,7 +384,7 @@ export async function POST(request: NextRequest) {
     try {
       const prompt = buildWellnessPrompt({
         ...body,
-        userName: (user?.firstName as string) || (user?.name as string) || "Student",
+        userName: (auth.user?.firstName as string) || (auth.user?.name as string) || "Student",
       });
 
       const aiResponse = await chatWithGemini(prompt, MOOD_TRACKER_SYSTEM);
@@ -417,7 +410,7 @@ export async function POST(request: NextRequest) {
 
     // Track AI interaction (non-blocking)
     safeTrackAIInteraction({
-      userId: authResult.userId,
+      userId,
       featureId: AI_FEATURE_IDS.MOOD_TRACKER,
       interactionData: {
         currentMood: body.currentEntry.mood,
@@ -437,19 +430,9 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(response);
-
-  } catch (error: any) {
-    logger.apiError(error, { route: "/", method: "GET" });
-
-    return NextResponse.json(
-      {
-        error: "Failed to analyze mood data",
-        message: "The wellness service is temporarily unavailable. Please try again later.",
-      },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['student']
+);
 
 /**
  * GET - Check API availability and provide info

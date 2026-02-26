@@ -393,12 +393,12 @@ export default function AboutPage() {
                   <Button size="lg" className="bg-white text-orange-600 hover:bg-orange-50 px-10 py-6 rounded-full" asChild>
                     <Link href="/sign-up">Start Your Journey</Link>
                   </Button>
-                  <Button size="lg" variant="outline" className="bg-transparent border-2 border-white text-white hover:bg-white/10 px-10 py-6 rounded-full" asChild>
-                    <Link href="/contact">
+                  <Link href="/contact">
+                    <Button size="lg" variant="outline" className="bg-transparent border-2 border-white text-white hover:bg-white/10 px-10 py-6 rounded-full">
                       Contact Us
                       <ArrowRight className="w-4 h-4 ml-2" />
-                    </Link>
-                  </Button>
+                    </Button>
+                  </Link>
                 </div>
               </CardContent>
             </Card>

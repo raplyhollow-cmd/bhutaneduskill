@@ -6,7 +6,7 @@ import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 
 // Types for ceramic variant
-export type TabsVariant = "default" | "pills" | "underline" | "ceramic"
+export type TabsVariant = "default" | "pills" | "underline" | "ceramic" | "hidden"
 
 const Tabs = TabsPrimitive.Root
 

@@ -30,24 +30,13 @@ interface TeacherData {
   rating?: number;
 }
 
-// Mock data fetch
+// Fetch teacher profile from API
 async function fetchTeacherProfile(id: string): Promise<TeacherData> {
-  await new Promise((resolve) => setTimeout(resolve, 300));
-
-  return {
-    id,
-    name: "Karma Dorji",
-    firstName: "Karma",
-    lastName: "Dorji",
-    email: "karma.dorji@school.edu.bt",
-    phone: "+975 17 234 567",
-    subjects: ["Mathematics", "Physics"],
-    schoolName: "Motithang HSS",
-    classesCount: 5,
-    studentsCount: 120,
-    experience: 8,
-    rating: 4.7,
-  };
+  const response = await fetch(`/api/teachers/${id}`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch teacher profile");
+  }
+  return await response.json();
 }
 
 function StatCard({

@@ -1,26 +1,40 @@
-import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
-import { requirePermission } from "@/lib/rbac";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { homeworkSubmissions } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse } from "@/lib/api/response-helpers";
+import { logger } from "@/lib/logger";
+
+interface Params {
+  params: Promise<{ id: string }>;
+}
+
+/**
+ * Draft submission data
+ */
+interface DraftSubmissionValues {
+  id: string;
+  homeworkId: string;
+  studentId: string;
+  answers: Record<string, unknown>;
+  attachments: unknown[];
+  textAnswers: Record<string, string>;
+  status: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 interface Params {
   params: Promise<{ id: string }>;
 }
 
 // POST /api/student/homework/[id]/draft - Save or create draft
-export async function POST(request: NextRequest, { params }: Params) {
-  try {
-    const { id } = await params;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth, context?: { params: Promise<{ id: string }> }) => {
+    const { id } = await context!.params;
 
-    const authResult = await requireAuth(['student']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { user: currentUser, userId } = authResult;
+    const { user: currentUser, userId } = auth;
 
     // Check homework.read permission (for saving draft)
     const permCheck = await requirePermission(userId, "homework.read");
@@ -45,37 +59,39 @@ export async function POST(request: NextRequest, { params }: Params) {
         return NextResponse.json({ error: "Cannot update submitted homework" }, { status: 400 });
       }
 
+      const updateData = {
+        answers: (answers || {}) as Record<string, unknown>,
+        attachments: (attachments || []) as unknown[],
+        textAnswers: (textAnswers || {}) as Record<string, string>,
+        updatedAt: now,
+      };
+
       const [updated] = await db.update(homeworkSubmissions)
-        .set({
-          answers: (answers || {}) as any,
-          attachments: (attachments || []) as any,
-          textAnswers: textAnswers as any,
-          updatedAt: now,
-        } as any)
+        .set(updateData)
         .where(eq(homeworkSubmissions.id, existingSubmission.id))
         .returning();
 
       return NextResponse.json({ submission: updated });
     } else {
       // Create new draft
+      const createData: DraftSubmissionValues = {
+        id: `sub_${Date.now()}`,
+        homeworkId: id,
+        studentId: currentUser.id,
+        answers: (answers || {}) as Record<string, unknown>,
+        attachments: (attachments || []) as unknown[],
+        textAnswers: (textAnswers || {}) as Record<string, string>,
+        status: "draft",
+        createdAt: now,
+        updatedAt: now,
+      };
+
       const [created] = await db.insert(homeworkSubmissions)
-        .values({
-          id: `sub_${Date.now()}`,
-          homeworkId: id,
-          studentId: currentUser.id,
-          answers: (answers || {}) as any,
-          attachments: (attachments || []) as any,
-          textAnswers: textAnswers as any,
-          status: "draft",
-          createdAt: now,
-          updatedAt: now,
-        } as any)
+        .values(createData)
         .returning();
 
       return NextResponse.json({ submission: created }, { status: 201 });
     }
-  } catch (error) {
-    logger.error("Draft save error:", error);
-    return NextResponse.json({ error: "Failed to save draft" }, { status: 500 });
-  }
-}
+  },
+  ['student']
+);

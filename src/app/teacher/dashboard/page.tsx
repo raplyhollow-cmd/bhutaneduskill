@@ -16,6 +16,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CeramicCallout } from "@/components/ui/ceramic-callout";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorMessage } from "@/components/ui/error-message";
+import { DashboardSkeleton } from "@/components/ui/skeleton";
 import {
   Users,
   BookOpen,
@@ -33,22 +36,7 @@ import {
 import { TeacherAIInsights } from "./ai-insights-wrapper";
 import Link from "next/link";
 import { getTeacherDashboardData } from "./_actions";
-import { Skeleton } from "@/components/ui/skeleton";
 import { TeacherQuickActions } from "./teacher-quick-actions";
-
-// Loading component
-function DashboardSkeleton() {
-  return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="text-center">
-          <div className="w-12 h-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mx-auto mb-4" />
-          <p className="text-gray-600">Loading dashboard...</p>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 interface TeacherDashboardProps {
   params: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -64,13 +52,12 @@ export default async function TeacherDashboardPage({ params }: TeacherDashboardP
   if (!dashboardData) {
     return (
       <div className="space-y-8">
-        <CeramicCallout variant="ceramic-error">
-          <div className="py-16 text-center">
-            <AlertTriangle className="w-12 h-12 text-ceramic-negative mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-ceramic-primary mb-2">Error Loading Dashboard</h2>
-            <p className="text-ceramic-secondary">Failed to load dashboard data. Please try refreshing.</p>
-          </div>
-        </CeramicCallout>
+        <ErrorMessage
+          title="Error Loading Dashboard"
+          message="Failed to load dashboard data. Please try refreshing."
+          variant="error"
+          retryAction={{ label: "Retry", onClick: () => window.location.reload() }}
+        />
       </div>
     );
   }
@@ -144,7 +131,7 @@ export default async function TeacherDashboardPage({ params }: TeacherDashboardP
       <TeacherAIInsights dashboardData={dashboardData} />
 
       {/* Classes Overview - Ceramic Styled */}
-      {classes && classes.length > 0 && (
+      {classes && classes.length > 0 ? (
         <Card variant="ceramic">
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -177,10 +164,21 @@ export default async function TeacherDashboardPage({ params }: TeacherDashboardP
             </div>
           </CardContent>
         </Card>
+      ) : (
+        <Card variant="ceramic">
+          <CardContent className="py-12">
+            <EmptyState
+              icon={<BookOpen className="w-12 h-12" />}
+              title="No Classes Yet"
+              description="You haven't been assigned to any classes. Contact your school administrator."
+              size="sm"
+            />
+          </CardContent>
+        </Card>
       )}
 
       {/* Upcoming Homework to Grade - Ceramic Styled */}
-      {upcomingHomework && upcomingHomework.length > 0 && (
+      {upcomingHomework && upcomingHomework.length > 0 ? (
         <Card variant="ceramic">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -207,6 +205,17 @@ export default async function TeacherDashboardPage({ params }: TeacherDashboardP
                 </div>
               ))}
             </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card variant="ceramic">
+          <CardContent className="py-8">
+            <EmptyState
+              icon={<CheckCircle className="w-10 h-10" />}
+              title="All Caught Up!"
+              description="No homework submissions waiting for review"
+              size="sm"
+            />
           </CardContent>
         </Card>
       )}

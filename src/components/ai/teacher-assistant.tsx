@@ -31,6 +31,7 @@ import {
   GraduationCap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { portal } from "@/styles/design-tokens";
 
 export interface Message {
   id: string;
@@ -50,9 +51,9 @@ export interface TeacherAssistantProps {
 const TEACHER_CONFIG = {
   name: "Teacher Assistant",
   icon: <GraduationCap className="w-4 h-4" />,
-  gradient: "linear-gradient(135deg, rgb(59 130 246) 0%, rgb(37 99 235) 100%)",
+  gradient: portal.teacher.gradient,
   bgLight: "rgb(219 234 254)",
-  textColor: "rgb(37 99 235)",
+  textColor: portal.teacher.primaryDark,
   welcome: (name: string) => `Hi ${name}! 👋 I'm your AI Teaching Assistant. I can help you with:\n\n- Class management and organization\n- Teaching strategies and methodologies\n- Student assessment interpretation\n- Homework assignment and tracking\n\nHow can I assist you today?`,
   suggestions: [
     "How do I create homework?",

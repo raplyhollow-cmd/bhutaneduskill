@@ -1,18 +1,160 @@
-# Career Compass + School Management System
+# Bhutan EduSkill - Agent Memory (TOR)
 
-**Project:** B2B SaaS Multi-tenant School Management Platform
-**Target:** Bhutan Middle Schools (Class 6-12)
-**Tech Stack:** Next.js 16 + TypeScript + Neon PostgreSQL + Clerk + Vercel
-**Last Updated:** February 16, 2026
-**Local URL:** http://localhost:3003
+> **PROJECT:** B2B SaaS Multi-tenant School Management Platform
+> **TARGET:** Bhutan Middle Schools (Class 6-12)
+> **TECH STACK:** Next.js 16 + TypeScript + Neon PostgreSQL + Clerk + Vercel
+> **LOCAL URL:** http://localhost:3003
+> **LAST UPDATED:** February 26, 2026
 
 ---
 
-# TOR (Table of Rules) - Quick Confirmation Reference
+# TOR (Table of Rules) - Quick Reference
 
-> **Purpose:** This section contains ALL critical rules for fast agent confirmation. Bookmark this section.
+> **PURPOSE:** ALL agents MUST read this before starting work. Contains ALL critical rules.
 
-## 1. CRITICAL: Framer Motion Rules (NEVER VIOLATE)
+## 🖥️ AUTO-MONITORING (All Agents MUST Self-Enforce)
+
+**Every agent automatically monitors itself. NO user reminder needed.**
+
+| Metric | Check Point | Auto-Action |
+|--------|-------------|-------------|
+| **Token Usage** | Every 5 tool calls | If >150k: Wrap up. If >180k: STOP immediately |
+| **Context Growing** | Every response | If conversation >50 messages: Request new session |
+| **Task Stuck** | After 3 failed attempts | Report to user, suggest alternative approach |
+| **Build Status** | After code changes | Run `npx tsc --noEmit` - if fails, fix before continuing |
+
+```
+AGENT SELF-CHECK (Automatic):
+1. Am I approaching 150k tokens? → YES: Summarize, wrap up
+2. Did I just change code? → YES: Type check it
+3. Is task taking too long? → YES: Break into subtask
+4. Are 3+ agents already running? → YES: Queue self, wait
+```
+
+**IMPORTANT:** If you crash from token overflow, you failed at self-monitoring.
+
+## ⚠️ CRITICAL: Agent Spawning Rules (February 26, 2026)
+
+**To prevent agent crashes from context overflow:**
+
+### Decision Tree
+
+```
+Is your task <5 files and <30k tokens?
+├─ YES → Spawn specialist agent directly
+└─ NO  → Start with Project Manager first
+```
+
+### Large Task Indicators (NEVER spawn directly)
+
+- "Audit all portals"
+- "Fix all components"
+- "Review entire codebase"
+- "Scan 50+ files"
+- "Integrate across all pages"
+
+### If You Ignore This Rule
+
+- **Result:** Agent crashes with "exceeds context" error
+- **See:** [AGENT_TEAM.md](AGENT_TEAM.md) for full protocol
+
+---
+
+## 🔴 CRITICAL - MUST READ FIRST (Agent Checklist)
+
+| Task Area | Read This File | When to Read |
+|-------------|---------------|--------------|
+| **System Flow** | [docs/system-flow-diagram.md](docs/system-flow-diagram.md) | ⭐ FIRST - Before ANY work |
+| **Database queries** | [docs/memory/database-patterns.md](docs/memory/database-patterns.md) | Database work |
+| **API routes** | [docs/memory/api-patterns.md](docs/memory/api-patterns.md) | API work |
+| **React components** | [docs/memory/react-patterns.md](docs/memory/react-patterns.md) | UI work |
+| **Common mistakes** | [docs/memory/common-mistakes.md](docs/memory/common-mistakes.md) | Quick check |
+| **Error fixes** | [docs/ERRORS_AND_FIXES.md](docs/ERRORS_AND_FIXES.md) | When stuck |
+| **Development framework** | [docs/DEVELOPMENT_FRAMEWORK.md](docs/DEVELOPMENT_FRAMEWORK.md) | New to project |
+| **Agent SOP** | [AGENT_SOP.md](AGENT_SOP.md) | ⭐ FIRST TIME - Read once |
+
+## 1. CRITICAL: Database Query Rules
+
+| Rule | Why | Fix |
+|------|-----|-----|
+| **NEVER use `db.query.*` API** | `neon-http` driver doesn't support it | Use `db.select().from().leftJoin()` |
+| **NEVER use `clerkId`** | Wrong field name | Use `clerkUserId` |
+| **NEVER use `school_id`** | Drizzle uses camelCase | Use `schoolId` |
+| **ALWAYS verify columns exist** | Code expects columns that may not exist | Check schema.ts before using |
+
+**CORRECT Pattern:**
+```typescript
+import { db } from "@/lib/db";
+import { users, classes } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
+
+const user = await db
+  .select({ id: users.id, name: users.name })
+  .from(users)
+  .where(eq(users.clerkUserId, clerkUserId));
+```
+
+## 2. CRITICAL: Authentication Rules
+
+| Pattern | Use | NEVER Use |
+|---------|-----|------------|
+| **Authentication** | `requireAuth()` from `@/lib/auth-utils` | `auth()` from Clerk |
+| **Field names** | `clerkUserId`, `schoolId` | `clerkId`, `school_id` |
+| **Return value** | `userId: user.id` (database ID) | `clerkUserId` (Clerk ID) |
+
+## 3. CRITICAL: React Component Rules
+
+| Rule | Why | Fix |
+|------|-----|-----|
+| **ALL hooks at component top** | React requires same hook order every render | Declare hooks BEFORE any conditionals |
+| **"use client" for hooks** | Server components can't use hooks | Add `"use client";` at top |
+| **repeat: Infinity needs repeatType** | Prevents animation errors | Always add `repeatType: "loop"` |
+
+## 4. CRITICAL: TypeScript & Imports
+
+| Rule | Status |
+|------|--------|
+| No new `any` types | MANDATORY |
+| Use `@/` imports only | REQUIRED |
+| Build after each file | REQUIRED |
+
+---
+
+## 5. QUICK LINKS (Documentation Index)
+
+| Documentation | Purpose |
+|--------------|----------|
+| [docs/memory/database-patterns.md](docs/memory/database-patterns.md) | Database query rules |
+| [docs/memory/api-patterns.md](docs/memory/api-patterns.md) | API route templates |
+| [docs/memory/react-patterns.md](docs/memory/react-patterns.md) | React component rules |
+| [docs/memory/common-mistakes.md](docs/memory/common-mistakes.md) | Anti-patterns to avoid |
+| [docs/ERRORS_AND_FIXES.md](docs/ERRORS_AND_FIXES.md) | Error documentation |
+| [docs/DEVELOPMENT_FRAMEWORK.md](docs/DEVELOPMENT_FRAMEWORK.md) | Development framework |
+| [AGENT_SOP.md](AGENT_SOP.md) | Agent SOP |
+
+---
+
+## CURRENT PROJECT STATUS
+
+- **Database:** Using neon-http driver, `db.query` API DISABLED
+- **Relations:** All 21 relations disabled (circular reference issues)
+- **Authentication:** `requireAuth()` pattern established
+- **Type Safety:** 300+ `any` types exist - don't add more
+- **Build:** Succeeds with warnings
+
+---
+
+## FOR AGENTS: HOW TO USE THIS SYSTEM
+
+1. **Read the relevant docs/memory/ file** for your task
+2. **Copy working patterns** from the codebase (don't guess)
+3. **Follow AGENT_SOP.md** strict rules
+4. **Document new errors** so other agents don't repeat them
+5. **Update docs/memory/** when you discover new working patterns
+
+---
+
+# PORTAL ROUTES (Quick Reference)
 
 | Rule | Why | Fix |
 |------|-----|-----|

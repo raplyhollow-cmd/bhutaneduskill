@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, TrendingUp, GraduationCap, ArrowRight, Bookmark, Sparkles, AlertCircle } from "lucide-react";
+import { Search, TrendingUp, GraduationCap, ArrowRight, Bookmark, Sparkles, AlertCircle, Bot } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
@@ -172,21 +172,40 @@ export default function CareersPage() {
             Discover careers that match your skills and interests
           </p>
         </div>
-        <Card className="p-12 text-center bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200">
-          <Sparkles className="w-16 h-16 text-orange-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Complete Assessments to See Your Career Matches
-          </h2>
-          <p className="text-gray-600 mb-6 max-w-md mx-auto">
-            Take our career assessments (RIASEC, MBTI, Work Values) to get personalized career recommendations based on your unique personality and interests.
-          </p>
-          <Button asChild className="bg-orange-500 hover:bg-orange-600">
-            <Link href="/student/assessments">
-              Start Assessments
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Link>
-          </Button>
-        </Card>
+
+        <div className="grid md:grid-cols-2 gap-6">
+          <Card className="p-12 text-center bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200">
+            <Sparkles className="w-16 h-16 text-orange-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              Complete Assessments to See Your Career Matches
+            </h2>
+            <p className="text-gray-600 mb-6 max-w-md mx-auto">
+              Take our career assessments (RIASEC, MBTI, Work Values) to get personalized career recommendations based on your unique personality and interests.
+            </p>
+            <Button asChild className="bg-orange-500 hover:bg-orange-600">
+              <Link href="/student/assessments">
+                Start Assessments
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Link>
+            </Button>
+          </Card>
+
+          <Card className="p-12 text-center bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+            <Bot className="w-16 h-16 text-blue-500 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              Chat with AI Career Coach
+            </h2>
+            <p className="text-gray-600 mb-6 max-w-md mx-auto">
+              Get personalized career guidance, explore RUB colleges, and discover your path forward with our AI-powered career coach.
+            </p>
+            <Button asChild className="bg-blue-500 hover:bg-blue-600">
+              <Link href="/student/career-coach">
+                Start Chatting
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Link>
+            </Button>
+          </Card>
+        </div>
 
         {/* Show general career categories as preview */}
         <div>
@@ -236,11 +255,19 @@ export default function CareersPage() {
             </div>
           )}
         </div>
-        <Button variant="outline" asChild>
-          <Link href="/student/assessments">
-            Retake Assessments
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" className="gap-2" asChild>
+            <Link href="/student/career-coach">
+              <Bot className="w-4 h-4" />
+              AI Career Coach
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href="/student/assessments">
+              Retake Assessments
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Search */}

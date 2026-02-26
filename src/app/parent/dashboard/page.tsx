@@ -17,6 +17,8 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorMessage } from "@/components/ui/error-message";
 import {
   CheckCircle,
   XCircle,
@@ -166,6 +168,7 @@ export default function ParentDashboardPage() {
   const [children, setChildren] = useState<Child[]>([]);
   const [selectedChild, setSelectedChild] = useState<Child | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [attendance, setAttendance] = useState<AttendanceData | null>(null);
   const [feeStatus, setFeeStatus] = useState<FeeData | null>(null);
   const [latestFeedback, setLatestFeedback] = useState<{
@@ -181,18 +184,21 @@ export default function ParentDashboardPage() {
 
   const fetchData = async () => {
     try {
+      setError(null);
       // Fetch children
       const childrenRes = await fetch("/api/parent/children");
-      if (childrenRes.ok) {
-        const childrenData = await childrenRes.json();
-        if (childrenData.children && childrenData.children.length > 0) {
-          setChildren(childrenData.children);
-          setSelectedChild(childrenData.children[0]);
-          await fetchChildData(childrenData.children[0].id);
-        }
+      if (!childrenRes.ok) {
+        throw new Error("Failed to fetch children data");
+      }
+      const childrenData = await childrenRes.json();
+      if (childrenData.children && childrenData.children.length > 0) {
+        setChildren(childrenData.children);
+        setSelectedChild(childrenData.children[0]);
+        await fetchChildData(childrenData.children[0].id);
       }
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
+      setError(error instanceof Error ? error.message : "Failed to load dashboard data");
     } finally {
       setLoading(false);
     }
@@ -293,8 +299,50 @@ export default function ParentDashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="w-8 h-8 border-4 border-gray-400 border-t-transparent rounded-full animate-spin" />
+      <div className="max-w-4xl mx-auto space-y-6 p-4">
+        {/* Header skeleton */}
+        <div className="space-y-3">
+          <div className="h-8 w-64 bg-gray-200 rounded animate-pulse" />
+          <div className="h-4 w-48 bg-gray-200 rounded animate-pulse" />
+        </div>
+
+        {/* Bento grid skeleton */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="rounded-xl border border-gray-200 bg-white p-4 animate-pulse">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-lg bg-gray-200" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3 w-16 bg-gray-200 rounded" />
+                  <div className="h-5 w-20 bg-gray-200 rounded" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Quick actions skeleton */}
+        <div className="space-y-3">
+          <div className="h-6 w-32 bg-gray-200 rounded animate-pulse mb-4" />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="rounded-xl border border-gray-200 bg-white p-4 animate-pulse min-h-[120px]" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-2xl mx-auto p-4">
+        <ErrorMessage
+          title="Couldn't load dashboard"
+          message={error}
+          variant="error"
+          retryAction={{ label: "Try Again", onClick: fetchData }}
+        />
       </div>
     );
   }
@@ -302,18 +350,15 @@ export default function ParentDashboardPage() {
   if (children.length === 0) {
     return (
       <div className="max-w-md mx-auto p-6">
-        <Card>
-          <CardContent className="pt-6 text-center">
-            <User className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-            <h2 className="text-xl font-semibold mb-2">No Children Linked</h2>
-            <p className="text-gray-600 mb-4">
-              Please link your children to view their dashboard
-            </p>
-            <Button asChild>
-              <Link href="/parent/link-child">Link Child</Link>
-            </Button>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<User className="w-16 h-16" />}
+          title="No Children Linked"
+          description="Please link your children to view their dashboard and track their progress"
+          action={{
+            label: "Link Child",
+            onClick: () => {}, // TODO: Implement link child flow
+          }}
+        />
       </div>
     );
   }

@@ -1,16 +1,19 @@
-import { logger } from "@/lib/logger";
 /**
  * ANNOUNCEMENTS API ROUTE
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  *
  * Handles CRUD operations for announcements
  */
 
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
-import { announcements as announcements, users, classes } from "@/lib/db/schema";
+import { announcements, users, classes } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { successResponse, errorResponse, badRequestResponse, forbiddenResponse, notFoundResponse } from "@/lib/api/response-helpers";
 
 export interface CreateAnnouncementInput {
   title: string;
@@ -23,18 +26,17 @@ export interface CreateAnnouncementInput {
 }
 
 // GET /api/announcements - Fetch announcements
-export async function GET(request: NextRequest) {
-  // Auth: admin, school-admin, teacher can read announcements
-  const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
+    }
 
-  try {
-    const { userId } = authResult;
+    const { userId } = auth;
 
     const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
+      where: eq(users.id, userId),
       columns: { schoolId: true, type: true },
     });
 
@@ -63,30 +65,27 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ announcements: fetchedAnnouncements });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json({ error: "Failed to fetch announcements" }, { status: 500 });
-  }
-}
+  },
+  ['admin', 'school-admin', 'teacher']
+);
 
 // POST /api/announcements - Create announcement
-export async function POST(request: NextRequest) {
-  // Auth: admin, school-admin, teacher can create announcements
-  const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
+export const POST = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
+    }
 
-  try {
-    const { userId } = authResult;
+    const { userId, user } = auth;
 
     const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-      columns: { id: true, type: true, schoolId: true },
+      where: eq(users.id, userId),
+      columns: { id: true, type: true, schoolId: true, firstName: true, lastName: true },
     });
 
-    if (!currentUser || ((currentUser as any).type !== "teacher" && (currentUser as any).type !== "admin")) {
-      return NextResponse.json({ error: "Forbidden - Only teachers and admins can create announcements" }, { status: 403 });
+    if (!currentUser || (currentUser.type !== "teacher" && currentUser.type !== "admin")) {
+      return forbiddenResponse("Only teachers and admins can create announcements");
     }
 
     const input: CreateAnnouncementInput = await request.json();
@@ -97,7 +96,7 @@ export async function POST(request: NextRequest) {
       ...({
         title,
         authorId: currentUser.id,
-        authorName: `${(currentUser as any).firstName} ${(currentUser as any).lastName || ""}`.trim(),
+        authorName: `${currentUser.firstName} ${currentUser.lastName || ""}`.trim(),
       }),
       content,
       targetAudience,
@@ -114,28 +113,25 @@ export async function POST(request: NextRequest) {
     revalidatePath("/dashboard");
 
     return NextResponse.json({ success: true, announcement: newAnnouncement });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json({ error: "Failed to create announcement" }, { status: 500 });
-  }
-}
+  },
+  ['admin', 'school-admin', 'teacher']
+);
 
 // DELETE /api/announcements/[id] - Delete announcement (handled separately in [id]/route.ts)
-export async function DELETE(request: NextRequest) {
-  // Auth: admin, school-admin, teacher can delete announcements
-  const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
+export const DELETE = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
+    }
 
-  try {
-    const { userId } = authResult;
+    const { userId, user } = auth;
 
     const { searchParams } = new URL(request.url);
     const announcementId = searchParams.get("id");
 
     if (!announcementId) {
-      return NextResponse.json({ error: "Announcement ID required" }, { status: 400 });
+      return badRequestResponse("Announcement ID required");
     }
 
     const announcement = await db.query.announcements.findFirst({
@@ -143,17 +139,17 @@ export async function DELETE(request: NextRequest) {
     });
 
     if (!announcement) {
-      return NextResponse.json({ error: "Announcement not found" }, { status: 404 });
+      return notFoundResponse("Announcement");
     }
 
     // Check ownership
     const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
+      where: eq(users.id, userId),
       columns: { id: true, type: true },
     });
 
-    if ((announcement as any).authorId !== currentUser.id && (currentUser as any).type !== "admin") {
-      return NextResponse.json({ error: "You can only delete your own announcements" }, { status: 403 });
+    if ((announcement as any).authorId !== currentUser.id && currentUser.type !== "admin") {
+      return forbiddenResponse("You can only delete your own announcements");
     }
 
     await db.delete(announcements).where(eq(announcements.id, announcementId));
@@ -162,8 +158,6 @@ export async function DELETE(request: NextRequest) {
     revalidatePath("/dashboard");
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json({ error: "Failed to delete announcement" }, { status: 500 });
-  }
-}
+  },
+  ['admin', 'school-admin', 'teacher']
+);

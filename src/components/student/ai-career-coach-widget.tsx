@@ -85,7 +85,7 @@ export function AICareerCoachWidget({ className = "" }: AICareerCoachWidgetProps
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        const history = parsed.map((msg: any) => ({
+        const history = parsed.map((msg: { role: string; content: string; timestamp: string }) => ({
           ...msg,
           timestamp: new Date(msg.timestamp),
         }));

@@ -12,6 +12,46 @@
 import { logger } from "@/lib/logger";
 
 // ============================================================================
+// TYPE DEFINITIONS
+// ============================================================================
+
+/**
+ * Database User entity (minimal)
+ */
+export interface DbUser {
+  id: string;
+  clerkUserId: string;
+  type: string;
+  schoolId?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+/**
+ * Successful authentication result
+ */
+export interface AuthSuccess {
+  user: DbUser;
+  userId: string;
+}
+
+/**
+ * Failed authentication result
+ */
+export interface AuthError {
+  error: string;
+  status: number;
+}
+
+/**
+ * Authentication result type
+ */
+export type AuthResult = AuthSuccess | AuthError;
+
+// ============================================================================
 // SERVER-ONLY: requireAuth for API Routes
 // ============================================================================
 
@@ -20,12 +60,9 @@ import { logger } from "@/lib/logger";
  * This should only be imported in API routes (not client components)
  *
  * @param allowedRoles - Array of roles that can access this route
- * @returns Object with user and userId on success, or NextResponse error on failure
+ * @returns Object with user and userId on success, or error response on failure
  */
-export async function requireAuthServer(allowedRoles?: string[]): Promise<
-  | { user: any; userId: string }
-  | { error: string; status: number }
-> {
+export async function requireAuthServer(allowedRoles?: string[]): Promise<AuthResult> {
   const { auth } = await import("@clerk/nextjs/server");
   const { userId } = await auth();
 
@@ -101,10 +138,7 @@ export async function hasServerRole(userId: string, roles: string[]): Promise<bo
  * Alias for requireAuth from auth-utils (for use server compatibility)
  * This function can only be used in server actions or API routes
  */
-export async function requireAuthServerError(allowedRoles?: string[]): Promise<
-  | { user: any; userId: string }
-  | { error: string; status: number }
-> {
+export async function requireAuthServerError(allowedRoles?: string[]): Promise<AuthResult> {
   // Import the auth-utils requireAuth function
   const { requireAuth } = await import("./auth-utils");
   return requireAuth(allowedRoles);

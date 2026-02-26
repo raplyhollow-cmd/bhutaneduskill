@@ -4,7 +4,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { useUnsavedChangesToast } from "@/components/ui/toast";
+import { useUnsavedChangesToast } from "@/components/ui/toaster";
+import { portal } from "@/styles/design-tokens";
 
 interface SlideInFormProps {
   isOpen: boolean;
@@ -17,23 +18,23 @@ interface SlideInFormProps {
 }
 
 const portalGradients = {
-  student: "linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)",
-  teacher: "linear-gradient(135deg, rgb(59 130 246) 0%, rgb(37 99 235) 100%)",
-  parent: "linear-gradient(135deg, rgb(107 114 128) 0%, rgb(75 85 99) 100%)",
-  counselor: "linear-gradient(135deg, rgb(168 85 247) 0%, rgb(147 51 234) 100%)",
-  admin: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)",
-  "school-admin": "linear-gradient(135deg, rgb(139 92 246) 0%, rgb(124 58 237) 100%)",
-  ministry: "linear-gradient(135deg, rgb(168 85 247) 0%, rgb(147 51 234) 100%)",
+  student: portal.student.gradient,
+  teacher: portal.teacher.gradient,
+  parent: portal.parent.gradient,
+  counselor: portal.counselor.gradient,
+  admin: portal.admin.gradient,
+  "school-admin": portal.schoolAdmin.gradient,
+  ministry: portal.ministry.gradient,
 };
 
 const portalSolidColors = {
-  student: "rgb(249 115 22)",
-  teacher: "rgb(59 130 246)",
-  parent: "rgb(107 114 128)",
-  counselor: "rgb(168 85 247)",
-  admin: "rgb(236 72 153)",
-  "school-admin": "rgb(139 92 246)",
-  ministry: "rgb(168 85 247)",
+  student: portal.student.primary,
+  teacher: portal.teacher.primary,
+  parent: portal.parent.primary,
+  counselor: portal.counselor.primary,
+  admin: portal.admin.primary,
+  "school-admin": portal.schoolAdmin.primary,
+  ministry: portal.ministry.primary,
 };
 
 /**

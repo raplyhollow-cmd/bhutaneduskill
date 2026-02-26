@@ -10,6 +10,7 @@ import { logger } from "@/lib/logger";
  * - Session notes
  * - Schedule new session
  * - Session types (individual, group, family)
+ * - Quick add session with ExpressAddModal
  */
 
 
@@ -18,6 +19,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { ExpressAddModal, useExpressAdd } from "@/components/ui/express-add-modal";
 import {
   Calendar,
   Plus,
@@ -37,133 +39,30 @@ import {
   MessageSquare,
   X as XIcon,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 
-// Mock session data
-const mockSessions = [
-  {
-    id: "SES001",
-    studentId: "STU001",
-    studentName: "Tashi Dorji",
-    grade: 12,
-    type: "individual",
-    status: "scheduled",
-    date: "2024-02-15",
-    startTime: "10:00",
-    endTime: "10:45",
-    location: "Counseling Office - Room 101",
-    topic: "Career Planning Discussion",
-    notes: "",
-    isRecurring: false,
-  },
-  {
-    id: "SES002",
-    studentId: "STU002",
-    studentName: "Karma Wangmo",
-    grade: 10,
-    type: "individual",
-    status: "scheduled",
-    date: "2024-02-15",
-    startTime: "14:00",
-    endTime: "14:45",
-    location: "Counseling Office - Room 101",
-    topic: "Attendance Review",
-    notes: "Follow-up on attendance improvement plan",
-    isRecurring: true,
-    recurringPattern: "weekly",
-  },
-  {
-    id: "SES003",
-    studentId: "STU003",
-    studentName: "Pema Lhamo",
-    grade: 11,
-    type: "individual",
-    status: "completed",
-    date: "2024-02-10",
-    startTime: "11:00",
-    endTime: "11:45",
-    location: "Counseling Office - Room 101",
-    topic: "Social Adjustment Check-in",
-    notes: "Student reports positive interactions with peers. Joined debate club. Will continue monitoring.",
-    isRecurring: false,
-  },
-  {
-    id: "SES004",
-    studentName: "Grade 10 Study Skills Group",
-    participants: ["STU005", "STU006", "STU007", "STU008"],
-    type: "group",
-    status: "scheduled",
-    date: "2024-02-16",
-    startTime: "13:00",
-    endTime: "14:00",
-    location: "Library - Study Room B",
-    topic: "Study Skills Workshop",
-    notes: "Session on effective note-taking and time management",
-    isRecurring: true,
-    recurringPattern: "biweekly",
-  },
-  {
-    id: "SES005",
-    studentId: "STU009",
-    studentName: "Dorji Wangchuk",
-    grade: 12,
-    type: "family",
-    status: "scheduled",
-    date: "2024-02-17",
-    startTime: "15:00",
-    endTime: "16:00",
-    location: "Counseling Office - Room 102",
-    topic: "Family Counseling - Career Decisions",
-    notes: "Session with student and parents to discuss university options",
-    isRecurring: false,
-  },
-  {
-    id: "SES006",
-    studentId: "STU010",
-    studentName: "Sonam Yangdon",
-    grade: 11,
-    type: "individual",
-    status: "completed",
-    date: "2024-02-08",
-    startTime: "09:00",
-    endTime: "09:45",
-    location: "Counseling Office - Room 101",
-    topic: "Assessment Results Review",
-    notes: "Reviewed RIASEC results. Student showed strong interest in healthcare careers. Discussed nursing program requirements.",
-    isRecurring: false,
-  },
-  {
-    id: "SES007",
-    studentId: "STU011",
-    studentName: "Karma Tshering",
-    grade: 10,
-    type: "individual",
-    status: "cancelled",
-    date: "2024-02-09",
-    startTime: "10:30",
-    endTime: "11:15",
-    location: "Counseling Office - Room 101",
-    topic: "Behavioral Support",
-    notes: "Student absent from school",
-    isRecurring: false,
-  },
-  {
-    id: "SES008",
-    studentName: "Peer Support Training Group",
-    participants: ["STU001", "STU003", "STU010", "STU012"],
-    type: "group",
-    status: "completed",
-    date: "2024-02-07",
-    startTime: "14:00",
-    endTime: "15:30",
-    location: "Multipurpose Hall",
-    topic: "Peer Counseling Skills",
-    notes: "First session of peer support training. Good engagement from all participants.",
-    isRecurring: true,
-    recurringPattern: "weekly",
-  },
-];
+// Types for real session data
+interface CounselingSession {
+  id: string;
+  studentId: string | null;
+  studentName?: string;
+  participants?: string[];
+  type: "individual" | "group" | "family";
+  status: "scheduled" | "completed" | "cancelled" | "no-show";
+  sessionDate: string;
+  startTime: string;
+  endTime: string;
+  location: string;
+  topic: string | null;
+  notes: string | null;
+  outcome: string | null;
+  isRecurring: boolean;
+  schoolId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
 
 // Calendar data for the current month
 const generateCalendarDays = () => {
@@ -194,18 +93,40 @@ const generateCalendarDays = () => {
 const typeOptions = ["All", "Individual", "Group", "Family"];
 const statusOptions = ["All", "Scheduled", "Completed", "Cancelled"];
 
+type CounselingSession = {
+  id: string;
+  studentName?: string;
+  topic?: string;
+  type: string;
+  status: string;
+  date: string;
+  time?: string;
+  duration?: number;
+  notes?: string;
+};
+
+type SessionStats = {
+  upcomingSessions: number;
+  completedToday: number;
+  totalHours: number;
+  groupSessions: number;
+};
+
 export default function CounselorSessionsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState("All");
   const [selectedStatus, setSelectedStatus] = useState("All");
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
-  const [selectedSession, setSelectedSession] = useState<any>(null);
+  const [selectedSession, setSelectedSession] = useState<CounselingSession | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
+  // ExpressAddModal hook for quick session add
+  const quickAdd = useExpressAdd();
+
   // Data states
-  const [sessions, setSessions] = useState<any[]>([]);
-  const [stats, setStats] = useState<any>(null);
+  const [sessions, setSessions] = useState<CounselingSession[]>([]);
+  const [stats, setStats] = useState<SessionStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -239,6 +160,39 @@ export default function CounselorSessionsPage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Quick add session handler - creates session with default settings
+  const handleQuickAddSession = async (topic: string) => {
+    try {
+      // Schedule for tomorrow at 10 AM
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const response = await fetch("/api/counselor/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "individual",
+          sessionDate: tomorrow.toISOString().split("T")[0],
+          startTime: "10:00",
+          endTime: "10:45",
+          location: "Counseling Office",
+          topic: topic.trim(),
+          notes: "Quick scheduled session - details to be confirmed",
+        }),
+      });
+
+      if (response.ok) {
+        await fetchSessionsData();
+        return { success: true };
+      } else {
+        const data = await response.json();
+        return { success: false, error: data.error || "Failed to schedule session" };
+      }
+    } catch (error) {
+      return { success: false, error: "Network error. Please try again." };
     }
   };
 
@@ -343,6 +297,14 @@ export default function CounselorSessionsPage() {
           >
             <FileText className="w-4 h-4" />
             List
+          </Button>
+          <Button
+            variant="outline"
+            onClick={quickAdd.open}
+            className="gap-2"
+          >
+            <Sparkles className="w-4 h-4" />
+            Quick Schedule
           </Button>
           <Button
             className="gap-2"
@@ -497,7 +459,7 @@ export default function CounselorSessionsPage() {
                     <div className="flex items-center gap-4 mt-1 text-xs text-gray-500">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
-                        {new Date(session.date).toLocaleDateString()}
+                        {new Date(session.sessionDate).toLocaleDateString()}
                       </span>
                       <span className="flex items-center gap-1">
                         <Clock className="w-3 h-3" />
@@ -547,7 +509,7 @@ export default function CounselorSessionsPage() {
             <div className="grid grid-cols-7 gap-1">
               {generateCalendarDays().map((dayInfo, idx) => {
                 const hasSessions = dayInfo.date && sessions.some(
-                  (s) => new Date(s.date).toDateString() === dayInfo.date.toDateString()
+                  (s) => new Date(s.sessionDate).toDateString() === dayInfo.date.toDateString()
                 );
                 const isPast = dayInfo.date && dayInfo.date < new Date();
                 const isToday = dayInfo.isToday;
@@ -743,7 +705,7 @@ export default function CounselorSessionsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <h4 className="font-medium text-gray-900 mb-1">Date</h4>
-                  <p className="text-gray-600">{new Date(selectedSession.date).toLocaleDateString()}</p>
+                  <p className="text-gray-600">{new Date(selectedSession.sessionDate).toLocaleDateString()}</p>
                 </div>
                 <div>
                   <h4 className="font-medium text-gray-900 mb-1">Time</h4>
@@ -796,6 +758,21 @@ export default function CounselorSessionsPage() {
           </Card>
         </div>
       )}
+
+      {/* Quick Add Session Modal */}
+      <ExpressAddModal
+        isOpen={quickAdd.isOpen}
+        onClose={quickAdd.close}
+        onSubmit={handleQuickAddSession}
+        title="Quick Schedule Session"
+        description="Enter session topic (defaults to tomorrow 10 AM)"
+        placeholder="e.g., Career Planning, Academic Support"
+        successMessage="Session scheduled successfully!"
+        errorMessage="Failed to schedule session. Please try again."
+        icon={Calendar}
+        minLength={3}
+        submitLabel="Press Enter to schedule"
+      />
     </div>
   );
 }

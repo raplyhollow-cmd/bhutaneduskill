@@ -5,6 +5,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Menu, X, Bell, Search, User, LogOut } from "lucide-react";
+import { portal } from "@/styles/design-tokens";
 
 // ============================================================================
 // VERCEL-STYLE HEADER
@@ -30,14 +31,14 @@ interface VercelHeaderProps {
   className?: string;
 }
 
-// Portal accent colors (RGB for inline styles)
+// Portal accent colors using design tokens
 const portalAccents = {
-  student: "rgb(249 115 22)",
-  teacher: "rgb(59 130 246)",
-  parent: "rgb(107 114 128)",
-  counselor: "rgb(168 85 247)",
-  admin: "rgb(236 72 153)",
-  "school-admin": "rgb(139 92 246)",
+  student: portal.student.primary,
+  teacher: portal.teacher.primary,
+  parent: portal.parent.primary,
+  counselor: portal.counselor.primary,
+  admin: portal.admin.primary,
+  "school-admin": portal.schoolAdmin.primary,
 };
 
 const VercelHeader = React.forwardRef<HTMLDivElement, VercelHeaderProps>(

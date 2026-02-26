@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { GraduationCap, BookOpen, Users, Building, Shield, Sparkles, Server, Database, FileCode } from "lucide-react";
 import { useState } from "react";
+import { portal } from "@/styles/design-tokens";
 
 interface Achievement {
   icon: React.ReactNode;
@@ -19,7 +20,7 @@ const achievements: Achievement[] = [
     title: "Portals",
     count: "8",
     items: ["Student", "Teacher", "Parent", "Counselor", "School Admin", "Platform Admin", "Ministry", "Alumni"],
-    color: "rgb(249 115 22)",
+    color: portal.student.primary,
     gradient: "from-orange-500 to-red-600"
   },
   {
@@ -27,7 +28,7 @@ const achievements: Achievement[] = [
     title: "API Routes",
     count: "200+",
     items: ["Protected with RBAC", "RESTful design", "Error handling", "Type-safe", "Documented"],
-    color: "rgb(59 130 246)",
+    color: portal.teacher.primary,
     gradient: "from-blue-500 to-cyan-600"
   },
   {
@@ -35,7 +36,7 @@ const achievements: Achievement[] = [
     title: "Pages",
     count: "150+",
     items: ["Full-stack pages", "Responsive design", "Accessible", "Optimized", "Animated"],
-    color: "rgb(139 92 246)",
+    color: portal.schoolAdmin.primary,
     gradient: "from-purple-500 to-violet-600"
   },
   {
@@ -43,7 +44,7 @@ const achievements: Achievement[] = [
     title: "Database Tables",
     count: "115+",
     items: ["Users & auth", "Academics", "Assessments", "Operations", "Analytics"],
-    color: "rgb(236 72 153)",
+    color: portal.admin.primary,
     gradient: "from-pink-500 to-rose-600"
   },
   {
@@ -59,7 +60,7 @@ const achievements: Achievement[] = [
     title: "Error Fixes",
     count: "50+",
     items: ["TypeScript errors", "API issues", "Navigation bugs", "Database schema", "Build errors"],
-    color: "rgb(168 85 247)",
+    color: portal.counselor.primary,
     gradient: "from-violet-500 to-purple-600"
   }
 ];

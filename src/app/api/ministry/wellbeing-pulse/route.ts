@@ -5,6 +5,65 @@ import { counselingSessions, redFlags, schools, users } from "@/lib/db/schema";
 import { eq, and, sql, gte, desc } from "drizzle-orm";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
 
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface SqlRow {
+  [key: string]: string | number | null;
+}
+
+interface DzongkhagBreakdownItem {
+  dzongkhag: string;
+  totalStudents: number;
+  sessionsCompleted: number;
+  crisisInterventions: number;
+  interventionRate: number;
+}
+
+interface SchoolLevelBreakdownItem {
+  schoolLevel: string;
+  totalStudents: number;
+  sessionsCompleted: number;
+  crisisInterventions: number;
+}
+
+interface RedFlagsBySeverity {
+  critical: number;
+  high: number;
+  medium: number;
+  low: number;
+}
+
+interface TopConcernItem {
+  concern: string;
+  frequency: number;
+}
+
+interface RedFlagsByLocation {
+  [dzongkhag: string]: RedFlagsBySeverity;
+}
+
+interface WellbeingPulseResponse {
+  period: {
+    start: string;
+    end: string;
+    days: number;
+  };
+  summary: {
+    totalSessions: number;
+    trend: "increasing" | "decreasing" | "stable";
+    change: number;
+  };
+  byDzongkhag: DzongkhagBreakdownItem[];
+  bySchoolLevel: SchoolLevelBreakdownItem[];
+  redFlags: {
+    bySeverity: RedFlagsBySeverity;
+    byLocation: RedFlagsByLocation;
+  };
+  topConcerns: TopConcernItem[];
+}
+
 /**
  * GET /api/ministry/wellbeing-pulse
  *
@@ -117,62 +176,72 @@ export async function GET(req: Request) {
     `);
 
     // Format response
-    const dzongkhagBreakdown = dzongkhagData.rows.map((row: any) => ({
-      dzongkhag: row.dzongkhag,
-      totalStudents: parseInt(row.total_students || "0"),
-      sessionsCompleted: parseInt(row.sessions_completed || "0"),
-      crisisInterventions: parseInt(row.crisis_interventions || "0"),
-      interventionRate: row.total_students > 0
-        ? Math.round((parseInt(row.sessions_completed || "0") / parseInt(row.total_students)) * 100)
+    const dzongkhagBreakdown: DzongkhagBreakdownItem[] = dzongkhagData.rows.map((row: SqlRow) => ({
+      dzongkhag: String(row.dzongkhag ?? ""),
+      totalStudents: parseInt(String(row.total_students ?? "0")),
+      sessionsCompleted: parseInt(String(row.sessions_completed ?? "0")),
+      crisisInterventions: parseInt(String(row.crisis_interventions ?? "0")),
+      interventionRate: typeof row.total_students === "number" && row.total_students > 0
+        ? Math.round((parseInt(String(row.sessions_completed ?? "0")) / row.total_students) * 100)
         : 0,
     }));
 
-    const schoolLevelBreakdown = schoolLevelData.rows.map((row: any) => ({
-      schoolLevel: row.school_level,
-      totalStudents: parseInt(row.total_students || "0"),
-      sessionsCompleted: parseInt(row.sessions_completed || "0"),
-      crisisInterventions: parseInt(row.crisis_interventions || "0"),
+    const schoolLevelBreakdown: SchoolLevelBreakdownItem[] = schoolLevelData.rows.map((row: SqlRow) => ({
+      schoolLevel: String(row.school_level ?? ""),
+      totalStudents: parseInt(String(row.total_students ?? "0")),
+      sessionsCompleted: parseInt(String(row.sessions_completed ?? "0")),
+      crisisInterventions: parseInt(String(row.crisis_interventions ?? "0")),
     }));
 
-    const redFlagsBySeverity = {
-      critical: redFlagsSummary.rows.filter((r: any) => r.severity === "critical").reduce((sum, r: any) => sum + parseInt(r.count || "0"), 0),
-      high: redFlagsSummary.rows.filter((r: any) => r.severity === "high").reduce((sum, r: any) => sum + parseInt(r.count || "0"), 0),
-      medium: redFlagsSummary.rows.filter((r: any) => r.severity === "medium").reduce((sum, r: any) => sum + parseInt(r.count || "0"), 0),
-      low: redFlagsSummary.rows.filter((r: any) => r.severity === "low").reduce((sum, r: any) => sum + parseInt(r.count || "0"), 0),
+    const redFlagsBySeverity: RedFlagsBySeverity = {
+      critical: redFlagsSummary.rows.filter((r: SqlRow) => r.severity === "critical").reduce((sum, r: SqlRow) => sum + parseInt(String(r.count ?? "0")), 0),
+      high: redFlagsSummary.rows.filter((r: SqlRow) => r.severity === "high").reduce((sum, r: SqlRow) => sum + parseInt(String(r.count ?? "0")), 0),
+      medium: redFlagsSummary.rows.filter((r: SqlRow) => r.severity === "medium").reduce((sum, r: SqlRow) => sum + parseInt(String(r.count ?? "0")), 0),
+      low: redFlagsSummary.rows.filter((r: SqlRow) => r.severity === "low").reduce((sum, r: SqlRow) => sum + parseInt(String(r.count ?? "0")), 0),
     };
 
-    const topConcernsList = topConcerns.rows.map((row: any) => ({
-      concern: row.concern,
-      frequency: parseInt(row.frequency || "0"),
+    const topConcernsList: TopConcernItem[] = topConcerns.rows.map((row: SqlRow) => ({
+      concern: String(row.concern ?? ""),
+      frequency: parseInt(String(row.frequency ?? "0")),
     }));
 
-    return Response.json({
-      data: {
-        period: {
-          start: cutoffDate.toISOString().split("T")[0],
-          end: new Date().toISOString().split("T")[0],
-          days: parseInt(period),
-        },
-        summary: {
-          totalSessions: currentCount,
-          trend,
-          change: previousCount > 0 ? Math.round(((currentCount - previousCount) / previousCount) * 100) : 0,
-        },
-        byDzongkhag: dzongkhagBreakdown,
-        bySchoolLevel: schoolLevelBreakdown,
-        redFlags: {
-          bySeverity: redFlagsBySeverity,
-          byLocation: redFlagsSummary.rows.reduce((acc: any, row: any) => {
-            if (!acc[row.dzongkhag]) {
-              acc[row.dzongkhag] = { critical: 0, high: 0, medium: 0, low: 0 };
-            }
-            acc[row.dzongkhag][row.severity] = parseInt(row.count || "0");
-            return acc;
-          }, {}),
-        },
-        topConcerns: topConcernsList,
+    const byLocation: RedFlagsByLocation = redFlagsSummary.rows.reduce((acc: RedFlagsByLocation, row: SqlRow) => {
+      const dzongkhag = String(row.dzongkhag ?? "");
+      const severity = String(row.severity ?? "");
+      const count = parseInt(String(row.count ?? "0"));
+
+      if (!acc[dzongkhag]) {
+        acc[dzongkhag] = { critical: 0, high: 0, medium: 0, low: 0 };
+      }
+      if (severity in acc[dzongkhag]) {
+        acc[dzongkhag][severity as keyof RedFlagsBySeverity] = count;
+      }
+      return acc;
+    }, {});
+
+    const responseData: WellbeingPulseResponse = {
+      period: {
+        start: cutoffDate.toISOString().split("T")[0],
+        end: new Date().toISOString().split("T")[0],
+        days: parseInt(period),
       },
-    } satisfies ApiSuccess<any>);
+      summary: {
+        totalSessions: currentCount,
+        trend: trend as "increasing" | "decreasing" | "stable",
+        change: previousCount > 0 ? Math.round(((currentCount - previousCount) / previousCount) * 100) : 0,
+      },
+      byDzongkhag: dzongkhagBreakdown,
+      bySchoolLevel: schoolLevelBreakdown,
+      redFlags: {
+        bySeverity: redFlagsBySeverity,
+        byLocation,
+      },
+      topConcerns: topConcernsList,
+    };
+
+    return Response.json({
+      data: responseData,
+    } satisfies ApiSuccess<WellbeingPulseResponse>);
   } catch (error) {
     logger.apiError(error, { route: "/api/ministry/wellbeing-pulse", method: "GET" });
     return Response.json(

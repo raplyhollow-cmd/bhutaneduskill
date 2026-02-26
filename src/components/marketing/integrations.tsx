@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, Variants } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   GraduationCap,
@@ -121,7 +121,7 @@ export function Integrations({
   showTechStack = true,
   showPartners = true,
 }: IntegrationsProps) {
-  const containerVariants = {
+  const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
@@ -132,7 +132,7 @@ export function Integrations({
     },
   };
 
-  const itemVariants = {
+  const itemVariants: Variants = {
     hidden: { opacity: 0, scale: 0.9 },
     visible: {
       opacity: 1,

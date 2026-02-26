@@ -16,18 +16,16 @@ import { db } from "@/lib/db";
 import { notifications, notificationDeliveries } from "@/lib/db/schema";
 import { eq, and, desc, or, sql } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse, notFoundResponse } from "@/lib/api/response-helpers";
 
 // ============================================================================
 // GET - Get User Notifications
 // ============================================================================
 
-export async function GET(request: NextRequest) {
-  const authResult = await requireAuth();
-  if ("error" in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
-
-  const { user, userId } = authResult;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user, userId } = auth;
   const { searchParams } = new URL(request.url);
 
   try {
@@ -188,18 +186,17 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil(total / limit),
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.apiError(error, {
       route: "/api/notifications/my-notifications",
       method: "GET",
       userId,
     });
-    return NextResponse.json(
-      { error: "Failed to fetch notifications", details: error.message },
-      { status: 500 }
-    );
+    return errorResponse("Failed to fetch notifications", 500);
   }
-}
+},
+  [] // Any authenticated user can access their notifications
+);
 
 // ============================================================================
 // POST - Mark Notifications as Read
@@ -211,13 +208,9 @@ interface MarkAsReadRequest {
   markAll?: boolean; // Or mark all notifications as read
 }
 
-export async function POST(request: NextRequest) {
-  const authResult = await requireAuth();
-  if ("error" in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
-
-  const { userId } = authResult;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
 
   try {
     const body: MarkAsReadRequest = await request.json();
@@ -327,18 +320,17 @@ export async function POST(request: NextRequest) {
         readAt: now,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.apiError(error, {
       route: "/api/notifications/my-notifications",
       method: "POST",
       userId,
     });
-    return NextResponse.json(
-      { error: "Failed to mark notifications as read", details: error.message },
-      { status: 500 }
-    );
+    return errorResponse("Failed to mark notifications as read", 500);
   }
-}
+},
+  [] // Any authenticated user can mark their notifications as read
+);
 
 // ============================================================================
 // GET /unread-count - Get unread notification count

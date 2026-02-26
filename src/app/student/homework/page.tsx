@@ -11,6 +11,9 @@ import { HomeworkSubmission, type HomeworkAnswer, type HomeworkSubmissionMetadat
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorMessage } from "@/components/ui/error-message";
+import { DashboardSkeleton } from "@/components/ui/skeleton";
 import { FileText, Clock, AlertCircle, Loader2, CheckCircle2, Filter, MessageSquare, Star } from "lucide-react";
 import {
   Select,
@@ -63,6 +66,7 @@ export default function StudentHomeworkPage() {
   const [selectedHomework, setSelectedHomework] = useState<ApiHomework | null>(null);
   const [viewSubmission, setViewSubmission] = useState<ApiHomework | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
@@ -78,25 +82,27 @@ export default function StudentHomeworkPage() {
   // Fetch homework assignments
   const fetchHomework = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const response = await fetch("/api/student/homework");
-      if (response.ok) {
-        const result = await response.json();
-        setHomeworkList(result.homework || []);
-
-        // Extract unique subjects
-        const uniqueSubjects = Array.from(
-          new Set(
-            result.homework
-              ?.map((hw: ApiHomework) => hw.subject || hw.class?.name || "General")
-              .filter(Boolean) || []
-          )
-        );
-        setSubjects(uniqueSubjects as string[]);
+      if (!response.ok) {
+        throw new Error("Failed to load homework assignments");
       }
+      const result = await response.json();
+      setHomeworkList(result.homework || []);
+
+      // Extract unique subjects
+      const uniqueSubjects = Array.from(
+        new Set(
+          result.homework
+            ?.map((hw: ApiHomework) => hw.subject || hw.class?.name || "General")
+            .filter(Boolean) || []
+        )
+      );
+      setSubjects(uniqueSubjects as string[]);
     } catch (error) {
       logger.error("Failed to fetch homework:", error);
-      showNotification("error", "Failed to load homework assignments");
+      setError("Failed to load homework assignments. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -482,24 +488,31 @@ export default function StudentHomeworkPage() {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-            <span className="ml-3">Loading homework...</span>
-          </div>
+          <DashboardSkeleton />
+        ) : error ? (
+          <ErrorMessage
+            title="Couldn't load homework"
+            message={error}
+            variant="error"
+            retryAction={{ label: "Try Again", onClick: fetchHomework }}
+          />
         ) : filteredHomework.length === 0 ? (
           <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <FileText className="w-12 h-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">
-                {filterStatus !== "all" || filterSubject !== "all"
-                  ? "No homework matches your filters"
-                  : "No homework assigned yet"}
-              </h3>
-              <p className="text-muted-foreground">
-                {filterStatus !== "all" || filterSubject !== "all"
-                  ? "Try adjusting your filters to see more results"
-                  : "Check back later for new assignments from your teachers"}
-              </p>
+            <CardContent className="py-12">
+              <EmptyState
+                icon={<FileText className="w-12 h-12" />}
+                title={
+                  filterStatus !== "all" || filterSubject !== "all"
+                    ? "No homework matches your filters"
+                    : "No homework assigned yet"
+                }
+                description={
+                  filterStatus !== "all" || filterSubject !== "all"
+                    ? "Try adjusting your filters to see more results"
+                    : "Your teachers will assign homework here. Check back soon!"
+                }
+                size="default"
+              />
             </CardContent>
           </Card>
         ) : (

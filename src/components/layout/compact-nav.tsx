@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { PortalSelector } from "./portal-selector";
 import { MobileMenuSheet } from "./mobile-menu-sheet";
 import { Button } from "@/components/ui/button";
+import { portal as portalTokens, semantic } from "@/styles/design-tokens";
 
 const navLinks = [
   { name: "Home", href: "/", icon: Home },
@@ -21,56 +22,56 @@ const portals = [
     name: "Student",
     href: "/student",
     icon: GraduationCap,
-    color: "rgb(249 115 22)",
+    color: portalTokens.student.primary,
     description: "Take assessments, explore careers, plan your future"
   },
   {
     name: "Teacher",
     href: "/teacher",
     icon: BookOpen,
-    color: "rgb(59 130 246)",
+    color: portalTokens.teacher.primary,
     description: "Manage classes, homework, track student progress"
   },
   {
     name: "Parent",
     href: "/parent",
     icon: Users,
-    color: "rgb(107 114 128)",
+    color: portalTokens.parent.primary,
     description: "Monitor child's progress and communicate"
   },
   {
     name: "Counselor",
     href: "/counselor",
     icon: HeartHandshake,
-    color: "rgb(168 85 247)",
+    color: portalTokens.counselor.primary,
     description: "Student interventions, sessions, resources"
   },
   {
     name: "Alumni",
     href: "/alumni",
     icon: AlumniIcon,
-    color: "rgb(34 197 94)",
+    color: semantic.success.primary,
     description: "Network, mentorship, and career opportunities"
   },
   {
     name: "School Admin",
     href: "/school-admin",
     icon: Building,
-    color: "rgb(139 92 246)",
+    color: portalTokens.schoolAdmin.primary,
     description: "Manage school operations, students, teachers"
   },
   {
     name: "Ministry",
     href: "/ministry",
     icon: Landmark,
-    color: "rgb(168 85 247)",
+    color: portalTokens.counselor.primary,
     description: "National education oversight, analytics, policies"
   },
   {
     name: "Platform Admin",
     href: "/admin",
     icon: Shield,
-    color: "rgb(236 72 153)",
+    color: portalTokens.admin.primary,
     description: "Platform management, schools, billing"
   },
 ];
@@ -190,7 +191,7 @@ export function CompactNav() {
         >
           <div
             className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)" }}
+            style={{ background: portalTokens.student.gradient }}
           >
             <Compass className="w-4 h-4 text-white" />
           </div>

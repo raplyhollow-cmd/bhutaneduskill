@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { updateAssessmentType } from "@/app/admin/assessments/actions";
+import { portal } from "@/styles/design-tokens";
 
 interface AssessmentType {
   id: string;
@@ -247,7 +248,7 @@ export function EditAssessmentTypeModal({ open, onClose, onSuccess, assessmentTy
               type="submit"
               disabled={isLoading || !name || !description}
               className="flex-1"
-              style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
+              style={{ background: portal.admin.gradient }}
             >
               {isLoading ? "Updating..." : "Update Assessment Type"}
             </Button>

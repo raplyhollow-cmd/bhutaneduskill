@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { useToast } from "@/components/ui/toast"
+import { useToast } from "@/components/ui/toaster"
 import { useDebouncedSave, formatTimeAgo } from "@/hooks/use-debounced-save"
 import { SavingBadge } from "./saving-indicator"
 import { cn } from "@/lib/utils"
@@ -199,8 +199,8 @@ export function AutoSaveForm<T extends Record<string, unknown> = Record<string, 
       // Show error toast with retry option
       toast({
         title: "Failed to save",
-        description: toastError || error.message || "An error occurred while saving your changes.",
-        variant: "destructive",
+        description: toastError || error instanceof Error ? error.message : String(error) || "An error occurred while saving your changes.",
+        variant: "error",
         duration: 5000,
         action: {
           label: "Retry",

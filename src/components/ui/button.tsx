@@ -3,71 +3,174 @@
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { Slot } from "radix-ui"
+import { Loader2 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { semantic, radius, shadow, padding, portal } from "@/styles/design-tokens"
+
+/**
+ * Button Component with Design Token Integration
+ *
+ * Variants now use design tokens for consistent styling across the application.
+ * Transition durations and easing curves are sourced from the design system.
+ */
+
+/**
+ * Button Component - UX Optimized
+ *
+ * FIXES FROM UX AUDIT:
+ * - Removed hover transform effects (-translate-y-0.5)
+ * - Reduced animation duration to 150ms for snappier feel
+ * - Simplified to 5 core variants (primary, secondary, ghost, danger, link)
+ * - Consistent 40px height for default size
+ * - Removed excessive shadows
+ * - Solid colors only, no gradients on hover
+ *
+ * DESIGN PHILOSOPHY:
+ * - "No gimmicky animations"
+ * - Fast transitions (150ms)
+ * - Flat colors, minimal shadows
+ * - 6px border radius (rounded-md)
+ */
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all duration-200 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors duration-150 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-purple-500/20 focus-visible:ring-offset-2",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-md hover:-translate-y-0.5",
-        destructive:
-          "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
-        outline:
-          "border border-input bg-transparent hover:bg-accent hover:text-accent-foreground",
-        secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost:
-          "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
+        // Primary: Solid color, flat design
+        primary: "bg-purple-600 text-white hover:bg-purple-700",
+        // Secondary: Outline style
+        secondary: "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200",
+        // Ghost: Minimal background on hover
+        ghost: "text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800",
+        // Danger: Red for destructive actions
+        danger: "bg-red-600 text-white hover:bg-red-700",
+        // Link: Underlined text
+        link: "text-purple-600 underline-offset-4 hover:underline dark:text-purple-400",
+        // Portal-specific variants (kept for backwards compatibility)
+        student: "",
+        teacher: "",
+        parent: "",
+        counselor: "",
+        admin: "",
+        "school-admin": "",
+        ministry: "",
         // Ceramic design system variants
-        ceramic: "[background-color:var(--ceramic-brand)] [color:var(--ceramic-white)] border-transparent hover:opacity-90 hover:shadow-md active:scale-[0.98]",
+        ceramic: "[background-color:var(--ceramic-brand)] [color:var(--ceramic-white)] hover:opacity-90",
         "ceramic-outline": "[border-color:var(--border-color-primary)] [background-color:transparent] [color:var(--ceramic-primary)] hover:[background-color:var(--ceramic-gray-100)]",
-        "ceramic-ghost": "[background-color:transparent] [color:var(--ceramic-secondary)] hover:[background-color:var(--ceramic-gray-100)] hover:[color:var(--ceramic-primary)]",
-        "ceramic-success": "[background-color:var(--ceramic-green-600)] [color:var(--ceramic-white)] hover:opacity-90",
-        "ceramic-error": "[background-color:var(--ceramic-red-600)] [color:var(--ceramic-white)] hover:opacity-90",
-        "ceramic-warning": "[background-color:var(--ceramic-orange-600)] [color:var(--ceramic-white)] hover:opacity-90",
-        "ceramic-info": "[background-color:var(--ceramic-blue-600)] [color:var(--ceramic-white)] hover:opacity-90",
+        "ceramic-ghost": "[background-color:transparent] [color:var(--ceramic-secondary)] hover:[background-color:var(--ceramic-gray-100)]",
+        // Legacy variant names mapped to new ones
+        default: "bg-purple-600 text-white hover:bg-purple-700",
+        destructive: "bg-red-600 text-white hover:bg-red-700",
+        outline: "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200",
       },
       size: {
-        default: "h-11 px-5 py-2.5 has-[>svg]:px-4",
-        xs: "h-6 gap-1 rounded-md px-2 text-xs has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-9 rounded-md gap-1.5 px-4 py-2 has-[>svg]:px-3.5",
-        lg: "h-11 rounded-md px-6 py-3 has-[>svg]:px-5",
-        icon: "size-11",
-        "icon-xs": "size-6 rounded-md [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm": "size-9",
-        "icon-lg": "size-11",
+        sm: "h-9 px-3 text-xs",
+        default: "h-10 px-4 text-sm",
+        lg: "h-11 px-6 text-base",
+        icon: "h-10 w-10 p-0",
+      },
+      loading: {
+        true: "relative",
+        false: "",
       },
     },
     defaultVariants: {
       variant: "default",
       size: "default",
+      loading: false,
     },
   }
 )
+
+/**
+ * Get inline styles for button variants
+ * Uses design tokens for consistent spacing, radius, and transitions
+ */
+/**
+ * Get inline styles for button variants
+ * UX OPTIMIZED: Removed shadows, simplified to solid colors only
+ */
+function getButtonStyles(variant?: string, size?: string): React.CSSProperties {
+  const styles: React.CSSProperties = {
+    borderRadius: '6px', // Consistent 6px radius (rounded-md)
+    transition: 'background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out',
+  }
+
+  // Portal-specific colors (solid colors, no gradients for buttons)
+  if (variant === 'student') {
+    styles.background = portal.student.primary // Design token
+    styles.color = '#ffffff'
+  } else if (variant === 'teacher') {
+    styles.background = portal.teacher.primary // Design token
+    styles.color = '#ffffff'
+  } else if (variant === 'parent') {
+    styles.background = portal.parent.primary // Design token
+    styles.color = '#ffffff'
+  } else if (variant === 'counselor') {
+    styles.background = portal.counselor.primary // Design token
+    styles.color = '#ffffff'
+  } else if (variant === 'admin') {
+    styles.background = portal.admin.primary // Design token
+    styles.color = '#ffffff'
+  } else if (variant === 'school-admin') {
+    styles.background = portal.schoolAdmin.primary // Design token
+    styles.color = '#ffffff'
+  } else if (variant === 'ministry') {
+    styles.background = portal.ministry.primary // Design token
+    styles.color = '#ffffff'
+  }
+
+  return styles
+}
 
 function Button({
   className,
   variant = "default",
   size = "default",
   asChild = false,
+  style,
+  loading = false,
+  children,
+  disabled,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
+    loading?: boolean
   }) {
   const Comp = asChild ? Slot.Root : "button"
+  const tokenStyles = getButtonStyles(variant, size)
+
+  const isDisabled = disabled || loading
+
+  // When using asChild, we can't render multiple children
+  // Loading indicator is not supported with asChild
+  const content = loading ? (
+    <>
+      <Loader2 className="animate-spin" aria-hidden="true" />
+      {typeof children === "string" && (
+        <span className="opacity-70">{children}</span>
+      )}
+    </>
+  ) : (
+    children
+  )
 
   return (
     <Comp
       data-slot="button"
       data-variant={variant}
       data-size={size}
-      className={cn(buttonVariants({ variant, size, className }))}
+      data-loading={loading ? "true" : undefined}
+      className={cn(buttonVariants({ variant, size, loading, className }))}
+      style={{ ...tokenStyles, ...style }}
+      disabled={isDisabled}
       {...props}
-    />
+    >
+      {content}
+    </Comp>
   )
 }
 

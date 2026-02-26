@@ -9,10 +9,11 @@
  * - Academic Calendar
  * - Career Education Standards
  * - Curriculum Standards (per subject/grade)
+ *
+ * Uses real API data - no mock data
  */
 
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   FileText,
   Plus,
@@ -35,6 +36,9 @@ import {
   Award,
   TrendingUp,
   Upload,
+  Loader2,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -72,11 +76,11 @@ interface Policy {
   title: string;
   category: PolicyCategory;
   description: string;
-  effectiveDate: string; // Changed to string for form input compatibility
+  effectiveDate: string;
   status: PolicyStatus;
   scope: PolicyScope;
   attachment?: string;
-  createdAt: string; // Changed to string for form compatibility
+  createdAt: string;
 }
 
 interface CurriculumStandard {
@@ -86,151 +90,11 @@ interface CurriculumStandard {
   hoursRequired: number;
   topics: Array<{ name: string; hours: number }>;
   practicalRatio: number;
-  effectiveFrom: string; // Changed to string for form input compatibility
-  effectiveTo?: string; // Changed to string for form input compatibility
+  effectiveFrom: string;
+  effectiveTo?: string;
   status: "active" | "draft";
-  createdAt: string; // Changed to string for form compatibility
+  createdAt: string;
 }
-
-// ============================================================================
-// MOCK DATA
-// ============================================================================
-
-const mockPolicies: Policy[] = [
-  {
-    id: "1",
-    title: "BCSE Examination Guidelines 2026",
-    category: "assessment",
-    description: "Comprehensive guidelines for the Bhutan Certificate of Secondary Education examinations including assessment methods, grade scales, and administration protocols.",
-    effectiveDate: "2026-02-01",
-    status: "active",
-    scope: "national",
-    attachment: "bcse-guidelines-2026.pdf",
-    createdAt: "2026-01-15",
-  },
-  {
-    id: "2",
-    title: "National Curriculum Framework - Mathematics",
-    category: "curriculum",
-    description: "Detailed curriculum framework for Mathematics across all middle school grades (PP-12) with learning outcomes and assessment criteria.",
-    effectiveDate: "2026-01-01",
-    status: "active",
-    scope: "national",
-    attachment: "math-curriculum-2026.pdf",
-    createdAt: "2025-12-01",
-  },
-  {
-    id: "3",
-    title: "Academic Calendar 2026",
-    category: "calendar",
-    description: "National academic calendar for 2026 including term dates, holidays, examination periods, and breaks.",
-    effectiveDate: "2026-02-15",
-    status: "active",
-    scope: "national",
-    attachment: "academic-calendar-2026.pdf",
-    createdAt: "2026-01-10",
-  },
-  {
-    id: "4",
-    title: "RIASEC Career Assessment Standards",
-    category: "career",
-    description: "Guidelines for administering and interpreting RIASEC career interest assessments in middle schools.",
-    effectiveDate: "2026-01-01",
-    status: "active",
-    scope: "national",
-    createdAt: "2025-11-20",
-  },
-  {
-    id: "5",
-    title: "Student Attendance Policy (Draft)",
-    category: "other",
-    description: "Draft policy on minimum attendance requirements for promotion to next grade.",
-    effectiveDate: "2026-04-01",
-    status: "draft",
-    scope: "national",
-    createdAt: "2026-02-01",
-  },
-  {
-    id: "6",
-    title: "Regional Assessment Variations - Thimphu",
-    category: "assessment",
-    description: "Specific assessment guidelines for schools in Thimphu region.",
-    effectiveDate: "2026-01-01",
-    status: "active",
-    scope: "regional",
-    createdAt: "2025-12-15",
-  },
-];
-
-const mockCurriculumStandards: CurriculumStandard[] = [
-  {
-    id: "1",
-    subject: "Mathematics",
-    grade: "10",
-    hoursRequired: 120,
-    topics: [
-      { name: "Algebra", hours: 30 },
-      { name: "Geometry", hours: 25 },
-      { name: "Trigonometry", hours: 20 },
-      { name: "Statistics", hours: 20 },
-      { name: "Calculus Basics", hours: 25 },
-    ],
-    practicalRatio: 40,
-    effectiveFrom: "2026-01-01",
-    effectiveTo: "2026-12-31",
-    status: "active",
-    createdAt: "2025-11-01",
-  },
-  {
-    id: "2",
-    subject: "English",
-    grade: "10",
-    hoursRequired: 100,
-    topics: [
-      { name: "Reading Comprehension", hours: 25 },
-      { name: "Writing Skills", hours: 30 },
-      { name: "Grammar", hours: 20 },
-      { name: "Literature", hours: 25 },
-    ],
-    practicalRatio: 30,
-    effectiveFrom: "2026-01-01",
-    effectiveTo: "2026-12-31",
-    status: "active",
-    createdAt: "2025-11-01",
-  },
-  {
-    id: "3",
-    subject: "Dzongkha",
-    grade: "8",
-    hoursRequired: 80,
-    topics: [
-      { name: "Reading", hours: 20 },
-      { name: "Writing", hours: 25 },
-      { name: "Grammar", hours: 20 },
-      { name: "Literature", hours: 15 },
-    ],
-    practicalRatio: 35,
-    effectiveFrom: "2026-01-01",
-    status: "active",
-    createdAt: "2025-11-01",
-  },
-  {
-    id: "4",
-    subject: "Science",
-    grade: "7",
-    hoursRequired: 100,
-    topics: [
-      { name: "Physics", hours: 25 },
-      { name: "Chemistry", hours: 25 },
-      { name: "Biology", hours: 30 },
-      { name: "Environmental Science", hours: 20 },
-    ],
-    practicalRatio: 60,
-    effectiveFrom: "2026-01-01",
-    status: "active",
-    createdAt: "2025-11-01",
-  },
-];
 
 const SUBJECTS = [
   "Mathematics",
@@ -247,34 +111,49 @@ const SUBJECTS = [
 const GRADES = ["PP", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
 
 // ============================================================================
-// OLD TYPE DEFINITIONS (kept for compatibility during refactor)
+// MAIN COMPONENT
 // ============================================================================
-interface PolicyOld {
-  id: string;
-  title: string;
-  category: "assessment" | "curriculum" | "calendar" | "career" | "other";
-  description: string;
-  effectiveDate: string;
-  status: "active" | "draft" | "archived";
-  scope: "national" | "regional" | "school-level";
-  createdAt: string;
-}
-
-interface CurriculumStandardOld {
-  id: string;
-  subject: string;
-  grade: string;
-  hoursRequired: number;
-  topics: Array<{ name: string; hours: number }>;
-  practicalRatio: number;
-  effectiveFrom: string;
-  status: "active" | "draft";
-}
 
 export default function MinistryPoliciesPage() {
   const [activeTab, setActiveTab] = useState<"policies" | "curriculum">("policies");
-  const [policies, setPolicies] = useState<Policy[]>(mockPolicies);
-  const [curriculumStandards, setCurriculumStandards] = useState<CurriculumStandard[]>(mockCurriculumStandards);
+  const [policies, setPolicies] = useState<Policy[]>([]);
+  const [curriculumStandards, setCurriculumStandards] = useState<CurriculumStandard[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch data from API
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const [policiesRes, curriculumRes] = await Promise.all([
+          fetch("/api/ministry/policies"),
+          fetch("/api/ministry/curriculum-standards"),
+        ]);
+
+        if (policiesRes.ok) {
+          const data = await policiesRes.json();
+          setPolicies(data.policies || []);
+        }
+
+        if (curriculumRes.ok) {
+          const data = await curriculumRes.json();
+          setCurriculumStandards(data.standards || []);
+        }
+
+        if (!policiesRes.ok && !curriculumRes.ok) {
+          setError("Failed to load policies and curriculum data");
+        }
+      } catch (err) {
+        console.error("Error fetching data:", err);
+        setError("Failed to load data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   // Policy filters
   const [policyCategory, setPolicyCategory] = useState<PolicyCategory>("all");
@@ -285,7 +164,7 @@ export default function MinistryPoliciesPage() {
   const [curriculumSubject, setCurriculumSubject] = useState<string>("all");
   const [curriculumGrade, setCurriculumGrade] = useState<string>("all");
 
-  // Modals
+  // Modals - state for create/edit modals
   const [showPolicyModal, setShowPolicyModal] = useState(false);
   const [showCurriculumModal, setShowCurriculumModal] = useState(false);
   const [viewingPolicy, setViewingPolicy] = useState<Policy | null>(null);
@@ -313,30 +192,65 @@ export default function MinistryPoliciesPage() {
     effectiveTo: "",
   });
 
-  // Colors
-  const colors = {
-    primary: "rgb(168 85 247)",
-    gradient: "linear-gradient(135deg, rgb(168 85 247) 0%, rgb(147 51 234) 100%)",
+  // Category display labels and badges
+  const categoryLabels: Record<PolicyCategory, string> = {
+    all: "All Policies",
+    assessment: "Assessment Standards",
+    curriculum: "Curriculum Guidelines",
+    calendar: "Academic Calendar",
+    career: "Career Education",
+    other: "Other",
   };
 
-  // ============================================================================
-  // FILTER LOGIC
-  // ============================================================================
+  const categoryBadges: Record<PolicyCategory, string> = {
+    all: "bg-gray-50 text-gray-700 border-gray-200",
+    assessment: "bg-blue-50 text-blue-700 border-blue-200",
+    curriculum: "bg-green-50 text-green-700 border-green-200",
+    calendar: "bg-purple-50 text-purple-700 border-purple-200",
+    career: "bg-orange-50 text-orange-700 border-orange-200",
+    other: "bg-gray-50 text-gray-700 border-gray-200",
+  };
 
-  const filteredPolicies = policies.filter((policy) => {
-    const matchesCategory = policyCategory === "all" || policy.category === policyCategory;
-    const matchesStatus = policyStatus === "all" || policy.status === policyStatus;
-    const matchesSearch =
-      !policySearch ||
-      policy.title.toLowerCase().includes(policySearch.toLowerCase()) ||
-      policy.description.toLowerCase().includes(policySearch.toLowerCase());
-    return matchesCategory && matchesStatus && matchesSearch;
+  const categoryIcons: Record<PolicyCategory, React.ReactNode> = {
+    all: <FileText className="w-4 h-4" />,
+    assessment: <Award className="w-4 h-4" />,
+    curriculum: <BookOpen className="w-4 h-4" />,
+    calendar: <Calendar className="w-4 h-4" />,
+    career: <GraduationCap className="w-4 h-4" />,
+    other: <FileText className="w-4 h-4" />,
+  };
+
+  const statusBadges: Record<PolicyStatus, string> = {
+    active: "bg-green-50 text-green-700 border-green-200",
+    draft: "bg-yellow-50 text-yellow-700 border-yellow-200",
+    archived: "bg-gray-50 text-gray-700 border-gray-200",
+  };
+
+  const statusIcons: Record<PolicyStatus, React.ReactNode> = {
+    active: <CheckCircle className="w-4 h-4" />,
+    draft: <Clock className="w-4 h-4" />,
+    archived: <Archive className="w-4 h-4" />,
+  };
+
+  const scopeBadges: Record<PolicyScope, string> = {
+    national: "bg-indigo-50 text-indigo-700 border-indigo-200",
+    regional: "bg-cyan-50 text-cyan-700 border-cyan-200",
+    school: "bg-teal-50 text-teal-700 border-teal-200",
+  };
+
+  // Filter policies
+  const filteredPolicies = policies.filter(policy => {
+    if (policyCategory !== "all" && policy.category !== policyCategory) return false;
+    if (policyStatus !== "all" && policy.status !== policyStatus) return false;
+    if (policySearch && !policy.title.toLowerCase().includes(policySearch.toLowerCase())) return false;
+    return true;
   });
 
-  const filteredCurriculumStandards = curriculumStandards.filter((standard) => {
-    const matchesSubject = curriculumSubject === "all" || standard.subject === curriculumSubject;
-    const matchesGrade = curriculumGrade === "all" || standard.grade === curriculumGrade;
-    return matchesSubject && matchesGrade;
+  // Filter curriculum standards
+  const filteredCurriculum = curriculumStandards.filter(standard => {
+    if (curriculumSubject !== "all" && standard.subject !== curriculumSubject) return false;
+    if (curriculumGrade !== "all" && standard.grade !== curriculumGrade) return false;
+    return true;
   });
 
   // ============================================================================
@@ -498,7 +412,7 @@ export default function MinistryPoliciesPage() {
       subject: standard.subject,
       grade: standard.grade,
       hoursRequired: standard.hoursRequired,
-      topics: [...standard.topics],
+      topics: standard.topics,
       practicalRatio: standard.practicalRatio,
       effectiveFrom: standard.effectiveFrom,
       effectiveTo: standard.effectiveTo || "",
@@ -506,433 +420,435 @@ export default function MinistryPoliciesPage() {
     setShowCurriculumModal(true);
   };
 
+  // Colors
+  const colors = {
+    primary: "rgb(168 85 247)",
+    gradient: "linear-gradient(135deg, rgb(168 85 247) 0%, rgb(147 51 234) 100%)",
+  };
+
   // ============================================================================
-  // RENDER HELPERS
+  // RENDER
   // ============================================================================
 
-  const categoryLabels: Record<PolicyCategory, string> = {
-    all: "All Policies",
-    assessment: "Assessment Standards",
-    curriculum: "Curriculum Guidelines",
-    calendar: "Academic Calendar",
-    career: "Career Education",
-    other: "Other",
-  };
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[600px]">
+        <Card className="max-w-md">
+          <CardContent className="flex items-center justify-center py-16">
+            <Loader2 className="w-8 h-8 animate-spin text-purple-600 mr-3" />
+            <p className="text-gray-600">Loading policies...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
-  const categoryBadges: Record<PolicyCategory, string> = {
-    all: "bg-gray-50 text-gray-700 border-gray-200",
-    assessment: "bg-blue-50 text-blue-700 border-blue-200",
-    curriculum: "bg-green-50 text-green-700 border-green-200",
-    calendar: "bg-purple-50 text-purple-700 border-purple-200",
-    career: "bg-orange-50 text-orange-700 border-orange-200",
-    other: "bg-gray-50 text-gray-700 border-gray-200",
-  };
-
-  const categoryIcons: Record<PolicyCategory, React.ReactNode> = {
-    all: <FileText className="w-4 h-4" />,
-    assessment: <Award className="w-4 h-4" />,
-    curriculum: <BookOpen className="w-4 h-4" />,
-    calendar: <Calendar className="w-4 h-4" />,
-    career: <GraduationCap className="w-4 h-4" />,
-    other: <FileText className="w-4 h-4" />,
-  };
-
-  const statusBadges: Record<PolicyStatus, string> = {
-    active: "bg-green-50 text-green-700 border-green-200",
-    draft: "bg-yellow-50 text-yellow-700 border-yellow-200",
-    archived: "bg-gray-50 text-gray-700 border-gray-200",
-  };
-
-  const statusIcons: Record<PolicyStatus, React.ReactNode> = {
-    active: <CheckCircle className="w-4 h-4" />,
-    draft: <Clock className="w-4 h-4" />,
-    archived: <Archive className="w-4 h-4" />,
-  };
-
-  const scopeBadges: Record<PolicyScope, string> = {
-    national: "bg-indigo-50 text-indigo-700 border-indigo-200",
-    regional: "bg-cyan-50 text-cyan-700 border-cyan-200",
-    school: "bg-teal-50 text-teal-700 border-teal-200",
-  };
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[600px]">
+        <Card className="max-w-md border-red-200">
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
+            <p className="text-red-600 mb-4">{error}</p>
+            <Button onClick={() => window.location.reload()}>Retry</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Education Policies</h1>
-          <p className="text-gray-600">Create and manage national education policies</p>
+          <h1 className="text-3xl font-bold text-gray-900">Education Policies</h1>
+          <p className="text-gray-600 mt-1">Manage national education policies and curriculum standards</p>
         </div>
         <div className="flex gap-3">
-          <Button
-            variant="outline"
-            onClick={() => setShowCurriculumModal(true)}
-          >
-            <BookOpen className="w-4 h-4 mr-2" />
-            Add Curriculum Standard
+          <Button variant="outline" onClick={() => window.location.reload()}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
           </Button>
           <Button
-            onClick={() => setShowPolicyModal(true)}
+            onClick={() => {
+              setShowPolicyModal(true);
+              setEditingPolicy(null);
+              setNewPolicy({
+                title: "",
+                category: "assessment",
+                description: "",
+                effectiveDate: "",
+                status: "draft",
+                scope: "national",
+              });
+            }}
             style={{ background: colors.gradient }}
             className="text-white"
           >
             <Plus className="w-4 h-4 mr-2" />
-            Create Policy
+            New Policy
           </Button>
         </div>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              Total Policies
-            </CardTitle>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">Total Policies</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">{policyStats.total}</div>
+            <p className="text-xs text-gray-500 mt-1">{policyStats.active} active</p>
           </CardContent>
         </Card>
-
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <CheckCircle className="w-4 h-4" />
-              Active
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{policyStats.active}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <Clock className="w-4 h-4" />
-              Draft
-            </CardTitle>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">Draft Policies</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-yellow-600">{policyStats.draft}</div>
+            <p className="text-xs text-gray-500 mt-1">Pending review</p>
           </CardContent>
         </Card>
-
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <Archive className="w-4 h-4" />
-              Archived
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-600">{policyStats.archived}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
-              This Month
-            </CardTitle>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">Effective This Month</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">{policyStats.effectiveThisMonth}</div>
-            <p className="text-xs text-gray-500 mt-1">Effective</p>
+            <p className="text-xs text-gray-500 mt-1">New policies</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">Curriculum Standards</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{curriculumStats.total}</div>
+            <p className="text-xs text-gray-500 mt-1">{curriculumStats.subjects} subjects</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Category Tabs */}
-      <div className="flex flex-wrap gap-2">
-        {(["all", "assessment", "curriculum", "calendar", "career", "other"] as PolicyCategory[]).map((category) => (
-          <button
-            key={category}
-            onClick={() => setPolicyCategory(category)}
-            className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-              policyCategory === category
-                ? "bg-purple-100 text-purple-700 border-2 border-purple-300"
-                : "bg-white text-gray-600 border-2 border-gray-200 hover:border-purple-200 hover:bg-purple-50"
-            }`}
-          >
-            {category === "all" ? <Filter className="w-4 h-4 inline mr-1" /> : categoryIcons[category]}
-            <span className="ml-1">{categoryLabels[category]}</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Filters */}
+      {/* Main Content Tabs */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col lg:flex-row gap-4">
-            {/* Search */}
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search policies by title or description..."
-                value={policySearch}
-                onChange={(e) => setPolicySearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none"
-              />
-            </div>
-
-            {/* Status Filter */}
-            <div className="relative">
-              <select
-                value={policyStatus}
-                onChange={(e) => setPolicyStatus(e.target.value)}
-                className="appearance-none px-4 py-3 pr-10 rounded-lg border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none bg-white"
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex gap-4">
+              <button
+                onClick={() => setActiveTab("policies")}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  activeTab === "policies"
+                    ? "bg-purple-100 text-purple-700"
+                    : "text-gray-600 hover:bg-gray-100"
+                }`}
               >
-                <option value="all">All Status</option>
-                <option value="active">Active</option>
-                <option value="draft">Draft</option>
-                <option value="archived">Archived</option>
-              </select>
+                Policies ({policyStats.total})
+              </button>
+              <button
+                onClick={() => setActiveTab("curriculum")}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  activeTab === "curriculum"
+                    ? "bg-purple-100 text-purple-700"
+                    : "text-gray-600 hover:bg-gray-100"
+                }`}
+              >
+                Curriculum Standards ({curriculumStats.total})
+              </button>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </CardHeader>
 
-      {/* Tabs */}
-      <div className="flex gap-2 border-b border-gray-200">
-        <button
-          onClick={() => setActiveTab("policies")}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === "policies"
-              ? "text-purple-600 border-b-2 border-purple-600"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Policies ({policies.length})
-        </button>
-        <button
-          onClick={() => setActiveTab("curriculum")}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === "curriculum"
-              ? "text-purple-600 border-b-2 border-purple-600"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Curriculum Standards ({curriculumStandards.length})
-        </button>
-      </div>
-
-      {/* Policies Tab */}
-      {activeTab === "policies" && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>All Policies</CardTitle>
-                <CardDescription>
-                  Showing {filteredPolicies.length} of {policies.length} policies
-                </CardDescription>
+        <CardContent>
+          {activeTab === "policies" ? (
+            <>
+              {/* Policies Filters */}
+              <div className="flex flex-wrap gap-4 mb-6">
+                <div className="flex-1 min-w-[200px]">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Input
+                      placeholder="Search policies..."
+                      value={policySearch}
+                      onChange={(e) => setPolicySearch(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+                <Select value={policyCategory} onValueChange={(v: PolicyCategory) => setPolicyCategory(v)}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    <SelectItem value="assessment">Assessment</SelectItem>
+                    <SelectItem value="curriculum">Curriculum</SelectItem>
+                    <SelectItem value="calendar">Calendar</SelectItem>
+                    <SelectItem value="career">Career</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={policyStatus} onValueChange={setPolicyStatus}>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="archived">Archived</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Policy</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Category</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Effective Date</th>
-                    <th className="text-center py-3 px-4 font-medium text-gray-600 text-sm">Status</th>
-                    <th className="text-center py-3 px-4 font-medium text-gray-600 text-sm">Scope</th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-600 text-sm">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredPolicies.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="text-center py-12">
-                        <div className="flex flex-col items-center gap-4">
-                          <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
-                            <FileText className="w-8 h-8 text-gray-400" />
-                          </div>
-                          <div>
-                            <p className="text-gray-900 font-medium">No policies found</p>
-                            <p className="text-gray-500 text-sm">Try adjusting your filters</p>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredPolicies.map((policy) => (
-                      <tr key={policy.id} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-4 px-4">
-                          <div>
-                            <p className="font-medium text-gray-900">{policy.title}</p>
-                            <p className="text-sm text-gray-500 mt-1 line-clamp-2 max-w-md">{policy.description}</p>
-                          </div>
-                        </td>
-                        <td className="py-4 px-4">
-                          <Badge variant="outline" className={categoryBadges[policy.category]}>
-                            {categoryIcons[policy.category]}
-                            <span className="ml-1">{categoryLabels[policy.category]}</span>
-                          </Badge>
-                        </td>
-                        <td className="py-4 px-4">
-                          <div className="text-sm text-gray-900">
-                            {new Date(policy.effectiveDate).toLocaleDateString("en-US", {
-                              year: "numeric",
-                              month: "short",
-                              day: "numeric",
-                            })}
-                          </div>
-                        </td>
-                        <td className="py-4 px-4">
-                          <Badge variant="outline" className={statusBadges[policy.status]}>
-                            {statusIcons[policy.status]}
-                            <span className="ml-1 capitalize">{policy.status}</span>
-                          </Badge>
-                        </td>
-                        <td className="py-4 px-4">
-                          <Badge variant="outline" className={scopeBadges[policy.scope]}>
-                            {policy.scope === "national" && <Globe className="w-3 h-3 inline mr-1" />}
-                            {policy.scope === "regional" && <Building2 className="w-3 h-3 inline mr-1" />}
-                            {policy.scope === "school" && <Users className="w-3 h-3 inline mr-1" />}
-                            <span className="ml-1 capitalize">{policy.scope}</span>
-                          </Badge>
-                        </td>
-                        <td className="py-4 px-4">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 hover:bg-purple-50 hover:text-purple-600"
-                              title="View details"
-                              onClick={() => setViewingPolicy(policy)}
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 hover:bg-purple-50 hover:text-purple-600"
-                              title="Edit policy"
-                              onClick={() => openEditPolicy(policy)}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            {policy.attachment && (
+
+              {/* Policies Table */}
+              {filteredPolicies.length === 0 ? (
+                <div className="text-center py-12">
+                  <FileText className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">No policies found</p>
+                  <p className="text-sm text-gray-400 mt-1">
+                    {policies.length === 0
+                      ? "Create your first policy to get started"
+                      : "Try adjusting your filters"}
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Policy</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Category</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Status</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Scope</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Effective Date</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredPolicies.map((policy) => (
+                        <tr key={policy.id} className="border-b border-gray-100 hover:bg-gray-50">
+                          <td className="py-3 px-4">
+                            <div>
+                              <p className="font-medium text-gray-900">{policy.title}</p>
+                              <p className="text-sm text-gray-500 truncate max-w-md">{policy.description}</p>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <Badge className={categoryBadges[policy.category]}>
+                              {categoryIcons[policy.category]}
+                              <span className="ml-1">{categoryLabels[policy.category]}</span>
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4">
+                            <Badge className={statusBadges[policy.status]}>
+                              {statusIcons[policy.status]}
+                              <span className="ml-1 capitalize">{policy.status}</span>
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4">
+                            <Badge className={`${scopeBadges[policy.scope]} capitalize`}>
+                              {policy.scope}
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4 text-sm text-gray-600">
+                            {new Date(policy.effectiveDate).toLocaleDateString()}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center justify-end gap-1">
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8 hover:bg-purple-50 hover:text-purple-600"
-                                title="Download attachment"
+                                title="View policy"
+                                onClick={() => setViewingPolicy(policy)}
                               >
-                                <Download className="w-4 h-4" />
+                                <Eye className="w-4 h-4" />
                               </Button>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 hover:bg-red-50 hover:text-red-600"
-                              title="Delete policy"
-                              onClick={() => handleDeletePolicy(policy.id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </td>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hover:bg-blue-50 hover:text-blue-600"
+                                title="Edit policy"
+                                onClick={() => openEditPolicy(policy)}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hover:bg-red-50 hover:text-red-600"
+                                title="Delete policy"
+                                onClick={() => handleDeletePolicy(policy.id)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {/* Curriculum Standards Filters */}
+              <div className="flex flex-wrap gap-4 mb-6">
+                <Select value={curriculumSubject} onValueChange={setCurriculumSubject}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Subject" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Subjects</SelectItem>
+                    {SUBJECTS.map((subject) => (
+                      <SelectItem key={subject} value={subject}>
+                        {subject}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={curriculumGrade} onValueChange={setCurriculumGrade}>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Grade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Grades</SelectItem>
+                    {GRADES.map((grade) => (
+                      <SelectItem key={grade} value={grade}>
+                        Class {grade}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  onClick={() => {
+                    setShowCurriculumModal(true);
+                    setEditingStandard(null);
+                    setNewStandard({
+                      subject: "Mathematics",
+                      grade: "10",
+                      hoursRequired: 40,
+                      topics: [{ name: "", hours: 1 }],
+                      practicalRatio: 50,
+                      effectiveFrom: "",
+                      effectiveTo: "",
+                    });
+                  }}
+                  style={{ background: colors.gradient }}
+                  className="text-white ml-auto"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Standard
+                </Button>
+              </div>
+
+              {/* Curriculum Standards Grid */}
+              {filteredCurriculum.length === 0 ? (
+                <div className="text-center py-12">
+                  <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">No curriculum standards found</p>
+                  <p className="text-sm text-gray-400 mt-1">
+                    {curriculumStandards.length === 0
+                      ? "Add your first curriculum standard to get started"
+                      : "Try adjusting your filters"}
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Subject</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Grade</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Hours/Week</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Practical</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Effective</th>
+                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-600">Status</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-gray-600">Actions</th>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                    </thead>
+                    <tbody>
+                      {filteredCurriculum.map((standard) => (
+                        <tr key={standard.id} className="border-b border-gray-100 hover:bg-gray-50">
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <BookOpen className="w-4 h-4 text-purple-600" />
+                              <span className="font-medium text-gray-900">{standard.subject}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-sm text-gray-600">Class {standard.grade}</td>
+                          <td className="py-3 px-4 text-sm text-gray-600">{standard.hoursRequired}h</td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-purple-600"
+                                  style={{ width: `${standard.practicalRatio}%` }}
+                                />
+                              </div>
+                              <span className="text-xs text-gray-600">{standard.practicalRatio}%</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-sm text-gray-600">
+                            {new Date(standard.effectiveFrom).toLocaleDateString()}
+                          </td>
+                          <td className="py-3 px-4">
+                            <Badge
+                              className={
+                                standard.status === "active"
+                                  ? "bg-green-50 text-green-700 border-green-200"
+                                  : "bg-yellow-50 text-yellow-700 border-yellow-200"
+                              }
+                            >
+                              {standard.status}
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hover:bg-purple-50 hover:text-purple-600"
+                                title="Edit standard"
+                                onClick={() => openEditStandard(standard)}
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 hover:bg-red-50 hover:text-red-600"
+                                title="Delete standard"
+                                onClick={() => handleDeleteStandard(standard.id)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Curriculum Standards Tab */}
-      {activeTab === "curriculum" && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Curriculum Standards</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Subject</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Grade</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Hours/Week</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Practical</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Topics</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Status</th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-600">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {curriculumStandards.map((standard) => (
-                    <tr key={standard.id} className="border-b border-gray-100">
-                      <td className="py-4 px-4 font-medium text-gray-900">{standard.subject}</td>
-                      <td className="py-4 px-4">{standard.grade}</td>
-                      <td className="py-4 px-4">{standard.hoursRequired}</td>
-                      <td className="py-4 px-4">{standard.practicalRatio}%</td>
-                      <td className="py-4 px-4 text-sm text-gray-600">
-                        {standard.topics.map(t => t.name).join(", ")}
-                      </td>
-                      <td className="py-4 px-4">
-                        <Badge variant="outline" className={statusBadges[standard.status]}>
-                          <span className="ml-1 capitalize">{standard.status}</span>
-                        </Badge>
-                      </td>
-                      <td className="py-4 px-4 text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 hover:bg-purple-50 hover:text-purple-600"
-                            title="View details"
-                            onClick={() => {}}
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 hover:bg-purple-50 hover:text-purple-600"
-                            title="Edit standard"
-                            onClick={() => openEditStandard(standard)}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 hover:bg-red-50 hover:text-red-600"
-                            title="Delete standard"
-                            onClick={() => handleDeleteStandard(standard.id)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Create Policy Modal */}
+      {/* Create/Edit Policy Modal */}
       {showPolicyModal && (
         <FullScreenModal open={showPolicyModal} onOpenChange={setShowPolicyModal}>
           <FullScreenModalContent>
             <FullScreenModalHeader>
-              <FullScreenModalTitle>Create New Policy</FullScreenModalTitle>
-              <FullScreenModalDescription>Add a new national education policy</FullScreenModalDescription>
+              <FullScreenModalTitle>{editingPolicy ? "Edit" : "Create New"} Policy</FullScreenModalTitle>
+              <FullScreenModalDescription>
+                {editingPolicy ? "Update policy details" : "Add a new national education policy"}
+              </FullScreenModalDescription>
             </FullScreenModalHeader>
 
             <div className="p-6 space-y-4">
@@ -1015,10 +931,7 @@ export default function MinistryPoliciesPage() {
             </div>
 
             <FullScreenModalFooter>
-              <Button
-                variant="outline"
-                onClick={() => setShowPolicyModal(false)}
-              >
+              <Button variant="outline" onClick={() => setShowPolicyModal(false)}>
                 Cancel
               </Button>
               <Button
@@ -1121,7 +1034,7 @@ export default function MinistryPoliciesPage() {
                     </SelectTrigger>
                     <SelectContent>
                       {GRADES.map((grade) => (
-                        <SelectItem key={grade} value={grade}>{grade}</SelectItem>
+                        <SelectItem key={grade} value={grade}>Class {grade}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

@@ -5,15 +5,21 @@
  * - Fetch teachers and school staff they can message
  * - Get contact information for their children's teachers
  * - Search for specific contacts
+ *
+ * SECURITY: FERPA COMPLIANCE
+ * - Uses parent_to_student join table for verification
+ * - Only returns contacts for verified children's schools
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse } from "@/lib/api/response-helpers";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
-import { users, classes, enrollments, subjects } from "@/lib/db/schema";
+import { users, classes, enrollments, subjects, parents, parentToStudent } from "@/lib/db/schema";
 import { eq, or, like, and, inArray } from "drizzle-orm";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
 
 // ============================================================================
 // TYPES
@@ -36,36 +42,54 @@ interface TeacherContact {
 // GET - Fetch contacts (teachers, admins) for parent
 // ============================================================================
 
-export async function GET(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["parent"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId, user } = authResult;
+export const GET = createApiRoute({
+  allowedRoles: ['parent'],
+  handler: async (req: NextRequest, auth) => {
+    const { userId } = auth;
     const searchParams = req.nextUrl.searchParams;
     const search = searchParams.get("search") || "";
     const type = searchParams.get("type"); // "teacher", "admin", "counselor", or null for all
 
     logger.info("Fetching parent contacts", { userId, search, type });
 
-    // Get parent's children to find their teachers
+    // FERPA COMPLIANCE: Get parent record first
+    const [parentRecord] = await db
+      .select()
+      .from(parents)
+      .where(eq(parents.userId, userId))
+      .limit(1);
+
+    if (!parentRecord) {
+      logger.warn("No parent record found for user", { userId });
+      return successResponse({ contacts: [] });
+    }
+
+    // FERPA COMPLIANCE: Get verified children via parent_to_student join table
+    const relationships = await db
+      .select()
+      .from(parentToStudent)
+      .where(eq(parentToStudent.parentId, parentRecord.id));
+
+    if (relationships.length === 0) {
+      return successResponse({ contacts: [] });
+    }
+
+    const studentIds = relationships.map((r) => r.studentId);
+
+    // Get parent's verified children to find their teachers
     const children = await db
       .select({
         id: users.id,
         schoolId: users.schoolId,
       })
       .from(users)
-      .where(eq(users.parentId, userId));
+      .where(and(
+        eq(users.type, "student"),
+        inArray(users.id, studentIds)
+      ));
 
     if (children.length === 0) {
-      return NextResponse.json({
-        data: { contacts: [] },
-      } satisfies ApiSuccess<{ contacts: TeacherContact[] }>);
+      return successResponse({ contacts: [] });
     }
 
     // Get unique school IDs from children
@@ -137,15 +161,6 @@ export async function GET(req: NextRequest) {
 
     logger.info("Contacts fetched successfully", { userId, count: formattedContacts.length });
 
-    return NextResponse.json({
-      data: { contacts: formattedContacts },
-    } satisfies ApiSuccess<{ contacts: TeacherContact[] }>);
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/parent/contacts", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch contacts", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
+    return successResponse({ contacts: formattedContacts });
   }
-}
+});

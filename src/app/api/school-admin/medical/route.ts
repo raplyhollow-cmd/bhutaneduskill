@@ -1,21 +1,19 @@
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse } from "@/lib/api/response-helpers";
 import { db } from "@/lib/db";
 import { medicalRecords, medicalReferrals, users, studentAllergies, vaccinationRecords, medicineInventory, medicineTransactions } from "@/lib/db/schema";
-import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
+import { eq, and, desc, gte, lte, sql, Sql } from "drizzle-orm";
+
+type DrizzleCondition = Sql<boolean> | ReturnType<typeof eq> | ReturnType<typeof gte> | ReturnType<typeof lte>;
 
 /**
  * GET /api/school-admin/medical - Get infirmary dashboard statistics
  */
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['school-admin', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { user } = authResult;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user } = auth;
     const { searchParams } = new URL(request.url);
 
     const schoolId = user.schoolId;
@@ -23,7 +21,7 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('endDate');
 
     // Build date conditions
-    let dateConditions: any[] = [];
+    const dateConditions: DrizzleCondition[] = [];
     if (startDate) {
       dateConditions.push(gte(medicalRecords.visitDate, new Date(startDate)));
     }
@@ -76,33 +74,23 @@ export async function GET(request: NextRequest) {
       pendingReferrals: pendingReferrals.length,
     };
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        stats,
-        recentVisits,
-        studentsWithAllergies,
-        lowStockMedicines,
-        pendingReferrals,
-      },
+    return successResponse({
+      stats,
+      recentVisits,
+      studentsWithAllergies,
+      lowStockMedicines,
+      pendingReferrals,
     });
-  } catch (error) {
-    logger.error("Medical dashboard fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch medical dashboard data" }, { status: 500 });
-  }
-}
+  },
+  ['school-admin', 'admin']
+);
 
 /**
  * POST /api/school-admin/medical - Create a new medical visit record
  */
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['school-admin', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { user, userId } = authResult;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user, userId } = auth;
     const body = await request.json();
 
     const {
@@ -128,7 +116,7 @@ export async function POST(request: NextRequest) {
     } = body;
 
     if (!studentId || !chiefComplaint || !treatment) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+      return badRequestResponse("Missing required fields");
     }
 
     // Generate ID and create record
@@ -166,12 +154,7 @@ export async function POST(request: NextRequest) {
 
     logger.info("Medical record created", { recordId, studentId, schoolId: user.schoolId });
 
-    return NextResponse.json({
-      success: true,
-      data: { record: newRecord },
-    });
-  } catch (error) {
-    logger.error("Medical record creation error:", error);
-    return NextResponse.json({ error: "Failed to create medical record" }, { status: 500 });
-  }
-}
+    return successResponse({ record: newRecord });
+  },
+  ['school-admin', 'admin']
+);

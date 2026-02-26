@@ -187,7 +187,13 @@ export default function UnifiedSetupWizard() {
 
   // Common form fields
   const [schoolCode, setSchoolCode] = useState("");
-  const [verifiedSchool, setVerifiedSchool] = useState<any>(null);
+  type VerifiedSchool = {
+    id: string;
+    name: string;
+    code: string;
+    city?: string;
+  };
+  const [verifiedSchool, setVerifiedSchool] = useState<VerifiedSchool | null>(null);
   const [selectedSchool, setSelectedSchool] = useState<SchoolType | null>(null);
   const [isCodeVerified, setIsCodeVerified] = useState(false);
   const [fullName, setFullName] = useState("");
@@ -293,7 +299,10 @@ export default function UnifiedSetupWizard() {
 
     try {
       const endpoint = `/api/setup/${selectedRole.id}`;
-      const body: any = {
+      const body: {
+        step: string;
+        data: Record<string, unknown>;
+      } = {
         step: "complete",
         data: { schoolCode },
       };
@@ -1112,13 +1121,13 @@ export default function UnifiedSetupWizard() {
           {/* Animated rings */}
           <motion.div
             animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
-            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            transition={{ duration: 2, repeat: Infinity, repeatType: "loop", ease: "easeInOut" }}
             className="absolute inset-0 rounded-full"
             style={{ background: `linear-gradient(135deg, ${selectedRole.color} 0%, ${selectedRole.colorTo} 100%)` }}
           />
           <motion.div
             animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0, 0.3] }}
-            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
+            transition={{ duration: 2, repeat: Infinity, repeatType: "loop", ease: "easeInOut", delay: 0.3 }}
             className="absolute inset-0 rounded-full"
             style={{ background: `linear-gradient(135deg, ${selectedRole.color} 0%, ${selectedRole.colorTo} 100%)` }}
           />

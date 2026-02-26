@@ -12,7 +12,7 @@ export interface MultiSelectOption {
   value: string
   label: string
   disabled?: boolean
-  [key: string]: any
+  [key: string]: string | boolean | undefined
 }
 
 export interface MultiSelectProps {

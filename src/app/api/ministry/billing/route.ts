@@ -1,6 +1,9 @@
 /**
  * MINISTRY BILLING OVERVIEW API
  * GET /api/ministry/billing - Fetch platform billing and revenue data (view-only)
+ * POST /api/ministry/billing - Generate a new invoice for a school
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  *
  * Provides Ministry of Education with view-only access to:
  * - Platform revenue statistics
@@ -12,16 +15,17 @@
  * Note: This is VIEW-ONLY - ministry users cannot modify billing data
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
-import { logger } from "@/lib/logger";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import {
   invoices,
   schools,
+  users,
 } from "@/lib/db/schema";
-import { eq, and, desc, sql, count, sum, gte, SQL } from "drizzle-orm";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { eq, and, desc, sql, count, sum, gte, SQL, inArray } from "drizzle-orm";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse, notFoundResponse, createdResponse } from "@/lib/api/response-helpers";
+import { logger } from "@/lib/logger";
 
 // ============================================================================
 // TYPES
@@ -131,28 +135,25 @@ function getDateMonthsAgo(months: number): Date {
   return date;
 }
 
+/**
+ * Generate unique ID for invoices
+ */
+function generateId(): string {
+  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+}
+
 // ============================================================================
 // GET HANDLER
 // ============================================================================
 
-export async function GET(req: NextRequest) {
-  const startTime = Date.now();
-
-  try {
-    // Authenticate and authorize - ministry users have VIEW-ONLY access
-    const authResult = await requireAuth(["ministry", "admin"]);
-    if ("error" in authResult) {
-      logger.security("unauthorized_access_attempt", {
-        route: "/api/ministry/billing",
-        method: "GET",
-      });
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
+export const GET = createApiRoute(
+  async (req: NextRequest) => {
+    const auth = getAuth(req);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
 
-    const { userId } = authResult;
+    const { userId } = auth;
 
     logger.info("Ministry billing data requested", { route: "/api/ministry/billing", userId });
 
@@ -162,7 +163,7 @@ export async function GET(req: NextRequest) {
       monthlyRevenue,
       revenueByPlan,
       subscriptions,
-      invoices,
+      invoicesData,
       paymentMethods,
     ] = await Promise.all([
       getRevenueStatistics(),
@@ -178,7 +179,7 @@ export async function GET(req: NextRequest) {
       monthlyRevenue,
       revenueByPlan,
       subscriptions,
-      invoices,
+      invoices: invoicesData,
       paymentMethods,
       currency: {
         code: "BTN",
@@ -188,29 +189,180 @@ export async function GET(req: NextRequest) {
       generatedAt: new Date().toISOString(),
     };
 
-    const duration = Date.now() - startTime;
     logger.info("Ministry billing data retrieved successfully", {
       userId,
-      duration: `${duration}ms`,
       subscriptionCount: subscriptions.length,
-      invoiceCount: invoices.length,
+      invoiceCount: invoicesData.length,
     });
 
-    return NextResponse.json({ data: response } satisfies ApiSuccess<BillingOverviewResponse>);
+    return successResponse(response);
+  },
+  ['ministry', 'admin']
+);
 
-  } catch (error) {
-    logger.apiError(error, { route: "/api/ministry/billing", method: "GET" });
+// ============================================================================
+// POST HANDLER - Generate Invoice
+// ============================================================================
 
-    return NextResponse.json(
-      {
-        error: "Failed to fetch billing data",
-        status: 500,
-        details: process.env.NODE_ENV === "development" ? String(error) : undefined,
-      } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+/**
+ * Generate a new invoice for a school
+ * POST /api/ministry/billing
+ * Body: { schoolId, amount, periodStart, periodEnd }
+ */
+export const POST = createApiRoute(
+  async (req: NextRequest) => {
+    const auth = getAuth(req);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
+    }
+
+    const { userId } = auth;
+
+    // Parse request body
+    const body = await req.json() as {
+      schoolId?: string;
+      amount?: number;
+      subscriptionTier?: string;
+      periodStart?: string;
+      periodEnd?: string;
+    };
+
+    if (!body.schoolId) {
+      return badRequestResponse("schoolId is required");
+    }
+
+    logger.info("Invoice generation requested", {
+      route: "/api/ministry/billing",
+      method: "POST",
+      userId,
+      schoolId: body.schoolId,
+    });
+
+    // Get school details
+    const [schoolData] = await db
+      .select({
+        id: schools.id,
+        name: schools.name,
+        subscriptionTier: schools.subscriptionTier,
+      })
+      .from(schools)
+      .where(eq(schools.id, body.schoolId))
+      .limit(1);
+
+    if (!schoolData) {
+      return notFoundResponse("School");
+    }
+
+    // Parse period dates
+    const now = new Date();
+    const periodStart = body.periodStart ? new Date(body.periodStart) : now;
+    const periodEnd = body.periodEnd ? new Date(body.periodEnd) : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    // Check if invoice already exists for this school and period
+    const [existingInvoice] = await db
+      .select()
+      .from(invoices)
+      .where(
+        and(
+          eq(invoices.schoolId, body.schoolId),
+          sql`${invoices.billingPeriodStart} = ${periodStart}`,
+          sql`${invoices.billingPeriodEnd} = ${periodEnd}`
+        )
+      )
+      .limit(1);
+
+    if (existingInvoice) {
+      return successResponse({
+        invoice: {
+          id: existingInvoice.id,
+          invoiceNumber: existingInvoice.invoiceNumber,
+          amount: Number(existingInvoice.totalAmount),
+          currency: existingInvoice.currency,
+          status: existingInvoice.status,
+          dueDate: existingInvoice.dueDate?.toISOString(),
+        },
+        message: "Invoice already exists for this period",
+      });
+    }
+
+    // Generate invoice number
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+
+    // Get invoice count for this month
+    const [invoiceCount] = await db
+      .select({ count: count() })
+      .from(invoices)
+      .where(sql`TO_CHAR(${invoices.invoiceDate}, 'YYYY-MM') = '${year}-${month}'`);
+
+    const sequenceNumber = String((invoiceCount?.count ?? 0) + 1).padStart(3, "0");
+    const invoiceNumber = `INV-${year}${month}-${sequenceNumber}`;
+
+    // Use provided amount or default based on tier
+    const tier = body.subscriptionTier || schoolData.subscriptionTier || "basic";
+    const tierPrices: Record<string, number> = {
+      basic: 50000, // BTN 500
+      standard: 100000, // BTN 1000
+      premium: 200000, // BTN 2000
+      enterprise: 500000, // BTN 5000
+    };
+    const subtotal = body.amount || tierPrices[tier] || 50000;
+
+    // GST is 7% for Bhutan
+    const gstRate = 7;
+    const taxAmount = Math.round((subtotal * gstRate) / 100);
+    const totalAmount = subtotal + taxAmount;
+
+    // Calculate due date (30 days from invoice date)
+    const dueDate = new Date(now);
+    dueDate.setDate(dueDate.getDate() + 30);
+
+    // Create invoice
+    const invoiceId = `invoice-${generateId()}`;
+
+    await db.insert(invoices).values({
+      id: invoiceId,
+      invoiceNumber,
+      schoolId: body.schoolId,
+      subscriptionTier: tier,
+      amount: String(subtotal),
+      taxAmount: String(taxAmount),
+      discountAmount: "0",
+      totalAmount: String(totalAmount),
+      currency: "BTN",
+      invoiceDate: now,
+      billingPeriodStart: periodStart,
+      billingPeriodEnd: periodEnd,
+      dueDate,
+      status: "pending",
+      paymentMethod: null,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    logger.info("Invoice generated successfully", {
+      userId,
+      invoiceId,
+      invoiceNumber,
+      schoolId: body.schoolId,
+    });
+
+    return createdResponse({
+      invoice: {
+        id: invoiceId,
+        invoiceNumber,
+        amount: totalAmount,
+        currency: "BTN",
+        status: "pending",
+        dueDate: dueDate.toISOString(),
+        subtotal,
+        taxAmount,
+        subscriptionTier: tier,
+      },
+    });
+  },
+  ['ministry', 'admin']
+);
 
 // ============================================================================
 // DATA FETCHING FUNCTIONS
@@ -218,24 +370,30 @@ export async function GET(req: NextRequest) {
 
 /**
  * Get revenue statistics
+ * FIXED: Now calculates actual active subscriptions based on real school data
  */
 async function getRevenueStatistics(): Promise<RevenueStatistics> {
   const now = new Date();
   const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
-  // Active schools (as proxy for active subscriptions)
+  // Active schools count (actual active subscriptions)
   const [activeSchoolsResult] = await db
-    .select({
-      count: count(),
-      totalRevenue: sum(invoices.totalAmount),
-    })
+    .select({ count: count() })
     .from(schools)
-    .innerJoin(invoices, eq(schools.id, invoices.schoolId))
     .where(eq(schools.isActive, true));
 
   const activeSubscriptions = activeSchoolsResult?.count || 0;
-  const totalRevenue = Number(activeSchoolsResult?.totalRevenue) || 0;
+
+  // Total revenue from all paid invoices
+  const [totalRevenueResult] = await db
+    .select({
+      totalRevenue: sum(invoices.totalAmount),
+    })
+    .from(invoices)
+    .where(eq(invoices.status, "paid"));
+
+  const totalRevenue = Number(totalRevenueResult?.totalRevenue) || 0;
 
   // New subscriptions (schools) this month
   const [newSchoolsResult] = await db
@@ -394,6 +552,7 @@ async function getRevenueByPlan(): Promise<PlanRevenueBreakdown[]> {
 /**
  * Get school subscriptions with filtering
  * Uses school data and recent invoices to derive subscription information
+ * FIXED: Now calculates actual student and teacher counts per school
  */
 async function getSchoolSubscriptions(req: NextRequest): Promise<SchoolSubscriptionData[]> {
   const { searchParams } = new URL(req.url);
@@ -437,8 +596,34 @@ async function getSchoolSubscriptions(req: NextRequest): Promise<SchoolSubscript
     .orderBy(desc(schools.createdAt))
     .limit(limit);
 
-  // Get latest invoice for each school to determine pricing and payment status
   const schoolIds = schoolData.map(s => s.id);
+
+  // Get actual student and teacher counts per school in batch
+  type UserCountRow = { schoolId: string | null; studentCount: number; teacherCount: number };
+  const userCountsMap = new Map<string, { students: number; teachers: number }>();
+
+  if (schoolIds.length > 0) {
+    const userCounts = await db
+      .select({
+        schoolId: users.schoolId,
+        studentCount: sql<number>`COUNT(*) FILTER (WHERE type = 'student')`,
+        teacherCount: sql<number>`COUNT(*) FILTER (WHERE type = 'teacher')`,
+      })
+      .from(users)
+      .where(inArray(users.schoolId, schoolIds))
+      .groupBy(users.schoolId);
+
+    for (const row of userCounts) {
+      if (row.schoolId) {
+        userCountsMap.set(row.schoolId, {
+          students: row.studentCount || 0,
+          teachers: row.teacherCount || 0,
+        });
+      }
+    }
+  }
+
+  // Get latest invoice for each school to determine pricing and payment status
   const latestInvoices = schoolIds.length > 0 ? await db
     .select({
       schoolId: invoices.schoolId,
@@ -463,6 +648,8 @@ async function getSchoolSubscriptions(req: NextRequest): Promise<SchoolSubscript
 
   return schoolData.map((school) => {
     const invoice = invoiceMap.get(school.id);
+    const counts = userCountsMap.get(school.id) || { students: 0, teachers: 0 };
+
     return {
       id: school.id,
       schoolName: school.name || "Unknown",
@@ -470,8 +657,8 @@ async function getSchoolSubscriptions(req: NextRequest): Promise<SchoolSubscript
       plan: school.subscriptionTier || invoice?.subscriptionTier || "unknown",
       planPrice: Number(invoice?.totalAmount) || 0,
       status: school.subscriptionStatus || "unknown",
-      students: 0, // Would need to query students table
-      teachers: 0, // Would need to query teachers table
+      students: counts.students,
+      teachers: counts.teachers,
       startDate: school.activatedAt?.toISOString() || new Date().toISOString(),
       renewalDate: invoice?.billingPeriodEnd?.toISOString() || new Date().toISOString(),
       totalPaid: Number(invoice?.totalAmount) || 0,
@@ -556,431 +743,4 @@ async function getPaymentMethods(): Promise<PaymentMethodData[]> {
       displayInfo: "International card payments",
     },
   ];
-}
-
-// ============================================================================
-// POST HANDLER - Generate Invoice
-// ============================================================================
-
-/**
- * Generate a new invoice for a school
- * POST /api/ministry/billing
- * Body: { schoolId, amount, periodStart, periodEnd }
- */
-export async function POST(req: NextRequest) {
-  const startTime = Date.now();
-
-  try {
-    // Authenticate and authorize - only ministry/admin can generate invoices
-    const authResult = await requireAuth(["ministry", "admin"]);
-    if ("error" in authResult) {
-      logger.security("unauthorized_invoice_generation_attempt", {
-        route: "/api/ministry/billing",
-        method: "POST",
-      });
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
-
-    // Parse request body
-    const body = await req.json() as {
-      schoolId?: string;
-      amount?: number;
-      subscriptionTier?: string;
-      periodStart?: string;
-      periodEnd?: string;
-    };
-
-    if (!body.schoolId) {
-      return NextResponse.json(
-        { error: "schoolId is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
-    }
-
-    logger.info("Invoice generation requested", {
-      route: "/api/ministry/billing",
-      method: "POST",
-      userId,
-      schoolId: body.schoolId,
-    });
-
-    // Get school details
-    const [schoolData] = await db
-      .select({
-        id: schools.id,
-        name: schools.name,
-        subscriptionTier: schools.subscriptionTier,
-      })
-      .from(schools)
-      .where(eq(schools.id, body.schoolId))
-      .limit(1);
-
-    if (!schoolData) {
-      return NextResponse.json(
-        { error: "School not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
-    }
-
-    // Parse period dates
-    const now = new Date();
-    const periodStart = body.periodStart ? new Date(body.periodStart) : now;
-    const periodEnd = body.periodEnd ? new Date(body.periodEnd) : new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-
-    // Check if invoice already exists for this school and period
-    const [existingInvoice] = await db
-      .select()
-      .from(invoices)
-      .where(
-        and(
-          eq(invoices.schoolId, body.schoolId),
-          sql`${invoices.billingPeriodStart} = ${periodStart}`,
-          sql`${invoices.billingPeriodEnd} = ${periodEnd}`
-        )
-      )
-      .limit(1);
-
-    if (existingInvoice) {
-      return NextResponse.json({
-        data: {
-          invoice: {
-            id: existingInvoice.id,
-            invoiceNumber: existingInvoice.invoiceNumber,
-            amount: Number(existingInvoice.totalAmount),
-            currency: existingInvoice.currency,
-            status: existingInvoice.status,
-            dueDate: existingInvoice.dueDate?.toISOString(),
-          },
-          message: "Invoice already exists for this period",
-        },
-      } satisfies ApiSuccess<unknown>);
-    }
-
-    // Generate invoice number
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-
-    // Get invoice count for this month
-    const [invoiceCount] = await db
-      .select({ count: count() })
-      .from(invoices)
-      .where(sql`TO_CHAR(${invoices.invoiceDate}, 'YYYY-MM') = '${year}-${month}'`);
-
-    const sequenceNumber = String((invoiceCount?.count ?? 0) + 1).padStart(3, "0");
-    const invoiceNumber = `INV-${year}${month}-${sequenceNumber}`;
-
-    // Use provided amount or default based on tier
-    const tier = body.subscriptionTier || schoolData.subscriptionTier || "basic";
-    const tierPrices: Record<string, number> = {
-      basic: 50000, // BTN 500
-      standard: 100000, // BTN 1000
-      premium: 200000, // BTN 2000
-      enterprise: 500000, // BTN 5000
-    };
-    const subtotal = body.amount || tierPrices[tier] || 50000;
-
-    // GST is 7% for Bhutan
-    const gstRate = 7;
-    const taxAmount = Math.round((subtotal * gstRate) / 100);
-    const totalAmount = subtotal + taxAmount;
-
-    // Calculate due date (30 days from invoice date)
-    const dueDate = new Date(now);
-    dueDate.setDate(dueDate.getDate() + 30);
-
-    // Create invoice
-    const invoiceId = `invoice-${nanoid()}`;
-
-    await db.insert(invoices).values({
-      id: invoiceId,
-      invoiceNumber,
-      schoolId: body.schoolId,
-      subscriptionTier: tier,
-      amount: String(subtotal),
-      taxAmount: String(taxAmount),
-      discountAmount: "0",
-      totalAmount: String(totalAmount),
-      currency: "BTN",
-      invoiceDate: now,
-      billingPeriodStart: periodStart,
-      billingPeriodEnd: periodEnd,
-      dueDate,
-      status: "pending",
-      paymentMethod: null,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    const duration = Date.now() - startTime;
-    logger.info("Invoice generated successfully", {
-      userId,
-      duration: `${duration}ms`,
-      invoiceId,
-      invoiceNumber,
-      schoolId: body.schoolId,
-    });
-
-    return NextResponse.json({
-      data: {
-        invoice: {
-          id: invoiceId,
-          invoiceNumber,
-          amount: totalAmount,
-          currency: "BTN",
-          status: "pending",
-          dueDate: dueDate.toISOString(),
-          subtotal,
-          taxAmount,
-          subscriptionTier: tier,
-        },
-      },
-    } satisfies ApiSuccess<unknown>);
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/ministry/billing", method: "POST" });
-
-    return NextResponse.json(
-      {
-        error: "Failed to generate invoice",
-        status: 500,
-        details: process.env.NODE_ENV === "development" ? String(error) : undefined,
-      } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
-
-// ============================================================================
-// HELPER - Generate Invoice PDF (Basic Implementation)
-// ============================================================================
-
-/**
- * Generate a printable invoice HTML
- */
-function generateInvoiceHtml(invoice: InvoiceData, schoolName: string): string {
-  return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <title>Invoice ${invoice.invoiceNumber}</title>
-      <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-          color: #1f2937;
-          line-height: 1.5;
-          padding: 40px;
-          background: #f9fafb;
-        }
-        .invoice-container {
-          max-width: 800px;
-          margin: 0 auto;
-          background: white;
-          padding: 40px;
-          border-radius: 8px;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-        .header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          padding-bottom: 24px;
-          border-bottom: 2px solid #8b5cf6;
-          margin-bottom: 24px;
-        }
-        .invoice-title {
-          font-size: 28px;
-          font-weight: 700;
-          color: #1f2937;
-        }
-        .invoice-number {
-          font-size: 14px;
-          color: #6b7280;
-          margin-top: 4px;
-        }
-        .invoice-meta {
-          text-align: right;
-        }
-        .invoice-meta div {
-          font-size: 14px;
-          color: #6b7280;
-          margin-bottom: 4px;
-        }
-        .invoice-meta strong {
-          color: #1f2937;
-        }
-        .bill-to {
-          margin-bottom: 24px;
-        }
-        .bill-to h3 {
-          font-size: 12px;
-          text-transform: uppercase;
-          color: #6b7280;
-          margin-bottom: 8px;
-          letter-spacing: 0.05em;
-        }
-        .bill-to p {
-          font-size: 16px;
-          color: #1f2937;
-        }
-        .table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-bottom: 24px;
-        }
-        .table th {
-          text-align: left;
-          padding: 12px;
-          background: #f3f4f6;
-          font-size: 12px;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          color: #6b7280;
-          border-bottom: 1px solid #e5e7eb;
-        }
-        .table td {
-          padding: 12px;
-          border-bottom: 1px solid #e5e7eb;
-        }
-        .table td.text-right {
-          text-align: right;
-        }
-        .totals {
-          width: 300px;
-          margin-left: auto;
-        }
-        .total-row {
-          display: flex;
-          justify-content: space-between;
-          padding: 8px 0;
-          font-size: 14px;
-        }
-        .total-row.final {
-          border-top: 2px solid #e5e7eb;
-          padding-top: 12px;
-          margin-top: 8px;
-          font-size: 18px;
-          font-weight: 700;
-        }
-        .footer {
-          margin-top: 32px;
-          padding-top: 24px;
-          border-top: 1px solid #e5e7eb;
-          font-size: 12px;
-          color: #6b7280;
-        }
-        .status {
-          display: inline-block;
-          padding: 4px 12px;
-          border-radius: 9999px;
-          font-size: 12px;
-          font-weight: 600;
-          text-transform: uppercase;
-        }
-        .status.paid {
-          background: #d1fae5;
-          color: #065f46;
-        }
-        .status.pending {
-          background: #fef3c7;
-          color: #92400e;
-        }
-        .status.overdue {
-          background: #fee2e2;
-          color: #991b1b;
-        }
-      </style>
-    </head>
-    <body>
-      <div class="invoice-container">
-        <div class="header">
-          <div>
-            <div class="invoice-title">INVOICE</div>
-            <div class="invoice-number">${invoice.invoiceNumber}</div>
-          </div>
-          <div class="invoice-meta">
-            <div><strong>Date:</strong> ${formatDate(invoice.dueDate)}</div>
-            <div><strong>Due Date:</strong> ${formatDate(invoice.dueDate)}</div>
-            <div><strong>Status:</strong> <span class="status ${invoice.status}">${invoice.status}</span></div>
-          </div>
-        </div>
-
-        <div class="bill-to">
-          <h3>Bill To</h3>
-          <p>${schoolName}</p>
-        </div>
-
-        <table class="table">
-          <thead>
-            <tr>
-              <th>Description</th>
-              <th class="text-right">Quantity</th>
-              <th class="text-right">Unit Price</th>
-              <th class="text-right">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>${invoice.plan} Subscription</td>
-              <td class="text-right">1</td>
-              <td class="text-right">${formatCurrency(invoice.amount / 1200, invoice.currency)}</td>
-              <td class="text-right">${formatCurrency(invoice.amount / 100, invoice.currency)}</td>
-            </tr>
-          </tbody>
-        </table>
-
-        <div class="totals">
-          <div class="total-row">
-            <span>Subtotal</span>
-            <span>${formatCurrency(invoice.amount / 100, invoice.currency)}</span>
-          </div>
-          <div class="total-row">
-            <span>GST (7%)</span>
-            <span>${formatCurrency(invoice.amount * 0.07 / 100, invoice.currency)}</span>
-          </div>
-          <div class="total-row final">
-            <span>Total</span>
-            <span>${formatCurrency(invoice.amount * 1.07 / 100, invoice.currency)}</span>
-          </div>
-        </div>
-
-        <div class="footer">
-          <p><strong>Bhutan EduSkill Platform</strong></p>
-          <p>Ministry of Education, Royal Government of Bhutan</p>
-          <p>This is a computer-generated invoice. No signature required.</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-}
-
-// Helper function to format dates in invoice HTML
-function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-BT", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
-
-// Helper function to format currency in invoice HTML
-function formatCurrency(amount: number, currency: string): string {
-  return new Intl.NumberFormat("en-BT", {
-    style: "currency",
-    currency: currency,
-    minimumFractionDigits: 2,
-  }).format(amount);
-}
-
-// Import nanoid for ID generation
-function nanoid(): string {
-  return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 }

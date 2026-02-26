@@ -11,6 +11,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorMessage } from "@/components/ui/error-message";
+import { CardSkeleton } from "@/components/ui/skeleton";
 import {
   BookOpen,
   Users,
@@ -289,37 +292,34 @@ export default function StudentClassesPage() {
 
       {/* Error State */}
         {error && (
-          <Card className="mb-6 border-red-200 bg-red-50">
-            <CardContent className="pt-6">
-              <p className="text-red-800">{error}</p>
-              <Button onClick={() => window.location.reload()} className="mt-4">
-                Retry
-              </Button>
-            </CardContent>
-          </Card>
+          <ErrorMessage
+            title="Couldn't load classes"
+            message={error}
+            variant="error"
+            retryAction={{ label: "Retry", onClick: () => window.location.reload() }}
+          />
         )}
 
         {/* Loading State */}
         {isLoading && !error && (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3, 4, 5, 6].map((i) => (
-              <Card key={i} className="animate-pulse">
-                <CardContent className="pt-6">
-                  <div className="h-4 bg-gray-200 rounded animate-pulse mb-2"></div>
-                  <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
-                </CardContent>
-              </Card>
+              <CardSkeleton key={i} />
             ))}
           </div>
         )}
 
         {/* Empty State */}
         {!isLoading && !error && filteredClasses.length === 0 && (
-          <Card className="text-center py-12">
-            <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900">No classes found</h3>
-            <p className="text-gray-500 mt-2">You are not enrolled in any classes yet.</p>
-            <p className="text-sm text-gray-400 mt-1">Please contact your school administrator.</p>
+          <Card>
+            <CardContent className="py-12">
+              <EmptyState
+                icon={<BookOpen className="w-16 h-16" />}
+                title="No classes found"
+                description="You are not enrolled in any classes yet. Please contact your school administrator to get enrolled."
+                size="default"
+              />
+            </CardContent>
           </Card>
         )}
 

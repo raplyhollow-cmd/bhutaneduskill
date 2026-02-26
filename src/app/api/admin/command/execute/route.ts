@@ -42,9 +42,27 @@ interface ParsedCommand {
   entityType: "school" | "user" | "invoice" | "notification";
   entityId?: string;
   entityName?: string;
-  parameters: Record<string, any>;
+  parameters: CommandParameters;
   explanation: string;
   confidence: number;
+}
+
+interface CommandParameters {
+  target?: string;
+  school_id?: string;
+  schoolId?: string;
+  message?: string;
+  type?: string;
+  reason?: string;
+  days?: number;
+  invoice_id?: string;
+  invoiceId?: string;
+  amount?: number;
+  description?: string;
+  anomaly_id?: string;
+  anomalyId?: string;
+  resolution?: string;
+  [key: string]: string | number | undefined;
 }
 
 type CommandAction =
@@ -62,8 +80,18 @@ interface CommandExecutionResult {
   success: boolean;
   action: string;
   entityName: string;
-  result: any;
+  result: CommandResultData;
   message: string;
+}
+
+interface CommandResultData {
+  schoolId?: string;
+  message?: string;
+  invoiceId?: string;
+  days?: number;
+  anomalyId?: string;
+  target?: string;
+  [key: string]: string | number | undefined;
 }
 
 // ============================================================================
@@ -268,7 +296,7 @@ async function executeCommand(parsed: ParsedCommand, userId: string): Promise<Co
   }
 }
 
-async function executeSendNotification(parameters: any, userId: string): Promise<CommandExecutionResult> {
+async function executeSendNotification(parameters: CommandParameters, userId: string): Promise<CommandExecutionResult> {
   const { target, message, type = "info" } = parameters;
 
   if (!target || !message) {
@@ -298,14 +326,14 @@ async function executeSendNotification(parameters: any, userId: string): Promise
     targetSchoolIds: JSON.stringify([schoolId]),
     title: `${type === "payment" ? "Payment" : "Information"} Notification`,
     message,
-    type: notificationType as "announcement" | "alert" | "reminder" | "system" | "welcome" | "grade" | "homework" | "attendance",
+    type: notificationType,
     priority: type === "payment" ? "high" : "normal",
     senderId: userId,
     status: "sent",
     sentAt: new Date(),
     createdAt: new Date(),
     updatedAt: new Date(),
-  } as any);
+  });
 
   return {
     success: true,
@@ -316,7 +344,7 @@ async function executeSendNotification(parameters: any, userId: string): Promise
   };
 }
 
-async function executeSuspendAccess(parameters: any, userId: string): Promise<CommandExecutionResult> {
+async function executeSuspendAccess(parameters: CommandParameters, userId: string): Promise<CommandExecutionResult> {
   const { school_id, schoolId, reason } = parameters;
   const targetSchoolId = school_id || schoolId;
 
@@ -358,7 +386,7 @@ async function executeSuspendAccess(parameters: any, userId: string): Promise<Co
   };
 }
 
-async function executeActivateAccess(parameters: any, userId: string): Promise<CommandExecutionResult> {
+async function executeActivateAccess(parameters: CommandParameters, userId: string): Promise<CommandExecutionResult> {
   const { school_id, schoolId } = parameters;
   const targetSchoolId = school_id || schoolId;
 
@@ -400,7 +428,7 @@ async function executeActivateAccess(parameters: any, userId: string): Promise<C
   };
 }
 
-async function executeExtendTrial(parameters: any, userId: string): Promise<CommandExecutionResult> {
+async function executeExtendTrial(parameters: CommandParameters, userId: string): Promise<CommandExecutionResult> {
   const { school_id, schoolId, days = 7 } = parameters;
   const targetSchoolId = school_id || schoolId;
 
@@ -446,7 +474,7 @@ async function executeExtendTrial(parameters: any, userId: string): Promise<Comm
   };
 }
 
-async function executeSendPaymentReminder(parameters: any, userId: string): Promise<CommandExecutionResult> {
+async function executeSendPaymentReminder(parameters: CommandParameters, userId: string): Promise<CommandExecutionResult> {
   const { invoice_id, invoiceId, school_id, schoolId } = parameters;
   const targetInvoiceId = invoice_id || invoiceId;
   const targetSchoolId = school_id || schoolId;
@@ -461,14 +489,14 @@ async function executeSendPaymentReminder(parameters: any, userId: string): Prom
         targetSchoolIds: JSON.stringify([targetSchoolId || ""]),
         title: "Payment Reminder",
         message: `Reminder: Invoice ${invoice.invoiceNumber} is overdue. Please make payment at your earliest convenience.`,
-        type: "alert" as const,
+        type: "alert",
         priority: "high",
         senderId: userId,
         status: "sent",
         sentAt: new Date(),
         createdAt: new Date(),
         updatedAt: new Date(),
-      } as any);
+      });
 
       return {
         success: true,
@@ -489,14 +517,14 @@ async function executeSendPaymentReminder(parameters: any, userId: string): Prom
         targetSchoolIds: JSON.stringify([school.id]),
         title: "Payment Reminder",
         message: "This is a reminder that you have overdue invoices. Please make payment at your earliest convenience.",
-        type: "alert" as const,
+        type: "alert",
         priority: "high",
         senderId: userId,
         status: "sent",
         sentAt: new Date(),
         createdAt: new Date(),
         updatedAt: new Date(),
-      } as any);
+      });
 
       return {
         success: true,
@@ -517,7 +545,7 @@ async function executeSendPaymentReminder(parameters: any, userId: string): Prom
   };
 }
 
-async function executeAcknowledgeAnomaly(parameters: any, userId: string): Promise<CommandExecutionResult> {
+async function executeAcknowledgeAnomaly(parameters: CommandParameters, userId: string): Promise<CommandExecutionResult> {
   const { anomaly_id, anomalyId } = parameters;
   const targetAnomalyId = anomaly_id || anomalyId;
 
@@ -550,7 +578,7 @@ async function executeAcknowledgeAnomaly(parameters: any, userId: string): Promi
   };
 }
 
-async function executeResolveAnomaly(parameters: any, userId: string): Promise<CommandExecutionResult> {
+async function executeResolveAnomaly(parameters: CommandParameters, userId: string): Promise<CommandExecutionResult> {
   const { anomaly_id, anomalyId, resolution } = parameters;
   const targetAnomalyId = anomaly_id || anomalyId;
 

@@ -7,7 +7,7 @@
  * Features:
  * - Dropdown, Tabs, and Card variants
  * - LocalStorage persistence for selection
- * - Parent portal gray color scheme: rgb(107 114 128) → rgb(75 85 99)
+ * - Parent portal gray color scheme using design tokens (portal.parent.gradient)
  * - Support for 2-10 children per parent
  * - Shows child's name, grade, and photo
  * - Callback when child is switched
@@ -37,6 +37,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { GraduationCap, Users, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { portal } from "@/styles/design-tokens";
 
 // ============================================================================
 // Types
@@ -201,7 +202,7 @@ function ChildDropdown({
                 <AvatarImage src={selectedChild.profilePicture} alt={getDisplayName(selectedChild)} />
                 <AvatarFallback
                   className="text-white text-xs font-semibold"
-                  style={{ background: "linear-gradient(135deg, rgb(107 114 128) 0%, rgb(75 85 99) 100%)" }}
+                  style={{ background: portal.parent.gradient }}
                 >
                   {getInitials(selectedChild)}
                 </AvatarFallback>
@@ -246,7 +247,7 @@ function ChildDropdown({
                     <AvatarImage src={child.profilePicture} alt={getDisplayName(child)} />
                     <AvatarFallback
                       className="text-white text-xs font-semibold"
-                      style={{ background: "linear-gradient(135deg, rgb(107 114 128) 0%, rgb(75 85 99) 100%)" }}
+                      style={{ background: portal.parent.gradient }}
                     >
                       {initials}
                     </AvatarFallback>
@@ -419,7 +420,7 @@ function ChildCards({
               {isSelected && (
                 <div
                   className="absolute top-0 left-0 w-1 h-full"
-                  style={{ background: "linear-gradient(135deg, rgb(107 114 128) 0%, rgb(75 85 99) 100%)" }}
+                  style={{ background: portal.parent.gradient }}
                 />
               )}
 
@@ -555,7 +556,7 @@ export function ChildSelector({
         )}
         style={{
           background: "linear-gradient(to right, rgb(249 250 251) 0%, rgb(243 244 246) 100%)",
-          borderColor: "rgb(229 231 235)",
+          borderColor: "var(--border-color-primary, rgb(229 231 235))",
         }}
       >
         <div className="flex items-center gap-3">
@@ -563,7 +564,7 @@ export function ChildSelector({
             <AvatarImage src={selectedChild?.profilePicture} alt={getDisplayName(selectedChild!)} />
             <AvatarFallback
               className="text-white text-lg font-bold"
-              style={{ background: "linear-gradient(135deg, rgb(107 114 128) 0%, rgb(75 85 99) 100%)" }}
+              style={{ background: portal.parent.gradient }}
             >
               {getInitials(selectedChild!)}
             </AvatarFallback>
@@ -680,13 +681,13 @@ export function ChildDisplayCard({ child, showActions, onEdit, className }: Chil
   return (
     <div
       className={cn("flex items-center gap-3 rounded-lg border bg-white p-3 shadow-sm", className)}
-      style={{ borderColor: "rgb(229 231 235)" }}
+      style={{ borderColor: "var(--border-color-primary, rgb(229 231 235))" }}
     >
       <Avatar>
         <AvatarImage src={child.profilePicture} alt={getDisplayName(child)} />
         <AvatarFallback
           className="text-white font-semibold"
-          style={{ background: "linear-gradient(135deg, rgb(107 114 128) 0%, rgb(75 85 99) 100%)" }}
+          style={{ background: portal.parent.gradient }}
         >
           {initials}
         </AvatarFallback>

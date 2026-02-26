@@ -4,6 +4,7 @@
  * Features:
  * - Grid view with teacher cards showing photo placeholder, name, subjects, classes
  * - Add Teacher modal
+ * - Quick Add Teacher with ExpressAddModal
  * - Filter by department
  * - Modern purple/indigo gradient theme
  */
@@ -25,8 +26,10 @@ import {
   Users,
   Building2,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 import { AddTeacherModal } from "@/components/school-admin/add-teacher-modal";
+import { ExpressAddModal, useExpressAdd } from "@/components/ui/express-add-modal";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Teacher {
@@ -50,6 +53,9 @@ export default function SchoolAdminTeachersPage() {
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
+  // ExpressAddModal hook for quick teacher add
+  const quickAdd = useExpressAdd();
+
   useEffect(() => {
     fetchTeachers();
   }, []);
@@ -66,6 +72,38 @@ export default function SchoolAdminTeachersPage() {
       console.error("Failed to fetch teachers:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Quick add teacher handler - creates with minimal info
+  const handleQuickAddTeacher = async (name: string) => {
+    try {
+      const [firstName, ...lastNameParts] = name.trim().split(" ");
+      const lastName = lastNameParts.join(" ") || "";
+
+      const response = await fetch("/api/school-admin/teachers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName,
+          lastName: lastName || "Teacher",
+          email: `${firstName.toLowerCase().replace(/\s/g, ".")}@school.edu`,
+          phone: "",
+          employeeId: `TCH${Date.now().toString().slice(-4)}`,
+          department: "General",
+          subjects: [],
+        }),
+      });
+
+      if (response.ok) {
+        await fetchTeachers();
+        return { success: true };
+      } else {
+        const data = await response.json();
+        return { success: false, error: data.error || "Failed to add teacher" };
+      }
+    } catch (error) {
+      return { success: false, error: "Network error. Please try again." };
     }
   };
 
@@ -122,14 +160,24 @@ export default function SchoolAdminTeachersPage() {
             {teachers.length} {teachers.length === 1 ? "teacher" : "teachers"} in your school
           </p>
         </div>
-        <Button
-          onClick={() => setIsAddModalOpen(true)}
-          className="shadow-md hover:shadow-lg transition-shadow"
-          style={{ background: "linear-gradient(135deg, rgb(139 92 246) 0%, rgb(124 58 237) 100%)" }}
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Teacher
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={quickAdd.open}
+            className="shadow-sm hover:shadow-md transition-shadow"
+          >
+            <Sparkles className="w-4 h-4 mr-2" />
+            Quick Add
+          </Button>
+          <Button
+            onClick={() => setIsAddModalOpen(true)}
+            className="shadow-md hover:shadow-lg transition-shadow"
+            style={{ background: "linear-gradient(135deg, rgb(139 92 246) 0%, rgb(124 58 237) 100%)" }}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Teacher
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -356,6 +404,21 @@ export default function SchoolAdminTeachersPage() {
           fetchTeachers();
           setIsAddModalOpen(false);
         }}
+      />
+
+      {/* Quick Add Teacher Modal */}
+      <ExpressAddModal
+        isOpen={quickAdd.isOpen}
+        onClose={quickAdd.close}
+        onSubmit={handleQuickAddTeacher}
+        title="Quick Add Teacher"
+        description="Enter teacher name (first and last)"
+        placeholder="e.g., John Doe"
+        successMessage="Teacher added successfully! You can edit details later."
+        errorMessage="Failed to add teacher. Please try again."
+        icon={GraduationCap}
+        minLength={2}
+        submitLabel="Press Enter to add teacher"
       />
     </div>
   );

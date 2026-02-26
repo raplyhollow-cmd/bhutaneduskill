@@ -106,8 +106,8 @@ export class BCSEApiClient {
   private async apiRequest(
     endpoint: string,
     method: "GET" | "POST" | "PUT",
-    body?: any
-  ): Promise<any> {
+    body?: Record<string, unknown>
+  ): Promise<Record<string, unknown>> {
     const timestamp = Date.now().toString();
     const payload = body ? JSON.stringify(body) : "";
     const signature = this.generateSignature(payload, timestamp);
@@ -155,10 +155,10 @@ export class BCSEApiClient {
 
       return {
         success: true,
-        registrationNumber: response.registrationNumber,
-        indexNumber: response.indexNumber,
-        status: response.status,
-        message: response.message,
+        registrationNumber: response.registrationNumber as string,
+        indexNumber: response.indexNumber as string,
+        status: response.status as string,
+        message: response.message as string,
       };
     } catch (error) {
       return {
@@ -296,7 +296,10 @@ export class BCSEApiClient {
     examType: "BCSE_10" | "BCSE_12"
   ): Promise<{
     success: boolean;
-    combinations?: any[];
+    combinations?: Array<{
+      subjects: string[];
+      combinationCode: string;
+    }>;
     error?: string;
   }> {
     try {
@@ -336,8 +339,8 @@ export class BCSEApiClient {
 
       return {
         success: true,
-        status: response.status,
-        indexNumber: response.indexNumber,
+        status: response.status as string,
+        indexNumber: response.indexNumber as string,
       };
     } catch (error) {
       return {
@@ -367,7 +370,7 @@ export class BCSEApiClient {
 
       return {
         success: true,
-        documentUrl: response.documentUrl,
+        documentUrl: response.documentUrl as string,
       };
     } catch (error) {
       return {
@@ -397,7 +400,7 @@ export class BCSEApiClient {
 
       return {
         success: true,
-        documentUrl: response.documentUrl,
+        documentUrl: response.documentUrl as string,
       };
     } catch (error) {
       return {

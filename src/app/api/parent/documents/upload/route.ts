@@ -4,12 +4,16 @@ import { logger } from "@/lib/logger";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { db } from "@/lib/db";
-import { fileStorage, users } from "@/lib/db/schema";
+import { fileStorage, users, parents, parentToStudent } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 /**
  * POST /api/parent/documents/upload - Upload consent form for child
+ *
+ * SECURITY: FERPA COMPLIANCE
+ * - Uses parent_to_student join table for verification
+ * - Only allows uploads for verified children
  *
  * Parents can upload signed consent forms for their children.
  * Supported formats: PDF, DOC, DOCX, JPG, PNG
@@ -20,7 +24,7 @@ export async function POST(request: NextRequest) {
     if ('error' in authResult) {
       return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
-    const { userId, user } = authResult;
+    const { userId } = authResult;
 
     // Parse form data
     const formData = await request.formData();
@@ -37,16 +41,49 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Child ID is required" }, { status: 400 });
     }
 
-    // Verify the child belongs to this parent
+    // FERPA COMPLIANCE: Get parent record first
+    const [parentRecord] = await db
+      .select()
+      .from(parents)
+      .where(eq(parents.userId, userId))
+      .limit(1);
+
+    if (!parentRecord) {
+      logger.warn("No parent record found for user", { userId });
+      return NextResponse.json({ error: "Parent record not found" }, { status: 403 });
+    }
+
+    // FERPA COMPLIANCE: Verify parent-child relationship via parent_to_student join table
+    const [relationship] = await db
+      .select()
+      .from(parentToStudent)
+      .where(
+        and(
+          eq(parentToStudent.parentId, parentRecord.id),
+          eq(parentToStudent.studentId, entityId)
+        )
+      )
+      .limit(1);
+
+    if (!relationship) {
+      logger.security("ferpa_violation_attempt", {
+        parentId: parentRecord.id,
+        childId: entityId,
+        route: "/api/parent/documents/upload",
+      });
+      return NextResponse.json({ error: "Child not found or access denied" }, { status: 403 });
+    }
+
+    // Verify the child exists
     const child = await db.query.users.findFirst({
       where: and(
         eq(users.id, entityId),
-        eq(users.parentId, user.id)
+        eq(users.type, "student")
       ),
     });
 
     if (!child) {
-      return NextResponse.json({ error: "Child not found or access denied" }, { status: 403 });
+      return NextResponse.json({ error: "Child not found" }, { status: 404 });
     }
 
     // Get file extension

@@ -8,13 +8,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -22,6 +15,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { portal } from "@/styles/design-tokens";
 import { createSupportTicket } from "@/app/admin/support/actions";
 import { X, Plus, Trash2 } from "lucide-react";
 
@@ -95,7 +96,7 @@ export function AddTicketModal({ open, onClose, onSuccess }: AddTicketModalProps
       setTagInput("");
     } catch (error) {
       logger.error("[ADD TICKET] Error:", error);
-      alert(error instanceof Error ? error.message : "Failed to create ticket. Please try again.");
+      alert(error instanceof Error ? error instanceof Error ? error.message : String(error) : "Failed to create ticket. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -271,7 +272,7 @@ export function AddTicketModal({ open, onClose, onSuccess }: AddTicketModalProps
             <Button
               type="submit"
               disabled={isLoading}
-              style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
+              style={{ background: portal.admin.gradient }}
               className="text-white"
             >
               {isLoading ? "Creating..." : "Create Ticket"}

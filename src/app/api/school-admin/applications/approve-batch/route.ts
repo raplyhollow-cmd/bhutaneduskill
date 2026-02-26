@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users, enrollments, classes, teacherAssignments, departments } from "@/lib/db/schema";
-import { requireAuth } from "@/lib/auth-utils";
 import { requirePermission } from "@/lib/rbac";
 import { enforceSeatCapacity } from "@/lib/billing-utils";
 import { logger } from "@/lib/logger";
 import { eq, and, inArray, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 interface ApproveBatchRequest {
   userIds: string[];
@@ -26,33 +25,19 @@ interface ApprovalResult {
 }
 
 // POST /api/school-admin/applications/approve-batch - Bulk approve multiple users
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['school-admin', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { userId, user } = authResult;
-
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId, user } = auth;
     const body: ApproveBatchRequest = await request.json();
     const { userIds, type, assignments = {} } = body;
 
     // Validate input
     if (!Array.isArray(userIds) || userIds.length === 0) {
-      return NextResponse.json(
-        { error: "userIds must be a non-empty array", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "userIds must be a non-empty array" }, { status: 400 });
     }
 
     if (type !== 'student' && type !== 'teacher') {
-      return NextResponse.json(
-        { error: "Type must be 'student' or 'teacher'", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Type must be 'student' or 'teacher'" }, { status: 400 });
     }
 
     // Check permission
@@ -67,19 +52,13 @@ export async function POST(request: NextRequest) {
       .where(inArray(users.id, userIds));
 
     if (applicants.length === 0) {
-      return NextResponse.json(
-        { error: "No valid applicants found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "No valid applicants found" }, { status: 404 });
     }
 
     // Verify all users are of the correct type and belong to the same school (unless platform admin)
     const schoolId = user.type === 'admin' ? applicants[0].schoolId : user.schoolId;
     if (!schoolId) {
-      return NextResponse.json(
-        { error: "School ID not found", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "School ID not found" }, { status: 400 });
     }
 
     // Validate each applicant
@@ -96,10 +75,9 @@ export async function POST(request: NextRequest) {
       } catch (capacityError) {
         return NextResponse.json(
           {
-            error: capacityError instanceof Error ? capacityError.message : "Insufficient capacity",
-            status: 409,
-          } satisfies ApiErrorResponse,
-          { status: 409 }
+            error: capacityError instanceof Error ? capacityError.message : "Insufficient capacity"
+          },
+          { status: 400 }
         );
       }
     }
@@ -168,21 +146,14 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({
-      data: {
-        success: true,
-        count: approvedIds.length,
-        approved: approvedIds,
-        failed: approvalFailed
-      } as ApprovalResult
-    } satisfies ApiSuccess<ApprovalResult>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/applications/approve-batch", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to process batch approval", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+      success: true,
+      count: approvedIds.length,
+      approved: approvedIds,
+      failed: approvalFailed
+    } satisfies ApprovalResult);
+  },
+  ['school-admin']
+);
 
 /**
  * Process student approval - create enrollment record

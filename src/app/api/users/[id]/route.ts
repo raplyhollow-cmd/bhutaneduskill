@@ -74,3 +74,60 @@ export async function DELETE(
     return NextResponse.json({ error: "Failed to delete user" }, { status: 500 });
   }
 }
+
+// PATCH /api/users/[id] - Update user (admin/school-admin)
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const authResult = await requireAuth(["admin", "school-admin"]);
+    if ("error" in authResult) {
+      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+    }
+
+    const { userId, user: currentUser } = authResult;
+
+    // Check RBAC permission for updating users
+    const permCheck = await requirePermission(userId, "users.update");
+    if (permCheck) return permCheck;
+
+    const body = await request.json();
+    const { name, firstName, lastName } = body;
+
+    // Build update object
+    const updateData: { name?: string; firstName?: string; lastName?: string; updatedAt: Date } = {
+      updatedAt: new Date(),
+    };
+
+    if (name !== undefined) {
+      updateData.name = name;
+    }
+    if (firstName !== undefined) {
+      updateData.firstName = firstName;
+    }
+    if (lastName !== undefined) {
+      updateData.lastName = lastName;
+    }
+
+    // If both first and last name provided, update full name
+    if (firstName !== undefined && lastName !== undefined) {
+      updateData.name = `${firstName} ${lastName}`.trim();
+    }
+
+    // Update user
+    const [updated] = await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, id))
+      .returning();
+
+    logger.info("User updated successfully", { userId: id, updatedBy: userId });
+
+    return NextResponse.json({ user: updated });
+  } catch (error) {
+    logger.error("User update error:", error);
+    return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
+  }
+}

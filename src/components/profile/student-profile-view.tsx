@@ -34,26 +34,13 @@ interface StudentData {
   aiInsight?: string;
 }
 
-// Mock data fetch (replace with actual API call)
+// Fetch student profile from API
 async function fetchStudentProfile(id: string): Promise<StudentData> {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 300));
-
-  return {
-    id,
-    name: "Pema Wangmo",
-    firstName: "Pema",
-    lastName: "Wangmo",
-    email: "pema.wangmo@school.edu.bt",
-    phone: "+975 17 123 456",
-    classGrade: "Class 10-A",
-    schoolName: "Motithang HSS",
-    attendance: 94,
-    feeStatus: "clear",
-    gpa: 3.7,
-    careerMatch: "Software Engineer",
-    aiInsight: "Strong aptitude for Physics and Logic. Currently 14% above grade average in Numerical Reasoning. Shows excellent problem-solving skills in mathematics competitions.",
-  };
+  const response = await fetch(`/api/students/${id}`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch student profile");
+  }
+  return await response.json();
 }
 
 function StatCard({

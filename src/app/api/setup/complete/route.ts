@@ -6,6 +6,21 @@ import { users, wizardProgress, schoolAdminApplications } from "@/lib/db/schema"
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface SchoolAdminApplicationRecord {
+  id: string;
+  userId: string;
+  schoolId: string;
+  status: string;
+  paymentStatus: string;
+  appliedAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const user = await currentUser();
@@ -28,7 +43,7 @@ export async function POST(request: NextRequest) {
     const dbUser = userRecord[0];
 
     // Check if there's a pending application (for school-admins)
-    let application: any[] = [];
+    let application: SchoolAdminApplicationRecord[] = [];
     if (dbUser.type === "school-admin") {
       application = await db
         .select()

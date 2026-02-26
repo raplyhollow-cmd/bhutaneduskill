@@ -8,30 +8,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { requireAuth, invalidateUserRoleCache } from "@/lib/auth-utils";
-import { logger } from "@/lib/logger";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { invalidateUserRoleCache } from "@/lib/auth-utils";
+import { createApiRoute } from "@/lib/api/route-handler";
+import type { ApiSuccess } from "@/types";
 
-// ============================================================================
+type VerifyParams = { userId: string };
+
 // POST /api/admin/users/[userId]/verify - Verify user email
-// ============================================================================
+export const POST = createApiRoute<never, { id: string; emailVerified: boolean }, VerifyParams>(
+  async (_request, { userId: adminId }, context) => {
+    const { userId } = await context!.params!;
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ userId: string }> }
-) {
-  const authResult = await requireAuth(['admin']);
-  if ('error' in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } as ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
-
-  const { userId: adminId } = authResult;
-  const { userId } = await params;
-
-  try {
     // Check if user exists
     const existingUser = await db
       .select()
@@ -41,7 +28,7 @@ export async function POST(
 
     if (existingUser.length === 0) {
       return NextResponse.json(
-        { error: 'User not found', status: 404 } as ApiErrorResponse,
+        { error: 'User not found', status: 404 },
         { status: 404 }
       );
     }
@@ -51,7 +38,7 @@ export async function POST(
     // Check if already verified
     if (user.emailVerified) {
       return NextResponse.json(
-        { error: 'User email is already verified', status: 400 } as ApiErrorResponse,
+        { error: 'User email is already verified', status: 400 },
         { status: 400 }
       );
     }
@@ -69,18 +56,11 @@ export async function POST(
     // Invalidate role cache
     invalidateUserRoleCache(verifiedUser.clerkUserId);
 
-    logger.info('User verified', { userId, verifiedBy: adminId });
-
     return NextResponse.json({
       data: { id: verifiedUser.id, emailVerified: verifiedUser.emailVerified },
       message: 'User verified successfully',
     } satisfies ApiSuccess<{ id: string; emailVerified: boolean }>, { status: 200 });
 
-  } catch (error) {
-    logger.apiError(error, { route: `/api/admin/users/${userId}/verify`, method: 'POST', adminId });
-    return NextResponse.json(
-      { error: 'Failed to verify user', status: 500, details: error instanceof Error ? error.message : undefined } as ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin']
+);

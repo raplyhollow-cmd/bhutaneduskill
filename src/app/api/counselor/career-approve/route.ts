@@ -6,6 +6,12 @@ import { eq, and, sql, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
 
+interface RecommendedScholarship {
+  scholarshipId: string;
+  name: string;
+  suitability: string;
+}
+
 /**
  * POST /api/counselor/career-approve
  *
@@ -104,18 +110,18 @@ export async function POST(req: Request) {
     }
 
     // Find matching RUB scholarships if scholarship ready
-    let recommendedScholarships: any[] = [];
+    const recommendedScholarships: RecommendedScholarship[] = [];
     if (scholarshipReady || approvalStatus === "approved") {
       const scholarships = await db.query.rubScholarships.findMany({
         where: eq(rubScholarships.isActive, true),
         limit: 5,
       });
 
-      recommendedScholarships = scholarships.map((s) => ({
+      recommendedScholarships.push(...scholarships.map((s) => ({
         scholarshipId: s.id,
         name: s.name,
         suitability: "Match based on career field and merit",
-      }));
+      })));
     }
 
     logger.info("Career approval created", {
@@ -205,7 +211,7 @@ export async function GET(req: Request) {
       LIMIT 50
     `);
 
-    const studentList = students.rows.map((row: any) => ({
+    const studentList = students.rows.map((row: { student_id: string; first_name: string; last_name: string; class_grade: number | null; school_name: string; career_matches: unknown[] }) => ({
       id: row.student_id,
       studentName: `${row.first_name} ${row.last_name}`.trim(),
       studentClass: row.class_grade,

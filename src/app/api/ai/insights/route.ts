@@ -8,15 +8,18 @@ import { logger } from "@/lib/logger";
  * - User role (admin, teacher, counselor, school-admin, parent, student)
  * - Real data from the database
  * - Context-specific recommendations
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { chatWithCareerCoachFromServer, type AIContext } from "@/lib/ai/gemini-server";
 import { db } from "@/lib/db";
 import { users, riasecResults, mbtiResults, assessments, careerMatches as careerMatchesTable } from "@/lib/db/schema";
 import { eq, desc as drizzleDesc } from "drizzle-orm";
 import { safeTrackAIInteraction, AI_FEATURE_IDS } from "@/lib/ai/track-interaction";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse } from "@/lib/api/response-helpers";
 
 interface InsightRequest {
   userRole: "admin" | "teacher" | "counselor" | "school-admin" | "parent" | "student" | "ministry";
@@ -36,75 +39,77 @@ interface AIInsight {
   actions?: Array<{ label: string; href: string }>;
 }
 
-export async function POST(request: NextRequest) {
-  const authResult = await requireAuth();
-  if ("error" in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
+// ============================================================================
+// POST - Get AI Insights
+// ============================================================================
 
-  const { userId } = authResult;
+export const POST = createApiRoute(
+  async (request, { userId }) => {
+    const auth = await requireAuth([]);
 
-  try {
-    const body: InsightRequest = await request.json();
-    const { userRole, contextData } = body;
-
-    // Validate user role matches request
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: { type: true, firstName: true, lastName: true },
-    });
-
-    if (!user) {
-      logger.apiError(new Error("[AI Insights] User not found"), { route: "/api/ai/insights", method: "POST", userId });
-      return NextResponse.json(
-        { error: "User not found", insights: [] },
-        { status: 404 }
-      );
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
 
-    // Log role mismatch but continue anyway for better UX
-    if (user.type !== userRole) {
-      logger.warn("[AI Insights] Role mismatch - using requested role anyway:", {
-        requested: userRole,
-        actual: user.type,
-        userId
+    try {
+      const body: InsightRequest = await request.json();
+      const { userRole, contextData } = body;
+
+      // Validate user role matches request
+      const userList = await db
+        .select({ type: users.type, firstName: users.firstName, lastName: users.lastName })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      const user = userList[0];
+
+      if (!user) {
+        logger.apiError(new Error("[AI Insights] User not found"), { route: "/api/ai/insights", method: "POST", userId });
+        return successResponse({ insights: [] }); // Return empty insights instead of error for better UX
+      }
+
+      // Log role mismatch but continue anyway for better UX
+      if (user.type !== userRole) {
+        logger.warn("[AI Insights] Role mismatch - using requested role anyway:", {
+          requested: userRole,
+          actual: user.type,
+          userId
+        });
+        // Continue with requested role instead of blocking
+      }
+
+      // Generate insights based on role
+      const insights = await generateInsights(userRole, contextData, user, userId);
+
+      // Track AI interaction (non-blocking)
+      safeTrackAIInteraction({
+        userId,
+        featureId: AI_FEATURE_IDS.INSIGHTS,
+        interactionData: {
+          userRole,
+          insightsCount: insights.length,
+          insightTypes: insights.map(i => i.type),
+          hasActions: insights.some(i => i.actions && i.actions.length > 0),
+          hasContextData: !!contextData,
+        },
+        metadata: {
+          usedFallback: false,
+          responseTimestamp: new Date().toISOString(),
+        },
       });
-      // Continue with requested role instead of blocking
+
+      return successResponse({
+        insights,
+        generatedAt: new Date().toISOString(),
+      });
+    } catch (error: unknown) {
+      logger.apiError(error, { route: "/api/ai/insights", method: "POST" });
+      return errorResponse("Failed to generate insights", 500);
     }
-
-    // Generate insights based on role
-    const insights = await generateInsights(userRole, contextData, user, userId);
-
-    // Track AI interaction (non-blocking)
-    safeTrackAIInteraction({
-      userId,
-      featureId: AI_FEATURE_IDS.INSIGHTS,
-      interactionData: {
-        userRole,
-        insightsCount: insights.length,
-        insightTypes: insights.map(i => i.type),
-        hasActions: insights.some(i => i.actions && i.actions.length > 0),
-        hasContextData: !!contextData,
-      },
-      metadata: {
-        usedFallback: false,
-        responseTimestamp: new Date().toISOString(),
-      },
-    });
-
-    return NextResponse.json({
-      success: true,
-      insights,
-      generatedAt: new Date().toISOString(),
-    });
-  } catch (error: unknown) {
-    logger.apiError(error, { route: "/api/ai/insights", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to generate insights", insights: [] },
-      { status: 500 }
-    );
-  }
-}
+  },
+  [] // No role restriction - any authenticated user
+);
 
 // ============================================================================
 // UTILITY FUNCTIONS
@@ -571,12 +576,12 @@ async function generateStudentInsights(
         .orderBy(drizzleDesc(assessments.completedAt))
         .limit(10);
 
-      const riasecAssessment = assessmentResults.find((a: any) =>
-        a.results && typeof a.results === 'object' && 'hollandCode' in (a.results as any)
+      const riasecAssessment = assessmentResults.find((a) =>
+        a.results && typeof a.results === 'object' && 'hollandCode' in a.results
       );
 
       if (riasecAssessment?.results) {
-        const results = riasecAssessment.results as any;
+        const results = riasecAssessment.results as { hollandCode?: string };
         riasecCode = results.hollandCode || results?.results?.hollandCode?.[0] || null;
       }
     }
@@ -591,7 +596,7 @@ async function generateStudentInsights(
         .limit(1);
 
       if (careerMatchList.length > 0) {
-        const matchReason = (careerMatchList[0] as any).matchReason;
+        const matchReason = (careerMatchList[0] as { matchReason?: string }).matchReason;
         if (matchReason) {
           // Look for Holland Code patterns
           const hollandPatterns = [
@@ -634,12 +639,12 @@ async function generateStudentInsights(
         .orderBy(drizzleDesc(assessments.completedAt))
         .limit(10);
 
-      const mbtiAssessment = assessmentResults.find((a: any) =>
-        a.results && typeof a.results === 'object' && 'personalityType' in (a.results as any)
+      const mbtiAssessment = assessmentResults.find((a) =>
+        a.results && typeof a.results === 'object' && 'personalityType' in a.results
       );
 
       if (mbtiAssessment?.results) {
-        const results = mbtiAssessment.results as any;
+        const results = mbtiAssessment.results as { personalityType?: string };
         mbtiType = results.personalityType || results?.results?.personalityType || null;
       }
     }
@@ -654,7 +659,7 @@ async function generateStudentInsights(
         .limit(1);
 
       if (careerMatchList.length > 0) {
-        const matchReason = (careerMatchList[0] as any).matchReason;
+        const matchReason = (careerMatchList[0] as { matchReason?: string }).matchReason;
         if (matchReason) {
           // Look for MBTI patterns like "INTJ" or "ENFP"
           const mbtiPattern = /\b([A-Z]{4})\b/;
@@ -674,13 +679,13 @@ async function generateStudentInsights(
       .where(eq(users.id, userId))
       .limit(1);
 
-    const settings = (userWithJournalResult?.[0]?.settings as any) || {};
-    const journalEntries = settings.journalEntries || [];
+    const settings = (userWithJournalResult?.[0]?.settings as Record<string, unknown>) || {};
+    const journalEntries = (settings.journalEntries as Array<{ date: string; mood?: string }>) || [];
     journalEntryCount = journalEntries.length;
 
     // Get recent mood from latest journal entry (if exists)
     if (journalEntries.length > 0) {
-      const sortedEntries = [...journalEntries].sort((a: any, b: any) =>
+      const sortedEntries = [...journalEntries].sort((a, b) =>
         new Date(b.date).getTime() - new Date(a.date).getTime()
       );
       recentJournalMood = sortedEntries[0]?.mood || null;

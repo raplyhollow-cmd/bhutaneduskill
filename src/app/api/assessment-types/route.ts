@@ -1,18 +1,26 @@
+/**
+ * ASSESSMENT TYPES API
+ *
+ * GET /api/assessment-types - Get assessment types
+ * POST /api/assessment-types - Create assessment type (admin only)
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
+import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { assessmentTypes } from "@/lib/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql, type SQL } from "drizzle-orm";
+import type { AssessmentType } from "@/lib/db/schema";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, createdResponse } from "@/lib/api/response-helpers";
 
 // GET /api/assessment-types - Get assessment types
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
 
     const { searchParams } = new URL(request.url);
     const category = searchParams.get("category");
@@ -20,7 +28,7 @@ export async function GET(request: NextRequest) {
     const targetGrade = searchParams.get("targetGrade");
 
     // Build conditions - only show active assessments
-    const conditions = [eq(assessmentTypes.isActive, true)];
+    const conditions: SQL[] = [eq(assessmentTypes.isActive, true)];
 
     if (category) {
       conditions.push(eq(assessmentTypes.category, category));
@@ -32,58 +40,46 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(assessmentTypes.targetGrade, parseInt(targetGrade)));
     }
 
-    let types: any[];
-    if (conditions.length > 1) {
-      types = await db.query.assessmentTypes.findMany({
-        where: and(...conditions),
-        orderBy: desc(assessmentTypes.createdAt),
-      });
-    } else {
-      types = await db.query.assessmentTypes.findMany({
-        where: eq(assessmentTypes.isActive, true),
-        orderBy: desc(assessmentTypes.createdAt),
-      });
-    }
+    const whereClause = conditions.length > 1 ? and(...conditions) : conditions[0];
 
-    return NextResponse.json({ assessmentTypes: types });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json({ error: "Failed to fetch assessment types" }, { status: 500 });
-  }
-}
+    const types: AssessmentType[] = await db
+      .select()
+      .from(assessmentTypes)
+      .where(whereClause)
+      .orderBy(desc(assessmentTypes.createdAt));
+
+    return successResponse({ assessmentTypes: types });
+  },
+  ['admin', 'school-admin', 'teacher']
+);
 
 // POST /api/assessment-types - Create assessment type (admin only)
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
 
     const body = await request.json();
-    const { slug, name, description, targetGrade, targetAudience, category, duration, questionCount } = body;
+    const { name, description, targetGrade, targetAudience, category, duration, totalQuestions, passingScore } = body;
 
     const [newType] = await db
       .insert(assessmentTypes)
       .values({
         id: `at_${Date.now()}`,
-        slug,
         name,
         description,
         targetGrade,
         targetAudience,
         category,
-        duration,
-        questionCount,
+        duration: duration || 60,
+        totalQuestions: totalQuestions || 10,
+        passingScore: passingScore || 70,
         isActive: true,
         createdAt: new Date(),
-      } as any)
+        updatedAt: new Date(),
+      })
       .returning();
 
-    return NextResponse.json({ assessmentTypeId: newType }, { status: 201 });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json({ error: "Failed to create assessment type" }, { status: 500 });
-  }
-}
+    return createdResponse({ assessmentTypeId: newType.id });
+  },
+  ['admin']
+);

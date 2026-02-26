@@ -8,12 +8,11 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
-import { logger } from "@/lib/logger";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { chatWithGemini } from "@/lib/ai/gemini-server";
 import { SCHOLARSHIP_SYSTEM } from "@/lib/ai/prompts";
 import { safeTrackAIInteraction, AI_FEATURE_IDS } from "@/lib/ai/track-interaction";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import type { ApiSuccess } from "@/types";
 
 // ============================================================================
 // TYPES
@@ -63,23 +62,13 @@ export interface ScholarshipMatcherResponse {
 // POST - Match Scholarships
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  let requestData: ScholarshipMatcherRequest = {};
-  let userId = "";
+export const POST = createApiRoute<ScholarshipMatcherRequest, ScholarshipMatcherResponse>(
+  async (request) => {
+    const auth = await requireAuth([]);
+    const { userId } = auth;
 
-  try {
-    const authResult = await requireAuth();
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-
-    userId = authResult.userId;
-
-    const body = await request.json();
-    requestData = body as ScholarshipMatcherRequest;
+    const body = await request.json() as ScholarshipMatcherRequest;
+    const requestData = body;
 
     const {
       academicPerformance = {},
@@ -89,7 +78,7 @@ export async function POST(request: NextRequest) {
       specialAchievements = [],
       interests = [],
       currentClass,
-    } = requestData;
+    } = body;
 
     // Build the prompt for AI
     const prompt = buildScholarshipPrompt({
@@ -112,14 +101,6 @@ export async function POST(request: NextRequest) {
       familyIncome,
       fieldOfStudy
     );
-
-    logger.info("Scholarship matching completed", {
-      route: "/api/ai/scholarships",
-      method: "POST",
-      userId,
-      scholarshipCount: matches.matchedScholarships.length,
-      hasNeedBased: !!familyIncome,
-    });
 
     // Track AI interaction (non-blocking)
     safeTrackAIInteraction({
@@ -146,52 +127,9 @@ export async function POST(request: NextRequest) {
       status: 200,
       message: "Scholarship matching completed successfully",
     } satisfies ApiSuccess<ScholarshipMatcherResponse>);
-
-  } catch (error: any) {
-    logger.apiError(error, {
-      route: "/api/ai/scholarships",
-      method: "POST",
-    });
-
-    // Check if it's an API key error
-    if (error?.message === "Gemini API key not configured") {
-      // Return fallback response
-      const fallback = generateFallbackMatches(requestData);
-
-      // Track fallback usage (non-blocking)
-      safeTrackAIInteraction({
-        userId,
-        featureId: AI_FEATURE_IDS.SCHOLARSHIP_MATCHER,
-        interactionData: {
-          hasAcademicPerformance: !!(requestData.academicPerformance && (requestData.academicPerformance.gpa || requestData.academicPerformance.class10Marks || requestData.academicPerformance.class12Marks)),
-          hasFamilyIncome: requestData.familyIncome !== undefined,
-          fallbackMatchCount: fallback.matchedScholarships.length,
-          fallbackHighPriorityCount: fallback.highPriorityCount,
-        },
-        metadata: {
-          usedFallback: true,
-          errorReason: "API key not configured",
-          responseTimestamp: new Date().toISOString(),
-        },
-      });
-
-      return NextResponse.json({
-        data: fallback,
-        status: 200,
-        message: "Using offline scholarship database",
-      } satisfies ApiSuccess<ScholarshipMatcherResponse>);
-    }
-
-    return NextResponse.json(
-      {
-        error: "Failed to match scholarships",
-        status: 500,
-        details: process.env.NODE_ENV === "development" ? error.message : undefined,
-      } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+  },
+  [] // No specific role requirement
+);
 
 // ============================================================================
 // PROMPT BUILDER
@@ -299,13 +237,6 @@ function parseScholarshipResponse(
 
   // Known scholarship database for fallback and validation
   const knownScholarships = getBhutanScholarshipDatabase();
-
-  // Parse scholarships from AI response
-  // Note: Using simple patterns to avoid TypeScript regex parsing issues
-  // The actual parsing is done in parseScholarshipSection function
-  const scholarshipPatterns = [
-    /scholarship[:\s*]/gi,
-  ];
 
   // Try to extract structured scholarship data
   const scholarshipSections = aiResponse.split(/\n\n(?=\d+\.|\*\*Scholarship)/i);
@@ -417,7 +348,7 @@ function parseScholarshipSection(section: string, knownDb: typeof bhutanScholars
   const documentsNeeded: string[] = [];
   let matchScore = 70;
 
-  // Extract name - simpler pattern to avoid TypeScript regex issues
+  // Extract name
   const nameMatch = section.match(/(?:scholarship|name)[:\s]+\*+([^*]+?)(?:\*+|\n|$)/i);
   if (nameMatch) name = nameMatch[1].trim();
 
@@ -1006,57 +937,6 @@ function getDefaultScholarships(): MatchedScholarship[] {
       description: "Financial assistance for students from economically disadvantaged backgrounds.",
     },
   ];
-}
-
-// ============================================================================
-// FALLBACK MATCHES (when AI is unavailable)
-// ============================================================================
-
-function generateFallbackMatches(data: ScholarshipMatcherRequest): ScholarshipMatcherResponse {
-  const { academicPerformance, familyIncome, fieldOfStudy, careerGoals = [] } = data;
-
-  // Get matched scholarships from database
-  const matchedScholarships = matchFromDatabase(
-    bhutanScholarshipDatabase,
-    academicPerformance,
-    familyIncome,
-    fieldOfStudy
-  );
-
-  // Build application tips
-  const applicationTips = [
-    "Start your scholarship applications early - at least 2-3 months before deadlines",
-    "Write a compelling personal statement highlighting your achievements and goals",
-    "Request recommendation letters from teachers who know you well",
-    "Prepare all documents in advance and keep multiple copies",
-    "Apply to multiple scholarships to increase your chances",
-  ];
-
-  // Build general advice
-  const generalAdvice = [
-    "Maintain strong academic performance throughout your studies",
-    "Participate in extracurricular activities and community service",
-    "Develop leadership skills through school clubs and organizations",
-    "Prepare well for entrance exams if required by the scholarship",
-  ];
-
-  const eligibilitySummary = buildEligibilitySummary(
-    matchedScholarships,
-    academicPerformance,
-    familyIncome
-  );
-
-  const highPriorityCount = matchedScholarships.filter((s) => s.matchScore >= 70).length;
-
-  return {
-    matchedScholarships: matchedScholarships.slice(0, 10),
-    applicationTips,
-    generalAdvice,
-    eligibilitySummary,
-    totalScholarships: matchedScholarships.length,
-    highPriorityCount,
-    disclaimer: "Scholarship information is based on available data and may change. Always verify with official sources before applying.",
-  };
 }
 
 // ============================================================================

@@ -68,7 +68,26 @@ export async function GET(request: NextRequest, context: RouteContext) {
 /**
  * Generate HTML payslip for printing/PDF conversion
  */
-function generatePayslipHTML(record: any, school: any): string {
+function generatePayslipHTML(record: PayslipRecord & {
+  payrollMonth: number;
+  payrollYear: number;
+  teacherName: string;
+  employeeId?: string;
+  designation?: string;
+  department?: string;
+  basicSalary: number;
+  allowances: Array<{ name: string; amount: number }>;
+  deductions: Array<{ name: string; amount: number }>;
+  netSalary: number;
+  paymentDate?: string;
+}, school: {
+  name: string;
+  code?: string;
+  address?: string;
+  logo?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+}): string {
   const monthNames = [
     "January",
     "February",
@@ -356,7 +375,7 @@ function generatePayslipHTML(record: any, school: any): string {
             <td class="amount positive">${formatCurrency(record.gradePay || 0, "BTN")}</td>
           </tr>
           ` : ""}
-          ${(record.allowances || []).map((a: any) => `
+          ${(record.allowances || []).map((a: { name: string; amount: number }) => `
           <tr>
             <td>${a.allowanceName}</td>
             <td class="amount positive">${formatCurrency(a.amount || 0, "BTN")}</td>
@@ -402,7 +421,7 @@ function generatePayslipHTML(record: any, school: any): string {
           </tr>
         </thead>
         <tbody>
-          ${(record.deductions || []).map((d: any) => `
+          ${(record.deductions || []).map((d: { name: string; amount: number }) => `
           <tr>
             <td>${d.deductionName}</td>
             <td class="amount negative">${formatCurrency(d.amount || 0, "BTN")}</td>

@@ -11,6 +11,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { CardGridSkeleton } from "@/components/ui/skeleton/card-skeleton";
+import { ListSkeleton } from "@/components/ui/skeleton/list-skeleton";
 import {
   Select,
   SelectContent,
@@ -336,14 +338,27 @@ export default function TeacherClassesPage() {
 
       {/* Loading State */}
       {isLoading ? (
-        <Card>
-          <CardContent className="py-12 flex items-center justify-center">
-            <div className="flex flex-col items-center gap-4">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-              <p className="text-gray-600">Loading classes...</p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          {/* Stats Cards Skeleton */}
+          <CardGridSkeleton count={4} />
+
+          {/* Filters Skeleton */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="h-11 w-full bg-muted rounded-lg animate-pulse" />
+            </CardContent>
+          </Card>
+
+          {/* Classes List Skeleton */}
+          <Card>
+            <CardHeader>
+              <div className="h-6 w-40 bg-muted rounded-lg animate-pulse" />
+            </CardHeader>
+            <CardContent>
+              <ListSkeleton items={8} showIcon showAction />
+            </CardContent>
+          </Card>
+        </div>
       ) : error ? (
         <Card>
           <CardContent className="py-12 flex items-center justify-center">

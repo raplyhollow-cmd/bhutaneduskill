@@ -33,6 +33,15 @@ import {
   Download,
   HelpCircle,
 } from "lucide-react";
+
+import type { DbAssessmentTypeEntity } from "@/types";
+
+type AssessmentType = DbAssessmentTypeEntity;
+
+import type { DbAssessmentResult, AssessmentStats } from "@/types";
+
+type AssessmentResult = DbAssessmentResult;
+
 import {
   getAssessmentTypes,
   getAssessments,
@@ -57,7 +66,9 @@ const categoryColors: Record<string, string> = {
   work_values: "bg-pink-100 text-pink-700",
 };
 
-const statusConfig: Record<string, { icon: any; color: string; bgColor: string; label: string }> = {
+import type { LucideIcon } from "lucide-react";
+
+const statusConfig: Record<string, { icon: LucideIcon; color: string; bgColor: string; label: string }> = {
   pending: { icon: Clock, color: "text-yellow-600", bgColor: "bg-yellow-100", label: "Pending" },
   submitted: { icon: FileText, color: "text-blue-600", bgColor: "bg-blue-100", label: "Submitted" },
   graded: { icon: CheckCircle, color: "text-green-600", bgColor: "bg-green-100", label: "Graded" },
@@ -71,34 +82,34 @@ export default function AdminAssessmentsPage() {
   const [activeTab, setActiveTab] = useState<TabType>("types");
 
   // Assessment Types state
-  const [assessmentTypes, setAssessmentTypes] = useState<any[]>([]);
-  const [filteredTypes, setFilteredTypes] = useState<any[]>([]);
+  const [assessmentTypes, setAssessmentTypes] = useState<AssessmentType[]>([]);
+  const [filteredTypes, setFilteredTypes] = useState<AssessmentType[]>([]);
   const [typesLoading, setTypesLoading] = useState(true);
   const [typesSearchQuery, setTypesSearchQuery] = useState("");
   const [typesCategoryFilter, setTypesCategoryFilter] = useState("all");
   const [isAddTypeModalOpen, setIsAddTypeModalOpen] = useState(false);
-  const [editingType, setEditingType] = useState<any>(null);
+  const [editingType, setEditingType] = useState<AssessmentType | null>(null);
   const [showEditTypeDialog, setShowEditTypeDialog] = useState(false);
   const [showDeleteTypeDialog, setShowDeleteTypeDialog] = useState(false);
   const [typeToDelete, setTypeToDelete] = useState<string | null>(null);
   const [showQuestionsModal, setShowQuestionsModal] = useState(false);
-  const [selectedTypeForQuestions, setSelectedTypeForQuestions] = useState<any>(null);
+  const [selectedTypeForQuestions, setSelectedTypeForQuestions] = useState<AssessmentType | null>(null);
 
   // Assessments state
-  const [assessments, setAssessments] = useState<any[]>([]);
-  const [filteredAssessments, setFilteredAssessments] = useState<any[]>([]);
+  const [assessments, setAssessments] = useState<AssessmentResult[]>([]);
+  const [filteredAssessments, setFilteredAssessments] = useState<AssessmentResult[]>([]);
   const [assessmentsLoading, setAssessmentsLoading] = useState(true);
   const [assessmentsSearchQuery, setAssessmentsSearchQuery] = useState("");
   const [assessmentsStatusFilter, setAssessmentsStatusFilter] = useState("all");
 
   // Results state
-  const [results, setResults] = useState<any[]>([]);
-  const [filteredResults, setFilteredResults] = useState<any[]>([]);
+  const [results, setResults] = useState<AssessmentResult[]>([]);
+  const [filteredResults, setFilteredResults] = useState<AssessmentResult[]>([]);
   const [resultsLoading, setResultsLoading] = useState(true);
   const [resultsStatusFilter, setResultsStatusFilter] = useState("all");
 
   // Stats state
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<AssessmentStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
 
   // Fetch data on mount

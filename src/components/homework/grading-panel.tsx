@@ -32,6 +32,7 @@ import {
 import { type QuestionType } from "./homework-creator";
 import { gradeHomework } from "@/lib/auto-grading";
 import { cn } from "@/lib/utils";
+import { InPlaceText, InPlaceTextarea } from "@/components/ui/in-place-editor";
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -58,7 +59,7 @@ export interface StudentSubmission {
   studentEmail?: string;
   answers: Array<{
     questionId: string;
-    answer: string | number | Array<any>;
+    answer: string | number | Array<string | number>;
   }>;
   submittedAt: string;
   status: "draft" | "submitted" | "graded";
@@ -182,9 +183,26 @@ export function GradingPanel({
     }));
   };
 
+  // Save score via API (for InPlaceEditor)
+  const saveScore = async (questionId: string, scoreStr: string): Promise<{ success: boolean; error?: string }> => {
+    const newScore = parseInt(scoreStr, 10);
+    if (isNaN(newScore)) {
+      return { success: false, error: "Invalid score" };
+    }
+
+    overrideScore(currentSubmission.id, questionId, newScore);
+    return { success: true };
+  };
+
   // Add feedback for a question
   const updateFeedback = (questionId: string, feedback: string) => {
     setTeacherFeedback((prev) => ({ ...prev, [questionId]: feedback }));
+  };
+
+  // Save feedback via API (for InPlaceEditor)
+  const saveFeedback = async (questionId: string, feedback: string): Promise<{ success: boolean; error?: string }> => {
+    updateFeedback(questionId, feedback);
+    return { success: true };
   };
 
   // Submit grades for current student
@@ -559,19 +577,20 @@ export function GradingPanel({
 
                         <div className="flex items-center gap-2">
                           <span className="text-sm">Score:</span>
-                          <Input
+                          <InPlaceText
                             type="number"
-                            min="0"
-                            max={currentQuestion.points}
-                            value={currentResult.score}
-                            onChange={(e) =>
-                              overrideScore(
-                                currentSubmission.id,
-                                currentQuestion.id,
-                                parseInt(e.target.value) || 0
-                              )
-                            }
-                            className="w-20"
+                            value={currentResult.score.toString()}
+                            onSave={async (scoreStr) => saveScore(currentQuestion.id, scoreStr)}
+                            onChange={(scoreStr) => {
+                              const score = parseInt(scoreStr, 10);
+                              if (!isNaN(score)) {
+                                overrideScore(currentSubmission.id, currentQuestion.id, score);
+                              }
+                            }}
+                            inputClassName="w-20 text-center"
+                            displayClassName="inline-flex"
+                            placeholder="0"
+                            showIcon={true}
                           />
                           <span className="text-sm">/ {currentQuestion.points}</span>
                         </div>
@@ -592,12 +611,15 @@ export function GradingPanel({
 
                       <div className="mt-4">
                         <label className="text-sm font-medium block mb-2">Teacher Feedback</label>
-                        <Textarea
-                          value={teacherFeedback[currentQuestion.id] || currentResult.feedback || ""}
-                          onChange={(e) => updateFeedback(currentQuestion.id, e.target.value)}
-                          placeholder="Add feedback for the student..."
+                        <InPlaceTextarea
+                          multiline={true}
                           rows={3}
+                          value={teacherFeedback[currentQuestion.id] || currentResult.feedback || ""}
+                          onSave={async (feedback) => saveFeedback(currentQuestion.id, feedback)}
+                          onChange={(feedback) => updateFeedback(currentQuestion.id, feedback)}
+                          placeholder="Click to add feedback for the student..."
                           className="max-w-lg"
+                          editLabel="Edit feedback"
                         />
                       </div>
                     </div>
@@ -620,12 +642,14 @@ export function GradingPanel({
                 <CardTitle>Overall Feedback</CardTitle>
               </CardHeader>
               <CardContent>
-                <Textarea
-                  value={teacherFeedback["overall"] || ""}
-                  onChange={(e) => updateFeedback("overall", e.target.value)}
-                  placeholder="Add overall feedback for this student's submission..."
+                <InPlaceTextarea
+                  multiline={true}
                   rows={4}
-                  className="w-full"
+                  value={teacherFeedback["overall"] || ""}
+                  onSave={async (feedback) => saveFeedback("overall", feedback)}
+                  onChange={(feedback) => updateFeedback("overall", feedback)}
+                  placeholder="Click to add overall feedback for this student's submission..."
+                  editLabel="Edit overall feedback"
                 />
               </CardContent>
             </Card>
@@ -726,7 +750,7 @@ export function StudentList({
 
 interface QuestionAnswerDisplayProps {
   question: HomeworkQuestion;
-  answer: string | number | Array<any>;
+  answer: string | number | Array<string | number>;
   showCorrectAnswer?: boolean;
 }
 

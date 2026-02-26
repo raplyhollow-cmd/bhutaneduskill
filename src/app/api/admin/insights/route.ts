@@ -1,4 +1,3 @@
-import { logger } from "@/lib/logger";
 /**
  * DATA INSIGHTS API
  *
@@ -13,39 +12,31 @@ import { logger } from "@/lib/logger";
  * - Academic vs. career interest correlations
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users, assessments, riasecResults, careerMatches, careerPlans } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
+import { logger } from "@/lib/logger";
+import { createApiRoute } from "@/lib/api/route-handler";
 
-export async function GET(request: NextRequest) {
-  const authResult = await requireAuth(['admin']);
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
+export const GET = createApiRoute(
+  async (req, auth) => {
+    const { searchParams } = new URL(req.url);
+    const category = searchParams.get("category") || "overview";
+    const timeRange = searchParams.get("timeRange") || "all";
 
-  const { user, userId } = authResult;
-
-  const { searchParams } = new URL(request.url);
-  const category = searchParams.get("category") || "overview";
-  const timeRange = searchParams.get("timeRange") || "all";
-
-  try {
     // Generate insights based on category
     const insights = await generateInsights(category, timeRange);
 
-    return NextResponse.json({
+    return {
       category,
       timeRange,
       generatedAt: new Date().toISOString(),
       insights,
-    });
-  } catch (error: any) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json({ error: "Failed to generate insights" }, { status: 500 });
-  }
-}
+    };
+  },
+  ['admin']
+);
 
 async function generateInsights(category: string, timeRange: string) {
   switch (category) {

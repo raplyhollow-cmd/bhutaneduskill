@@ -4,43 +4,32 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { users, userNotificationSettings, type NewUserNotificationSettings, type UserNotificationSettings } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+import { createApiRoute, type AuthContext, type AuthenticatedRequest } from "@/lib/api/route-handler";
+import { successResponse, errorResponse } from "@/lib/api/response-helpers";
 
 /**
  * GET /api/student/settings - Fetch student settings
  */
-export async function GET() {
-  try {
-    const authResult = await requireAuth(['student']);
-    if ('error' in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status },
-        { status: authResult.status }
-      );
-    }
-
-    const { user } = authResult;
+export const GET = createApiRoute(
+  async (req: NextRequest, auth: AuthContext) => {
+    const { user } = auth;
 
     // Fetch user profile
-    const userProfile = await db.query.users.findFirst({
-      where: eq(users.id, user.id),
-    });
+    const userProfile = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
 
-    if (!userProfile) {
-      return NextResponse.json(
-        { error: "User not found", status: 404 },
-        { status: 404 }
-      );
+    if (!userProfile.length) {
+      return errorResponse("User not found", 404);
     }
 
+    const currentUser = userProfile[0];
+
     // Fetch notification settings
-    let notificationSettings = await db.query.userNotificationSettings.findFirst({
-      where: eq(userNotificationSettings.userId, user.id),
-    });
+    const notificationSettingsResult = await db.select().from(userNotificationSettings).where(eq(userNotificationSettings.userId, user.id)).limit(1);
+    let notificationSettings = notificationSettingsResult[0];
 
     // Create default notification settings if they don't exist
     if (!notificationSettings) {
@@ -64,57 +53,38 @@ export async function GET() {
     }
 
     // Extract bio from settings JSON
-    const bio = (userProfile.settings as { bio?: string })?.bio || "";
+    const bio = (currentUser.settings as { bio?: string })?.bio || "";
 
     logger.info("Student settings fetched", { userId: user.id, route: "/api/student/settings" });
 
-    return NextResponse.json({
-      data: {
-        profile: {
-          ...userProfile,
-          bio,
-        },
-        notifications: notificationSettings,
-      }
+    return successResponse({
+      profile: {
+        ...currentUser,
+        bio,
+      },
+      notifications: notificationSettings,
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/student/settings", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch settings", status: 500 },
-      { status: 500 }
-    );
   }
-}
+);
 
 /**
  * PATCH /api/student/settings - Update student settings
  */
-export async function PATCH(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(['student']);
-    if ('error' in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status },
-        { status: authResult.status }
-      );
-    }
-
-    const { user } = authResult;
+export const PATCH = createApiRoute(
+  async (req: NextRequest, auth: AuthContext) => {
+    const { user } = auth;
     const body = await req.json();
 
     logger.info("Updating student settings", { userId: user.id, route: "/api/student/settings" });
 
     // Get current user to merge with settings
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.id, user.id),
-    });
+    const currentUserResult = await db.select().from(users).where(eq(users.id, user.id)).limit(1);
 
-    if (!currentUser) {
-      return NextResponse.json(
-        { error: "User not found", status: 404 },
-        { status: 404 }
-      );
+    if (!currentUserResult.length) {
+      return errorResponse("User not found", 404);
     }
+
+    const currentUser = currentUserResult[0];
 
     // Separate profile and notification updates
     interface ProfileUpdateData {
@@ -210,9 +180,8 @@ export async function PATCH(req: NextRequest) {
     let updatedNotifications: UserNotificationSettings | null = null;
     if (Object.keys(notificationData).length > 0) {
       // Check if notification settings exist
-      const existing = await db.query.userNotificationSettings.findFirst({
-        where: eq(userNotificationSettings.userId, user.id),
-      });
+      const existingResult = await db.select().from(userNotificationSettings).where(eq(userNotificationSettings.userId, user.id)).limit(1);
+      const existing = existingResult[0];
 
       if (existing) {
         const [updated] = await db.update(userNotificationSettings)
@@ -243,17 +212,10 @@ export async function PATCH(req: NextRequest) {
 
     logger.info("Student settings updated successfully", { userId: user.id });
 
-    return NextResponse.json({
-      data: {
-        profile: updatedProfile,
-        notifications: updatedNotifications,
-      }
+    return successResponse({
+      profile: updatedProfile,
+      notifications: updatedNotifications,
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/student/settings", method: "PATCH" });
-    return NextResponse.json(
-      { error: "Failed to update settings", status: 500 },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['student']
+);

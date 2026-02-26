@@ -1,56 +1,23 @@
 /**
  * Subscription & Monetization Database Schema
  * Handles B2B school subscriptions, B2C premium plans, and marketplace fees
+ *
+ * NOTE: subscriptionPlans, discountCodes, and invoices are now in billing-schema.ts
+ * This file re-exports them for backward compatibility and defines additional
+ * subscription-related tables.
  */
 
 import { pgTable, text, integer, boolean, timestamp, pgEnum , json} from "drizzle-orm/pg-core";
 
-// ============================================================================
-// SUBSCRIPTION PLANS
-// ============================================================================
-
-/**
- * Available subscription plans for schools
- */
-export const subscriptionPlans = pgTable("subscription_plans", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(), // "Starter", "Standard", "Premium", "Enterprise"
-  slug: text("slug").notNull().unique(),
-  description: text("description"),
-
-  // Pricing (in Ngultrum per year)
-  price: integer("price").notNull(),
-  currency: text("currency").notNull().default("BTN"),
-  billingInterval: text("billing_interval").notNull().default("annual"), // "monthly", "quarterly", "annual"
-
-  // Limits
-  studentLimit: integer("student_limit").notNull(),
-  teacherLimit: integer("teacher_limit"),
-  storageLimit: integer("storage_limit"), // In GB
-  apiCallsLimit: integer("api_calls_limit"), // Per month
-
-  // Features (JSON array of feature slugs)
-  features: json("features").$type<string[]>(),
-
-  // Feature flags
-  hasCareerGuidance: boolean("has_career_guidance").default(false),
-  hasLearningModules: boolean("has_learning_modules").default(false),
-  hasParentPortal: boolean("has_parent_portal").default(false),
-  hasTuitionMarketplace: boolean("has_tuition_marketplace").default(false),
-  hasAIFeatures: boolean("has_ai_features").default(false),
-  hasCustomBranding: boolean("has_custom_branding").default(false),
-  hasPrioritySupport: boolean("has_priority_support").default(false),
-  hasApiAccess: boolean("has_api_access").default(false),
-
-  // Display
-  isPopular: boolean("is_popular").default(false),
-  sortOrder: integer("sort_order").notNull().default(0),
-
-  isActive: boolean("is_active").default(true),
-
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
+// Re-export billing tables from billing-schema.ts
+export {
+  subscriptionPlans,
+  discountCodes,
+  invoices,
+  type SubscriptionPlan,
+  type DiscountCode,
+  type Invoice,
+} from "./billing-schema";
 
 // ============================================================================
 // SCHOOL SUBSCRIPTIONS
@@ -268,94 +235,9 @@ export const featureUsage = pgTable("feature_usage", {
 });
 
 // ============================================================================
-// DISCOUNT CODES
-// ============================================================================
-
-/**
- * Promotional discount codes
- */
-export const discountCodes = pgTable("discount_codes", {
-  id: text("id").primaryKey(),
-  code: text("code").notNull().unique(),
-
-  // Discount details
-  type: text("type").notNull(), // "percentage", "fixed_amount"
-  value: integer("value").notNull(), // Percentage or amount in cents
-
-  // Applicability
-  appliesTo: text("applies_to").notNull(), // "school_subscription", "user_premium", "all"
-  planIds: json("plan_ids").$type<string[]>(), // Specific plans if applicable
-
-  // Limits
-  maxUses: integer("max_uses"), // Total uses allowed
-  usedCount: integer("used_count").default(0),
-  maxUsesPerUser: integer("max_uses_per_user").default(1),
-
-  // Validity
-  validFrom: timestamp("valid_from", { withTimezone: true }),
-  validUntil: timestamp("valid_until", { withTimezone: true }),
-
-  isActive: boolean("is_active").default(true),
-
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
-
-// ============================================================================
-// INVOICES
-// ============================================================================
-
-/**
- * Invoices for subscriptions
- */
-export const invoices = pgTable("invoices", {
-  id: text("id").primaryKey(),
-  invoiceNumber: text("invoice_number").notNull().unique(),
-
-  // Customer
-  customerId: text("customer_id").notNull(), // School ID or User ID
-  customerType: text("customer_type").notNull(), // "school", "user"
-
-  // Subscription details
-  subscriptionId: text("subscription_id"),
-  subscriptionType: text("subscription_type").notNull(), // "school", "user"
-
-  // Billing period
-  periodStart: timestamp("period_start", { withTimezone: true }).notNull(),
-  periodEnd: timestamp("period_end", { withTimezone: true }).notNull(),
-
-  // Amounts
-  subtotal: integer("subtotal").notNull(),
-  discount: integer("discount").default(0),
-  tax: integer("tax").default(0),
-  total: integer("total").notNull(),
-
-  // Currency
-  currency: text("currency").notNull().default("BTN"),
-
-  // Status
-  status: text("status").notNull().default("draft"), // "draft", "sent", "paid", "overdue", "cancelled"
-  dueDate: timestamp("due_date", { withTimezone: true }),
-  paidAt: timestamp("paid_at", { withTimezone: true }),
-
-  // Payment
-  paymentId: text("payment_id"),
-
-  // PDF
-  invoiceUrl: text("invoice_url"),
-
-  // Notes
-  notes: text("notes"),
-
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
-});
-
-// ============================================================================
 // TYPE EXPORTS
 // ============================================================================
 
-export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
 export type SchoolSubscription = typeof schoolSubscriptions.$inferSelect;
 export type SubscriptionPayment = typeof subscriptionPayments.$inferSelect;
 export type PremiumPlan = typeof premiumPlans.$inferSelect;
@@ -363,5 +245,3 @@ export type UserSubscription = typeof userSubscriptions.$inferSelect;
 export type MarketplaceCommission = typeof marketplaceCommission.$inferSelect;
 export type CommissionEarning = typeof commissionEarnings.$inferSelect;
 export type FeatureUsage = typeof featureUsage.$inferSelect;
-export type DiscountCode = typeof discountCodes.$inferSelect;
-export type Invoice = typeof invoices.$inferSelect;

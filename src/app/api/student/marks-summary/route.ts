@@ -93,16 +93,23 @@ export async function GET(request: NextRequest) {
     // Parse subjects from the exam result
     const parseSubjects = (result: typeof results[0]): SubjectPerformance[] => {
       try {
-        const subjectsData = result.subjects as any;
+        interface SubjectData {
+          subjectName?: string;
+          marksObtained?: number;
+          maxMarks?: number;
+          grade?: string;
+        }
+        const subjectsData = result.subjects as unknown;
         if (Array.isArray(subjectsData)) {
-          return subjectsData.map((s: any) => {
-            const percentage = s.maxMarks > 0 ? Math.round((s.marksObtained / s.maxMarks) * 100) : 0;
+          return subjectsData.map((s: unknown) => {
+            const subject = s as SubjectData;
+            const percentage = (subject.maxMarks ?? 0) > 0 ? Math.round(((subject.marksObtained ?? 0) / (subject.maxMarks ?? 100)) * 100) : 0;
             return {
-              subject: s.subjectName || "Subject",
-              marksObtained: s.marksObtained || 0,
-              maxMarks: s.maxMarks || 100,
+              subject: subject.subjectName || "Subject",
+              marksObtained: subject.marksObtained || 0,
+              maxMarks: subject.maxMarks || 100,
               percentage,
-              grade: s.grade || calculateGrade(percentage),
+              grade: subject.grade || calculateGrade(percentage),
               trend: "stable",
             };
           });
@@ -193,7 +200,7 @@ export async function GET(request: NextRequest) {
     };
 
     return NextResponse.json(response);
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.apiError(error, { route: "/api/student/marks-summary", method: "GET" });
 
     // Return empty result on error

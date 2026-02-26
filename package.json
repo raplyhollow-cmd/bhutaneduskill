@@ -4,8 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbo",
-    "dev:fast": "NODE_OPTIONS='--max-old-space-size=4096' next dev",
+    "dev:fast": "NODE_OPTIONS='--max-old-space-size=4096' next dev --turbo",
     "dev:webpack": "next dev",
+    "dev:minimal": "NODE_OPTIONS='--max-old-space-size=2048' next dev --turbo",
+    "dev:inspect": "NODE_OPTIONS='--inspect' next dev --turbo",
     "build": "next build",
     "build:fast": "next build",
     "start": "next start",
@@ -20,7 +22,8 @@
     "db:studio": "drizzle-kit studio",
     "migrate:neon": "tsx scripts/migrate-sqlite-to-neon.ts",
     "db:seed": "tsx src/lib/db/seed.ts",
-    "db:seed:bhutan": "tsx scripts/seed-bhutan-schools.ts"
+    "db:seed:bhutan": "tsx scripts/seed-bhutan-schools.ts",
+    "generate:vapid-keys": "tsx scripts/generate-vapid-keys.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.37.3",
@@ -42,6 +45,7 @@
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.1",
     "framer-motion": "^11.18.2",
+    "jose": "^6.1.3",
     "jsbarcode": "^3.12.3",
     "jspdf": "^4.1.0",
     "katex": "^0.16.28",
@@ -62,6 +66,7 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
+    "@playwright/mcp": "^0.0.68",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/pg": "^8.16.0",

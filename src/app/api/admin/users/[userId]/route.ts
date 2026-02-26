@@ -10,10 +10,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users, schools, tenants } from "@/lib/db/schema";
 import { eq, and, or } from "drizzle-orm";
-import { requireAuth, invalidateUserRoleCache } from "@/lib/auth-utils";
-import { logger } from "@/lib/logger";
+import { invalidateUserRoleCache } from "@/lib/auth-utils";
 import { logUserUpdated, logUserDeleted } from "@/lib/audit-log";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { createApiRoute } from "@/lib/api/route-handler";
+import type { ApiSuccess } from "@/types";
 
 // ============================================================================
 // TYPES
@@ -106,26 +106,16 @@ interface UpdateUserRequest {
   goals?: string | null;
 }
 
+type UserParams = { userId: string };
+
 // ============================================================================
 // GET /api/admin/users/[userId] - Get user details
 // ============================================================================
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ userId: string }> }
-) {
-  const authResult = await requireAuth(['admin']);
-  if ('error' in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } as ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
+export const GET = createApiRoute<never, UserDetails, UserParams>(
+  async (_request, { userId: adminId }, context) => {
+    const { userId } = await context!.params!;
 
-  const { userId: adminId } = authResult;
-  const { userId } = await params;
-
-  try {
     const userResult = await db
       .select({
         id: users.id,
@@ -185,7 +175,7 @@ export async function GET(
 
     if (userResult.length === 0) {
       return NextResponse.json(
-        { error: 'User not found', status: 404 } as ApiErrorResponse,
+        { error: 'User not found', status: 404 },
         { status: 404 }
       );
     }
@@ -245,42 +235,21 @@ export async function GET(
       } : null,
     };
 
-    logger.info('User details fetched', { userId, adminId });
-
     return NextResponse.json({
       data: userDetails,
     } satisfies ApiSuccess<UserDetails>);
-
-  } catch (error) {
-    logger.apiError(error, { route: `/api/admin/users/${userId}`, method: 'GET', adminId });
-    return NextResponse.json(
-      { error: 'Failed to fetch user details', status: 500, details: error instanceof Error ? error.message : undefined } as ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin']
+);
 
 // ============================================================================
 // PATCH /api/admin/users/[userId] - Update user
 // ============================================================================
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ userId: string }> }
-) {
-  const authResult = await requireAuth(['admin']);
-  if ('error' in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } as ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
-
-  const { userId: adminId } = authResult;
-  const { userId } = await params;
-
-  try {
-    const body: UpdateUserRequest = await request.json();
+export const PATCH = createApiRoute<UpdateUserRequest, any, UserParams>(
+  async (request, { userId: adminId }, context) => {
+    const { userId } = await context!.params!;
+    const body: UpdateUserRequest = await req.json();
 
     // Check if user exists
     const existingUser = await db
@@ -291,7 +260,7 @@ export async function PATCH(
 
     if (existingUser.length === 0) {
       return NextResponse.json(
-        { error: 'User not found', status: 404 } as ApiErrorResponse,
+        { error: 'User not found', status: 404 },
         { status: 404 }
       );
     }
@@ -300,19 +269,6 @@ export async function PATCH(
 
     // If email is being changed, verify uniqueness
     if (body.email && body.email !== user.email) {
-      const emailExists = await db
-        .select()
-        .from(users)
-        .where(
-          and(
-            eq(users.email, body.email),
-            // @ts-ignore - drizzle-orm types
-            eq(users.id, userId) // not equal
-          )
-        )
-        .limit(1);
-
-      // Need to use a different approach for "not equal" check
       const allWithEmail = await db
         .select()
         .from(users)
@@ -322,7 +278,7 @@ export async function PATCH(
       const otherUserWithEmail = allWithEmail.find(u => u.id !== userId);
       if (otherUserWithEmail) {
         return NextResponse.json(
-          { error: 'Email already in use by another user', status: 409 } as ApiErrorResponse,
+          { error: 'Email already in use by another user', status: 409 },
           { status: 409 }
         );
       }
@@ -333,7 +289,7 @@ export async function PATCH(
       const validTypes = ['student', 'teacher', 'parent', 'school_admin', 'admin', 'counselor'];
       if (!validTypes.includes(body.type)) {
         return NextResponse.json(
-          { error: `Invalid user type. Must be one of: ${validTypes.join(', ')}`, status: 400 } as ApiErrorResponse,
+          { error: `Invalid user type. Must be one of: ${validTypes.join(', ')}`, status: 400 },
           { status: 400 }
         );
       }
@@ -349,7 +305,7 @@ export async function PATCH(
 
       if (school.length === 0) {
         return NextResponse.json(
-          { error: 'Specified school not found', status: 404 } as ApiErrorResponse,
+          { error: 'Specified school not found', status: 404 },
           { status: 404 }
         );
       }
@@ -365,7 +321,7 @@ export async function PATCH(
 
       if (tenant.length === 0) {
         return NextResponse.json(
-          { error: 'Specified tenant not found', status: 404 } as ApiErrorResponse,
+          { error: 'Specified tenant not found', status: 404 },
           { status: 404 }
         );
       }
@@ -430,8 +386,6 @@ export async function PATCH(
       invalidateUserRoleCache(updatedUser.clerkUserId);
     }
 
-    logger.info('User updated', { userId, updatedBy: adminId, changes: Object.keys(updateData) });
-
     // Log audit event for user update
     await logUserUpdated(
       userId,
@@ -449,36 +403,18 @@ export async function PATCH(
       message: 'User updated successfully',
     } satisfies ApiSuccess<typeof safeUser>);
 
-  } catch (error) {
-    logger.apiError(error, { route: `/api/admin/users/${userId}`, method: 'PATCH', adminId });
-    return NextResponse.json(
-      { error: 'Failed to update user', status: 500, details: error instanceof Error ? error.message : undefined } as ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin']
+);
 
 // ============================================================================
 // DELETE /api/admin/users/[userId] - Delete user
 // ============================================================================
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ userId: string }> }
-) {
-  const authResult = await requireAuth(['admin']);
-  if ('error' in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } as ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
-
-  const { userId: adminId } = authResult;
-  const { userId } = await params;
-
-  try {
-    const { searchParams } = new URL(request.url);
+export const DELETE = createApiRoute<never, null | { success: boolean; message: string }, UserParams>(
+  async (request, { userId: adminId }, context) => {
+    const { userId } = await context!.params!;
+    const { searchParams } = new URL(req.url);
     const hardDelete = searchParams.get('hard') !== 'false'; // Default to hard delete unless explicitly false
 
     // Check if user exists
@@ -490,7 +426,7 @@ export async function DELETE(
 
     if (existingUser.length === 0) {
       return NextResponse.json(
-        { error: 'User not found', status: 404 } as ApiErrorResponse,
+        { error: 'User not found', status: 404 },
         { status: 404 }
       );
     }
@@ -500,7 +436,7 @@ export async function DELETE(
     // Prevent self-deletion
     if (user.id === adminId) {
       return NextResponse.json(
-        { error: 'Cannot delete your own account', status: 400 } as ApiErrorResponse,
+        { error: 'Cannot delete your own account', status: 400 },
         { status: 400 }
       );
     }
@@ -512,8 +448,6 @@ export async function DELETE(
       // Invalidate role cache
       invalidateUserRoleCache(user.clerkUserId);
 
-      logger.info('User hard deleted', { userId, deletedBy: adminId });
-
       // Log audit event for hard delete
       await logUserDeleted(
         userId,
@@ -522,10 +456,6 @@ export async function DELETE(
         true,
         request
       );
-
-      // TODO: Handle related records cleanup (cascade should handle most)
-      // - Assessments, homework submissions, etc. will cascade delete
-      // - Consider soft deleting related records instead
 
       return NextResponse.json({
         data: null,
@@ -544,8 +474,6 @@ export async function DELETE(
       // Invalidate role cache
       invalidateUserRoleCache(user.clerkUserId);
 
-      logger.info('User soft deleted', { userId, deletedBy: adminId });
-
       // Log audit event for soft delete (deactivation)
       await logUserDeleted(
         userId,
@@ -561,11 +489,6 @@ export async function DELETE(
       } satisfies ApiSuccess<null>);
     }
 
-  } catch (error) {
-    logger.apiError(error, { route: `/api/admin/users/${userId}`, method: 'DELETE', adminId });
-    return NextResponse.json(
-      { error: 'Failed to delete user', status: 500, details: error instanceof Error ? error.message : undefined } as ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin']
+);

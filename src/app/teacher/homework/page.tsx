@@ -4,6 +4,7 @@ import { logger } from "@/lib/logger";
 /**
  * TEACHER HOMEWORK PAGE
  * Create and manage homework assignments
+ * Quick add homework with ExpressAddModal
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -12,7 +13,8 @@ import { HomeworkCreator, type HomeworkData } from "@/components/homework";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Eye, Edit, Trash2, FileText, Loader2 } from "lucide-react";
+import { ExpressAddModal, useExpressAdd } from "@/components/ui/express-add-modal";
+import { Plus, Eye, Edit, Trash2, FileText, Loader2, Sparkles, BookOpen } from "lucide-react";
 
 interface StoredHomework {
   id: string;
@@ -41,10 +43,42 @@ export default function TeacherHomeworkPage() {
   const [submitting, setSubmitting] = useState(false);
   const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
+  // ExpressAddModal hook for quick homework add
+  const quickAdd = useExpressAdd();
+
   // Show notification
   const showNotification = (type: "success" | "error", message: string) => {
     setNotification({ type, message });
     setTimeout(() => setNotification(null), 3000);
+  };
+
+  // Quick add homework handler - creates basic homework
+  const handleQuickAddHomework = async (title: string) => {
+    try {
+      const response = await fetch("/api/teacher/homework", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: title.trim(),
+          description: "Homework assignment - details to be added",
+          dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // 1 week from now
+          maxPoints: 100,
+          questions: [],
+          isPublished: false,
+        }),
+      });
+
+      if (response.ok) {
+        await fetchHomework();
+        return { success: true };
+      } else {
+        const error = await response.json();
+        return { success: false, error: error.error || "Failed to create homework" };
+      }
+    } catch (error: unknown) {
+      logger.error("Failed to create quick homework:", error);
+      return { success: false, error: "Network error. Please try again." };
+    }
   };
 
   // Fetch homework assignments
@@ -88,7 +122,7 @@ export default function TeacherHomeworkPage() {
       }
     } catch (error: unknown) {
       logger.error("Failed to save homework:", error);
-      showNotification("error", error instanceof Error ? error.message : "Failed to create homework");
+      showNotification("error", error instanceof Error ? error instanceof Error ? error.message : String(error) : "Failed to create homework");
     } finally {
       setSubmitting(false);
     }
@@ -110,7 +144,7 @@ export default function TeacherHomeworkPage() {
       }
     } catch (error: unknown) {
       logger.error("Failed to delete homework:", error);
-      showNotification("error", error instanceof Error ? error.message : "Failed to delete homework");
+      showNotification("error", error instanceof Error ? error instanceof Error ? error.message : String(error) : "Failed to delete homework");
     }
   };
 
@@ -128,7 +162,7 @@ export default function TeacherHomeworkPage() {
       }
     } catch (error: unknown) {
       logger.error("Failed to publish homework:", error);
-      showNotification("error", error instanceof Error ? error.message : "Failed to publish homework");
+      showNotification("error", error instanceof Error ? error instanceof Error ? error.message : String(error) : "Failed to publish homework");
     }
   };
 
@@ -166,10 +200,16 @@ export default function TeacherHomeworkPage() {
           <div>
             <p className="text-muted-foreground">Create and manage homework assignments</p>
           </div>
-          <Button onClick={() => setView("create")} disabled={loading}>
-            <Plus className="w-4 h-4 mr-2" />
-            Create Homework
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={quickAdd.open} disabled={loading}>
+              <Sparkles className="w-4 h-4 mr-2" />
+              Quick Add
+            </Button>
+            <Button onClick={() => setView("create")} disabled={loading}>
+              <Plus className="w-4 h-4 mr-2" />
+              Create Homework
+            </Button>
+          </div>
         </div>
 
         {loading ? (
@@ -236,6 +276,21 @@ export default function TeacherHomeworkPage() {
             ))}
           </div>
         )}
+
+        {/* Quick Add Homework Modal */}
+        <ExpressAddModal
+          isOpen={quickAdd.isOpen}
+          onClose={quickAdd.close}
+          onSubmit={handleQuickAddHomework}
+          title="Quick Add Homework"
+          description="Enter homework title (defaults to 1 week due date)"
+          placeholder="e.g., Math Chapter 5 Exercises"
+          successMessage="Homework created successfully! You can edit details later."
+          errorMessage="Failed to create homework. Please try again."
+          icon={BookOpen}
+          minLength={3}
+          submitLabel="Press Enter to create homework"
+        />
       </div>
     </div>
   );

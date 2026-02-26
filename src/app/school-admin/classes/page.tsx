@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { fetchClasses } from "../_actions";
+import { QuickAddClassButton } from "@/components/school-admin/quick-add-class-button";
 
 const gradeOptions = ["All", "PP", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
 const sectionOptions = ["All", "A", "B", "C", "D"];
@@ -77,16 +78,19 @@ export default async function SchoolAdminClassesPage({
             {total} class{total !== 1 ? "es" : ""} found
           </p>
         </div>
-        <Button
-          className="shadow-md hover:shadow-lg transition-shadow"
-          style={{ background: "linear-gradient(135deg, rgb(139 92 246) 0%, rgb(124 58 237) 100%)" }}
-          asChild
-        >
-          <Link href="/school-admin/classes/create">
-            <Plus className="w-4 h-4 mr-2" />
-            Create Class
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <QuickAddClassButton />
+          <Button
+            className="shadow-md hover:shadow-lg transition-shadow"
+            style={{ background: "linear-gradient(135deg, rgb(139 92 246) 0%, rgb(124 58 237) 100%)" }}
+            asChild
+          >
+            <Link href="/school-admin/classes/create">
+              <Plus className="w-4 h-4 mr-2" />
+              Create Class
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}

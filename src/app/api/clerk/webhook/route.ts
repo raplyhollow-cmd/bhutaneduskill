@@ -5,6 +5,7 @@ import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { logger } from "@/lib/logger";
+import type { ClerkWebhookEvent, ClerkWebhookUser } from "@/types";
 
 // Clerk webhook secret - set in Clerk Dashboard → Webhooks → Endpoint → Signing Secret
 const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
@@ -55,14 +56,26 @@ export async function POST(req: NextRequest) {
   const rawBody = await req.text();
 
   // Verify webhook signature using Svix
-  let evt: any;
+  // Note: wh.verify returns any type, so we cast after verification
+  let evt: ClerkWebhookEvent;
   try {
     const wh = new Webhook(WEBHOOK_SECRET);
-    evt = wh.verify(rawBody, {
+    const payload = wh.verify(rawBody, {
       "svix-id": svixId,
       "svix-timestamp": svixTimestamp,
       "svix-signature": svixSignature,
-    });
+    }) as unknown;
+
+    // Validate and cast to ClerkWebhookEvent
+    if (payload && typeof payload === "object" && "type" in payload && "data" in payload) {
+      evt = {
+        type: payload.type as ClerkWebhookEvent["type"],
+        data: payload.data as ClerkWebhookUser,
+        object: "event",
+      };
+    } else {
+      throw new Error("Invalid webhook payload structure");
+    }
   } catch (error) {
     logger.error("Webhook signature verification failed", error);
     return NextResponse.json(
@@ -126,12 +139,12 @@ export async function POST(req: NextRequest) {
  * Creates a placeholder user with type: 'pending'
  * The user will complete setup through the setup wizard
  */
-async function handleUserCreated(data: any) {
+async function handleUserCreated(data: ClerkWebhookUser) {
   const clerkUserId = data.id;
   const firstName = data.first_name || "";
   const lastName = data.last_name || "";
   const email = data.email_addresses?.[0]?.email_address || "";
-  const imageUrl = data.image_url || null;
+  const imageUrl = data.profile_image_url || null;
 
   // Check if user already exists (shouldn't happen for created event)
   const existing = await db
@@ -160,7 +173,7 @@ async function handleUserCreated(data: any) {
     email: email,
     phone: "", // Will be filled during setup
     grade: 0, // Default value
-    section: "",
+    section: null, // JSON column
     country: "Bhutan", // Default country
     enrollmentDate: new Date().toISOString(),
     profileImage: imageUrl,
@@ -178,7 +191,7 @@ async function handleUserCreated(data: any) {
  * Handle user.updated event
  * Syncs email, name, and profile image changes
  */
-async function handleUserUpdated(data: any) {
+async function handleUserUpdated(data: ClerkWebhookUser) {
   const clerkUserId = data.id;
 
   // Check if user exists
@@ -199,11 +212,19 @@ async function handleUserUpdated(data: any) {
   const firstName = data.first_name || user.firstName;
   const lastName = data.last_name || user.lastName;
   const email = data.email_addresses?.[0]?.email_address || user.email;
-  const imageUrl = data.image_url || user.profileImage;
+  const imageUrl = data.profile_image_url || user.profileImage;
   const isEmailVerified = data.email_addresses?.[0]?.verification?.status === "verified" || false;
 
   // Build update object with only changed fields
-  const updates: Record<string, any> = {
+  const updates: Partial<{
+    firstName: string;
+    lastName: string;
+    name: string;
+    email: string;
+    emailVerified: boolean;
+    profileImage: string | null;
+    updatedAt: Date;
+  }> = {
     firstName,
     lastName,
     name: `${firstName} ${lastName}`.trim(),
@@ -229,7 +250,7 @@ async function handleUserUpdated(data: any) {
  * Handle user.deleted event
  * Soft deletes user by setting isActive: false
  */
-async function handleUserDeleted(data: any) {
+async function handleUserDeleted(data: ClerkWebhookUser) {
   const clerkUserId = data.id;
 
   // Check if user exists

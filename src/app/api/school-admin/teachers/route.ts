@@ -1,30 +1,45 @@
-import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+/**
+ * TEACHERS API (School Admin)
+ *
+ * GET /api/school-admin/teachers - List all teachers for the school
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for cleaner code
+ */
+
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq, and, desc, like, or } from "drizzle-orm";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse } from "@/lib/api/response-helpers";
+import { logger } from "@/lib/logger";
 
+// ============================================================================
 // GET /api/school-admin/teachers - List all teachers for the school
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+// ============================================================================
+
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return successResponse({ teachers: [] }); // Return empty for unauthorized instead of error
     }
-    const { user } = authResult;
+
+    const { user } = auth;
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
     const subject = searchParams.get("subject");
+    const status = searchParams.get("status");
 
     // Get school ID from current user
-    const currentUserData = await db.query.users.findFirst({
-      where: eq(users.id, user.id),
-      columns: { schoolId: true },
-    });
+    const currentUserResult = await db
+      .select({ schoolId: users.schoolId })
+      .from(users)
+      .where(eq(users.id, user.id))
+      .limit(1);
 
-    const schoolId = currentUserData?.schoolId;
+    const schoolId = currentUserResult[0]?.schoolId;
 
     // Build conditions
     const conditions = [
@@ -33,6 +48,11 @@ export async function GET(request: NextRequest) {
 
     if (schoolId) {
       conditions.push(eq(users.schoolId, schoolId));
+    }
+
+    // Filter by status if provided
+    if (status === "active") {
+      conditions.push(eq(users.isActive, true));
     }
 
     if (search) {
@@ -44,19 +64,25 @@ export async function GET(request: NextRequest) {
       if (searchCondition) conditions.push(searchCondition);
     }
 
-    // Fetch teachers
-    const teachersList = await db.query.users.findMany({
-      where: and(...conditions),
-      orderBy: [desc(users.createdAt)],
-    });
+    // Fetch teachers using db.select
+    const teachersList = await db
+      .select()
+      .from(users)
+      .where(and(...conditions))
+      .orderBy(desc(users.createdAt));
 
     // Transform for frontend
     const transformedTeachers = teachersList.map((teacher) => {
-      const subjectsArray = teacher.subjects
-        ? typeof teacher.subjects === 'string'
-          ? JSON.parse(teacher.subjects)
-          : teacher.subjects
-        : [];
+      let subjectsArray: string[] = [];
+      try {
+        if (teacher.subjects) {
+          subjectsArray = typeof teacher.subjects === 'string'
+            ? JSON.parse(teacher.subjects)
+            : teacher.subjects;
+        }
+      } catch {
+        subjectsArray = [];
+      }
 
       return {
         id: teacher.id,
@@ -70,13 +96,13 @@ export async function GET(request: NextRequest) {
           : [],
         classGrade: teacher.classGrade,
         section: teacher.section,
-        isActive: teacher.isActive,
+        isActive: teacher.isActive ?? true,
       };
     });
 
-    return NextResponse.json({ teachers: transformedTeachers });
-  } catch (error) {
-    logger.error("Teachers fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch teachers" }, { status: 500 });
-  }
-}
+    logger.info("Teachers fetched successfully", { count: transformedTeachers.length });
+
+    return successResponse({ teachers: transformedTeachers });
+  },
+  ['admin', 'school-admin']
+);

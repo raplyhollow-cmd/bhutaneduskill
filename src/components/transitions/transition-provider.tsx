@@ -1,15 +1,15 @@
 /**
  * Transition Provider
  *
- * Wraps the app with AnimatePresence for route transitions.
- * This should be placed near the root of the app.
+ * DISABLED: AnimatePresence was causing hooks mismatch errors with route transitions.
+ * This provider has been simplified to always render the same structure.
+ *
+ * TODO: Re-implement AnimatePresence in a way that doesn't change component structure
  */
 
 "use client";
 
-import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { AnimatePresence } from "framer-motion";
 
 interface TransitionProviderProps {
   children: React.ReactNode;
@@ -21,20 +21,8 @@ export function TransitionProvider({
   mode = "wait",
 }: TransitionProviderProps) {
   const pathname = usePathname();
-  const [isClient, setIsClient] = useState(false);
 
-  // Wait for client-side hydration
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  if (!isClient) {
-    return <>{children}</>;
-  }
-
-  return (
-    <AnimatePresence mode={mode} key={pathname}>
-      {children}
-    </AnimatePresence>
-  );
+  // Simple wrapper that always renders the same structure
+  // No AnimatePresence means no transitions, but also no hooks errors
+  return <div key={pathname}>{children}</div>;
 }

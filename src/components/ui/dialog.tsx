@@ -13,7 +13,7 @@ const DialogPortal = DialogPrimitive.Portal
 const DialogClose = DialogPrimitive.Close
 
 // Types for ceramic variant
-export type DialogVariant = "default" | "ceramic"
+export type DialogVariant = "default" | "ceramic" | "hidden"
 
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,

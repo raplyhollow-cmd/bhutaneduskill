@@ -3,7 +3,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { medicineInventory, medicineTransactions } from "@/lib/db/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { eq, and, desc, sql, Sql } from "drizzle-orm";
+
+type DrizzleCondition = Sql<boolean> | ReturnType<typeof eq>;
 
 /**
  * GET /api/school-admin/medical/inventory - Get medicine inventory
@@ -22,7 +24,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const lowStock = searchParams.get('lowStock') === 'true';
 
-    let whereConditions: any[] = [eq(medicineInventory.schoolId, user.schoolId)];
+    const whereConditions: DrizzleCondition[] = [eq(medicineInventory.schoolId, user.schoolId)];
 
     if (category) {
       whereConditions.push(eq(medicineInventory.category, category));

@@ -6,6 +6,7 @@ import { Menu, X, Compass, GraduationCap, Zap } from "lucide-react";
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { portal } from "@/styles/design-tokens";
 
 interface NavLink {
   name: string;
@@ -40,7 +41,7 @@ export function ProfessionalNav() {
           <Link href="/" className="flex items-center gap-2">
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ background: "linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)" }}
+              style={{ background: portal.student.gradient }}
             >
               <GraduationCap className="w-5 h-5 text-white" strokeWidth={2} />
             </div>
@@ -78,7 +79,7 @@ export function ProfessionalNav() {
               <Button
                 variant="ceramic"
                 size="sm"
-                style={{ background: "linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)" }}
+                style={{ background: portal.student.gradient }}
               >
                 <Zap className="w-4 h-4 mr-1" />
                 Get Started
@@ -126,7 +127,7 @@ export function ProfessionalNav() {
                     variant="ceramic"
                     size="sm"
                     className="w-full"
-                    style={{ background: "linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)" }}
+                    style={{ background: portal.student.gradient }}
                   >
                     <Zap className="w-4 h-4 mr-1" />
                     Get Started

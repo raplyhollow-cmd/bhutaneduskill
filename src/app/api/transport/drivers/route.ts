@@ -8,13 +8,14 @@
  * - DELETE: Delete driver
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { drivers, users, vehicles } from "@/lib/db/schema";
 import { eq, and, desc, like, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { logger } from "@/lib/logger";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse, notFoundResponse } from "@/lib/api/response-helpers";
 
 // Types for proper TypeScript safety
 interface CreateDriverBody {
@@ -55,13 +56,14 @@ interface UpdateDriverBody {
 // GET - Fetch transport drivers
 // ============================================================================
 
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth();
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId } = authResult;
+
+    const { userId } = auth;
 
     const currentUser = await db.query.users.findFirst({
       where: eq(users.id, userId),
@@ -69,7 +71,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return notFoundResponse("User");
     }
 
     const { searchParams } = new URL(request.url);
@@ -84,12 +86,12 @@ export async function GET(request: NextRequest) {
       });
 
       if (!driver) {
-        return NextResponse.json({ error: "Driver not found" }, { status: 404 });
+        return notFoundResponse("Driver");
       }
 
       // Check user has access to this driver (same school)
       if (driver.schoolId !== currentUser.schoolId && currentUser.role !== "admin") {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        return errorResponse("Forbidden", 403);
       }
 
       // Get assigned vehicles if requested
@@ -103,7 +105,7 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      return NextResponse.json({
+      return successResponse({
         driver: {
           ...driver,
           assignedVehicles,
@@ -124,7 +126,7 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(drivers.status, status));
     }
 
-    const whereClause = conditions.length > 0 ? and(...conditions as Array<any>) : undefined;
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
     // Get all drivers
     const driverList = await db.query.drivers.findMany({
@@ -154,30 +156,26 @@ export async function GET(request: NextRequest) {
       enrichedDrivers.push(enrichedDriver);
     }
 
-    return NextResponse.json({
+    return successResponse({
       drivers: enrichedDrivers,
       total: enrichedDrivers.length,
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/transport/drivers", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch transport drivers" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin', 'school-admin']
+);
 
 // ============================================================================
 // POST - Create transport driver
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin", "school-admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const POST = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId } = authResult;
+
+    const { userId } = auth;
 
     const currentUser = await db.query.users.findFirst({
       where: eq(users.id, userId),
@@ -185,7 +183,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return notFoundResponse("User");
     }
 
     const body: CreateDriverBody = await request.json();
@@ -207,10 +205,7 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!firstName || !phone || !licenseNumber) {
-      return NextResponse.json(
-        { error: "Missing required fields: firstName, phone, licenseNumber" },
-        { status: 400 }
-      );
+      return badRequestResponse("Missing required fields: firstName, phone, licenseNumber");
     }
 
     // Check if license number already exists
@@ -219,10 +214,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingDriver) {
-      return NextResponse.json(
-        { error: "Driver with this license number already exists" },
-        { status: 400 }
-      );
+      return badRequestResponse("Driver with this license number already exists");
     }
 
     // Create driver
@@ -258,39 +250,32 @@ export async function POST(request: NextRequest) {
       createdBy: userId,
     });
 
-    return NextResponse.json({
+    return successResponse({
       success: true,
       driver: newDriver,
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/transport/drivers", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to create transport driver" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin', 'school-admin']
+);
 
 // ============================================================================
 // PATCH - Update transport driver
 // ============================================================================
 
-export async function PATCH(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin", "school-admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const PATCH = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId } = authResult;
+
+    const { userId } = auth;
 
     const body: UpdateDriverBody = await request.json();
     const { driverId, ...updateData } = body;
 
     if (!driverId) {
-      return NextResponse.json(
-        { error: "driverId is required" },
-        { status: 400 }
-      );
+      return badRequestResponse("driverId is required");
     }
 
     // Update driver
@@ -301,7 +286,7 @@ export async function PATCH(request: NextRequest) {
       .returning();
 
     if (!updatedDriver) {
-      return NextResponse.json({ error: "Driver not found" }, { status: 404 });
+      return notFoundResponse("Driver");
     }
 
     logger.info("Transport driver updated", {
@@ -309,39 +294,32 @@ export async function PATCH(request: NextRequest) {
       updatedBy: userId,
     });
 
-    return NextResponse.json({
+    return successResponse({
       success: true,
       driver: updatedDriver,
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/transport/drivers", method: "PATCH" });
-    return NextResponse.json(
-      { error: "Failed to update transport driver" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin', 'school-admin']
+);
 
 // ============================================================================
 // DELETE - Delete transport driver
 // ============================================================================
 
-export async function DELETE(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin", "school-admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const DELETE = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId } = authResult;
+
+    const { userId } = auth;
 
     const { searchParams } = new URL(request.url);
     const driverId = searchParams.get("id");
 
     if (!driverId) {
-      return NextResponse.json(
-        { error: "Driver id is required" },
-        { status: 400 }
-      );
+      return badRequestResponse("Driver id is required");
     }
 
     // Check if driver is assigned to any vehicle
@@ -350,7 +328,7 @@ export async function DELETE(request: NextRequest) {
     });
 
     if (!driver) {
-      return NextResponse.json({ error: "Driver not found" }, { status: 404 });
+      return notFoundResponse("Driver");
     }
 
     const driverFullName = `${driver.firstName} ${driver.lastName || ""}`.trim();
@@ -363,13 +341,7 @@ export async function DELETE(request: NextRequest) {
     );
 
     if (activeAssignments.length > 0) {
-      return NextResponse.json(
-        {
-          error: "Cannot delete driver assigned to active vehicles",
-          assignedVehicles: activeAssignments.length,
-        },
-        { status: 400 }
-      );
+      return badRequestResponse("Cannot delete driver assigned to active vehicles");
     }
 
     // Soft delete (set status to inactive)
@@ -384,15 +356,10 @@ export async function DELETE(request: NextRequest) {
       deletedBy: userId,
     });
 
-    return NextResponse.json({
+    return successResponse({
       success: true,
       message: "Driver deleted successfully",
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/transport/drivers", method: "DELETE" });
-    return NextResponse.json(
-      { error: "Failed to delete transport driver" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin', 'school-admin']
+);

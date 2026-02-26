@@ -14,6 +14,7 @@ import { parseJsonArray } from "@/lib/db/json-helpers";
 import { eq, and, count, desc, sql, gte, lte, like, inArray } from "drizzle-orm";
 import { cache } from "react";
 import { requireAuthServer } from "@/lib/auth-utils-server";
+import { logger } from "@/lib/logger";
 
 // ============================================================================
 // TYPES
@@ -176,19 +177,32 @@ interface TuitionCourseWithExtras {
 
 // Get current school ID from auth session
 export async function getCurrentSchoolId(): Promise<string | null> {
-  const authResult = await requireAuthServer();
-  if ('error' in authResult) {
-    throw new Error(authResult.error);
+  try {
+    const authResult = await requireAuthServer();
+    if ('error' in authResult) {
+      logger.error("getCurrentSchoolId auth failed", { error: authResult.error, status: authResult.status });
+      throw new Error(authResult.error);
+    }
+    const { userId } = authResult;  // This is database userId from requireAuth
+
+    // Get schoolId from user record
+    const [user] = await db
+      .select({ schoolId: users.schoolId })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!user) {
+      logger.error("getCurrentSchoolId: user not found in DB", { userId });
+      return null;
+    }
+
+    logger.debug("getCurrentSchoolId success", { userId, schoolId: user.schoolId });
+    return user.schoolId || null;
+  } catch (error) {
+    logger.error("getCurrentSchoolId failed", error);
+    throw error;
   }
-  const { userId } = authResult;  // This is database userId from requireAuth
-
-  // Get schoolId from user record
-  const user = await db.query.users.findFirst({
-    where: eq(users.id, userId),  // Query by database ID, not clerkUserId
-    columns: { schoolId: true },
-  });
-
-  return user?.schoolId || null;
 }
 
 /**
@@ -534,15 +548,34 @@ export async function getClasses(schoolId: string | null, options: {
     conditions.push(eq(classes.section, section));
   }
 
-  const classesList = await db.query.classes.findMany({
-    where: and(...conditions),
-    with: {
-      teacher: true,
-    },
-    limit,
-    offset,
-    orderBy: [desc(classes.createdAt)],
-  });
+  // Use standard select with leftJoin instead of db.query to avoid relation issues
+  // Note: students column doesn't exist in DB, will get enrolled count from enrollments table
+  const classesList = await db
+    .select({
+      id: classes.id,
+      name: classes.name,
+      grade: classes.grade,
+      section: classes.section,
+      teacherId: classes.teacherId,
+      classTeacherId: classes.classTeacherId,
+      homeroomTeacherId: classes.homeroomTeacherId,
+      classTeacherName: classes.classTeacherName,
+      homeroomTeacherName: classes.homeroomTeacherName,
+      roomNumber: classes.roomNumber,
+      capacity: classes.capacity,
+      academicYear: classes.academicYear,
+      isActive: classes.isActive,
+      createdAt: classes.createdAt,
+      // Teacher fields
+      teacherFirstName: users.firstName,
+      teacherLastName: users.lastName,
+    })
+    .from(classes)
+    .leftJoin(users, eq(classes.teacherId, users.id))
+    .where(and(...conditions))
+    .orderBy(desc(classes.createdAt))
+    .limit(limit)
+    .offset(offset);
 
   const [countResult] = await db
     .select({ count: count() })
@@ -550,15 +583,14 @@ export async function getClasses(schoolId: string | null, options: {
     .where(and(...conditions));
 
   const transformed: ClassData[] = classesList.map((cls) => {
-    // Access teacher relation - Drizzle returns relations as arrays
-    const teacherArray = cls.teacher as unknown as { id: string; firstName: string | null; lastName: string | null }[] | undefined;
-    const teacherRelation = teacherArray?.[0];
-    const classTeacher = teacherRelation
-      ? `${teacherRelation.firstName || ""} ${teacherRelation.lastName || ""}`.trim()
-      : "Not Assigned";
+    // Build class teacher name from joined user or stored name
+    const classTeacher = cls.teacherFirstName || cls.teacherLastName
+      ? `${cls.teacherFirstName || ""} ${cls.teacherLastName || ""}`.trim()
+      : (cls.classTeacherName || cls.homeroomTeacherName || "Not Assigned");
 
-    // Access students field
-    const studentsData = cls.students as unknown as string | string[];
+    // enrolled count will be fetched separately - use 0 for now
+    // TODO: Fetch actual enrollment count from enrollments table
+    const enrolled = 0;
 
     return {
       id: cls.id,
@@ -566,14 +598,14 @@ export async function getClasses(schoolId: string | null, options: {
       grade: cls.grade,
       section: cls.section || "",
       classTeacher,
-      classTeacherId: cls.teacherId || "",
+      classTeacherId: cls.classTeacherId || cls.teacherId || "",
       subjects: [],
-      room: "TBD",
+      room: cls.roomNumber || "TBD",
       floor: "TBD",
-      capacity: 40,
-      enrolled: parseJsonArray(studentsData).length,
+      capacity: cls.capacity || 40,
+      enrolled,
       academicYear: cls.academicYear || "",
-      status: "active",
+      status: cls.isActive ? "active" : "inactive",
       schedule: [],
     };
   });
@@ -588,11 +620,12 @@ export interface SubjectData {
   id: string;
   code: string;
   name: string;
-  nameDz: string | null;
+  type: string;
   grade: number | null;
-  icon: string | null;
-  color: string | null;
+  description: string | null;
   isActive: boolean;
+  createdAt: Date | null;
+  updatedAt: Date | null;
 }
 
 export async function getSubjects(schoolId: string | null, options: {
@@ -613,12 +646,24 @@ export async function getSubjects(schoolId: string | null, options: {
     );
   }
 
-  const subjectsList = await db.query.subjects.findMany({
-    where: and(...conditions),
-    limit,
-    offset,
-    orderBy: [desc(subjects.createdAt)],
-  });
+  // Use standard select instead of db.query to avoid referencedTable error
+  const subjectsList = await db
+    .select({
+      id: subjects.id,
+      code: subjects.code,
+      name: subjects.name,
+      type: subjects.type,
+      grade: subjects.grade,
+      description: subjects.description,
+      isActive: subjects.isActive,
+      createdAt: subjects.createdAt,
+      updatedAt: subjects.updatedAt,
+    })
+    .from(subjects)
+    .where(and(...conditions))
+    .orderBy(desc(subjects.createdAt))
+    .limit(limit)
+    .offset(offset);
 
   const [countResult] = await db
     .select({ count: count() })
@@ -626,16 +671,16 @@ export async function getSubjects(schoolId: string | null, options: {
     .where(and(...conditions));
 
   const transformed: SubjectData[] = subjectsList.map((subject) => {
-    const subjectWithExtras = subject as SubjectWithExtras;
     return {
       id: subject.id,
       code: subject.code,
       name: subject.name,
-      nameDz: subjectWithExtras.nameDzongkha || null,
+      type: subject.type,
       grade: subject.grade,
-      icon: subjectWithExtras.icon || null,
-      color: subjectWithExtras.color || null,
-      isActive: true, // Default to active
+      description: subject.description,
+      isActive: subject.isActive,
+      createdAt: subject.createdAt,
+      updatedAt: subject.updatedAt,
     };
   });
 
@@ -678,54 +723,78 @@ export async function getAttendanceRecords(schoolId: string | null, options: {
     columns: { id: true, name: true, grade: true, section: true },
   });
 
-  // For each class, get attendance for the date
-  const records: AttendanceRecord[] = await Promise.all(
-    allClasses.map(async (cls) => {
-      // Get students in this class
-      const classStudents = await db.query.users.findMany({
-        where: and(
+  // OPTIMIZATION: Batch fetch all data at once instead of N queries
+  const classIds = allClasses.map(c => c.id);
+
+  // Batch 1: Get all attendance records for all classes at once
+  let allAttendanceRecords: typeof attendance.$inferSelect[] = [];
+  if (classIds.length > 0) {
+    allAttendanceRecords = await db
+      .select()
+      .from(attendance)
+      .where(
+        and(
+          eq(attendance.schoolId, schoolId),
+          eq(attendance.date, selectedDate),
+          inArray(attendance.classId, classIds)
+        )
+      );
+  }
+
+  // Group attendance by classId
+  const attendanceByClass = new Map<string, typeof attendance.$inferSelect[]>();
+  for (const record of allAttendanceRecords) {
+    const current = attendanceByClass.get(record.classId) || [];
+    current.push(record);
+    attendanceByClass.set(record.classId, current);
+  }
+
+  // Batch 2: Get all student counts by grade/section at once
+  const studentCountsByClass = new Map<string, number>();
+  for (const cls of allClasses) {
+    // Use a more efficient count query per class
+    const [countResult] = await db
+      .select({ count: count() })
+      .from(users)
+      .where(
+        and(
           eq(users.schoolId, schoolId),
           eq(users.type, "student"),
-          sql`(${users.classGrade} = ${cls.grade} AND ${users.section} = ${cls.section})`
-        ),
-        columns: { id: true },
-      });
+          eq(users.classGrade, cls.grade),
+          eq(users.section, cls.section || "")
+        )
+      );
+    studentCountsByClass.set(cls.id, countResult?.count || 0);
+  }
 
-      const totalStudents = classStudents.length;
+  // Transform data without additional queries
+  const records: AttendanceRecord[] = allClasses.map((cls) => {
+    const classAttendance = attendanceByClass.get(cls.id) || [];
+    const totalStudents = studentCountsByClass.get(cls.id) || 0;
 
-      // Get attendance records for this class and date
-      const attendanceRecords = await db.query.attendance.findMany({
-        where: and(
-          eq(attendance.schoolId, schoolId),
-          eq(attendance.classId, cls.id),
-          eq(attendance.date, selectedDate)
-        ),
-      });
+    const present = classAttendance.filter(r => r.status === "present").length;
+    const absent = classAttendance.filter(r => r.status === "absent").length;
+    const late = classAttendance.filter(r => r.status === "late").length;
 
-      const present = attendanceRecords.filter(r => r.status === "present").length;
-      const absent = attendanceRecords.filter(r => r.status === "absent").length;
-      const late = attendanceRecords.filter(r => r.status === "late").length;
+    const isCompleted = classAttendance.length > 0;
+    const firstRecord = classAttendance[0];
 
-      const isCompleted = attendanceRecords.length > 0;
-      const firstRecord = attendanceRecords[0];
-
-      const firstRecordWithExtras = firstRecord as AttendanceRecordWithExtras | undefined;
-      return {
-        id: cls.id,
-        date: selectedDate,
-        class: cls.name,
-        classId: cls.id,
-        totalStudents,
-        present,
-        absent,
-        late,
-        markedBy: firstRecordWithExtras?.enteredBy || null,
-        markedAt: firstRecordWithExtras?.checkInTime || null,
-        entryMethod: firstRecordWithExtras?.entryMethod || null,
-        status: isCompleted ? "completed" : "pending",
-      };
-    })
-  );
+    const firstRecordWithExtras = firstRecord as AttendanceRecordWithExtras | undefined;
+    return {
+      id: cls.id,
+      date: selectedDate,
+      class: cls.name,
+      classId: cls.id,
+      totalStudents,
+      present,
+      absent,
+      late,
+      markedBy: firstRecordWithExtras?.enteredBy || null,
+      markedAt: firstRecordWithExtras?.checkInTime || null,
+      entryMethod: firstRecordWithExtras?.entryMethod || null,
+      status: isCompleted ? "completed" : "pending",
+    };
+  });
 
   // Filter by status if specified
   let filteredRecords = records;
@@ -760,10 +829,11 @@ export async function getHomeworkList(schoolId: string | null, options: {
 
   const { search, limit = 50, offset = 0 } = options;
 
-  // Get classes for this school first
-  const schoolClasses = await db.query.classes.findMany({
-    where: eq(classes.schoolId, schoolId),
-  });
+  // Get classes for this school first - use standard select instead of query
+  const schoolClasses = await db
+    .select({ id: classes.id })
+    .from(classes)
+    .where(eq(classes.schoolId, schoolId));
   const classIds = schoolClasses.map(c => c.id);
 
   const conditions = classIds.length > 0 ? [sql`${homework.classId} IN ${sql.raw(`('${classIds.join("','")}')`)}`] : [];
@@ -772,58 +842,103 @@ export async function getHomeworkList(schoolId: string | null, options: {
     conditions.push(sql`${homework.title} LIKE ${`%${search}%`}`);
   }
 
-  const homeworkList = await db.query.homework.findMany({
-    where: and(...conditions),
-    with: {
-      class: true,
-      subject: true,
-      teacher: true,
-    },
-    limit,
-    offset,
-    orderBy: [desc(homework.createdAt)],
-  });
+  // Use standard select with leftJoin to avoid relation issues
+  const homeworkList = await db
+    .select({
+      id: homework.id,
+      classId: homework.classId,
+      subjectId: homework.subjectId,
+      title: homework.title,
+      description: homework.description,
+      dueDate: homework.dueDate,
+      assignedDate: homework.assignedDate,
+      totalPoints: homework.totalPoints,
+      createdAt: homework.createdAt,
+      // Class fields
+      className: classes.name,
+      // Subject fields
+      subjectName: subjects.name,
+    })
+    .from(homework)
+    .leftJoin(classes, eq(homework.classId, classes.id))
+    .leftJoin(subjects, eq(homework.subjectId, subjects.id))
+    .where(and(...conditions))
+    .orderBy(desc(homework.createdAt))
+    .limit(limit)
+    .offset(offset);
 
   const [countResult] = await db
     .select({ count: count() })
     .from(homework)
     .where(and(...conditions));
 
-  const transformed: HomeworkData[] = await Promise.all(
-    homeworkList.map(async (hw) => {
-      // Get submission count
-      const [submissionCount] = await db
-        .select({ count: count() })
-        .from(homeworkSubmissions)
-        .where(eq(homeworkSubmissions.homeworkId, hw.id));
+  // OPTIMIZATION: Batch fetch all submission counts
+  const homeworkIds = homeworkList.map(hw => hw.id);
+  // Extract unique classIds from homeworkList for enrollment queries
+  const uniqueClassIds = [...new Set(homeworkList.map(hw => hw.classId))];
 
-      const [gradedCount] = await db
-        .select({ count: count() })
-        .from(homeworkSubmissions)
-        .where(and(
-          eq(homeworkSubmissions.homeworkId, hw.id),
-          sql`${homeworkSubmissions.gradedAt} IS NOT NULL`
-        ));
+  // Batch 1: Get all submission counts
+  let submissionCountsMap = new Map<string, number>();
+  let gradedCountsMap = new Map<string, number>();
 
-      // Access relations - Drizzle returns arrays
-      const classArray = hw.class as unknown as { id: string; name: string; students: string | unknown }[] | undefined;
-      const classRelation = classArray?.[0];
-      const subjectArray = hw.subject as unknown as { id: string; name: string }[] | undefined;
-      const subjectRelation = subjectArray?.[0];
+  if (homeworkIds.length > 0) {
+    const allSubmissions = await db
+      .select({
+        homeworkId: homeworkSubmissions.homeworkId,
+        gradedAt: homeworkSubmissions.gradedAt,
+      })
+      .from(homeworkSubmissions)
+      .where(inArray(homeworkSubmissions.homeworkId, homeworkIds));
 
-      return {
-        id: hw.id,
-        title: hw.title,
-        class: classRelation?.name || "Unknown",
-        subject: subjectRelation?.name || "Unknown",
-        type: "assignment", // Default type as homework table doesn't have type field
-        dueDate: hw.dueDate || "",
-        submitted: submissionCount?.count || 0,
-        total: classRelation ? parseJsonArray(classRelation.students as string | string[]).length : 0,
-        graded: gradedCount?.count || 0,
-      };
-    })
-  );
+    // Aggregate counts in memory
+    for (const sub of allSubmissions) {
+      const current = submissionCountsMap.get(sub.homeworkId) || 0;
+      submissionCountsMap.set(sub.homeworkId, current + 1);
+
+      if (sub.gradedAt) {
+        const gradedCurrent = gradedCountsMap.get(sub.homeworkId) || 0;
+        gradedCountsMap.set(sub.homeworkId, gradedCurrent + 1);
+      }
+    }
+  }
+
+  // Batch 2: Get all enrollment counts for classes
+  let enrollmentCountsMap = new Map<string, number>();
+
+  if (uniqueClassIds.length > 0) {
+    const allEnrollments = await db
+      .select({
+        classId: enrollments.classId,
+        count: count(),
+      })
+      .from(enrollments)
+      .where(
+        and(
+          inArray(enrollments.classId, uniqueClassIds),
+          eq(enrollments.status, "active")
+        )
+      )
+      .groupBy(enrollments.classId);
+
+    enrollmentCountsMap = new Map(
+      allEnrollments.map(e => [e.classId, e.count])
+    );
+  }
+
+  // Transform without additional queries
+  const transformed: HomeworkData[] = homeworkList.map((hw) => {
+    return {
+      id: hw.id,
+      title: hw.title,
+      class: hw.className || "Unknown",
+      subject: hw.subjectName || "Unknown",
+      type: "assignment", // Default type as homework table doesn't have type field
+      dueDate: hw.dueDate || "",
+      submitted: submissionCountsMap.get(hw.id) || 0,
+      total: enrollmentCountsMap.get(hw.classId) || 0,
+      graded: gradedCountsMap.get(hw.id) || 0,
+    };
+  });
 
   return { homework: transformed, total: countResult?.count || 0 };
 }
@@ -1500,12 +1615,35 @@ export async function getAnalytics(schoolId: string | null): Promise<AnalyticsDa
   });
 
   // Find students with low attendance (<75%)
+  // OPTIMIZATION: Collect student IDs first, then batch fetch
+  const lowAttendanceStudentIds: string[] = [];
   for (const [studentId, data] of attendanceByStudent.entries()) {
     if (data.total >= 5 && (data.present / data.total) < 0.75) {
-      const student = await db.query.users.findFirst({
-        where: eq(users.id, studentId),
-        columns: { firstName: true, lastName: true, classGrade: true, section: true },
-      });
+      lowAttendanceStudentIds.push(studentId);
+    }
+  }
+
+  let lowAttendanceStudentsMap = new Map<string, { firstName: string | null; lastName: string | null; classGrade: number | null; section: string | null }>();
+  if (lowAttendanceStudentIds.length > 0) {
+    const studentDetails = await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        classGrade: users.classGrade,
+        section: users.section,
+      })
+      .from(users)
+      .where(inArray(users.id, lowAttendanceStudentIds));
+
+    lowAttendanceStudentsMap = new Map(
+      studentDetails.map(s => [s.id, { firstName: s.firstName, lastName: s.lastName, classGrade: s.classGrade, section: s.section }])
+    );
+  }
+
+  for (const [studentId, data] of attendanceByStudent.entries()) {
+    if (data.total >= 5 && (data.present / data.total) < 0.75) {
+      const student = lowAttendanceStudentsMap.get(studentId);
 
       if (student) {
         const name = `${student.firstName} ${student.lastName || ""}`.trim();
@@ -1571,12 +1709,32 @@ export async function getAnalytics(schoolId: string | null): Promise<AnalyticsDa
     })
     .slice(0, 5);
 
+  // OPTIMIZATION: Batch fetch student details for low score students
+  const lowScoreStudentIds = lowScoreStudents
+    .map(r => r.studentId)
+    .filter(id => !studentsNeedingAttention.find(s => s.id === id));
+
+  let lowScoreStudentsMap = new Map<string, { firstName: string | null; lastName: string | null; classGrade: number | null; section: string | null }>();
+  if (lowScoreStudentIds.length > 0) {
+    const studentDetails = await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        classGrade: users.classGrade,
+        section: users.section,
+      })
+      .from(users)
+      .where(inArray(users.id, lowScoreStudentIds));
+
+    lowScoreStudentsMap = new Map(
+      studentDetails.map(s => [s.id, { firstName: s.firstName, lastName: s.lastName, classGrade: s.classGrade, section: s.section }])
+    );
+  }
+
   for (const result of lowScoreStudents) {
     if (!studentsNeedingAttention.find((s) => s.id === result.studentId)) {
-      const student = await db.query.users.findFirst({
-        where: eq(users.id, result.studentId),
-        columns: { firstName: true, lastName: true, classGrade: true, section: true },
-      });
+      const student = lowScoreStudentsMap.get(result.studentId);
 
       if (student && studentsNeedingAttention.length < 10) {
         const name = `${student.firstName} ${student.lastName || ""}`.trim();

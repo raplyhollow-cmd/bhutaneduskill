@@ -2,6 +2,8 @@
  * MINISTRY ANALYTICS API
  * GET /api/ministry/analytics - National education analytics
  *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ *
  * Provides comprehensive national-level analytics for the Ministry of Education:
  * - National education statistics (schools, students, teachers, counselors)
  * - School performance comparison across districts
@@ -15,7 +17,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import {
@@ -34,6 +36,7 @@ import {
 } from "@/lib/db/schema";
 import { eq, and, desc, count, sql, gte, lte, avg, sum } from "drizzle-orm";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { successResponse, errorResponse } from "@/lib/api/response-helpers";
 
 // ============================================================================
 // TYPES
@@ -154,24 +157,15 @@ function getMonthKey(date: Date): string {
 // GET HANDLER
 // ============================================================================
 
-export async function GET(req: NextRequest) {
-  const startTime = Date.now();
-
-  try {
-    // Authenticate and authorize - only ministry users can access
-    const authResult = await requireAuth(["ministry", "admin"]);
-    if ("error" in authResult) {
-      logger.security("unauthorized_access_attempt", {
-        route: "/api/ministry/analytics",
-        method: "GET",
-      });
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } as ApiErrorResponse,
-        { status: authResult.status }
-      );
+export const GET = createApiRoute(
+  async (req: NextRequest) => {
+    const startTime = Date.now();
+    const auth = getAuth(req);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
 
-    const { userId } = authResult;
+    const { userId } = auth;
 
     // Parse query parameters for time range filtering
     const url = new URL(req.url);
@@ -216,15 +210,9 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json({ data: response } satisfies ApiSuccess<MinistryAnalyticsResponse>);
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/ministry/analytics", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch analytics data", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['ministry', 'admin']
+);
 
 // ============================================================================
 // DATA FETCHING FUNCTIONS

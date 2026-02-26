@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X, Loader2 } from "lucide-react";
 import { updateCounselor } from "@/app/admin/counselors/actions";
+import { portal } from "@/styles/design-tokens";
 
 interface Counselor {
   id: string;
@@ -162,7 +163,7 @@ export function EditCounselorModal({ open, onClose, onSuccess, counselor }: Edit
               type="submit"
               disabled={isSubmitting}
               className="flex-1"
-              style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
+              style={{ background: portal.admin.gradient }}
             >
               {isSubmitting ? (
                 <>

@@ -20,6 +20,8 @@ import { AddUserModal } from "@/components/admin/add-user-modal";
 import { EditUserModal } from "@/components/admin/edit-user-modal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { TableSkeleton } from "@/components/ui/skeleton/table-skeleton";
+import { StatCardSkeleton } from "@/components/ui/skeleton/card-skeleton";
 import {
   Users,
   Search,
@@ -48,8 +50,10 @@ import {
   Ban,
 } from "lucide-react";
 
+import type { LucideIcon } from "lucide-react";
+
 // User type icons and colors (modern palette)
-const userTypeInfo: Record<string, { icon: any; color: string; bgColor: string; gradient: string }> = {
+const userTypeInfo: Record<string, { icon: LucideIcon; color: string; bgColor: string; gradient: string }> = {
   student: {
     icon: GraduationCap,
     color: "text-orange-600",
@@ -89,7 +93,7 @@ const userTypeInfo: Record<string, { icon: any; color: string; bgColor: string; 
 };
 
 // Status badges (modern design)
-const statusBadges: Record<string, { label: string; color: string; icon: any }> = {
+const statusBadges: Record<string, { label: string; color: string; icon: LucideIcon }> = {
   active: {
     label: "Active",
     color: "bg-green-50 text-green-700 border-green-200",
@@ -443,95 +447,106 @@ export default function AdminUsersPage() {
       )}
 
       {/* Stats Overview - Premium Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <PremiumCard className="p-5 group">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Total Users</p>
-              <p className="text-3xl font-bold text-gray-900 mt-1">{isLoading ? "-" : stats.total.toLocaleString()}</p>
-              <p className="text-xs text-gray-500 mt-2">All user types</p>
+      {isLoading ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <StatCardSkeleton />
+          <StatCardSkeleton />
+          <StatCardSkeleton />
+          <StatCardSkeleton />
+          <StatCardSkeleton />
+          <StatCardSkeleton />
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <PremiumCard className="p-5 group">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Total Users</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">{stats.total.toLocaleString()}</p>
+                <p className="text-xs text-gray-500 mt-2">All user types</p>
+              </div>
+              <div className="p-3 rounded-lg bg-pink-50 group-hover:bg-pink-100 transition-colors">
+                <Users className="w-5 h-5 text-pink-600" />
+              </div>
             </div>
-            <div className="p-3 rounded-lg bg-pink-50 group-hover:bg-pink-100 transition-colors">
-              <Users className="w-5 h-5 text-pink-600" />
-            </div>
-          </div>
-        </PremiumCard>
+          </PremiumCard>
 
-        <PremiumCard className="p-5 group">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Students</p>
-              <p className="text-3xl font-bold text-orange-600 mt-1">{isLoading ? "-" : stats.students.toLocaleString()}</p>
-              <p className="text-xs text-gray-500 mt-2">
-                {stats.total > 0 ? `${((stats.students / stats.total) * 100).toFixed(1)}%` : "0%"} of total
-              </p>
+          <PremiumCard className="p-5 group">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Students</p>
+                <p className="text-3xl font-bold text-orange-600 mt-1">{stats.students.toLocaleString()}</p>
+                <p className="text-xs text-gray-500 mt-2">
+                  {stats.total > 0 ? `${((stats.students / stats.total) * 100).toFixed(1)}%` : "0%"} of total
+                </p>
+              </div>
+              <div className="p-3 rounded-lg bg-orange-50 group-hover:bg-orange-100 transition-colors">
+                <GraduationCap className="w-5 h-5 text-orange-600" />
+              </div>
             </div>
-            <div className="p-3 rounded-lg bg-orange-50 group-hover:bg-orange-100 transition-colors">
-              <GraduationCap className="w-5 h-5 text-orange-600" />
-            </div>
-          </div>
-        </PremiumCard>
+          </PremiumCard>
 
-        <PremiumCard className="p-5 group">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Teachers</p>
-              <p className="text-3xl font-bold text-blue-600 mt-1">{isLoading ? "-" : stats.teachers.toLocaleString()}</p>
-              <p className="text-xs text-gray-500 mt-2">
-                {stats.total > 0 ? `${((stats.teachers / stats.total) * 100).toFixed(1)}%` : "0%"} of total
-              </p>
+          <PremiumCard className="p-5 group">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Teachers</p>
+                <p className="text-3xl font-bold text-blue-600 mt-1">{stats.teachers.toLocaleString()}</p>
+                <p className="text-xs text-gray-500 mt-2">
+                  {stats.total > 0 ? `${((stats.teachers / stats.total) * 100).toFixed(1)}%` : "0%"} of total
+                </p>
+              </div>
+              <div className="p-3 rounded-lg bg-blue-50 group-hover:bg-blue-100 transition-colors">
+                <Briefcase className="w-5 h-5 text-blue-600" />
+              </div>
             </div>
-            <div className="p-3 rounded-lg bg-blue-50 group-hover:bg-blue-100 transition-colors">
-              <Briefcase className="w-5 h-5 text-blue-600" />
-            </div>
-          </div>
-        </PremiumCard>
+          </PremiumCard>
 
-        <PremiumCard className="p-5 group">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Parents</p>
-              <p className="text-3xl font-bold text-gray-600 mt-1">{isLoading ? "-" : stats.parents.toLocaleString()}</p>
-              <p className="text-xs text-gray-500 mt-2">
-                {stats.total > 0 ? `${((stats.parents / stats.total) * 100).toFixed(1)}%` : "0%"} of total
-              </p>
+          <PremiumCard className="p-5 group">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Parents</p>
+                <p className="text-3xl font-bold text-gray-600 mt-1">{stats.parents.toLocaleString()}</p>
+                <p className="text-xs text-gray-500 mt-2">
+                  {stats.total > 0 ? `${((stats.parents / stats.total) * 100).toFixed(1)}%` : "0%"} of total
+                </p>
+              </div>
+              <div className="p-3 rounded-lg bg-gray-100 group-hover:bg-gray-200 transition-colors">
+                <UserCircle className="w-5 h-5 text-gray-600" />
+              </div>
             </div>
-            <div className="p-3 rounded-lg bg-gray-100 group-hover:bg-gray-200 transition-colors">
-              <UserCircle className="w-5 h-5 text-gray-600" />
-            </div>
-          </div>
-        </PremiumCard>
+          </PremiumCard>
 
-        <PremiumCard className="p-5 group">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Admins</p>
-              <p className="text-3xl font-bold text-pink-600 mt-1">{isLoading ? "-" : stats.admins.toLocaleString()}</p>
-              <p className="text-xs text-gray-500 mt-2">
-                {stats.total > 0 ? `${((stats.admins / stats.total) * 100).toFixed(1)}%` : "0%"} of total
-              </p>
+          <PremiumCard className="p-5 group">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Admins</p>
+                <p className="text-3xl font-bold text-pink-600 mt-1">{stats.admins.toLocaleString()}</p>
+                <p className="text-xs text-gray-500 mt-2">
+                  {stats.total > 0 ? `${((stats.admins / stats.total) * 100).toFixed(1)}%` : "0%"} of total
+                </p>
+              </div>
+              <div className="p-3 rounded-lg bg-pink-50 group-hover:bg-pink-100 transition-colors">
+                <Shield className="w-5 h-5 text-pink-600" />
+              </div>
             </div>
-            <div className="p-3 rounded-lg bg-pink-50 group-hover:bg-pink-100 transition-colors">
-              <Shield className="w-5 h-5 text-pink-600" />
-            </div>
-          </div>
-        </PremiumCard>
+          </PremiumCard>
 
-        <PremiumCard className="p-5 group">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-500">Counselors</p>
-              <p className="text-3xl font-bold text-purple-600 mt-1">{isLoading ? "-" : stats.counselors.toLocaleString()}</p>
-              <p className="text-xs text-gray-500 mt-2">
-                {stats.total > 0 ? `${((stats.counselors / stats.total) * 100).toFixed(1)}%` : "0%"} of total
-              </p>
+          <PremiumCard className="p-5 group">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Counselors</p>
+                <p className="text-3xl font-bold text-purple-600 mt-1">{stats.counselors.toLocaleString()}</p>
+                <p className="text-xs text-gray-500 mt-2">
+                  {stats.total > 0 ? `${((stats.counselors / stats.total) * 100).toFixed(1)}%` : "0%"} of total
+                </p>
+              </div>
+              <div className="p-3 rounded-lg bg-purple-50 group-hover:bg-purple-100 transition-colors">
+                <UserCheck className="w-5 h-5 text-purple-600" />
+              </div>
             </div>
-            <div className="p-3 rounded-lg bg-purple-50 group-hover:bg-purple-100 transition-colors">
-              <UserCheck className="w-5 h-5 text-purple-600" />
-            </div>
-          </div>
-        </PremiumCard>
-      </div>
+          </PremiumCard>
+        </div>
+      )}
 
       {/* User Type Distribution with Progress Bars */}
       <PremiumCard>
@@ -712,10 +727,7 @@ export default function AdminUsersPage() {
         </div>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-8 h-8 animate-spin text-pink-500" />
-            <p className="ml-3 text-gray-600">Loading users...</p>
-          </div>
+          <TableSkeleton rows={10} columns={9} />
         ) : (
           <div className="overflow-x-auto -mx-6">
             <table className="w-full">

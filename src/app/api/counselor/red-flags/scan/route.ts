@@ -193,8 +193,8 @@ async function collectStudentData(studentId: string, schoolId: string, cutoffDat
     ORDER BY created_at DESC
   `);
 
-  const highSeverityLogs = behaviorLogs.rows.filter((log: any) => log.severity === "high");
-  const behaviorLogIds = behaviorLogs.rows.map((log: any) => log.id);
+  const highSeverityLogs = behaviorLogs.rows.filter((log: { severity: string }) => log.severity === "high");
+  const behaviorLogIds = behaviorLogs.rows.map((log: { id: string }) => log.id);
 
   // Get attendance data
   const attendanceResult = await db.execute(sql`
@@ -208,7 +208,12 @@ async function collectStudentData(studentId: string, schoolId: string, cutoffDat
       AND date >= ${cutoffDate.toISOString().split('T')[0]}
   `);
 
-  const attendanceRow = attendanceResult.rows[0] as any;
+  const attendanceRow = attendanceResult.rows[0] as {
+    present: string;
+    late: string;
+    absent: string;
+    total: string;
+  };
   const attendanceRate = attendanceRow.total > 0
     ? Math.round((attendanceRow.present / attendanceRow.total) * 100)
     : 0;
@@ -228,7 +233,7 @@ async function collectStudentData(studentId: string, schoolId: string, cutoffDat
     GROUP BY subject
   `);
 
-  const grades = gradesResult.rows as any[];
+  const grades = gradesResult.rows as Array<{ avg_marks: string; subject: string }>;
   const avgMarks = grades.length > 0
     ? Math.round(grades.reduce((sum, g) => sum + parseFloat(g.avg_marks || 0), 0) / grades.length)
     : 0;
@@ -249,7 +254,11 @@ async function collectStudentData(studentId: string, schoolId: string, cutoffDat
     behaviorLogs: {
       total: behaviorLogs.rows.length,
       highSeverity: highSeverityLogs.length,
-      recent: behaviorLogs.rows.slice(0, 5).map((log: any) => ({
+      recent: behaviorLogs.rows.slice(0, 5).map((log: {
+        category: string;
+        severity: string;
+        description: string;
+      }) => ({
         category: log.category,
         severity: log.severity,
         description: log.description,
@@ -263,7 +272,11 @@ async function collectStudentData(studentId: string, schoolId: string, cutoffDat
 /**
  * Check if student meets red flag thresholds
  */
-function checkRedFlagThresholds(data: any): boolean {
+function checkRedFlagThresholds(data: {
+  attendanceData?: { rate: number; lates: number };
+  academicData?: { avgMarks: number };
+  behaviorLogs?: { highSeverity: number };
+}): boolean {
   // Check attendance
   if (data.attendanceData && data.attendanceData.rate < THRESHOLDS.attendanceRate) {
     return true;
@@ -288,7 +301,12 @@ function checkRedFlagThresholds(data: any): boolean {
 /**
  * Analyze student data with AI to determine severity and recommendations
  */
-async function analyzeWithAI(studentData: any) {
+async function analyzeWithAI(studentData: {
+  student: { firstName?: string; lastName?: string; classGrade?: number };
+  behaviorLogs: { total: number; highSeverity: number };
+  attendanceData?: { rate: number; lates: number; absences: number };
+  academicData?: { avgMarks: number; failingSubjects?: string[] };
+}) {
   if (!GEMINI_API_KEY) {
     // Fallback: Simple rule-based analysis
     return fallbackAnalysis(studentData);
@@ -350,7 +368,11 @@ Respond with ONLY a JSON object (no markdown, no extra text):`;
 /**
  * Fallback rule-based analysis when AI is unavailable
  */
-function fallbackAnalysis(data: any) {
+function fallbackAnalysis(data: {
+  attendanceData?: { rate: number; lates: number };
+  academicData?: { avgMarks: number };
+  behaviorLogs?: { highSeverity: number };
+}) {
   let severity = "low";
   let flagType = "wellness";
   const categories = [];

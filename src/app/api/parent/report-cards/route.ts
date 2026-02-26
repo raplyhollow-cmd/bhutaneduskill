@@ -1,48 +1,65 @@
 /**
  * PARENT REPORT CARDS API
  * Parents can view their child's report cards
+ *
+ * SECURITY: FERPA COMPLIANCE
+ * - Uses parent_to_student join table for verification
+ * - Only allows access to verified children
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
-import { reportCards, users } from "@/lib/db/schema";
+import { reportCards, users, parents, parentToStudent } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { db } from "@/lib/db";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 /**
  * GET /api/parent/report-cards
  * Get report cards for parent's children
  */
-export async function GET(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["parent"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId } = auth;
 
     const { searchParams } = new URL(req.url);
     const studentId = searchParams.get("studentId");
 
     if (!studentId) {
-      return NextResponse.json({
-        error: "Student ID is required",
-      }, { status: 400 });
+      return { error: "Student ID is required" };
     }
 
-    // Verify the student belongs to this parent
-    const [student] = await db
+    // FERPA COMPLIANCE: Get parent record first
+    const [parentRecord] = await db
       .select()
-      .from(users)
-      .where(eq(users.id, studentId))
+      .from(parents)
+      .where(eq(parents.userId, userId))
       .limit(1);
 
-    if (!student || student.parentId !== userId) {
-      return NextResponse.json({
-        error: "Student not found or access denied",
-      }, { status: 404 });
+    if (!parentRecord) {
+      logger.warn("No parent record found for user", { userId });
+      return { error: "Parent record not found" };
+    }
+
+    // FERPA COMPLIANCE: Verify parent-child relationship via parent_to_student join table
+    const [relationship] = await db
+      .select()
+      .from(parentToStudent)
+      .where(
+        and(
+          eq(parentToStudent.parentId, parentRecord.id),
+          eq(parentToStudent.studentId, studentId)
+        )
+      )
+      .limit(1);
+
+    if (!relationship) {
+      logger.security("ferpa_violation_attempt", {
+        parentId: parentRecord.id,
+        studentId,
+        route: "/api/parent/report-cards",
+      });
+      return { error: "Student not found or access denied" };
     }
 
     // Fetch report cards
@@ -65,13 +82,7 @@ export async function GET(req: NextRequest) {
 
     logger.info("Parent fetched report cards", { userId, studentId });
 
-    return NextResponse.json({
-      data: cards,
-    } satisfies ApiSuccess<any>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/parent/report-cards", method: "GET" });
-    return NextResponse.json({
-      error: "Failed to fetch report cards",
-    }, { status: 500 });
-  }
-}
+    return { data: cards };
+  },
+  ["parent"]
+);

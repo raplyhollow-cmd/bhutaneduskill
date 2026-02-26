@@ -6,6 +6,7 @@
  */
 
 import { useState, useCallback } from "react";
+import { useToast } from "@/components/ui/toaster";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -116,6 +117,7 @@ const questionTypeLabels: Record<QuestionType, string> = {
 };
 
 export function HomeworkCreator({ onSave, onCancel, initialData, availableClasses = [] }: HomeworkCreatorProps) {
+  const { toast } = useToast();
   const [homework, setHomework] = useState<HomeworkData>({
     title: initialData?.title || "",
     description: initialData?.description || "",
@@ -212,7 +214,11 @@ export function HomeworkCreator({ onSave, onCancel, initialData, availableClasse
 
   const handleSave = async () => {
     if (!homework.title || !homework.dueDate || homework.classIds.length === 0) {
-      alert("Please fill in all required fields (title, due date, and at least one class)");
+      toast({
+        title: "Required fields missing",
+        description: "Please fill in title, due date, and select at least one class.",
+        variant: "error",
+      });
       return;
     }
     setIsSaving(true);
@@ -569,7 +575,7 @@ export function HomeworkCreator({ onSave, onCancel, initialData, availableClasse
                   </div>
                   <Button
                     variant="ghost"
-                    size="icon-xs"
+                    size="icon" className="h-6 w-6"
                     onClick={() => removeAttachment(attachment.id)}
                   >
                     <X className="w-4 h-4" />
@@ -625,7 +631,7 @@ export function HomeworkCreator({ onSave, onCancel, initialData, availableClasse
                     </select>
                     <Button
                       variant="ghost"
-                      size="icon-xs"
+                      size="icon" className="h-6 w-6"
                       onClick={() => removeExternalLink(link.id)}
                     >
                       <X className="w-4 h-4" />
@@ -793,14 +799,14 @@ function QuestionCard({
               </div>
 
               <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon-xs" onClick={onToggle}>
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onToggle}>
                   {isExpanded ? (
                     <ChevronUp className="w-4 h-4" />
                   ) : (
                     <ChevronDown className="w-4 h-4" />
                   )}
                 </Button>
-                <Button variant="ghost" size="icon-xs" onClick={onDelete}>
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onDelete}>
                   <Trash2 className="w-4 h-4 text-destructive" />
                 </Button>
               </div>

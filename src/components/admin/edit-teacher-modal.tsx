@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X, Loader2 } from "lucide-react";
 import { updateTeacher } from "@/app/admin/teachers/actions";
+import { portal } from "@/styles/design-tokens";
 
 interface Teacher {
   id: string;
@@ -171,7 +172,7 @@ export function EditTeacherModal({ open, onClose, onSuccess, teacher }: EditTeac
               type="submit"
               disabled={isSubmitting}
               className="flex-1"
-              style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
+              style={{ background: portal.admin.gradient }}
             >
               {isSubmitting ? (
                 <>

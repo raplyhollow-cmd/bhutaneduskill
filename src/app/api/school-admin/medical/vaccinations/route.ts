@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 import { vaccinationRecords } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 
+type VaccinationCondition = ReturnType<typeof eq> | ReturnType<typeof sql>;
+
 /**
  * GET /api/school-admin/medical/vaccinations - Get vaccination records
  */
@@ -22,7 +24,7 @@ export async function GET(request: NextRequest) {
     const vaccineType = searchParams.get('vaccineType');
     const upcoming = searchParams.get('upcoming') === 'true';
 
-    let whereConditions: any[] = [eq(vaccinationRecords.schoolId, user.schoolId)];
+    let whereConditions: VaccinationCondition[] = [eq(vaccinationRecords.schoolId, user.schoolId!)];
 
     if (studentId) {
       whereConditions.push(eq(vaccinationRecords.studentId, studentId));

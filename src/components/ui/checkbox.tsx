@@ -4,14 +4,66 @@ import * as React from "react"
 import { Checkbox as CheckboxPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
+import { radius, transition, semantic } from "@/styles/design-tokens"
+
+/**
+ * Checkbox Component with Design Token Integration
+ *
+ * Uses design tokens for consistent border radius, transitions,
+ * and colors across the application.
+ */
+
+interface CheckboxProps extends React.ComponentProps<typeof CheckboxPrimitive.Root> {
+  color?: "default" | "primary" | "success" | "warning" | "error"
+}
+
+/**
+ * Get inline styles for checkbox
+ * Uses design tokens for consistent styling
+ */
+function getCheckboxStyles(color?: string, checked?: boolean): React.CSSProperties {
+  const styles: React.CSSProperties = {
+    borderRadius: radius.sm,
+    transition: transition.colors,
+  }
+
+  // Color-specific styles
+  if (checked) {
+    switch (color) {
+      case 'primary':
+        styles.backgroundColor = semantic.primary.DEFAULT
+        styles.borderColor = semantic.primary.DEFAULT
+        break
+      case 'success':
+        styles.backgroundColor = semantic.success.DEFAULT
+        styles.borderColor = semantic.success.DEFAULT
+        break
+      case 'warning':
+        styles.backgroundColor = semantic.warning.DEFAULT
+        styles.borderColor = semantic.warning.DEFAULT
+        break
+      case 'error':
+        styles.backgroundColor = semantic.error.DEFAULT
+        styles.borderColor = semantic.error.DEFAULT
+        break
+      default:
+        styles.backgroundColor = 'var(--primary, #6674f0)'
+        styles.borderColor = 'var(--primary, #6674f0)'
+    }
+  }
+
+  return styles
+}
 
 function Checkbox({
   className,
+  color = "default",
   ...props
-}: React.ComponentProps<typeof CheckboxPrimitive.Root>) {
+}: CheckboxProps) {
   return (
     <CheckboxPrimitive.Root
       data-slot="checkbox"
+      data-color={color}
       className={cn(
         // Base styles
         "peer shrink-0 rounded border border-input outline-none transition-all",
@@ -37,6 +89,10 @@ function Checkbox({
         // Touch target wrapper adds padding externally for 44x44 minimum
         className
       )}
+      style={{
+        borderRadius: radius.sm,
+        transition: 'all 150ms cubic-bezier(0.4, 0, 0.2, 1)',
+      }}
       {...props}
     >
       <CheckboxPrimitive.Indicator

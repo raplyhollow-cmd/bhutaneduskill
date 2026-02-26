@@ -22,10 +22,10 @@ const ClientAnnouncementManager = dynamic(
 interface WrapperProps {
   announcements: Announcement[];
   total: number;
-  onCreate: (data: AnnouncementFormData) => Promise<any>;
-  onUpdate: (id: string, data: Partial<AnnouncementFormData>) => Promise<any>;
-  onDelete: (id: string) => Promise<any>;
-  onTogglePin: (id: string) => Promise<any>;
+  onCreate: (data: AnnouncementFormData) => Promise<{ success: boolean; data?: AnnouncementData }>;
+  onUpdate: (id: string, data: Partial<AnnouncementFormData>) => Promise<{ success: boolean; data?: AnnouncementData }>;
+  onDelete: (id: string) => Promise<{ success: boolean }>;
+  onTogglePin: (id: string) => Promise<{ success: boolean; data?: AnnouncementData }>;
 }
 
 export function AnnouncementManagerWrapper({

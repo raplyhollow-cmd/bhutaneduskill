@@ -51,7 +51,8 @@ export async function GET(req: NextRequest) {
     }
 
     // Build conditions
-    const conditions: any[] = [eq(rubScholarshipApplications.studentId, studentId)];
+    type QueryCondition = ReturnType<typeof eq>;
+    const conditions: QueryCondition[] = [eq(rubScholarshipApplications.studentId, studentId)];
 
     if (status) {
       conditions.push(eq(rubScholarshipApplications.status, status));
@@ -283,7 +284,11 @@ export async function PATCH(req: NextRequest) {
       }, { status: 403 });
     }
 
-    const updateData: any = {
+    const updateData: {
+      status?: string;
+      documents?: unknown[];
+      updatedAt: Date;
+    } = {
       updatedAt: new Date(),
     };
 

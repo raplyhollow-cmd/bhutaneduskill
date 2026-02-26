@@ -6,6 +6,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { NotificationBell } from "@/components/ui/notification-bell";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,6 +55,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@clerk/nextjs";
+import { portal } from "@/styles/design-tokens";
 
 interface SidebarProps {
   userType: "student" | "teacher" | "parent" | "counselor" | "admin" | "school-admin" | "ministry";
@@ -65,7 +67,7 @@ interface SidebarProps {
 interface NavItem {
   name: string;
   href: string;
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
 }
 
 interface NavCategory {
@@ -385,49 +387,49 @@ const navigationItems = {
   ministry: ministryNavigationCategories.flatMap((cat) => cat.items),
 };
 
-// Clerk-inspired color scheme for each portal type
+// Clerk-inspired color scheme for each portal type using design tokens
 const portalStyles = {
   student: {
-    background: "linear-gradient(180deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)",
+    background: portal.student.gradient,
     hoverBg: "rgba(255, 255, 255, 0.15)",
     activeBg: "rgb(255 255 255)",
-    activeText: "rgb(194 65 12)",
+    activeText: portal.student.primaryDark,
   },
   teacher: {
-    background: "linear-gradient(180deg, rgb(59 130 246) 0%, rgb(37 99 235) 100%)",
+    background: portal.teacher.gradient,
     hoverBg: "rgba(255, 255, 255, 0.15)",
     activeBg: "rgb(255 255 255)",
-    activeText: "rgb(37 99 235)",
+    activeText: portal.teacher.primaryDark,
   },
   parent: {
-    background: "linear-gradient(180deg, rgb(107 114 128) 0%, rgb(75 85 99) 100%)",
+    background: portal.parent.gradient,
     hoverBg: "rgba(255, 255, 255, 0.15)",
     activeBg: "rgb(255 255 255)",
-    activeText: "rgb(75 85 99)",
+    activeText: portal.parent.primaryDark,
   },
   counselor: {
-    background: "linear-gradient(180deg, rgb(168 85 247) 0%, rgb(147 51 234) 100%)",
+    background: portal.counselor.gradient,
     hoverBg: "rgba(255, 255, 255, 0.15)",
     activeBg: "rgb(255 255 255)",
-    activeText: "rgb(147 51 234)",
+    activeText: portal.counselor.primaryDark,
   },
   admin: {
-    background: "linear-gradient(180deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)",
+    background: portal.admin.gradient,
     hoverBg: "rgba(255, 255, 255, 0.15)",
     activeBg: "rgb(255 255 255)",
-    activeText: "rgb(219 39 119)",
+    activeText: portal.admin.primaryDark,
   },
   "school-admin": {
-    background: "linear-gradient(180deg, rgb(139 92 246) 0%, rgb(124 58 237) 100%)",
+    background: portal.schoolAdmin.gradient,
     hoverBg: "rgba(255, 255, 255, 0.15)",
     activeBg: "rgb(255 255 255)",
-    activeText: "rgb(124 58 237)",
+    activeText: portal.schoolAdmin.primaryDark,
   },
   ministry: {
-    background: "linear-gradient(180deg, rgb(168 85 247) 0%, rgb(147 51 234) 100%)",
+    background: portal.ministry.gradient,
     hoverBg: "rgba(255, 255, 255, 0.15)",
     activeBg: "rgb(255 255 255)",
-    activeText: "rgb(147 51 234)",
+    activeText: portal.ministry.primaryDark,
   },
 };
 
@@ -448,7 +450,7 @@ interface RelatedLink {
   type: string;
   label: string;
   href: string;
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
 }
 
 function getRelatedLinks(userType: string, studentId: string): RelatedLink[] {
@@ -853,17 +855,12 @@ export function PortalHeader({
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.4, delay: 0.1 }}
           >
-            {/* Notifications placeholder */}
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Button variant="ceramic-ghost" size="icon" className="relative hover:bg-ceramic-gray-100 min-h-[44px] min-w-[44px]">
-                <span className="absolute top-1 right-1 w-2 h-2 bg-ceramic-negative rounded-full animate-pulse"></span>
-                <Bell className="w-5 h-5 text-ceramic-secondary" />
-              </Button>
-            </motion.div>
+            {/* Notifications */}
+            <NotificationBell pollingInterval={30000} enableToasts={true} />
 
             {/* User dropdown menu - ceramic styled */}
             {userName && (
-              <DropdownMenu variant="ceramic">
+              <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <motion.button
                     className="flex items-center gap-3 focus:outline-none"

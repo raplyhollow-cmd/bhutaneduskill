@@ -3,12 +3,13 @@
  * Individual module operations: GET, PUT, DELETE, and POST (for actions)
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
-import { logger } from "@/lib/logger";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { learningModules, moduleProgress, users } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse } from "@/lib/api/response-helpers";
+import { logger } from "@/lib/logger";
 import { z } from "zod";
 
 // ============================================================================
@@ -93,16 +94,9 @@ const updateModuleSchema = z.object({
 // GET /api/teacher/modules/[id] - Get module details with stats
 // ============================================================================
 
-export async function GET(request: NextRequest, { params }: Params) {
-  try {
-    const authResult = await requireAuth(["teacher"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth, context?: { params: Promise<{ id: string }> }) => {
+    const { userId } = auth;
 
     const { id } = await params;
 
@@ -175,33 +169,21 @@ export async function GET(request: NextRequest, { params }: Params) {
 
     logger.info("Teacher module fetched", { moduleId: id, userId });
 
-    return NextResponse.json({
+    return successResponse({
       module: enrichedModule,
       stats,
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/teacher/modules/[id]", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch module" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ["teacher"]
+);
 
 // ============================================================================
 // PUT /api/teacher/modules/[id] - Update module
 // ============================================================================
 
-export async function PUT(request: NextRequest, { params }: Params) {
-  try {
-    const authResult = await requireAuth(["teacher"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-    const { userId } = authResult;
+export const PUT = createApiRoute(
+  async (request: NextRequest, auth, context?: { params: Promise<{ id: string }> }) => {
+    const { userId } = auth;
 
     const body = await request.json();
     const validationResult = updateModuleSchema.safeParse(body);
@@ -271,30 +253,18 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
     logger.info("Learning module updated", { moduleId: id, userId });
 
-    return NextResponse.json({ module: updated });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/teacher/modules/[id]", method: "PUT" });
-    return NextResponse.json(
-      { error: "Failed to update module" },
-      { status: 500 }
-    );
-  }
-}
+    return successResponse({ module: updated });
+  },
+  ["teacher"]
+);
 
 // ============================================================================
 // DELETE /api/teacher/modules/[id] - Delete module
 // ============================================================================
 
-export async function DELETE(request: NextRequest, { params }: Params) {
-  try {
-    const authResult = await requireAuth(["teacher"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-    const { userId } = authResult;
+export const DELETE = createApiRoute(
+  async (request: NextRequest, auth, context?: { params: Promise<{ id: string }> }) => {
+    const { userId } = auth;
 
     const { id } = await params;
 
@@ -336,15 +306,10 @@ export async function DELETE(request: NextRequest, { params }: Params) {
 
     logger.info("Learning module deleted", { moduleId: id, userId });
 
-    return NextResponse.json({ message: "Module deleted successfully" });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/teacher/modules/[id]", method: "DELETE" });
-    return NextResponse.json(
-      { error: "Failed to delete module" },
-      { status: 500 }
-    );
-  }
-}
+    return successResponse({ message: "Module deleted successfully" });
+  },
+  ["teacher"]
+);
 
 // ============================================================================
 // POST /api/teacher/modules/[id] - Module actions (publish, duplicate)
@@ -354,16 +319,9 @@ const actionSchema = z.object({
   action: z.enum(["publish", "unpublish", "duplicate"]),
 });
 
-export async function POST(request: NextRequest, { params }: Params) {
-  try {
-    const authResult = await requireAuth(["teacher"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-    const { userId } = authResult;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth, context?: { params: Promise<{ id: string }> }) => {
+    const { userId } = auth;
 
     const body = await request.json();
     const actionResult = actionSchema.safeParse(body);
@@ -464,15 +422,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       );
     }
 
-    return NextResponse.json(
-      { error: "Invalid action" },
-      { status: 400 }
-    );
-  } catch (error) {
-    logger.apiError(error, { route: "/api/teacher/modules/[id]", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to perform action" },
-      { status: 500 }
-    );
-  }
-}
+    return errorResponse("Invalid action", 400);
+  },
+  ["teacher"]
+);

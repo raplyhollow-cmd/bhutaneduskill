@@ -519,7 +519,12 @@ function drawSignatures(
   data: ReportCardData,
   yPos: number,
   pageWidth: number,
-  signatures: any,
+  signatures: {
+    showClassTeacher?: boolean;
+    showPrincipal?: boolean;
+    showParent?: boolean;
+    customSignatures?: Array<{ title: string; name: string }>;
+  },
   colors: Record<string, number[]>
 ): void {
   const signaturesList = [];
@@ -537,7 +542,7 @@ function drawSignatures(
   }
 
   // Add custom signatures
-  signatures.customSignatures?.forEach((sig: any) => {
+  signatures.customSignatures?.forEach((sig: { title: string; name: string }) => {
     signaturesList.push({ title: sig.title, name: sig.name });
   });
 

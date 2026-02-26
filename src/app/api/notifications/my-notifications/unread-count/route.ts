@@ -61,9 +61,10 @@ export async function GET(request: NextRequest) {
         urgentCount,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: "Failed to fetch unread count", details: error.message },
+      { error: "Failed to fetch unread count", details: errMsg },
       { status: 500 }
     );
   }

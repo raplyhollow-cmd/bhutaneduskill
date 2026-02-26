@@ -3,12 +3,50 @@
  * Fetch graded homework submission with detailed question-by-question feedback
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
-import { logger } from "@/lib/logger";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { homework, homeworkSubmissions, subjects, users } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse } from "@/lib/api/response-helpers";
+import { logger } from "@/lib/logger";
+
+interface QuestionOption {
+  id: string;
+  text: string;
+  isCorrect?: boolean;
+}
+
+interface HomeworkQuestion {
+  id: string;
+  type: string;
+  question: string;
+  points: number;
+  options?: QuestionOption[];
+  correctAnswer: string | string[] | boolean | Record<string, unknown>;
+  explanation?: string;
+}
+
+interface QuestionFeedback {
+  questionId: string;
+  score: number;
+  maxScore: number;
+  isCorrect: boolean;
+  feedback?: string;
+  confidence?: number;
+  reasoning?: string;
+}
+
+interface HomeworkContent {
+  answers?: Record<string, unknown>;
+  questionFeedback?: QuestionFeedback[];
+  integrityMetadata?: {
+    timeSpent: number;
+    tabSwitches: number;
+    copyPasteEvents: number;
+  };
+  gradedBy?: string;
+}
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -29,7 +67,7 @@ function calculateGrade(percentage: number): string {
 /**
  * Format student answer based on question type
  */
-function formatStudentAnswer(answer: any, questionType: string): string | undefined {
+function formatStudentAnswer(answer: unknown, questionType: string): string | undefined {
   if (answer === undefined || answer === null) return undefined;
 
   switch (questionType) {
@@ -46,7 +84,7 @@ function formatStudentAnswer(answer: any, questionType: string): string | undefi
 /**
  * Format correct answer based on question type
  */
-function formatCorrectAnswer(answer: any, questionType: string): string | undefined {
+function formatCorrectAnswer(answer: unknown, questionType: string): string | undefined {
   if (answer === undefined || answer === null) return undefined;
 
   switch (questionType) {
@@ -61,17 +99,14 @@ function formatCorrectAnswer(answer: any, questionType: string): string | undefi
   }
 }
 
+interface Params {
+  params: Promise<{ id: string }>;
+}
+
 // GET /api/student/homework/[id]/feedback
-export async function GET(request: NextRequest, { params }: Params) {
-  try {
-    const authResult = await requireAuth(["student"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth, context?: { params: Promise<{ id: string }> }) => {
+    const { userId } = auth;
 
     const { id: homeworkId } = await params;
 
@@ -130,31 +165,14 @@ export async function GET(request: NextRequest, { params }: Params) {
     }
 
     // Parse content for answers and feedback
-    const content = homeworkRecord.content as {
-      answers?: Record<string, any>;
-      questionFeedback?: Array<{
-        questionId: string;
-        score: number;
-        maxScore: number;
-        isCorrect: boolean;
-        feedback?: string;
-        confidence?: number;
-        reasoning?: string;
-      }>;
-      integrityMetadata?: {
-        timeSpent: number;
-        tabSwitches: number;
-        copyPasteEvents: number;
-      };
-      gradedBy?: string;
-    };
+    const content = homeworkRecord.content as HomeworkContent;
 
     // Parse questions
-    const questions = (homeworkRecord.questions as any[]) || [];
+    const questions = (homeworkRecord.questions as HomeworkQuestion[]) || [];
 
     // Merge questions with feedback
-    const questionsWithFeedback = questions.map((q: any) => {
-      const feedback = content.questionFeedback?.find((f: any) => f.questionId === q.id);
+    const questionsWithFeedback = questions.map((q: HomeworkQuestion) => {
+      const feedback = content.questionFeedback?.find((f: QuestionFeedback) => f.questionId === q.id);
       const studentAnswer = content.answers?.[q.id];
 
       return {
@@ -226,12 +244,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       percentage,
     });
 
-    return NextResponse.json({ success: true, data });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/student/homework/[id]/feedback", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch homework feedback" },
-      { status: 500 }
-    );
-  }
-}
+    return successResponse(data);
+  },
+  ["student"]
+);

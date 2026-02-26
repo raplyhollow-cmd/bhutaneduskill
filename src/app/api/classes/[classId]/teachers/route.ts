@@ -1,51 +1,88 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
-import { logger } from "@/lib/logger";
+/**
+ * CLASS TEACHERS API
+ *
+ * GET /api/classes/[classId]/teachers - Get all teachers assigned to a class
+ * POST /api/classes/[classId]/teachers - Assign a teacher to a class
+ * DELETE /api/classes/[classId]/teachers - Remove a teacher assignment from a class
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ * FIXED: Removed db.query usage (disabled in neon-http driver)
+ */
+
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { teacherAssignments, users, classes, subjects } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, createdResponse, badRequestResponse } from "@/lib/api/response-helpers";
 
-/**
- * GET /api/classes/[classId]/teachers
- * Get all teachers assigned to a class
- */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ classId: string }> }
-) {
-  try {
-    const authResult = await requireAuth(['school-admin', 'admin', 'teacher']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+// ============================================================================
+// GET /api/classes/[classId]/teachers - Get all teachers assigned to a class
+// ============================================================================
+
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId, user } = auth;
+    const { searchParams } = new URL(request.url);
+    const classId = searchParams.get("classId");
+
+    if (!classId) {
+      return badRequestResponse("classId is required");
     }
 
-    const { userId, user } = authResult;
-    const { classId } = await params;
-
     // Verify the class exists
-    const classRecord = await db.query.classes.findFirst({
-      where: eq(classes.id, classId),
-    });
+    const classRecord = await db
+      .select()
+      .from(classes)
+      .where(eq(classes.id, classId))
+      .limit(1);
 
-    if (!classRecord) {
-      return NextResponse.json({ error: "Class not found" }, { status: 404 });
+    if (classRecord.length === 0) {
+      return errorResponse("Class not found", 404);
     }
 
     // Get all teacher assignments for this class
-    const assignmentRecords = await db.query.teacherAssignments.findMany({
-      where: and(
+    const assignmentRecords = await db
+      .select()
+      .from(teacherAssignments)
+      .where(and(
         eq(teacherAssignments.classId, classId),
         eq(teacherAssignments.isActive, true)
-      ),
-      with: {
+      ))
+      .with({
         teacher: true,
         subject: true,
-      },
-      orderBy: desc(teacherAssignments.createdAt),
-    });
+      })
+      .orderBy(desc(teacherAssignments.createdAt));
 
     // Transform the response to include teacher and subject details
-    const assignmentsWithDetails = assignmentRecords.map((assignment: any) => ({
+    interface AssignmentWithDetails {
+      id: string;
+      teacherId: string;
+      classId: string;
+      subjectId: string;
+      academicYear: string;
+      role: string;
+      isPrimary: boolean;
+      isActive: boolean;
+      createdAt: Date;
+      updatedAt: Date;
+      teacher: {
+        id: string;
+        name: string;
+        firstName: string | null;
+        lastName: string | null;
+        email: string | null;
+        employeeId: string | null;
+        type: string;
+      } | null;
+      subject: {
+        id: string;
+        name: string;
+        code: string;
+      } | null;
+    }
+    const assignmentsWithDetails = assignmentRecords.map((assignment): AssignmentWithDetails => ({
       id: assignment.id,
       teacherId: assignment.teacherId,
       classId: assignment.classId,
@@ -72,75 +109,58 @@ export async function GET(
       } : null,
     }));
 
-    logger.info("Fetched class teacher assignments", { classId, count: assignmentsWithDetails.length, userId });
+    return successResponse({ assignments: assignmentsWithDetails });
+  },
+  ['school-admin', 'admin', 'teacher']
+);
 
-    return NextResponse.json({
-      success: true,
-      assignments: assignmentsWithDetails,
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/classes/[classId]/teachers", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch teacher assignments" },
-      { status: 500 }
-    );
-  }
-}
+// ============================================================================
+// POST /api/classes/[classId]/teachers - Assign a teacher to a class
+// ============================================================================
 
-/**
- * POST /api/classes/[classId]/teachers
- * Assign a teacher to a class
- */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ classId: string }> }
-) {
-  try {
-    const authResult = await requireAuth(['school-admin', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { userId } = authResult;
-    const { classId } = await params;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
     const body = await request.json();
-
-    const { teacherId, subjectId, role, isPrimary } = body;
+    const { classId, teacherId, subjectId, role, isPrimary } = body;
 
     // Validate required fields
-    if (!teacherId) {
-      return NextResponse.json(
-        { error: "teacherId is required" },
-        { status: 400 }
-      );
+    if (!classId || !teacherId) {
+      return badRequestResponse("classId and teacherId are required");
     }
 
     // Verify the class exists
-    const classRecord = await db.query.classes.findFirst({
-      where: eq(classes.id, classId),
-    });
+    const classRecord = await db
+      .select()
+      .from(classes)
+      .where(eq(classes.id, classId))
+      .limit(1);
 
-    if (!classRecord) {
-      return NextResponse.json({ error: "Class not found" }, { status: 404 });
+    if (classRecord.length === 0) {
+      return errorResponse("Class not found", 404);
     }
 
     // Verify the teacher exists
-    const teacherRecord = await db.query.users.findFirst({
-      where: eq(users.id, teacherId),
-    });
+    const teacherRecord = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, teacherId))
+      .limit(1);
 
-    if (!teacherRecord) {
-      return NextResponse.json({ error: "Teacher not found" }, { status: 404 });
+    if (teacherRecord.length === 0) {
+      return errorResponse("Teacher not found", 404);
     }
 
     // Verify the subject exists if provided
     if (subjectId) {
-      const subjectRecord = await db.query.subjects.findFirst({
-        where: eq(subjects.id, subjectId),
-      });
+      const subjectRecord = await db
+        .select()
+        .from(subjects)
+        .where(eq(subjects.id, subjectId))
+        .limit(1);
 
-      if (!subjectRecord) {
-        return NextResponse.json({ error: "Subject not found" }, { status: 404 });
+      if (subjectRecord.length === 0) {
+        return errorResponse("Subject not found", 404);
       }
     }
 
@@ -158,7 +178,7 @@ export async function POST(
       teacherId,
       classId,
       subjectId: subjectId || null,
-      academicYear: classRecord.academicYear || new Date().getFullYear().toString(),
+      academicYear: classRecord[0].academicYear || new Date().getFullYear().toString(),
       role: assignmentRole,
       isPrimary: isPrimary ?? false,
       isActive: true,
@@ -166,46 +186,25 @@ export async function POST(
       updatedAt: new Date(),
     }).returning();
 
-    logger.info("Created teacher assignment", { classId, teacherId, role: assignmentRole, userId });
+    return createdResponse({ assignment: newAssignment });
+  },
+  ['school-admin', 'admin']
+);
 
-    return NextResponse.json({
-      success: true,
-      assignment: newAssignment,
-    }, { status: 201 });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/classes/[classId]/teachers", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to create teacher assignment" },
-      { status: 500 }
-    );
-  }
-}
+// ============================================================================
+// DELETE /api/classes/[classId]/teachers - Remove a teacher assignment from a class
+// ============================================================================
 
-/**
- * DELETE /api/classes/[classId]/teachers
- * Remove a teacher assignment from a class
- */
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ classId: string }> }
-) {
-  try {
-    const authResult = await requireAuth(['school-admin', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { userId } = authResult;
-    const { classId } = await params;
+export const DELETE = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
     const { searchParams } = new URL(request.url);
-    const teacherId = searchParams.get('teacherId');
-    const subjectId = searchParams.get('subjectId');
+    const classId = searchParams.get("classId");
+    const teacherId = searchParams.get("teacherId");
+    const subjectId = searchParams.get("subjectId");
 
-    if (!teacherId) {
-      return NextResponse.json(
-        { error: "teacherId query parameter is required" },
-        { status: 400 }
-      );
+    if (!classId || !teacherId) {
+      return badRequestResponse("classId and teacherId query parameters are required");
     }
 
     // Build the where conditions
@@ -220,30 +219,25 @@ export async function DELETE(
     }
 
     // Find the assignment record
-    const assignmentRecord = await db.query.teacherAssignments.findFirst({
-      where: and(...conditions),
-    });
+    const assignmentRecord = await db
+      .select()
+      .from(teacherAssignments)
+      .where(and(...conditions))
+      .limit(1);
 
-    if (!assignmentRecord) {
-      return NextResponse.json({ error: "Teacher assignment not found" }, { status: 404 });
+    if (assignmentRecord.length === 0) {
+      return errorResponse("Teacher assignment not found", 404);
     }
 
     // Delete the assignment
     await db
       .delete(teacherAssignments)
-      .where(eq(teacherAssignments.id, assignmentRecord.id));
+      .where(eq(teacherAssignments.id, assignmentRecord[0].id));
 
-    logger.info("Deleted teacher assignment", { classId, teacherId, subjectId, userId });
-
-    return NextResponse.json({
-      success: true,
+    return successResponse({
       message: "Teacher removed from class successfully",
+      assignment: assignmentRecord[0]
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/classes/[classId]/teachers", method: "DELETE" });
-    return NextResponse.json(
-      { error: "Failed to delete teacher assignment" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['school-admin', 'admin']
+);

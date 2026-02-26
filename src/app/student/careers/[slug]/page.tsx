@@ -45,7 +45,7 @@ export default function CareerDetailPage() {
       if (response.ok) {
         const data = await response.json();
         const savedCareers = data.savedCareers || [];
-        setIsSaved(savedCareers.some((c: any) => c.slug === careerSlug));
+        setIsSaved(savedCareers.some((c: { slug: string }) => c.slug === careerSlug));
       }
     } catch (error) {
       console.error("Failed to check saved status:", error);

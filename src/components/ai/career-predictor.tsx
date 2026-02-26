@@ -26,6 +26,7 @@ import {
   GraduationCap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { portal } from "@/styles/design-tokens";
 
 // ============================================================================
 // TYPES
@@ -191,7 +192,7 @@ export function AICareerPredictor({
             onClick={analyzeCareerPotential}
             className="w-full"
             style={{
-              background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)',
+              background: portal.student.gradient,
             }}
           >
             <Sparkles className="w-4 h-4 mr-2" />
@@ -214,7 +215,7 @@ export function AICareerPredictor({
       <Card className="border-orange-200">
         <CardHeader
           className="text-white"
-          style={{ background: 'linear-gradient(to right, rgb(249 115 22), rgb(194 65 12))' }}
+          style={{ background: `linear-gradient(to right, ${portal.student.primary}, ${portal.student.primaryDark})` }}
         >
           <div className="flex items-center justify-between">
             <div>

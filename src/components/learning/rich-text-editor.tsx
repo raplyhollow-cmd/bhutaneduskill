@@ -120,7 +120,7 @@ export function RichTextEditor({
               key={idx}
               type="button"
               variant="ghost"
-              size="icon-xs"
+              size="icon" className="h-6 w-6"
               onClick={() => execCommand(btn.command, btn.value)}
               title={btn.title}
             >
@@ -134,7 +134,7 @@ export function RichTextEditor({
         <Button
           type="button"
           variant="ghost"
-          size="icon-xs"
+          size="icon" className="h-6 w-6"
           onClick={() => setShowLinkDialog(true)}
           title="Insert Link"
         >
@@ -144,7 +144,7 @@ export function RichTextEditor({
         <Button
           type="button"
           variant="ghost"
-          size="icon-xs"
+          size="icon" className="h-6 w-6"
           onClick={handleUnlink}
           title="Remove Link"
         >

@@ -1,6 +1,7 @@
 "use client";
 
 import { logger } from "@/lib/logger";
+import { useToast } from "@/components/ui/toaster";
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Check, Copy, Share2, Users, X } from "lucide-react";
+import { portal } from "@/styles/design-tokens";
 
 interface Student {
   id: string;
@@ -24,6 +26,7 @@ interface ShareResourceModalProps {
 }
 
 export function ShareResourceModal({ open, onClose, resourceId, resourceTitle }: ShareResourceModalProps) {
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [shareLink, setShareLink] = useState("");
   const [copied, setCopied] = useState(false);
@@ -100,7 +103,11 @@ export function ShareResourceModal({ open, onClose, resourceId, resourceTitle }:
       }
 
       const data = await response.json();
-      alert(data.message || `Resource shared with ${selectedStudents.length} student(s)!`);
+      toast({
+        title: "Resource shared",
+        description: data.message || `Resource shared with ${selectedStudents.length} student(s)!`,
+        variant: "success",
+      });
       setSelectedStudents([]);
       setShareMessage("");
       setSearchQuery("");
@@ -108,7 +115,11 @@ export function ShareResourceModal({ open, onClose, resourceId, resourceTitle }:
       onClose();
     } catch (error) {
       logger.error("[SHARE RESOURCE] Error:", error);
-      alert(error instanceof Error ? error.message : "Failed to share resource. Please try again.");
+      toast({
+        title: "Failed to share resource",
+        description: error instanceof Error ? error instanceof Error ? error.message : String(error) : "Please try again.",
+        variant: "error",
+      });
     } finally {
       setIsSharing(false);
     }
@@ -339,7 +350,7 @@ export function ShareResourceModal({ open, onClose, resourceId, resourceTitle }:
             onClick={handleShareWithStudents}
             disabled={selectedStudents.length === 0 || isSharing}
             className="flex-1"
-            style={{ background: "linear-gradient(135deg, rgb(168 85 247), rgb(147 51 234))" }}
+            style={{ background: portal.counselor.gradient }}
           >
             {isSharing ? (
               <>

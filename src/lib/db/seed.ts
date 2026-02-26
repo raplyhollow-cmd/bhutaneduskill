@@ -170,7 +170,16 @@ async function seedDatabase() {
   await db.insert(schools).values(DEMO_SCHOOL);
 
   // Helper function to create user data matching schema
-  const createUserData = (baseData: any, tenantId: string, schoolId: string) => ({
+  const createUserData = (baseData: {
+    type: string;
+    role: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    dateOfBirth?: string;
+    classGrade?: number;
+    section?: string;
+  }, tenantId: string, schoolId: string) => ({
     id: nanoid(),
     clerkUserId: `clerk_${nanoid()}`,
     type: baseData.type,
@@ -270,7 +279,7 @@ async function seedDatabase() {
   // Create Homework
   for (const hw of DEMO_HOMEWORK) {
     await db.insert(homework).values({
-      id: `hw_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `hw_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
       classId: classId,
       subjectId: "sub_math_001",
       title: hw.title,

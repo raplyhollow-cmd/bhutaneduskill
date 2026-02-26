@@ -9,7 +9,7 @@ import { logger } from "@/lib/logger";
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { desc, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { users, riasecResults, mbtiResults, careerMatches, assessments, careerPlans } from "@/lib/db/schema";
@@ -40,7 +40,7 @@ async function safeQuery<T>(
     return result;
   } catch (error) {
     logger.warn(`[Career Coach] ${queryName} query failed, using default value`, {
-      error: error instanceof Error ? error.message : String(error),
+      error: error instanceof Error ? error instanceof Error ? error.message : String(error) : String(error),
       queryName
     });
     return defaultValue;
@@ -51,18 +51,8 @@ async function safeQuery<T>(
 // POST - Chat with AI Career Coach
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth();
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
-
+export const POST = createApiRoute(
+  async (request, { userId }) => {
     const body = await request.json();
     const { message, conversationHistory = [] } = body;
 
@@ -135,9 +125,12 @@ export async function POST(request: NextRequest) {
 
     // Query 7: Get recent journal entries for AI context
     // Journal entries are stored in users.settings.journalEntries
+    interface UserSettings {
+      journalEntries?: Array<{ date: string; title?: string; mood?: string; entry: string }>;
+    }
     const journalEntries = await safeQuery(
       () => {
-        const settings = (userProfile?.settings as any) || {};
+        const settings = (userProfile?.settings as UserSettings | null) || {};
         return settings.journalEntries || [];
       },
       [],
@@ -147,8 +140,14 @@ export async function POST(request: NextRequest) {
     // Get recent journal entries (last 7 days, max 5)
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
+    interface JournalEntry {
+      date: string;
+      title?: string;
+      mood?: string;
+      entry?: string;
+    }
     const recentJournals = journalEntries
-      .filter((e: any) => {
+      .filter((e: JournalEntry) => {
         const entryDate = new Date(e.date);
         return entryDate >= weekAgo;
       })
@@ -164,8 +163,8 @@ export async function POST(request: NextRequest) {
     if (!hollandCode) {
       const riasecAssessment = userAssessments.find((a) => a.type === "riasec" && a.status === "completed");
       if (riasecAssessment && riasecAssessment.results) {
-        const results = riasecAssessment.results as any;
-        hollandCode = results.hollandCode || results?.results?.hollandCode?.[0] || null;
+        const results = riasecAssessment.results as Record<string, unknown> | null;
+        hollandCode = (results?.hollandCode as string) || (results?.results as Record<string, unknown>)?.hollandCode?.[0] as string || null;
       }
     }
 
@@ -198,8 +197,8 @@ export async function POST(request: NextRequest) {
     if (!mbtiType) {
       const mbtiAssessment = userAssessments.find((a) => a.type === "mbti" && a.status === "completed");
       if (mbtiAssessment && mbtiAssessment.results) {
-        const results = mbtiAssessment.results as any;
-        mbtiType = results.personalityType || results?.mbtiType || null;
+        const results = mbtiAssessment.results as Record<string, unknown> | null;
+        mbtiType = (results?.personalityType as string) || (results?.mbtiType as string) || null;
       }
     }
 
@@ -224,13 +223,17 @@ export async function POST(request: NextRequest) {
       careerMatchScore: matches[0]?.matchScore || null,
       completedAssessments: completedAssessments.length,
       // Add journal context for AI
-      recentJournalTopics: recentJournals.map((j: any) => j.title).join(", "),
+      recentJournalTopics: recentJournals.map((j) => j.title || "").filter(Boolean).join(", "),
       journalEntryCount: journalEntries.length,
-      recentMoods: recentJournals.map((j: any) => j.mood).filter(Boolean).join(", "),
+      recentMoods: recentJournals.map((j) => j.mood || "").filter(Boolean).join(", "),
     };
 
     // Convert conversation history format
-    const chatHistory: ChatMessage[] = conversationHistory.map((msg: any) => ({
+    interface ChatMessageInput {
+      role: string;
+      content: string;
+    }
+    const chatHistory: ChatMessage[] = conversationHistory.map((msg: ChatMessageInput) => ({
       role: msg.role as "user" | "assistant",
       content: msg.content,
     }));
@@ -280,21 +283,9 @@ export async function POST(request: NextRequest) {
     };
 
     return NextResponse.json(responseWithData);
-
-  } catch (error: any) {
-    logger.apiError(error, { route: "/", method: "GET" });
-
-    // Check for specific error types
-    if (error?.message === "Unauthorized" || error?.status === 401) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    return NextResponse.json(
-      { error: "Failed to generate response", message: "The AI service is temporarily unavailable. Please try again later." },
-      { status: 500 }
-    );
-  }
-}
+  },
+  [] // No specific role requirement - any authenticated user
+);
 
 // ============================================================================
 // HELPER FUNCTIONS

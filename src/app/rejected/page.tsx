@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@/components/ui/toaster";
 import { PremiumCard, PremiumCardHeader, PremiumCardTitle, PremiumCardDescription, PremiumCardContent } from "@/components/admin/premium-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { AlertTriangle, School, RefreshCw, ArrowRight, Mail, LogOut } from "lucide-react";
 import { motion } from "framer-motion";
 import { useClerk } from "@clerk/nextjs";
+import { portal } from "@/styles/design-tokens";
 
 interface UserProfile {
   id: string;
@@ -84,7 +85,7 @@ export default function RejectedPage() {
       toast({
         title: "School code required",
         description: "Please enter a new school verification code to reapply.",
-        variant: "destructive",
+        variant: "error",
       });
       return;
     }
@@ -106,7 +107,7 @@ export default function RejectedPage() {
       toast({
         title: "Logout failed",
         description: "Please try again",
-        variant: "destructive",
+        variant: "error",
       });
     }
   };
@@ -123,12 +124,12 @@ export default function RejectedPage() {
   }
 
   // Portal colors for consistent branding
-  const portalColors: Record<string, { from: string; to: string; bg: string }> = {
-    student: { from: "rgb(249 115 22)", to: "rgb(194 65 12)", bg: "bg-orange-50" },
-    teacher: { from: "rgb(59 130 246)", to: "rgb(37 99 235)", bg: "bg-blue-50" },
-    parent: { from: "rgb(107 114 128)", to: "rgb(75 85 99)", bg: "bg-gray-50" },
-    counselor: { from: "rgb(168 85 247)", to: "rgb(147 51 234)", bg: "bg-purple-50" },
-    "school-admin": { from: "rgb(139 92 246)", to: "rgb(124 58 237)", bg: "bg-violet-50" },
+  const portalColors: Record<string, { gradient: string; bg: string }> = {
+    student: { gradient: portal.student.gradient, bg: "bg-orange-50" },
+    teacher: { gradient: portal.teacher.gradient, bg: "bg-blue-50" },
+    parent: { gradient: portal.parent.gradient, bg: "bg-gray-50" },
+    counselor: { gradient: portal.counselor.gradient, bg: "bg-purple-50" },
+    "school-admin": { gradient: portal.schoolAdmin.gradient, bg: "bg-violet-50" },
   };
 
   const colors = portalColors[user?.type || "student"] || portalColors.student;
@@ -299,7 +300,7 @@ export default function RejectedPage() {
           <Button
             onClick={handleRetry}
             className="flex-1 gap-2"
-            style={{ background: `linear-gradient(135deg, ${colors.from} 0%, ${colors.to} 100%)` }}
+            style={{ background: colors.gradient }}
           >
             <RefreshCw className="w-4 h-4" />
             Start New Application

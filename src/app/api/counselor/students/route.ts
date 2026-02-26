@@ -1,109 +1,146 @@
-import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
-import { requirePermission, requireAnyPermission } from "@/lib/rbac";
+/**
+ * COUNSELOR STUDENTS API
+ *
+ * GET /api/counselor/students - Get counselor's assigned students
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users, counselorAssignments, schools, assessments, careerPlans, attendance } from "@/lib/db/schema";
 import { eq, and, desc, sql, gte } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse } from "@/lib/api/response-helpers";
+import { logger } from "@/lib/logger";
+import type { User } from "@/lib/db/schema";
+import type { DbUser } from "@/types";
 
+// ============================================================================
 // GET /api/counselor/students - Get counselor's assigned students
-export async function GET(request: NextRequest) {
-  const authResult = await requireAuth(['counselor', 'admin']);
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
+// ============================================================================
 
-  const { userId, user: currentUser } = authResult;
+export const GET = createApiRoute(
+  async (request, auth) => {
+    const { user: currentUser, userId } = auth;
 
-  // Check RBAC permission for reading students
-  const permCheck = await requireAnyPermission(userId, ["users.read", "students.read"]);
-  if (permCheck) return permCheck;
-
-  try {
-    // Get school assignments for this counselor
-    const assignments = await db.query.counselorAssignments.findMany({
-      where: and(
-        eq(counselorAssignments.counselorId, currentUser.id),
-        eq(counselorAssignments.isActive, true)
-      ),
-      columns: { schoolId: true },
-    });
-
-    const schoolIds = assignments.map((a) => a.schoolId);
-
-    if (schoolIds.length === 0) {
-      return NextResponse.json({
-        students: [],
-        stats: {
-          totalStudents: 0,
-          studentsCompletedAssessments: 0,
-          studentsWithCareerPlans: 0,
-          studentsNeedingAttention: 0,
-        },
+    try {
+      // Get school assignments for this counselor
+      const assignments = await db.query.counselorAssignments.findMany({
+        where: and(
+          eq(counselorAssignments.counselorId, currentUser.id),
+          eq(counselorAssignments.isActive, true)
+        ),
+        columns: { schoolId: true },
       });
-    }
 
-    // Get all students from assigned schools
-    const allStudents = await db.query.users.findMany({
-      where: and(
-        eq(users.type, "student"),
-        sql`${users.schoolId} IN ${sql.raw(`('${schoolIds.join("','")}')`)}`
-      ),
-    });
+      const schoolIds = assignments.map((a) => a.schoolId);
 
-    // Get schools data for all students
-    const uniqueSchoolIds = [...new Set(allStudents.map((s) => s.schoolId).filter(Boolean))] as string[];
-    const schoolsData = uniqueSchoolIds.length > 0
-      ? await db.query.schools.findMany({
-          where: sql`${schools.id} IN ${sql.raw(`('${uniqueSchoolIds.join("','")}')`)}`,
-        })
-      : [];
-
-    const schoolMap = new Map(schoolsData.map((s) => [s.id, s]));
-
-    // Get attendance data for last 30 days
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-    // Enrich students with assessment and plan data
-    const studentsWithData = await Promise.all(
-      allStudents.map(async (student) => {
-        // Get assessments
-        const studentAssessments = await db.query.assessments.findMany({
-          where: eq(assessments.userId, student.id),
-          columns: { status: true },
+      if (schoolIds.length === 0) {
+        return successResponse({
+          students: [],
+          stats: {
+            totalStudents: 0,
+            studentsCompletedAssessments: 0,
+            studentsWithCareerPlans: 0,
+            studentsNeedingAttention: 0,
+          },
         });
+      }
 
-        const completedAssessments = studentAssessments.filter((a) => a.status === "completed").length;
-        const inProgressAssessments = studentAssessments.some((a) => a.status === "in_progress");
+      // Get all students from assigned schools
+      const allStudents = await db.query.users.findMany({
+        where: and(
+          eq(users.type, "student"),
+          sql`${users.schoolId} IN ${sql.raw(`('${schoolIds.join("','")}')`)}`
+        ),
+      });
 
-        // Get career plan
-        const careerPlan = await db.query.careerPlans.findFirst({
-          where: eq(careerPlans.userId, student.id),
-          columns: { status: true },
-        });
+      // Get schools data for all students
+      const uniqueSchoolIds = [...new Set(allStudents.map((s) => s.schoolId).filter(Boolean))] as string[];
+      const schoolsData = uniqueSchoolIds.length > 0
+        ? await db.query.schools.findMany({
+            where: sql`${schools.id} IN ${sql.raw(`('${uniqueSchoolIds.join("','")}')`)}`,
+          })
+        : [];
 
-        // Get attendance rate (last 30 days)
-        const recentAttendance = await db.query.attendance.findMany({
-          where: and(
-            eq(attendance.studentId, student.id),
-            gte(attendance.date, thirtyDaysAgo.toISOString().split("T")[0])
-          ),
-        });
+      const schoolMap = new Map(schoolsData.map((s) => [s.id, s]));
 
-        const presentDays = recentAttendance.filter((a) => a.status === "present").length;
-        const attendanceRate = recentAttendance.length > 0
-          ? Math.round((presentDays / recentAttendance.length) * 100)
+      // OPTIMIZATION: Batch fetch all data instead of N queries per student
+      // Get attendance date range (30 days back)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split("T")[0];
+
+      // Collect all student IDs
+      const studentIds = allStudents.map((s) => s.id);
+
+      // Batch 1: Fetch all assessments for these students
+      const allAssessments = await db
+        .select({ userId: assessments.userId, status: assessments.status })
+        .from(assessments)
+        .where(sql`${assessments.userId} IN ${sql.raw(`('${studentIds.join("','")}')`)}`);
+
+      // Create assessment map: userId -> { completed, inProgress }
+      const assessmentMap = new Map(
+        studentIds.map((id) => [
+          id,
+          { completed: 0, inProgress: false },
+        ])
+      );
+      for (const a of allAssessments) {
+        const entry = assessmentMap.get(a.userId);
+        if (entry) {
+          if (a.status === "completed") entry.completed++;
+          if (a.status === "in_progress") entry.inProgress = true;
+        }
+      }
+
+      // Batch 2: Fetch all career plans
+      const allCareerPlans = await db
+        .select({ userId: careerPlans.userId, status: careerPlans.status })
+        .from(careerPlans)
+        .where(sql`${careerPlans.userId} IN ${sql.raw(`('${studentIds.join("','")}')`)}`);
+
+      const careerPlanMap = new Map(allCareerPlans.map((p) => [p.userId, p.status]));
+
+      // Batch 3: Fetch all attendance records
+      const allAttendance = await db
+        .select({ studentId: attendance.studentId, status: attendance.status })
+        .from(attendance)
+        .where(
+          and(
+            sql`${attendance.studentId} IN ${sql.raw(`('${studentIds.join("','")}')`)}`,
+            gte(attendance.date, thirtyDaysAgoStr)
+          )
+        );
+
+      // Create attendance map: studentId -> { present, total }
+      const attendanceMap = new Map(
+        studentIds.map((id) => [id, { present: 0, total: 0 }])
+      );
+      for (const a of allAttendance) {
+        const entry = attendanceMap.get(a.studentId);
+        if (entry) {
+          entry.total++;
+          if (a.status === "present") entry.present++;
+        }
+      }
+
+      // Now enrich students with batched data (no more queries!)
+      const studentsWithData = allStudents.map((student) => {
+        const assessEntry = assessmentMap.get(student.id) || { completed: 0, inProgress: false };
+        const attendEntry = attendanceMap.get(student.id) || { present: 0, total: 0 };
+        const careerStatus = careerPlanMap.get(student.id);
+
+        const attendanceRate = attendEntry.total > 0
+          ? Math.round((attendEntry.present / attendEntry.total) * 100)
           : 0;
 
-        // Determine needs attention
         const needsAttention =
           attendanceRate < 80 ||
-          (completedAssessments === 0 && !inProgressAssessments) ||
-          (careerPlan?.status !== "completed" && student.classGrade && student.classGrade >= 10);
-
-        // Format last session (placeholder for now - would need sessions table)
-        const lastSession = "Not available";
+          (assessEntry.completed === 0 && !assessEntry.inProgress) ||
+          (careerStatus !== "completed" && student.classGrade && student.classGrade >= 10);
 
         return {
           id: student.id,
@@ -115,40 +152,41 @@ export async function GET(request: NextRequest) {
           school: schoolMap.get(student.schoolId)?.name || null,
           counselorId: currentUser.id,
           assessmentStatus:
-            completedAssessments > 0
+            assessEntry.completed > 0
               ? "completed"
-              : inProgressAssessments
+              : assessEntry.inProgress
               ? "in_progress"
               : "pending",
-          assessmentsTaken: completedAssessments,
+          assessmentsTaken: assessEntry.completed,
           topCareer: null, // Would need to query career matches
           careerMatch: null,
-          planStatus: careerPlan?.status === "completed" ? "completed" : careerPlan ? "in_progress" : "not_started",
-          lastSession,
+          planStatus: careerStatus === "completed" ? "completed" : careerStatus ? "in_progress" : "not_started",
+          lastSession: "Not available", // Would need sessions table
           needsAttention,
           gpa: null, // Would need exam results
           attendanceRate,
         };
-      })
-    );
+      });
 
-    // Calculate stats
-    const totalStudents = studentsWithData.length;
-    const studentsCompletedAssessments = studentsWithData.filter((s) => s.assessmentStatus === "completed").length;
-    const studentsWithCareerPlans = studentsWithData.filter((s) => s.planStatus === "completed").length;
-    const studentsNeedingAttention = studentsWithData.filter((s) => s.needsAttention).length;
+      // Calculate stats
+      const totalStudents = studentsWithData.length;
+      const studentsCompletedAssessments = studentsWithData.filter((s) => s.assessmentStatus === "completed").length;
+      const studentsWithCareerPlans = studentsWithData.filter((s) => s.planStatus === "completed").length;
+      const studentsNeedingAttention = studentsWithData.filter((s) => s.needsAttention).length;
 
-    return NextResponse.json({
-      students: studentsWithData,
-      stats: {
-        totalStudents,
-        studentsCompletedAssessments,
-        studentsWithCareerPlans,
-        studentsNeedingAttention,
-      },
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json({ error: "Failed to fetch students" }, { status: 500 });
-  }
-}
+      return successResponse({
+        students: studentsWithData,
+        stats: {
+          totalStudents,
+          studentsCompletedAssessments,
+          studentsWithCareerPlans,
+          studentsNeedingAttention,
+        },
+      });
+    } catch (error) {
+      logger.apiError(error, { route: "/api/counselor/students", method: "GET" });
+      return errorResponse("Failed to fetch students", 500);
+    }
+  },
+  ['counselor', 'admin']
+);

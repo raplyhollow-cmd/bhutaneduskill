@@ -191,7 +191,7 @@ export async function getSupportTickets(filters?: {
       .from(supportTickets)
       .leftJoin(users, eq(supportTickets.createdById, users.id))
       .leftJoin(schools, eq(supportTickets.schoolId, schools.id))
-      .where(and(...(conditions as Array<any>)))
+      .where(and(...conditions))
       .orderBy(desc(supportTickets.createdAt))
       .limit(limit)
       .offset(offset);

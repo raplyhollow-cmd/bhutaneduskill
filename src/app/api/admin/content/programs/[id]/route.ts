@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { rubPrograms, rubColleges } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 /**
  * RUB Program Schema (partial for updates)
@@ -40,21 +40,14 @@ interface RouteContext {
 }
 
 // PATCH /api/admin/content/programs/[id] - Update RUB program (partial update)
-export async function PATCH(request: NextRequest, context: RouteContext) {
-  const authResult = await requireAuth(['admin']);
-  if ('error' in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
+export const PATCH = createApiRoute(
+  async (req, auth, context) => {
+    const { userId } = auth;
+    const params = await context.params;
+    const id = params.id;
 
-  const { userId } = authResult;
-  const params = await context.params;
-  const id = params.id;
-
-  try {
-    const body = await request.json();
+    try {
+    const body = await req.json();
     const validatedData = programSchema.parse(body);
 
     // Check if program exists
@@ -84,7 +77,32 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     // Recalculate total fee if fee fields are provided
-    let updateData: any = { ...validatedData };
+    type RUBProgramUpdateFields = {
+      name?: string;
+      code?: string;
+      collegeId?: string;
+      level?: string;
+      field?: string;
+      discipline?: string | null;
+      duration?: number;
+      durationType?: string;
+      totalSeats?: number;
+      reservedSeats?: Array<{ category: string; seats: number }> | null;
+      minPercentage?: number | null;
+      requiredSubjects?: string[] | null;
+      eligibilityCriteria?: Record<string, unknown> | string;
+      tuitionFee?: number | null;
+      hostelFee?: number | null;
+      otherFees?: number | null;
+      totalFee?: number | null;
+      description?: string | null;
+      careerProspects?: string[] | null;
+      isActive?: boolean;
+      admissionOpen?: boolean;
+      academicYear?: string | null;
+      updatedAt?: Date;
+    };
+    let updateData: RUBProgramUpdateFields = { ...validatedData };
 
     if (validatedData.tuitionFee !== undefined ||
         validatedData.hostelFee !== undefined ||
@@ -117,40 +135,24 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     logger.info("Program updated", { programId: id, userId });
 
     // Return in the format the frontend expects
-    return NextResponse.json({
-      program: updatedProgram,
-      message: "Program updated successfully"
-    });
+    return { data: updatedProgram, message: "Program updated successfully" };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: "Validation failed", details: error.issues, status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "Validation failed", details: error.issues };
     }
     logger.apiError(error, { route: `/api/admin/content/programs/${id}`, method: "PATCH", userId });
-    return NextResponse.json(
-      { error: "Failed to update program", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
+    return { error: "Failed to update program" };
   }
-}
+}, ['admin']);
 
 // DELETE /api/admin/content/programs/[id] - Delete RUB program
-export async function DELETE(request: NextRequest, context: RouteContext) {
-  const authResult = await requireAuth(['admin']);
-  if ('error' in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
+export const DELETE = createApiRoute(
+  async (req, auth, context) => {
+    const { userId } = auth;
+    const params = await context.params;
+    const id = params.id;
 
-  const { userId } = authResult;
-  const params = await context.params;
-  const id = params.id;
-
-  try {
+    try {
     // Check if program exists
     const existing = await db.query.rubPrograms.findFirst({
       where: eq(rubPrograms.id, id),
@@ -167,15 +169,9 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
     logger.info("Program deleted", { programId: id, userId });
 
-    return NextResponse.json({
-      success: true,
-      message: "Program deleted successfully"
-    });
+    return { data: { success: true }, message: "Program deleted successfully" };
   } catch (error) {
     logger.apiError(error, { route: `/api/admin/content/programs/${id}`, method: "DELETE", userId });
-    return NextResponse.json(
-      { error: "Failed to delete program", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
+    return { error: "Failed to delete program" };
   }
-}
+}, ['admin']);

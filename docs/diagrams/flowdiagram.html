@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bhutan EduSkill - System Flow Diagram</title>
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.5/dist/mermaid.min.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -149,45 +149,45 @@
             </div>
             <div class="mermaid">
 flowchart TD
-    A[User Visits /signup] --> B{Select Portal Type}
-    B -->|Student| C[Student Signup]
-    B -->|Teacher| D[Teacher Signup]
-    B -->|Parent| E[Parent Signup]
-    B -->|School Admin| F[School Admin Signup]
-    B -->|Platform Admin| G[Admin Setup]
+    A["User Visits /signup"] --> B{"Select Portal Type"}
+    B -->|Student| C["Student Signup"]
+    B -->|Teacher| D["Teacher Signup"]
+    B -->|Parent| E["Parent Signup"]
+    B -->|"School Admin"| F["School Admin Signup"]
+    B -->|"Platform Admin"| G["Admin Setup"]
 
-    C --> H[POST /api/setup/student]
-    D --> I[POST /api/setup/teacher]
-    E --> J[POST /api/setup/parent]
-    F --> K[POST /api/setup/school-admin]
-    G --> L[POST /api/setup/admin]
+    C --> H["POST /api/setup/student"]
+    D --> I["POST /api/setup/teacher"]
+    E --> J["POST /api/setup/parent"]
+    F --> K["POST /api/setup/school-admin"]
+    G --> L["POST /api/setup/admin"]
 
-    H --> M{User exists in DB?}
-    I --> N{User exists in DB?}
-    J --> O{User exists in DB?}
-    K --> P{User exists in DB?}
-    L --> Q{User exists in DB?}
+    H --> M{"User exists in DB?"}
+    I --> N{"User exists in DB?"}
+    J --> O{"User exists in DB?"}
+    K --> P{"User exists in DB?"}
+    L --> Q{"User exists in DB?"}
 
-    M -->|No| R[Create User Record<br/>users table]
-    N -->|No| S[Create User Record]
-    O -->|No| T[Create User Record]
-    P -->|No| U[Create User Record]
-    Q -->|No| V[Create User & Admin Role]
+    M -->|No| R["Create User Record, users table"]
+    N -->|No| S["Create User Record"]
+    O -->|No| T["Create User Record"]
+    P -->|No| U["Create User Record"]
+    Q -->|No| V["Create User and Admin Role"]
 
-    M -->|Yes| W[Update User Record]
-    N -->|Yes| X[Update User Record]
-    O -->|Yes| Y[Update User Record]
-    P -->|Yes| Z[Update User Record]
-    Q -->|Yes| AA[Update User Record]
+    M -->|Yes| W["Update User Record"]
+    N -->|Yes| X["Update User Record"]
+    O -->|Yes| Y["Update User Record"]
+    P -->|Yes| Z["Update User Record"]
+    Q -->|Yes| AA["Update User Record"]
 
-    R --> AB[Create Student Record<br/>students table]
-    S --> AC[Create Teacher Record<br/>teachers table]
-    T --> AD[Create Parent Record<br/>parents table]
-    U --> AE[School Admin Application<br/>school_admin_applications table]
-    V --> AF[Assign Admin Role<br/>user_roles table]
+    R --> AB["Create Student Record, students table"]
+    S --> AC["Create Teacher Record, teachers table"]
+    T --> AD["Create Parent Record, parents table"]
+    U --> AE["School Admin Application, school_admin_applications table"]
+    V --> AF["Assign Admin Role, user_roles table"]
 
-    AE --> AG[Pending Approval]
-    AF --> AH[Admin Dashboard Access]
+    AE --> AG["Pending Approval"]
+    AF --> AH["Admin Dashboard Access"]
 
     style A fill:#e1f5ff
     style AB fill:#d4edda
@@ -206,28 +206,28 @@ flowchart TD
             </div>
             <div class="mermaid">
 flowchart TD
-    A[Platform Admin Logged In] --> B[Navigate to /admin/school-admin-applications]
-    B --> C[GET /api/admin/school-admin-applications]
-    C --> D[Fetch All Applications]
+    A["Platform Admin Logged In"] --> B["Navigate to /admin/school-admin-applications"]
+    B --> C["GET /api/admin/school-admin-applications"]
+    C --> D["Fetch All Applications"]
 
     D --> E{Application Status}
-    E -->|pending_approval| F[Show Approve/Reject Buttons]
-    E -->|approved| G[Show Approved Badge]
-    E -->|rejected| H[Show Rejected Badge]
+    E -->|pending_approval| F["Show Approve/Reject Buttons"]
+    E -->|approved| G["Show Approved Badge"]
+    E -->|rejected| H["Show Rejected Badge"]
 
-    F --> I[Click Approve Button]
-    I --> J[POST /api/admin/school-admin-applications/:id/approve]
+    F --> I["Click Approve Button"]
+    I --> J["POST /api/admin/school-admin-applications/:id/approve"]
 
-    J --> K[Verify Application Exists]
-    K --> L[Update Application Status to approved]
-    L --> M[Set reviewedAt and reviewedBy]
-    M --> N[Update User Type to school-admin]
+    J --> K["Verify Application Exists"]
+    K --> L["Update Application Status to approved"]
+    L --> M["Set reviewedAt and reviewedBy"]
+    M --> N["Update User Type to school-admin"]
 
-    N --> O[Assign school-admin Role<br/>user_roles table]
-    O --> P[Link User to School<br/>users.schoolId]
+    N --> O["Assign school-admin Role, user_roles table"]
+    O --> P["Link User to School, users.schoolId"]
 
-    P --> Q[Success Response]
-    Q --> R[Refresh Page - Status: approved]
+    P --> Q["Success Response"]
+    Q --> R["Refresh Page - Status: approved"]
 
     style A fill:#ec4899
     style K fill:#f8d7da
@@ -246,33 +246,33 @@ flowchart TD
             </div>
             <div class="mermaid">
 flowchart TD
-    A[Platform Admin Logged In] --> B[Navigate to /admin/schools]
-    B --> C[Click Add School Button]
-    C --> D[AddSchoolModal Opens]
+    A["Platform Admin Logged In"] --> B["Navigate to /admin/schools"]
+    B --> C["Click Add School Button"]
+    C --> D["AddSchoolModal Opens"]
 
-    D --> E[Fill School Form]
-    E --> F[School Name, Code, Address]
-    F --> G[Contact Details]
-    G --> H[Subscription Tier: free/basic/premium]
+    D --> E["Fill School Form"]
+    E --> F["School Name, Code, Address"]
+    F --> G["Contact Details"]
+    G --> H["Subscription Tier: free/basic/premium"]
 
-    H --> I[Submit Form]
-    I --> J[POST /api/admin/schools]
+    H --> I["Submit Form"]
+    I --> J["POST /api/admin/schools"]
 
-    J --> K[Validate Input Data]
-    K --> L[Generate School ID]
-    L --> M[INSERT into schools Table]
+    J --> K["Validate Input Data"]
+    K --> L["Generate School ID"]
+    L --> M["INSERT into schools Table"]
 
-    M --> N[School Created Successfully]
-    N --> O[Return School Data]
-    O --> P[Close Modal]
-    P --> Q[Refresh Schools List]
+    M --> N["School Created Successfully"]
+    N --> O["Return School Data"]
+    O --> P["Close Modal"]
+    P --> Q["Refresh Schools List"]
 
-    Q --> R[View School in List]
-    R --> S[Click Manage School]
-    S --> T[Navigate to /admin/schools/:id]
+    Q --> R["View School in List"]
+    R --> S["Click Manage School"]
+    S --> T["Navigate to /admin/schools/:id"]
 
-    T --> U[School Details View]
-    U --> V[Edit School, Manage Billing,<br/>View Students, Activate/Suspend]
+    T --> U["School Details View"]
+    U --> V["Edit School, Manage Billing, View Students, Activate/Suspend"]
 
     style A fill:#ec4899
     style D fill:#fff3cd
@@ -289,26 +289,26 @@ flowchart TD
             </div>
             <div class="mermaid">
 flowchart LR
-    A[Student Logged In] --> B[/student/dashboard]
-    B --> C[GET /api/student/profile]
+    A["Student Logged In"] --> B["/student/dashboard"]
+    B --> C["GET /api/student/profile"]
 
-    C --> D[Fetch users Table]
-    D --> E[Join students Table]
-    E --> F[Join schools Table]
+    C --> D["Fetch users Table"]
+    D --> E["Join students Table"]
+    E --> F["Join schools Table"]
 
-    F --> G[Return Combined Data]
-    G --> H{Student Record Exists?}
+    F --> G["Return Combined Data"]
+    G --> H{"Student Record Exists?"}
 
-    H -->|Yes| I[Display Profile Info:<br/>Name, Class, School]
-    H -->|No| J[Redirect to Setup]
+    H -->|Yes| I["Display Profile Info: Name, Class, School"]
+    H -->|No| J["Redirect to Setup"]
 
-    I --> K[Update Profile Form]
-    K --> L[PATCH /api/student/profile]
-    L --> M[Update students Table]
-    M --> N[Update users Table]
+    I --> K["Update Profile Form"]
+    K --> L["PATCH /api/student/profile"]
+    L --> M["Update students Table"]
+    M --> N["Update users Table"]
 
-    N --> O[Profile Updated Successfully]
-    O --> P[Refresh Dashboard Data]
+    N --> O["Profile Updated Successfully"]
+    O --> P["Refresh Dashboard Data"]
 
     style A fill:#ff9966
     style D fill:#ffd9b3
@@ -325,26 +325,26 @@ flowchart LR
             </div>
             <div class="mermaid">
 flowchart TD
-    A[Student Takes Assessment] --> B[POST /api/student/assessments]
-    B --> C[Store Results:<br/>riasec_results, mbti_results]
+    A["Student Takes Assessment"] --> B["POST /api/student/assessments"]
+    B --> C["Store Results: riasec_results, mbti_results"]
 
-    C --> D[Student Opens AI Coach]
-    D --> E[POST /api/ai/career]
+    C --> D["Student Opens AI Coach"]
+    D --> E["POST /api/ai/career"]
 
-    E --> F[Fetch Student Data:<br/>Grades, Interests,<br/>Assessment Results]
-    F --> G[Build Context Snapshot]
+    E --> F["Fetch Student Data: Grades, Interests, Assessment Results"]
+    F --> G["Build Context Snapshot"]
 
-    G --> H[Call Gemini API]
-    H --> I[Bhutan-Specific System Prompt]
-    I --> J[RUB Colleges Data]
-    J --> K[BCSE Requirements]
-    K --> L[National Workforce Priorities]
+    G --> H["Call Gemini API"]
+    H --> I["Bhutan-Specific System Prompt"]
+    I --> J["RUB Colleges Data"]
+    J --> K["BCSE Requirements"]
+    K --> L["National Workforce Priorities"]
 
-    L --> M[Generate Career Recommendations]
-    M --> N[Return Localized Advice:<br/>"Consider ILCS at Taktse for<br/>your Dzongkha skills"]
+    L --> M["Generate Career Recommendations"]
+    M --> N["Return Localized Advice: Consider ILCS at Taktse for your Dzongkha skills"]
 
-    N --> O[Store in ai_interactions Table]
-    O --> P[Display to Student]
+    N --> O["Store in ai_interactions Table"]
+    O --> P["Display to Student"]
 
     style A fill:#ff9966
     style H fill:#e8f5e9
@@ -361,36 +361,36 @@ flowchart TD
             </div>
             <div class="mermaid">
 flowchart TD
-    A[Student/Teacher] --> B[GET /api/library/books]
-    B --> C[View Available Books]
+    A["Student/Teacher"] --> B["GET /api/library/books"]
+    B --> C["View Available Books"]
 
-    C --> D[Request to Borrow Book]
-    D --> E[POST /api/library/issue]
+    C --> D["Request to Borrow Book"]
+    D --> E["POST /api/library/issue"]
 
-    E --> F[Check: available_copies greater than 0?]
-    F -->|No| G[Show Error: Book Unavailable]
-    F -->|Yes| H[Create library_circulation Record]
+    E --> F{"Check: available_copies greater than 0"}
+    F -->|No| G["Show Error: Book Unavailable"]
+    F -->|Yes| H["Create library_circulation Record"]
 
-    H --> I[Set status: issued]
-    I --> J[Decrement available_copies]
-    J --> K[Increment currently_borrowed]
+    H --> I["Set status: issued"]
+    I --> J["Decrement available_copies"]
+    J --> K["Increment currently_borrowed"]
 
-    K --> L[Set dueDate = today + 14 days]
-    L --> M[Return Circulation Record]
+    K --> L["Set dueDate equals today plus 14 days"]
+    L --> M["Return Circulation Record"]
 
-    M --> N[Book Issued Successfully]
-    N --> O[Book Checkout Complete]
+    M --> N["Book Issued Successfully"]
+    N --> O["Book Checkout Complete"]
 
-    O --> P[Student Returns Book]
-    P --> Q[PATCH /api/library/issue/:id/return]
+    O --> P["Student Returns Book"]
+    P --> Q["PATCH /api/library/issue/:id/return"]
 
-    Q --> R[Update status: returned]
-    R --> S[Set returnDate]
-    S --> T[Increment available_copies]
-    T --> U[Calculate Fine if Overdue]
+    Q --> R["Update status: returned"]
+    R --> S["Set returnDate"]
+    S --> T["Increment available_copies"]
+    T --> U["Calculate Fine if Overdue"]
 
-    U --> V[Update library_circulation Record]
-    V --> W[Return Book Successfully]
+    U --> V["Update library_circulation Record"]
+    V --> W["Return Book Successfully"]
 
     style A fill:#7b68ee
     style H fill:#d4edda
@@ -408,24 +408,24 @@ flowchart TD
             </div>
             <div class="mermaid">
 flowchart TD
-    A[Ministry User Logged In] --> B[Navigate to /ministry/gnh]
-    B --> C[GET /api/ministry/gnh]
+    A["Ministry User Logged In"] --> B["Navigate to /ministry/gnh"]
+    B --> C["GET /api/ministry/gnh"]
 
-    C --> D[Fetch All Schools by Dzongkhag]
-    D --> E[Group Students by District]
-    E --> F[Aggregate Counselor Interventions]
+    C --> D["Fetch All Schools by Dzongkhag"]
+    D --> E["Group Students by District"]
+    E --> F["Aggregate Counselor Interventions"]
 
-    F --> G[Calculate GNH Metrics:<br/>Mental Health Index,<br/>Attendance Rate,<br/>Social Cooperation]
+    F --> G["Calculate GNH Metrics: Mental Health Index, Attendance Rate, Social Cooperation"]
 
-    G --> H[Compute Wellbeing Score per Dzongkhag]
-    H --> I[Determine Risk Level:<br/>Low (70+), Medium (60-69), High (&lt;60)]
+    G --> H["Compute Wellbeing Score per Dzongkhag"]
+    H --> I["Determine Risk Level: Low 70+, Medium 60-69, High less than 60"]
 
-    I --> J[Generate National Heatmap]
-    J --> K[Identify Students At Risk]
-    K --> L[Calculate Intervention Summary]
+    I --> J["Generate National Heatmap"]
+    J --> K["Identify Students At Risk"]
+    K --> L["Calculate Intervention Summary"]
 
-    L --> M[Return GNH Dashboard Data]
-    M --> N[Display National Command Center]
+    L --> M["Return GNH Dashboard Data"]
+    M --> N["Display National Command Center"]
 
     style A fill:#a855f7
     style D fill:#f3e8ff
@@ -443,31 +443,31 @@ flowchart TD
             </div>
             <div class="mermaid">
 flowchart TD
-    A[Ministry User Logged In] --> B[Navigate to /ministry/teacher-resources]
-    B --> C[GET /api/ministry/teacher-resources]
+    A["Ministry User Logged In"] --> B["Navigate to /ministry/teacher-resources"]
+    B --> C["GET /api/ministry/teacher-resources"]
 
-    C --> D[Fetch Teacher Counts by Dzongkhag]
-    D --> E[Fetch Student Counts by Dzongkhag]
-    E --> F[Calculate Teacher-Student Ratio]
+    C --> D["Fetch Teacher Counts by Dzongkhag"]
+    D --> E["Fetch Student Counts by Dzongkhag"]
+    E --> F["Calculate Teacher-Student Ratio"]
 
-    F --> G[Compare to Optimal Ratio (25:1)]
+    F --> G["Compare to Optimal Ratio 25:1"]
     G --> H{Variance Check}
 
-    H -->|&lt;-5%| I[Mark as Overstaffed]
-    H -->|±5%| J[Mark as Optimal]
-    H -->|&gt;+5%| K[Mark as Understaffed]
-    H -->|&gt;+20%| L[Mark as Critical]
+    H -->|"minus 5%"| I["Mark as Overstaffed"]
+    H -->|"plus minus 5%"| J["Mark as Optimal"]
+    H -->|"plus 5%"| K["Mark as Understaffed"]
+    H -->|"plus 20%"| L["Mark as Critical"]
 
-    I --> M[Identify Redistribution Opportunities]
+    I --> M["Identify Redistribution Opportunities"]
     K --> M
-    L --> N[Urgent: Recommend Deployments]
+    L --> N["Urgent: Recommend Deployments"]
 
-    M --> O[Calculate Subject Gaps]
+    M --> O["Calculate Subject Gaps"]
     N --> O
-    O --> P[Generate Redistribution Report]
+    O --> P["Generate Redistribution Report"]
 
-    P --> Q[Return Optimization Data]
-    Q --> R[Display Teacher Resource Heatmap]
+    P --> Q["Return Optimization Data"]
+    Q --> R["Display Teacher Resource Heatmap"]
 
     style A fill:#a855f7
     style H fill:#fff3cd
@@ -485,33 +485,33 @@ flowchart TD
             </div>
             <div class="mermaid">
 flowchart TD
-    A[Ministry User Logged In] --> B[Navigate to /ministry/labor-market]
-    B --> C[GET /api/ministry/labor-market]
+    A["Ministry User Logged In"] --> B["Navigate to /ministry/labor-market"]
+    B --> C["GET /api/ministry/labor-market"]
 
-    C --> D[Fetch Student Career Interests]
-    D --> E[Fetch National Workforce Goals 2030]
-    E --> F[Compare Interest vs Demand]
+    C --> D["Fetch Student Career Interests"]
+    D --> E["Fetch National Workforce Goals 2030"]
+    E --> F["Compare Interest vs Demand"]
 
-    F --> G[Calculate Alignment % per Sector]
+    F --> G["Calculate Alignment per Sector"]
     G --> H{Alignment Status}
 
-    H -->|&lt;50%| I[CRITICAL: Large Shortage]
-    H -->|50-80%| J[WARNING: Moderate Shortage]
-    H -->|80-120%| K[BALANCED: On Track]
-    H -->|&gt;120%| L[SURPLUS: Overcapacity]
+    H -->|"less than 50%"| I["CRITICAL: Large Shortage"]
+    H -->|"50 to 80%"| J["WARNING: Moderate Shortage"]
+    H -->|"80 to 120%"| K["BALANCED: On Track"]
+    H -->|"greater than 120%"| L["SURPLUS: Overcapacity"]
 
-    I --> M[Generate AI Insights]
+    I --> M["Generate AI Insights"]
     J --> M
     K --> M
     L --> M
 
-    M --> N[Recommend Policy Actions:<br/>Scholarships, Promotions,<br/>Curriculum Changes]
+    M --> N["Recommend Policy Actions: Scholarships, Promotions, Curriculum Changes"]
 
-    N --> O[Compare to National SDP Goals]
-    O --> P[Calculate Workforce Gap]
+    N --> O["Compare to National SDP Goals"]
+    O --> P["Calculate Workforce Gap"]
 
-    P --> Q[Return Labor Market Data]
-    Q --> R[Display Strategic Workforce Dashboard]
+    P --> Q["Return Labor Market Data"]
+    Q --> R["Display Strategic Workforce Dashboard"]
 
     style A fill:#a855f7
     style H fill:#fff3cd
@@ -530,24 +530,24 @@ flowchart TD
             </div>
             <div class="mermaid">
 flowchart LR
-    A[Teacher Logs Homework] --> B[POST /api/teacher/homework]
-    B --> C[Store in syllabus_progress Table]
+    A["Teacher Logs Homework"] --> B["POST /api/teacher/homework"]
+    B --> C["Store in syllabus_progress Table"]
 
-    D[Counselor Logs Intervention] --> E[POST /api/counselor/interventions]
-    E --> F[Store Anonymized Data]
+    D["Counselor Logs Intervention"] --> E["POST /api/counselor/interventions"]
+    E --> F["Store Anonymized Data"]
 
-    C --> G[Aggregate at Dzongkhag Level]
+    C --> G["Aggregate at Dzongkhag Level"]
     F --> G
 
-    G --> H[GET /api/ministry/emis-sync]
-    H --> I[Generate EMIS Report]
+    G --> H["GET /api/ministry/emis-sync"]
+    H --> I["Generate EMIS Report"]
 
-    I --> J{Sync with Ministry?}
-    J -->|Yes| K[POST to National EMIS Database]
-    J -->|No| L[Store for Batch Export]
+    I --> J{"Sync with Ministry?"}
+    J -->|Yes| K["POST to National EMIS Database"]
+    J -->|No| L["Store for Batch Export"]
 
-    K --> M[EMIS Updated Successfully]
-    L --> N[Report Ready for Download]
+    K --> M["EMIS Updated Successfully"]
+    L --> N["Report Ready for Download"]
 
     style A fill:#3b82f6
     style D fill:#a855f7
@@ -556,6 +556,209 @@ flowchart LR
     style K fill:#d4edda
     style M fill:#c3e6cb
     style N fill:#d1ecf1
+            </div>
+        </div>
+
+        <div class="diagram-container">
+            <div class="diagram-title">
+                <span class="icon">👨‍🏫📚</span>
+                Teacher-Class-Subject Assignment Flow (CRITICAL WORKFLOW)
+            </div>
+            <div class="mermaid">
+flowchart TD
+    subgraph P0["PHASE 0: Platform Setup (Platform Admin)"]
+        P0_1["Create Global Subjects, REC Curriculum Templates"]
+        P0_2["Create Schools, Generate School Codes"]
+        P0_3["Approve School Admins, Verify Payment"]
+    end
+
+    subgraph P1["PHASE 1: School Setup (School Admin)"]
+        P1_1["Login to School Admin Portal"]
+        P1_2{Subjects Added?}
+        P1_2 -->|No| P1_3["Go to /school-admin/subjects, Click Add Subject, Select from Global Templates OR Create Custom"]
+        P1_3 --> P1_4["Subjects Added to School, Stored in subjects table with schoolId"]
+        P1_2 -->|Yes| P1_5["Continue to Classes"]
+        P1_4 --> P1_5
+    end
+
+    subgraph P2["PHASE 2: Class Creation (School Admin)"]
+        P2_1["Go to /school-admin/classes, Click Create New Class"]
+        P2_2["Enter Class Details: Grade 6-12, Section A-F, Room Number, Capacity, Academic Year"]
+        P2_3["Assign Homeroom Teacher from enrolled teachers list"]
+        P2_4["Add Subject Teachers, Multi-select from available teachers"]
+        P2_5["Class Created, Stored in classes table with teacherId"]
+    end
+
+    subgraph P3["PHASE 3: Teacher Applications (Teacher Signup)"]
+        P3_1["Teacher Signs Up, Selects Teacher role"]
+        P3_2["Completes Setup Wizard: Qualifications, Subjects comma-separated, Experience, Desired Classes, Specialization"]
+        P3_3["Application Created, Stored in teacher_applications, status equals pending"]
+        P3_4["Teacher Sees: pending_approval status"]
+    end
+
+    subgraph P4["PHASE 4: Teacher Approval (School Admin)"]
+        P4_1["Go to /school-admin/teachers/pending, View all applications"]
+        P4_2["Review Application Details: Qualifications, Subjects taught, Experience, Previous School"]
+        P4_3{Decision?}
+        P4_3 -->|Approve| P4_4["Application Approved, status equals approved, user.onboardingStatus equals enrolled"]
+        P4_3 -->|Reject| P4_5["Enter Rejection Reason, Application Rejected, status equals rejected"]
+        P4_4 --> P4_6["Teacher Now Visible in Teacher Selection Dropdowns"]
+    end
+
+    subgraph P5["PHASE 5: Subject-Teacher Assignment"]
+        P5_1["Go to /school-admin/subjects, Select a Subject"]
+        P5_2["Click Assign Teachers"]
+        P5_3["Select Grade Level, Filter teachers by subject expertise"]
+        P5_4["Assign Teachers to Subject, Create teacher_assignments records"]
+        P5_5["Teacher Can Now See Assigned Subjects in Their Portal"]
+    end
+
+    subgraph P6["PHASE 6: Class-Subject-Teacher Mapping"]
+        P6_1["Go to /school-admin/classes/:id, View Class Detail Page"]
+        P6_2["Click Manage Subjects or Assign Subject Teachers"]
+        P6_3["For Each Subject: Select Teacher from dropdown, Set periods per week, Assign room"]
+        P6_4["Create teacher_assignments records: teacherId, classId, subjectId, role equals subject_teacher, academicYear"]
+        P6_5["Timetable Auto-Generated, Based on assignments"]
+    end
+
+    subgraph P7["PHASE 7: Teacher Portal (Teacher View)"]
+        P7_1["Teacher Logs In"]
+        P7_2["Dashboard Shows: Assigned Classes, Subjects to Teach, Today's Schedule"]
+        P7_3["Teacher Can: Take Attendance, Create Homework, View Student List, Record Behavior Logs"]
+    end
+
+    subgraph P8["PHASE 8: Timetable and Scheduling"]
+        P8_1["Go to /school-admin/timetable"]
+        P8_2["View Master Timetable: All classes, All subjects, All teachers"]
+        P8_3["Detect Conflicts: Same teacher same time, Same class same time, Same room same time"]
+        P8_4["Print Export Timetable, For Teachers, Students, Parents"]
+    end
+
+    %% Connections
+    P0_1 --> P1_2
+    P0_2 --> P1_1
+    P0_3 --> P1_1
+
+    P1_5 --> P2_1
+    P2_5 --> P3_1
+    P4_6 --> P2_1
+    P4_6 --> P5_1
+    P2_5 --> P6_1
+    P6_4 --> P7_1
+    P6_4 --> P8_1
+
+    %% Highlight Phase Status - ALL PHASES COMPLETE (green)
+    style P5_1 fill:#d1fae5,stroke:#10b981
+    style P5_2 fill:#d1fae5,stroke:#10b981
+    style P5_3 fill:#d1fae5,stroke:#10b981
+    style P5_4 fill:#d1fae5,stroke:#10b981
+    style P5_5 fill:#d1fae5,stroke:#10b981
+
+    style P6_1 fill:#d1fae5,stroke:#10b981
+    style P6_2 fill:#d1fae5,stroke:#10b981
+    style P6_3 fill:#d1fae5,stroke:#10b981
+    style P6_4 fill:#d1fae5,stroke:#10b981
+    style P6_5 fill:#d1fae5,stroke:#10b981
+
+    style P7_1 fill:#d1fae5,stroke:#10b981
+    style P7_2 fill:#d1fae5,stroke:#10b981
+    style P7_3 fill:#d1fae5,stroke:#10b981
+
+    style P8_1 fill:#d1fae5,stroke:#10b981
+    style P8_2 fill:#d1fae5,stroke:#10b981
+    style P8_3 fill:#d1fae5,stroke:#10b981
+    style P8_4 fill:#d1fae5,stroke:#10b981
+            </div>
+            <p style="margin-top: 15px; padding: 10px; background: #d1fae5; border-radius: 5px; font-size: 0.9em;">
+                <strong>✅ Status:</strong> ALL PHASES (0-8) are COMPLETE! The Teacher-Class-Subject assignment workflow is fully implemented.
+                <br><br>
+                <strong>Implemented Features:</strong><br>
+                1. ✅ Subject-Teacher Assignment UI - /school-admin/subjects/[id] for assigning teachers to subjects<br>
+                2. ✅ Class-Subject-Teacher Mapping - /school-admin/classes/[id] with "Manage Subject Teachers" button<br>
+                3. ✅ Teacher Portal view - /teacher/my-classes shows all assigned classes and subjects<br>
+                4. ✅ Timetable system - Auto-generate from assignments, teacher timetable view, conflict detection
+            </p>
+        </div>
+
+        <div class="diagram-container">
+            <div class="diagram-title">
+                <span class="icon">📋</span>
+                Teacher Assignment Database Schema
+            </div>
+            <div class="mermaid">
+erDiagram
+        TEACHERS ||--o{ TEACHER_APPLICATIONS : creates
+        TEACHERS ||--o{ TEACHER_ASSIGNMENTS : has
+        SUBJECTS ||--o{ TEACHER_ASSIGNMENTS : taught_by
+        CLASSES ||--o{ TEACHER_ASSIGNMENTS : has
+        SCHOOLS ||--o{ SUBJECTS : owns
+        SCHOOLS ||--o{ CLASSES : has
+        GLOBAL_SUBJECTS ||--o{ SUBJECTS : templates_for
+
+        TEACHERS {
+            string id PK
+            string clerkUserId
+            string schoolId FK
+            string type
+            string onboardingStatus
+            json subjects "comma-separated text"
+        }
+
+        TEACHER_APPLICATIONS {
+            string id PK
+            string userId FK
+            string schoolId FK
+            string status "pending/approved/rejected"
+            text qualifications
+            integer experience
+            json subjects "array of strings"
+            json desiredClasses
+        }
+
+        TEACHER_ASSIGNMENTS {
+            string id PK
+            string teacherId FK
+            string classId FK
+            string subjectId FK
+            string role "homeroom/subject_teacher"
+            boolean isPrimary
+            string academicYear
+            boolean isActive
+        }
+
+        SUBJECTS {
+            string id PK
+            string schoolId FK
+            string name
+            string code
+            string type "core/elective/optional"
+            integer grade
+            boolean isActive
+        }
+
+        GLOBAL_SUBJECTS {
+            string id PK
+            string name
+            string code
+            string type
+            integer grade
+        }
+
+        CLASSES {
+            string id PK
+            string schoolId FK
+            string teacherId FK "homeroom"
+            integer grade
+            string section
+            string academicYear
+        }
+
+        SCHOOLS {
+            string id PK
+            string code "ABC-DIST-2024"
+            string name
+            string subscriptionTier
+        }
             </div>
         </div>
     </div>

@@ -65,7 +65,7 @@ export default function SavedPage() {
   const careerItems = CAREERS_DATABASE.filter((c) => savedCareers.includes(c.id));
   const scholarshipItems = SCHOLARSHIPS.filter((s) => savedScholarships.includes(s.id));
 
-  type FilteredItem = { type: "career" | "scholarship"; item: any; savedAt: string };
+  type FilteredItem = { type: "career" | "scholarship"; item: Career | Scholarship; savedAt: string };
 
   const filteredItems: FilteredItem[] = [];
 

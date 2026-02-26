@@ -2,7 +2,8 @@
 
 > **READ THIS FIRST** - This is the single source of truth for how to work on this project.
 
-**Last Updated:** 2026-02-16
+**Last Updated:** 2026-02-25
+**Version:** 1.3
 
 ---
 
@@ -198,6 +199,80 @@ src/
 
 ---
 
+## 4.5 Design System (NEW v1.1)
+
+### Design Tokens
+
+**File:** `src/styles/design-tokens.ts` - 800+ design tokens
+
+Import design tokens instead of hardcoding values:
+
+```typescript
+import { semantic, spacing, typography, shadows } from "@/styles/design-tokens";
+
+// Use tokens for consistency
+<div style={{
+  color: semantic.text.primary,
+  padding: spacing.md,
+  fontSize: typography.size.base,
+  boxShadow: shadows.sm,
+}} />
+```
+
+### Available Token Categories
+
+| Category | Description | Example |
+|----------|-------------|---------|
+| `semantic` | Contextual colors | `semantic.primary`, `semantic.success` |
+| `spacing` | Consistent spacing | `spacing.sm`, `spacing.md`, `spacing.lg` |
+| `typography` | Font sizes and weights | `typography.size.base`, `typography.weight.medium` |
+| `shadows` | Depth effects | `shadows.sm`, `shadows.md`, `shadows.lg` |
+| `borderRadius` | Corner radius | `borderRadius.sm`, `borderRadius.md` |
+| `animation` | Durations and easings | `animation.duration.fast`, `animation.easing.ease` |
+| `gradients` | Pre-defined gradients | `gradients.primary`, `gradients.student` |
+
+### Portal-Specific Gradients
+
+```typescript
+// Use pre-defined portal gradients
+import { gradients } from "@/styles/design-tokens";
+
+// Student portal
+<div style={{ background: gradients.student }}>
+
+// Teacher portal
+<div style={{ background: gradients.teacher }}>
+
+// Admin portal
+<div style={{ background: gradients.admin }}>
+```
+
+### Dark Mode
+
+Design tokens are optimized for dark-first usage:
+
+```typescript
+// Background colors (dark mode default)
+backgroundColor: semantic.background.surface  // #0f172a
+backgroundColor: semantic.background.elevated // #1e293b
+
+// Text colors
+color: semantic.text.primary   // #f1f5f9
+color: semantic.text.secondary // #94a3b8
+```
+
+### Component Design Guidelines
+
+When creating new components:
+
+1. **Use design tokens** for all visual properties
+2. **Support dark mode** by default
+3. **Follow portal color schemes** for branded elements
+4. **Use semantic spacing** for consistent layouts
+5. **Apply shadow tokens** instead of custom box-shadows
+
+---
+
 ## 5. API Development
 
 ### API Route Template
@@ -322,7 +397,257 @@ const [newRecord] = await db.insert(table).values({
 
 ---
 
-## 7. Authentication & Authorization
+## 7. Performance Optimization (v1.3)
+
+> **Sprint 1 Results:** 13 N+1 problems fixed, 85 `any` types eliminated, parallel agent workflow proven.
+
+### N+1 Query Prevention (CRITICAL)
+
+**Sprint 1 Results:** 13 N+1 problems fixed across 6 files with 95-97% query reduction.
+
+N+1 queries occur when you fetch a list of items, then make separate queries for related items in a loop.
+
+#### The Problem
+
+```typescript
+// ❌ WRONG - N+1 queries (1 for items + N for related data)
+const items = await db.select().from(items);
+for (const item of items) {
+  const related = await db.select().from(relatedTable)
+    .where(eq(relatedTable.itemId, item.id)); // N additional queries!
+  item.related = related[0];
+}
+// For 100 items: 101 total queries
+```
+
+#### The Solution
+
+```typescript
+// ✅ CORRECT - Batch query with inArray() (2 queries total)
+import { inArray } from "drizzle-orm";
+
+const items = await db.select().from(items);
+
+// Step 1: Collect all unique IDs
+const itemIds = [...new Set(items.map(i => i.id))];
+
+// Step 2: Single batch query
+const relatedItems = await db.select()
+  .from(relatedTable)
+  .where(inArray(relatedTable.itemId, itemIds));
+
+// Step 3: Create Map for O(1) lookup
+const relatedMap = new Map(relatedItems.map(r => [r.itemId, r]));
+
+// Step 4: Combine data (no additional queries)
+const result = items.map(item => ({
+  ...item,
+  related: relatedMap.get(item.id)
+}));
+// For 100 items: 2 total queries (98% reduction)
+```
+
+#### Key Principles
+
+1. **Never query inside loops** - Always collect IDs first
+2. **Use `inArray()`** - Single batch query instead of N queries
+3. **Create lookup Maps** - O(1) constant-time access to related data
+4. **Filter duplicates** - Use `Set` or `[...new Set()]` for unique IDs
+
+#### Real Examples from Sprint 1
+
+| File | Issue | Before | After | Reduction |
+|------|-------|--------|-------|-----------|
+| `src/lib/api/student.ts` | Student fee lookups | 1+N queries | 2 queries | 95% |
+| `src/lib/api/school-admin.ts` | Teacher lookups | 1+2N queries | 3 queries | 97% |
+| `src/app/api/teacher/reports/route.ts` | Class data fetching | 1+N queries | 2 queries | 96% |
+| `src/app/api/transport/allocations/route.ts` | Student transport links | 1+N queries | 2 queries | 95% |
+| `src/app/api/parent/homework/route.ts` | Homework attachments | 1+N queries | 2 queries | 96% |
+| `src/app/api/classes/route.ts` | Teacher/School lookups | 1+2N queries | 3 queries | 97% |
+
+#### Sprint 1 Query Fix Pattern
+
+**Query Optimization Agent** used this exact pattern for all 13 fixes:
+
+```typescript
+// Pattern used consistently across all Sprint 1 N+1 fixes
+const items = await db.select().from(items);
+const itemIds = items.map(i => i.id);
+
+// Single batch query using inArray()
+const relatedItems = await db.select()
+  .from(relatedTable)
+  .where(inArray(relatedTable.itemId, itemIds));
+
+// Create Map for O(1) lookup
+const relatedMap = new Map(relatedItems.map(r => [r.itemId, r]));
+
+// Combine data without additional queries
+const result = items.map(item => ({
+  ...item,
+  related: relatedMap.get(item.id)
+}));
+```
+
+### Batch Operations
+
+For bulk inserts/updates, use a single batch operation:
+
+```typescript
+// ❌ WRONG - Loop with individual inserts
+for (const student of students) {
+  await db.insert(users).values(student);  // N round trips!
+}
+
+// ✅ CORRECT - Single batch insert
+await db.insert(users).values(students);  // 1 round trip
+```
+
+### API Route Optimization
+
+Use the `createApiRoute` wrapper to eliminate ~100 lines of duplicate code per route:
+
+```typescript
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse } from "@/lib/api/response-helpers";
+
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
+    }
+
+    const { userId } = auth;
+    const data = await someOperation(userId);
+
+    return successResponse({ data });
+  },
+  ['admin', 'school-admin']  // Allowed roles (optional)
+);
+```
+
+### Sprint 1 Performance Metrics
+
+| Metric | Before | After | Improvement |
+|--------|--------|-------|-------------|
+| N+1 Query Problems | 13 unfixed | 0 fixed | 100% |
+| Average Queries (fixed endpoints) | 50-100+ | 2-3 | 95-97% |
+| `any` Types | 307 | 222 | 28% reduction |
+| Code Reduction | - | ~600 lines | Cleaner codebase |
+| API Routes with Wrapper | 0 | 5 | Pattern established |
+
+**See also:** `docs/memory/code-optimization-patterns.md` for complete patterns and examples.
+
+---
+
+## 8. Security Patterns (UPDATED v1.2)
+
+### Security Score: B+ (Good with Critical Issues)
+
+**Critical Issues Requiring Attention:**
+1. Remove all `/api/debug/*` endpoints before production
+2. Replace Base64 session tokens with JWT
+3. Add ownership checks to dynamic routes (IDOR prevention)
+
+### Security Checklist
+
+For every new API route or feature:
+
+- [ ] Used `requireAuth()` with appropriate roles
+- [ ] Verified ownership for dynamic route parameters
+- [ ] Applied rate limiting for sensitive operations
+- [ ] Used `logger` instead of `console.log`
+- [ ] No sensitive data in error messages
+- [ ] No stack traces exposed in production
+- [ ] Validated parent-child relationships for parent access
+- [ ] Used safe redirect patterns
+
+### IDOR Prevention
+
+**Insecure Direct Object Reference (IDOR)** is a critical vulnerability where users can access resources they don't own by modifying IDs.
+
+```typescript
+// ❌ WRONG - No ownership check
+export async function GET(request: Request, { params }: { params: { id: string } }) {
+  const { userId } = await requireAuth();
+  const resource = await db.select().from(resources).where(eq(resources.id, params.id));
+  // User can access ANY resource by changing the ID!
+  return Response.json({ data: resource });
+}
+
+// ✅ CORRECT - Ownership verified
+export async function GET(request: Request, { params }: { params: { id: string } }) {
+  const { userId, user, schoolId } = await requireAuth();
+  const resource = await db.select().from(resources).where(eq(resources.id, params.id));
+
+  if (!resource || resource.length === 0) {
+    return notFoundResponse();
+  }
+
+  // Verify ownership
+  if (resource[0].schoolId !== schoolId && user.type !== 'admin') {
+    return notFoundResponse(); // Return 404, not 403 (don't reveal existence)
+  }
+
+  return Response.json({ data: resource });
+}
+```
+
+### Secure Logging
+
+```typescript
+import { logger } from "@/lib/logger";
+
+// ✅ CORRECT - Safe logging
+logger.info("User action", { userId, action: "login" });
+logger.error(error, { context: "database", userId });
+
+// ❌ WRONG - Leaks sensitive data
+console.log("User data:", user); // May contain passwords, tokens
+console.error("Database error:", error); // Stack traces exposed
+```
+
+### Debug Routes Policy
+
+**NEVER create debug routes that are accessible in production:**
+
+```typescript
+// ❌ FORBIDDEN
+// src/app/api/debug/fix-onboarding/route.ts
+export async function POST() {
+  // This bypasses security!
+}
+```
+
+If debug routes are absolutely needed for development:
+
+```typescript
+// ✅ CORRECT - Protected debug route
+if (process.env.NODE_ENV === 'production') {
+  return NextResponse.json({ error: 'Not Found' }, { status: 404 });
+}
+
+// Add IP whitelist
+const allowedIPs = process.env.ALLOWED_DEBUG_IPS?.split(',') || [];
+const clientIP = getClientIp(request);
+if (!allowedIPs.includes(clientIP)) {
+  return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+}
+
+// Require admin role
+const { userId } = await requireAuth(['admin']);
+```
+
+### Security Resources
+
+- `docs/security-audit-report.md` - Complete security assessment
+- `docs/change-control-process.md` - Security review requirements
+- AGENT_TEAM.md - Security Specialist role
+
+---
+
+## 9. Authentication & Authorization
 
 ### Portal Authentication Pattern
 
@@ -416,7 +741,7 @@ if (userRecord.length === 0) {
 
 ---
 
-## 8. Styling Rules
+## 10. Styling Rules
 
 ### Gradients (CRITICAL)
 
@@ -472,7 +797,7 @@ animate={{ y: [0, 0] }}
 
 ---
 
-## 9. Error Handling
+## 11. Error Handling
 
 ### Try-Catch Pattern
 
@@ -532,7 +857,7 @@ import { ErrorDisplay, NotFoundError, UnauthorizedError } from "@/components/err
 
 ---
 
-## 10. Common Pitfalls
+## 11. Common Pitfalls
 
 ### What NOT to Do
 
@@ -549,7 +874,7 @@ import { ErrorDisplay, NotFoundError, UnauthorizedError } from "@/components/err
 
 ---
 
-## 11. Troubleshooting
+## 12. Troubleshooting
 
 ### Common Issues
 
@@ -590,7 +915,7 @@ npx tsc --noEmit
 
 ---
 
-## 12. Resources
+## 13. Resources
 
 ### Documentation
 
@@ -652,6 +977,9 @@ npm run test:watch         # Watch mode
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.3.0 | 2026-02-25 | Added Performance Optimization section with N+1 query patterns, Sprint 1 metrics |
+| 1.2.0 | 2026-02-25 | Added Design System section, Security Patterns section |
+| 1.1.0 | 2026-02-20 | Performance Optimization section initial draft |
 | 1.0.0 | 2026-02-16 | Initial framework documentation |
 
 ---

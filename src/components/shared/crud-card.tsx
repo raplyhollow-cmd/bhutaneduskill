@@ -148,7 +148,7 @@ export function CrudCard({
     }
   };
 
-  const renderFieldValue = (column: CrudColumn, value: any, item: CrudItem) => {
+  const renderFieldValue = (column: CrudColumn, value: CrudItemValue, item: CrudItem) => {
     if (column.render) {
       return column.render(value, item);
     }

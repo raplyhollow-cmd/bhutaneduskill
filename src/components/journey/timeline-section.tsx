@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Calendar, Rocket, CheckCircle2, ChevronRight, Terminal, GitCommit, Code2, Server, Bug } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { portal } from "@/styles/design-tokens";
 
 interface Phase {
   id: string;
@@ -33,7 +34,7 @@ const phases: Phase[] = [
       "RBAC System Implementation"
     ],
     files: 50,
-    color: "rgb(139 92 246)"
+    color: portal.schoolAdmin.primary
   },
   {
     id: "phase2",
@@ -50,7 +51,7 @@ const phases: Phase[] = [
       "Journal with AI Insights"
     ],
     files: 75,
-    color: "rgb(59 130 246)"
+    color: portal.teacher.primary
   },
   {
     id: "phase3",
@@ -71,7 +72,7 @@ const phases: Phase[] = [
       "Batch 31: Events Calendar (registration, check-in)"
     ],
     files: 94,
-    color: "rgb(249 115 22)"
+    color: portal.student.primary
   },
   {
     id: "phase4",
@@ -243,8 +244,8 @@ export function TimelineSection() {
           </div>
 
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-6">
-            From <span className="bg-clip-text text-transparent" style={{ background: 'linear-gradient(135deg, rgb(168 85 247) 0%, rgb(236 72 153) 100%)' }}>Idea</span> to{" "}
-            <span className="bg-clip-text text-transparent" style={{ background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)' }}>Impact</span>
+            From <span className="bg-clip-text text-transparent" style={{ background: `${portal.counselor.gradient}, ${portal.admin.gradient}` }}>Idea</span> to{" "}
+            <span className="bg-clip-text text-transparent" style={{ background: portal.student.gradient }}>Impact</span>
           </h2>
 
           <p className="text-lg text-ceramic-gray-400 max-w-2xl mx-auto">
@@ -262,7 +263,7 @@ export function TimelineSection() {
           className="mb-16"
         >
           <div className="h-2 bg-ceramic-gray-800 rounded-full overflow-hidden">
-            <div className="h-full w-full" style={{ background: 'linear-gradient(90deg, rgb(139 92 246) 0%, rgb(59 130 246) 33%, rgb(249 115 22) 66%, rgb(34 197 94) 100%)' }} />
+            <div className="h-full w-full" style={{ background: `linear-gradient(90deg, ${portal.schoolAdmin.primary} 0%, ${portal.teacher.primary} 33%, ${portal.student.primary} 66%, rgb(34 197 94) 100%)` }} />
           </div>
           <div className="flex justify-between mt-2 text-sm text-ceramic-dimmed font-mono">
             <span>Jan 2026</span>
@@ -273,7 +274,7 @@ export function TimelineSection() {
 
         {/* Timeline */}
         <div className="relative">
-          <div className="absolute left-1.5 top-0 bottom-0 w-0.5 opacity-30" style={{ background: 'linear-gradient(180deg, rgb(139 92 246) 0%, rgb(59 130 246) 33%, rgb(249 115 22) 66%, rgb(34 197 94) 100%)' }} />
+          <div className="absolute left-1.5 top-0 bottom-0 w-0.5 opacity-30" style={{ background: `linear-gradient(180deg, ${portal.schoolAdmin.primary} 0%, ${portal.teacher.primary} 33%, ${portal.student.primary} 66%, rgb(34 197 94) 100%)` }} />
 
           <div className="space-y-6">
             {phases.map((phase, index) => (

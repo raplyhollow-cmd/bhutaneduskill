@@ -15,6 +15,7 @@ export interface User {
   tenantId: string;
   schoolId?: string;
   type: UserType;
+  role: string;
   email?: string;
   phone?: string;
   firstName: string;
@@ -60,6 +61,81 @@ export interface AssessmentResults {
   scores?: RIASECScores;
   recommendedCareers?: CareerMatch[];
 }
+
+// Assessment Result (from database) - added for admin assessments page
+// Using DbAssessmentResult to avoid conflict with AssessmentResult from database schema
+export interface DbAssessmentResult {
+  id: string;
+  assessmentId: string;
+  userId: string;
+  status: string;
+  score?: number;
+  answers?: unknown[];
+  textAnswers?: Record<string, string>;
+  feedback?: string;
+  submittedAt?: Date;
+  gradedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+  // Additional properties from joins
+  assessment?: {
+    id: string;
+    title: string;
+    description?: string;
+    type?: string;
+    dueDate?: string;
+    totalPoints?: number;
+  };
+  user?: {
+    id: string;
+    name: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+  };
+}
+
+// Assessment Type (database entity) - added for admin assessments page
+// Using DbAssessmentTypeEntity to avoid conflict with AssessmentType union
+export interface DbAssessmentTypeEntity {
+  id: string;
+  name: string;
+  slug: string;
+  type: AssessmentType;
+  category: string;
+  targetAudience?: string[];
+  targetGrade?: number[];
+  duration?: number;
+  totalQuestions?: number;
+  passingScore?: number;
+  isActive: boolean;
+  tenantId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Assessment Stats for admin dashboard
+export interface AssessmentStats {
+  assessmentTypes: {
+    total: number;
+    active: number;
+  };
+  assessments: {
+    total: number;
+    active: number;
+  };
+  submissions: {
+    total: number;
+    submitted: number;
+    graded: number;
+    pending: number;
+  };
+  byCategory: Record<string, number>;
+}
+
+// Export aliases for backward compatibility
+export type AssessmentResult = DbAssessmentResult;
+export type AssessmentTypeEntity = DbAssessmentTypeEntity;
 
 export interface RIASECScores {
   realistic: number;
@@ -455,4 +531,986 @@ export interface LibraryDashboard {
   pendingReservations: BookReservation[];
   overdueBooks: Array<LibraryCirculation & { book: LibraryBook; borrower: { id: string; name: string } }>;
   popularBooks: Array<LibraryBook & { borrowCount: number }>;
+}
+
+// ============================================================================
+// DATABASE QUERY RESULT TYPES
+// ============================================================================
+
+/**
+ * Base database entity with common fields
+ */
+export interface DbEntity {
+  id: string;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}
+
+/**
+ * Database User record (full type for query results)
+ */
+export interface DbUser extends DbEntity {
+  id: string;
+  clerkUserId: string;
+  type: string;
+  schoolId?: string | null;
+  firstName: string;
+  lastName?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  profilePicture?: string | null;
+  dateOfBirth?: string | null;
+  classGrade?: number | null;
+  section?: string | null;
+  parentId?: string | null;
+  employeeId?: string | null;
+  subjects?: string[] | null;
+  occupation?: string | null;
+  relationship?: string | null;
+  settings?: Record<string, unknown> | null;
+  isActive?: boolean;
+  onboardingStatus?: string | null;
+}
+
+/**
+ * School database record
+ */
+export interface DbSchool extends DbEntity {
+  id: string;
+  tenantId: string;
+  name: string;
+  nameDzongkha?: string | null;
+  code: string;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  logo?: string | null;
+  schoolType?: string | null;
+  level?: string | null;
+  domain?: string | null;
+  isActive?: boolean;
+  subscriptionStatus?: string | null;
+}
+
+/**
+ * Class database record
+ */
+export interface DbClass extends DbEntity {
+  id: string;
+  name: string;
+  grade: number;
+  section?: string | null;
+  schoolId: string;
+  classTeacherId?: string | null;
+  capacity?: number | null;
+  currentStudents?: number | null;
+  roomNumber?: string | null;
+  isActive?: boolean;
+}
+
+/**
+ * Subject database record
+ */
+export interface DbSubject extends DbEntity {
+  id: string;
+  code: string;
+  name: string;
+  nameDzongkha?: string | null;
+  schoolId?: string | null;
+  isGlobal?: boolean;
+  applicableGrades?: string[] | null;
+  description?: string | null;
+  isActive?: boolean;
+}
+
+// ============================================================================
+// ERROR HANDLING TYPES
+// ============================================================================
+
+/**
+ * Standard error with unknown cause
+ */
+export interface UnknownError {
+  message?: string;
+  code?: string;
+  status?: number;
+  details?: unknown;
+}
+
+/**
+ * Type guard for error objects
+ */
+export function isErrorWithMessage(error: unknown): error is { message: string } {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof (error as { message: unknown }).message === "string"
+  );
+}
+
+/**
+ * Get error message from unknown error
+ */
+export function getErrorMessage(error: unknown): string {
+  if (isErrorWithMessage(error)) {
+    return error.message;
+  }
+  return String(error);
+}
+
+// ============================================================================
+// FORM AND REQUEST TYPES
+// ============================================================================
+
+/**
+ * Generic form data type
+ */
+export interface FormDataRecord {
+  [key: string]: string | number | boolean | string[] | undefined | null;
+}
+
+/**
+ * Database query condition type
+ */
+export type DbCondition = {
+  field: string;
+  operator: "eq" | "ne" | "gt" | "gte" | "lt" | "lte" | "in" | "like" | "isNull";
+  value: unknown;
+};
+
+/**
+ * Dynamic update data type for database operations
+ */
+export type UpdateData<T extends Record<string, unknown>> = Partial<T> & {
+  updatedAt?: Date;
+};
+
+// ============================================================================
+// CLERK WEBHOOK TYPES
+// ============================================================================
+
+/**
+ * Clerk webhook event data types
+ */
+export interface ClerkWebhookUser {
+  id: string;
+  email_addresses: Array<{ id: string; email_address: string; verification?: { status: string } }>;
+  first_name?: string;
+  last_name?: string;
+  phone_numbers?: Array<{ phone_number: string }>;
+  profile_image_url?: string;
+  created_at: number;
+  updated_at: number;
+  public_metadata?: Record<string, unknown>;
+  unsafe_metadata?: Record<string, unknown>;
+}
+
+/**
+ * Clerk webhook event type
+ */
+export interface ClerkWebhookEvent {
+  data: ClerkWebhookUser;
+  object: "event";
+  type: "user.created" | "user.updated" | "user.deleted";
+}
+
+// ============================================================================
+// AI API TYPES
+// ============================================================================
+
+/**
+ * AI safety setting
+ */
+export interface AISafetySetting {
+  category: string;
+  threshold: string;
+}
+
+/**
+ * AI chat message
+ */
+export interface AIMessage {
+  role: "user" | "assistant" | "system";
+  content: string;
+}
+
+// ============================================================================
+// DATA EXPORT/IMPORT TYPES
+// ============================================================================
+
+/**
+ * CSV row data
+ */
+export type CSVRow = Record<string, string | number>;
+
+/**
+ * JSON data array
+ */
+export type JSONArray = Array<Record<string, unknown>>;
+
+/**
+ * Import/Export result
+ */
+export interface ImportResult<T = unknown> {
+  success: boolean;
+  rowsProcessed: number;
+  rowsSucceeded: number;
+  rowsFailed: number;
+  errors?: Array<{ row: number; message: string }>;
+  data?: T[];
+}
+
+// ============================================================================
+// ICON AND COMPONENT PROP TYPES
+// ============================================================================
+
+/**
+ * React Node type for component props (icons, children, etc.)
+ */
+export type IconNode = React.ReactNode;
+
+/**
+ * Select value change handler type (for shadcn/ui Select components)
+ */
+export type SelectValueChangeHandler = (value: string) => void;
+
+// ============================================================================
+// HOMEWORK AND ASSESSMENT TYPES
+// ============================================================================
+
+/**
+ * Homework question types
+ */
+export type QuestionType = "multiple-choice" | "true-false" | "short-answer" | "essay" | "fill-blank";
+
+/**
+ * Homework question interface
+ */
+export interface HomeworkQuestion {
+  id: string;
+  type: QuestionType;
+  text: string;
+  options?: Array<{ id: string; text: string; isCorrect?: boolean }>;
+  correctAnswer?: string | string[];
+  points?: number;
+}
+
+/**
+ * Student homework answer
+ */
+export interface StudentAnswer {
+  questionId: string;
+  answer: string | string[] | boolean | number;
+  submittedAt?: string;
+}
+
+/**
+ * Homework submission data
+ */
+export interface HomeworkSubmissionData {
+  homeworkId: string;
+  studentId: string;
+  answers: StudentAnswer[];
+  submittedAt: string;
+}
+
+// ============================================================================
+// TEACHER PAYSLIP TYPES
+// ============================================================================
+
+/**
+ * Payslip allowance/deduction item
+ */
+export interface PayslipItem {
+  name: string;
+  amount: number;
+  type?: string;
+}
+
+/**
+ * Teacher payslip record
+ */
+export interface PayslipRecord {
+  id: string;
+  teacherId: string;
+  teacherName?: string;
+  schoolId: string;
+  month: number;
+  year: number;
+  basicSalary: number;
+  allowances?: PayslipItem[];
+  deductions?: PayslipItem[];
+  netSalary: number;
+  paymentDate?: string;
+  status?: "paid" | "pending" | "cancelled";
+}
+
+/**
+ * School data for payslip
+ */
+export interface PayslipSchoolData {
+  id: string;
+  name: string;
+  code?: string;
+  address?: string;
+  logo?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+}
+
+// ============================================================================
+// BCSE SCHOLARSHIP TYPES
+// ============================================================================
+
+/**
+ * BCSE subject result
+ */
+export interface BCSISubjectResult {
+  subject: string;
+  grade: string;
+  marks?: number;
+}
+
+/**
+ * BCSE exam result
+ */
+export interface BCSEResult {
+  indexNumber: string;
+  studentName: string;
+  school: string;
+  year: number;
+  totalMarks?: number;
+  aggregate?: string;
+  subjectResults: BCSISubjectResult[];
+}
+
+/**
+ * BCSE scholarship data
+ */
+export interface BCSEScholarship {
+  id: string;
+  name: string;
+  type: string;
+  eligibilityCriteria: {
+    minimumAggregate?: string;
+    requiredSubjects?: string[];
+    minimumMarks?: number;
+  };
+  benefits: string[];
+  applicationDeadline?: string;
+  status?: "active" | "closed" | "upcoming";
+}
+
+/**
+ * BCSE result validation row
+ */
+export interface BCSEValidationRow {
+  indexNumber?: string;
+  studentName?: string;
+  school?: string;
+  subject?: string;
+  grade?: string;
+  marks?: string;
+}
+
+// ============================================================================
+// SCHOOL ADMIN CLASS TYPES
+// ============================================================================
+
+/**
+ * Class subject assignment data
+ */
+export interface ClassSubjectAssignment {
+  subjectId: string;
+  subjectName: string;
+  teacherId?: string;
+  teacherName?: string;
+}
+
+/**
+ * Class homework data
+ */
+export interface ClassHomeworkData {
+  id: string;
+  title: string;
+  subject: string;
+  dueDate: string;
+  submissionCount: number;
+  totalStudents: number;
+}
+
+/**
+ * Class attendance summary
+ */
+export interface ClassAttendanceData {
+  date: string;
+  present: number;
+  absent: number;
+  late: number;
+  total: number;
+}
+
+// ============================================================================
+// EVENT REGISTRATION TYPES
+// ============================================================================
+
+/**
+ * Event registration update data
+ */
+export interface EventRegistrationUpdateData {
+  status?: "confirmed" | "pending" | "cancelled" | "attended";
+  checkInTime?: string;
+  notes?: string;
+  paymentStatus?: "paid" | "pending" | "waived";
+}
+
+// ============================================================================
+// MEDICAL RECORD TYPES
+// ============================================================================
+
+/**
+ * Vaccination record data
+ */
+export interface VaccinationRecordData {
+  id: string;
+  studentId: string;
+  studentName?: string;
+  vaccineName: string;
+  vaccineType?: string;
+  administeredDate: string;
+  nextDueDate?: string;
+  administeredBy?: string;
+  batchNumber?: string;
+  notes?: string;
+}
+
+/**
+ * Medical referral data
+ */
+export interface MedicalReferralData {
+  id: string;
+  studentId: string;
+  studentName?: string;
+  referralDate: string;
+  referredTo: string;
+  reason: string;
+  urgency?: "routine" | "urgent" | "emergency";
+  status?: "pending" | "completed" | "cancelled";
+  notes?: string;
+}
+
+/**
+ * Medicine inventory item
+ */
+export interface MedicineInventoryData {
+  id: string;
+  name: string;
+  genericName?: string;
+  category?: string;
+  quantity: number;
+  unit?: string;
+  expiryDate?: string;
+  batchNumber?: string;
+  supplier?: string;
+  reorderLevel?: number;
+}
+
+/**
+ * Student allergy record
+ */
+export interface AllergyRecordData {
+  id: string;
+  studentId: string;
+  studentName?: string;
+  allergen: string;
+  allergyType?: "food" | "medication" | "environmental" | "other";
+  severity?: "mild" | "moderate" | "severe";
+  reaction?: string;
+  diagnosedDate?: string;
+  notes?: string;
+}
+
+// ============================================================================
+// TUITION ENROLLMENT TYPES
+// ============================================================================
+
+/**
+ * Tuition enrollment data
+ */
+export interface TuitionEnrollmentData {
+  id: string;
+  studentId: string;
+  studentName?: string;
+  sessionId: string;
+  sessionName?: string;
+  enrolledDate: string;
+  status?: "active" | "completed" | "cancelled" | "suspended";
+  feeAmount?: number;
+  paymentStatus?: "paid" | "pending" | "partial";
+}
+
+// ============================================================================
+// CAREER GUIDANCE TYPES
+// ============================================================================
+
+/**
+ * Recommended scholarship for student
+ */
+export interface RecommendedScholarship {
+  scholarship: BCSEScholarship;
+  matchScore: number;
+  eligibilityNotes?: string[];
+}
+
+/**
+ * Student career data
+ */
+export interface StudentCareerData {
+  studentId: string;
+  riasecType?: string;
+  scores?: Partial<RIASECScores>;
+  recommendedCareers?: CareerMatch[];
+  recommendedScholarships?: RecommendedScholarship[];
+}
+
+// ============================================================================
+// COUNSELOR API TYPES
+// ============================================================================
+
+/**
+ * Student needing attention data
+ */
+export interface StudentNeedingAttention {
+  id: string;
+  name: string;
+  school: string;
+  grade: number | null;
+  attendance: number;
+  lastActivity: string;
+  assessmentStatus: "completed" | "in_progress" | "pending";
+  topCareer: string | null;
+  needsAttention: boolean;
+}
+
+/**
+ * Dashboard statistics for counselors
+ */
+export interface CounselorDashboardStats {
+  totalStudents: number;
+  activeSchools: number;
+  pendingReports: number;
+  assessmentsThisWeek: number;
+  aiCoachUsage: number;
+}
+
+/**
+ * School performance metrics
+ */
+export interface SchoolPerformance {
+  name: string;
+  students: number;
+  completion: number;
+}
+
+/**
+ * Session statistics
+ */
+export interface SessionStats {
+  upcomingSessions: number;
+  completedToday: number;
+  totalHours: number;
+  groupSessions: number;
+}
+
+/**
+ * Student intervention data
+ */
+export interface StudentIntervention {
+  id: string;
+  studentId: string;
+  studentName: string;
+  grade: number | null;
+  school: string;
+  type: "academic" | "behavioral" | "personal" | "career" | "social";
+  category: string;
+  priority: "low" | "medium" | "high" | "urgent";
+  status: string;
+  startDate: string;
+  targetDate: string;
+  followUpDate?: string;
+  progress: number;
+  description: string;
+  goals: InterventionGoal[];
+  notes: string[];
+  outcome?: string;
+  outcomeRating?: number | null;
+  tags: string[];
+  counselorId: string;
+  createdAt: Date | string;
+}
+
+/**
+ * Intervention goal data
+ */
+export interface InterventionGoal {
+  id: string;
+  text: string;
+  status: "pending" | "in_progress" | "completed";
+  targetDate?: string;
+}
+
+/**
+ * Create intervention request
+ */
+export interface CreateInterventionRequest {
+  studentId: string;
+  type: "academic" | "behavioral" | "personal" | "career" | "social";
+  category: string;
+  priority: "low" | "medium" | "high" | "urgent";
+  description: string;
+  startDate: string;
+  targetDate: string;
+  followUpDate?: string;
+  goals?: InterventionGoal[];
+  tags?: string[];
+}
+
+// ============================================================================
+// MINISTRY API TYPES
+// ============================================================================
+
+/**
+ * Ministry dashboard statistics
+ */
+export interface MinistryDashboardStats {
+  totalSchools: number;
+  totalStudents: number;
+  totalTeachers: number;
+  assessmentCompletion: number;
+  newSchoolsThisMonth: number;
+  activeTeachers: number;
+  enrollmentGrowth: number;
+}
+
+/**
+ * Top performing school
+ */
+export interface TopSchool {
+  id: string;
+  name: string;
+  district: string;
+  completion: number;
+  students: number;
+  change: number;
+}
+
+/**
+ * Career interest distribution
+ */
+export interface CareerInterest {
+  career: string;
+  percentage: number;
+  trend: string;
+  count: number;
+}
+
+/**
+ * Recent activity item
+ */
+export interface RecentActivity {
+  type: string;
+  description: string;
+  timestamp: string;
+}
+
+/**
+ * Ministry dashboard response
+ */
+export interface MinistryDashboardResponse {
+  stats: MinistryDashboardStats;
+  topSchools: TopSchool[];
+  careerInterests: CareerInterest[];
+  recentActivity: RecentActivity[];
+}
+
+// ============================================================================
+// TEACHER STUDENT API TYPES
+// ============================================================================
+
+/**
+ * Student record with parent information
+ */
+export interface StudentWithParent {
+  id: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  email?: string | null;
+  profilePicture?: string | null;
+  parentId?: string | null;
+  parentContact?: string | null;
+  parentPhone?: string | null;
+  emergencyContact?: string | null;
+}
+
+/**
+ * Parent/guardian contact information
+ */
+export interface ParentGuardianInfo {
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  phone: string | null;
+}
+
+/**
+ * Attendance summary for a student
+ */
+export interface AttendanceSummary {
+  present: number;
+  absent: number;
+  percentage: number | null;
+  totalRecorded: number;
+}
+
+/**
+ * Homework summary for a student
+ */
+export interface HomeworkSummary {
+  submitted: number;
+  graded: number;
+  pending: number;
+  total: number;
+}
+
+/**
+ * Enriched student data for teacher view
+ */
+export interface EnrichedStudentData {
+  id: string;
+  name: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  profilePicture: string | null;
+  classGrade: number;
+  section: string | null;
+  className: string;
+  classId: string;
+  rollNumber: string | null;
+  attendanceSummary: AttendanceSummary;
+  homeworkSummary: HomeworkSummary;
+  enrolledAt: Date | string;
+  parentGuardianName: string | null;
+  parentGuardianPhone: string | null;
+  parentGuardianEmail: string | null;
+}
+
+// ============================================================================
+// PARENT ATTENDANCE API TYPES
+// ============================================================================
+
+/**
+ * Attendance record with details
+ */
+export interface AttendanceRecord {
+  id: string;
+  studentId: string;
+  classId: string;
+  date: string;
+  status: "present" | "absent" | "late" | "excused";
+  notes?: string | null;
+  recordedBy?: string | null;
+  createdAt: Date | string;
+}
+
+/**
+ * Attendance statistics for a student
+ */
+export interface AttendanceStatistics {
+  present: number;
+  absent: number;
+  late: number;
+  excused: number;
+  total: number;
+  percentage: number;
+}
+
+/**
+ * Class attendance details
+ */
+export interface ClassAttendanceDetails {
+  classId: string;
+  className: string;
+  grade: number;
+  section: string | null;
+  attendance: AttendanceRecord[];
+  statistics: AttendanceStatistics;
+}
+
+// ============================================================================
+// HOMEWORK API TYPES
+// ============================================================================
+
+/**
+ * Homework question with correct answer
+ */
+export interface HomeworkQuestionWithAnswer {
+  id: string;
+  text: string;
+  type: string;
+  options?: Array<{ id: string; text: string; isCorrect?: boolean }>;
+  correctAnswer?: string | string[];
+  points?: number;
+}
+
+/**
+ * Student homework answer for grading
+ */
+export interface StudentHomeworkAnswer {
+  questionId: string;
+  answer: string | string[] | number | boolean;
+  isCorrect?: boolean;
+  points?: number;
+  feedback?: string;
+}
+
+/**
+ * Grading result for homework submission
+ */
+export interface HomeworkGradingResult {
+  submissionId: string;
+  totalPoints: number;
+  earnedPoints: number;
+  percentage: number;
+  status: "graded" | "partial" | "needs_review";
+  answers: StudentHomeworkAnswer[];
+  gradedAt: Date;
+  gradedBy: string;
+}
+
+/**
+ * Draft homework submission data
+ */
+export interface DraftHomeworkData {
+  homeworkId: string;
+  studentId: string;
+  answers: Array<{
+    questionId: string;
+    answer: string | string[] | number | boolean;
+    timestamp?: string;
+  }>;
+  lastSaved: string;
+  timeSpent?: number;
+}
+
+// ============================================================================
+// STUDENT HOMEWORK TYPES
+// ============================================================================
+
+/**
+ * Homework submission status
+ */
+export type HomeworkSubmissionStatus = "draft" | "submitted" | "graded" | "late" | "overdue";
+
+/**
+ * Student homework with submission status
+ */
+export interface StudentHomeworkData {
+  id: string;
+  title: string;
+  description?: string | null;
+  subject: string | null;
+  subjectId: string | null;
+  classId: string;
+  teacherId: string | null;
+  dueDate: string;
+  isPublished: boolean;
+  submissionStatus: HomeworkSubmissionStatus;
+  submittedAt?: string | null;
+  gradedAt?: string | null;
+  score?: number | null;
+  maxScore?: number | null;
+  feedback?: string | null;
+  hasDraft: boolean;
+  isOverdue: boolean;
+}
+
+/**
+ * Draft homework answer
+ */
+export interface DraftAnswer {
+  questionId: string;
+  answer: string | string[] | number | boolean;
+  savedAt: string;
+}
+
+// ============================================================================
+// JSON COLUMN TYPES FOR DATABASE SCHEMA
+// ============================================================================
+
+/**
+ * Question data for assessment questions
+ * Supports different assessment types with flexible structure
+ */
+export type QuestionData = Record<string, unknown> & {
+  dimension?: string;
+  direction?: number;
+  category?: string;
+  [key: string]: unknown;
+};
+
+/**
+ * Content data for homework submissions
+ * Stores student answers and submission metadata
+ */
+export interface HomeworkContent {
+  answers?: Array<{
+    questionId: string;
+    answer: string | number | string[];
+    isCorrect?: boolean;
+  }>;
+  files?: string[];
+  submittedText?: string;
+  totalTime?: number;
+  [key: string]: unknown;
+}
+
+/**
+ * Content data for counselor resources
+ * Stores resource content in various formats
+ */
+export interface CounselorContent {
+  title?: string;
+  body?: string;
+  sections?: Array<{
+    heading: string;
+    content: string;
+  }>;
+  attachments?: Array<{
+    name: string;
+    url: string;
+    type: string;
+  }>;
+  [key: string]: unknown;
+}
+
+/**
+ * Content data for learning modules
+ * Stores module lessons and resources
+ */
+export interface LearningModuleContent {
+  lessons?: Array<{
+    id: string;
+    title: string;
+    duration: number;
+    videoUrl?: string;
+    content?: string;
+    resources?: Array<{ name: string; url: string }>;
+  }>;
+  objectives?: string[];
+  prerequisites?: string[];
+  [key: string]: unknown;
 }

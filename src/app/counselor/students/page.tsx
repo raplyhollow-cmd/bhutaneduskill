@@ -18,6 +18,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { TableSkeleton } from "@/components/ui/skeleton/table-skeleton";
+import { CardGridSkeleton } from "@/components/ui/skeleton/card-skeleton";
 import {
   Users,
   Search,
@@ -179,11 +181,28 @@ export default function CounselorStudentsPage() {
   // Loading state
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" style={{ color: "rgb(147 51 234)" }} />
-          <p className="text-gray-600">Loading students...</p>
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-8 w-48 bg-muted rounded-lg animate-pulse" />
+            <div className="h-5 w-64 bg-muted rounded animate-pulse" />
+          </div>
+          <div className="h-10 w-32 bg-muted rounded-lg animate-pulse" />
         </div>
+
+        {/* Stats Cards Skeleton */}
+        <CardGridSkeleton count={4} />
+
+        {/* Table Skeleton */}
+        <Card>
+          <CardHeader>
+            <div className="h-6 w-40 bg-muted rounded-lg animate-pulse" />
+          </CardHeader>
+          <CardContent>
+            <TableSkeleton rows={10} columns={9} />
+          </CardContent>
+        </Card>
       </div>
     );
   }

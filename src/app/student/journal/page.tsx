@@ -1,7 +1,7 @@
 "use client";
 
 import { logger } from "@/lib/logger";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@/components/ui/toaster";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -110,7 +110,7 @@ export default function JournalPage() {
       toast({
         title: "Failed to load entries",
         description: "Please try refreshing the page",
-        variant: "destructive",
+        variant: "error",
       });
     }
   };
@@ -176,7 +176,7 @@ export default function JournalPage() {
         toast({
           title: "Failed to save",
           description: errorData.error || "Something went wrong",
-          variant: "destructive",
+          variant: "error",
         });
       }
     } catch (error) {
@@ -184,7 +184,7 @@ export default function JournalPage() {
       toast({
         title: "Failed to save",
         description: "Please check your connection and try again",
-        variant: "destructive",
+        variant: "error",
       });
     }
   };
@@ -204,7 +204,7 @@ export default function JournalPage() {
         toast({
           title: "Failed to delete",
           description: "Could not delete the entry",
-          variant: "destructive",
+          variant: "error",
         });
       }
     } catch (error) {
@@ -212,7 +212,7 @@ export default function JournalPage() {
       toast({
         title: "Failed to delete",
         description: "Please check your connection and try again",
-        variant: "destructive",
+        variant: "error",
       });
     }
   };

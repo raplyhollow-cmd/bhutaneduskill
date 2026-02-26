@@ -1,9 +1,18 @@
-import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
+/**
+ * SKILLS API
+ *
+ * GET /api/skills - Get user's skills progress
+ * POST /api/skills - Update user's skills progress
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
-import { requireAuth } from "@/lib/auth-utils";
 import { eq } from "drizzle-orm";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse } from "@/lib/api/response-helpers";
 
 // Skills categories with levels
 const SKILL_CATEGORIES = {
@@ -17,43 +26,66 @@ const SKILL_CATEGORIES = {
   "Science": { icon: "Flask", color: "bg-cyan-100 text-cyan-600" },
 };
 
+// ============================================================================
 // GET /api/skills - Get user's skills progress
-export async function GET(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(['student']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+// ============================================================================
+
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
 
-    const { user } = authResult;
+    const { userId } = auth;
 
-    const userSkills = user?.settings?.skills || {};
+    // Fetch user with settings field
+    const userRecords = await db
+      .select({
+        id: users.id,
+        settings: users.settings,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
 
-    return NextResponse.json({
+    const userSettings = (userRecords[0]?.settings as { skills?: Record<string, number> } | undefined) || {};
+    const userSkills = userSettings?.skills || {};
+
+    return successResponse({
       skills: SKILL_CATEGORIES,
       userProgress: userSkills,
     });
-  } catch (error) {
-    logger.error("Error fetching skills:", error);
-    return NextResponse.json(
-      { skills: SKILL_CATEGORIES, userProgress: {} },
-      { status: 200 }
-    );
-  }
-}
+  },
+  ['student']
+);
 
+// ============================================================================
 // POST /api/skills - Update user's skills progress
-export async function POST(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(['student']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+// ============================================================================
+
+export const POST = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
 
-    const { user } = authResult;
-    const { skill, level, action } = await req.json();
+    const { userId } = auth;
+    const { skill, level, action } = await request.json();
 
-    const currentSkills = (user?.settings as any)?.skills || {};
+    // Fetch current settings
+    const userRecords = await db
+      .select({
+        id: users.id,
+        settings: users.settings,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    const userSettings = (userRecords[0]?.settings as { skills?: Record<string, number> } | undefined) || {};
+    const currentSkills = userSettings?.skills || {};
     const currentLevel = currentSkills[skill] || 0;
 
     let newLevel = currentLevel;
@@ -71,18 +103,16 @@ export async function POST(req: NextRequest) {
     await db
       .update(users)
       .set({
-        settings: { ...(user?.settings as any), skills: currentSkills },
+        settings: { ...userSettings, skills: currentSkills },
         updatedAt: new Date(),
       })
-      .where(eq(users.id, user.id));
+      .where(eq(users.id, userId));
 
-    return NextResponse.json({
+    return successResponse({
       success: true,
       skill,
       level: newLevel,
     });
-  } catch (error) {
-    logger.error("Error updating skills:", error);
-    return NextResponse.json({ error: "Failed to update skills" }, { status: 500 });
-  }
-}
+  },
+  ['student']
+);

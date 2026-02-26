@@ -4,11 +4,11 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+import { createApiRoute, type AuthContext, type AuthenticatedRequest } from "@/lib/api/route-handler";
 
 type GoalStatus = "completed" | "in_progress" | "not_started";
 type GoalCategory = "academic" | "assessment" | "exploration" | "portfolio";
@@ -61,73 +61,51 @@ const DEFAULT_GOALS: Goal[] = [
 /**
  * GET /api/student/goals - Fetch student goals
  */
-export async function GET() {
-  try {
-    const authResult = await requireAuth(['student']);
-    if ('error' in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status },
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (req: NextRequest, auth: AuthContext) => {
+    const { user } = auth;
 
     // Fetch user profile with goals
-    const [user] = await db
+    const [userRecord] = await db
       .select()
       .from(users)
-      .where(eq(users.id, userId))
+      .where(eq(users.id, user.id))
       .limit(1);
 
-    if (!user) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      );
+    if (!userRecord) {
+      return Response.json({ error: "User not found" }, { status: 404 });
     }
 
     // Get goals from user settings or use defaults
-    const userSettings = (user.settings as Record<string, unknown>) || {};
+    const userSettings = (userRecord.settings as Record<string, unknown>) || {};
     const savedGoals = (userSettings.goals as Goal[]) || [];
 
     // If no saved goals, initialize with defaults
     const goals = savedGoals.length > 0 ? savedGoals : DEFAULT_GOALS;
 
-    logger.info("Student goals fetched", { userId, goalCount: goals.length });
+    logger.info("Student goals fetched", { userId: user.id, goalCount: goals.length });
 
-    return NextResponse.json({
-      goals,
-      stats: {
-        total: goals.length,
-        completed: goals.filter((g) => g.status === "completed").length,
-        inProgress: goals.filter((g) => g.status === "in_progress").length,
-        notStarted: goals.filter((g) => g.status === "not_started").length,
-      },
+    return Response.json({
+      data: {
+        goals,
+        stats: {
+          total: goals.length,
+          completed: goals.filter((g) => g.status === "completed").length,
+          inProgress: goals.filter((g) => g.status === "in_progress").length,
+          notStarted: goals.filter((g) => g.status === "not_started").length,
+        },
+      }
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/student/goals", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch goals" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['student']
+);
 
 /**
  * POST /api/student/goals - Create a new goal
  */
-export async function POST(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(['student']);
-    if ('error' in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status },
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const POST = createApiRoute(
+  async (req: NextRequest, auth: AuthContext) => {
+    const { user } = auth;
     const body = await req.json();
 
     const newGoal: Goal = {
@@ -141,20 +119,17 @@ export async function POST(req: NextRequest) {
     };
 
     // Fetch user and update goals
-    const [user] = await db
+    const [userRecord] = await db
       .select()
       .from(users)
-      .where(eq(users.id, userId))
+      .where(eq(users.id, user.id))
       .limit(1);
 
-    if (!user) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      );
+    if (!userRecord) {
+      return Response.json({ error: "User not found" }, { status: 404 });
     }
 
-    const userSettings = (user.settings as Record<string, unknown>) || {};
+    const userSettings = (userRecord.settings as Record<string, unknown>) || {};
     const currentGoals = (userSettings.goals as Goal[]) || DEFAULT_GOALS;
     const updatedGoals = [...currentGoals, newGoal];
 
@@ -164,59 +139,42 @@ export async function POST(req: NextRequest) {
         settings: { ...userSettings, goals: updatedGoals },
         updatedAt: new Date(),
       })
-      .where(eq(users.id, userId));
+      .where(eq(users.id, user.id));
 
-    logger.info("Student goal created", { userId, goalId: newGoal.id });
+    logger.info("Student goal created", { userId: user.id, goalId: newGoal.id });
 
-    return NextResponse.json({ goal: newGoal });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/student/goals", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to create goal" },
-      { status: 500 }
-    );
-  }
-}
+    return Response.json({
+      data: { goal: newGoal }
+    });
+  },
+  ['student']
+);
 
 /**
  * PATCH /api/student/goals - Update a goal
  */
-export async function PATCH(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(['student']);
-    if ('error' in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status },
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const PATCH = createApiRoute(
+  async (req: NextRequest, auth: AuthContext) => {
+    const { user } = auth;
     const body = await req.json();
     const { goalId, ...updates } = body;
 
     if (!goalId) {
-      return NextResponse.json(
-        { error: "goalId is required" },
-        { status: 400 }
-      );
+      return Response.json({ error: "goalId is required" }, { status: 400 });
     }
 
     // Fetch user and update goals
-    const [user] = await db
+    const [userRecord] = await db
       .select()
       .from(users)
-      .where(eq(users.id, userId))
+      .where(eq(users.id, user.id))
       .limit(1);
 
-    if (!user) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      );
+    if (!userRecord) {
+      return Response.json({ error: "User not found" }, { status: 404 });
     }
 
-    const userSettings = (user.settings as Record<string, unknown>) || {};
+    const userSettings = (userRecord.settings as Record<string, unknown>) || {};
     const currentGoals = (userSettings.goals as Goal[]) || DEFAULT_GOALS;
 
     const updatedGoals = currentGoals.map((goal) =>
@@ -229,59 +187,42 @@ export async function PATCH(req: NextRequest) {
         settings: { ...userSettings, goals: updatedGoals },
         updatedAt: new Date(),
       })
-      .where(eq(users.id, userId));
+      .where(eq(users.id, user.id));
 
-    logger.info("Student goal updated", { userId, goalId });
+    logger.info("Student goal updated", { userId: user.id, goalId });
 
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/student/goals", method: "PATCH" });
-    return NextResponse.json(
-      { error: "Failed to update goal" },
-      { status: 500 }
-    );
-  }
-}
+    return Response.json({
+      data: { success: true }
+    });
+  },
+  ['student']
+);
 
 /**
  * DELETE /api/student/goals - Delete a goal
  */
-export async function DELETE(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(['student']);
-    if ('error' in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status },
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const DELETE = createApiRoute(
+  async (req: NextRequest, auth: AuthContext) => {
+    const { user } = auth;
     const { searchParams } = new URL(req.url);
     const goalId = searchParams.get("goalId");
 
     if (!goalId) {
-      return NextResponse.json(
-        { error: "goalId is required" },
-        { status: 400 }
-      );
+      return Response.json({ error: "goalId is required" }, { status: 400 });
     }
 
     // Fetch user and update goals
-    const [user] = await db
+    const [userRecord] = await db
       .select()
       .from(users)
-      .where(eq(users.id, userId))
+      .where(eq(users.id, user.id))
       .limit(1);
 
-    if (!user) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      );
+    if (!userRecord) {
+      return Response.json({ error: "User not found" }, { status: 404 });
     }
 
-    const userSettings = (user.settings as Record<string, unknown>) || {};
+    const userSettings = (userRecord.settings as Record<string, unknown>) || {};
     const currentGoals = (userSettings.goals as Goal[]) || DEFAULT_GOALS;
 
     const updatedGoals = currentGoals.filter((goal) => goal.id !== goalId);
@@ -292,16 +233,13 @@ export async function DELETE(req: NextRequest) {
         settings: { ...userSettings, goals: updatedGoals },
         updatedAt: new Date(),
       })
-      .where(eq(users.id, userId));
+      .where(eq(users.id, user.id));
 
-    logger.info("Student goal deleted", { userId, goalId });
+    logger.info("Student goal deleted", { userId: user.id, goalId });
 
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/student/goals", method: "DELETE" });
-    return NextResponse.json(
-      { error: "Failed to delete goal" },
-      { status: 500 }
-    );
-  }
-}
+    return Response.json({
+      data: { success: true }
+    });
+  },
+  ['student']
+);

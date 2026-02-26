@@ -13,6 +13,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { TableSkeleton } from "@/components/ui/skeleton/table-skeleton";
+import { CardGridSkeleton } from "@/components/ui/skeleton/card-skeleton";
 import {
   Plus,
   Search,
@@ -170,60 +172,64 @@ export function TeachersClient({
       </div>
 
       {/* Stats Cards */}
-      <div className="grid md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
-                <GraduationCap className="w-6 h-6 text-primary-600" />
+      {loading ? (
+        <CardGridSkeleton count={4} />
+      ) : (
+        <div className="grid md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
+                  <GraduationCap className="w-6 h-6 text-primary-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{total}</p>
+                  <p className="text-sm text-gray-500">Total Teachers</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{total}</p>
-                <p className="text-sm text-gray-500">Total Teachers</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                  <Check className="w-6 h-6 text-green-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{totalActive}</p>
+                  <p className="text-sm text-gray-500">Active Now</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <Check className="w-6 h-6 text-green-600" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                  <Users className="w-6 h-6 text-yellow-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{totalOnLeave}</p>
+                  <p className="text-sm text-gray-500">On Leave</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{totalActive}</p>
-                <p className="text-sm text-gray-500">Active Now</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <Users className="w-6 h-6 text-blue-600" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">{totalStudentsTaught.toLocaleString()}</p>
+                  <p className="text-sm text-gray-500">Students Taught</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <Users className="w-6 h-6 text-yellow-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{totalOnLeave}</p>
-                <p className="text-sm text-gray-500">On Leave</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Users className="w-6 h-6 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{totalStudentsTaught.toLocaleString()}</p>
-                <p className="text-sm text-gray-500">Students Taught</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Filters */}
       <Card>
@@ -294,7 +300,7 @@ export function TeachersClient({
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="text-center py-8 text-gray-500">Loading teachers...</div>
+            <TableSkeleton rows={10} columns={8} />
           ) : teachers.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               No teachers found. Add your first teacher to get started.

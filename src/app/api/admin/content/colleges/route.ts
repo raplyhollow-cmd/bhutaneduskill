@@ -1,12 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { rubColleges as colleges } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
-import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
 import { logContentModified, AuditActions } from "@/lib/audit-log";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 const collegeSchema = z.object({
   name: z.string().min(1, "College name is required"),
@@ -27,24 +26,17 @@ const collegeSchema = z.object({
 });
 
 // GET /api/admin/content/colleges - List colleges
-export async function GET(request: NextRequest) {
-  const authResult = await requireAuth(['admin']);
-  if ('error' in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
+export const GET = createApiRoute(
+  async (req, auth) => {
+    const { userId } = auth;
 
-  const { userId } = authResult;
-
-  try {
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(req.url);
     const isActive = searchParams.get("isActive");
 
-    const allColleges = await db.query.rubColleges.findMany({
-      orderBy: [desc(colleges.createdAt)],
-    });
+    const allColleges = await db
+      .select()
+      .from(colleges)
+      .orderBy(desc(colleges.createdAt));
 
     let filtered = allColleges;
     if (isActive === "true") {
@@ -55,30 +47,17 @@ export async function GET(request: NextRequest) {
 
     logger.info("Colleges fetched", { userId, count: filtered.length });
 
-    return NextResponse.json({ data: filtered } satisfies ApiSuccess<typeof filtered>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/content/colleges", method: "GET", userId });
-    return NextResponse.json(
-      { error: "Failed to fetch colleges", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return { data: filtered };
+  },
+  ['admin']
+);
 
 // POST /api/admin/content/colleges - Add college
-export async function POST(request: NextRequest) {
-  const authResult = await requireAuth(['admin']);
-  if ('error' in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
+export const POST = createApiRoute(
+  async (req, auth) => {
+    const { userId } = auth;
 
-  const { userId } = authResult;
-
-  try {
-    const body = await request.json();
+    const body = await req.json();
     const validatedData = collegeSchema.parse(body);
 
     const collegeId = `college_${Date.now()}`;
@@ -119,67 +98,41 @@ export async function POST(request: NextRequest) {
         dzongkhag: newCollege.dzongkhag,
       },
       userId,
-      request
+      req
     );
 
-    return NextResponse.json(
-      { data: newCollege, message: "College created successfully" } satisfies ApiSuccess<typeof newCollege>,
-      { status: 201 }
-    );
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: "Validation failed", details: error.issues, status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
-    }
-    logger.apiError(error, { route: "/api/admin/content/colleges", method: "POST", userId });
-    return NextResponse.json(
-      { error: "Failed to create college", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return { data: newCollege, message: "College created successfully" };
+  },
+  ['admin']
+);
 
 // PUT /api/admin/content/colleges - Update college
-export async function PUT(request: NextRequest) {
-  const authResult = await requireAuth(['admin']);
-  if ('error' in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
+export const PUT = createApiRoute(
+  async (req, auth) => {
+    const { userId } = auth;
 
-  const { userId } = authResult;
-
-  try {
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
 
     if (!id) {
-      return NextResponse.json(
-        { error: "College ID is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "College ID is required" };
     }
 
-    const body = await request.json();
+    const body = await req.json();
     const validatedData = collegeSchema.partial().parse(body);
 
     // Check if college exists
-    const existing = await db.query.rubColleges.findFirst({
-      where: eq(colleges.id, id),
-    });
+    const [existing] = await db
+      .select()
+      .from(colleges)
+      .where(eq(colleges.id, id))
+      .limit(1);
 
     if (!existing) {
-      return NextResponse.json(
-        { error: "College not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "College not found" };
     }
 
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
       updatedAt: new Date(),
     };
 
@@ -215,61 +168,35 @@ export async function PUT(request: NextRequest) {
       { name: existing.name, code: existing.code },
       { name: updatedCollege.name, code: updatedCollege.code },
       userId,
-      request
+      req
     );
 
-    return NextResponse.json({
-      data: updatedCollege,
-      message: "College updated successfully"
-    } satisfies ApiSuccess<typeof updatedCollege>);
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: "Validation failed", details: error.issues, status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
-    }
-    logger.apiError(error, { route: "/api/admin/content/colleges", method: "PUT", userId });
-    return NextResponse.json(
-      { error: "Failed to update college", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return { data: updatedCollege, message: "College updated successfully" };
+  },
+  ['admin']
+);
 
 // DELETE /api/admin/content/colleges - Delete college
-export async function DELETE(request: NextRequest) {
-  const authResult = await requireAuth(['admin']);
-  if ('error' in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
+export const DELETE = createApiRoute(
+  async (req, auth) => {
+    const { userId } = auth;
 
-  const { userId } = authResult;
-
-  try {
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
 
     if (!id) {
-      return NextResponse.json(
-        { error: "College ID is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "College ID is required" };
     }
 
     // Check if college exists
-    const existing = await db.query.rubColleges.findFirst({
-      where: eq(colleges.id, id),
-    });
+    const [existing] = await db
+      .select()
+      .from(colleges)
+      .where(eq(colleges.id, id))
+      .limit(1);
 
     if (!existing) {
-      return NextResponse.json(
-        { error: "College not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "College not found" };
     }
 
     await db.delete(colleges).where(eq(colleges.id, id));
@@ -284,18 +211,10 @@ export async function DELETE(request: NextRequest) {
       { name: existing.name, code: existing.code },
       undefined,
       userId,
-      request
+      req
     );
 
-    return NextResponse.json({
-      data: { success: true },
-      message: "College deleted successfully"
-    } satisfies ApiSuccess<{ success: boolean }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/content/colleges", method: "DELETE", userId });
-    return NextResponse.json(
-      { error: "Failed to delete college", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return { data: { success: true }, message: "College deleted successfully" };
+  },
+  ['admin']
+);

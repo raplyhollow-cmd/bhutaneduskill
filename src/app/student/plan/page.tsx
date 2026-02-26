@@ -61,6 +61,8 @@ interface Goal {
   actions: Array<{ text: string; done: boolean }>;
 }
 
+import type { LucideIcon } from "lucide-react";
+
 // Static timeline milestones (these are educational milestones, not user-specific)
 const TIMELINE_MILESTONES: Array<{
   id: string;
@@ -68,7 +70,7 @@ const TIMELINE_MILESTONES: Array<{
   title: string;
   status: "upcoming" | "in_progress" | "completed" | "not_started";
   description: string;
-  icon: any;
+  icon: LucideIcon;
 }> = [
   {
     id: "t1",
@@ -123,13 +125,16 @@ function StudentPlanPage() {
     Promise.all([
       fetch("/api/student/assessment-profile").catch(() => null),
       fetch("/api/student/goals").catch(() => null),
+      fetch("/api/student/skills").catch(() => null),
     ])
-      .then(async ([profileRes, goalsRes]) => {
+      .then(async ([profileRes, goalsRes, skillsRes]) => {
         const profileData = profileRes?.ok ? await profileRes.json() : null;
         const goalsData = goalsRes?.ok ? await goalsRes.json() : null;
+        const skillsData = skillsRes?.ok ? await skillsRes.json() : null;
 
         setAssessmentProfile(profileData);
         setGoals(goalsData?.goals || []);
+        setSkills(skillsData?.skills || []);
 
         // Update timeline status based on assessments completed
         const updatedMilestones = [...TIMELINE_MILESTONES];
@@ -201,27 +206,16 @@ function StudentPlanPage() {
     avgSalary: "Nu. 30,000 - 60,000/month",
   })) || [];
 
-  // Skills from API (placeholder for now - will be enhanced)
-  const mockSkills = [
-    {
-      id: "s1",
-      name: "Communication Skills",
-      category: "Core",
-      currentLevel: 65,
-      targetLevel: 85,
-      status: "in_progress",
-      activities: ["Public Speaking Club", "Debate Team", "Peer Tutoring"],
-    },
-    {
-      id: "s2",
-      name: "Problem Solving",
-      category: "Core",
-      currentLevel: 75,
-      targetLevel: 90,
-      status: "in_progress",
-      activities: ["Math Olympiad", "Puzzle Challenges", "Research Projects"],
-    },
-  ];
+  // Skills state - will be populated from API
+  const [skills, setSkills] = useState<Array<{
+    id: string;
+    name: string;
+    category: string;
+    currentLevel: number;
+    targetLevel: number;
+    status: string;
+    activities: string[];
+  }>>([]);
 
   if (loading) {
     return (
@@ -318,7 +312,7 @@ function StudentPlanPage() {
                     <TrendingUp className="w-6 h-6 text-purple-600" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-purple-600">{mockSkills.length}</p>
+                    <p className="text-2xl font-bold text-purple-600">{skills.length}</p>
                     <p className="text-sm text-gray-600">Skills Building</p>
                   </div>
                 </div>
@@ -381,7 +375,13 @@ function StudentPlanPage() {
             </CardHeader>
             <CardContent>
               <div className="grid md:grid-cols-2 gap-4">
-                {mockSkills.slice(0, 4).map((skill) => (
+                {skills.length === 0 ? (
+                  <div className="col-span-full text-center py-8 text-gray-500">
+                    <TrendingUp className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                    <p>No skills tracked yet. Complete assessments to discover your skill development areas.</p>
+                  </div>
+                ) : (
+                  skills.slice(0, 4).map((skill) => (
                   <div key={skill.id} className="p-4 border rounded-lg space-y-3">
                     <div className="flex items-center justify-between">
                       <div>
@@ -400,7 +400,8 @@ function StudentPlanPage() {
                       <Progress value={skill.currentLevel} />
                     </div>
                   </div>
-                ))}
+                ))
+                )}
               </div>
               <Link href="/student/skills">
                 <Button variant="outline" className="w-full mt-4">

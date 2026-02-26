@@ -1,17 +1,52 @@
-import { NextRequest, NextResponse } from "next/server";
-import { currentUser } from "@clerk/nextjs/server";
+import { logger } from "@/lib/logger";
+import { NextRequest } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { users, wizardProgress } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { logger } from "@/lib/logger";
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface ClerkJSEmailAddress {
+  id: string;
+  emailAddress: string;
+}
+
+interface WizardProgressRecord {
+  id: string;
+  userId: string;
+  currentStep: string;
+  completedSteps: string[];
+  data: Record<string, unknown>;
+  isCompleted: boolean;
+  lastUpdated: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Counselor Setup API
+ *
+ * Handles the setup of Counselor users during registration.
+ * Creates a user with type="counselor" if not exists.
+ *
+ * Note: This route intentionally uses Clerk's auth() directly instead of requireAuth()
+ * because it's called during the setup wizard for users who may not exist in the database yet.
+ * The setup wizard pattern requires: 1) Clerk auth (user exists in Clerk) 2) Check database 3) Create if not exists
+ */
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await currentUser();
+    const { userId } = await auth();
 
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ success: false, error: "Unauthorized" }),
+        { status: 401, headers: { "Content-Type": "application/json" } }
+      );
     }
 
     const body = await request.json();
@@ -21,30 +56,53 @@ export async function POST(request: NextRequest) {
     let userRecord = await db
       .select()
       .from(users)
-      .where(eq(users.clerkUserId, user.id))
+      .where(eq(users.clerkUserId, userId))
       .limit(1);
 
     // Create user if not exists (user signed in via Clerk but not in DB yet)
     let dbUser;
     if (userRecord.length === 0) {
-      const userId = `user-${nanoid()}`;
-      const firstName = user.firstName || "Counselor";
-      const lastName = user.lastName || "";
+      const user = await fetch(`https://api.clerk.com/v1/users/${userId}`, {
+        headers: {
+          Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}`,
+        },
+      }).then((res) => res.json());
+
+      const newUserId = `user-${nanoid()}`;
+      const firstName = user.first_name || "Counselor";
+      const lastName = user.last_name || "";
       // Defensive email extraction - try multiple methods
-      const email = user.primaryEmailAddress?.emailAddress
-        || user.emailAddresses?.find((e: any) => e.id === user.primaryEmailAddressId)?.emailAddress
-        || user.emailAddresses?.[0]?.emailAddress
+      const email = user.email_addresses?.[0]?.email_address
+        || user.primary_email_address?.email_address
         || "";
 
       await db.insert(users).values({
-        id: userId,
-        clerkUserId: user.id,
+        id: newUserId,
+        clerkUserId: userId,
         type: "counselor",
         role: "counselor",
         name: `${firstName} ${lastName}`.trim(),
         firstName,
         lastName,
         email,
+        // Required fields with defaults
+        phone: "",
+        profileImage: user.image_url || "",
+        gender: "other",
+        grade: 0,
+        section: null, // JSON column
+        rollNumber: "",
+        address: "",
+        city: "",
+        state: "",
+        postalCode: "",
+        country: "Bhutan",
+        parentContact: null, // JSON column
+        parentPhone: null, // JSON column
+        emergencyContact: null, // JSON column
+        bloodGroup: "",
+        enrollmentDate: new Date().toISOString(),
+        lastLogin: new Date().toISOString(),
         onboardingComplete: step === "complete",
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -54,7 +112,7 @@ export async function POST(request: NextRequest) {
       userRecord = await db
         .select()
         .from(users)
-        .where(eq(users.clerkUserId, user.id))
+        .where(eq(users.clerkUserId, userId))
         .limit(1);
 
       dbUser = userRecord[0];
@@ -71,7 +129,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update or create wizard progress (gracefully handle missing table)
-    let existingProgress: any[] = [];
+    let existingProgress: WizardProgressRecord[] = [];
     try {
       existingProgress = await db
         .select()
@@ -89,7 +147,7 @@ export async function POST(request: NextRequest) {
           .update(wizardProgress)
           .set({
             currentStep: step === "complete" ? "4" : String((parseInt(existingProgress[0].currentStep as string) || 0) + 1),
-            data: { ...(existingProgress[0].data as any), ...data },
+            data: { ...(existingProgress[0]?.data || {}), ...data },
             updatedAt: new Date(),
           })
           .where(eq(wizardProgress.id, existingProgress[0].id));
@@ -129,15 +187,19 @@ export async function POST(request: NextRequest) {
         .where(eq(users.id, dbUser.id));
     }
 
-    return NextResponse.json({ success: true });
+    return new Response(
+      JSON.stringify({ success: true }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
   } catch (error) {
     logger.error("Counselor setup error:", error);
-    return NextResponse.json(
-      {
+    return new Response(
+      JSON.stringify({
+        success: false,
         error: "Failed to process setup",
         details: error instanceof Error ? error.message : "Unknown error"
-      },
-      { status: 500 }
+      }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
 }

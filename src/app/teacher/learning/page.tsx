@@ -159,7 +159,7 @@ function ModuleCard({
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-xs">
+              <Button variant="ghost" size="icon" className="h-6 w-6">
                 <MoreVertical className="w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>

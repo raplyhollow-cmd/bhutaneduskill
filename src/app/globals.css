@@ -1509,3 +1509,96 @@
 .rounded-ceramic-md { border-radius: 0.375rem; }
 .rounded-ceramic-lg { border-radius: 0.5rem; }
 .rounded-ceramic-xl { border-radius: 0.75rem; }
+
+/* ============================================
+   UX OPTIMIZED ANIMATIONS (Tier 1 Fixes)
+   ============================================ */
+
+/* Modern Shimmer Animation for Loading Skeletons */
+@keyframes shimmer-slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes shimmer-slow {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes shimmer-fast {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Apply shimmer animations */
+.animate-shimmer-slide {
+  animation: shimmer-slide 1.5s infinite;
+}
+
+.animate-shimmer {
+  animation: shimmer 1.5s infinite;
+}
+
+.animate-shimmer-slow {
+  animation: shimmer 2s infinite;
+}
+
+.animate-shimmer-fast {
+  animation: shimmer 1s infinite;
+}
+
+/* Improved loading states with shimmer */
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgb(243 244 246) 0%,
+    rgb(229 231 235) 50%,
+    rgb(243 244 246) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+.dark .skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgb(55 65 81) 0%,
+    rgb(75 85 99) 50%,
+    rgb(55 65 81) 100%
+  );
+  background-size: 200% 100%;
+}
+
+/* Fast transitions for snappy feel */
+.transition-fast {
+  transition-duration: 150ms;
+}
+
+.transition-normal {
+  transition-duration: 200ms;
+}
+
+.transition-slow {
+  transition-duration: 300ms;
+}
+
+/* Smooth fade-in for content */
+.fade-in {
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Scale-in for modals */
+.scale-in {
+  animation: scaleIn 0.2s ease-out;
+}
+
+/* No-jank transforms (use GPU acceleration) */
+.gpu-accelerated {
+  transform: translateZ(0);
+  will-change: transform;
+}

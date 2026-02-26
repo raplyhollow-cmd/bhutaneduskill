@@ -1,30 +1,19 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users, schools } from "@/lib/db/schema";
-import { requireAuth } from "@/lib/auth-utils";
 import { getCapacityStatus } from "@/lib/billing-utils";
 import { logger } from "@/lib/logger";
 import { eq } from "drizzle-orm";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 // GET /api/school-admin/capacity - Get current school's seat capacity status
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["school-admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { userId, user } = authResult;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId, user } = auth;
 
     const schoolId = user.schoolId;
     if (!schoolId) {
-      return NextResponse.json(
-        { error: "School ID not found for user", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "School ID not found for user" };
     }
 
     // Get capacity status from billing utils
@@ -47,19 +36,13 @@ export async function GET(request: NextRequest) {
       usagePercentage: capacityInfo.usagePercentage,
     });
 
-    return NextResponse.json({
+    return {
       data: {
         ...capacityInfo,
         schoolName: school?.name,
         subscriptionTier: school?.subscriptionTier,
-      },
-    } satisfies ApiSuccess<typeof capacityInfo & { schoolName?: string; subscriptionTier?: string }>);
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/capacity", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch capacity status", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+      }
+    };
+  },
+  ['school-admin']
+);

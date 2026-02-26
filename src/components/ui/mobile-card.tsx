@@ -5,6 +5,7 @@ import { logger } from "@/lib/logger";
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { LucideIcon } from "lucide-react";
+import { portal } from "@/styles/design-tokens";
 
 // ============================================================================
 // MOBILE CARD COMPONENT
@@ -39,7 +40,7 @@ const MobileCard = React.forwardRef<HTMLDivElement, MobileCardProps>(
       subtitle,
       description,
       icon: Icon,
-      iconColor = "rgb(249 115 22)",
+      iconColor = portal.student.primary,
       iconBackgroundColor = "rgb(254 243 242)",
       action,
       gradient,
@@ -216,7 +217,7 @@ const StatsCard = React.forwardRef<HTMLDivElement, StatsCardProps>(
       change,
       changeType = "neutral",
       icon: Icon,
-      iconColor = "rgb(249 115 22)",
+      iconColor = portal.student.primary,
       iconBackgroundColor = "rgb(254 243 242)",
       gradient,
       className,
@@ -304,7 +305,7 @@ export interface QuickActionCardProps {
 }
 
 const QuickActionCard = React.forwardRef<HTMLButtonElement, QuickActionCardProps>(
-  ({ title, description, icon: Icon, iconColor = "rgb(249 115 22)", onClick, className }, ref) => {
+  ({ title, description, icon: Icon, iconColor = portal.student.primary, onClick, className }, ref) => {
     return (
       <button
         ref={ref}

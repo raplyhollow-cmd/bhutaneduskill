@@ -32,11 +32,76 @@ interface KnowledgeIngestRequest {
   sourceName?: string;
 }
 
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface KnowledgeIngestRequest {
+  sourceType: "rub" | "scholarship" | "career" | "college";
+  content?: string;
+  url?: string;
+  sourceName?: string;
+}
+
+interface RequiredSubject {
+  subject: string;
+  minimumGrade: string;
+  minimumPercentage: number;
+}
+
+interface AggregateRequirements {
+  minimumPercentage: number;
+  subjectsToConsider: string[];
+  englishRequired: boolean;
+  dzongkhaRequired: boolean;
+}
+
+interface RUBProgramData {
+  collegeName: string;
+  programName: string;
+  educationLevel: string;
+  requiredSubjects: RequiredSubject[];
+  aggregateRequirements: AggregateRequirements;
+  duration: string;
+  additionalRequirements?: string;
+}
+
+interface EligibilityCriteria {
+  minimumPercentage: number;
+  stream?: string[];
+  familyIncomeLimit?: number;
+  district?: string[];
+  gender?: string | null;
+}
+
+interface ScholarshipBenefits {
+  covers: string[];
+  amount: number;
+  currency: string;
+  notes?: string;
+}
+
+interface ScholarshipData {
+  name: string;
+  provider: string;
+  type: string;
+  educationLevel: string;
+  eligibilityCriteria: EligibilityCriteria;
+  benefits: ScholarshipBenefits;
+  applicationDeadline: string;
+  applicationUrl?: string;
+  documentsRequired: string[];
+}
+
+interface GenericContentData {
+  [key: string]: string | number | boolean | null | undefined;
+}
+
 interface IngestResult {
   draftId: string;
   confidenceScore: number;
   estimatedRecords: number;
-  structuredData: any;
+  structuredData: RUBProgramData[] | ScholarshipData[] | GenericContentData[];
   preview: string[];
 }
 
@@ -128,7 +193,7 @@ If you cannot extract valid data, return an empty array: []`;
  * Parse RUB requirements from content
  */
 async function parseRUBRequirements(content: string): Promise<{
-  data: any[];
+  data: RUBProgramData[];
   confidence: number;
   preview: string[];
 }> {
@@ -144,16 +209,16 @@ async function parseRUBRequirements(content: string): Promise<{
       return { data: [], confidence: 0, preview: [] };
     }
 
-    const data = JSON.parse(jsonMatch[0]) as any[];
-    const preview = data.slice(0, 3).map((item: any) =>
+    const data = JSON.parse(jsonMatch[0]) as RUBProgramData[];
+    const preview = data.slice(0, 3).map((item) =>
       `${item.collegeName} - ${item.programName}`
     );
 
     // Calculate confidence based on data quality
     let confidence = 0.5;
     if (data.length > 0) confidence += 0.2;
-    if (data.every((d: any) => d.collegeName && d.programName)) confidence += 0.2;
-    if (data.every((d: any) => d.requiredSubjects && d.requiredSubjects.length > 0)) confidence += 0.1;
+    if (data.every((d) => d.collegeName && d.programName)) confidence += 0.2;
+    if (data.every((d) => d.requiredSubjects && d.requiredSubjects.length > 0)) confidence += 0.1;
 
     return { data, confidence: Math.min(confidence, 1), preview };
   } catch (error) {
@@ -166,7 +231,7 @@ async function parseRUBRequirements(content: string): Promise<{
  * Parse scholarship information from content
  */
 async function parseScholarships(content: string): Promise<{
-  data: any[];
+  data: ScholarshipData[];
   confidence: number;
   preview: string[];
 }> {
@@ -182,16 +247,16 @@ async function parseScholarships(content: string): Promise<{
       return { data: [], confidence: 0, preview: [] };
     }
 
-    const data = JSON.parse(jsonMatch[0]) as any[];
-    const preview = data.slice(0, 3).map((item: any) =>
+    const data = JSON.parse(jsonMatch[0]) as ScholarshipData[];
+    const preview = data.slice(0, 3).map((item) =>
       `${item.name} - ${item.provider}`
     );
 
     // Calculate confidence based on data quality
     let confidence = 0.5;
     if (data.length > 0) confidence += 0.2;
-    if (data.every((d: any) => d.name && d.provider)) confidence += 0.2;
-    if (data.every((d: any) => d.eligibilityCriteria)) confidence += 0.1;
+    if (data.every((d) => d.name && d.provider)) confidence += 0.2;
+    if (data.every((d) => d.eligibilityCriteria)) confidence += 0.1;
 
     return { data, confidence: Math.min(confidence, 1), preview };
   } catch (error) {
@@ -204,7 +269,7 @@ async function parseScholarships(content: string): Promise<{
  * Generic parser for other content types
  */
 async function parseGenericContent(content: string, sourceType: string): Promise<{
-  data: any[];
+  data: GenericContentData[];
   confidence: number;
   preview: string[];
 }> {
@@ -220,8 +285,8 @@ async function parseGenericContent(content: string, sourceType: string): Promise
       return { data: [], confidence: 0, preview: [] };
     }
 
-    const data = JSON.parse(jsonMatch[0]) as any[];
-    const preview = data.slice(0, 3).map((item: any, i: number) =>
+    const data = JSON.parse(jsonMatch[0]) as GenericContentData[];
+    const preview = data.slice(0, 3).map((item, i: number) =>
       `${sourceType} ${i + 1}`
     );
 

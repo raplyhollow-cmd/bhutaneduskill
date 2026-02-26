@@ -3,10 +3,13 @@
  *
  * Returns fee payment status and amounts for all children linked to the parent,
  * querying student_fees table linked to children's schools.
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { createSafeHandler } from "@/lib/api-utils";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse } from "@/lib/api/response-helpers";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { users, parents, parentToStudent, students, studentFees, schools, feePayments } from "@/lib/db/schema";
@@ -66,15 +69,11 @@ interface FeesResponse {
   };
 }
 
-export const GET = createSafeHandler<FeesResponse>(async (req) => {
-  // Authenticate parent
-  const authResult = await requireAuth(['parent']);
-  if ('error' in authResult) {
-    throw new Error(authResult.error);
-  }
-  const { userId, user } = authResult;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
 
-  logger.info("Fetching fees for parent's children", { route: "/api/parent/fees", userId });
+    logger.info("Fetching fees for parent's children", { route: "/api/parent/fees", userId });
 
   // Get parent record for this user
   const parentRecords = await db.query.parents.findMany({
@@ -84,19 +83,16 @@ export const GET = createSafeHandler<FeesResponse>(async (req) => {
 
   if (parentRecords.length === 0) {
     logger.warn("No parent record found for user", { userId });
-    return {
-      success: true,
-      data: {
-        children: [],
-        summary: {
-          totalFees: 0,
-          totalPaid: 0,
-          totalPending: 0,
-          totalWaived: 0,
-          totalOverdue: 0,
-        },
+    return successResponse({
+      children: [],
+      summary: {
+        totalFees: 0,
+        totalPaid: 0,
+        totalPending: 0,
+        totalWaived: 0,
+        totalOverdue: 0,
       },
-    };
+    });
   }
 
   const parentId = parentRecords[0].id;
@@ -108,19 +104,16 @@ export const GET = createSafeHandler<FeesResponse>(async (req) => {
 
   if (relationships.length === 0) {
     logger.info("No children linked to parent", { parentId });
-    return {
-      success: true,
-      data: {
-        children: [],
-        summary: {
-          totalFees: 0,
-          totalPaid: 0,
-          totalPending: 0,
-          totalWaived: 0,
-          totalOverdue: 0,
-        },
+    return successResponse({
+      children: [],
+      summary: {
+        totalFees: 0,
+        totalPaid: 0,
+        totalPending: 0,
+        totalWaived: 0,
+        totalOverdue: 0,
       },
-    };
+    });
   }
 
   const studentIds = relationships.map((r) => r.studentId);
@@ -141,19 +134,16 @@ export const GET = createSafeHandler<FeesResponse>(async (req) => {
   });
 
   if (linkedChildren.length === 0) {
-    return {
-      success: true,
-      data: {
-        children: [],
-        summary: {
-          totalFees: 0,
-          totalPaid: 0,
-          totalPending: 0,
-          totalWaived: 0,
-          totalOverdue: 0,
-        },
+    return successResponse({
+      children: [],
+      summary: {
+        totalFees: 0,
+        totalPaid: 0,
+        totalPending: 0,
+        totalWaived: 0,
+        totalOverdue: 0,
       },
-    };
+    });
   }
 
   // Get school data for all children
@@ -273,11 +263,10 @@ export const GET = createSafeHandler<FeesResponse>(async (req) => {
     summary,
   });
 
-  return {
-    success: true,
-    data: {
-      children: childrenFeeSummaries,
-      summary,
-    },
-  };
-});
+  return successResponse({
+    children: childrenFeeSummaries,
+    summary,
+  });
+},
+['parent']
+);

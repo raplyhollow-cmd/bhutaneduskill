@@ -3,50 +3,74 @@
  *
  * Fetches transport allocations for parent's children
  * - GET: Fetch all children's transport allocations
+ *
+ * SECURITY: FERPA COMPLIANCE
+ * - Uses parent_to_student join table for verification
+ * - Only returns transport info for verified children
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse } from "@/lib/api/response-helpers";
 import { db } from "@/lib/db";
-import { users, transportAllocations, transportRoutes, vehicles, drivers } from "@/lib/db/schema";
-import { eq, and, or } from "drizzle-orm";
+import { users, parents, parentToStudent, transportAllocations, transportRoutes, vehicles, drivers } from "@/lib/db/schema";
+import { eq, and, or, inArray } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 
 // ============================================================================
 // GET - Fetch children's transport allocations
 // ============================================================================
 
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["parent"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
+
+    // FERPA COMPLIANCE: Get parent record first
+    const [parentRecord] = await db
+      .select()
+      .from(parents)
+      .where(eq(parents.userId, userId))
+      .limit(1);
+
+    if (!parentRecord) {
+      logger.warn("No parent record found for user", { userId });
+      return errorResponse("Parent record not found", 403);
     }
-    const { userId } = authResult;
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: { id: true, type: true, role: true },
-    });
+    // FERPA COMPLIANCE: Get verified children via parent_to_student join table
+    const relationships = await db
+      .select()
+      .from(parentToStudent)
+      .where(eq(parentToStudent.parentId, parentRecord.id));
 
-    if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    if (relationships.length === 0) {
+      return successResponse({
+        children: [],
+        message: "No children found",
+      });
     }
 
-    // Get children for this parent
-    const children = await db.query.users.findMany({
-      where: eq(users.parentId, userId),
-      columns: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        classGrade: true,
-        section: true,
-      },
-    });
+    const studentIds = relationships.map((r) => r.studentId);
+
+    // Get children for this parent (only verified ones)
+    const children = await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        classGrade: users.classGrade,
+        section: users.section,
+      })
+      .from(users)
+      .where(and(
+        eq(users.type, "student"),
+        inArray(users.id, studentIds)
+      ));
 
     if (children.length === 0) {
-      return NextResponse.json({
+      return successResponse({
         children: [],
         message: "No children found",
       });
@@ -144,14 +168,9 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    return NextResponse.json({
+    return successResponse({
       children: childrenWithTransport,
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/parent/transport", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch transport data" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['parent']
+);

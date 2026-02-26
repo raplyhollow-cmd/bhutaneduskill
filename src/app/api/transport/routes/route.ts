@@ -8,13 +8,14 @@
  * - DELETE: Delete route
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { transportRoutes, vehicles, users, transportAllocations } from "@/lib/db/schema";
 import { eq, and, desc, sql, like, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { logger } from "@/lib/logger";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse, notFoundResponse } from "@/lib/api/response-helpers";
 
 // Types for proper TypeScript safety
 interface RouteStop {
@@ -65,13 +66,14 @@ interface UpdateRouteBody {
 // GET - Fetch transport routes
 // ============================================================================
 
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth();
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId } = authResult;
+
+    const { userId } = auth;
 
     const currentUser = await db.query.users.findFirst({
       where: eq(users.id, userId),
@@ -79,7 +81,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return notFoundResponse("User");
     }
 
     const { searchParams } = new URL(request.url);
@@ -96,7 +98,7 @@ export async function GET(request: NextRequest) {
       });
 
       if (!route) {
-        return NextResponse.json({ error: "Route not found" }, { status: 404 });
+        return notFoundResponse("Route");
       }
 
       // Get vehicle details if requested
@@ -119,7 +121,7 @@ export async function GET(request: NextRequest) {
         studentCount = allocations.length;
       }
 
-      return NextResponse.json({
+      return successResponse({
         route: {
           ...route,
           vehicle: vehicleData,
@@ -139,7 +141,7 @@ export async function GET(request: NextRequest) {
         (r) => r.vehicleId === vehicleId
       );
 
-      return NextResponse.json({ routes: vehicleRoutes });
+      return successResponse({ routes: vehicleRoutes });
     }
 
     // Build conditions
@@ -157,7 +159,7 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(transportRoutes.isActive, false));
     }
 
-    const whereClause = conditions.length > 0 ? and(...conditions as Array<any>) : undefined;
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
     // Get all routes
     const routes = await db.query.transportRoutes.findMany({
@@ -192,30 +194,26 @@ export async function GET(request: NextRequest) {
       enrichedRoutes.push(enrichedRoute);
     }
 
-    return NextResponse.json({
+    return successResponse({
       routes: enrichedRoutes,
       total: enrichedRoutes.length,
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/transport/routes", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch transport routes" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin', 'school-admin']
+);
 
 // ============================================================================
 // POST - Create transport route
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin", "school-admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const POST = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId } = authResult;
+
+    const { userId } = auth;
 
     const currentUser = await db.query.users.findFirst({
       where: eq(users.id, userId),
@@ -223,7 +221,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return notFoundResponse("User");
     }
 
     const body: CreateRouteBody = await request.json();
@@ -246,10 +244,7 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!routeNumber || !name || !startLocation || !endLocation || !stops) {
-      return NextResponse.json(
-        { error: "Missing required fields: routeNumber, name, startLocation, endLocation, stops" },
-        { status: 400 }
-      );
+      return badRequestResponse("Missing required fields: routeNumber, name, startLocation, endLocation, stops");
     }
 
     // Check if route number already exists
@@ -258,10 +253,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingRoute) {
-      return NextResponse.json(
-        { error: "Route number already exists" },
-        { status: 400 }
-      );
+      return badRequestResponse("Route number already exists");
     }
 
     // Process stops with order
@@ -304,39 +296,32 @@ export async function POST(request: NextRequest) {
       createdBy: userId,
     });
 
-    return NextResponse.json({
+    return successResponse({
       success: true,
       route: newRoute,
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/transport/routes", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to create transport route" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin', 'school-admin']
+);
 
 // ============================================================================
 // PATCH - Update transport route
 // ============================================================================
 
-export async function PATCH(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin", "school-admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const PATCH = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId } = authResult;
+
+    const { userId } = auth;
 
     const body: UpdateRouteBody = await request.json();
     const { routeId, stops, distance, estimatedTime, ...updateData } = body;
 
     if (!routeId) {
-      return NextResponse.json(
-        { error: "routeId is required" },
-        { status: 400 }
-      );
+      return badRequestResponse("routeId is required");
     }
 
     // Process stops with order if provided
@@ -365,7 +350,7 @@ export async function PATCH(request: NextRequest) {
       .returning();
 
     if (!updatedRoute) {
-      return NextResponse.json({ error: "Route not found" }, { status: 404 });
+      return notFoundResponse("Route");
     }
 
     logger.info("Transport route updated", {
@@ -373,39 +358,32 @@ export async function PATCH(request: NextRequest) {
       updatedBy: userId,
     });
 
-    return NextResponse.json({
+    return successResponse({
       success: true,
       route: updatedRoute,
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/transport/routes", method: "PATCH" });
-    return NextResponse.json(
-      { error: "Failed to update transport route" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin', 'school-admin']
+);
 
 // ============================================================================
 // DELETE - Delete transport route
 // ============================================================================
 
-export async function DELETE(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin", "school-admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const DELETE = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId } = authResult;
+
+    const { userId } = auth;
 
     const { searchParams } = new URL(request.url);
     const routeId = searchParams.get("id");
 
     if (!routeId) {
-      return NextResponse.json(
-        { error: "Route id is required" },
-        { status: 400 }
-      );
+      return badRequestResponse("Route id is required");
     }
 
     // Check for active allocations
@@ -417,13 +395,7 @@ export async function DELETE(request: NextRequest) {
     });
 
     if (allocations.length > 0) {
-      return NextResponse.json(
-        {
-          error: "Cannot delete route with active allocations",
-          activeAllocations: allocations.length,
-        },
-        { status: 400 }
-      );
+      return badRequestResponse("Cannot delete route with active allocations");
     }
 
     // Delete route
@@ -433,7 +405,7 @@ export async function DELETE(request: NextRequest) {
       .returning();
 
     if (!deletedRoute || deletedRoute.length === 0) {
-      return NextResponse.json({ error: "Route not found" }, { status: 404 });
+      return notFoundResponse("Route");
     }
 
     logger.info("Transport route deleted", {
@@ -441,15 +413,10 @@ export async function DELETE(request: NextRequest) {
       deletedBy: userId,
     });
 
-    return NextResponse.json({
+    return successResponse({
       success: true,
       message: "Route deleted successfully",
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/transport/routes", method: "DELETE" });
-    return NextResponse.json(
-      { error: "Failed to delete transport route" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin', 'school-admin']
+);

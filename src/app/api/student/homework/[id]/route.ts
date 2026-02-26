@@ -1,249 +1,312 @@
-import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
-import { requirePermission } from "@/lib/rbac";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { homework, homeworkSubmissions } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse } from "@/lib/api/response-helpers";
+import { logger } from "@/lib/logger";
 import { gradeHomework } from "@/lib/auto-grading";
+import type { HomeworkQuestionWithAnswer, StudentHomeworkData, DraftAnswer } from "@/types";
 
-interface Params {
-  params: Promise<{ id: string }>;
+/**
+ * Gradable question for auto-grading
+ */
+interface GradableQuestion {
+  id: string;
+  type: string;
+  question: string;
+  options: unknown[];
+  correctAnswer: unknown;
+  points: number;
+  tolerance?: number;
+  keywords?: string[];
+  explanation?: string;
+}
+
+/**
+ * Grading result from auto-grading system
+ */
+interface GradingResult {
+  totalScore: number;
+  maxScore: number;
+  percentage: number;
+  needsReview: boolean;
+  results?: unknown[];
+}
+
+/**
+ * Homework with teacher information
+ */
+interface HomeworkWithTeacher {
+  id: string;
+  teacherId: string;
+  title: string;
+  isPublished: boolean;
+  dueDate: Date | string;
+  questions?: GradableQuestion[];
+  [key: string]: unknown;
+}
+
+/**
+ * Submission data structure
+ */
+interface SubmissionData {
+  homeworkId: string;
+  studentId: string;
+  answers: Record<string, unknown>;
+  attachments: unknown[];
+  textAnswers: Record<string, string>;
+  isLate: boolean;
+  submittedAt: Date;
+  status: string;
+  score?: number;
+  maxScore?: number;
+  percentage?: number;
+  gradedBy?: string;
+  gradedAt?: Date;
+  feedback?: string;
+  questionFeedback?: unknown[];
 }
 
 // GET /api/student/homework/[id] - Get homework details
-export async function GET(request: NextRequest, { params }: Params) {
-  try {
-    const { id } = await params;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth, context?: { params: Promise<{ id: string }> }) => {
+    try {
+      const { id } = await context!.params;
+      const { user: currentUser, userId } = auth;
 
-    const authResult = await requireAuth(['student']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
+      // Check homework.read permission
+      const permCheck = await requirePermission(userId, "homework.read");
+      if (permCheck) return permCheck;
 
-    const { user: currentUser, userId } = authResult;
-
-    // Check homework.read permission
-    const permCheck = await requirePermission(userId, "homework.read");
-    if (permCheck) return permCheck;
-
-    const homeworkData = await db.query.homework.findFirst({
-      where: eq(homework.id, id),
-      with: {
-        class: true,
-        subject: true,
-        teacher: {
-          columns: {
-            id: true,
-            firstName: true,
-            lastName: true,
+      const homeworkData = await db.query.homework.findFirst({
+        where: eq(homework.id, id),
+        with: {
+          class: true,
+          subject: true,
+          teacher: {
+            columns: {
+              id: true,
+              firstName: true,
+              lastName: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    if (!homeworkData) {
-      return NextResponse.json({ error: "Homework not found" }, { status: 404 });
+      if (!homeworkData) {
+        return errorResponse("Homework not found", 404);
+      }
+
+      // Get existing submission if any
+      const submission = await db.query.homeworkSubmissions.findFirst({
+        where: and(
+          eq(homeworkSubmissions.homeworkId, id),
+          eq(homeworkSubmissions.studentId, currentUser.id)
+        ),
+      });
+
+      return successResponse({
+        homework: homeworkData,
+        submission,
+      });
+    } catch (error) {
+      logger.error("Homework retrieval error:", error);
+      return errorResponse("Failed to retrieve homework", 500);
     }
-
-    // Get existing submission if any
-    const submission = await db.query.homeworkSubmissions.findFirst({
-      where: and(
-        eq(homeworkSubmissions.homeworkId, id),
-        eq(homeworkSubmissions.studentId, currentUser.id)
-      ),
-    });
-
-    return NextResponse.json({
-      homework: homeworkData,
-      submission,
-    });
-  } catch (error) {
-    logger.error("Homework fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch homework" }, { status: 500 });
-  }
-}
+  },
+  ['student']
+);
 
 // POST /api/student/homework/[id] - Submit homework
-export async function POST(request: NextRequest, { params }: Params) {
-  try {
-    const { id } = await params;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth, context?: { params: Promise<{ id: string }> }) => {
+    try {
+      const { id } = await context!.params;
+      const { user: currentUser, userId } = auth;
 
-    const authResult = await requireAuth(['student']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
+      // Check homework.submit permission (students can submit their homework)
+      // Note: We use homework.read permission for submission as it's part of the homework workflow
+      const permCheck = await requirePermission(userId, "homework.read");
+      if (permCheck) return permCheck;
 
-    const { user: currentUser, userId } = authResult;
+      const body = await request.json();
+      const { answers, attachments, textAnswers, integrityMetadata } = body;
 
-    // Check homework.submit permission (students can submit their homework)
-    // Note: We use homework.read permission for submission as it's part of the homework workflow
-    const permCheck = await requirePermission(userId, "homework.read");
-    if (permCheck) return permCheck;
+      // Get homework details using db.select() instead of db.query
+      const homeworkData = await db
+        .select()
+        .from(homework)
+        .where(eq(homework.id, id))
+        .limit(1) as HomeworkWithTeacher[] | null;
 
-    const body = await request.json();
-    const { answers, attachments, textAnswers, integrityMetadata } = body;
-
-    // Get homework details
-    const homeworkData = await db.query.homework.findFirst({
-      where: eq(homework.id, id),
-    });
-
-    if (!homeworkData) {
-      return NextResponse.json({ error: "Homework not found" }, { status: 404 });
-    }
-
-    if (!homeworkData.isPublished) {
-      return NextResponse.json({ error: "Homework is not published" }, { status: 400 });
-    }
-
-    // Check for existing submission
-    const existingSubmission = await db.query.homeworkSubmissions.findFirst({
-      where: and(
-        eq(homeworkSubmissions.homeworkId, id),
-        eq(homeworkSubmissions.studentId, currentUser.id)
-      ),
-    });
-
-    if (existingSubmission && existingSubmission.status !== "draft") {
-      return NextResponse.json({ error: "Already submitted" }, { status: 400 });
-    }
-
-    const now = new Date();
-    const dueDate = new Date(homeworkData.dueDate);
-    const isLate = now > dueDate;
-
-    // Auto-grade if questions exist (filter out unsupported question types)
-    let gradingResult = null;
-    if (homeworkData.questions && homeworkData.questions.length > 0) {
-      // Only grade questions with supported types
-      const supportedTypes = ["multiple_choice", "true_false", "fill_blank", "short_answer", "essay", "numeric", "math_expression", "match_following"];
-      const gradableQuestions = homeworkData.questions
-        .filter((q: any) => supportedTypes.includes(q.type))
-        .map((q: any) => ({
-          id: q.id,
-          type: q.type,
-          question: q.question,
-          options: q.options,
-          correctAnswer: q.correctAnswer,
-          points: q.points,
-          tolerance: q.tolerance,
-          keywords: q.keywords,
-          explanation: q.explanation,
-        }));
-
-      if (gradableQuestions.length > 0) {
-        gradingResult = gradeHomework(
-          gradableQuestions as any,
-          answers || [],
-          integrityMetadata
-        );
+      if (!homeworkData || homeworkData.length === 0) {
+        return errorResponse("Homework not found", 404);
       }
-    }
 
-    // Prepare submission data
-    const submissionData: any = {
-      homeworkId: id,
-      studentId: currentUser.id,
-      answers: answers || {},
-      attachments: attachments || [],
-      textAnswers,
-      isLate,
-      submittedAt: now,
-      status: "submitted",
-    };
+      const homework = homeworkData[0];
 
-    // Add grading results if available
-    if (gradingResult) {
-      submissionData.score = gradingResult.totalScore;
-      submissionData.maxScore = gradingResult.maxScore;
-      submissionData.percentage = gradingResult.percentage;
-
-      // If no manual review needed, auto-grade
-      if (!gradingResult.needsReview) {
-        submissionData.status = "graded";
-        submissionData.gradedBy = (homeworkData as any).teacherId;
-        submissionData.gradedAt = now;
-        submissionData.feedback = "Auto-graded";
-        submissionData.questionFeedback = gradingResult.results;
+      if (!homework.isPublished) {
+        return errorResponse("Homework is not published", 400);
       }
+
+      // Check for existing submission
+      const existingSubmission = await db
+        .select()
+        .from(homeworkSubmissions)
+        .where(and(
+          eq(homeworkSubmissions.homeworkId, id),
+          eq(homeworkSubmissions.studentId, currentUser.id)
+        ))
+        .limit(1);
+
+      if (existingSubmission.length > 0 && existingSubmission[0].status !== "draft") {
+        return errorResponse("Already submitted", 400);
+      }
+
+      const now = new Date();
+      const dueDate = new Date(homework.dueDate);
+      const isLate = now > dueDate;
+
+      // Auto-grade if questions exist (filter out unsupported question types)
+      let gradingResult: GradingResult | null = null;
+      if (homework.questions && homework.questions.length > 0) {
+        // Only grade questions with supported types
+        const supportedTypes = ["multiple_choice", "true_false", "fill_blank", "short_answer", "essay", "numeric", "math_expression", "match_following"];
+        const gradableQuestions = homework.questions
+          .filter((q: { type: string }) => supportedTypes.includes(q.type))
+          .map((q: GradableQuestion) => ({
+            id: q.id,
+            type: q.type,
+            question: q.question,
+            options: q.options,
+            correctAnswer: q.correctAnswer,
+            points: q.points,
+            tolerance: q.tolerance,
+            keywords: q.keywords,
+            explanation: q.explanation,
+          }));
+
+        if (gradableQuestions.length > 0) {
+          gradingResult = gradeHomework(
+            gradableQuestions,
+            answers || [],
+            integrityMetadata
+          ) as GradingResult;
+        }
+      }
+
+      // Prepare submission data
+      const submissionData: SubmissionData = {
+        homeworkId: id,
+        studentId: currentUser.id,
+        answers: answers || {},
+        attachments: attachments || [],
+        textAnswers,
+        isLate,
+        submittedAt: now,
+        status: "submitted",
+      };
+
+      // Add grading results if available
+      if (gradingResult) {
+        submissionData.score = gradingResult.totalScore;
+        submissionData.maxScore = gradingResult.maxScore;
+        submissionData.percentage = gradingResult.percentage;
+
+        // If no manual review needed, auto-grade
+        if (!gradingResult.needsReview) {
+          submissionData.status = "graded";
+          submissionData.gradedBy = homework.teacherId;
+          submissionData.gradedAt = now;
+          submissionData.feedback = "Auto-graded";
+          submissionData.questionFeedback = gradingResult.results;
+        }
+      }
+
+      if (existingSubmission.length > 0) {
+        // Update existing draft
+        const [updated] = await db
+          .update(homeworkSubmissions)
+          .set(submissionData)
+          .where(eq(homeworkSubmissions.id, existingSubmission[0].id))
+          .returning();
+
+        return successResponse({ submission: updated });
+      } else {
+        // Create new submission
+        const [created] = await db
+          .insert(homeworkSubmissions)
+          .values({
+            id: `sub_${Date.now()}`,
+            ...submissionData,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .returning();
+
+        return successResponse({ submission: created, gradingResult }, 201);
+      }
+    } catch (error) {
+      logger.error("Homework submission error:", error);
+      return errorResponse("Failed to submit homework", 500);
     }
-
-    if (existingSubmission) {
-      // Update existing draft
-      const [updated] = await db.update(homeworkSubmissions)
-        .set(submissionData)
-        .where(eq(homeworkSubmissions.id, existingSubmission.id))
-        .returning();
-
-      return NextResponse.json({ submission: updated });
-    } else {
-      // Create new submission
-      const [created] = await db.insert(homeworkSubmissions)
-        .values({
-          id: `sub_${Date.now()}`,
-          ...submissionData,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .returning();
-
-      return NextResponse.json({ submission: created, gradingResult }, { status: 201 });
-    }
-  } catch (error) {
-    logger.error("Homework submission error:", error);
-    return NextResponse.json({ error: "Failed to submit homework" }, { status: 500 });
-  }
-}
+  },
+  ['student']
+);
 
 // PUT /api/student/homework/[id] - Update draft
-export async function PUT(request: NextRequest, { params }: Params) {
-  try {
-    const { id } = await params;
+export const PUT = createApiRoute(
+  async (request: NextRequest, auth, context?: { params: Promise<{ id: string }> }) => {
+    try {
+      const { id } = await context!.params;
+      const { user: currentUser, userId } = auth;
 
-    const authResult = await requireAuth(['student']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
+      // Check homework.read permission (for updating draft)
+      const permCheck = await requirePermission(userId, "homework.read");
+      if (permCheck) return permCheck;
 
-    const { user: currentUser, userId } = authResult;
+      const body = await request.json();
+      const { answers, attachments, textAnswers } = body;
 
-    // Check homework.read permission (for updating draft)
-    const permCheck = await requirePermission(userId, "homework.read");
-    if (permCheck) return permCheck;
+      // Find existing draft submission using db.select()
+      const existingSubmission = await db
+        .select()
+        .from(homeworkSubmissions)
+        .where(and(
+          eq(homeworkSubmissions.homeworkId, id),
+          eq(homeworkSubmissions.studentId, currentUser.id)
+        ))
+        .limit(1);
 
-    const body = await request.json();
-    const { answers, attachments, textAnswers } = body;
+      if (existingSubmission.length === 0) {
+        return errorResponse("No draft found", 404);
+      }
 
-    // Find existing draft submission
-    const existingSubmission = await db.query.homeworkSubmissions.findFirst({
-      where: and(
-        eq(homeworkSubmissions.homeworkId, id),
-        eq(homeworkSubmissions.studentId, currentUser.id)
-      ),
-    });
+      const submission = existingSubmission[0];
 
-    if (!existingSubmission) {
-      return NextResponse.json({ error: "No draft found" }, { status: 404 });
-    }
+      if (submission.status !== "draft") {
+        return errorResponse("Cannot update submitted homework", 400);
+      }
 
-    if (existingSubmission.status !== "draft") {
-      return NextResponse.json({ error: "Cannot update submitted homework" }, { status: 400 });
-    }
-
-    const [updated] = await db.update(homeworkSubmissions)
-      .set({
-        answers: (answers || (existingSubmission as any).answers) as any,
-        attachments: (attachments || (existingSubmission as any).attachments) as any,
-        textAnswers: (textAnswers || (existingSubmission as any).textAnswers) as any,
+      const updatedData = {
+        answers: answers || (submission.answers as Record<string, unknown>),
+        attachments: attachments || (submission.attachments as unknown[]),
+        textAnswers: textAnswers || (submission.textAnswers as Record<string, string>),
         updatedAt: new Date(),
-      } as any)
-      .where(eq(homeworkSubmissions.id, existingSubmission.id))
-      .returning();
+      };
 
-    return NextResponse.json({ submission: updated });
-  } catch (error) {
-    logger.error("Draft update error:", error);
-    return NextResponse.json({ error: "Failed to update draft" }, { status: 500 });
-  }
-}
+      const [updated] = await db
+        .update(homeworkSubmissions)
+        .set(updatedData)
+        .where(eq(homeworkSubmissions.id, submission.id))
+        .returning();
+
+      return successResponse({ submission: updated });
+    } catch (error) {
+      logger.error("Draft update error:", error);
+      return errorResponse("Failed to update draft", 500);
+    }
+  },
+  ['student']
+);

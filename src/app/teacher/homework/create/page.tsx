@@ -1,7 +1,7 @@
 "use client";
 
 import { logger } from "@/lib/logger";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@/components/ui/toaster";
 /**
  * TEACHER HOMEWORK CREATE PAGE
  * Page for teachers to create new homework assignments
@@ -15,31 +15,28 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { HomeworkCreator, type HomeworkData } from "@/components/homework";
 
-// Mock classes data - will be replaced with API call
-const mockClasses = [
-  { id: "class1", name: "Class 10 A", grade: "10", section: "A" },
-  { id: "class2", name: "Class 10 B", grade: "10", section: "B" },
-  { id: "class3", name: "Class 9 A", grade: "9", section: "A" },
-];
+interface ClassData {
+  id: string;
+  name: string;
+  grade: string;
+  section: string;
+}
 
-// Mock subjects data
-const mockSubjects = [
-  { id: "sub1", name: "Mathematics" },
-  { id: "sub2", name: "English" },
-  { id: "sub3", name: "Science" },
-  { id: "sub4", name: "History" },
-];
+interface SubjectData {
+  id: string;
+  name: string;
+}
 
 export default function CreateHomeworkPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
-  const [classes, setClasses] = useState<typeof mockClasses>([]);
-  const [subjects, setSubjects] = useState<typeof mockSubjects>([]);
+  const [classes, setClasses] = useState<ClassData[]>([]);
+  const [subjects, setSubjects] = useState<SubjectData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch classes and subjects
+    // Fetch classes and subjects from database
     Promise.all([
       fetchClasses(),
       fetchSubjects(),
@@ -51,12 +48,14 @@ export default function CreateHomeworkPage() {
       const response = await fetch("/api/classes");
       if (response.ok) {
         const data = await response.json();
-        setClasses(data.classes || mockClasses);
+        setClasses(data.classes || []);
       } else {
-        setClasses(mockClasses);
+        logger.error("Failed to fetch classes", { status: response.status });
+        setClasses([]);
       }
-    } catch {
-      setClasses(mockClasses);
+    } catch (error) {
+      logger.error("Error fetching classes:", error);
+      setClasses([]);
     }
   };
 
@@ -65,12 +64,14 @@ export default function CreateHomeworkPage() {
       const response = await fetch("/api/school-admin/subjects");
       if (response.ok) {
         const data = await response.json();
-        setSubjects(data.subjects || mockSubjects);
+        setSubjects(data.subjects || []);
       } else {
-        setSubjects(mockSubjects);
+        logger.error("Failed to fetch subjects", { status: response.status });
+        setSubjects([]);
       }
-    } catch {
-      setSubjects(mockSubjects);
+    } catch (error) {
+      logger.error("Error fetching subjects:", error);
+      setSubjects([]);
     }
   };
 
@@ -114,7 +115,7 @@ export default function CreateHomeworkPage() {
         toast({
           title: "Failed to create homework",
           description: error.error || "Unknown error",
-          variant: "destructive",
+          variant: "error",
         });
       }
     } catch (error) {
@@ -122,7 +123,7 @@ export default function CreateHomeworkPage() {
       toast({
         title: "Failed to create homework",
         description: "Please check your connection and try again.",
-        variant: "destructive",
+        variant: "error",
       });
     } finally {
       setIsSaving(false);
@@ -179,8 +180,8 @@ export default function CreateHomeworkPage() {
             onSave={handleSave}
             onCancel={handleCancel}
             initialData={{
-              classIds: classes[0]?.id ? [classes[0].id] : [],
-              subject: subjects[0]?.name || "",
+              classIds: classes.length > 0 ? [classes[0].id] : [],
+              subject: subjects.length > 0 ? subjects[0].name : "",
             }}
           />
         </CardContent>

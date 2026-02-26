@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Menu, X, GraduationCap } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { portal } from "@/styles/design-tokens";
 
 interface PublicNavProps {
   transparent?: boolean;
@@ -33,7 +34,7 @@ export function PublicNav({ transparent = false }: PublicNavProps) {
           <Link href="/" className="flex items-center gap-2">
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center shadow-lg"
-              style={{ background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)' }}
+              style={{ background: portal.student.gradient }}
             >
               <GraduationCap className="w-4 h-4 text-white" strokeWidth={2.5} />
             </div>
@@ -61,7 +62,7 @@ export function PublicNav({ transparent = false }: PublicNavProps) {
             <Link href="/sign-up">
               <Button
                 variant="ceramic"
-                style={{ background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)' }}
+                style={{ background: portal.student.gradient }}
               >
                 Get Started
               </Button>
@@ -103,7 +104,7 @@ export function PublicNav({ transparent = false }: PublicNavProps) {
                   <Button
                     variant="ceramic"
                     className="w-full"
-                    style={{ background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)' }}
+                    style={{ background: portal.student.gradient }}
                   >
                     Get Started
                   </Button>

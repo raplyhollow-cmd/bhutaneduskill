@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/components/ui/toaster";
 import { X, Loader2, Mail, Phone, GraduationCap, BookOpen, Building2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { portal } from "@/styles/design-tokens";
 
 interface AddTeacherModalProps {
   open: boolean;
@@ -30,6 +32,7 @@ const departments = [
 
 export function AddTeacherModal({ open, onClose, onSuccess }: AddTeacherModalProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     firstName: "",
@@ -55,14 +58,27 @@ export function AddTeacherModal({ open, onClose, onSuccess }: AddTeacherModalPro
       });
 
       if (response.ok) {
+        toast({
+          title: "Teacher created",
+          description: `${formData.firstName} ${formData.lastName} has been added successfully.`,
+          variant: "success",
+        });
         onSuccess();
         handleClose();
       } else {
         const data = await response.json();
-        alert(data.error || "Failed to create teacher");
+        toast({
+          title: "Failed to create teacher",
+          description: data.error || "Please check your inputs and try again.",
+          variant: "error",
+        });
       }
     } catch (error) {
-      alert("Network error. Please try again.");
+      toast({
+        title: "Network error",
+        description: "Please check your connection and try again.",
+        variant: "error",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -89,7 +105,7 @@ export function AddTeacherModal({ open, onClose, onSuccess }: AddTeacherModalPro
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b bg-gradient-to-r from-violet-50 to-indigo-50 rounded-t-xl">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgb(139 92 246) 0%, rgb(124 58 237) 100%)' }}>
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: portal.schoolAdmin.gradient }}>
               <GraduationCap className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -110,7 +126,7 @@ export function AddTeacherModal({ open, onClose, onSuccess }: AddTeacherModalPro
           {/* Personal Information */}
           <div>
             <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <GraduationCap className="w-4 h-4" style={{ color: 'rgb(139 92 246)' }} />
+              <GraduationCap className="w-4 h-4" style={{ color: portal.schoolAdmin.primary }} />
               Personal Information
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -142,7 +158,7 @@ export function AddTeacherModal({ open, onClose, onSuccess }: AddTeacherModalPro
           {/* Contact Information */}
           <div>
             <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <Mail className="w-4 h-4" style={{ color: 'rgb(139 92 246)' }} />
+              <Mail className="w-4 h-4" style={{ color: portal.schoolAdmin.primary }} />
               Contact Information
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -179,7 +195,7 @@ export function AddTeacherModal({ open, onClose, onSuccess }: AddTeacherModalPro
           {/* Professional Information */}
           <div>
             <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <BookOpen className="w-4 h-4" style={{ color: 'rgb(139 92 246)' }} />
+              <BookOpen className="w-4 h-4" style={{ color: portal.schoolAdmin.primary }} />
               Professional Information
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

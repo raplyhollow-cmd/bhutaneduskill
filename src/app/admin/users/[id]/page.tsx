@@ -236,7 +236,7 @@ export default function UserDetailPage() {
               </Badge>
             </div>
             <p className="text-gray-500 capitalize">
-              {user.type} {user.role && `• ${user.role}`}
+              {user.type}
               {user.school && ` • ${user.school.name}`}
             </p>
           </div>
@@ -339,7 +339,6 @@ export default function UserDetailPage() {
               <div>
                 <p className="text-sm text-gray-500">Role</p>
                 <p className="text-gray-900 capitalize">{user.type}</p>
-                {user.role && <p className="text-sm text-gray-500 capitalize">{user.role}</p>}
               </div>
             </div>
 

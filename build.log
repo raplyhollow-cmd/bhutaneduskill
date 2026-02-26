@@ -1,0 +1,815 @@
+
+> career-guidance@0.1.0 build
+> next build
+
+   ▲ Next.js 15.5.12
+   - Environments: .env
+   - Experiments (use with caution):
+     · cpus: 2
+
+   Creating an optimized production build ...
+ ⚠ Compiled with warnings in 2.9min
+
+./src/app/api/teacher/homework/[id]/route.ts
+Attempted import error: 'errorResponse' is not exported from '@/lib/api/route-handler' (imported as 'errorResponse').
+
+Import trace for requested module:
+./src/app/api/teacher/homework/[id]/route.ts
+
+./src/app/api/teacher/homework/[id]/route.ts
+Attempted import error: 'errorResponse' is not exported from '@/lib/api/route-handler' (imported as 'errorResponse').
+
+Import trace for requested module:
+./src/app/api/teacher/homework/[id]/route.ts
+
+./src/app/api/teacher/homework/[id]/route.ts
+Attempted import error: 'successResponse' is not exported from '@/lib/api/route-handler' (imported as 'successResponse').
+
+Import trace for requested module:
+./src/app/api/teacher/homework/[id]/route.ts
+
+./src/app/api/teacher/homework/[id]/route.ts
+Attempted import error: 'errorResponse' is not exported from '@/lib/api/route-handler' (imported as 'errorResponse').
+
+Import trace for requested module:
+./src/app/api/teacher/homework/[id]/route.ts
+
+./src/app/api/teacher/homework/[id]/route.ts
+Attempted import error: 'errorResponse' is not exported from '@/lib/api/route-handler' (imported as 'errorResponse').
+
+Import trace for requested module:
+./src/app/api/teacher/homework/[id]/route.ts
+
+./src/app/api/teacher/homework/[id]/route.ts
+Attempted import error: 'successResponse' is not exported from '@/lib/api/route-handler' (imported as 'successResponse').
+
+Import trace for requested module:
+./src/app/api/teacher/homework/[id]/route.ts
+
+./src/app/api/teacher/homework/[id]/route.ts
+Attempted import error: 'errorResponse' is not exported from '@/lib/api/route-handler' (imported as 'errorResponse').
+
+Import trace for requested module:
+./src/app/api/teacher/homework/[id]/route.ts
+
+./src/app/api/teacher/homework/[id]/route.ts
+Attempted import error: 'errorResponse' is not exported from '@/lib/api/route-handler' (imported as 'errorResponse').
+
+Import trace for requested module:
+./src/app/api/teacher/homework/[id]/route.ts
+
+./src/app/api/teacher/homework/[id]/route.ts
+Attempted import error: 'errorResponse' is not exported from '@/lib/api/route-handler' (imported as 'errorResponse').
+
+Import trace for requested module:
+./src/app/api/teacher/homework/[id]/route.ts
+
+./src/app/api/teacher/homework/[id]/route.ts
+Attempted import error: 'successResponse' is not exported from '@/lib/api/route-handler' (imported as 'successResponse').
+
+Import trace for requested module:
+./src/app/api/teacher/homework/[id]/route.ts
+
+./src/app/api/teacher/homework/[id]/route.ts
+Attempted import error: 'errorResponse' is not exported from '@/lib/api/route-handler' (imported as 'errorResponse').
+
+Import trace for requested module:
+./src/app/api/teacher/homework/[id]/route.ts
+
+./src/app/api/teacher/homework/[id]/route.ts
+Attempted import error: 'errorResponse' is not exported from '@/lib/api/route-handler' (imported as 'errorResponse').
+
+Import trace for requested module:
+./src/app/api/teacher/homework/[id]/route.ts
+
+./src/app/api/teacher/homework/[id]/route.ts
+Attempted import error: 'successResponse' is not exported from '@/lib/api/route-handler' (imported as 'successResponse').
+
+Import trace for requested module:
+./src/app/api/teacher/homework/[id]/route.ts
+
+./src/app/api/teacher/homework/[id]/route.ts
+Attempted import error: 'successResponse' is not exported from '@/lib/api/route-handler' (imported as 'successResponse').
+
+Import trace for requested module:
+./src/app/api/teacher/homework/[id]/route.ts
+
+./src/app/api/teacher/homework/[id]/route.ts
+Attempted import error: 'successResponse' is not exported from '@/lib/api/route-handler' (imported as 'successResponse').
+
+Import trace for requested module:
+./src/app/api/teacher/homework/[id]/route.ts
+
+./src/app/api/teacher/homework/[id]/route.ts
+Attempted import error: 'errorResponse' is not exported from '@/lib/api/route-handler' (imported as 'errorResponse').
+
+Import trace for requested module:
+./src/app/api/teacher/homework/[id]/route.ts
+
+   Skipping validation of types
+   Skipping linting
+   Collecting page data ...
+   Generating static pages (0/495) ...
+[BhutanEduSkill] [API ERROR] Error: Dynamic server usage: Route /api/student/marks-summary couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at s (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\95873.js:1:28650)
+    at m (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\86802.js:1:11038)
+    at f (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\50698.js:1:5484)
+    at async y (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\50698.js:3:6065)
+    at async k (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\96048.js:1:863)
+    at async D (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\app\api\student\marks-summary\route.js:1:720) {
+  description: "Route /api/student/marks-summary couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+} {
+  route: '/api/student/marks-summary',
+  method: 'GET',
+  timestamp: '2026-02-26T12:38:10.990Z'
+}
+[BhutanEduSkill] [API ERROR] Error: Dynamic server usage: Route /api/student/roadmap couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at s (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\95873.js:1:28650)
+    at m (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\86802.js:1:11038)
+    at f (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\50698.js:1:5484)
+    at async y (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\50698.js:3:6065)
+    at async k (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\96048.js:1:863)
+    at async D (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\app\api\student\roadmap\route.js:1:3851) {
+  description: "Route /api/student/roadmap couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+} {
+  route: '/api/student/roadmap',
+  method: 'GET',
+  timestamp: '2026-02-26T12:38:11.956Z'
+}
+[BhutanEduSkill] [ERROR] getCurrentSchoolId failed Error: Dynamic server usage: Route /school-admin/announcements couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at s (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\95873.js:1:28650)
+    at m (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\86802.js:1:11038)
+    at f (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\50698.js:1:5484)
+    at async y (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\50698.js:3:6065)
+    at async e (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\901.js:7:13921)
+    at async l (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\901.js:1:325)
+    at async v (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\50550.js:1:8985)
+    at async m (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\app\school-admin\announcements\page.js:2:12879) {
+  description: "Route /school-admin/announcements couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+} 
+[BhutanEduSkill] [ERROR] getCurrentSchoolId failed Error: Dynamic server usage: Route /school-admin/analytics couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at s (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\95873.js:1:28650)
+    at m (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\86802.js:1:11038)
+    at f (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\50698.js:1:5484)
+    at async y (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\50698.js:3:6065)
+    at async e (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\901.js:7:13921)
+    at async l (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\901.js:1:325)
+    at async g (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\app\school-admin\analytics\page.js:2:23678) {
+  description: "Route /school-admin/analytics couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+} 
+[BhutanEduSkill] [ERROR] getCurrentSchoolId failed Error: Dynamic server usage: Route /school-admin/counselors couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at s (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\95873.js:1:28650)
+    at m (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\86802.js:1:11038)
+    at f (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\50698.js:1:5484)
+    at async y (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\50698.js:3:6065)
+    at async e (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\901.js:7:13921)
+    at async l (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\901.js:1:325)
+    at async s (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\50550.js:1:8793)
+    at async g (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\app\school-admin\counselors\page.js:2:20734) {
+  description: "Route /school-admin/counselors couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+} 
+[BhutanEduSkill] [ERROR] getCurrentSchoolId failed Error: Dynamic server usage: Route /school-admin/fees couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at s (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\95873.js:1:28650)
+    at m (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\86802.js:1:11038)
+    at f (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\50698.js:1:5484)
+    at async y (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\50698.js:3:6065)
+    at async e (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\901.js:7:13921)
+    at async l (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\901.js:1:325)
+    at async g (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\app\school-admin\fees\page.js:1:771) {
+  description: "Route /school-admin/fees couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+} 
+[BhutanEduSkill] [ERROR] getCurrentSchoolId failed Error: Dynamic server usage: Route /school-admin/tuition couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at s (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\95873.js:1:28650)
+    at m (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\86802.js:1:11038)
+    at f (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\50698.js:1:5484)
+    at async y (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\50698.js:3:6065)
+    at async e (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\901.js:7:13921)
+    at async l (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\901.js:1:325)
+    at async t (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\50550.js:1:8859)
+    at async g (D:\VS STUDIO PROJECT\bhutaneduskill\.next\server\app\school-admin\tuition\page.js:1:8661) {
+  description: "Route /school-admin/tuition couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+} 
+   Generating static pages (123/495) 
+   Generating static pages (247/495) 
+   Generating static pages (371/495) 
+ ✓ Generating static pages (495/495)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                                        Size  First Load JS
+┌ ○ /                                                           1.61 kB         104 kB
+├ ○ /_not-found                                                 1.14 kB         103 kB
+├ ƒ /[portal]/notifications                                     6.85 kB         165 kB
+├ ○ /about                                                      5.23 kB         177 kB
+├ ƒ /admin                                                      10.9 kB         128 kB
+├ ƒ /admin/analytics                                            9.98 kB         124 kB
+├ ƒ /admin/assessments                                          12.3 kB         161 kB
+├ ƒ /admin/bcse                                                 3.47 kB         106 kB
+├ ƒ /admin/billing                                              16.8 kB         192 kB
+├ ƒ /admin/careers                                              14.8 kB         209 kB
+├ ƒ /admin/command-center                                       8.87 kB         122 kB
+├ ƒ /admin/content                                              3.68 kB         198 kB
+├ ƒ /admin/content/colleges                                     10.2 kB         158 kB
+├ ƒ /admin/content/programs                                     10.8 kB         158 kB
+├ ƒ /admin/content/scholarships                                 10.6 kB         158 kB
+├ ƒ /admin/counselors                                           11.7 kB         156 kB
+├ ƒ /admin/knowledge                                            8.04 kB         135 kB
+├ ƒ /admin/notifications                                        10.2 kB         124 kB
+├ ƒ /admin/partners                                             11.1 kB         128 kB
+├ ƒ /admin/partners/[id]                                        12.5 kB         126 kB
+├ ƒ /admin/permissions                                          6.31 kB         120 kB
+├ ƒ /admin/reports                                              6.52 kB         251 kB
+├ ƒ /admin/roles                                                7.82 kB         121 kB
+├ ƒ /admin/school-admin-applications                            9.98 kB         157 kB
+├ ƒ /admin/schools                                              15.6 kB         208 kB
+├ ƒ /admin/schools/[id]                                         13.2 kB         214 kB
+├ ƒ /admin/schools/[id]/fee-generator                           8.16 kB         166 kB
+├ ƒ /admin/settings                                               14 kB         176 kB
+├ ƒ /admin/subjects                                             12.3 kB         205 kB
+├ ƒ /admin/support                                              9.41 kB         163 kB
+├ ƒ /admin/system-status                                        9.84 kB         168 kB
+├ ƒ /admin/teachers                                             9.19 kB         207 kB
+├ ƒ /admin/users                                                7.33 kB         214 kB
+├ ƒ /admin/users/[id]                                           7.58 kB         206 kB
+├ ƒ /admin/verification                                         10.8 kB         158 kB
+├ ƒ /api/admin/analytics-data                                   1.14 kB         103 kB
+├ ƒ /api/admin/analytics-data/export                            1.14 kB         103 kB
+├ ƒ /api/admin/analytics-data/schools                           1.14 kB         103 kB
+├ ƒ /api/admin/command/execute                                  1.14 kB         103 kB
+├ ƒ /api/admin/content/colleges                                 1.14 kB         103 kB
+├ ƒ /api/admin/content/programs                                 1.14 kB         103 kB
+├ ƒ /api/admin/content/programs/[id]                            1.14 kB         103 kB
+├ ƒ /api/admin/content/scholarships                             1.14 kB         103 kB
+├ ƒ /api/admin/content/sync                                     1.14 kB         103 kB
+├ ƒ /api/admin/dashboard                                        1.14 kB         103 kB
+├ ƒ /api/admin/insights                                         1.14 kB         103 kB
+├ ƒ /api/admin/knowledge/drafts/[id]/approve                    1.14 kB         103 kB
+├ ƒ /api/admin/knowledge/ingest                                 1.14 kB         103 kB
+├ ƒ /api/admin/notifications                                    1.14 kB         103 kB
+├ ƒ /api/admin/notifications/[notificationId]                   1.14 kB         103 kB
+├ ƒ /api/admin/notifications/send                               1.14 kB         103 kB
+├ ƒ /api/admin/partners                                         1.14 kB         103 kB
+├ ƒ /api/admin/partners/[partnerId]                             1.14 kB         103 kB
+├ ƒ /api/admin/partners/[partnerId]/analytics                   1.14 kB         103 kB
+├ ƒ /api/admin/partners/[partnerId]/commissions                 1.14 kB         103 kB
+├ ƒ /api/admin/partners/[partnerId]/commissions/[commissionId]  1.14 kB         103 kB
+├ ƒ /api/admin/partners/[partnerId]/invite                      1.14 kB         103 kB
+├ ƒ /api/admin/partners/[partnerId]/statistics                  1.14 kB         103 kB
+├ ƒ /api/admin/partners/batch                                   1.14 kB         103 kB
+├ ƒ /api/admin/permissions                                      1.14 kB         103 kB
+├ ƒ /api/admin/reports                                          1.14 kB         103 kB
+├ ƒ /api/admin/roles                                            1.14 kB         103 kB
+├ ƒ /api/admin/roles/[roleId]/permissions                       1.14 kB         103 kB
+├ ƒ /api/admin/roles/[roleId]/users                             1.14 kB         103 kB
+├ ƒ /api/admin/school-admin-applications                        1.14 kB         103 kB
+├ ƒ /api/admin/school-admin-applications/[id]/approve           1.14 kB         103 kB
+├ ƒ /api/admin/school-admin-applications/[id]/verify-payment    1.14 kB         103 kB
+├ ƒ /api/admin/schools                                          1.14 kB         103 kB
+├ ƒ /api/admin/schools/[id]                                     1.14 kB         103 kB
+├ ƒ /api/admin/schools/[id]/activate                            1.14 kB         103 kB
+├ ƒ /api/admin/schools/[id]/approve                             1.14 kB         103 kB
+├ ƒ /api/admin/schools/[id]/generate-fees                       1.14 kB         103 kB
+├ ƒ /api/admin/schools/[id]/invoices                            1.14 kB         103 kB
+├ ƒ /api/admin/schools/[id]/seat-usage                          1.14 kB         103 kB
+├ ƒ /api/admin/schools/[id]/suspend                             1.14 kB         103 kB
+├ ƒ /api/admin/schools/[id]/tier                                1.14 kB         103 kB
+├ ƒ /api/admin/settings                                         1.14 kB         103 kB
+├ ƒ /api/admin/sitrep                                           1.14 kB         103 kB
+├ ƒ /api/admin/stats                                            1.14 kB         103 kB
+├ ƒ /api/admin/stats/realtime                                   1.14 kB         103 kB
+├ ƒ /api/admin/subjects                                         1.14 kB         103 kB
+├ ƒ /api/admin/subjects/[id]                                    1.14 kB         103 kB
+├ ƒ /api/admin/support                                          1.14 kB         103 kB
+├ ƒ /api/admin/support/[id]                                     1.14 kB         103 kB
+├ ƒ /api/admin/support/[id]/responses                           1.14 kB         103 kB
+├ ƒ /api/admin/support/agents                                   1.14 kB         103 kB
+├ ƒ /api/admin/system-status                                    1.14 kB         103 kB
+├ ƒ /api/admin/teachers                                         1.14 kB         103 kB
+├ ƒ /api/admin/users                                            1.14 kB         103 kB
+├ ƒ /api/admin/users/[userId]                                   1.14 kB         103 kB
+├ ƒ /api/admin/users/[userId]/verify                            1.14 kB         103 kB
+├ ƒ /api/admin/users/batch                                      1.14 kB         103 kB
+├ ƒ /api/ai/career-coach                                        1.14 kB         103 kB
+├ ƒ /api/ai/career-predictor                                    1.14 kB         103 kB
+├ ƒ /api/ai/essay-reviewer                                      1.14 kB         103 kB
+├ ƒ /api/ai/insights                                            1.14 kB         103 kB
+├ ƒ /api/ai/interview-coach                                     1.14 kB         103 kB
+├ ƒ /api/ai/mood-tracker                                        1.14 kB         103 kB
+├ ƒ /api/ai/platform-assistant                                  1.14 kB         103 kB
+├ ƒ /api/ai/rub-predictor                                       1.14 kB         103 kB
+├ ƒ /api/ai/scholarships                                        1.14 kB         103 kB
+├ ƒ /api/ai/skill-gap                                           1.14 kB         103 kB
+├ ƒ /api/ai/study-planner                                       1.14 kB         103 kB
+├ ƒ /api/announcements                                          1.14 kB         103 kB
+├ ƒ /api/assessment-submissions                                 1.14 kB         103 kB
+├ ƒ /api/assessment-submissions/[id]                            1.14 kB         103 kB
+├ ƒ /api/assessment-types                                       1.14 kB         103 kB
+├ ƒ /api/assessments                                            1.14 kB         103 kB
+├ ƒ /api/assessments/disc                                       1.14 kB         103 kB
+├ ƒ /api/assessments/learning-styles                            1.14 kB         103 kB
+├ ƒ /api/assessments/mbti                                       1.14 kB         103 kB
+├ ƒ /api/assessments/riasec                                     1.14 kB         103 kB
+├ ƒ /api/assessments/work-values                                1.14 kB         103 kB
+├ ƒ /api/auth/set-role                                          1.14 kB         103 kB
+├ ƒ /api/bcse/registrations                                     1.14 kB         103 kB
+├ ƒ /api/bcse/results/import                                    1.14 kB         103 kB
+├ ƒ /api/bcse/scholarships                                      1.14 kB         103 kB
+├ ƒ /api/billing/invoices                                       1.14 kB         103 kB
+├ ƒ /api/billing/invoices/[invoiceId]                           1.14 kB         103 kB
+├ ƒ /api/billing/subscriptions                                  1.14 kB         103 kB
+├ ƒ /api/billing/subscriptions/[subscriptionId]                 1.14 kB         103 kB
+├ ƒ /api/careers                                                1.14 kB         103 kB
+├ ƒ /api/certificates/[assessmentId]                            1.14 kB         103 kB
+├ ƒ /api/classes                                                1.14 kB         103 kB
+├ ƒ /api/classes/[classId]                                      1.14 kB         103 kB
+├ ƒ /api/classes/[classId]/enrollments                          1.14 kB         103 kB
+├ ƒ /api/classes/[classId]/enrollments/[studentId]              1.14 kB         103 kB
+├ ƒ /api/classes/[classId]/teachers                             1.14 kB         103 kB
+├ ƒ /api/clerk/webhook                                          1.14 kB         103 kB
+├ ƒ /api/communication/announcements                            1.14 kB         103 kB
+├ ƒ /api/communication/announcements/[id]                       1.14 kB         103 kB
+├ ƒ /api/communication/messages                                 1.14 kB         103 kB
+├ ƒ /api/consent                                                1.14 kB         103 kB
+├ ƒ /api/consent/[id]                                           1.14 kB         103 kB
+├ ƒ /api/counselor-notes                                        1.14 kB         103 kB
+├ ƒ /api/counselor-notes/[id]                                   1.14 kB         103 kB
+├ ƒ /api/counselor/assessments/results                          1.14 kB         103 kB
+├ ƒ /api/counselor/career-approve                               1.14 kB         103 kB
+├ ƒ /api/counselor/career-plans                                 1.14 kB         103 kB
+├ ƒ /api/counselor/dashboard                                    1.14 kB         103 kB
+├ ƒ /api/counselor/intervention-suggestions                     1.14 kB         103 kB
+├ ƒ /api/counselor/interventions                                1.14 kB         103 kB
+├ ƒ /api/counselor/interventions/[id]                           1.14 kB         103 kB
+├ ƒ /api/counselor/red-flags                                    1.14 kB         103 kB
+├ ƒ /api/counselor/red-flags/scan                               1.14 kB         103 kB
+├ ƒ /api/counselor/resources                                    1.14 kB         103 kB
+├ ƒ /api/counselor/resources/share                              1.14 kB         103 kB
+├ ƒ /api/counselor/sessions                                     1.14 kB         103 kB
+├ ƒ /api/counselor/sessions/[id]                                1.14 kB         103 kB
+├ ƒ /api/counselor/student-context                              1.14 kB         103 kB
+├ ƒ /api/counselor/students                                     1.14 kB         103 kB
+├ ƒ /api/counselor/wellness-log                                 1.14 kB         103 kB
+├ ƒ /api/create-admin                                           1.14 kB         103 kB
+├ ƒ /api/data-export                                            1.14 kB         103 kB
+├ ƒ /api/events                                                 1.14 kB         103 kB
+├ ƒ /api/events/[id]/register                                   1.14 kB         103 kB
+├ ƒ /api/files/[id]                                             1.14 kB         103 kB
+├ ƒ /api/files/upload                                           1.14 kB         103 kB
+├ ƒ /api/hostel                                                 1.14 kB         103 kB
+├ ƒ /api/hostel/allocations                                     1.14 kB         103 kB
+├ ƒ /api/id-card                                                1.14 kB         103 kB
+├ ƒ /api/inventory/alerts                                       1.14 kB         103 kB
+├ ƒ /api/inventory/assignments                                  1.14 kB         103 kB
+├ ƒ /api/inventory/categories                                   1.14 kB         103 kB
+├ ƒ /api/inventory/items                                        1.14 kB         103 kB
+├ ƒ /api/inventory/maintenance                                  1.14 kB         103 kB
+├ ƒ /api/inventory/procurement                                  1.14 kB         103 kB
+├ ƒ /api/inventory/settings                                     1.14 kB         103 kB
+├ ƒ /api/inventory/transactions                                 1.14 kB         103 kB
+├ ƒ /api/inventory/vendors                                      1.14 kB         103 kB
+├ ƒ /api/journal                                                1.14 kB         103 kB
+├ ƒ /api/journal/[id]                                           1.14 kB         103 kB
+├ ƒ /api/journal/ai-insights                                    1.14 kB         103 kB
+├ ƒ /api/leave                                                  1.14 kB         103 kB
+├ ƒ /api/leave/[id]                                             1.14 kB         103 kB
+├ ƒ /api/library                                                1.14 kB         103 kB
+├ ƒ /api/library/books                                          1.14 kB         103 kB
+├ ƒ /api/library/circulation                                    1.14 kB         103 kB
+├ ƒ /api/library/fines                                          1.14 kB         103 kB
+├ ƒ /api/library/issue                                          1.14 kB         103 kB
+├ ƒ /api/library/members                                        1.14 kB         103 kB
+├ ƒ /api/library/reservations                                   1.14 kB         103 kB
+├ ƒ /api/library/stats                                          1.14 kB         103 kB
+├ ƒ /api/marketing/schools                                      1.14 kB         103 kB
+├ ƒ /api/marketing/testimonials                                 1.14 kB         103 kB
+├ ƒ /api/ministry/analytics                                     1.14 kB         103 kB
+├ ƒ /api/ministry/analytics/export                              1.14 kB         103 kB
+├ ƒ /api/ministry/analytics/school-comparison                   1.14 kB         103 kB
+├ ƒ /api/ministry/billing                                       1.14 kB         103 kB
+├ ƒ /api/ministry/billing/invoices/[invoiceId]                  1.14 kB         103 kB
+├ ƒ /api/ministry/billing/payments                              1.14 kB         103 kB
+├ ƒ /api/ministry/briefing                                      1.14 kB         103 kB
+├ ƒ /api/ministry/dashboard                                     1.14 kB         103 kB
+├ ƒ /api/ministry/gnh                                           1.14 kB         103 kB
+├ ƒ /api/ministry/schools                                       1.14 kB         103 kB
+├ ƒ /api/ministry/schools/[id]                                  1.14 kB         103 kB
+├ ƒ /api/ministry/wellbeing-pulse                               1.14 kB         103 kB
+├ ƒ /api/notices                                                1.14 kB         103 kB
+├ ƒ /api/notices/[id]/read                                      1.14 kB         103 kB
+├ ƒ /api/notifications                                          1.14 kB         103 kB
+├ ƒ /api/notifications/my-notifications                         1.14 kB         103 kB
+├ ƒ /api/notifications/my-notifications/unread-count            1.14 kB         103 kB
+├ ƒ /api/parent/assessments                                     1.14 kB         103 kB
+├ ƒ /api/parent/attendance                                      1.14 kB         103 kB
+├ ƒ /api/parent/behavior-logs                                   1.14 kB         103 kB
+├ ƒ /api/parent/career-matches                                  1.14 kB         103 kB
+├ ƒ /api/parent/career-plan                                     1.14 kB         103 kB
+├ ƒ /api/parent/children                                        1.14 kB         103 kB
+├ ƒ /api/parent/contacts                                        1.14 kB         103 kB
+├ ƒ /api/parent/dashboard                                       1.14 kB         103 kB
+├ ƒ /api/parent/documents                                       1.14 kB         103 kB
+├ ƒ /api/parent/documents/upload                                1.14 kB         103 kB
+├ ƒ /api/parent/fees                                            1.14 kB         103 kB
+├ ƒ /api/parent/fees/upload-receipt                             1.14 kB         103 kB
+├ ƒ /api/parent/homework                                        1.14 kB         103 kB
+├ ƒ /api/parent/messages                                        1.14 kB         103 kB
+├ ƒ /api/parent/messages/[conversationId]                       1.14 kB         103 kB
+├ ƒ /api/parent/report-cards                                    1.14 kB         103 kB
+├ ƒ /api/parent/report-cards/download                           1.14 kB         103 kB
+├ ƒ /api/parent/riasec-results                                  1.14 kB         103 kB
+├ ƒ /api/parent/search-student                                  1.14 kB         103 kB
+├ ƒ /api/parent/send-otp                                        1.14 kB         103 kB
+├ ƒ /api/parent/transport                                       1.14 kB         103 kB
+├ ƒ /api/parent/verify-cid                                      1.14 kB         103 kB
+├ ƒ /api/parent/verify-otp                                      1.14 kB         103 kB
+├ ƒ /api/payments/rma/initiate                                  1.14 kB         103 kB
+├ ƒ /api/payments/rma/webhook                                   1.14 kB         103 kB
+├ ƒ /api/plans                                                  1.14 kB         103 kB
+├ ƒ /api/plans/[id]                                             1.14 kB         103 kB
+├ ƒ /api/push/notifications                                     1.14 kB         103 kB
+├ ƒ /api/push/send                                              1.14 kB         103 kB
+├ ƒ /api/push/settings                                          1.14 kB         103 kB
+├ ƒ /api/push/subscribe                                         1.14 kB         103 kB
+├ ƒ /api/push/unsubscribe                                       1.14 kB         103 kB
+├ ƒ /api/push/vapid-public-key                                  1.14 kB         103 kB
+├ ƒ /api/reports                                                1.14 kB         103 kB
+├ ƒ /api/reports/attendance/[studentId]                         1.14 kB         103 kB
+├ ƒ /api/reports/fees/collection                                1.14 kB         103 kB
+├ ƒ /api/reports/generate                                       1.14 kB         103 kB
+├ ƒ /api/reports/report-card                                    1.14 kB         103 kB
+├ ƒ /api/results                                                1.14 kB         103 kB
+├ ƒ /api/results/[id]                                           1.14 kB         103 kB
+├ ƒ /api/rub/applications                                       1.14 kB         103 kB
+├ ƒ /api/rub/colleges                                           1.14 kB         103 kB
+├ ƒ /api/rub/predictor                                          1.14 kB         103 kB
+├ ƒ /api/rub/programs                                           1.14 kB         103 kB
+├ ƒ /api/rub/scholarships                                       1.14 kB         103 kB
+├ ƒ /api/saved-careers                                          1.14 kB         103 kB
+├ ƒ /api/scholarships                                           1.14 kB         103 kB
+├ ƒ /api/school-admin/applications/[id]/approve                 1.14 kB         103 kB
+├ ƒ /api/school-admin/applications/[id]/assignment              1.14 kB         103 kB
+├ ƒ /api/school-admin/applications/[id]/reject                  1.14 kB         103 kB
+├ ƒ /api/school-admin/applications/approve-batch                1.14 kB         103 kB
+├ ƒ /api/school-admin/applications/reject-batch                 1.14 kB         103 kB
+├ ƒ /api/school-admin/attendance/bulk-import                    1.14 kB         103 kB
+├ ƒ /api/school-admin/bcse-registrations                        1.14 kB         103 kB
+├ ƒ /api/school-admin/branding                                  1.14 kB         103 kB
+├ ƒ /api/school-admin/capacity                                  1.14 kB         103 kB
+├ ƒ /api/school-admin/classes                                   1.14 kB         103 kB
+├ ƒ /api/school-admin/classes/[id]/assign-teacher               1.14 kB         103 kB
+├ ƒ /api/school-admin/classes/[id]/subject-teachers             1.14 kB         103 kB
+├ ƒ /api/school-admin/curriculum-assign                         1.14 kB         103 kB
+├ ƒ /api/school-admin/data-export                               1.14 kB         103 kB
+├ ƒ /api/school-admin/departments                               1.14 kB         103 kB
+├ ƒ /api/school-admin/departments/[id]                          1.14 kB         103 kB
+├ ƒ /api/school-admin/enroll-student                            1.14 kB         103 kB
+├ ƒ /api/school-admin/fees/defaulters                           1.14 kB         103 kB
+├ ƒ /api/school-admin/fees/generate                             1.14 kB         103 kB
+├ ƒ /api/school-admin/fees/payments                             1.14 kB         103 kB
+├ ƒ /api/school-admin/fees/structures                           1.14 kB         103 kB
+├ ƒ /api/school-admin/fees/structures/[id]                      1.14 kB         103 kB
+├ ƒ /api/school-admin/hostels/allocate                          1.14 kB         103 kB
+├ ƒ /api/school-admin/id-cards                                  1.14 kB         103 kB
+├ ƒ /api/school-admin/medical                                   1.14 kB         103 kB
+├ ƒ /api/school-admin/medical/allergies                         1.14 kB         103 kB
+├ ƒ /api/school-admin/medical/inventory                         1.14 kB         103 kB
+├ ƒ /api/school-admin/medical/referrals                         1.14 kB         103 kB
+├ ƒ /api/school-admin/medical/vaccinations                      1.14 kB         103 kB
+├ ƒ /api/school-admin/payroll                                   1.14 kB         103 kB
+├ ƒ /api/school-admin/payroll/[id]                              1.14 kB         103 kB
+├ ƒ /api/school-admin/payroll/run                               1.14 kB         103 kB
+├ ƒ /api/school-admin/reject-application                        1.14 kB         103 kB
+├ ƒ /api/school-admin/report-cards                              1.14 kB         103 kB
+├ ƒ /api/school-admin/report-cards/[id]                         1.14 kB         103 kB
+├ ƒ /api/school-admin/report-cards/generate                     1.14 kB         103 kB
+├ ƒ /api/school-admin/settings                                  1.14 kB         103 kB
+├ ƒ /api/school-admin/settings/academic-years/[id]              1.14 kB         103 kB
+├ ƒ /api/school-admin/settings/bell-schedules/[id]              1.14 kB         103 kB
+├ ƒ /api/school-admin/setup/complete                            1.14 kB         103 kB
+├ ƒ /api/school-admin/student-applications                      1.14 kB         103 kB
+├ ƒ /api/school-admin/students/bulk-import                      1.14 kB         103 kB
+├ ƒ /api/school-admin/subjects                                  1.14 kB         103 kB
+├ ƒ /api/school-admin/subjects/[id]                             1.14 kB         103 kB
+├ ƒ /api/school-admin/subjects/[id]/teachers                    1.14 kB         103 kB
+├ ƒ /api/school-admin/teachers                                  1.14 kB         103 kB
+├ ƒ /api/school-admin/teachers/pending                          1.14 kB         103 kB
+├ ƒ /api/school-admin/timetable                                 1.14 kB         103 kB
+├ ƒ /api/school-admin/timetable/[id]                            1.14 kB         103 kB
+├ ƒ /api/school-admin/timetable/auto-generate                   1.14 kB         103 kB
+├ ƒ /api/schools                                                1.14 kB         103 kB
+├ ƒ /api/schools/[id]                                           1.14 kB         103 kB
+├ ƒ /api/schools/lookup                                         1.14 kB         103 kB
+├ ƒ /api/schools/search                                         1.14 kB         103 kB
+├ ƒ /api/schools/validate-code                                  1.14 kB         103 kB
+├ ƒ /api/schools/verify-code                                    1.14 kB         103 kB
+├ ƒ /api/setup/admin                                            1.14 kB         103 kB
+├ ƒ /api/setup/complete                                         1.14 kB         103 kB
+├ ƒ /api/setup/counselor                                        1.14 kB         103 kB
+├ ƒ /api/setup/import                                           1.14 kB         103 kB
+├ ƒ /api/setup/ministry                                         1.14 kB         103 kB
+├ ƒ /api/setup/parent                                           1.14 kB         103 kB
+├ ƒ /api/setup/school-admin                                     1.14 kB         103 kB
+├ ƒ /api/setup/student                                          1.14 kB         103 kB
+├ ƒ /api/setup/teacher                                          1.14 kB         103 kB
+├ ƒ /api/skills                                                 1.14 kB         103 kB
+├ ƒ /api/skills/count                                           1.14 kB         103 kB
+├ ƒ /api/student/assessment-profile                             1.14 kB         103 kB
+├ ƒ /api/student/assessments                                    1.14 kB         103 kB
+├ ƒ /api/student/attendance                                     1.14 kB         103 kB
+├ ƒ /api/student/attendance/check-in                            1.14 kB         103 kB
+├ ƒ /api/student/attendance/my-records                          1.14 kB         103 kB
+├ ƒ /api/student/bcse-results                                   1.14 kB         103 kB
+├ ƒ /api/student/bcse-scholarships                              1.14 kB         103 kB
+├ ƒ /api/student/career-coach                                   1.14 kB         103 kB
+├ ƒ /api/student/career-matches                                 1.14 kB         103 kB
+├ ƒ /api/student/classes                                        1.14 kB         103 kB
+├ ƒ /api/student/content/colleges                               1.14 kB         103 kB
+├ ƒ /api/student/content/scholarships/matched                   1.14 kB         103 kB
+├ ƒ /api/student/fees                                           1.14 kB         103 kB
+├ ƒ /api/student/goals                                          1.14 kB         103 kB
+├ ƒ /api/student/homework                                       1.14 kB         103 kB
+├ ƒ /api/student/homework/[id]                                  1.14 kB         103 kB
+├ ƒ /api/student/homework/[id]/draft                            1.14 kB         103 kB
+├ ƒ /api/student/homework/[id]/feedback                         1.14 kB         103 kB
+├ ƒ /api/student/marks-summary                                  1.14 kB         103 kB
+├ ƒ /api/student/medical                                        1.14 kB         103 kB
+├ ƒ /api/student/medical/vaccinations                           1.14 kB         103 kB
+├ ƒ /api/student/medical/visits                                 1.14 kB         103 kB
+├ ƒ /api/student/modules                                        1.14 kB         103 kB
+├ ƒ /api/student/modules/[id]                                   1.14 kB         103 kB
+├ ƒ /api/student/modules/[id]/certificate                       1.14 kB         103 kB
+├ ƒ /api/student/modules/[id]/complete                          1.14 kB         103 kB
+├ ƒ /api/student/modules/[id]/progress                          1.14 kB         103 kB
+├ ƒ /api/student/modules/[id]/recommendations                   1.14 kB         103 kB
+├ ƒ /api/student/onboarding/status                              1.14 kB         103 kB
+├ ƒ /api/student/profile                                        1.14 kB         103 kB
+├ ƒ /api/student/results                                        1.14 kB         103 kB
+├ ƒ /api/student/roadmap                                        1.14 kB         103 kB
+├ ƒ /api/student/rub-application                                1.14 kB         103 kB
+├ ƒ /api/student/rub-applications                               1.14 kB         103 kB
+├ ƒ /api/student/scholarship-applications                       1.14 kB         103 kB
+├ ƒ /api/student/settings                                       1.14 kB         103 kB
+├ ƒ /api/students/search                                        1.14 kB         103 kB
+├ ƒ /api/study-abroad                                           1.14 kB         103 kB
+├ ƒ /api/subjects/global                                        1.14 kB         103 kB
+├ ƒ /api/subscriptions/checkout                                 1.14 kB         103 kB
+├ ƒ /api/teacher/attendance                                     1.14 kB         103 kB
+├ ƒ /api/teacher/attendance/[classId]/[date]                    1.14 kB         103 kB
+├ ƒ /api/teacher/attendance/history                             1.14 kB         103 kB
+├ ƒ /api/teacher/behavior                                       1.14 kB         103 kB
+├ ƒ /api/teacher/dashboard                                      1.14 kB         103 kB
+├ ƒ /api/teacher/homework                                       1.14 kB         103 kB
+├ ƒ /api/teacher/homework/[id]                                  1.14 kB         103 kB
+├ ƒ /api/teacher/homework/[id]/submissions                      1.14 kB         103 kB
+├ ƒ /api/teacher/homework/[id]/submissions/[submissionId]       1.14 kB         103 kB
+├ ƒ /api/teacher/lessons                                        1.14 kB         103 kB
+├ ƒ /api/teacher/lessons/[id]                                   1.14 kB         103 kB
+├ ƒ /api/teacher/live-sessions                                  1.14 kB         103 kB
+├ ƒ /api/teacher/messages                                       1.14 kB         103 kB
+├ ƒ /api/teacher/messages/[conversationId]                      1.14 kB         103 kB
+├ ƒ /api/teacher/modules                                        1.14 kB         103 kB
+├ ƒ /api/teacher/modules/[id]                                   1.14 kB         103 kB
+├ ƒ /api/teacher/my-assignments                                 1.14 kB         103 kB
+├ ƒ /api/teacher/payslips                                       1.14 kB         103 kB
+├ ƒ /api/teacher/payslips/[id]/pdf                              1.14 kB         103 kB
+├ ƒ /api/teacher/profile                                        1.14 kB         103 kB
+├ ƒ /api/teacher/reports                                        1.14 kB         103 kB
+├ ƒ /api/teacher/reports/student/[id]                           1.14 kB         103 kB
+├ ƒ /api/teacher/resources                                      1.14 kB         103 kB
+├ ƒ /api/teacher/schedule                                       1.14 kB         103 kB
+├ ƒ /api/teacher/students                                       1.14 kB         103 kB
+├ ƒ /api/teacher/timetable                                      1.14 kB         103 kB
+├ ƒ /api/teachers                                               1.14 kB         103 kB
+├ ƒ /api/test/notifications                                     1.14 kB         103 kB
+├ ƒ /api/timetable/generate                                     1.14 kB         103 kB
+├ ƒ /api/transport                                              1.14 kB         103 kB
+├ ƒ /api/transport/allocations                                  1.14 kB         103 kB
+├ ƒ /api/transport/drivers                                      1.14 kB         103 kB
+├ ƒ /api/transport/notifications                                1.14 kB         103 kB
+├ ƒ /api/transport/routes                                       1.14 kB         103 kB
+├ ƒ /api/transport/tracking/[vehicleId]                         1.14 kB         103 kB
+├ ƒ /api/transport/vehicles                                     1.14 kB         103 kB
+├ ƒ /api/tuition/courses                                        1.14 kB         103 kB
+├ ƒ /api/tuition/courses/[id]                                   1.14 kB         103 kB
+├ ƒ /api/tuition/enrollments                                    1.14 kB         103 kB
+├ ƒ /api/tuition/sessions                                       1.14 kB         103 kB
+├ ƒ /api/tuition/sessions/[id]                                  1.14 kB         103 kB
+├ ƒ /api/tuition/tutors                                         1.14 kB         103 kB
+├ ƒ /api/tuition/tutors/[id]                                    1.14 kB         103 kB
+├ ƒ /api/user/context                                           1.14 kB         103 kB
+├ ƒ /api/user/profile                                           1.14 kB         103 kB
+├ ƒ /api/users                                                  1.14 kB         103 kB
+├ ƒ /api/users/[id]                                             1.14 kB         103 kB
+├ ƒ /api/verification/ministry                                  1.14 kB         103 kB
+├ ƒ /api/verification/school                                    1.14 kB         103 kB
+├ ƒ /api/verification/verify-domain                             1.14 kB         103 kB
+├ ○ /calendar                                                   8.22 kB         155 kB
+├ ○ /contact                                                    7.24 kB         176 kB
+├ ○ /cookie-policy                                              1.14 kB         103 kB
+├ ƒ /counselor                                                  8.85 kB         126 kB
+├ ƒ /counselor/assessments                                      10.7 kB         128 kB
+├ ƒ /counselor/career-alignment                                 8.51 kB         153 kB
+├ ƒ /counselor/data-export                                      14.2 kB         210 kB
+├ ƒ /counselor/intervention/create                              9.05 kB         178 kB
+├ ƒ /counselor/interventions                                    13.5 kB         127 kB
+├ ƒ /counselor/notes                                            10.3 kB         127 kB
+├ ƒ /counselor/plans                                            8.88 kB         126 kB
+├ ƒ /counselor/red-flags                                        8.24 kB         125 kB
+├ ƒ /counselor/reports                                          9.23 kB         126 kB
+├ ƒ /counselor/resources                                        15.9 kB         210 kB
+├ ƒ /counselor/schedule                                         9.01 kB         126 kB
+├ ƒ /counselor/sessions                                           12 kB         174 kB
+├ ƒ /counselor/students                                         7.36 kB         127 kB
+├ ƒ /counselor/students/[id]                                     2.2 kB         197 kB
+├ ƒ /counselor/wellness-compass                                 4.36 kB         153 kB
+├ ƒ /debug-auth                                                 1.14 kB         103 kB
+├ ○ /events                                                     4.22 kB         107 kB
+├ ○ /faq                                                        11.6 kB         129 kB
+├ ○ /journey                                                    12.7 kB         191 kB
+├ ƒ /ministry                                                   10.7 kB         128 kB
+├ ƒ /ministry/analytics                                         6.94 kB         151 kB
+├ ƒ /ministry/billing                                           12.6 kB         172 kB
+├ ƒ /ministry/emis                                              5.73 kB         119 kB
+├ ƒ /ministry/gnh                                                8.3 kB         152 kB
+├ ƒ /ministry/infrastructure                                    7.19 kB         121 kB
+├ ƒ /ministry/labor-market                                      8.73 kB         153 kB
+├ ƒ /ministry/notifications                                     12.7 kB         126 kB
+├ ƒ /ministry/policies                                          9.03 kB         160 kB
+├ ƒ /ministry/reports                                           5.89 kB         150 kB
+├ ƒ /ministry/schools                                           16.6 kB         210 kB
+├ ƒ /ministry/settings                                          5.76 kB         150 kB
+├ ƒ /ministry/teacher-resources                                 9.16 kB         123 kB
+├ ○ /packages                                                   11.3 kB         170 kB
+├ ƒ /parent                                                     8.03 kB         125 kB
+├ ƒ /parent/assessments                                         10.1 kB         162 kB
+├ ƒ /parent/attendance                                          7.91 kB         160 kB
+├ ƒ /parent/careers                                             13.2 kB         202 kB
+├ ƒ /parent/children                                            8.86 kB         161 kB
+├ ƒ /parent/communication                                       15.4 kB         181 kB
+├ ƒ /parent/consent                                             1.14 kB         103 kB
+├ ƒ /parent/dashboard                                           8.95 kB         168 kB
+├ ƒ /parent/documents                                           10.4 kB         124 kB
+├ ƒ /parent/fees/pay                                            1.14 kB         103 kB
+├ ƒ /parent/homework                                            8.49 kB         122 kB
+├ ƒ /parent/link-child                                          9.52 kB         179 kB
+├ ƒ /parent/medical                                             11.7 kB         198 kB
+├ ƒ /parent/messages                                            8.04 kB         122 kB
+├ ƒ /parent/progress                                            1.14 kB         103 kB
+├ ƒ /parent/report-cards                                        6.67 kB         120 kB
+├ ƒ /parent/transport                                           6.87 kB         154 kB
+├ ○ /pending-approval                                            7.9 kB         197 kB
+├ ○ /portfolio                                                  6.63 kB         165 kB
+├ ○ /privacy-policy                                             1.14 kB         103 kB
+├ ○ /rejected                                                   9.16 kB         198 kB
+├ ○ /restricted                                                 8.78 kB         169 kB
+├ ○ /robots.txt                                                 1.14 kB         103 kB
+├ ○ /route                                                          0 B            0 B
+├ ƒ /school-admin                                               1.14 kB         103 kB
+├ ƒ /school-admin/analytics                                     6.23 kB         150 kB
+├ ƒ /school-admin/announcements                                  1.5 kB         104 kB
+├ ƒ /school-admin/applications                                  15.8 kB         217 kB
+├ ƒ /school-admin/attendance                                    10.3 kB         127 kB
+├ ƒ /school-admin/bcse                                          2.25 kB         105 kB
+├ ƒ /school-admin/classes                                       5.14 kB         248 kB
+├ ƒ /school-admin/classes/[id]                                  11.5 kB         206 kB
+├ ƒ /school-admin/classes/[id]/students                         7.68 kB         161 kB
+├ ƒ /school-admin/classes/create                                8.52 kB         126 kB
+├ ƒ /school-admin/counselors                                    7.79 kB         121 kB
+├ ƒ /school-admin/dashboard                                     11.7 kB         132 kB
+├ ƒ /school-admin/departments                                   7.85 kB         135 kB
+├ ƒ /school-admin/events                                        3.57 kB         106 kB
+├ ƒ /school-admin/fees                                          8.64 kB         243 kB
+├ ƒ /school-admin/fees/generator                                9.39 kB         123 kB
+├ ƒ /school-admin/homework                                      8.56 kB         126 kB
+├ ƒ /school-admin/hostel                                        5.93 kB         204 kB
+├ ƒ /school-admin/id-cards                                      40.4 kB         201 kB
+├ ƒ /school-admin/infirmary                                     11.3 kB         175 kB
+├ ƒ /school-admin/infirmary/inventory                           9.49 kB         160 kB
+├ ƒ /school-admin/infirmary/referrals                           9.44 kB         160 kB
+├ ƒ /school-admin/infirmary/vaccinations                        9.22 kB         160 kB
+├ ƒ /school-admin/infirmary/visits                              8.26 kB         156 kB
+├ ƒ /school-admin/inventory                                     7.11 kB         155 kB
+├ ƒ /school-admin/leave-approvals                               3.96 kB         157 kB
+├ ƒ /school-admin/library                                       7.17 kB         204 kB
+├ ƒ /school-admin/notices                                       7.48 kB         249 kB
+├ ƒ /school-admin/payroll                                       3.66 kB         154 kB
+├ ƒ /school-admin/report-cards                                  10.8 kB         172 kB
+├ ƒ /school-admin/reports                                       9.78 kB         123 kB
+├ ƒ /school-admin/results                                        8.2 kB         125 kB
+├ ƒ /school-admin/settings                                      13.5 kB         127 kB
+├ ƒ /school-admin/setup                                         9.27 kB         123 kB
+├ ƒ /school-admin/students                                      12.4 kB         197 kB
+├ ƒ /school-admin/students/[id]                                  2.2 kB         197 kB
+├ ƒ /school-admin/students/create                               8.59 kB         126 kB
+├ ƒ /school-admin/students/pending                              11.4 kB         200 kB
+├ ƒ /school-admin/subjects                                      9.54 kB         123 kB
+├ ƒ /school-admin/subjects/[id]                                  8.2 kB         125 kB
+├ ƒ /school-admin/teachers                                      11.2 kB         204 kB
+├ ƒ /school-admin/teachers/create                               8.77 kB         126 kB
+├ ƒ /school-admin/teachers/pending                              7.64 kB         135 kB
+├ ƒ /school-admin/timetable                                      9.3 kB         140 kB
+├ ƒ /school-admin/timetable/assign                              7.49 kB         197 kB
+├ ƒ /school-admin/transport                                     14.7 kB         206 kB
+├ ƒ /school-admin/tuition                                       15.1 kB         129 kB
+├ ƒ /setup                                                      1.14 kB         103 kB
+├ ƒ /setup/ministry                                             6.64 kB         151 kB
+├ ƒ /setup/school-admin                                         3.38 kB         198 kB
+├ ƒ /setup/unified                                              9.56 kB         204 kB
+├ ƒ /sign-in/[[...sign-in]]                                     2.69 kB         138 kB
+├ ○ /sign-out                                                   1.34 kB         133 kB
+├ ƒ /sign-up/[[...sign-up]]                                     2.62 kB         138 kB
+├ ○ /sign-up/ministry                                           9.54 kB         157 kB
+├ ○ /sign-up/principal                                          11.5 kB         159 kB
+├ ○ /signup                                                     6.84 kB         166 kB
+├ ○ /signup/general                                             6.71 kB         165 kB
+├ ○ /signup/institutional                                       7.95 kB         167 kB
+├ ○ /sitemap.xml                                                1.14 kB         103 kB
+├ ƒ /student                                                    1.14 kB         103 kB
+├ ƒ /student/achievements                                       7.66 kB         124 kB
+├ ƒ /student/announcements                                      5.72 kB         157 kB
+├ ƒ /student/assessment                                         7.04 kB         124 kB
+├ ƒ /student/assessment/disc                                    6.55 kB         135 kB
+├ ƒ /student/assessment/learning-styles                         2.09 kB         179 kB
+├ ƒ /student/assessment/mbti                                    6.53 kB         135 kB
+├ ƒ /student/assessment/riasec                                  9.44 kB         175 kB
+├ ƒ /student/assessment/spark-advanced                          1.93 kB         170 kB
+├ ƒ /student/assessment/spark-basic                             1.93 kB         170 kB
+├ ƒ /student/assessment/spark-lite                              1.93 kB         170 kB
+├ ƒ /student/assessment/work-values                             1.51 kB         179 kB
+├ ƒ /student/attendance                                         8.41 kB         122 kB
+├ ƒ /student/bcse-results                                       2.73 kB         105 kB
+├ ƒ /student/career-coach                                       9.09 kB         126 kB
+├ ƒ /student/careers                                            8.44 kB         125 kB
+├ ƒ /student/careers/[slug]                                      7.5 kB         128 kB
+├ ƒ /student/classes                                            10.7 kB         169 kB
+├ ƒ /student/dashboard                                          16.9 kB         144 kB
+├ ƒ /student/fees                                               9.15 kB         130 kB
+├ ƒ /student/homework                                           11.2 kB         218 kB
+├ ƒ /student/homework/[id]/feedback                             6.44 kB         123 kB
+├ ƒ /student/hostel                                             7.75 kB         205 kB
+├ ƒ /student/id-card                                            7.42 kB         121 kB
+├ ƒ /student/journal                                            12.1 kB         172 kB
+├ ƒ /student/learning                                           7.83 kB         124 kB
+├ ƒ /student/learning/[id]/certificate                          9.54 kB         251 kB
+├ ƒ /student/leave                                              14.5 kB         208 kB
+├ ƒ /student/library                                            5.16 kB         184 kB
+├ ƒ /student/medical                                            10.6 kB         171 kB
+├ ƒ /student/modules                                            6.84 kB         139 kB
+├ ƒ /student/monetize                                           9.52 kB         123 kB
+├ ƒ /student/plan                                               10.6 kB         178 kB
+├ ƒ /student/progress                                           1.28 kB         203 kB
+├ ƒ /student/results                                            7.88 kB         128 kB
+├ ƒ /student/roadmap                                            9.66 kB         127 kB
+├ ƒ /student/rub                                                11.1 kB         128 kB
+├ ƒ /student/rub/applications                                   2.93 kB         109 kB
+├ ƒ /student/rub/predictor                                      2.31 kB         105 kB
+├ ƒ /student/saved                                              4.04 kB         130 kB
+├ ƒ /student/scholarships                                       4.62 kB         137 kB
+├ ƒ /student/settings                                           13.7 kB         182 kB
+├ ƒ /student/skills                                             7.77 kB         124 kB
+├ ƒ /student/study-abroad                                       5.79 kB         130 kB
+├ ƒ /student/study-abroad/compare                               6.54 kB         127 kB
+├ ƒ /student/transport                                          6.24 kB         136 kB
+├ ƒ /student/tuition                                            9.21 kB         126 kB
+├ ƒ /teacher                                                    7.59 kB         125 kB
+├ ƒ /teacher/assessments                                        7.62 kB         155 kB
+├ ƒ /teacher/attendance                                          113 kB         350 kB
+├ ƒ /teacher/classes                                            5.96 kB         157 kB
+├ ƒ /teacher/dashboard                                          17.4 kB         260 kB
+├ ƒ /teacher/earnings                                           5.49 kB         153 kB
+├ ƒ /teacher/homework                                           6.74 kB         265 kB
+├ ƒ /teacher/homework/[id]/grade                                7.19 kB         186 kB
+├ ƒ /teacher/homework/create                                    6.72 kB         186 kB
+├ ƒ /teacher/learning                                           6.12 kB         262 kB
+├ ƒ /teacher/learning/create                                      600 B         103 kB
+├ ƒ /teacher/leave                                              4.32 kB         157 kB
+├ ƒ /teacher/live-sessions                                      8.43 kB         153 kB
+├ ƒ /teacher/messages                                           7.48 kB         121 kB
+├ ƒ /teacher/my-classes                                         6.98 kB         124 kB
+├ ƒ /teacher/payslips                                           4.71 kB         152 kB
+├ ƒ /teacher/reports                                             102 kB         376 kB
+├ ƒ /teacher/schedule                                           7.89 kB         122 kB
+├ ƒ /teacher/students                                           9.45 kB         160 kB
+├ ƒ /teacher/students/[id]                                      5.18 kB         200 kB
+├ ƒ /teacher/timetable                                          7.08 kB         124 kB
+├ ○ /terms-of-service                                           1.14 kB         103 kB
+├ ○ /ui-showcase                                                14.6 kB         170 kB
+└ ○ /ux-demo                                                    10.3 kB         178 kB
++ First Load JS shared by all                                    102 kB
+  ├ chunks/31255-391248ff57d3e549.js                            45.7 kB
+  ├ chunks/4bd1b696-bad92808725a934a.js                         54.2 kB
+  └ other shared chunks (total)                                  2.4 kB
+
+
+ƒ Middleware                                                     184 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

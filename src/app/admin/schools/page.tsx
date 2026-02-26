@@ -13,6 +13,19 @@ import { desc, count, eq, and } from "drizzle-orm";
 import { SchoolsClient } from "./schools-client";
 import { logger } from "@/lib/logger";
 
+type SchoolWithDistrict = {
+  id: string;
+  name: string;
+  code: string;
+  schoolType?: string | null;
+  districtId?: string | null;
+  districts?: {
+    id: string;
+    name: string;
+  } | null;
+  createdAt: Date;
+};
+
 // Helper function to get school stats
 async function getSchoolStats(schoolId: string) {
   const [
@@ -64,7 +77,7 @@ export default async function AdminSchoolsPage() {
 
   // Get stats for each school
   const schoolsWithStats = await Promise.all(
-    allSchools.map(async (school: any) => ({
+    allSchools.map(async (school: SchoolWithDistrict) => ({
       ...school,
       stats: await getSchoolStats(school.id),
     }))

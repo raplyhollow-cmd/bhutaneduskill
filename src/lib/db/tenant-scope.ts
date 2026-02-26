@@ -27,7 +27,10 @@ import type { User } from "./schema";
  * @param user - The user making the request
  * @returns Condition object to use with Drizzle queries
  */
-export function withTenantScope(baseCondition: any, user: User): any {
+export function withTenantScope<T extends Record<string, unknown>>(
+  baseCondition: T,
+  user: User
+): T | Record<string, unknown> {
   // Platform admins can see all data
   if (user.type === "admin" || user.type === "ministry") {
     return baseCondition;

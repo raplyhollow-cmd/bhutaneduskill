@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Download, IdCard, Loader2, Users, CheckCircle, AlertCircle } from "lucide-react";
+import { IDCardPreview } from "@/components/id-card-preview";
 
 interface User {
   id: string;
@@ -291,19 +292,27 @@ export default function IdCardsPage() {
                 <CardTitle>ID Card Preview</CardTitle>
                 <CardDescription>Preview of the generated ID card</CardDescription>
               </CardHeader>
-              <CardContent className="flex items-center justify-center py-8">
-                {selectedUser ? (
-                  <div className="text-center">
-                    <IdCard className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-                    <p className="text-gray-500">ID card will be generated as PDF</p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      Standard credit card size (85.6mm × 53.98mm)
-                    </p>
-                  </div>
+              <CardContent>
+                {selectedUser && users.find(u => u.id === selectedUser) ? (
+                  <IDCardPreview
+                    data={{
+                      name: users.find(u => u.id === selectedUser)!.name,
+                      type: users.find(u => u.id === selectedUser)!.type,
+                      employeeId: users.find(u => u.id === selectedUser)!.employeeId,
+                      rollNumber: users.find(u => u.id === selectedUser)!.rollNumber,
+                      grade: users.find(u => u.id === selectedUser)!.grade?.toString(),
+                      section: users.find(u => u.id === selectedUser)!.section,
+                      department: users.find(u => u.id === selectedUser)!.department,
+                      schoolName: "Your School Name", // Will be fetched from API
+                      schoolCode: "SCH001",
+                    }}
+                  />
                 ) : (
-                  <div className="text-center text-gray-500">
-                    <IdCard className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-                    <p>Select a user to see preview</p>
+                  <div className="flex items-center justify-center py-16 text-center text-gray-500">
+                    <div>
+                      <IdCard className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+                      <p>Select a user to see preview</p>
+                    </div>
                   </div>
                 )}
               </CardContent>

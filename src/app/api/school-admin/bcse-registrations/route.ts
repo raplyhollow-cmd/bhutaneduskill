@@ -3,25 +3,29 @@
  * School admins can register students for BCSE examinations
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, notFoundResponse, conflictResponse, badRequestResponse } from "@/lib/api/response-helpers";
 import { logger } from "@/lib/logger";
 import { bcseRegistrations, users, bcseSubjectMapping, bcseSubjectCombinations } from "@/lib/db/schema";
 import { db } from "@/lib/db";
 import { eq, and, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
+interface BCSESubject {
+  subjectCode: string;
+  subjectName: string;
+  isCompulsory?: boolean;
+  examDate?: string | null;
+}
+
 /**
  * GET /api/school-admin/bcse-registrations
  * Get BCSE registrations for the school
  */
-export async function GET(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["school_admin", "admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId } = auth;
 
     const { searchParams } = new URL(req.url);
     const examType = searchParams.get("examType") as "BCSE_10" | "BCSE_12" | null;
@@ -37,7 +41,7 @@ export async function GET(req: NextRequest) {
       .limit(1);
 
     if (!user?.schoolId) {
-      return NextResponse.json({ error: "School not found" }, { status: 404 });
+      return notFoundResponse("School not found");
     }
 
     // Build query conditions
@@ -73,30 +77,18 @@ export async function GET(req: NextRequest) {
       count: registrations.length,
     });
 
-    return NextResponse.json({
-      success: true,
-      data: { registrations, schoolId: user.schoolId },
-    });
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/bcse-registrations", method: "GET" });
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : "Failed to fetch registrations",
-    }, { status: 500 });
-  }
-}
+    return successResponse({ registrations, schoolId: user.schoolId });
+  },
+  ["school_admin", "admin"]
+);
 
 /**
  * POST /api/school-admin/bcse-registrations
  * Register a student for BCSE examination
  */
-export async function POST(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["school_admin", "admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const POST = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId } = auth;
 
     const body = await req.json();
     const {
@@ -110,23 +102,23 @@ export async function POST(req: NextRequest) {
 
     // Validate required fields
     if (!studentId) {
-      return NextResponse.json({ error: "Student ID is required" }, { status: 400 });
+      return badRequestResponse("Student ID is required");
     }
 
     if (!examType || !["BCSE_10", "BCSE_12"].includes(examType)) {
-      return NextResponse.json({ error: "Exam type must be BCSE_10 or BCSE_12" }, { status: 400 });
+      return badRequestResponse("Exam type must be BCSE_10 or BCSE_12");
     }
 
     if (!examYear) {
-      return NextResponse.json({ error: "Exam year is required" }, { status: 400 });
+      return badRequestResponse("Exam year is required");
     }
 
     if (!academicYear) {
-      return NextResponse.json({ error: "Academic year is required" }, { status: 400 });
+      return badRequestResponse("Academic year is required");
     }
 
     if (!Array.isArray(subjects) || subjects.length === 0) {
-      return NextResponse.json({ error: "At least one subject is required" }, { status: 400 });
+      return badRequestResponse("At least one subject is required");
     }
 
     // Get school ID
@@ -137,7 +129,7 @@ export async function POST(req: NextRequest) {
       .limit(1);
 
     if (!requester?.schoolId) {
-      return NextResponse.json({ error: "School not found" }, { status: 404 });
+      return notFoundResponse("School not found");
     }
 
     // Get student details
@@ -148,11 +140,11 @@ export async function POST(req: NextRequest) {
       .limit(1);
 
     if (!student) {
-      return NextResponse.json({ error: "Student not found" }, { status: 404 });
+      return notFoundResponse("Student not found");
     }
 
     if (student.schoolId !== requester.schoolId) {
-      return NextResponse.json({ error: "Student does not belong to your school" }, { status: 403 });
+      return errorResponse("Student does not belong to your school", 403);
     }
 
     // Check for existing registration
@@ -169,10 +161,7 @@ export async function POST(req: NextRequest) {
       .limit(1);
 
     if (existing) {
-      return NextResponse.json({
-        error: "Student is already registered for this exam",
-        data: existing,
-      }, { status: 409 });
+      return conflictResponse("Student is already registered for this exam", existing);
     }
 
     // Create registration
@@ -187,7 +176,7 @@ export async function POST(req: NextRequest) {
       academicYear,
       examYear: parseInt(examYear, 10),
       bcseRegistrationNumber: bcseRegistrationNumber || null,
-      subjects: subjects.map((s: any) => ({
+      subjects: subjects.map((s: BCSESubject) => ({
         subjectCode: s.subjectCode,
         subjectName: s.subjectName,
         isCompulsory: s.isCompulsory || false,
@@ -244,15 +233,7 @@ export async function POST(req: NextRequest) {
       .where(eq(bcseRegistrations.id, registrationId))
       .limit(1);
 
-    return NextResponse.json({
-      success: true,
-      data: registration,
-    });
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/bcse-registrations", method: "POST" });
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : "Failed to create registration",
-    }, { status: 500 });
-  }
-}
+    return successResponse(registration);
+  },
+  ["school_admin", "admin"]
+);

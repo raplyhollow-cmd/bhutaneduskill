@@ -36,6 +36,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { portal, semantic, semanticGradients } from "@/styles/design-tokens";
 
 // ============================================================================
 // TYPES
@@ -207,8 +208,9 @@ export function AIStudyPlanner({
 
       const data = await response.json();
       setStudyPlan(data.data);
-    } catch (err: any) {
-      setError(err.message || "Failed to generate study plan. Please try again.");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to generate study plan. Please try again.";
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -221,7 +223,7 @@ export function AIStudyPlanner({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-xl">
-              <Sparkles className="w-6 h-6 text-orange-500" />
+              <Sparkles className="w-6 h-6" style={{ color: portal.student.primary }} />
               AI Study Planner
             </CardTitle>
             <CardDescription>
@@ -239,9 +241,9 @@ export function AIStudyPlanner({
                     variant={selectedClass === cls ? "default" : "outline"}
                     size="sm"
                     onClick={() => setSelectedClass(cls)}
-                    className={cn(
-                      selectedClass === cls && "bg-orange-600 hover:bg-orange-700"
-                    )}
+                    style={selectedClass === cls ? {
+                      background: portal.student.gradient,
+                    } : undefined}
                   >
                     Class {cls}
                   </Button>
@@ -260,9 +262,12 @@ export function AIStudyPlanner({
                     className={cn(
                       "cursor-pointer px-3 py-1.5 text-sm transition-colors",
                       selectedSubjects.includes(subject)
-                        ? "bg-orange-600 hover:bg-orange-700 text-white"
+                        ? "text-white"
                         : "hover:bg-orange-50"
                     )}
+                    style={selectedSubjects.includes(subject) ? {
+                      background: portal.student.gradient,
+                    } : undefined}
                     onClick={() => toggleSubject(subject)}
                   >
                     {selectedSubjects.includes(subject) && (
@@ -307,9 +312,11 @@ export function AIStudyPlanner({
                     size="sm"
                     onClick={() => setPreferredTime(option.value as typeof preferredTime)}
                     className={cn(
-                      "h-auto py-3 flex flex-col items-center gap-1",
-                      preferredTime === option.value && "bg-orange-600 hover:bg-orange-700"
+                      "h-auto py-3 flex flex-col items-center gap-1"
                     )}
+                    style={preferredTime === option.value ? {
+                      background: portal.student.gradient,
+                    } : undefined}
                   >
                     <Clock className="w-4 h-4" />
                     <span className="text-xs">{option.label.split(" ")[0]}</span>
@@ -337,9 +344,12 @@ export function AIStudyPlanner({
                         className={cn(
                           "cursor-pointer",
                           weakSubjects.includes(subject)
-                            ? "bg-red-600 hover:bg-red-700 text-white"
+                            ? "text-white"
                             : "hover:bg-red-100"
                         )}
+                        style={weakSubjects.includes(subject) ? {
+                          background: semantic.error.gradient,
+                        } : undefined}
                         onClick={() => toggleWeakSubject(subject)}
                       >
                         {subject}
@@ -364,9 +374,12 @@ export function AIStudyPlanner({
                         className={cn(
                           "cursor-pointer",
                           strongSubjects.includes(subject)
-                            ? "bg-green-600 hover:bg-green-700 text-white"
+                            ? "text-white"
                             : "hover:bg-green-100"
                         )}
+                        style={strongSubjects.includes(subject) ? {
+                          background: semantic.success.gradient,
+                        } : undefined}
                         onClick={() => toggleStrongSubject(subject)}
                       >
                         {subject}
@@ -417,7 +430,7 @@ export function AIStudyPlanner({
               disabled={isLoading || selectedSubjects.length === 0}
               className="w-full"
               style={{
-                background: "linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)",
+                background: portal.student.gradient,
               }}
             >
               {isLoading ? (
@@ -512,7 +525,7 @@ function StudyPlanDisplay({
                 onClick={onRegenerate}
                 disabled={isLoading}
                 style={{
-                  background: "linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)",
+                  background: portal.student.gradient,
                 }}
               >
                 {isLoading ? (

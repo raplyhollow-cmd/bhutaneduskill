@@ -1,18 +1,32 @@
+/**
+ * CAREER PLANS API
+ *
+ * GET /api/plans - Get user's career plans
+ * POST /api/plans - Create career plan
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { careerPlans } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, createdResponse } from "@/lib/api/response-helpers";
 
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['student', 'counselor', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+// ============================================================================
+// GET - Get user's career plans
+// ============================================================================
+
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
 
-    const { user } = authResult;
+    const { user } = auth;
 
     // Use direct select instead of query (relations not configured)
     const plans = await db
@@ -22,54 +36,56 @@ export async function GET(request: NextRequest) {
       .orderBy(desc(careerPlans.createdAt))
       .limit(10);
 
-    return NextResponse.json({ plans });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch career plans", plans: [] },
-      { status: 500 }
-    );
-  }
-}
+    return successResponse({ plans });
+  },
+  ['student', 'counselor', 'admin']
+);
 
-export async function POST(request: NextRequest) {
-  const authResult = await requireAuth(['student', 'counselor', 'admin']);
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
+// ============================================================================
+// POST - Create career plan
+// ============================================================================
 
-  const { user } = authResult;
+export const POST = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
+    }
 
-  try {
-    const body = await request.json();
-    const { targetCareer, currentPhase, shortTermGoals, longTermGoals, actionSteps, milestones } = body;
+    const { user } = auth;
 
-    const [plan] = await db
-      .insert(careerPlans)
-      .values({
-        id: `plan_${Date.now()}`,
-        userId: user.id,
-        studentId: user.id,
-        targetCareer: targetCareer || "Not specified",
-        targetCareerId: `career_${Date.now()}`,
-        shortTermGoals: shortTermGoals || [],
-        longTermGoals: longTermGoals || [],
-        subjects: [],
-        milestones: milestones || [],
-        notes: "",
-        counselorNotes: "",
-        counselorId: user.type === "counselor" ? user.id : null,
-        currentPhase: currentPhase || "self_assessment",
-        actionSteps: actionSteps || [],
-        status: "active",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .returning();
+    try {
+      const body = await request.json();
+      const { targetCareer, currentPhase, shortTermGoals, longTermGoals, actionSteps, milestones } = body;
 
-    return NextResponse.json({ success: true, plan });
-  } catch (error: any) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json({ error: "Failed to create plan" }, { status: 500 });
-  }
-}
+      const [plan] = await db
+        .insert(careerPlans)
+        .values({
+          id: `plan_${Date.now()}`,
+          userId: user.id,
+          studentId: user.id,
+          targetCareer: targetCareer || "Not specified",
+          targetCareerId: `career_${Date.now()}`,
+          shortTermGoals: shortTermGoals || [],
+          longTermGoals: longTermGoals || [],
+          subjects: [],
+          milestones: milestones || [],
+          notes: "",
+          counselorNotes: "",
+          counselorId: user.type === "counselor" ? user.id : null,
+          currentPhase: currentPhase || "self_assessment",
+          actionSteps: actionSteps || [],
+          status: "active",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+
+      return createdResponse({ success: true, plan });
+    } catch (error) {
+      logger.apiError(error, { route: "/api/plans", method: "POST" });
+      return errorResponse("Failed to create plan", 500);
+    }
+  },
+  ['student', 'counselor', 'admin']
+);

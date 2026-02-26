@@ -2,7 +2,7 @@
 
 import { logger } from "@/lib/logger";
 
-import { motion } from "framer-motion";
+import { motion, Variants } from "framer-motion";
 import { GraduationCap, School, Building2, BookOpen, Users, Award, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
@@ -33,7 +33,12 @@ export function TrustedByNew({ className }: TrustedByProps) {
       if (res.ok) {
         const data = await res.json();
         // Add colors to schools
-        const schoolsWithColors = data.schools.map((school: any, index: number) => ({
+        const schoolsWithColors = data.schools.map((school: {
+          id: string;
+          name: string;
+          code: string;
+          logo?: string;
+        }, index: number) => ({
           ...school,
           // Assign colors from original palette
           color: index === 0 ? "rgb(249 115 22)" :
@@ -54,7 +59,7 @@ export function TrustedByNew({ className }: TrustedByProps) {
     }
   };
 
-  const containerVariants = {
+  const containerVariants: Variants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
@@ -65,7 +70,7 @@ export function TrustedByNew({ className }: TrustedByProps) {
     },
   };
 
-  const itemVariants = {
+  const itemVariants: Variants = {
     hidden: { opacity: 0, y: 20 },
     visible: {
       opacity: 1,

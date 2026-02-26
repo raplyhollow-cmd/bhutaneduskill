@@ -14,11 +14,11 @@
  * - endDate: Filter to date (ISO string)
  * - classId: Filter by specific class
  * - subject: Filter by subject name
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
 import { NextRequest } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
-import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import {
   users,
@@ -32,7 +32,9 @@ import {
   classSubjects,
 } from "@/lib/db/schema";
 import { eq, and, gte, lte, desc, sql, inArray, count } from "drizzle-orm";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse } from "@/lib/api/response-helpers";
+import { logger } from "@/lib/logger";
 
 // ============================================================================
 // TYPES
@@ -91,21 +93,24 @@ interface ReportData {
  * Get teacher's assigned classes
  */
 async function getTeacherClasses(teacherId: string): Promise<typeof classes.$inferSelect[]> {
-  const teacherClasses = await db.query.classes.findMany({
-    where: eq(classes.teacherId, teacherId),
-  });
+  const teacherClasses = await db
+    .select()
+    .from(classes)
+    .where(eq(classes.teacherId, teacherId));
 
   // Also check for classes via classSubjects
-  const assignedSubjects = await db.query.classSubjects.findMany({
-    where: eq(classSubjects.teacherId, teacherId),
-  });
+  const assignedSubjects = await db
+    .select()
+    .from(classSubjects)
+    .where(eq(classSubjects.teacherId, teacherId));
 
   const additionalClassIds = assignedSubjects.map((cs) => cs.classId);
 
   if (additionalClassIds.length > 0) {
-    const additionalClasses = await db.query.classes.findMany({
-      where: inArray(classes.id, additionalClassIds),
-    });
+    const additionalClasses = await db
+      .select()
+      .from(classes)
+      .where(inArray(classes.id, additionalClassIds));
 
     // Merge without duplicates
     const existingIds = new Set(teacherClasses.map((c) => c.id));
@@ -155,12 +160,23 @@ async function calculateClassPerformance(
       .from(classSubjects)
       .where(eq(classSubjects.classId, cls.id));
 
+    // OPTIMIZATION: Batch fetch all subject details
+    const subjectIds = classSubjectsData.map(cs => cs.subjectId).filter(Boolean) as string[];
+    let subjectsMap = new Map<string, { name: string }>();
+
+    if (subjectIds.length > 0) {
+      const subjectsDetails = await db
+        .select({ id: subjects.id, name: subjects.name })
+        .from(subjects)
+        .where(inArray(subjects.id, subjectIds));
+
+      subjectsMap = new Map(subjectsDetails.map(s => [s.id, { name: s.name }]));
+    }
+
     for (const classSubjectItem of classSubjectsData) {
-      // Get subject details
+      // Get subject details from pre-fetched map
       const subjectDetails = classSubjectItem.subjectId
-        ? await db.query.subjects.findFirst({
-            where: eq(subjects.id, classSubjectItem.subjectId!),
-          })
+        ? subjectsMap.get(classSubjectItem.subjectId!)
         : null;
 
       // Skip if filtering by subject
@@ -243,22 +259,7 @@ async function calculateClassPerformance(
     }
   }
 
-  // If no data, return mock data for development
-  if (performanceData.length === 0 && teacherClasses.length > 0) {
-    for (const cls of teacherClasses.slice(0, 3)) {
-      performanceData.push({
-        classId: cls.id,
-        className: `${cls.grade}${cls.section ? " " + cls.section : ""}`,
-        subject: "General",
-        avgScore: Math.round(Math.random() * 20 + 70),
-        completionRate: Math.round(Math.random() * 20 + 70),
-        totalStudents: 40,
-        topPerformers: Math.round(Math.random() * 10 + 10),
-        needsImprovement: Math.round(Math.random() * 5 + 2),
-      });
-    }
-  }
-
+  // Return empty array if no data - removed mock data fallback
   return performanceData;
 }
 
@@ -283,38 +284,84 @@ async function calculateStudentProgress(
       .from(enrollments)
       .where(and(eq(enrollments.classId, cls.id), eq(enrollments.status, "active")));
 
+    // OPTIMIZATION: Batch fetch all students, homework submissions, and attendance data
+    const studentIds = classEnrollments.map(e => e.studentId);
+
+    // Batch 1: Get all students
+    let studentsMap = new Map<string, typeof users.$inferSelect>();
+    if (studentIds.length > 0) {
+      const studentsData = await db
+        .select()
+        .from(users)
+        .where(inArray(users.id, studentIds));
+
+      studentsMap = new Map(studentsData.map(s => [s.id, s]));
+    }
+
+    // Batch 2: Get all homework submissions for this class
+    const classHomeworkIds = await db
+      .select({ id: homework.id })
+      .from(homework)
+      .where(eq(homework.classId, cls.id));
+
+    const homeworkIds = classHomeworkIds.map(h => h.id);
+
+    let homeworkSubmissionsByStudent = new Map<string, number[]>();
+    if (homeworkIds.length > 0) {
+      const allSubmissions = await db
+        .select({
+          studentId: homeworkSubmissions.studentId,
+          score: homeworkSubmissions.score,
+        })
+        .from(homeworkSubmissions)
+        .where(inArray(homeworkSubmissions.homeworkId, homeworkIds));
+
+      // Group scores by student
+      for (const sub of allSubmissions) {
+        if (!homeworkSubmissionsByStudent.has(sub.studentId)) {
+          homeworkSubmissionsByStudent.set(sub.studentId, []);
+        }
+        homeworkSubmissionsByStudent.get(sub.studentId)?.push(sub.score || 0);
+      }
+    }
+
+    // Batch 3: Get all attendance data for these students
+    let attendanceByStudent = new Map<string, { present: number; total: number }>();
+    if (studentIds.length > 0) {
+      const allAttendance = await db
+        .select({
+          studentId: attendance.studentId,
+          status: attendance.status,
+        })
+        .from(attendance)
+        .where(inArray(attendance.studentId, studentIds));
+
+      for (const att of allAttendance) {
+        const current = attendanceByStudent.get(att.studentId) || { present: 0, total: 0 };
+        current.total++;
+        if (att.status === "present") current.present++;
+        attendanceByStudent.set(att.studentId, current);
+      }
+    }
+
     for (const enrollment of classEnrollments) {
-      const student = await db.query.users.findFirst({
-        where: eq(users.id, enrollment.studentId),
-      });
+      const student = studentsMap.get(enrollment.studentId);
 
       if (!student) continue;
 
-      // Get homework submissions for this student
-      const studentHomework = await db
-        .select({ score: homeworkSubmissions.score })
-        .from(homeworkSubmissions)
-        .innerJoin(homework, eq(homework.id, homeworkSubmissions.homeworkId))
-        .where(eq(homework.classId, cls.id));
-
+      // Get homework submissions from pre-fetched map
+      const studentScores = homeworkSubmissionsByStudent.get(student.id) || [];
       const avgScore =
-        studentHomework.length > 0
-          ? Math.round(
-              studentHomework.reduce((sum, h) => sum + (h.score || 0), 0) / studentHomework.length
-            )
+        studentScores.length > 0
+          ? Math.round(studentScores.reduce((sum, s) => sum + s, 0) / studentScores.length)
           : 75;
 
-      // Get attendance data
-      const attendanceData = await db
-        .select()
-        .from(attendance)
-        .where(eq(attendance.studentId, student.id));
-
-      const presentCount = attendanceData.filter((a) => a.status === "present").length;
-      const attendanceRate = attendanceData.length > 0 ? Math.round((presentCount / attendanceData.length) * 100) : 85;
+      // Get attendance data from pre-fetched map
+      const attendanceData = attendanceByStudent.get(student.id) || { present: 0, total: 0 };
+      const attendanceRate = attendanceData.total > 0 ? Math.round((attendanceData.present / attendanceData.total) * 100) : 85;
 
       // Calculate homework completion
-      const homeworkCompletion = studentHomework.length > 0 ? 90 : 80;
+      const homeworkCompletion = studentScores.length > 0 ? 90 : 80;
 
       // Calculate trend (simplified - would compare with previous period)
       const trend: "up" | "down" | "stable" = avgScore >= 80 ? "up" : avgScore >= 60 ? "stable" : "down";
@@ -386,13 +433,15 @@ async function calculateAttendanceSummaries(
       .slice(0, 3)
       .map((e) => e[0]);
 
-    const mostAbsentNames: string[] = [];
-    for (const studentId of mostAbsentIds) {
-      const student = await db.query.users.findFirst({
-        where: eq(users.id, studentId),
-        columns: { name: true },
-      });
-      if (student) mostAbsentNames.push(student.name);
+    // OPTIMIZATION: Batch fetch student names
+    let mostAbsentNames: string[] = [];
+    if (mostAbsentIds.length > 0) {
+      const absentStudents = await db
+        .select({ id: users.id, name: users.name })
+        .from(users)
+        .where(inArray(users.id, mostAbsentIds));
+
+      mostAbsentNames = absentStudents.map(s => s.name);
     }
 
     summaries.push({
@@ -405,20 +454,7 @@ async function calculateAttendanceSummaries(
     });
   }
 
-  // If no data, return mock data
-  if (summaries.length === 0 && teacherClasses.length > 0) {
-    for (const cls of teacherClasses.slice(0, 2)) {
-      summaries.push({
-        classId: cls.id,
-        className: `${cls.grade}${cls.section ? " " + cls.section : ""}`,
-        presentRate: Math.round(Math.random() * 10 + 80),
-        absentRate: Math.round(Math.random() * 10 + 5),
-        lateRate: Math.round(Math.random() * 5 + 2),
-        mostAbsent: [],
-      });
-    }
-  }
-
+  // Return empty array if no data - removed mock data fallback
   return summaries;
 }
 
@@ -474,22 +510,18 @@ async function calculateGradeDistribution(
 // MAIN API HANDLER
 // ============================================================================
 
-export async function GET(req: NextRequest) {
-  try {
-    // Authenticate and authorize
-    const authResult = await requireAuth(["teacher", "admin"]);
-    if ("error" in authResult) {
-      return new Response(JSON.stringify({ error: authResult.error }), {
-        status: authResult.status,
-        headers: { "Content-Type": "application/json" },
-      });
+export const GET = createApiRoute<Record<string, unknown>, ReportData>(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
 
-    const { user } = authResult;
+    const { user } = auth;
     const teacherId = user.id;
 
     // Parse query parameters
-    const searchParams = req.nextUrl.searchParams;
+    const searchParams = new URL(request.url).searchParams;
     const startDateParam = searchParams.get("startDate");
     const endDateParam = searchParams.get("endDate");
     const classId = searchParams.get("classId");
@@ -507,55 +539,47 @@ export async function GET(req: NextRequest) {
       subject,
     });
 
-    // Get teacher's assigned classes
-    const teacherClasses = await getTeacherClasses(teacherId);
+    try {
+      // Get teacher's assigned classes
+      const teacherClasses = await getTeacherClasses(teacherId);
 
-    if (teacherClasses.length === 0) {
-      logger.warn("No classes found for teacher", { teacherId });
-      return Response.json({
-        data: {
+      if (teacherClasses.length === 0) {
+        logger.warn("No classes found for teacher", { teacherId });
+        return successResponse({
           classPerformance: [],
           studentProgress: [],
           attendanceSummary: [],
           gradeDistribution: { excellent: 0, good: 0, average: 0, belowAverage: 0 },
-        },
-      } satisfies ApiSuccess<ReportData>);
+        });
+      }
+
+      // Calculate all report data in parallel
+      const [classPerformance, studentProgress, attendanceSummary, gradeDistribution] = await Promise.all([
+        calculateClassPerformance(teacherClasses, startDate, endDate, classId || undefined, subject || undefined),
+        calculateStudentProgress(teacherClasses, classId || undefined),
+        calculateAttendanceSummaries(teacherClasses, classId || undefined),
+        calculateGradeDistribution(teacherClasses),
+      ]);
+
+      const reportData: ReportData = {
+        classPerformance,
+        studentProgress,
+        attendanceSummary,
+        gradeDistribution,
+      };
+
+      logger.info("Reports fetched successfully", {
+        route: "/api/teacher/reports",
+        teacherId,
+        classCount: classPerformance.length,
+        studentCount: studentProgress.length,
+      });
+
+      return successResponse(reportData);
+    } catch (error) {
+      logger.apiError(error, { route: "/api/teacher/reports", method: "GET" });
+      return errorResponse("Failed to fetch reports. Please try again later.", 500);
     }
-
-    // Calculate all report data in parallel
-    const [classPerformance, studentProgress, attendanceSummary, gradeDistribution] = await Promise.all([
-      calculateClassPerformance(teacherClasses, startDate, endDate, classId || undefined, subject || undefined),
-      calculateStudentProgress(teacherClasses, classId || undefined),
-      calculateAttendanceSummaries(teacherClasses, classId || undefined),
-      calculateGradeDistribution(teacherClasses),
-    ]);
-
-    const reportData: ReportData = {
-      classPerformance,
-      studentProgress,
-      attendanceSummary,
-      gradeDistribution,
-    };
-
-    logger.info("Reports fetched successfully", {
-      route: "/api/teacher/reports",
-      teacherId,
-      classCount: classPerformance.length,
-      studentCount: studentProgress.length,
-    });
-
-    return Response.json({
-      data: reportData,
-    } satisfies ApiSuccess<ReportData>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/teacher/reports", method: "GET" });
-
-    return Response.json(
-      {
-        error: "Failed to fetch reports. Please try again later.",
-        status: 500,
-      } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['teacher', 'admin']
+);

@@ -1,33 +1,48 @@
 /**
  * RUB Colleges API
  * Browse RUB constituent and affiliated colleges
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
 import { rubColleges, rubPrograms } from "@/lib/db/schema";
 import { db } from "@/lib/db";
 import { eq, and, count } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse } from "@/lib/api/response-helpers";
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+type WhereCondition = SQL | undefined;
+
+interface RubCollegeWithProgramCount {
+  id: string;
+  name: string;
+  type: string;
+  dzongkhag: string;
+  isActive: boolean;
+  programCount?: number;
+}
 
 /**
  * GET /api/rub/colleges
  * Browse RUB colleges
  */
-export async function GET(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["student", "parent", "counselor", "teacher", "school_admin", "admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
+export const GET = createApiRoute(
+  async (req: NextRequest) => {
     const { searchParams } = new URL(req.url);
     const type = searchParams.get("type"); // constituent, affiliated
     const dzongkhag = searchParams.get("dzongkhag");
     const withPrograms = searchParams.get("withPrograms") === "true";
 
     // Build query conditions
-    const conditions: any[] = [eq(rubColleges.isActive, true)];
+    const conditions: WhereCondition[] = [eq(rubColleges.isActive, true)];
 
     if (type) {
       conditions.push(eq(rubColleges.type, type));
@@ -57,7 +72,7 @@ export async function GET(req: NextRequest) {
             )
           );
 
-        (college as any).programCount = programCount?.count || 0;
+        (college as RubCollegeWithProgramCount).programCount = programCount?.count || 0;
       }
     }
 
@@ -67,23 +82,15 @@ export async function GET(req: NextRequest) {
       dzongkhag,
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        colleges,
-        dzongkhags: [
-          "Thimphu", "Paro", "Punakha", "Wangdue Phodrang", "Tsirang",
-          "Samtse", "Chukha", "Samdrup Jongkhar", "Trashigang", "Mongar",
-          "Bumthang", "Trongsa", "Zhemgang", "Sarpang", "Pemagatshel",
-          "Trashiyangtse", "Lhuentse", "Gasa", "Dagana"
-        ],
-      },
+    return successResponse({
+      colleges,
+      dzongkhags: [
+        "Thimphu", "Paro", "Punakha", "Wangdue Phodrang", "Tsirang",
+        "Samtse", "Chukha", "Samdrup Jongkhar", "Trashigang", "Mongar",
+        "Bumthang", "Trongsa", "Zhemgang", "Sarpang", "Pemagatshel",
+        "Trashiyangtse", "Lhuentse", "Gasa", "Dagana"
+      ],
     });
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/rub/colleges", method: "GET" });
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : "Failed to fetch colleges",
-    }, { status: 500 });
-  }
-}
+  },
+  ["student", "parent", "counselor", "teacher", "school-admin", "admin"]
+);

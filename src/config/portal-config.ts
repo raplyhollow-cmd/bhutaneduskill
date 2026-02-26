@@ -3,11 +3,15 @@
  *
  * This file contains all portal-specific configurations including:
  * - Navigation items for each portal
- * - Color schemes and gradients
+ * - Color schemes and gradients (using design tokens)
  * - Mobile settings that apply to ALL portals
  *
  * To change mobile UX across all portals, edit MOBILE_SETTINGS below.
  * To change a specific portal, edit that portal's entry in PORTAL_CONFIG.
+ *
+ * DESIGN TOKEN INTEGRATION:
+ * All gradients and colors are now sourced from @/styles/design-tokens
+ * for consistency across the application.
  */
 
 import {
@@ -44,7 +48,10 @@ import {
   Command,
   Database,
   Zap,
+  Clock,
+  UserCheck,
 } from "lucide-react";
+import { portal as portalTokens } from "@/styles/design-tokens";
 
 // ============ PORTAL CONFIGURATION ============
 // Each portal has its own navigation items and styling
@@ -53,11 +60,13 @@ export const PORTAL_CONFIG = {
   student: {
     name: "Student Portal",
     type: "student",
-    gradient: "linear-gradient(180deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)",
-    mobileGradient: "rgb(249 115 22)",
+    gradient: portalTokens.student.gradient,
+    mobileGradient: portalTokens.student.primary,
+    gradientSubtle: portalTokens.student.gradientSubtle,
+    shadow: portalTokens.student.shadow,
     hoverBg: "rgba(255, 255, 255, 0.15)",
     activeBg: "rgb(255 255 255)",
-    activeText: "rgb(194 65 12)",
+    activeText: portalTokens.student.primaryDark,
     navigationItems: [
       { name: "Dashboard", href: "/student/dashboard", icon: Home },
       { name: "My Classes", href: "/student/classes", icon: BookOpen },
@@ -84,11 +93,13 @@ export const PORTAL_CONFIG = {
   teacher: {
     name: "Teacher Portal",
     type: "teacher",
-    gradient: "linear-gradient(180deg, rgb(59 130 246) 0%, rgb(37 99 235) 100%)",
-    mobileGradient: "rgb(59 130 246)",
+    gradient: portalTokens.teacher.gradient,
+    mobileGradient: portalTokens.teacher.primary,
+    gradientSubtle: portalTokens.teacher.gradientSubtle,
+    shadow: portalTokens.teacher.shadow,
     hoverBg: "rgba(255, 255, 255, 0.15)",
     activeBg: "rgb(255 255 255)",
-    activeText: "rgb(37 99 235)",
+    activeText: portalTokens.teacher.primaryDark,
     navigationItems: [
       { name: "Dashboard", href: "/teacher/dashboard", icon: Home },
       { name: "My Classes", href: "/teacher/classes", icon: Users },
@@ -99,17 +110,20 @@ export const PORTAL_CONFIG = {
       { name: "Assessments", href: "/teacher/assessments", icon: ClipboardList },
       { name: "Reports", href: "/teacher/reports", icon: BarChart3 },
       { name: "Schedule", href: "/teacher/schedule", icon: Calendar },
+      { name: "Messages", href: "/teacher/messages", icon: MessageSquare },
       { name: "Live Sessions", href: "/teacher/live-sessions", icon: LinkIcon },
     ],
   },
   parent: {
     name: "Parent Portal",
     type: "parent",
-    gradient: "linear-gradient(180deg, rgb(107 114 128) 0%, rgb(75 85 99) 100%)",
-    mobileGradient: "rgb(107 114 128)",
+    gradient: portalTokens.parent.gradient,
+    mobileGradient: portalTokens.parent.primary,
+    gradientSubtle: portalTokens.parent.gradientSubtle,
+    shadow: portalTokens.parent.shadow,
     hoverBg: "rgba(255, 255, 255, 0.15)",
     activeBg: "rgb(255 255 255)",
-    activeText: "rgb(75 85 99)",
+    activeText: portalTokens.parent.primaryDark,
     navigationItems: [
       { name: "Dashboard", href: "/parent/dashboard", icon: Home },
       { name: "My Children", href: "/parent/children", icon: Users },
@@ -124,11 +138,13 @@ export const PORTAL_CONFIG = {
   counselor: {
     name: "Counselor Portal",
     type: "counselor",
-    gradient: "linear-gradient(180deg, rgb(168 85 247) 0%, rgb(147 51 234) 100%)",
-    mobileGradient: "rgb(168 85 247)",
+    gradient: portalTokens.counselor.gradient,
+    mobileGradient: portalTokens.counselor.primary,
+    gradientSubtle: portalTokens.counselor.gradientSubtle,
+    shadow: portalTokens.counselor.shadow,
     hoverBg: "rgba(255, 255, 255, 0.15)",
     activeBg: "rgb(255 255 255)",
-    activeText: "rgb(147 51 234)",
+    activeText: portalTokens.counselor.primaryDark,
     navigationItems: [
       { name: "Dashboard", href: "/counselor/dashboard", icon: Home },
       { name: "Students", href: "/counselor/students", icon: Users },
@@ -143,18 +159,22 @@ export const PORTAL_CONFIG = {
   admin: {
     name: "Admin Portal",
     type: "admin",
-    gradient: "linear-gradient(180deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)",
-    mobileGradient: "rgb(236 72 153)",
+    gradient: portalTokens.admin.gradient,
+    mobileGradient: portalTokens.admin.primary,
+    gradientSubtle: portalTokens.admin.gradientSubtle,
+    shadow: portalTokens.admin.shadow,
     hoverBg: "rgba(255, 255, 255, 0.15)",
     activeBg: "rgb(255 255 255)",
-    activeText: "rgb(219 39 119)",
+    activeText: portalTokens.admin.primaryDark,
     navigationItems: [
       { name: "Dashboard", href: "/admin", icon: Home },
       { name: "Command Center", href: "/admin/command-center", icon: Command },
       { name: "Schools", href: "/admin/schools", icon: Building2 },
+      { name: "School Admin Applications", href: "/admin/school-admin-applications", icon: ShieldCheck },
       { name: "Users", href: "/admin/users", icon: Users },
       { name: "Teachers", href: "/admin/teachers", icon: GraduationCap },
       { name: "Counselors", href: "/admin/counselors", icon: MessageSquare },
+      { name: "Subjects", href: "/admin/subjects", icon: BookOpen },
       { name: "Assessments", href: "/admin/assessments", icon: ClipboardList },
       { name: "Knowledge", href: "/admin/knowledge", icon: Database },
       { name: "Content", href: "/admin/content", icon: FileText },
@@ -172,15 +192,19 @@ export const PORTAL_CONFIG = {
   "school-admin": {
     name: "School Admin Portal",
     type: "school-admin",
-    gradient: "linear-gradient(180deg, rgb(139 92 246) 0%, rgb(124 58 237) 100%)",
-    mobileGradient: "rgb(139 92 246)",
+    gradient: portalTokens.schoolAdmin.gradient,
+    mobileGradient: portalTokens.schoolAdmin.primary,
+    gradientSubtle: portalTokens.schoolAdmin.gradientSubtle,
+    shadow: portalTokens.schoolAdmin.shadow,
     hoverBg: "rgba(255, 255, 255, 0.15)",
     activeBg: "rgb(255 255 255)",
-    activeText: "rgb(124 58 237)",
+    activeText: portalTokens.schoolAdmin.primaryDark,
     navigationItems: [
       { name: "Dashboard", href: "/school-admin/dashboard", icon: Home },
       { name: "Students", href: "/school-admin/students", icon: Users },
+      { name: "Pending Students", href: "/school-admin/students/pending", icon: Clock },
       { name: "Teachers", href: "/school-admin/teachers", icon: GraduationCap },
+      { name: "Pending Teachers", href: "/school-admin/teachers/pending", icon: UserCheck },
       { name: "Classes", href: "/school-admin/classes", icon: BookOpen },
       { name: "Subjects", href: "/school-admin/subjects", icon: FileText },
       { name: "Timetable", href: "/school-admin/timetable", icon: Calendar },
@@ -201,11 +225,13 @@ export const PORTAL_CONFIG = {
   ministry: {
     name: "Ministry Portal",
     type: "ministry",
-    gradient: "linear-gradient(180deg, rgb(168 85 247) 0%, rgb(147 51 234) 100%)",
-    mobileGradient: "rgb(168 85 247)",
+    gradient: portalTokens.ministry.gradient,
+    mobileGradient: portalTokens.ministry.primary,
+    gradientSubtle: portalTokens.ministry.gradientSubtle,
+    shadow: portalTokens.ministry.shadow,
     hoverBg: "rgba(255, 255, 255, 0.15)",
     activeBg: "rgb(255 255 255)",
-    activeText: "rgb(147 51 234)",
+    activeText: portalTokens.ministry.primaryDark,
     navigationItems: [
       { name: "Dashboard", href: "/ministry", icon: Home },
       { name: "Schools", href: "/ministry/schools", icon: Building2 },
@@ -221,43 +247,58 @@ export const PORTAL_CONFIG = {
 // ============ MOBILE SETTINGS ============
 // These settings apply to ALL portals
 // Edit this section to change mobile behavior globally
+//
+// DESIGN TOKEN INTEGRATION:
+// Animation timings and spring physics now use design tokens
+
+import { duration, easing, spring, breakpoint, sidebar, mobile } from "@/styles/design-tokens";
 
 export const MOBILE_SETTINGS = {
-  // Responsive breakpoints
+  // Responsive breakpoints (from design tokens)
   breakpoints: {
-    mobile: "1024px",  // Below this = mobile view
-    tablet: "768px",   // Below this = tablet/mobile
-    desktop: "1024px", // Above this = desktop view
+    mobile: breakpoint.lg,     // 1024px - Below this = mobile view
+    tablet: breakpoint.md,     // 768px - Below this = tablet/mobile
+    desktop: breakpoint.lg,    // 1024px - Above this = desktop view
   },
 
-  // Touch target sizes (iOS standard = 44px minimum)
+  // Touch target sizes (from mobile tokens - iOS standard = 44px minimum)
   touchTargets: {
-    minimum: "44px",   // iOS HIG minimum
-    comfortable: "48px", // More comfortable
-    large: "52px",     // Easy to tap
+    minimum: mobile.touchTarget.minimum,     // 44px - iOS HIG minimum
+    comfortable: mobile.touchTarget.comfortable, // 48px - More comfortable
+    large: mobile.touchTarget.large,       // 52px - Easy to tap
+    iconButton: mobile.touchTarget.iconButton, // 44px - Icon buttons
+    fab: mobile.touchTarget.fab,           // 56px - FAB
   },
 
-  // Safe area insets for notched devices (iPhone X+, etc.)
+  // Safe area insets for notched devices (from mobile tokens)
   safeAreas: {
-    top: "env(safe-area-inset-top)",
-    bottom: "env(safe-area-inset-bottom)",
-    left: "env(safe-area-inset-left)",
-    right: "env(safe-area-inset-right)",
+    top: mobile.safeArea.top,
+    bottom: mobile.safeArea.bottom,
+    left: mobile.safeArea.left,
+    right: mobile.safeArea.right,
   },
 
-  // Animation settings
+  // Animation settings (from design tokens)
   animations: {
-    sidebarSlideIn: "300ms ease-out",
-    sidebarSlideOut: "200ms ease-in",
-    overlayFade: "200ms ease-in-out",
-    springStiffness: 300,
-    springDamping: 20,
+    sidebarSlideIn: duration.slower,  // 300ms
+    sidebarSlideOut: duration.slow,   // 200ms
+    overlayFade: duration.normal,     // 150ms
+    springStiffness: spring.default.stiffness,
+    springDamping: spring.default.damping,
   },
 
-  // Sidebar width
+  // Sidebar width (from design tokens)
   sidebar: {
-    width: "16rem",    // 256px / w-64
-    widthCollapsed: "5rem", // 80px / w-20
+    width: sidebar.default,           // 256px
+    widthCollapsed: sidebar.collapsed, // 64px
+  },
+
+  // Bottom navigation (mobile tokens)
+  bottomNav: {
+    height: mobile.navigation.height,
+    compactHeight: mobile.navigation.compactHeight,
+    iconSize: mobile.navigation.iconSize,
+    labelSize: mobile.navigation.labelSize,
   },
 
   // Viewport height (fixes iOS Safari address bar bug)
@@ -265,6 +306,20 @@ export const MOBILE_SETTINGS = {
     // Use 100dvh instead of 100vh to account for mobile browser chrome
     fullHeight: "100dvh",
     minFullHeight: "min-h-[100dvh]",
+  },
+
+  // Mobile spacing
+  spacing: {
+    cardPadding: mobile.card.padding,
+    cardGap: mobile.card.gap,
+    pagePaddingX: "1rem",   // 16px on mobile
+    pagePaddingY: "1rem",   // 16px on mobile
+  },
+
+  // Swipe gestures
+  swipe: {
+    threshold: 50,          // px to trigger swipe close
+    velocityThreshold: 0.3, // velocity to trigger swipe
   },
 } as const;
 

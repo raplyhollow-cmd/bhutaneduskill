@@ -1,51 +1,98 @@
 /**
  * INDIVIDUAL LESSON PLAN API
  *
+ * GET /api/teacher/lessons/:id - Get a lesson plan
  * PATCH /api/teacher/lessons/:id - Update a lesson plan
  * DELETE /api/teacher/lessons/:id - Delete a lesson plan
  */
 
-import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { lessonPlans, syllabusProgress } from "@/lib/db/lesson-plan-schema";
 import { eq, and } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse } from "@/lib/api/response-helpers";
+import { logger } from "@/lib/logger";
 
-interface RouteContext {
-  params: Promise<{ id: string }>;
+interface LessonStats {
+  total: number;
+  completed: number;
+  pending: number;
 }
+
+/**
+ * GET - Get a lesson plan
+ */
+export const GET = createApiRoute(
+  async (
+    request: NextRequest,
+    auth,
+    context?: { params: Promise<{ id: string }> }
+  ) => {
+    const { userId } = auth;
+    const { id } = await context!.params;
+
+    // Get lesson details
+    const lesson = await db.query.lessonPlans.findFirst({
+      where: eq(lessonPlans.id, id),
+      with: {
+        class: true,
+        subject: true,
+      },
+    });
+
+    if (!lesson) {
+      return NextResponse.json({ error: "Lesson plan not found" }, { status: 404 });
+    }
+
+    // Teachers can only view their own lessons
+    if (lesson.teacherId !== userId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Calculate statistics
+    const stats: LessonStats = {
+      total: 1,
+      completed: lesson.status === 'completed' ? 1 : 0,
+      pending: lesson.status === 'completed' ? 0 : 1,
+    };
+
+    return successResponse({
+      success: true,
+      data: {
+        ...lesson,
+        objectives: lesson.objectives ? JSON.parse(lesson.objectives) : [],
+        resources: lesson.resources ? JSON.parse(lesson.resources) : [],
+        stats,
+      },
+    });
+  },
+  ['teacher']
+);
 
 /**
  * PATCH - Update a lesson plan (including marking as complete)
  */
-export async function PATCH(request: NextRequest, context: RouteContext) {
-  const authResult = await requireAuth(['teacher']);
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
+export const PATCH = createApiRoute(
+  async (
+    request: NextRequest,
+    auth,
+    context?: { params: Promise<{ id: string }> }
+  ) => {
+    const { userId } = auth;
+    const { id } = await context!.params;
 
-  const { userId } = authResult;
-  const { id } = await context.params;
-
-  try {
     // Verify lesson exists and belongs to teacher
     const existingLesson = await db.query.lessonPlans.findFirst({
       where: eq(lessonPlans.id, id),
     });
 
     if (!existingLesson) {
-      return NextResponse.json(
-        { error: "Lesson plan not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Lesson plan not found" }, { status: 404 });
     }
 
     if (existingLesson.teacherId !== userId) {
-      return NextResponse.json(
-        { error: "You can only edit your own lesson plans" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "You can only edit your own lesson plans" }, { status: 403 });
     }
 
     const body = await request.json();
@@ -65,7 +112,23 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     } = body;
 
     const now = new Date();
-    const updateData: any = {
+    interface LessonUpdateData {
+      updatedAt: Date;
+      title?: string;
+      chapter?: string;
+      chapterNumber?: number;
+      objectives?: string;
+      activities?: string;
+      resources?: string;
+      scheduledDate?: string;
+      duration?: number;
+      notes?: string;
+      homeworkAssigned?: boolean;
+      status?: string;
+      completedAt?: Date;
+      coveragePercentage?: number;
+    }
+    const updateData: LessonUpdateData = {
       updatedAt: now,
     };
 
@@ -137,7 +200,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       });
     }
 
-    return NextResponse.json({
+    return successResponse({
       success: true,
       data: {
         ...updatedLesson,
@@ -145,45 +208,33 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         resources: updatedLesson.resources ? JSON.parse(updatedLesson.resources) : [],
       },
     });
-  } catch (error) {
-    logger.apiError(error, { route: `/api/teacher/lessons/${id}`, method: "PATCH" });
-    return NextResponse.json(
-      { error: "Failed to update lesson plan" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['teacher']
+);
 
 /**
  * DELETE - Delete a lesson plan
  */
-export async function DELETE(request: NextRequest, context: RouteContext) {
-  const authResult = await requireAuth(['teacher']);
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
+export const DELETE = createApiRoute(
+  async (
+    request: NextRequest,
+    auth,
+    context?: { params: Promise<{ id: string }> }
+  ) => {
+    const { userId } = auth;
+    const { id } = await context!.params;
 
-  const { userId } = authResult;
-  const { id } = await context.params;
-
-  try {
     // Verify lesson exists and belongs to teacher
     const existingLesson = await db.query.lessonPlans.findFirst({
       where: eq(lessonPlans.id, id),
     });
 
     if (!existingLesson) {
-      return NextResponse.json(
-        { error: "Lesson plan not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Lesson plan not found" }, { status: 404 });
     }
 
     if (existingLesson.teacherId !== userId) {
-      return NextResponse.json(
-        { error: "You can only delete your own lesson plans" },
-        { status: 403 }
-      );
+      return NextResponse.json({ error: "You can only delete your own lesson plans" }, { status: 403 });
     }
 
     // Delete the lesson
@@ -222,15 +273,10 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       teacherId: userId,
     });
 
-    return NextResponse.json({
+    return successResponse({
       success: true,
       message: "Lesson plan deleted successfully",
     });
-  } catch (error) {
-    logger.apiError(error, { route: `/api/teacher/lessons/${id}`, method: "DELETE" });
-    return NextResponse.json(
-      { error: "Failed to delete lesson plan" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['teacher']
+);

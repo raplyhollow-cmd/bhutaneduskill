@@ -8,10 +8,12 @@
  * - POST /api/notifications - Create new notification (admin only)
  * - PATCH /api/notifications - Mark notification as read
  * - DELETE /api/notifications - Delete notification
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
+import { NextRequest } from "next/server";
 import {
   getUserNotifications,
   markAsRead,
@@ -20,7 +22,8 @@ import {
   getUnreadCount,
   createNotification,
 } from "@/lib/services/notification.service";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse, notFoundResponse } from "@/lib/api/response-helpers";
 
 /**
  * GET /api/notifications
@@ -33,16 +36,13 @@ import type { ApiSuccess, ApiErrorResponse } from "@/types";
  * - offset: number - Number of notifications to skip
  * - unreadCount: boolean - Return only the unread count
  */
-export async function GET(req: Request) {
-  try {
-    const authResult = await requireAuth();
-    if ('error' in authResult) {
-      return Response.json(
-        { error: authResult.error, status: authResult.status || 401 } satisfies ApiErrorResponse,
-        { status: authResult.status || 401 }
-      );
+export const GET = createApiRoute(
+  async (req: Request) => {
+    const auth = getAuth(req as NextRequest);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId } = authResult;
+    const { userId } = auth;
 
     const { searchParams } = new URL(req.url);
     const unreadOnly = searchParams.get("unreadOnly") === "true";
@@ -56,7 +56,7 @@ export async function GET(req: Request) {
 
       logger.info("Fetched unread notification count", { userId, count });
 
-      return Response.json({ data: { unreadCount: count }, status: 200 } satisfies ApiSuccess<{ unreadCount: number }>);
+      return successResponse({ unreadCount: count });
     }
 
     // Get notifications
@@ -68,15 +68,10 @@ export async function GET(req: Request) {
 
     logger.info("Fetched notifications", { userId, count: notifications.length });
 
-    return Response.json({ data: notifications, status: 200 } satisfies ApiSuccess<typeof notifications>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/notifications", method: "GET" });
-    return Response.json(
-      { error: "Failed to fetch notifications", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return successResponse(notifications);
+  },
+  [] // No role restriction - any authenticated user
+);
 
 /**
  * POST /api/notifications
@@ -84,25 +79,19 @@ export async function GET(req: Request) {
  * Create a new notification
  * Requires admin role
  */
-export async function POST(req: Request) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ('error' in authResult) {
-      return Response.json(
-        { error: authResult.error, status: authResult.status || 401 } satisfies ApiErrorResponse,
-        { status: authResult.status || 401 }
-      );
+export const POST = createApiRoute(
+  async (req: Request) => {
+    const auth = getAuth(req as NextRequest);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId, user } = authResult;
+    const { userId, user } = auth;
 
     const body = await req.json();
 
     // Validate required fields
     if (!body.title || !body.message) {
-      return Response.json(
-        { error: "Title and message are required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("Title and message are required");
     }
 
     // Create notification with current user as sender
@@ -130,15 +119,10 @@ export async function POST(req: Request) {
       createdBy: userId,
     });
 
-    return Response.json({ data: notification, status: 200 } satisfies ApiSuccess<typeof notification>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/notifications", method: "POST" });
-    return Response.json(
-      { error: "Failed to create notification", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return successResponse(notification);
+  },
+  ['admin']
+);
 
 /**
  * PATCH /api/notifications
@@ -146,16 +130,13 @@ export async function POST(req: Request) {
  * Update notification status
  * Used to mark notifications as read or unread
  */
-export async function PATCH(req: Request) {
-  try {
-    const authResult = await requireAuth();
-    if ('error' in authResult) {
-      return Response.json(
-        { error: authResult.error, status: authResult.status || 401 } satisfies ApiErrorResponse,
-        { status: authResult.status || 401 }
-      );
+export const PATCH = createApiRoute(
+  async (req: Request) => {
+    const auth = getAuth(req as NextRequest);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId } = authResult;
+    const { userId } = auth;
 
     const body = await req.json();
 
@@ -165,7 +146,7 @@ export async function PATCH(req: Request) {
 
       logger.info("All notifications marked as read", { userId, count });
 
-      return Response.json({ data: { markedAsRead: count }, status: 200 } satisfies ApiSuccess<{ markedAsRead: number }>);
+      return successResponse({ markedAsRead: count });
     }
 
     // Mark specific notification as read
@@ -173,10 +154,7 @@ export async function PATCH(req: Request) {
       const delivery = await markAsRead(body.notificationId, userId);
 
       if (!delivery) {
-        return Response.json(
-          { error: "Notification not found", status: 404 } satisfies ApiErrorResponse,
-          { status: 404 }
-        );
+        return notFoundResponse("Notification");
       }
 
       logger.info("Notification marked as read", {
@@ -184,65 +162,43 @@ export async function PATCH(req: Request) {
         userId,
       });
 
-      return Response.json({ data: delivery, status: 200 } satisfies ApiSuccess<typeof delivery>);
+      return successResponse(delivery);
     }
 
-    return Response.json(
-      { error: "Invalid action. Use 'markAsRead' or 'markAllAsRead'", status: 400 } satisfies ApiErrorResponse,
-      { status: 400 }
-    );
-  } catch (error) {
-    logger.apiError(error, { route: "/api/notifications", method: "PATCH" });
-    return Response.json(
-      { error: "Failed to update notification", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return badRequestResponse("Invalid action. Use 'markAsRead' or 'markAllAsRead'");
+  },
+  [] // No role restriction - any authenticated user
+);
 
 /**
  * DELETE /api/notifications
  *
  * Delete a notification for the current user
  */
-export async function DELETE(req: Request) {
-  try {
-    const authResult = await requireAuth();
-    if ('error' in authResult) {
-      return Response.json(
-        { error: authResult.error, status: authResult.status || 401 } satisfies ApiErrorResponse,
-        { status: authResult.status || 401 }
-      );
+export const DELETE = createApiRoute(
+  async (req: Request) => {
+    const auth = getAuth(req as NextRequest);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId } = authResult;
+    const { userId } = auth;
 
     const { searchParams } = new URL(req.url);
     const notificationId = searchParams.get("notificationId");
 
     if (!notificationId) {
-      return Response.json(
-        { error: "notificationId is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("notificationId is required");
     }
 
     const success = await deleteNotification(notificationId, userId);
 
     if (!success) {
-      return Response.json(
-        { error: "Notification not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return notFoundResponse("Notification");
     }
 
     logger.info("Notification deleted", { notificationId, userId });
 
-    return Response.json({ data: { deleted: true }, status: 200 } satisfies ApiSuccess<{ deleted: boolean }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/notifications", method: "DELETE" });
-    return Response.json(
-      { error: "Failed to delete notification", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return successResponse({ deleted: true });
+  },
+  [] // No role restriction - any authenticated user
+);

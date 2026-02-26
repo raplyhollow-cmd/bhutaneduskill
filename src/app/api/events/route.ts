@@ -2,15 +2,18 @@
  * EVENTS API ROUTE
  *
  * Handles CRUD operations for school events calendar
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { schoolEvents, eventRegistrations, users } from "@/lib/db/schema";
 import { eq, and, desc, gte, lte, or, sql, count } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse, forbiddenResponse, notFoundResponse } from "@/lib/api/response-helpers";
 
 // ============================================================================
 // TYPES
@@ -50,13 +53,14 @@ interface UpdateEventInput extends Partial<CreateEventInput> {
 // GET - Fetch events with filtering
 // ============================================================================
 
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['student', 'teacher', 'parent', 'admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId, user } = authResult;
+
+    const { userId, user } = auth;
 
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get("start");
@@ -95,7 +99,7 @@ export async function GET(request: NextRequest) {
         or(
           sql`${schoolEvents.isAllDay} = 1`,
           gte(schoolEvents.startDate, startDate)
-        ) as any
+        )
       );
     }
     if (endDate) {
@@ -103,7 +107,7 @@ export async function GET(request: NextRequest) {
         or(
           sql`${schoolEvents.isAllDay} = 1`,
           lte(schoolEvents.startDate, endDate)
-        ) as any
+        )
       );
     }
 
@@ -126,9 +130,17 @@ export async function GET(request: NextRequest) {
     ]);
 
     // For each event, get registration count and user registration
+    interface EventWithRegistration {
+      id: string;
+      title: string;
+      startDate: string | Date;
+      status: string;
+      registeredCount?: number;
+      userRegistration?: unknown;
+    }
     const eventsWithRegistrationInfo = await Promise.all(
-      events.map(async (event: any) => {
-        const result: any = { ...event };
+      events.map(async (event) => {
+        const result: EventWithRegistration = { ...event };
 
         // Get registration count
         const registrationCounts = await db
@@ -155,8 +167,7 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    return NextResponse.json({
-      success: true,
+    return successResponse({
       events: eventsWithRegistrationInfo,
       pagination: {
         page,
@@ -166,38 +177,31 @@ export async function GET(request: NextRequest) {
       },
       user: {
         id: user.id,
-        role: user.role,
-        canCreate: user.role === "school_admin" || user.role === "admin" || user.role === "teacher",
+        role: user.type,
+        canCreate: user.type === "school_admin" || user.type === "admin" || user.type === "teacher",
       },
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/events", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch events" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['student', 'teacher', 'parent', 'admin', 'school-admin']
+);
 
 // ============================================================================
 // POST - Create a new event
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const POST = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId, user } = authResult;
+
+    const { userId, user } = auth;
 
     // Only admins and teachers can create events
-    const canCreate = user.role === "school_admin" || user.role === "admin" || user.role === "teacher";
+    const canCreate = user.type === "school_admin" || user.type === "admin" || user.type === "teacher";
     if (!canCreate) {
-      return NextResponse.json(
-        { error: "You don't have permission to create events" },
-        { status: 403 }
-      );
+      return forbiddenResponse("You don't have permission to create events");
     }
 
     const body: CreateEventInput = await request.json();
@@ -229,10 +233,7 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!title || !startDate || !eventType) {
-      return NextResponse.json(
-        { error: "Missing required fields: title, startDate, eventType" },
-        { status: 400 }
-      );
+      return badRequestResponse("Missing required fields: title, startDate, eventType");
     }
 
     // Create event
@@ -253,7 +254,7 @@ export async function POST(request: NextRequest) {
       recurrencePattern,
       status: status || "upcoming",
       reminders: [],
-      attachments: attachments?.map((a: any) => a.url) || [],
+      attachments: attachments?.map((a) => a.url) || [],
       createdBy: user.id,
       createdAt: now,
       updatedAt: now,
@@ -261,39 +262,31 @@ export async function POST(request: NextRequest) {
 
     logger.info("Event created", { eventId, title, createdBy: user.id });
 
-    return NextResponse.json({
-      success: true,
+    return successResponse({
       event: event[0] || event,
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/events", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to create event" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin', 'school-admin', 'teacher']
+);
 
 // ============================================================================
 // PATCH - Update an event
 // ============================================================================
 
-export async function PATCH(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const PATCH = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId, user } = authResult;
+
+    const { userId, user } = auth;
 
     const body: UpdateEventInput = await request.json();
     const { id, ...updateData } = body;
 
     if (!id) {
-      return NextResponse.json(
-        { error: "Event ID is required" },
-        { status: 400 }
-      );
+      return badRequestResponse("Event ID is required");
     }
 
     // Check if event exists and user has permission
@@ -302,22 +295,16 @@ export async function PATCH(request: NextRequest) {
     });
 
     if (!existingEvent) {
-      return NextResponse.json(
-        { error: "Event not found" },
-        { status: 404 }
-      );
+      return notFoundResponse("Event");
     }
 
     // Check ownership or admin
     const canEdit =
-      user.role === "admin" ||
+      user.type === "admin" ||
       (user.schoolId && existingEvent.schoolId === user.schoolId);
 
     if (!canEdit) {
-      return NextResponse.json(
-        { error: "You don't have permission to edit this event" },
-        { status: 403 }
-      );
+      return forbiddenResponse("You don't have permission to edit this event");
     }
 
     // Update event
@@ -325,45 +312,37 @@ export async function PATCH(request: NextRequest) {
       .set({
         ...updateData,
         updatedAt: new Date(),
-      } as any)
+      } as typeof schoolEvents.$inferInsert)
       .where(eq(schoolEvents.id, id))
       .returning();
 
     logger.info("Event updated", { eventId: id, updatedBy: user.id });
 
-    return NextResponse.json({
-      success: true,
+    return successResponse({
       event: updatedEvent,
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/events", method: "PATCH" });
-    return NextResponse.json(
-      { error: "Failed to update event" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin', 'school-admin', 'teacher']
+);
 
 // ============================================================================
 // DELETE - Delete an event
 // ============================================================================
 
-export async function DELETE(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const DELETE = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId, user } = authResult;
+
+    const { userId, user } = auth;
 
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
     if (!id) {
-      return NextResponse.json(
-        { error: "Event ID is required" },
-        { status: 400 }
-      );
+      return badRequestResponse("Event ID is required");
     }
 
     // Check if event exists and user has permission
@@ -372,22 +351,16 @@ export async function DELETE(request: NextRequest) {
     });
 
     if (!existingEvent) {
-      return NextResponse.json(
-        { error: "Event not found" },
-        { status: 404 }
-      );
+      return notFoundResponse("Event");
     }
 
     // Check ownership or admin
     const canDelete =
-      user.role === "admin" ||
+      user.type === "admin" ||
       (user.schoolId && existingEvent.schoolId === user.schoolId);
 
     if (!canDelete) {
-      return NextResponse.json(
-        { error: "You don't have permission to delete this event" },
-        { status: 403 }
-      );
+      return forbiddenResponse("You don't have permission to delete this event");
     }
 
     // Delete event (cascade will delete registrations)
@@ -395,15 +368,9 @@ export async function DELETE(request: NextRequest) {
 
     logger.info("Event deleted", { eventId: id, deletedBy: user.id });
 
-    return NextResponse.json({
-      success: true,
+    return successResponse({
       message: "Event deleted successfully",
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/events", method: "DELETE" });
-    return NextResponse.json(
-      { error: "Failed to delete event" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin', 'school-admin', 'teacher']
+);

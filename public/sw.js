@@ -293,25 +293,219 @@ async function clearOfflineData(key) {
 // ============================================================================
 
 self.addEventListener('push', (event) => {
-  const options = {
-    body: event.data?.text() || 'New notification',
+  // Default notification data
+  let notificationData = {
+    title: 'Bhutan EduSkill',
+    body: 'You have a new notification',
     icon: '/icon-192.png',
     badge: '/badge-72.png',
     vibrate: [200, 100, 200],
+    tag: `notification-${Date.now()}`,
+    requireInteraction: false,
+    silent: false,
     data: {
       url: '/',
+      timestamp: Date.now(),
     },
   };
 
+  // Parse incoming data
+  if (event.data) {
+    try {
+      const parsedData = event.data.json();
+      notificationData = {
+        ...notificationData,
+        ...parsedData,
+        data: {
+          ...notificationData.data,
+          ...parsedData.data,
+        },
+      };
+    } catch (error) {
+      console.error('[SW] Failed to parse push data:', error);
+      // If JSON parse fails, try text content
+      try {
+        const textData = event.data.text();
+        if (textData) {
+          notificationData.body = textData;
+        }
+      } catch (textError) {
+        console.error('[SW] Failed to read push data as text:', textError);
+      }
+    }
+  }
+
+  // Log for debugging
+  console.log('[SW] Push notification received:', {
+    title: notificationData.title,
+    body: notificationData.body,
+    tag: notificationData.tag,
+  });
+
+  // Show notification with parsed data
   event.waitUntil(
-    self.registration.showNotification('Career Guidance', options)
+    self.registration.showNotification(notificationData.title, {
+      body: notificationData.body,
+      icon: notificationData.icon || '/icon-192.png',
+      badge: notificationData.badge || '/badge-72.png',
+      vibrate: notificationData.vibrate || [200, 100, 200],
+      tag: notificationData.tag || `notification-${Date.now()}`,
+      requireInteraction: notificationData.requireInteraction || false,
+      silent: notificationData.silent || false,
+      data: notificationData.data || {},
+      actions: notificationData.actions || [
+        {
+          action: 'view',
+          title: 'View',
+          icon: '/icons/view.png',
+        },
+        {
+          action: 'close',
+          title: 'Dismiss',
+          icon: '/icons/close.png',
+        },
+      ],
+      // Notification timestamp
+      timestamp: notificationData.data.timestamp || Date.now(),
+    })
   );
 });
 
 self.addEventListener('notificationclick', (event) => {
+  console.log('[SW] Notification clicked:', event.action);
+
+  // Close the notification
   event.notification.close();
 
+  const notificationData = event.notification.data || {};
+
+  // Handle action buttons
+  if (event.action === 'close') {
+    return; // Just close the notification
+  }
+
+  // Determine target URL
+  let targetUrl = '/';
+
+  if (event.action === 'view' && notificationData.url) {
+    targetUrl = notificationData.url;
+  } else if (notificationData.url) {
+    targetUrl = notificationData.url;
+  }
+
+  // Handle notification click - focus existing window or open new one
   event.waitUntil(
-    self.clients.openWindow(event.notification.data?.url || '/')
+    clients.matchAll({
+      type: 'window',
+      includeUncontrolled: true
+    }).then((clientList) => {
+      // Check if there's already a window open with the target URL
+      for (const client of clientList) {
+        const clientUrl = new URL(client.url);
+        const targetUrlObj = new URL(targetUrl, self.location.origin);
+
+        if (clientUrl.pathname === targetUrlObj.pathname && 'focus' in client) {
+          return client.focus();
+        }
+      }
+
+      // Try to focus any existing window and navigate
+      for (const client of clientList) {
+        if ('focus' in client) {
+          return client.focus().then(() => {
+            // Navigate to the target URL
+            if ('navigate' in client) {
+              return client.navigate(targetUrl);
+            }
+          });
+        }
+      }
+
+      // Open new window if none exists
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
   );
 });
+
+// Track notification dismissal
+self.addEventListener('notificationclose', (event) => {
+  console.log('[SW] Notification closed:', event.notification.tag);
+
+  const notificationData = event.notification.data || {};
+
+  // Send analytics for dismissed notification
+  if (self.navigator.sendBeacon) {
+    const data = JSON.stringify({
+      type: 'notification_dismissed',
+      tag: event.notification.tag,
+      title: event.notification.title,
+      timestamp: Date.now(),
+      data: notificationData,
+    });
+
+    // Try to send analytics
+    self.navigator.sendBeacon('/api/analytics/events', data).catch((err) => {
+      console.error('[SW] Failed to send analytics:', err);
+    });
+  }
+
+  // Optionally, sync notification read status with server
+  if (notificationData.deliveryId) {
+    // Mark as read via API
+    fetch('/api/notifications/my-notifications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deliveryIds: [notificationData.deliveryId] }),
+      keepalive: true,
+    }).catch((err) => {
+      console.error('[SW] Failed to mark notification as read:', err);
+    });
+  }
+});
+
+// ============================================================================
+// PUSH NOTIFICATION ERROR HANDLING
+// ============================================================================
+
+self.addEventListener('pushsubscriptionchange', (event) => {
+  console.log('[SW] Push subscription changed');
+
+  // Handle subscription change (resubscribe if needed)
+  event.waitUntil(
+    self.registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: event.oldSubscription
+        ? event.oldSubscription.options.applicationServerKey
+        : null,
+    })
+    .then((newSubscription) => {
+      // Send new subscription to server
+      return fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          endpoint: newSubscription.endpoint,
+          keys: {
+            p256dh: arrayBufferToBase64(newSubscription.getKey('p256dh')),
+            auth: arrayBufferToBase64(newSubscription.getKey('auth')),
+          },
+        }),
+      });
+    })
+    .catch((err) => {
+      console.error('[SW] Failed to resubscribe:', err);
+    })
+  );
+});
+
+// Helper: Convert ArrayBuffer to base64
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return self.btoa(binary);
+}

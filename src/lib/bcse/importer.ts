@@ -84,7 +84,7 @@ export function validateIndexNumber(indexNumber: string): boolean {
 /**
  * Validate BCSE result row
  */
-export function validateResultRow(row: any): { valid: boolean; errors: string[] } {
+export function validateResultRow(row: Record<string, unknown>): { valid: boolean; errors: string[] } {
   const errors: string[] = [];
 
   if (!row.indexNumber || typeof row.indexNumber !== "string") {
@@ -144,7 +144,7 @@ export function parseCSV(csvContent: string): BCSEResultImportRow[] {
 
   for (let i = 1; i < lines.length; i++) {
     const values = parseCSVLine(lines[i]);
-    const row: any = {};
+    const row: Record<string, string | number | boolean | unknown> = {};
 
     headers.forEach((header, index) => {
       row[header] = values[index];

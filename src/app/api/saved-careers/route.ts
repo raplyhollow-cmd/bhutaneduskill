@@ -1,54 +1,75 @@
-import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+/**
+ * SAVED CAREERS API
+ *
+ * GET /api/saved-careers - Get user's saved careers
+ * POST /api/saved-careers - Save or unsave a career
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ * FIXED: Removed db.query usage (disabled in neon-http driver)
+ */
+
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, notFoundResponse } from "@/lib/api/response-helpers";
 
+// ============================================================================
 // GET /api/saved-careers - Get user's saved careers
-export async function GET(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(['student']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+// ============================================================================
+
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId } = authResult;
 
-    const userProfile = await db.query.users.findFirst({
-      where: (users, { eq }) => eq(users.id, userId),
-    });
+    const { userId } = auth;
 
-    const settings = (userProfile?.settings as any) || {};
+    // Using db.select() instead of db.query (neon-http driver)
+    const userProfile = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    const settings = (userProfile[0]?.settings as any) || {};
     const savedCareers = settings.savedCareers || [];
 
-    return NextResponse.json({ savedCareers });
-  } catch (error) {
-    logger.error("Error fetching saved careers:", error);
-    return NextResponse.json({ savedCareers: [] }, { status: 200 });
-  }
-}
+    return successResponse({ savedCareers });
+  },
+  ['student']
+);
 
+// ============================================================================
 // POST /api/saved-careers - Save or unsave a career
-export async function POST(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(['student']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+// ============================================================================
 
-    const body = await req.json();
+export const POST = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
+    }
+
+    const { userId } = auth;
+    const body = await request.json();
     const { careerId, action } = body; // action: 'save' or 'unsave'
 
-    const userProfile = await db.query.users.findFirst({
-      where: (users, { eq }) => eq(users.id, userId),
-    });
+    // Using db.select() instead of db.query (neon-http driver)
+    const userProfile = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
 
-    if (!userProfile) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    if (!userProfile[0]) {
+      return notFoundResponse("User");
     }
 
-    const settings = (userProfile?.settings as any) || {};
+    const settings = (userProfile[0]?.settings as any) || {};
     let savedCareers = settings.savedCareers || [];
 
     if (action === "save") {
@@ -65,11 +86,9 @@ export async function POST(req: NextRequest) {
         settings: { ...settings, savedCareers },
         updatedAt: new Date(),
       })
-      .where(eq(users.id, userProfile.id));
+      .where(eq(users.id, userProfile[0].id));
 
-    return NextResponse.json({ success: true, savedCareers });
-  } catch (error) {
-    logger.error("Error updating saved careers:", error);
-    return NextResponse.json({ error: "Failed to update saved careers" }, { status: 500 });
-  }
-}
+    return successResponse({ success: true, savedCareers });
+  },
+  ['student']
+);

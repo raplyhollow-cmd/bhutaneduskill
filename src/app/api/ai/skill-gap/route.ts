@@ -8,12 +8,11 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
-import { logger } from "@/lib/logger";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { chatWithGemini } from "@/lib/ai/gemini-server";
 import { SKILL_GAP_SYSTEM } from "@/lib/ai/prompts";
 import { safeTrackAIInteraction, AI_FEATURE_IDS } from "@/lib/ai/track-interaction";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import type { ApiSuccess } from "@/types";
 
 // ============================================================================
 // TYPES
@@ -61,38 +60,25 @@ export interface SkillGapResponse {
 // POST - Analyze Skill Gaps
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  let requestData: SkillGapRequest = { targetCareer: "" };
-  let userId = "";
+export const POST = createApiRoute<SkillGapRequest, SkillGapResponse>(
+  async (request) => {
+    const auth = await requireAuth([]);
+    const { userId } = auth;
 
-  try {
-    const authResult = await requireAuth();
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-
-    userId = authResult.userId;
-
-    const body = await request.json();
-    requestData = body as SkillGapRequest;
+    const body = await request.json() as SkillGapRequest;
+    const requestData = body;
 
     const {
       targetCareer,
       currentSkills = [],
       completedSubjects = [],
       assessmentResults = {},
-    } = requestData;
+    } = body;
 
     // Validate required fields
     if (!targetCareer || typeof targetCareer !== "string") {
       return NextResponse.json(
-        {
-          error: "Target career is required",
-          status: 400,
-        } satisfies ApiErrorResponse,
+        { error: "Target career is required", status: 400 },
         { status: 400 }
       );
     }
@@ -110,14 +96,6 @@ export async function POST(request: NextRequest) {
 
     // Parse AI response into structured format
     const analysis = parseSkillGapResponse(aiResponse, targetCareer, currentSkills);
-
-    logger.info("Skill gap analysis generated", {
-      route: "/api/ai/skill-gap",
-      method: "POST",
-      userId,
-      targetCareer,
-      skillLevel: analysis.currentSkillLevel,
-    });
 
     // Track AI interaction (non-blocking)
     safeTrackAIInteraction({
@@ -143,51 +121,9 @@ export async function POST(request: NextRequest) {
       status: 200,
       message: "Skill gap analysis completed successfully",
     } satisfies ApiSuccess<SkillGapResponse>);
-
-  } catch (error: any) {
-    logger.apiError(error, {
-      route: "/api/ai/skill-gap",
-      method: "POST",
-    });
-
-    // Check if it's an API key error
-    if (error?.message === "Gemini API key not configured") {
-      // Return fallback response
-      const fallback = generateFallbackAnalysis(requestData);
-
-      // Track fallback usage (non-blocking)
-      safeTrackAIInteraction({
-        userId,
-        featureId: AI_FEATURE_IDS.SKILL_GAP_ANALYZER,
-        interactionData: {
-          targetCareer: requestData.targetCareer || "unknown",
-          hasCurrentSkills: (requestData.currentSkills?.length || 0) > 0,
-          fallbackSkillLevel: fallback.currentSkillLevel,
-        },
-        metadata: {
-          usedFallback: true,
-          errorReason: "API key not configured",
-          responseTimestamp: new Date().toISOString(),
-        },
-      });
-
-      return NextResponse.json({
-        data: fallback,
-        status: 200,
-        message: "Using offline skill analysis",
-      } satisfies ApiSuccess<SkillGapResponse>);
-    }
-
-    return NextResponse.json(
-      {
-        error: "Failed to analyze skill gaps",
-        status: 500,
-        details: process.env.NODE_ENV === "development" ? error.message : undefined,
-      } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+  },
+  [] // No specific role requirement - any authenticated user
+);
 
 // ============================================================================
 // PROMPT BUILDER
@@ -392,7 +328,7 @@ function parseSkillGapResponse(
     recommendations.push(
       "Start with foundational courses before moving to advanced topics",
       "Practice regularly with real-world projects",
-      "Join online communities related to your target career",
+      "Join online communities for support and networking",
       "Seek mentorship from professionals in the field"
     );
   }
@@ -472,95 +408,6 @@ function parseResource(resourceStr: string): LearningResource {
     type,
     provider,
     free: isFree,
-  };
-}
-
-// ============================================================================
-// FALLBACK ANALYSIS (when AI is unavailable)
-// ============================================================================
-
-function generateFallbackAnalysis(data: SkillGapRequest): SkillGapResponse {
-  const { targetCareer, currentSkills = [] } = data;
-
-  // Career-specific skill requirements
-  const careerSkills: Record<string, SkillBreakdown[]> = {
-    "software engineer": [
-      { skill: "Programming", current: 30, required: 90, gap: 60, category: "technical" },
-      { skill: "Data Structures", current: 20, required: 85, gap: 65, category: "technical" },
-      { skill: "Problem Solving", current: 50, required: 85, gap: 35, category: "soft" },
-      { skill: "Communication", current: 60, required: 70, gap: 10, category: "soft" },
-      { skill: "Mathematics", current: 55, required: 80, gap: 25, category: "academic" },
-    ],
-    "doctor": [
-      { skill: "Biology", current: 40, required: 95, gap: 55, category: "academic" },
-      { skill: "Chemistry", current: 35, required: 90, gap: 55, category: "academic" },
-      { skill: "Communication", current: 55, required: 85, gap: 30, category: "soft" },
-      { skill: "Empathy", current: 70, required: 90, gap: 20, category: "soft" },
-      { skill: "Medical Knowledge", current: 10, required: 95, gap: 85, category: "technical" },
-    ],
-    "teacher": [
-      { skill: "Subject Knowledge", current: 50, required: 85, gap: 35, category: "academic" },
-      { skill: "Communication", current: 60, required: 90, gap: 30, category: "soft" },
-      { skill: "Patience", current: 70, required: 85, gap: 15, category: "soft" },
-      { skill: "Presentation", current: 45, required: 80, gap: 35, category: "soft" },
-      { skill: "Lesson Planning", current: 30, required: 80, gap: 50, category: "technical" },
-    ],
-  };
-
-  const defaultSkills: SkillBreakdown[] = [
-    { skill: "Technical Skills", current: 40, required: 80, gap: 40, category: "technical" },
-    { skill: "Communication", current: 55, required: 75, gap: 20, category: "soft" },
-    { skill: "Problem Solving", current: 50, required: 80, gap: 30, category: "soft" },
-    { skill: "Industry Knowledge", current: 25, required: 75, gap: 50, category: "academic" },
-    { skill: "Teamwork", current: 60, required: 80, gap: 20, category: "soft" },
-  ];
-
-  const skillBreakdown = careerSkills[targetCareer.toLowerCase()] || defaultSkills;
-
-  // Adjust current levels based on provided skills
-  if (currentSkills.length > 0) {
-    currentSkills.forEach((providedSkill) => {
-      const match = skillBreakdown.find((s) =>
-        s.skill.toLowerCase().includes(providedSkill.toLowerCase()) ||
-        providedSkill.toLowerCase().includes(s.skill.toLowerCase())
-      );
-      if (match) {
-        match.current = Math.min(match.current + 25, 75);
-        match.gap = Math.max(match.required - match.current, 10);
-      }
-    });
-  }
-
-  // Calculate overall skill level
-  const avgCurrent = skillBreakdown.reduce((sum, s) => sum + s.current, 0) / skillBreakdown.length;
-  const currentSkillLevel = Math.round(avgCurrent);
-
-  return {
-    currentSkillLevel,
-    skillBreakdown,
-    priorityGaps: skillBreakdown
-      .sort((a, b) => b.gap - a.gap)
-      .slice(0, 3)
-      .map((s) => s.skill),
-    learningResources: [
-      { title: "Foundation Course", type: "course", provider: "Coursera", free: true },
-      { title: "Video Tutorial Series", type: "video", provider: "YouTube", free: true },
-      { title: "Practice Exercises", type: "practice", free: true },
-      { title: "Industry Articles", type: "article", provider: "Medium", free: true },
-      { title: "Recommended Textbook", type: "book", free: false },
-    ],
-    timeline: currentSkillLevel < 40 ? "12-16 weeks" : currentSkillLevel < 60 ? "8-12 weeks" : "4-8 weeks",
-    strengths: [
-      "Completed foundational subjects provide good base",
-      "Clear career goal helps focus learning",
-      "Motivation to develop shows growth mindset",
-    ],
-    recommendations: [
-      "Start with highest-gap skills for biggest impact",
-      "Dedicate 2-3 hours daily to skill development",
-      "Join online communities for support and networking",
-      "Track progress with regular self-assessments",
-    ],
   };
 }
 

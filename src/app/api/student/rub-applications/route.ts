@@ -1,29 +1,63 @@
 /**
  * Student RUB Applications API
  * Submit and track RUB college applications
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
 import { rubApplications, users, bcseResults, rubColleges, rubPrograms } from "@/lib/db/schema";
 import { db } from "@/lib/db";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse, notFoundResponse } from "@/lib/api/response-helpers";
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface ProgramPreference {
+  collegeId: string;
+  programId: string;
+}
+
+interface PreferenceWithName extends ProgramPreference {
+  collegeName: string;
+  programName: string;
+  priority: number;
+}
+
+interface CreateRubApplicationRequest {
+  preferences: ProgramPreference[];
+  examType: string;
+  examYear: string;
+  scholarshipApplied?: boolean;
+  scholarshipType?: string;
+  category?: string;
+}
+
+interface UpdateRubApplicationRequest {
+  applicationId: string;
+  action: "withdraw" | "update_preferences";
+  preferences?: ProgramPreference[];
+}
 
 /**
  * GET /api/student/rub-applications
  * Get student's RUB applications
  */
-export async function GET(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["student", "parent", "counselor", "admin", "school_admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId, user } = authResult;
 
-    const { searchParams } = new URL(req.url);
+    const { userId, user } = auth;
+
+    const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
     const applicationYear = searchParams.get("applicationYear");
     const targetStudentId = searchParams.get("studentId");
@@ -46,12 +80,12 @@ export async function GET(req: NextRequest) {
       if (student) {
         studentId = targetStudentId;
       }
-    } else if (["counselor", "admin", "school_admin"].includes(user?.type || "") && targetStudentId) {
+    } else if (["counselor", "admin", "school-admin"].includes(user?.type || "") && targetStudentId) {
       studentId = targetStudentId;
     }
 
     // Build conditions
-    const conditions: any[] = [eq(rubApplications.studentId, studentId)];
+    const conditions = [eq(rubApplications.studentId, studentId)];
 
     if (status) {
       conditions.push(eq(rubApplications.status, status));
@@ -74,32 +108,25 @@ export async function GET(req: NextRequest) {
       count: applications.length,
     });
 
-    return NextResponse.json({
-      success: true,
-      data: { applications },
-    });
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/student/rub-applications", method: "GET" });
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : "Failed to fetch applications",
-    }, { status: 500 });
-  }
-}
+    return successResponse({ applications });
+  },
+  ['student', 'parent', 'counselor', 'admin', 'school-admin']
+);
 
 /**
  * POST /api/student/rub-applications
  * Submit new RUB college application
  */
-export async function POST(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["student", "admin", "school_admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const POST = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId, user } = authResult;
 
-    const body = await req.json();
+    const { userId, user } = auth;
+
+    const body = await request.json() as CreateRubApplicationRequest;
     const {
       preferences,
       examType,
@@ -111,23 +138,17 @@ export async function POST(req: NextRequest) {
 
     // Validate preferences
     if (!Array.isArray(preferences) || preferences.length === 0) {
-      return NextResponse.json({
-        error: "At least one program preference is required",
-      }, { status: 400 });
+      return badRequestResponse("At least one program preference is required");
     }
 
     if (preferences.length > 10) {
-      return NextResponse.json({
-        error: "Maximum 10 preferences allowed",
-      }, { status: 400 });
+      return badRequestResponse("Maximum 10 preferences allowed");
     }
 
     // Validate each preference
     for (const pref of preferences) {
       if (!pref.collegeId || !pref.programId) {
-        return NextResponse.json({
-          error: "Each preference must include collegeId and programId",
-        }, { status: 400 });
+        return badRequestResponse("Each preference must include collegeId and programId");
       }
     }
 
@@ -139,7 +160,7 @@ export async function POST(req: NextRequest) {
       .limit(1);
 
     if (!student) {
-      return NextResponse.json({ error: "Student not found" }, { status: 404 });
+      return notFoundResponse("Student");
     }
 
     // Get BCSE result if provided
@@ -161,14 +182,12 @@ export async function POST(req: NextRequest) {
     }
 
     if (!bcseResult) {
-      return NextResponse.json({
-        error: "BCSE results not found. Please ensure your exam results are imported.",
-      }, { status: 400 });
+      return badRequestResponse("BCSE results not found. Please ensure your exam results are imported.");
     }
 
     // Fetch college and program names
-    const collegeIds = [...new Set(preferences.map((p: any) => p.collegeId))];
-    const programIds = [...new Set(preferences.map((p: any) => p.programId))];
+    const collegeIds = [...new Set(preferences.map((p) => p.collegeId))];
+    const programIds = [...new Set(preferences.map((p) => p.programId))];
 
     const [colleges, programs] = await Promise.all([
       db.select().from(rubColleges).where(sql`${rubColleges.id} = ANY(${collegeIds})`),
@@ -179,7 +198,7 @@ export async function POST(req: NextRequest) {
     const programMap = new Map(programs.map((p) => [p.id, p]));
 
     // Build preferences with names
-    const preferencesWithNames = preferences.map((pref: any, index: number) => {
+    const preferencesWithNames: PreferenceWithName[] = preferences.map((pref, index: number) => {
       const college = collegeMap.get(pref.collegeId);
       const program = programMap.get(pref.programId);
 
@@ -272,38 +291,29 @@ export async function POST(req: NextRequest) {
       .where(eq(rubApplications.id, applicationId))
       .limit(1);
 
-    return NextResponse.json({
-      success: true,
-      data: application,
-    });
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/student/rub-applications", method: "POST" });
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : "Failed to create application",
-    }, { status: 500 });
-  }
-}
+    return successResponse(application);
+  },
+  ['student', 'admin', 'school-admin']
+);
 
 /**
  * PATCH /api/student/rub-applications
  * Update application (withdraw, change preferences, etc.)
  */
-export async function PATCH(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["student", "admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const PATCH = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId } = authResult;
 
-    const body = await req.json();
+    const { userId } = auth;
+
+    const body = await request.json() as UpdateRubApplicationRequest;
     const { applicationId, action, preferences } = body;
 
     if (!applicationId) {
-      return NextResponse.json({
-        error: "Application ID is required",
-      }, { status: 400 });
+      return badRequestResponse("Application ID is required");
     }
 
     // Get application
@@ -314,19 +324,15 @@ export async function PATCH(req: NextRequest) {
       .limit(1);
 
     if (!application) {
-      return NextResponse.json({
-        error: "Application not found",
-      }, { status: 404 });
+      return notFoundResponse("Application");
     }
 
     // Verify ownership
     if (application.studentId !== userId) {
-      return NextResponse.json({
-        error: "Access denied",
-      }, { status: 403 });
+      return errorResponse("Access denied", 403);
     }
 
-    const updateData: any = {
+    const updateData: Record<string, unknown> = {
       updatedAt: new Date(),
     };
 
@@ -335,14 +341,12 @@ export async function PATCH(req: NextRequest) {
     } else if (action === "update_preferences" && preferences) {
       // Only allow updating preferences if not yet processed
       if (!["submitted", "under_review"].includes(application.status)) {
-        return NextResponse.json({
-          error: "Cannot update preferences. Application already processed.",
-        }, { status: 400 });
+        return badRequestResponse("Cannot update preferences. Application already processed.");
       }
 
       // Re-fetch college/program names
-      const collegeIds = [...new Set(preferences.map((p: any) => p.collegeId))];
-      const programIds = [...new Set(preferences.map((p: any) => p.programId))];
+      const collegeIds = [...new Set(preferences.map((p) => p.collegeId))];
+      const programIds = [...new Set(preferences.map((p) => p.programId))];
 
       const [colleges, rubProgs] = await Promise.all([
         db.select().from(rubColleges).where(sql`${rubColleges.id} = ANY(${collegeIds})`),
@@ -352,7 +356,7 @@ export async function PATCH(req: NextRequest) {
       const collegeMap = new Map(colleges.map((c) => [c.id, c]));
       const programMap = new Map(rubProgs.map((p) => [p.id, p]));
 
-      updateData.preferences = preferences.map((pref: any, index: number) => {
+      updateData.preferences = preferences.map((pref, index: number) => {
         const college = collegeMap.get(pref.collegeId);
         const program = programMap.get(pref.programId);
 
@@ -371,15 +375,7 @@ export async function PATCH(req: NextRequest) {
       .set(updateData)
       .where(eq(rubApplications.id, applicationId));
 
-    return NextResponse.json({
-      success: true,
-      message: "Application updated",
-    });
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/student/rub-applications", method: "PATCH" });
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : "Failed to update application",
-    }, { status: 500 });
-  }
-}
+    return successResponse({ message: "Application updated" });
+  },
+  ['student', 'admin']
+);

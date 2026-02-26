@@ -175,14 +175,14 @@ export async function POST(request: NextRequest) {
       message: "Interview session processed successfully",
     } satisfies ApiSuccess<InterviewSession>);
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.apiError(error, {
       route: "/api/ai/interview-coach",
       method: "POST",
     });
 
     // Check if it's an API key error
-    if (error?.message === "Gemini API key not configured") {
+    if (error instanceof Error && error.message === "Gemini API key not configured") {
       const fallback = generateFallbackSession({
         interviewType: requestData.interviewType || "college",
         targetInstitution: requestData.targetInstitution || "",
@@ -222,7 +222,7 @@ export async function POST(request: NextRequest) {
       {
         error: "Failed to process interview session",
         status: 500,
-        details: process.env.NODE_ENV === "development" ? error.message : undefined,
+        details: process.env.NODE_ENV === "development" ? (error instanceof Error ? error.message : undefined) : undefined,
       } satisfies ApiErrorResponse,
       { status: 500 }
     );

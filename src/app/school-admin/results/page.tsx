@@ -15,6 +15,18 @@ import { ResultsClient } from "./results-client";
 import { getExamResults } from "@/lib/api/school-admin";
 import { getCurrentSchoolId } from "@/lib/api/school-admin";
 
+type ExamResult = {
+  id: string;
+  studentId: string;
+  studentName?: string;
+  examName: string;
+  totalMarks?: number;
+  obtainedMarks?: number;
+  percentage?: number;
+  grade?: string;
+  examDate?: string;
+};
+
 export default async function SchoolAdminResultsPage({
   searchParams,
 }: {
@@ -24,7 +36,7 @@ export default async function SchoolAdminResultsPage({
   const search = params.search || "";
 
   // Get initial data from database
-  let initialResults: any[] = [];
+  let initialResults: ExamResult[] = [];
   let initialTotal = 0;
 
   try {

@@ -44,7 +44,14 @@ export default async function StudentAnnouncementsPage() {
   );
 }
 
-function PinnedAnnouncementCard({ announcement }: { announcement: any }) {
+function PinnedAnnouncementCard({ announcement }: { announcement: {
+  id: string;
+  title: string;
+  excerpt: string;
+  priority?: string;
+  authorName: string;
+  createdAt: string;
+} }) {
   return (
     <Card className="border-l-4 border-l-amber-500 bg-amber-50/50">
       <CardContent className="pt-6">

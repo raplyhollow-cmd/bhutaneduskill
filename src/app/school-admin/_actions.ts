@@ -40,19 +40,38 @@ import {
   type TuitionCourseData,
   type AnalyticsData,
 } from "@/lib/api/school-admin";
-import { cache } from "react";
-
-// Cache the school ID lookup
-const getCachedSchoolId = cache(async () => {
-  return await getCurrentSchoolId();
-});
 
 /**
  * DASHBOARD ACTIONS
  */
 export async function fetchDashboardStats(): Promise<DashboardStats> {
-  const schoolId = await getCachedSchoolId();
-  return getDashboardStats(schoolId);
+  try {
+    const schoolId = await getCurrentSchoolId();
+    logger.debug("fetchDashboardStats: schoolId", { schoolId });
+    if (!schoolId) {
+      logger.warn("fetchDashboardStats: no schoolId found");
+      return {
+        totalStudents: 0,
+        totalTeachers: 0,
+        totalClasses: 0,
+        pendingAttendance: 0,
+        pendingFees: 0,
+        totalRevenue: 0,
+      };
+    }
+    return getDashboardStats(schoolId);
+  } catch (error) {
+    logger.error("fetchDashboardStats failed", error);
+    // Return empty stats on error to prevent page crash
+    return {
+      totalStudents: 0,
+      totalTeachers: 0,
+      totalClasses: 0,
+      pendingAttendance: 0,
+      pendingFees: 0,
+      totalRevenue: 0,
+    };
+  }
 }
 
 /**
@@ -67,12 +86,12 @@ export async function fetchStudents(options: {
   limit?: number;
   offset?: number;
 } = {}) {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
   return getStudents(schoolId, options);
 }
 
 export async function fetchStudentById(id: string) {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
   // Implement student detail fetch
   return null;
 }
@@ -87,7 +106,7 @@ export async function fetchTeachers(options: {
   limit?: number;
   offset?: number;
 } = {}) {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
   return getTeachers(schoolId, options);
 }
 
@@ -102,8 +121,17 @@ export async function fetchClasses(options: {
   limit?: number;
   offset?: number;
 } = {}) {
-  const schoolId = await getCachedSchoolId();
-  return getClasses(schoolId, options);
+  try {
+    const schoolId = await getCurrentSchoolId();
+    if (!schoolId) {
+      logger.warn("fetchClasses: no schoolId found");
+      return { classesList: [], total: 0 };
+    }
+    return getClasses(schoolId, options);
+  } catch (error) {
+    logger.error("fetchClasses failed", error);
+    return { classesList: [], total: 0 };
+  }
 }
 
 /**
@@ -114,7 +142,7 @@ export async function fetchSubjects(options: {
   limit?: number;
   offset?: number;
 } = {}) {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
   return getSubjects(schoolId, options);
 }
 
@@ -128,7 +156,7 @@ export async function fetchAttendanceRecords(options: {
   limit?: number;
   offset?: number;
 } = {}) {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
   return getAttendanceRecords(schoolId, options);
 }
 
@@ -150,7 +178,7 @@ export async function markAttendance(data: {
   }>;
   entryMethod: "manual" | "fingerprint" | "csv_import" | "app_check_in";
 }) {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
 
   if (!schoolId) {
     return { success: false, error: "School not found" };
@@ -178,7 +206,7 @@ export async function markAttendance(data: {
 
     // Insert new attendance records
     const recordsToInsert = data.attendance.map((record) => ({
-      id: `ATT-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `ATT-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
       schoolId,
       classId: data.classId,
       studentId: record.studentId,
@@ -213,7 +241,7 @@ export async function fetchHomework(options: {
   limit?: number;
   offset?: number;
 } = {}) {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
   return getHomeworkList(schoolId, options);
 }
 
@@ -225,7 +253,7 @@ export async function fetchExamResults(options: {
   limit?: number;
   offset?: number;
 } = {}) {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
   return getExamResults(schoolId, options);
 }
 
@@ -233,7 +261,7 @@ export async function fetchExamResults(options: {
  * FEES ACTIONS
  */
 export async function fetchFeeData() {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
   return getFeeData(schoolId);
 }
 
@@ -245,7 +273,7 @@ export async function fetchCounselors(options: {
   limit?: number;
   offset?: number;
 } = {}) {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
   return getCounselors(schoolId, options);
 }
 
@@ -257,7 +285,7 @@ export async function fetchTuitionCourses(options: {
   limit?: number;
   offset?: number;
 } = {}) {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
   return getTuitionCourses(schoolId, options);
 }
 
@@ -265,7 +293,7 @@ export async function fetchTuitionCourses(options: {
  * ANALYTICS ACTIONS
  */
 export async function fetchAnalytics(): Promise<AnalyticsData> {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
   return getAnalytics(schoolId);
 }
 
@@ -309,7 +337,7 @@ export async function fetchAnnouncements(options: {
   limit?: number;
   offset?: number;
 } = {}): Promise<{ announcements: AnnouncementData[]; total: number }> {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
 
   if (!schoolId) {
     return { announcements: [], total: 0 };
@@ -388,7 +416,7 @@ export async function fetchAnnouncements(options: {
  * Get a single announcement by ID
  */
 export async function fetchAnnouncementById(id: string): Promise<AnnouncementData | null> {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
 
   if (!schoolId) {
     return null;
@@ -438,7 +466,7 @@ export async function createAnnouncement(data: {
   isPinned?: boolean;
   attachments?: Array<{ name: string; url: string; type: string; size: number }>;
 }) {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
 
   if (!schoolId) {
     return { success: false, error: "School not found" };
@@ -476,7 +504,7 @@ export async function createAnnouncement(data: {
 
     // Prepare attachments as array (stored as json in DB)
     const attachmentsArray = data.attachments?.map(att => ({
-      id: `att_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `att_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
       name: att.name,
       url: att.url,
       type: att.type,
@@ -485,7 +513,7 @@ export async function createAnnouncement(data: {
     const [announcement] = await db
       .insert(announcementsTable)
       .values({
-        id: `ann_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: `ann_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
         schoolId,
         authorId: userId,
         authorName,
@@ -545,7 +573,7 @@ export async function updateAnnouncement(
     attachments?: Array<{ name: string; url: string; type: string; size: number }>;
   }
 ) {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
 
   if (!schoolId) {
     return { success: false, error: "School not found" };
@@ -614,7 +642,7 @@ export async function updateAnnouncement(
  * Delete an announcement
  */
 export async function deleteAnnouncement(id: string) {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
 
   if (!schoolId) {
     return { success: false, error: "School not found" };
@@ -643,7 +671,7 @@ export async function deleteAnnouncement(id: string) {
  * Toggle announcement pin status
  */
 export async function togglePinAnnouncement(id: string) {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
 
   if (!schoolId) {
     return { success: false, error: "School not found" };
@@ -720,7 +748,7 @@ export interface ClassDetail {
  * Get a single class by ID
  */
 export async function fetchClassById(id: string): Promise<ClassDetail | null> {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
 
   if (!schoolId) {
     return null;
@@ -748,7 +776,7 @@ export async function fetchClassById(id: string): Promise<ClassDetail | null> {
  * Get teachers for selection dropdown
  */
 export async function fetchTeachersForSelection() {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
 
   if (!schoolId) {
     return { teachers: [] };
@@ -782,7 +810,7 @@ export async function fetchTeachersForSelection() {
  * Create a new class
  */
 export async function createClass(data: ClassFormData) {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
 
   if (!schoolId) {
     return { success: false, error: "School not found" };
@@ -837,7 +865,6 @@ export async function createClass(data: ClassFormData) {
         classTeacherName: homeroomTeacherName,
         teacherId: data.homeroomTeacherId || null,
         academicYear,
-        students: [],
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -894,7 +921,7 @@ export async function createClass(data: ClassFormData) {
  * Update an existing class
  */
 export async function updateClass(id: string, data: Partial<ClassFormData>) {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
 
   if (!schoolId) {
     return { success: false, error: "School not found" };
@@ -972,7 +999,7 @@ export async function updateClass(id: string, data: Partial<ClassFormData>) {
  * Delete a class
  */
 export async function deleteClass(id: string) {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
 
   if (!schoolId) {
     return { success: false, error: "School not found" };
@@ -1028,7 +1055,7 @@ export async function deleteClass(id: string) {
  * Get subjects for a specific grade
  */
 export async function fetchSubjectsByGrade(grade: number) {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
 
   if (!schoolId) {
     return { subjects: [] };
@@ -1094,7 +1121,7 @@ export interface InventoryStats {
  * Fetch inventory statistics for dashboard
  */
 export async function fetchInventoryStats(): Promise<InventoryStats> {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
 
   if (!schoolId) {
     return {
@@ -1202,7 +1229,7 @@ export async function fetchInventoryItems(options: {
   limit?: number;
   offset?: number;
 } = {}): Promise<{ items: InventoryItemData[]; total: number }> {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
 
   if (!schoolId) {
     return { items: [], total: 0 };
@@ -1217,7 +1244,8 @@ export async function fetchInventoryItems(options: {
     const { eq, and, desc, like, sql, or, count } = await import("drizzle-orm");
 
     // Build conditions
-    const conditions: any[] = [eq(itemsTable.schoolId, schoolId)];
+    type SqlCondition = ReturnType<typeof sql> | ReturnType<typeof eq>;
+    const conditions: SqlCondition[] = [eq(itemsTable.schoolId, schoolId)];
 
     if (options.search) {
       const searchConditions = [
@@ -1320,7 +1348,7 @@ export async function fetchInventoryItems(options: {
  * Fetch low stock alerts
  */
 export async function fetchLowStockAlerts() {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
 
   if (!schoolId) {
     return { alerts: [] };
@@ -1355,7 +1383,7 @@ export async function fetchLowStockAlerts() {
  * Fetch recent transactions
  */
 export async function fetchRecentTransactions(limit: number = 10) {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
 
   if (!schoolId) {
     return { transactions: [] };
@@ -1399,7 +1427,7 @@ export async function fetchRecentTransactions(limit: number = 10) {
  * Fetch inventory categories
  */
 export async function fetchInventoryCategories() {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
 
   if (!schoolId) {
     return { categories: [] };
@@ -1442,7 +1470,7 @@ export async function createInventoryItem(data: {
   minimumStock?: number;
   purchasePrice?: number;
 }) {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
 
   if (!schoolId) {
     return { success: false, error: "School not found" };
@@ -1577,7 +1605,7 @@ export async function updateInventoryItem(
     notes?: string;
   }
 ) {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
 
   if (!schoolId) {
     return { success: false, error: "School not found" };
@@ -1636,7 +1664,7 @@ export async function updateInventoryItem(
  * Delete inventory item
  */
 export async function deleteInventoryItem(id: string) {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
 
   if (!schoolId) {
     return { success: false, error: "School not found" };
@@ -1694,7 +1722,7 @@ export async function createInventoryTransaction(data: {
   issuedTo?: string;
   issuedToName?: string;
 }) {
-  const schoolId = await getCachedSchoolId();
+  const schoolId = await getCurrentSchoolId();
 
   if (!schoolId) {
     return { success: false, error: "School not found" };
@@ -1846,5 +1874,252 @@ export async function createInventoryTransaction(data: {
       success: false,
       error: error instanceof Error ? error.message : "Failed to create transaction",
     };
+  }
+}
+
+/**
+ * ============================================
+ * SUBJECTS CRUD ACTIONS
+ * ============================================
+ */
+
+export interface SubjectFormData {
+  name: string;
+  code: string;
+  type: "core" | "elective" | "optional";
+  grade?: number;
+  description?: string;
+  departmentId?: string;
+}
+
+/**
+ * Create a new subject
+ */
+export async function createSubject(data: SubjectFormData) {
+  const schoolId = await getCurrentSchoolId();
+
+  if (!schoolId) {
+    return { success: false, error: "School not found" };
+  }
+
+  try {
+    const { db } = await import("@/lib/db");
+    const { subjects } = await import("@/lib/db/schema");
+    const { nanoid } = await import("nanoid");
+
+    // Check if subject code already exists for this school
+    const { eq, and } = await import("drizzle-orm");
+    const [existing] = await db
+      .select()
+      .from(subjects)
+      .where(and(eq(subjects.schoolId, schoolId), eq(subjects.code, data.code)))
+      .limit(1);
+
+    if (existing) {
+      return { success: false, error: "Subject code already exists" };
+    }
+
+    const subjectId = `subject-${nanoid()}`;
+
+    const [newSubject] = await db
+      .insert(subjects)
+      .values({
+        id: subjectId,
+        schoolId,
+        name: data.name,
+        code: data.code,
+        type: data.type,
+        description: data.description || null,
+        grade: data.grade || null,
+        departmentId: data.departmentId || null,
+        isActive: true,
+        subjectType: null,
+        applicableGrades: data.grade ? stringifyJson([data.grade]) : null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+
+    logger.info("Subject created successfully", { subjectId, schoolId, name: data.name });
+
+    return { success: true, subject: newSubject };
+  } catch (error) {
+    logger.error("Failed to create subject:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to create subject",
+    };
+  }
+}
+
+/**
+ * Update an existing subject
+ */
+export async function updateSubject(id: string, data: Partial<SubjectFormData>) {
+  const schoolId = await getCurrentSchoolId();
+
+  if (!schoolId) {
+    return { success: false, error: "School not found" };
+  }
+
+  try {
+    const { db } = await import("@/lib/db");
+    const { subjects } = await import("@/lib/db/schema");
+    const { eq, and } = await import("drizzle-orm");
+
+    // Verify subject belongs to this school
+    const [existing] = await db
+      .select()
+      .from(subjects)
+      .where(and(eq(subjects.id, id), eq(subjects.schoolId, schoolId)))
+      .limit(1);
+
+    if (!existing) {
+      return { success: false, error: "Subject not found" };
+    }
+
+    // Check if new code conflicts with another subject
+    if (data.code && data.code !== existing.code) {
+      const [conflict] = await db
+        .select()
+        .from(subjects)
+        .where(
+          and(
+            eq(subjects.schoolId, schoolId),
+            eq(subjects.code, data.code)
+          )
+        )
+        .limit(1);
+
+      if (conflict) {
+        return { success: false, error: "Subject code already exists" };
+      }
+    }
+
+    // Build update values
+    const updateValues: {
+      updatedAt: Date;
+      name?: string;
+      code?: string;
+      type?: string;
+      description?: string | null;
+      grade?: number;
+      applicableGrades?: string | null;
+      departmentId?: string;
+    } = {
+      updatedAt: new Date(),
+    };
+
+    if (data.name) updateValues.name = data.name;
+    if (data.code) updateValues.code = data.code;
+    if (data.type) updateValues.type = data.type;
+    if (data.description !== undefined) updateValues.description = data.description;
+    if (data.grade !== undefined) {
+      updateValues.grade = data.grade;
+      updateValues.applicableGrades = data.grade ? stringifyJson([data.grade]) : null;
+    }
+    if (data.departmentId !== undefined) updateValues.departmentId = data.departmentId;
+
+    const [updated] = await db
+      .update(subjects)
+      .set(updateValues)
+      .where(eq(subjects.id, id))
+      .returning();
+
+    logger.info("Subject updated successfully", { subjectId: id, schoolId });
+
+    return { success: true, subject: updated };
+  } catch (error) {
+    logger.error("Failed to update subject:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to update subject",
+    };
+  }
+}
+
+/**
+ * Delete a subject (soft delete - sets isActive to false)
+ */
+export async function deleteSubject(id: string) {
+  const schoolId = await getCurrentSchoolId();
+
+  if (!schoolId) {
+    return { success: false, error: "School not found" };
+  }
+
+  try {
+    const { db } = await import("@/lib/db");
+    const { subjects, teacherAssignments } = await import("@/lib/db/schema");
+    const { eq, and } = await import("drizzle-orm");
+
+    // Verify subject belongs to this school
+    const [existing] = await db
+      .select()
+      .from(subjects)
+      .where(and(eq(subjects.id, id), eq(subjects.schoolId, schoolId)))
+      .limit(1);
+
+    if (!existing) {
+      return { success: false, error: "Subject not found" };
+    }
+
+    // Check if subject is assigned to any teacher
+    const [assignment] = await db
+      .select()
+      .from(teacherAssignments)
+      .where(eq(teacherAssignments.subjectId, id))
+      .limit(1);
+
+    if (assignment) {
+      return {
+        success: false,
+        error: "Cannot delete subject that is assigned to teachers. Remove assignments first.",
+      };
+    }
+
+    // Soft delete
+    await db
+      .update(subjects)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(subjects.id, id));
+
+    logger.info("Subject deleted successfully", { subjectId: id, schoolId });
+
+    return { success: true };
+  } catch (error) {
+    logger.error("Failed to delete subject:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to delete subject",
+    };
+  }
+}
+
+/**
+ * Get a single subject by ID
+ */
+export async function fetchSubjectById(id: string) {
+  const schoolId = await getCurrentSchoolId();
+
+  if (!schoolId) {
+    return null;
+  }
+
+  try {
+    const { db } = await import("@/lib/db");
+    const { subjects } = await import("@/lib/db/schema");
+    const { eq, and } = await import("drizzle-orm");
+
+    const [subject] = await db
+      .select()
+      .from(subjects)
+      .where(and(eq(subjects.id, id), eq(subjects.schoolId, schoolId)))
+      .limit(1);
+
+    return subject || null;
+  } catch (error) {
+    logger.error("Failed to fetch subject:", error);
+    return null;
   }
 }

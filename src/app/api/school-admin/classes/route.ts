@@ -1,48 +1,58 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+/**
+ * SCHOOL ADMIN CLASSES API
+ *
+ * GET /api/school-admin/classes - Fetch classes for the school admin's school
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users, classes } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, notFoundResponse } from "@/lib/api/response-helpers";
 
-/**
- * GET /api/school-admin/classes
- * Fetch classes for the school admin's school
- */
-export async function GET(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["school_admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+// ============================================================================
+// GET /api/school-admin/classes
+// ============================================================================
+
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId } = authResult;
 
-    // Get school admin's school ID
-    const admin = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: {
-        schoolId: true,
-      },
-    });
+    const { userId } = auth;
+
+    // Get school admin's school ID using db.select()
+    const adminResult = await db
+      .select({ schoolId: users.schoolId })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    const admin = adminResult[0];
 
     if (!admin?.schoolId) {
-      return NextResponse.json({ error: "School not found" }, { status: 404 });
+      return notFoundResponse("School");
     }
 
-    // Fetch active classes for this school
-    const schoolClasses = await db.query.classes.findMany({
-      where: eq(classes.schoolId, admin.schoolId),
-      orderBy: [classes.grade, classes.section],
-    });
+    // Fetch active classes for this school using db.select()
+    const schoolClasses = await db
+      .select()
+      .from(classes)
+      .where(eq(classes.schoolId, admin.schoolId))
+      .orderBy(classes.grade, classes.section);
 
     logger.info("Fetched classes for school admin", {
       schoolId: admin.schoolId,
       count: schoolClasses.length,
     });
 
-    return NextResponse.json({ classes: schoolClasses });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/classes", method: "GET" });
-    return NextResponse.json({ error: "Failed to fetch classes" }, { status: 500 });
-  }
-}
+    return successResponse({ classes: schoolClasses });
+  },
+  ['school-admin', 'admin']
+);

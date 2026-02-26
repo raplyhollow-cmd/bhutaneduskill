@@ -3,7 +3,7 @@
 import { useRef, useEffect, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, PerspectiveCamera, Environment, Float, Stars, Sparkles } from "@react-three/drei";
-import { motion } from "framer-motion";
+import { motion, Variants } from "framer-motion";
 import { ArrowRight, Compass, Mountain, Sparkles as SparklesIcon } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -82,7 +82,7 @@ function Scene() {
 }
 
 // Text variants for animations - simplified
-const textVariants = {
+const textVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
   visible: (i: number) => ({
     opacity: 1,

@@ -2,6 +2,8 @@
  * MINISTRY DASHBOARD API
  * GET /api/ministry/dashboard - Fetch national education statistics
  *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ *
  * Provides real-time national statistics for the Ministry of Education dashboard:
  * - Total schools, students, teachers
  * - Assessment completion rates
@@ -10,71 +12,39 @@
  * - Enrollment trends
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
-import { logger } from "@/lib/logger";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users, schools, assessments, careerMatches, enrollments } from "@/lib/db/schema";
 import { eq, and, desc, count, sql, gte, lte } from "drizzle-orm";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse } from "@/lib/api/response-helpers";
+import { logger } from "@/lib/logger";
+import type {
+  MinistryDashboardStats,
+  TopSchool,
+  CareerInterest,
+  MinistryDashboardResponse
+} from "@/types";
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
-interface DashboardStats {
-  totalSchools: number;
-  totalStudents: number;
-  totalTeachers: number;
-  assessmentCompletion: number;
-  newSchoolsThisMonth: number;
-  activeTeachers: number;
-  enrollmentGrowth: number;
-}
-
-interface TopSchool {
-  id: string;
-  name: string;
-  district: string;
-  completion: number;
-  students: number;
-  change: number;
-}
-
-interface CareerInterest {
-  career: string;
-  percentage: number;
-  trend: string;
-  count: number;
-}
-
-interface DashboardResponse {
-  stats: DashboardStats;
-  topSchools: TopSchool[];
-  careerInterests: CareerInterest[];
-  recentActivity: Array<{
-    type: string;
-    description: string;
-    timestamp: string;
-  }>;
-}
+type DashboardStats = MinistryDashboardStats;
+type DashboardResponse = MinistryDashboardResponse;
 
 // ============================================================================
 // GET HANDLER
 // ============================================================================
 
-export async function GET(req: NextRequest) {
-  try {
-    // Authenticate and authorize - only ministry users can access
-    const authResult = await requireAuth(["ministry", "admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } as ApiErrorResponse,
-        { status: authResult.status }
-      );
+export const GET = createApiRoute(
+  async (req: NextRequest) => {
+    const auth = getAuth(req);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
 
-    const { userId, user } = authResult;
+    const { userId, user } = auth;
 
     logger.info("Ministry dashboard accessed", { route: "/api/ministry/dashboard", userId });
 
@@ -227,7 +197,7 @@ export async function GET(req: NextRequest) {
       },
     ];
 
-    const response: DashboardResponse = {
+    const response: MinistryDashboardResponse = {
       stats,
       topSchools,
       careerInterests,
@@ -244,17 +214,7 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({ data: response, status: 200 } satisfies ApiSuccess<DashboardResponse>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/ministry/dashboard", method: "GET" });
-
-    return NextResponse.json(
-      {
-        error: "Failed to fetch dashboard data",
-        status: 500,
-        details: process.env.NODE_ENV === "development" ? String(error) : undefined,
-      } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return successResponse(response);
+  },
+  ['ministry', 'admin']
+);

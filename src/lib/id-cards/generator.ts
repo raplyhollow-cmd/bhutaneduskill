@@ -169,12 +169,29 @@ export async function generateIDCardPDF(
 }
 
 /**
+ * ID card template structure
+ */
+interface IDCardTemplate {
+  layout: {
+    orientation: "portrait" | "landscape";
+    photoPosition: "left" | "right";
+    showQRCode: boolean;
+    showBarcode: boolean;
+  };
+  dimensions: {
+    width: number;
+    height: number;
+  };
+  colors: IDCardColors;
+}
+
+/**
  * Draw front side of ID card
  */
 async function drawIDCardFront(
   pdf: jsPDF,
   data: IDCardData,
-  template: any,
+  template: IDCardTemplate,
   cardWidth: number,
   cardHeight: number,
   colors: Record<string, number[]>,
@@ -308,7 +325,7 @@ async function drawIDCardFront(
 function drawIDCardBack(
   pdf: jsPDF,
   data: IDCardData,
-  template: any,
+  template: IDCardTemplate,
   cardWidth: number,
   cardHeight: number,
   colors: Record<string, number[]>

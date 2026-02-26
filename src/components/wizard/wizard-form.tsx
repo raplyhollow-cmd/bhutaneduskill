@@ -3,14 +3,14 @@
 import { ReactNode } from "react";
 import { useForm, UseFormReturn, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ZodSchema } from "zod";
+import { ZodSchema, z } from "zod";
 import { WizardNavigation } from "./wizard-navigation";
 
-interface WizardFormProps<T extends Record<string, any>> {
-  schema: ZodSchema<any>;
+interface WizardFormProps<T extends Record<string, unknown>> {
+  schema: ZodSchema<z.infer<T>>;
   defaultValues?: Partial<T>;
   onSubmit: (data: T) => void | Promise<void>;
-  children: (methods: UseFormReturn<T, any>) => ReactNode;
+  children: (methods: UseFormReturn<T>) => ReactNode;
   currentStep: number;
   totalSteps: number;
   canGoNext: boolean;
@@ -23,7 +23,7 @@ interface WizardFormProps<T extends Record<string, any>> {
   skipLabel?: string;
 }
 
-export function WizardForm<T extends Record<string, any>>({
+export function WizardForm<T extends Record<string, unknown>>({
   schema,
   defaultValues,
   onSubmit,

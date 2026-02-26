@@ -170,7 +170,23 @@ export async function updateCareer(
   const { userId } = authResult;
 
   try {
-    const updateData: any = {
+    type CareerUpdateData = {
+      updatedAt: Date;
+      name?: string;
+      slug?: string;
+      description?: string | null;
+      riasecCode?: string | null;
+      hollandCodes?: Record<string, number> | null;
+      skills?: string[] | null;
+      educationLevel?: string[] | null;
+      subjects?: string[] | null;
+      workEnvironment?: string | null;
+      typicalSalary?: string | null;
+      bhutanDemand?: string | null;
+      bhutanSpecific?: boolean;
+      isActive?: boolean;
+    };
+    const updateData: CareerUpdateData = {
       updatedAt: new Date(),
     };
 

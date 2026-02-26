@@ -76,7 +76,7 @@ export function CommandMenu({ portal }: CommandMenuProps) {
 
   // Handle command selection
   const handleSelect = useCallback(
-    (item: any) => {
+    (item: { action: () => void }) => {
       close();
       // Execute action after close animation
       setTimeout(() => {

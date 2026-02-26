@@ -3,15 +3,15 @@
  * CRUD operations for learning modules created by teachers
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { nanoid } from "nanoid";
-import { requireAuth } from "@/lib/auth-utils";
-import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { learningModules, users, moduleProgress } from "@/lib/db/schema";
 import { eq, desc, count } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse } from "@/lib/api/response-helpers";
+import { logger } from "@/lib/logger";
 import { z } from "zod";
-// Using simple response types instead of ApiSuccess/ApiErrorResponse
 
 // ============================================================================
 // TYPES
@@ -93,16 +93,9 @@ const updateModuleSchema = createModuleSchema.partial();
 // GET /api/teacher/modules - List all modules created by teacher
 // ============================================================================
 
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["teacher"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status"); // draft, published, all
@@ -157,30 +150,18 @@ export async function GET(request: NextRequest) {
 
     logger.info("Teacher modules fetched", { userId, count: filteredModules.length });
 
-    return NextResponse.json({ modules: filteredModules });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/teacher/modules", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch modules" },
-      { status: 500 }
-    );
-  }
-}
+    return successResponse({ modules: filteredModules });
+  },
+  ["teacher"]
+);
 
 // ============================================================================
 // POST /api/teacher/modules - Create new learning module
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["teacher"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-    const { userId } = authResult;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
 
     const body = await request.json();
     const validationResult = createModuleSchema.safeParse(body);
@@ -236,20 +217,15 @@ export async function POST(request: NextRequest) {
         isActive: true,
         createdAt: now,
         updatedAt: now,
-      })
+      } as any)
       .returning();
 
     logger.info("Learning module created", { moduleId, userId, title: data.title });
 
-    return NextResponse.json(
+    return successResponse(
       { module: newModule },
-      { status: 201 }
+      201
     );
-  } catch (error) {
-    logger.apiError(error, { route: "/api/teacher/modules", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to create module" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ["teacher"]
+);

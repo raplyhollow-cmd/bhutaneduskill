@@ -6,6 +6,7 @@ import { Compass, LogIn, Menu, X, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { portal } from "@/styles/design-tokens";
 
 const navLinks = [
   { name: "Home", href: "/" },
@@ -16,10 +17,10 @@ const navLinks = [
 ];
 
 const portals = [
-  { name: "Student", href: "/student", color: "rgb(249 115 22)" },
-  { name: "Teacher", href: "/teacher", color: "rgb(59 130 246)" },
-  { name: "Parent", href: "/parent", color: "rgb(107 114 128)" },
-  { name: "Counselor", href: "/counselor", color: "rgb(168 85 247)" },
+  { name: "Student", href: "/student", color: portal.student.primary },
+  { name: "Teacher", href: "/teacher", color: portal.teacher.primary },
+  { name: "Parent", href: "/parent", color: portal.parent.primary },
+  { name: "Counselor", href: "/counselor", color: portal.counselor.primary },
 ];
 
 export function FloatingNav() {
@@ -67,7 +68,7 @@ export function FloatingNav() {
           <Link href="/" className="flex items-center gap-2">
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)' }}
+              style={{ background: portal.student.gradient }}
             >
               <Compass className="w-4 h-4 text-white" strokeWidth={2} />
             </div>
@@ -150,7 +151,7 @@ export function FloatingNav() {
                 variant="ceramic"
                 size="sm"
                 className="h-10 px-4 text-sm font-medium rounded-lg shadow-lg"
-                style={{ background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)' }}
+                style={{ background: portal.student.gradient }}
               >
                 Get Started
               </Button>
@@ -242,7 +243,7 @@ export function FloatingNav() {
                   href="/sign-up"
                   onClick={() => setIsOpen(false)}
                   className="flex items-center justify-center px-3 py-2 rounded-lg font-medium text-base text-white transition-colors"
-                  style={{ background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)' }}
+                  style={{ background: portal.student.gradient }}
                 >
                   Get Started
                 </Link>

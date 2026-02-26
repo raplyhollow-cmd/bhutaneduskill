@@ -35,11 +35,28 @@ export interface AIChatResponse {
   fallback?: boolean;
 }
 
+/**
+ * Dashboard data context for quick prompt condition check
+ */
+export interface DashboardDataContext {
+  user?: {
+    id: string;
+    type: string;
+  };
+  assessments?: Array<{
+    id: string;
+    type: string;
+    status: string;
+  }>;
+  roadmap?: StudentRoadmap;
+  marks?: MarksSummary;
+}
+
 export interface QuickPrompt {
   id: string;
   text: string;
   icon: string;
-  condition?: (data: any) => boolean;
+  condition?: (data: DashboardDataContext) => boolean;
 }
 
 // ============================================================================

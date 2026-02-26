@@ -394,14 +394,14 @@ function LessonCard({
               />
 
               <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon-xs" onClick={onToggle}>
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onToggle}>
                   {isExpanded ? (
                     <ChevronUp className="w-4 h-4" />
                   ) : (
                     <ChevronDown className="w-4 h-4" />
                   )}
                 </Button>
-                <Button variant="ghost" size="icon-xs" onClick={onDelete}>
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onDelete}>
                   <Trash2 className="w-4 h-4 text-destructive" />
                 </Button>
               </div>
@@ -551,7 +551,7 @@ function ContentItem({ content, onUpdate, onDelete }: ContentItemProps) {
         )}
       </div>
 
-      <Button variant="ghost" size="icon-xs" onClick={onDelete}>
+      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onDelete}>
         <Trash2 className="w-4 h-4 text-destructive" />
       </Button>
     </div>
@@ -705,7 +705,7 @@ function QuestionEditor({ question, index, onUpdate, onDelete }: QuestionEditorP
             <option value="true_false">True / False</option>
             <option value="short_answer">Short Answer</option>
           </select>
-          <Button variant="ghost" size="icon-xs" onClick={onDelete}>
+          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onDelete}>
             <Trash2 className="w-4 h-4 text-destructive" />
           </Button>
         </div>

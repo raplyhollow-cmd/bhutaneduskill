@@ -54,6 +54,7 @@ export interface TeacherData {
   subjects?: string | string[];
   clerkUserId?: string;
   emailVerified?: boolean;
+  onboardingStatus?: string | null;
   createdAt: Date | string;
   lastLogin?: string | null;
   schoolName?: string | null;
@@ -63,6 +64,11 @@ export interface TeacherData {
     classes: number;
     students: number;
   };
+  // Approval details
+  applicationStatus?: string | null;
+  approvedBy?: string | null;
+  approvedByName?: string | null;
+  approvedAt?: Date | null;
 }
 
 interface SchoolOption {
@@ -114,18 +120,18 @@ export default function AdminTeachersPage() {
   const fetchTeachers = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/admin/users?role=teacher&limit=100");
+      const response = await fetch("/api/admin/teachers");
       if (!response.ok) throw new Error("Failed to fetch teachers");
 
       const data = await response.json();
       const teachersData = data.data || [];
 
       // Transform data to match expected format
-      const transformedData = teachersData.map((teacher: TeacherData & { school?: { name?: string; code?: string; type?: string } }) => ({
+      const transformedData = teachersData.map((teacher: TeacherData & { school?: { name?: string; code?: string } }) => ({
         ...teacher,
         schoolName: teacher.school?.name || null,
         schoolCode: teacher.school?.code || null,
-        schoolType: teacher.school?.type || null,
+        schoolType: null,
         stats: {
           classes: 0,
           students: 0,
@@ -541,14 +547,15 @@ export default function AdminTeachersPage() {
                     <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Subjects</th>
                     <th className="text-center py-3 px-4 font-medium text-gray-600 text-sm">Classes</th>
                     <th className="text-center py-3 px-4 font-medium text-gray-600 text-sm">Students</th>
-                    <th className="text-center py-3 px-4 font-medium text-gray-600 text-sm">Status</th>
+                    <th className="text-center py-3 px-4 font-medium text-gray-600 text-sm">Email Status</th>
+                    <th className="text-center py-3 px-4 font-medium text-gray-600 text-sm">School Approval</th>
                     <th className="text-right py-3 px-4 font-medium text-gray-600 text-sm">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredTeachers.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="text-center py-12">
+                      <td colSpan={8} className="text-center py-12">
                         <div className="flex flex-col items-center gap-4">
                           <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
                             <Briefcase className="w-8 h-8 text-gray-400" />
@@ -644,6 +651,7 @@ export default function AdminTeachersPage() {
                             {teacher.stats?.students || 0}
                           </span>
                         </td>
+                        {/* Email Status Column */}
                         <td className="py-4 px-4 text-center">
                           {!teacher.emailVerified ? (
                             <Badge className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs">
@@ -660,6 +668,32 @@ export default function AdminTeachersPage() {
                               <ShieldCheck className="w-3 h-3 mr-1" />
                               Verified
                             </Badge>
+                          )}
+                        </td>
+                        {/* School Approval Status Column */}
+                        <td className="py-4 px-4 text-center">
+                          {teacher.onboardingStatus === "enrolled" || teacher.applicationStatus === "approved" ? (
+                            <div className="flex flex-col items-center gap-1">
+                              <Badge className="bg-green-50 text-green-700 border-green-200 text-xs">
+                                <CheckCircle className="w-3 h-3 mr-1" />
+                                Approved
+                              </Badge>
+                              {teacher.approvedByName && (
+                                <p className="text-xs text-gray-500">by {teacher.approvedByName}</p>
+                              )}
+                            </div>
+                          ) : teacher.onboardingStatus === "pending_approval" || teacher.onboardingStatus === "pending_enrollment" || teacher.applicationStatus === "pending" ? (
+                            <Badge className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs">
+                              <Clock className="w-3 h-3 mr-1" />
+                              Pending
+                            </Badge>
+                          ) : teacher.applicationStatus === "rejected" ? (
+                            <Badge className="bg-red-50 text-red-700 border-red-200 text-xs">
+                              <XCircle className="w-3 h-3 mr-1" />
+                              Rejected
+                            </Badge>
+                          ) : (
+                            <span className="text-xs text-gray-400">—</span>
                           )}
                         </td>
                         <td className="py-4 px-4">

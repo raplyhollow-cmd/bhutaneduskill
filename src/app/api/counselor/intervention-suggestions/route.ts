@@ -37,7 +37,8 @@ export async function POST(req: Request) {
 
     // Check if Gemini API is configured
     if (!GEMINI_API_KEY) {
-      // Return mock suggestions if AI not configured
+      // Return fallback suggestions when AI is not configured
+      // These provide basic guidance when AI features are unavailable
       const mockSuggestions: InterventionSuggestions = {
         talkingPoints: [
           "Start by acknowledging the student's feelings and concerns",

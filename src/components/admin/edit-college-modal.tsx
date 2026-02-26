@@ -1,6 +1,8 @@
 "use client";
 
 import { logger } from "@/lib/logger";
+import { useToast } from "@/components/ui/toaster";
+import { portal } from "@/styles/design-tokens";
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -33,6 +35,7 @@ interface EditCollegeModalProps {
 }
 
 export function EditCollegeModal({ open, onClose, onSuccess, college }: EditCollegeModalProps) {
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
   // Form fields
@@ -101,11 +104,20 @@ export function EditCollegeModal({ open, onClose, onSuccess, college }: EditColl
 
       await updateCollege(college.id, payload);
 
+      toast({
+        title: "College updated",
+        description: `"${name}" has been updated successfully.`,
+        variant: "success",
+      });
       onSuccess();
       onClose();
     } catch (error) {
       logger.error("[EDIT COLLEGE] Error:", error);
-      alert(error instanceof Error ? error.message : "Failed to update college. Please try again.");
+      toast({
+        title: "Failed to update college",
+        description: error instanceof Error ? error instanceof Error ? error.message : String(error) : "Please try again.",
+        variant: "error",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -316,7 +328,7 @@ export function EditCollegeModal({ open, onClose, onSuccess, college }: EditColl
               type="submit"
               disabled={isLoading || !name || !slug || !location}
               className="flex-1"
-              style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
+              style={{ background: portal.admin.gradient }}
             >
               {isLoading ? "Updating..." : "Update College"}
             </Button>

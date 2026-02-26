@@ -21,7 +21,7 @@ export function AppErrorBoundary({ children }: AppErrorBoundaryProps) {
         // Errors are already logged by ErrorBoundary component
         // This callback can be used for additional error reporting
         // e.g., sending to Sentry, Analytics, etc.
-        console.error("[AppErrorBoundary]", error.message, errorInfo);
+        console.log("[AppErrorBoundary]", error instanceof Error ? error.message : String(error), errorInfo);
       }}
     >
       {children}

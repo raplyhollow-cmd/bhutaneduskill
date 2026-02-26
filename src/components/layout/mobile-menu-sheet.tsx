@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Home, User, LogIn, Compass, GraduationCap, BookOpen, MessageSquare, Settings, HeartHandshake, Building, Shield, Landmark, GraduationCap as AlumniIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { portal } from "@/styles/design-tokens";
 
 interface MobileMenuSheetProps {
   isOpen: boolean;
@@ -123,7 +124,7 @@ export function MobileMenuSheet({ isOpen, onClose }: MobileMenuSheetProps) {
                 href="/sign-up"
                 onClick={onClose}
                 className="flex items-center justify-center gap-2 w-full py-4 rounded-xl text-white font-medium hover:shadow-lg transition-all duration-200"
-                style={{ background: "linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)" }}
+                style={{ background: portal.student.gradient }}
               >
                 Get Started Free
               </Link>

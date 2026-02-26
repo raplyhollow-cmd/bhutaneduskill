@@ -1,28 +1,32 @@
 /**
  * NOTICES API
  * Create and manage school notices and announcements
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
 import { notices, users, schools } from "@/lib/db/schema";
 import { eq, and, desc, or } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { nanoid } from "nanoid";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse, notFoundResponse } from "@/lib/api/response-helpers";
 
 /**
  * GET /api/notices
  * Fetch notices for user's school
  */
-export async function GET(req: NextRequest) {
-  try {
-    const authResult = await requireAuth();
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const GET = createApiRoute(
+  async (req: NextRequest) => {
+    const auth = getAuth(req);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId } = authResult;
+
+    const { userId } = auth;
 
     const { searchParams } = new URL(req.url);
     const schoolId = searchParams.get("schoolId");
@@ -44,9 +48,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (!targetSchoolId) {
-      return NextResponse.json({
-        error: "School not found",
-      }, { status: 404 });
+      return notFoundResponse("School");
     }
 
     // Build query for published notices
@@ -89,28 +91,23 @@ export async function GET(req: NextRequest) {
 
     logger.info("Fetched notices", { userId, count: filteredNotices.length });
 
-    return NextResponse.json({
-      data: { notices: filteredNotices },
-    } satisfies ApiSuccess<any>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/notices", method: "GET" });
-    return NextResponse.json({
-      error: "Failed to fetch notices",
-    }, { status: 500 });
-  }
-}
+    return successResponse({ notices: filteredNotices });
+  },
+  []
+);
 
 /**
  * POST /api/notices
  * Create a new notice (School Admin only)
  */
-export async function POST(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["school_admin", "admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const POST = createApiRoute(
+  async (req: NextRequest) => {
+    const auth = getAuth(req);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId } = authResult;
+
+    const { userId } = auth;
 
     const body = await req.json();
     const {
@@ -125,9 +122,7 @@ export async function POST(req: NextRequest) {
     } = body;
 
     if (!title || !content) {
-      return NextResponse.json({
-        error: "Title and content are required",
-      }, { status: 400 });
+      return badRequestResponse("Title and content are required");
     }
 
     // Get school ID
@@ -138,9 +133,7 @@ export async function POST(req: NextRequest) {
       .limit(1);
 
     if (!user?.schoolId) {
-      return NextResponse.json({
-        error: "School not found",
-      }, { status: 404 });
+      return notFoundResponse("School");
     }
 
     // Create notice
@@ -168,13 +161,7 @@ export async function POST(req: NextRequest) {
 
     logger.info("Notice created", { userId, noticeId: newNotice.id });
 
-    return NextResponse.json({
-      data: newNotice,
-    } satisfies ApiSuccess<any>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/notices", method: "POST" });
-    return NextResponse.json({
-      error: "Failed to create notice",
-    }, { status: 500 });
-  }
-}
+    return successResponse(newNotice);
+  },
+  ['school-admin', 'admin']
+);

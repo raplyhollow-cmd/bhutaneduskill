@@ -13,6 +13,8 @@ import { requirePermission } from "@/lib/rbac";
 import { db } from "@/lib/db";
 import { users, assessments, riasecResults, mbtiResults, discResults, careerMatches, careerPlans, examResults, classes, careers } from "@/lib/db/schema";
 import { eq, and, desc, count, sql } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse, forbiddenResponse, notFoundResponse } from "@/lib/api/response-helpers";
 
 // ============================================================================
 // REPORT DEFINITIONS
@@ -281,24 +283,61 @@ const availableReports: ReportConfig[] = [
 // GET - List available reports or get specific report
 // ============================================================================
 
-export async function GET(request: NextRequest) {
-  try {
-    // Authenticate user
-    const authResult = await requireAuth();
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    try {
+      const { userId, user } = auth;
+
+      // Check RBAC permission for viewing reports
+      const permCheck = await requirePermission(userId, "reports.view");
+      if (permCheck) return permCheck;
+
+      const { searchParams } = new URL(request.url);
+      const reportId = searchParams.get("id");
+
+      // Return specific report if ID provided
+      if (reportId) {
+        const report = availableReports.find((r) => r.id === reportId);
+        if (!report) {
+          return NextResponse.json({ error: "Report not found" }, { status: 404 });
+        }
+        if (!report.allowedRoles.includes(user.type)) {
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+        return NextResponse.json({ report });
+      }
+
+      // Return all available reports for user's role
+      const userReports = availableReports.filter((r) => r.allowedRoles.includes(user.type));
+      return successResponse({ reports: userReports });
+    } catch (error: unknown) {
+      if (error instanceof Error && error.message === "Unauthorized") {
+        return errorResponse("Unauthorized", 401);
+      }
+      logger.error("Reports GET error:", error);
+      return errorResponse("Failed to fetch reports", 500);
     }
-    const { userId, user } = authResult;
+  },
+  ["counselor", "teacher", "admin", "parent"]
+);
 
-    // Check RBAC permission for viewing reports
-    const permCheck = await requirePermission(userId, "reports.view");
-    if (permCheck) return permCheck;
+// ============================================================================
+// POST - Generate a report
+// ============================================================================
 
-    const { searchParams } = new URL(request.url);
-    const reportId = searchParams.get("id");
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    try {
+      const { userId, user } = auth;
 
-    // Return specific report if ID provided
-    if (reportId) {
+      // Check RBAC permission for generating reports
+      const permCheck = await requirePermission(userId, "reports.generate");
+      if (permCheck) return permCheck;
+
+      const body = await request.json();
+      const { reportId, format = "json", parameters = {} } = body;
+
+      // Verify report exists and user has access
       const report = availableReports.find((r) => r.id === reportId);
       if (!report) {
         return NextResponse.json({ error: "Report not found" }, { status: 404 });
@@ -306,133 +345,90 @@ export async function GET(request: NextRequest) {
       if (!report.allowedRoles.includes(user.type)) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
-      return NextResponse.json({ report });
-    }
 
-    // Return all available reports for user's role
-    const userReports = availableReports.filter((r) => r.allowedRoles.includes(user.type));
-    return NextResponse.json({ reports: userReports });
+      // Generate the report based on type
+      let reportData: ReportData;
 
-  } catch (error: any) {
-    if (error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    logger.error("Reports GET error:", error);
-    return NextResponse.json({ error: "Failed to fetch reports" }, { status: 500 });
-  }
-}
+      switch (reportId) {
+        case "student-profile":
+          reportData = await generateStudentProfileReport(parameters.userId, user);
+          break;
 
-// ============================================================================
-// POST - Generate a report
-// ============================================================================
+        case "class-summary":
+          reportData = await generateClassSummaryReport(parameters.classId, user);
+          break;
 
-export async function POST(request: NextRequest) {
-  try {
-    // Authenticate user
-    const authResult = await requireAuth();
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId, user } = authResult;
+        case "assessment-analytics":
+          reportData = await generateAssessmentAnalyticsReport(parameters, user);
+          break;
 
-    // Check RBAC permission for generating reports
-    const permCheck = await requirePermission(userId, "reports.generate");
-    if (permCheck) return permCheck;
+        case "career-outcomes":
+          reportData = await generateCareerOutcomesReport(parameters, user);
+          break;
 
-    const body = await request.json();
-    const { reportId, format = "json", parameters = {} } = body;
+        case "school-performance":
+          reportData = await generateSchoolPerformanceReport(parameters, user);
+          break;
 
-    // Verify report exists and user has access
-    const report = availableReports.find((r) => r.id === reportId);
-    if (!report) {
-      return NextResponse.json({ error: "Report not found" }, { status: 404 });
-    }
-    if (!report.allowedRoles.includes(user.type)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+        case "my-progress":
+          reportData = await generateMyProgressReport(user);
+          break;
 
-    // Generate the report based on type
-    let reportData: ReportData;
+        default:
+          return NextResponse.json({ error: "Report generation not implemented" }, { status: 501 });
+      }
 
-    switch (reportId) {
-      case "student-profile":
-        reportData = await generateStudentProfileReport(parameters.userId, user);
-        break;
+      // Format response
+      const timestamp = new Date().toISOString();
+      const filename = `${reportId}_${timestamp.split("T")[0]}.${format}`;
 
-      case "class-summary":
-        reportData = await generateClassSummaryReport(parameters.classId, user);
-        break;
+      if (format === "json") {
+        return NextResponse.json({
+          report: {
+            id: reportId,
+            name: report.name,
+            generatedAt: timestamp,
+            generatedBy: user.name,
+            data: reportData,
+          },
+        });
+      }
 
-      case "assessment-analytics":
-        reportData = await generateAssessmentAnalyticsReport(parameters, user);
-        break;
+      // For other formats, return as download
+      let content: string;
+      let contentType: string;
 
-      case "career-outcomes":
-        reportData = await generateCareerOutcomesReport(parameters, user);
-        break;
+      switch (format) {
+        case "csv":
+          content = jsonToCSV(reportData);
+          contentType = "text/csv";
+          break;
+        case "xml":
+          content = jsonToXML(reportData, reportId);
+          contentType = "application/xml";
+          break;
+        default:
+          content = JSON.stringify(reportData, null, 2);
+          contentType = "application/json";
+      }
 
-      case "school-performance":
-        reportData = await generateSchoolPerformanceReport(parameters, user);
-        break;
-
-      case "my-progress":
-        reportData = await generateMyProgressReport(user);
-        break;
-
-      default:
-        return NextResponse.json({ error: "Report generation not implemented" }, { status: 501 });
-    }
-
-    // Format response
-    const timestamp = new Date().toISOString();
-    const filename = `${reportId}_${timestamp.split("T")[0]}.${format}`;
-
-    if (format === "json") {
-      return NextResponse.json({
-        report: {
-          id: reportId,
-          name: report.name,
-          generatedAt: timestamp,
-          generatedBy: user.name,
-          data: reportData,
+      return new NextResponse(content, {
+        status: 200,
+        headers: {
+          "Content-Type": contentType,
+          "Content-Disposition": `attachment; filename="${filename}"`,
         },
       });
+    } catch (error: unknown) {
+      if (error instanceof Error && error.message === "Unauthorized") {
+        return errorResponse("Unauthorized", 401);
+      }
+      logger.error("Report generation error:", error);
+      return errorResponse("Failed to generate report", 500);
     }
-
-    // For other formats, return as download
-    let content: string;
-    let contentType: string;
-
-    switch (format) {
-      case "csv":
-        content = jsonToCSV(reportData);
-        contentType = "text/csv";
-        break;
-      case "xml":
-        content = jsonToXML(reportData, reportId);
-        contentType = "application/xml";
-        break;
-      default:
-        content = JSON.stringify(reportData, null, 2);
-        contentType = "application/json";
-    }
-
-    return new NextResponse(content, {
-      status: 200,
-      headers: {
-        "Content-Type": contentType,
-        "Content-Disposition": `attachment; filename="${filename}"`,
-      },
-    });
-
-  } catch (error: any) {
-    if (error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    logger.error("Report generation error:", error);
-    return NextResponse.json({ error: "Failed to generate report", details: error.message }, { status: 500 });
-  }
-}
+  },
+  ["counselor", "teacher", "admin"]
+);
 
 // ============================================================================
 // REPORT GENERATORS

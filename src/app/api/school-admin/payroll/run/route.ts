@@ -23,6 +23,35 @@ import { eq, and, desc, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { calculateSalary } from "@/lib/payroll/calculator";
 
+// ============================================================================
+// TYPES
+// ============================================================================
+
+interface ProcessedRecord {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  basicSalary: number;
+  netPay: number;
+  [key: string]: unknown;
+}
+
+interface PayrollError {
+  employeeId: string;
+  employeeName: string | null;
+  error: string;
+}
+
+interface TeacherWithDesignation {
+  id: string;
+  name: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  employeeId: string | null;
+  designation?: string;
+  department?: string;
+}
+
 // POST /api/school-admin/payroll/run - Process payroll for a month
 export async function POST(request: NextRequest) {
   try {
@@ -108,8 +137,8 @@ export async function POST(request: NextRequest) {
     });
 
     // Process each employee
-    const processedRecords: any[] = [];
-    const errors: any[] = [];
+    const processedRecords: ProcessedRecord[] = [];
+    const errors: PayrollError[] = [];
     let totalBasicSalary = 0;
     let totalAllowances = 0;
     let totalDeductions = 0;
@@ -178,8 +207,8 @@ export async function POST(request: NextRequest) {
               ...calculation,
               employeeName: teacher.name || `${teacher.firstName} ${teacher.lastName}`.trim(),
               employeeCode: teacher.employeeId,
-              designation: (teacher as any).designation || "Teacher",
-              department: (teacher as any).department || "Teaching",
+              designation: (teacher as TeacherWithDesignation).designation || "Teacher",
+              department: (teacher as TeacherWithDesignation).department || "Teaching",
               bankName: employeeSalary.bankName,
               bankAccountNumber: employeeSalary.bankAccountNumber,
               bankAccountType: employeeSalary.bankAccountType,
@@ -205,8 +234,8 @@ export async function POST(request: NextRequest) {
               payrollRunId: runId,
               employeeName: teacher.name || `${teacher.firstName} ${teacher.lastName}`.trim(),
               employeeCode: teacher.employeeId,
-              designation: (teacher as any).designation || "Teacher",
-              department: (teacher as any).department || "Teaching",
+              designation: (teacher as TeacherWithDesignation).designation || "Teacher",
+              department: (teacher as TeacherWithDesignation).department || "Teaching",
               ...calculation,
               bankName: employeeSalary.bankName,
               bankAccountNumber: employeeSalary.bankAccountNumber,

@@ -1,6 +1,8 @@
 "use client";
 
 import { logger } from "@/lib/logger";
+import { db } from "@/lib/db";
+import { classes } from "@/lib/db/schema";
 /**
  * TEACHER ATTENDANCE PAGE
  * Take and manage student attendance
@@ -14,6 +16,7 @@ import { logger } from "@/lib/logger";
 
 import { useState, useEffect, useMemo } from "react";
 import { PortalHeader } from "@/components/shared/portal-sidebar";
+import { eq } from "drizzle-orm";
 import { AttendanceTracker, Student, AttendanceRecord } from "@/components/attendance";
 import { AttendanceReports, AttendanceSummary, DailyAttendance, AttendanceAlert } from "@/components/attendance";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -56,6 +59,7 @@ export default function TeacherAttendancePage() {
 
   // Data state
   const [classes, setClasses] = useState<ClassData[]>([]);
+  const [originalClasses, setOriginalClasses] = useState<any[]>([]);
   const [selectedClass, setSelectedClass] = useState<ClassData | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
 
@@ -85,22 +89,29 @@ export default function TeacherAttendancePage() {
         const data = await response.json();
 
         // Transform API data to ClassData format
-        const classData: ClassData[] = data.classes.map((cls: ClassData) => ({
-          id: cls.id,
-          name: cls.name,
-          grade: cls.grade,
-          section: cls.section || "",
-          subject: cls.subject || "Class",
-          students: cls.students?.map((s: Student) => ({
-            id: s.id,
-            name: s.name,
-            rollNumber: s.rollNumber,
-            classId: cls.id,
-            section: cls.section || s.section || "",
-          })) || [],
+        const classData: ClassData[] = await Promise.all(data.classes.map(async (cls: any) => {
+          const classInfo = await db.query.classes.findFirst({
+            where: eq(classes.id, cls.classId)
+          });
+
+          return {
+            id: cls.classId,
+            name: classInfo?.name || "",
+            grade: classInfo?.grade || 0,
+            section: classInfo?.section || "",
+            subject: cls.subject || "Class",
+            students: cls.students?.map((s: any) => ({
+              id: s.id,
+              name: s.name,
+              rollNumber: s.rollNumber || "",
+              classId: cls.classId,
+              section: classInfo?.section || "",
+            })) || [],
+          };
         }));
 
         setClasses(classData);
+        setOriginalClasses(data.classes);
       } catch (err) {
         logger.error("Error fetching classes:", err);
         setError("Failed to load classes. Please try again.");
@@ -691,7 +702,7 @@ export default function TeacherAttendancePage() {
 
         {!isLoading && !error && classes.length > 0 && (
           <div className="grid md:grid-cols-3 gap-4">
-            {classes.map((cls) => (
+            {originalClasses.map((cls: any) => (
               <Card
                 key={cls.id}
                 className="hover:shadow-lg transition-shadow cursor-pointer"
@@ -712,7 +723,7 @@ export default function TeacherAttendancePage() {
                       <p className="text-sm text-muted-foreground">Grade {cls.grade} - {cls.section || "No Section"}</p>
                       <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
                         <Users className="w-4 h-4" />
-                        <span>{cls.students.length} students</span>
+                        <span>{cls.studentsCount || 0} students</span>
                       </div>
                     </div>
                   </div>

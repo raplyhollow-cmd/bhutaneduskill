@@ -31,9 +31,11 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
   try {
     // Get student
-    const student = await db.query.users.findFirst({
-      where: eq(users.id, id),
-    });
+    const [student] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, id))
+      .limit(1);
 
     if (!student || student.type !== 'student') {
       return NextResponse.json(
@@ -44,12 +46,14 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     // If teacher, verify student is in their class
     if (currentUser.type === 'teacher') {
-      const enrollment = await db.query.enrollments.findFirst({
-        where: and(
+      const [enrollment] = await db
+        .select()
+        .from(enrollments)
+        .where(and(
           eq(enrollments.studentId, id),
           eq(enrollments.status, 'active')
-        ),
-      });
+        ))
+        .limit(1);
 
       if (!enrollment) {
         return NextResponse.json(
@@ -58,9 +62,11 @@ export async function GET(request: NextRequest, context: RouteContext) {
         );
       }
 
-      const classRecord = await db.query.classes.findFirst({
-        where: eq(classes.id, enrollment.classId),
-      });
+      const [classRecord] = await db
+        .select()
+        .from(classes)
+        .where(eq(classes.id, enrollment.classId))
+        .limit(1);
 
       if (!classRecord || classRecord.teacherId !== userId) {
         return NextResponse.json(

@@ -1,4 +1,3 @@
-import { logger } from "@/lib/logger";
 /**
  * ID CARD GENERATOR API ROUTE
  *
@@ -6,32 +5,58 @@ import { logger } from "@/lib/logger";
  * Returns image data that can be printed or saved as PDF
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users, schools } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse, notFoundResponse } from "@/lib/api/response-helpers";
+import { logger } from "@/lib/logger";
 
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'teacher', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+/**
+ * User with school and parent relations for ID card
+ */
+interface UserWithRelations {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  type: string | null;
+  profilePicture: string | null;
+  classGrade: number | null;
+  section: string | null;
+  dateOfBirth: string | null;
+  employeeId: string | null;
+  school?: {
+    name: string;
+    address: string | null;
+  } | null;
+  parent?: {
+    firstName: string | null;
+    lastName: string | null;
+    phone: string | null;
+  } | null;
+}
+
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId, user } = authResult;
+    const { userId, user } = auth;
 
     const currentUser = await db.query.users.findFirst({
       where: eq(users.id, userId),
       with: {
         school: true,
-      parent: {
-        columns: { id: true, firstName: true, lastName: true, phone: true },
-      },
+        parent: {
+          columns: { id: true, firstName: true, lastName: true, phone: true },
+        },
       },
     });
 
     if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return notFoundResponse("User");
     }
 
     const { searchParams } = new URL(request.url);
@@ -51,7 +76,7 @@ export async function GET(request: NextRequest) {
       : currentUser;
 
     if (!targetUser) {
-      return NextResponse.json({ error: "Target user not found" }, { status: 404 });
+      return notFoundResponse("Target user");
     }
 
     // Generate SVG ID Card
@@ -61,22 +86,17 @@ export async function GET(request: NextRequest) {
     const pngBuffer = await svgToPng(svgIdCard);
 
     // Return image with appropriate headers
-    return new NextResponse(pngBuffer as any, {
+    return new NextResponse(Buffer.from(pngBuffer), {
       headers: {
         "Content-Type": "image/png",
         "Content-Disposition": `attachment; filename="id-card-${targetUser.id}.png"`,
       },
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to generate ID card" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin', 'teacher', 'school-admin']
+);
 
-function generateIdCardSVG(user: any): string {
+function generateIdCardSVG(user: UserWithRelations): string {
   const fullName = `${user.firstName} ${user.lastName}`.trim();
   const roleLabel = user.type ? user.type.charAt(0).toUpperCase() + user.type.slice(1) : "STUDENT";
   const schoolName = user.school?.name || "Bhutan School";
@@ -209,7 +229,7 @@ function generateIdCardSVG(user: any): string {
     ` : ''}
 
     <!-- Parent/Guardian (for students) -->
-    ${user.parent && user(user as any).type === "student" ? `
+    ${user.parent && user.type === "student" ? `
       <text x="0" y="120" font-family="Arial, sans-serif" font-size="11" fill="#888">
         Parent/Guardian:
       </text>
@@ -267,7 +287,7 @@ function generateIdCardSVG(user: any): string {
   </text>
 
   <!-- Emergency Contact (if available) -->
-  ${user.parent && user.parent.phone && user(user as any).type === "student" ? `
+  ${user.parent && user.parent.phone && user.type === "student" ? `
     <text x="30" y="350" font-family="Arial, sans-serif" font-size="8" fill="#888">
       Emergency: ${user.parent.phone}
     </text>

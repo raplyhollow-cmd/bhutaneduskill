@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
       conditions.push(eq(consentRecords.parentId, user.id as string));
     }
 
-    let records: any[];
+    let records: typeof consentRecords.$inferSelect[];
     if (conditions.length > 0) {
       records = await db.query.consentRecords.findMany({
         where: conditions.length === 1 ? conditions[0] : and(...conditions),

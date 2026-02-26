@@ -92,7 +92,7 @@ export async function GET(req: NextRequest) {
       id: user.id,
       clerkUserId: user.clerkUserId,
       type: user.type,
-      role: user.role,
+      role: user.type,
       name: user.name,
       firstName: user.firstName,
       lastName: user.lastName,

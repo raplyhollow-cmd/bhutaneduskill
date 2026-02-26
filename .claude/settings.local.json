@@ -59,7 +59,14 @@
       "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_zEGrNB2cl7wk@ep-soft-rain-aigc3qom-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require\" npx drizzle-kit push:*)",
       "Bash(DATABASE_URL=\"postgresql://neondb_owner:npg_zEGrNB2cl7wk@ep-soft-rain-aigc3qom-pooler.c-4.us-east-1.aws.neon.tech/neondb?sslmode=require\" npx drizzle-kit generate:*)",
       "Bash(npx dotenv-cli -e .env -- psql:*)",
-      "Bash(npx dotenv-cli:*)"
+      "Bash(npx dotenv-cli:*)",
+      "Bash(\"d:\\\\VS STUDIO PROJECT\\\\bhutaneduskill\\\\src\\\\app\\\\api\\\\school-admin\\\\subjects\\\\[id]\\\\route.ts\")",
+      "Bash(cmd /c \"dir /O-D /B \"\"D:\\\\TEMP\\\\claude\\\\d--VS-STUDIO-PROJECT-bhutaneduskill\\\\tasks\"\" 2>nul | head -15\")",
+      "Bash(REPORT)",
+      "Bash(2026 \")",
+      "Bash(cat .claude/tasks/*.json)",
+      "Bash(sed 's/.*error TS[0-9]*: //')",
+      "Bash(npx playwright install chromium)"
     ]
   }
 }

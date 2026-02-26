@@ -12,6 +12,7 @@ import { useState } from "react";
 import { Plus, GraduationCap, Award, BookOpen, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { portal } from "@/styles/design-tokens";
 
 export function AddContentDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -20,7 +21,7 @@ export function AddContentDropdown() {
     <div className="relative">
       <Button
         onClick={() => setIsOpen(!isOpen)}
-        style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
+        style={{ background: portal.admin.gradient }}
         className="text-white"
       >
         <Plus className="w-4 h-4 mr-2" />

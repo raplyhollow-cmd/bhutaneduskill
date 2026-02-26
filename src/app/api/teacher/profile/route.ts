@@ -1,53 +1,38 @@
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
-import { requirePermission } from "@/lib/rbac";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { users, teachers, classes, subjects, departments, schools, classSubjects } from "@/lib/db/schema";
-import { eq, and, desc, count } from "drizzle-orm";
+import { users, teachers, classes, subjects, departments, schools, classSubjects, enrollments } from "@/lib/db/schema";
+import { eq, and, inArray } from "drizzle-orm";
 import { parseJsonArray } from "@/lib/db/json-helpers";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { requirePermission } from "@/lib/rbac";
 
 /**
  * GET /api/teacher/profile - Fetch teacher profile
- *
- * Returns comprehensive teacher profile including:
- * - User information (name, email, contact)
- * - Teacher-specific details (designation, department, specialization)
- * - School information
- * - Teaching statistics (classes taught, subjects)
- * - Additional metadata
  */
-export async function GET(request: NextRequest) {
-  const authResult = await requireAuth(['teacher', 'admin']);
-  if ('error' in authResult) {
-    return NextResponse.json({ success: false, error: authResult.error }, { status: authResult.status });
-  }
+export const GET = createApiRoute(
+  async (request, auth) => {
+    const { userId, user } = auth;
 
-  const { user: currentUser, userId } = authResult;
+    // Check profile.read permission
+    const permCheck = await requirePermission(userId, "profile.read");
+    if (permCheck) return permCheck;
 
-  // Check profile.read permission
-  const permCheck = await requirePermission(userId, "profile.read");
-  if (permCheck) return permCheck;
+    const { searchParams } = new URL(request.url);
+    const includeStats = searchParams.get("includeStats") !== "false"; // default true
 
-  const { searchParams } = new URL(request.url);
-  const includeStats = searchParams.get("includeStats") !== "false"; // default true
-
-  try {
     // Get user record
     const userRecord = await db.query.users.findFirst({
-      where: eq(users.id, currentUser.id),
+      where: eq(users.id, userId),
     });
 
     if (!userRecord) {
-      return NextResponse.json({
-        success: false,
-        error: "Teacher profile not found",
-      }, { status: 404 });
+      return Response.json({ success: false, error: "Teacher profile not found" }, { status: 404 });
     }
 
     // Get teacher-specific information
     const teacherRecord = await db.query.teachers.findFirst({
-      where: eq(teachers.userId, currentUser.id),
+      where: eq(teachers.userId, userId),
     });
 
     // Get school information if user has a school
@@ -79,7 +64,54 @@ export async function GET(request: NextRequest) {
     }
 
     // Build profile response
-    const profile: any = {
+    interface TeacherProfileResponse {
+      id: string;
+      name?: string;
+      firstName?: string;
+      lastName?: string;
+      email?: string | null;
+      phone?: string | null;
+      profileImage?: string | null;
+      employeeId?: string | null;
+      designation?: string | null;
+      department?: string | null;
+      departmentId?: string | null;
+      specialization?: string | null;
+      subjects: string[];
+      joiningDate?: string | null;
+      status?: string;
+      schoolId?: string | null;
+      schoolName?: string | null;
+      schoolCode?: string | null;
+      schoolType?: string | null;
+      isActive?: boolean;
+      emailVerified?: boolean;
+      onboardingComplete?: boolean;
+      lastLogin?: Date;
+      createdAt?: Date;
+      updatedAt?: Date;
+      statistics?: {
+        totalClasses: number;
+        totalStudents: number;
+        subjects: Array<{
+          id: string;
+          name: string;
+          code: string;
+          type: string;
+          classCount: number;
+          classIds: string[];
+        }>;
+        classes: Array<{
+          id: string;
+          name: string;
+          grade: string;
+          section: string;
+          studentCount: number;
+          isActive: boolean;
+        }>;
+      };
+    }
+    const profile: TeacherProfileResponse = {
       id: userRecord.id,
       // Basic user info
       name: userRecord.name,
@@ -122,7 +154,7 @@ export async function GET(request: NextRequest) {
     if (includeStats) {
       // Get classes taught by this teacher
       const teacherClasses = await db.query.classes.findMany({
-        where: eq(classes.teacherId, currentUser.id),
+        where: eq(classes.teacherId, userId),
       });
 
       // Get unique subjects from class-subject assignments for this teacher
@@ -139,7 +171,7 @@ export async function GET(request: NextRequest) {
       if (classIds.length > 0) {
         // Get all class-subject assignments for this teacher
         const allClassSubjects = await db.query.classSubjects.findMany({
-          where: eq(classSubjects.teacherId, currentUser.id),
+          where: eq(classSubjects.teacherId, userId),
           with: {
             subject: true,
           },
@@ -180,67 +212,64 @@ export async function GET(request: NextRequest) {
 
       // Calculate total students across all classes
       let totalStudents = 0;
-      for (const cls of teacherClasses) {
-        if (cls.students && Array.isArray(cls.students)) {
-          totalStudents += cls.students.length;
-        }
-      }
+      const teacherClassesWithStudents = await Promise.all(
+        teacherClasses.map(async (cls) => {
+          // Get student count for this class
+          const enrollmentCount = await db
+            .select()
+            .from(enrollments)
+            .where(
+              and(
+                eq(enrollments.classId, cls.id),
+                eq(enrollments.status, "active")
+              )
+            );
+
+          totalStudents += enrollmentCount.length;
+
+          return {
+            ...cls,
+            studentCount: enrollmentCount.length,
+          };
+        })
+      );
 
       profile.statistics = {
         totalClasses: teacherClasses.length,
         totalStudents,
         subjects: subjectStats,
-        classes: teacherClasses.map(cls => ({
+        classes: teacherClassesWithStudents.map(cls => ({
           id: cls.id,
           name: cls.name,
           grade: cls.grade,
           section: cls.section,
-          studentCount: cls.students?.length || 0,
+          studentCount: cls.studentCount,
           isActive: cls.isActive ?? true,
         })),
       };
     }
 
     logger.info("Teacher profile fetched", {
-      teacherId: currentUser.id,
+      teacherId: userId,
       includeStats,
     });
 
-    return NextResponse.json({
-      success: true,
-      data: profile,
-    });
-  } catch (error) {
-    logger.error("Teacher profile fetch error:", error);
-    return NextResponse.json({
-      success: false,
-      error: "Failed to fetch teacher profile",
-    }, { status: 500 });
-  }
-}
+    return Response.json({ success: true, data: profile });
+  },
+  ['teacher', 'admin']
+);
 
 /**
  * PATCH /api/teacher/profile - Update teacher profile
- *
- * Body: JSON object with fields to update (subset of profile fields)
- * Allowed updates:
- * - phone, profileImage
- * - department, specialization
- * - Subjects (array of subject IDs)
  */
-export async function PATCH(request: NextRequest) {
-  const authResult = await requireAuth(['teacher', 'admin']);
-  if ('error' in authResult) {
-    return NextResponse.json({ success: false, error: authResult.error }, { status: authResult.status });
-  }
+export const PATCH = createApiRoute(
+  async (request, auth) => {
+    const { userId, user } = auth;
 
-  const { user: currentUser, userId } = authResult;
+    // Check profile.update permission
+    const permCheck = await requirePermission(userId, "profile.update");
+    if (permCheck) return permCheck;
 
-  // Check profile.update permission
-  const permCheck = await requirePermission(userId, "profile.update");
-  if (permCheck) return permCheck;
-
-  try {
     const body = await request.json();
 
     // Fields that can be updated in users table
@@ -248,8 +277,8 @@ export async function PATCH(request: NextRequest) {
     // Fields that can be updated in teachers table
     const allowedTeacherFields = ['department', 'specialization'];
 
-    const userUpdates: any = { updatedAt: new Date() };
-    const teacherUpdates: any = { updatedAt: new Date() };
+    const userUpdates: { updatedAt: Date; phone?: string; profileImage?: string; subjects?: string } = { updatedAt: new Date() };
+    const teacherUpdates: { updatedAt: Date; department?: string; specialization?: string } = { updatedAt: new Date() };
 
     for (const [key, value] of Object.entries(body)) {
       if (allowedUserFields.includes(key)) {
@@ -268,28 +297,23 @@ export async function PATCH(request: NextRequest) {
     if (Object.keys(userUpdates).length > 1) {
       await db.update(users)
         .set(userUpdates)
-        .where(eq(users.id, currentUser.id));
+        .where(eq(users.id, userId));
     }
 
     // Update teacher record if there are changes
     if (Object.keys(teacherUpdates).length > 1) {
       await db.update(teachers)
         .set(teacherUpdates)
-        .where(eq(teachers.userId, currentUser.id));
+        .where(eq(teachers.userId, userId));
     }
 
     logger.info("Teacher profile updated", {
-      teacherId: currentUser.id,
+      teacherId: userId,
       updatedFields: [...Object.keys(userUpdates), ...Object.keys(teacherUpdates)],
     });
 
-    // Fetch and return updated profile
-    return GET(request);
-  } catch (error) {
-    logger.error("Teacher profile update error:", error);
-    return NextResponse.json({
-      success: false,
-      error: "Failed to update teacher profile",
-    }, { status: 500 });
-  }
-}
+    // Return success - client should re-fetch if needed
+    return Response.json({ success: true, message: "Profile updated successfully" });
+  },
+  ['teacher', 'admin']
+);

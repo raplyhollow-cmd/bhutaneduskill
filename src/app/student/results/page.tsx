@@ -109,87 +109,55 @@ interface AssessmentResult {
 
 type ResultTab = "exams" | "homework" | "assessments";
 
-// Mock data for homework and assessments (still using these until APIs are created)
-const mockHomeworkResults: HomeworkResult[] = [
-  {
-    id: "hw1",
-    title: "Quadratic Equations Practice",
-    subject: "Mathematics",
-    submittedDate: "2025-02-14",
-    gradedDate: "2025-02-15",
-    totalPoints: 50,
-    earnedPoints: 42,
-    percentage: 84,
-    grade: "B+",
-    teacherName: "Mrs. Wangmo",
-  },
-  {
-    id: "hw2",
-    title: "Essay: Environmental Conservation",
-    subject: "English",
-    submittedDate: "2025-02-10",
-    gradedDate: "2025-02-12",
-    totalPoints: 100,
-    earnedPoints: 88,
-    percentage: 88,
-    grade: "A",
-    teacherName: "Mr. Dorji",
-  },
-];
-
-const mockAssessmentResults: AssessmentResult[] = [
-  {
-    id: "as1",
-    assessmentName: "RIASEC Career Assessment",
-    assessmentType: "RIASEC",
-    completedDate: "2025-02-01",
-    result: "Investigative (I) - Conventional (C) - Artistic (A)",
-    description: "Your Holland Code suggests careers in science, research, data analysis, and creative problem-solving.",
-  },
-  {
-    id: "as2",
-    assessmentName: "MBTI Personality Test",
-    assessmentType: "MBTI",
-    completedDate: "2025-01-28",
-    result: "INFJ - The Advocate",
-    description: "Introverted, Intuitive, Feeling, Judging. You are idealistic, organized, and insightful.",
-  },
-];
-
 export default function StudentResultsPage() {
   const [activeTab, setActiveTab] = useState<ResultTab>("exams");
   const [filterType, setFilterType] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(true);
   const [examResultsData, setExamResultsData] = useState<ExamResultsResponse | null>(null);
+  const [homeworkResults, setHomeworkResults] = useState<HomeworkResult[]>([]);
+  const [assessmentResults, setAssessmentResults] = useState<AssessmentResult[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch exam results from API
+  // Fetch all results from APIs
   useEffect(() => {
-    const fetchExamResults = async () => {
+    const fetchAllResults = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch("/api/student/results");
 
-        if (!response.ok) {
-          const contentType = response.headers.get("content-type");
-          if (contentType?.includes("application/json")) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || "Failed to fetch results");
-          }
-          throw new Error(`Failed to fetch results (${response.status})`);
+        // Fetch exam results, homework results, and assessment results
+        const [examRes, homeworkRes, assessmentRes] = await Promise.all([
+          fetch("/api/student/results"),
+          fetch("/api/student/homework-results"),
+          fetch("/api/student/assessment-results"),
+        ]);
+
+        if (examRes.ok) {
+          const data = await examRes.json() as ExamResultsResponse;
+          setExamResultsData(data);
         }
 
-        const data = await response.json() as ExamResultsResponse;
-        setExamResultsData(data);
+        if (homeworkRes.ok) {
+          const data = await homeworkRes.json();
+          setHomeworkResults(data.results || []);
+        }
+
+        if (assessmentRes.ok) {
+          const data = await assessmentRes.json();
+          setAssessmentResults(data.results || []);
+        }
+
+        if (!examRes.ok && !homeworkRes.ok && !assessmentRes.ok) {
+          throw new Error("Failed to fetch results");
+        }
       } catch (err) {
-        logger.error("Error fetching exam results:", err);
+        logger.error("Error fetching results:", err);
         setError(err instanceof Error ? err.message : "Failed to fetch results");
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchExamResults();
+    fetchAllResults();
   }, []);
 
   // Flatten subject results into individual exam records for display
@@ -232,9 +200,10 @@ export default function StudentResultsPage() {
   // Calculate stats from real data
   const examAverage = examResultsData?.summary?.averagePercentage ?? 0;
   const totalExams = examResultsData?.summary?.totalExams ?? 0;
-  const homeworkAverage =
-    mockHomeworkResults.reduce((sum, hw) => sum + hw.percentage, 0) / mockHomeworkResults.length;
-  const totalAssignments = mockHomeworkResults.length;
+  const homeworkAverage = homeworkResults.length > 0
+    ? homeworkResults.reduce((sum, hw) => sum + hw.percentage, 0) / homeworkResults.length
+    : 0;
+  const totalAssignments = homeworkResults.length;
 
   const getGradeColor = (grade: string) => {
     if (grade.startsWith("A")) return "bg-green-100 text-green-700 border-green-200";
@@ -351,7 +320,7 @@ export default function StudentResultsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-purple-600">{mockAssessmentResults.length}</div>
+              <div className="text-2xl font-bold text-purple-600">{assessmentResults.length}</div>
               <p className="text-xs text-gray-500 mt-1">Completed</p>
             </CardContent>
           </Card>
@@ -413,7 +382,7 @@ export default function StudentResultsPage() {
                   <BookOpen className="w-4 h-4 mr-2" />
                   Homework
                   <Badge variant="secondary" className="ml-2">
-                    {mockHomeworkResults.length}
+                    {homeworkResults.length}
                   </Badge>
                 </Button>
                 <Button
@@ -423,7 +392,7 @@ export default function StudentResultsPage() {
                   <ClipboardCheck className="w-4 h-4 mr-2" />
                   Assessments
                   <Badge variant="secondary" className="ml-2">
-                    {mockAssessmentResults.length}
+                    {assessmentResults.length}
                   </Badge>
                 </Button>
               </div>
@@ -526,14 +495,14 @@ export default function StudentResultsPage() {
             {/* Homework Tab */}
             {activeTab === "homework" && (
               <div className="space-y-4">
-                {mockHomeworkResults.length === 0 ? (
+                {homeworkResults.length === 0 ? (
                   <div className="text-center py-12">
                     <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-muted-foreground">No graded homework found</p>
                   </div>
                 ) : (
                   <div className="grid md:grid-cols-2 gap-4">
-                    {mockHomeworkResults.map((hw) => (
+                    {homeworkResults.map((hw) => (
                       <Card key={hw.id} className="hover:shadow-md transition-shadow">
                         <CardHeader>
                           <div className="flex items-start justify-between">
@@ -586,7 +555,7 @@ export default function StudentResultsPage() {
             {/* Assessments Tab */}
             {activeTab === "assessments" && (
               <div className="space-y-4">
-                {mockAssessmentResults.length === 0 ? (
+                {assessmentResults.length === 0 ? (
                   <div className="text-center py-12">
                     <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                     <p className="text-muted-foreground">No assessment results found</p>
@@ -596,7 +565,7 @@ export default function StudentResultsPage() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {mockAssessmentResults.map((assessment) => (
+                    {assessmentResults.map((assessment) => (
                       <Card key={assessment.id} className="hover:shadow-md transition-shadow">
                         <CardContent className="pt-6">
                           <div className="flex items-start justify-between">

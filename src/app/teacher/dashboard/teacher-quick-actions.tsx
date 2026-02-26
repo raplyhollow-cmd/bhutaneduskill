@@ -21,9 +21,11 @@ import {
   FileText,
   Upload,
   Plus,
+  School,
+  Clock,
 } from "lucide-react";
 import Link from "next/link";
-import { BehaviorLogModal } from "@/components/teacher/behavior-log-modal";
+import { BehaviorLogModal, type BehaviorLogData } from "@/components/teacher/behavior-log-modal";
 
 export function TeacherQuickActions() {
   const [isBehaviorModalOpen, setIsBehaviorModalOpen] = useState(false);
@@ -31,7 +33,7 @@ export function TeacherQuickActions() {
   const [selectedStudentName, setSelectedStudentName] = useState<string>("");
   const [selectedClassId, setSelectedClassId] = useState<string | undefined>();
 
-  const handleBehaviorSubmit = async (data: any) => {
+  const handleBehaviorSubmit = async (data: BehaviorLogData): Promise<void> => {
     const response = await fetch("/api/teacher/behavior", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -42,12 +44,26 @@ export function TeacherQuickActions() {
       const error = await response.json();
       throw new Error(error.error || "Failed to log behavior");
     }
-
-    return await response.json();
   };
 
   // Quick action buttons
   const quickActions = [
+    {
+      label: "My Classes & Subjects",
+      icon: School,
+      variant: "ceramic-info" as const,
+      href: "/teacher/my-classes",
+      onClick: null,
+      description: "View Assignments",
+    },
+    {
+      label: "My Timetable",
+      icon: Clock,
+      variant: "ceramic-info" as const,
+      href: "/teacher/timetable",
+      onClick: null,
+      description: "Weekly Schedule",
+    },
     {
       label: "Log Behavior",
       icon: Award,
@@ -59,24 +75,16 @@ export function TeacherQuickActions() {
     {
       label: "Lesson Plans",
       icon: Calendar,
-      variant: "ceramic-info" as const,
+      variant: "ceramic-ghost" as const,
       href: "/teacher/lessons",
       onClick: null,
       description: "Plan & Track",
     },
     {
-      label: "My Students",
-      icon: Users,
-      variant: "ceramic-ghost" as const,
-      href: "/teacher/students",
-      onClick: null,
-      description: "View All",
-    },
-    {
       label: "Create Homework",
       icon: BookOpen,
       variant: "ceramic" as const,
-      href: "/teacher/homework",
+      href: "/teacher/homework/create",
       onClick: null,
       description: "New Assignment",
     },
@@ -87,14 +95,6 @@ export function TeacherQuickActions() {
       href: "/teacher/resources",
       onClick: null,
       description: "Share Materials",
-    },
-    {
-      label: "Student Reports",
-      icon: FileText,
-      variant: "ceramic-ghost" as const,
-      href: "/teacher/reports",
-      onClick: null,
-      description: "Generate PDFs",
     },
   ];
 

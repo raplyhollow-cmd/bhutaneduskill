@@ -260,6 +260,6 @@ export const color = (colorName: keyof typeof colors, shade: number = 500) => {
 };
 
 // Tailwind-compatible class generator
-export const tw = (strings: TemplateStringsArray, ...values: any[]) => {
+export const tw = (strings: TemplateStringsArray, ...values: (string | number | boolean)[]) => {
   return String.raw({ raw: strings }, ...values);
 };

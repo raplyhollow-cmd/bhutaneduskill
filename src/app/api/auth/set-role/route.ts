@@ -64,7 +64,9 @@ export async function GET(request: NextRequest) {
 
     // School admins: check if their application is approved
     // First check onboardingStatus directly (more efficient)
-    if (user.type === "school-admin" && user.onboardingStatus === "pending_approval") {
+    // Handle both pending_approval and pending_enrollment statuses
+    if (user.type === "school-admin" &&
+        (user.onboardingStatus === "pending_approval" || user.onboardingStatus === "pending_enrollment")) {
       logger.debug("School admin awaiting approval", { userId: user.id, onboardingStatus: user.onboardingStatus });
       return NextResponse.json({
         userType: null,

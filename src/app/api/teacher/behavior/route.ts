@@ -3,78 +3,57 @@
  *
  * POST /api/teacher/behavior - Log a merit/demerit incident
  * GET /api/teacher/behavior - Get behavior logs for teacher's students
- * GET /api/teacher/behavior?studentId=xxx - Get logs for specific student
  */
 
 import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { teacherBehaviorLogs } from "@/lib/db/teacher-logs-schema";
 import { users, classes, notifications, parentToStudent } from "@/lib/db/schema";
-import { eq, desc, and, inArray, sql } from "drizzle-orm";
+import { eq, desc, and, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { createApiRoute, type AuthContext } from "@/lib/api/route-handler";
+import { successResponse, errorResponse } from "@/lib/api/response-helpers";
 
 /**
  * POST - Log a behavior incident (merit/demerit)
- * Creates notification for parents if demerit
  */
-export async function POST(request: NextRequest) {
-  const authResult = await requireAuth(['teacher']);
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
+export const POST = createApiRoute(
+  async (request: NextRequest, auth: AuthContext) => {
+    const { userId, user: currentUser } = auth;
 
-  const { userId, user: currentUser } = authResult;
-
-  try {
     const body = await request.json();
     const { studentId, classId, type, category, points, description, actionTaken, severity } = body;
 
     // Validate required fields
     if (!studentId || !type || !category || !description) {
-      return NextResponse.json(
-        { error: "Missing required fields: studentId, type, category, description" },
-        { status: 400 }
-      );
+      return errorResponse("Missing required fields: studentId, type, category, description");
     }
 
     // Validate type
     if (!['merit', 'demerit'].includes(type)) {
-      return NextResponse.json(
-        { error: "Type must be 'merit' or 'demerit'" },
-        { status: 400 }
-      );
+      return errorResponse("Type must be 'merit' or 'demerit'");
     }
 
     // Validate category
     const validCategories = ['attendance', 'participation', 'discipline', 'homework', 'leadership', 'other'];
     if (!validCategories.includes(category)) {
-      return NextResponse.json(
-        { error: `Invalid category. Must be one of: ${validCategories.join(', ')}` },
-        { status: 400 }
-      );
+      return errorResponse(`Invalid category. Must be one of: ${validCategories.join(', ')}`);
     }
 
     // Validate severity
-    if (!['low', 'medium', 'high'].includes(severity)) {
-      return NextResponse.json(
-        { error: "Severity must be 'low', 'medium', or 'high'" },
-        { status: 400 }
-      );
+    if (severity && !['low', 'medium', 'high'].includes(severity)) {
+      return errorResponse("Severity must be 'low', 'medium', or 'high'");
     }
 
-    // Verify student exists and is in teacher's class
+    // Verify student exists
     const student = await db.query.users.findFirst({
       where: eq(users.id, studentId),
       columns: { id: true, firstName: true, lastName: true, parentId: true },
     });
 
     if (!student) {
-      return NextResponse.json(
-        { error: "Student not found" },
-        { status: 404 }
-      );
+      return errorResponse("Student not found");
     }
 
     // If classId provided, verify teacher teaches this class
@@ -84,10 +63,7 @@ export async function POST(request: NextRequest) {
       });
 
       if (!classRecord || classRecord.teacherId !== userId) {
-        return NextResponse.json(
-          { error: "You do not teach this class" },
-          { status: 403 }
-        );
+        return errorResponse("You do not teach this class");
       }
     }
 
@@ -135,11 +111,11 @@ export async function POST(request: NextRequest) {
 
           await db.insert(notifications).values({
             id: notificationId,
-            type: 'alert' as any, // Using valid notification type
+            type: 'alert',
             priority: severity === 'high' ? 'urgent' : 'normal',
             title: `Behavior Alert: Disciplinary Incident`,
             message: `${currentUser.firstName} ${currentUser.lastName} logged a ${category} ${type} for ${student.firstName} ${student.lastName || ''}. ${description}`,
-            targetAudience: 'specific' as any,
+            targetAudience: 'specific',
             targetUserIds: JSON.stringify([student.parentId]),
             senderId: userId,
             senderName: `${currentUser.firstName} ${currentUser.lastName || ''}`.trim(),
@@ -151,7 +127,7 @@ export async function POST(request: NextRequest) {
             sentAt: now,
             createdAt: now,
             updatedAt: now,
-          } as any);
+          });
 
           // Update log with notification status
           await db.update(teacherBehaviorLogs)
@@ -178,40 +154,22 @@ export async function POST(request: NextRequest) {
       parentNotified,
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        ...newLog,
-        parentNotified,
-        studentName: `${student.firstName} ${student.lastName || ''}`.trim(),
-      },
+    return successResponse({
+      ...newLog,
+      parentNotified,
+      studentName: `${student.firstName} ${student.lastName || ''}`.trim(),
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/teacher/behavior", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to create behavior log" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['teacher']
+);
 
 /**
  * GET - Retrieve behavior logs
- * Query params:
- * - studentId: Filter by specific student
- * - classId: Filter by class
- * - type: Filter by merit/demerit
- * - limit: Number of records (default: 50)
  */
-export async function GET(request: NextRequest) {
-  const authResult = await requireAuth(['teacher', 'admin', 'school-admin']);
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
+export const GET = createApiRoute(
+  async (request: NextRequest, auth: AuthContext) => {
+    const { userId, user: currentUser } = auth;
 
-  const { userId, user: currentUser } = authResult;
-
-  try {
     const { searchParams } = new URL(request.url);
     const studentId = searchParams.get('studentId');
     const classId = searchParams.get('classId');
@@ -232,32 +190,10 @@ export async function GET(request: NextRequest) {
     const conditions = [];
 
     if (currentUser.type === 'teacher') {
-      // Teachers can only see logs for their students
-      if (studentId) {
-        // Verify student is in teacher's class
-        const student = await db.query.users.findFirst({
-          where: eq(users.id, studentId),
-          columns: { classGrade: true, section: true },
-        });
-
-        const isInTeacherClass = teacherClassIds.some((classId) => {
-          // Would need proper enrollment check here
-          return true; // Simplified for now
-        });
-
-        if (!isInTeacherClass) {
-          return NextResponse.json(
-            { error: "You can only view logs for your students" },
-            { status: 403 }
-          );
-        }
-      } else if (classId) {
+      if (classId) {
         // Verify teacher teaches this class
         if (!teacherClassIds.includes(classId)) {
-          return NextResponse.json(
-            { error: "You do not teach this class" },
-            { status: 403 }
-          );
+          return errorResponse("You do not teach this class");
         }
         conditions.push(eq(teacherBehaviorLogs.classId, classId));
       } else {
@@ -277,13 +213,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch behavior logs
-    let query = db.query.teacherBehaviorLogs.findMany({
+    const logs = await db.query.teacherBehaviorLogs.findMany({
       where: conditions.length > 0 ? and(...conditions) : undefined,
       orderBy: [desc(teacherBehaviorLogs.createdAt)],
       limit,
     });
-
-    const logs = await query;
 
     // Enrich with student and teacher names
     const enrichedLogs = await Promise.all(
@@ -308,16 +242,10 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    return NextResponse.json({
-      success: true,
+    return successResponse({
       data: enrichedLogs,
       count: enrichedLogs.length,
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/teacher/behavior", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch behavior logs" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['teacher', 'admin', 'school-admin']
+);

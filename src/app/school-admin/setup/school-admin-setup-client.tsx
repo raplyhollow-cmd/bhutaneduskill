@@ -85,7 +85,7 @@ export function SchoolAdminSetupClient({
   const [newDepartment, setNewDepartment] = useState({ name: "", code: "", description: "" });
   const [newClass, setNewClass] = useState({ grade: "", sections: "A" });
 
-  const updateData = (field: keyof SetupData, value: any) => {
+  const updateData = (field: keyof SetupData, value: string | string[] | number) => {
     setData((prev) => ({ ...prev, [field]: value }));
   };
 

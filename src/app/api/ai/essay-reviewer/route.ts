@@ -163,14 +163,14 @@ export async function POST(request: NextRequest) {
       message: "Essay review completed successfully",
     } satisfies ApiSuccess<EssayReviewResponse>);
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.apiError(error, {
       route: "/api/ai/essay-reviewer",
       method: "POST",
     });
 
     // Check if it's an API key error
-    if (error?.message === "Gemini API key not configured") {
+    if (error instanceof Error && error.message === "Gemini API key not configured") {
       const fallback = generateFallbackReview(requestData);
 
       // Track fallback usage (non-blocking)
@@ -200,7 +200,7 @@ export async function POST(request: NextRequest) {
       {
         error: "Failed to review essay",
         status: 500,
-        details: process.env.NODE_ENV === "development" ? error.message : undefined,
+        details: process.env.NODE_ENV === "development" ? (error instanceof Error ? error.message : undefined) : undefined,
       } satisfies ApiErrorResponse,
       { status: 500 }
     );

@@ -103,6 +103,21 @@ interface DocumentData {
   letterhead: string;
 }
 
+type ApiVerificationRequest = {
+  id: string;
+  type: VerificationType;
+  status: VerificationStatus;
+  ministryData?: MinistryData;
+  adminData?: AdminData;
+  schoolData?: SchoolData;
+  documents?: DocumentData;
+  submittedAt: string;
+  reviewedAt?: string;
+  reviewedBy?: string;
+  notes?: string;
+  rejectionReason?: string;
+};
+
 export default function AdminVerificationPage() {
   const [requests, setRequests] = useState<VerificationRequest[]>([]);
   const [filteredRequests, setFilteredRequests] = useState<VerificationRequest[]>([]);
@@ -142,7 +157,7 @@ export default function AdminVerificationPage() {
 
       if (response.ok) {
         const data = await response.json();
-        const requestsData: VerificationRequest[] = data.data.map((req: any) => ({
+        const requestsData: VerificationRequest[] = data.data.map((req: ApiVerificationRequest) => ({
           ...req,
           submittedAt: new Date(req.submittedAt),
           reviewedAt: req.reviewedAt ? new Date(req.reviewedAt) : undefined,
@@ -386,7 +401,7 @@ export default function AdminVerificationPage() {
               />
             </div>
 
-            <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
+            <Select value={statusFilter} onValueChange={(value: VerificationStatus | "all") => setStatusFilter(value)}>
               <SelectTrigger className="w-full md:w-40">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -399,7 +414,7 @@ export default function AdminVerificationPage() {
               </SelectContent>
             </Select>
 
-            <Select value={typeFilter} onValueChange={(value: any) => setTypeFilter(value)}>
+            <Select value={typeFilter} onValueChange={(value: VerificationType | "all") => setTypeFilter(value)}>
               <SelectTrigger className="w-full md:w-40">
                 <SelectValue placeholder="Type" />
               </SelectTrigger>

@@ -26,6 +26,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+import type { LucideIcon } from "lucide-react";
+
 interface ReportTemplate {
   id: string;
   name: string;
@@ -33,7 +35,7 @@ interface ReportTemplate {
   category: string;
   lastGenerated: string;
   format: "PDF" | "Excel" | "CSV";
-  icon: any;
+  icon: LucideIcon;
 }
 
 interface GeneratedReport {

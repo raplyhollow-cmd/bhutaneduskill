@@ -8,12 +8,11 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
-import { logger } from "@/lib/logger";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { chatWithGemini } from "@/lib/ai/gemini-server";
 import { STUDY_PLANNER_SYSTEM } from "@/lib/ai/prompts";
 import { safeTrackAIInteraction, AI_FEATURE_IDS } from "@/lib/ai/track-interaction";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import type { ApiSuccess } from "@/types";
 
 // ============================================================================
 // TYPES
@@ -69,25 +68,21 @@ interface StudyPlanResponse {
 // POST - Generate Study Plan
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  // Parse body outside try block for fallback access
-  let requestData: StudyPlannerRequest;
-  let userId = "";
+export const POST = createApiRoute<{
+  classGrade: string;
+  subjects: string[];
+  availableHoursPerDay: number;
+  weakSubjects: string[];
+  strongSubjects: string[];
+  examDates?: string[];
+  goals?: string;
+  preferredStudyTime?: "morning" | "afternoon" | "evening" | "night";
+}, StudyPlanResponse>(
+  async (request) => {
+    const auth = await requireAuth(["student", "teacher", "parent"]);
+    const { userId, user } = auth;
 
-  try {
-    const authResult = await requireAuth(["student", "teacher", "parent"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-
-    userId = authResult.userId;
-    const { user } = authResult;
-
-    const body = await request.json();
-    requestData = body as StudyPlannerRequest;
+    const body = await request.json() as StudyPlannerRequest;
     const {
       classGrade,
       subjects,
@@ -97,7 +92,7 @@ export async function POST(request: NextRequest) {
       examDates = [],
       goals = "",
       preferredStudyTime = "evening",
-    } = requestData;
+    } = body;
 
     // Validate required fields
     if (!classGrade || typeof classGrade !== "string") {
@@ -135,13 +130,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    logger.info("Study plan requested", {
-      userId,
-      classGrade,
-      subjectCount: subjects.length,
-      availableHoursPerDay,
-    });
-
     // Build the prompt for Gemini
     const prompt = buildStudyPlannerPrompt({
       classGrade,
@@ -160,12 +148,6 @@ export async function POST(request: NextRequest) {
 
     // Parse the AI response into structured format
     const studyPlan = parseStudyPlanResponse(aiResponse, subjects, examDates);
-
-    logger.info("Study plan generated successfully", {
-      userId,
-      planType: "weekly",
-      slotsCount: Object.values(studyPlan.weeklySchedule).flat().length,
-    });
 
     // Track AI interaction (non-blocking)
     safeTrackAIInteraction({
@@ -192,43 +174,9 @@ export async function POST(request: NextRequest) {
       status: 200,
       message: "Study plan generated successfully",
     } satisfies ApiSuccess<StudyPlanResponse>);
-
-  } catch (error: any) {
-    logger.apiError(error, {
-      route: "/api/ai/study-planner",
-      method: "POST",
-    });
-
-    // Return fallback study plan on error
-    const fallbackPlan = generateFallbackStudyPlan(
-      requestData?.subjects || ["Math", "Science", "English"],
-      requestData?.availableHoursPerDay || 3,
-      requestData?.weakSubjects || []
-    );
-
-    // Track fallback usage (non-blocking)
-    safeTrackAIInteraction({
-      userId,
-      featureId: AI_FEATURE_IDS.STUDY_PLANNER,
-      interactionData: {
-        classGrade: requestData?.classGrade || "unknown",
-        subjectCount: requestData?.subjects?.length || 3,
-        availableHoursPerDay: requestData?.availableHoursPerDay || 3,
-      },
-      metadata: {
-        usedFallback: true,
-        errorReason: error?.message || "Unknown error",
-        responseTimestamp: new Date().toISOString(),
-      },
-    });
-
-    return NextResponse.json({
-      data: fallbackPlan,
-      status: 200,
-      message: "Using offline study planner",
-    } satisfies ApiSuccess<StudyPlanResponse>);
-  }
-}
+  },
+  ["student", "teacher", "parent"]
+);
 
 // ============================================================================
 // PROMPT BUILDER
@@ -343,14 +291,13 @@ function parseStudyPlanResponse(
       examPreparation: parsed.examPreparation || [],
     };
   } catch (error) {
-    logger.error(error, { context: "Failed to parse AI study plan response" });
     // Return fallback if parsing fails
     return generateFallbackStudyPlan(subjects, 4, []);
   }
 }
 
 function sanitizeWeeklySchedule(
-  schedule: any,
+  schedule: unknown,
   subjects: string[]
 ): WeeklySchedule {
   const days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
@@ -365,10 +312,12 @@ function sanitizeWeeklySchedule(
   };
 
   for (const day of days) {
-    if (schedule[day] && Array.isArray(schedule[day])) {
-      result[day as keyof WeeklySchedule] = schedule[day].filter((slot: any) => {
-        return slot.time && slot.subject && subjects.some(s =>
-          slot.subject.toLowerCase().includes(s.toLowerCase())
+    const daySchedule = (schedule as Record<string, unknown>)[day];
+    if (daySchedule && Array.isArray(daySchedule)) {
+      result[day as keyof WeeklySchedule] = daySchedule.filter((slot: unknown) => {
+        const s = slot as { time?: unknown; subject?: unknown };
+        return s.time && s.subject && typeof s.subject === 'string' && subjects.some(subj =>
+          s.subject.toLowerCase().includes(subj.toLowerCase())
         );
       });
     }

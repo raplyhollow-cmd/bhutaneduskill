@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users, studentApplications } from "@/lib/db/schema";
-import { requireAuth } from "@/lib/auth-utils";
 import { requirePermission } from "@/lib/rbac";
 import { logger } from "@/lib/logger";
 import { eq, inArray } from "drizzle-orm";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { nanoid } from "nanoid";
+import { createApiRoute } from "@/lib/api/route-handler";
+import type { AuthContext } from "@/lib/auth-utils";
 
 interface RejectBatchRequest {
   userIds: string[];
@@ -21,40 +22,24 @@ interface RejectionResult {
 }
 
 // POST /api/school-admin/applications/reject-batch - Bulk reject multiple users
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['school-admin', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { userId, user } = authResult;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth: AuthContext) => {
+  const { userId, user } = auth;
 
     const body: RejectBatchRequest = await request.json();
     const { userIds, type, reason } = body;
 
     // Validate input
     if (!Array.isArray(userIds) || userIds.length === 0) {
-      return NextResponse.json(
-        { error: "userIds must be a non-empty array", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "userIds must be a non-empty array" };
     }
 
     if (type !== 'student' && type !== 'teacher') {
-      return NextResponse.json(
-        { error: "Type must be 'student' or 'teacher'", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "Type must be 'student' or 'teacher'" };
     }
 
     if (!reason || reason.trim().length === 0) {
-      return NextResponse.json(
-        { error: "Rejection reason is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "Rejection reason is required" };
     }
 
     // Check permission
@@ -69,10 +54,7 @@ export async function POST(request: NextRequest) {
       .where(inArray(users.id, userIds));
 
     if (applicants.length === 0) {
-      return NextResponse.json(
-        { error: "No valid applicants found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "No valid applicants found" };
     }
 
     // Validate each applicant
@@ -159,18 +141,14 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({
+      success: true,
       data: {
         success: true,
         count: rejectedIds.length,
         rejected: rejectedIds,
         failed: rejectionFailed
       } as RejectionResult
-    } satisfies ApiSuccess<RejectionResult>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/applications/reject-batch", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to process batch rejection", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    });
+  },
+  ['school-admin', 'admin']
+);

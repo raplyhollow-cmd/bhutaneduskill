@@ -14,7 +14,7 @@
 
 "use client";
 
-import { motion, HTMLMotionProps } from "framer-motion";
+import { motion, HTMLMotionProps, Variants } from "framer-motion";
 import { forwardRef } from "react";
 
 interface PageWrapperProps extends HTMLMotionProps<"div"> {
@@ -55,18 +55,20 @@ PageWrapper.displayName = "PageWrapper";
  */
 export const StaggerWrapper = forwardRef<HTMLDivElement, PageWrapperProps>(
   ({ children, className, ...props }, ref) => {
+    const staggerVariants: Variants = {
+      visible: {
+        transition: {
+          staggerChildren: 0.1,
+        },
+      },
+    };
+
     return (
       <motion.div
         ref={ref}
         initial="hidden"
         animate="visible"
-        variants={{
-          visible: {
-            transition: {
-              staggerChildren: 0.1,
-            },
-          },
-        }}
+        variants={staggerVariants}
         className={className}
         {...props}
       >
@@ -83,13 +85,15 @@ StaggerWrapper.displayName = "StaggerWrapper";
  */
 export const FadeInItem = forwardRef<HTMLDivElement, PageWrapperProps>(
   ({ children, className, ...props }, ref) => {
+    const fadeInVariants: Variants = {
+      hidden: { opacity: 0, y: 8 },
+      visible: { opacity: 1, y: 0 },
+    };
+
     return (
       <motion.div
         ref={ref}
-        variants={{
-          hidden: { opacity: 0, y: 8 },
-          visible: { opacity: 1, y: 0 },
-        }}
+        variants={fadeInVariants}
         transition={{
           duration: 0.2,
           ease: [0, 0, 0.2, 1],

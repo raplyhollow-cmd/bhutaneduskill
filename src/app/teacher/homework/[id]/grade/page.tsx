@@ -1,7 +1,7 @@
 "use client";
 
 import { logger } from "@/lib/logger";
-import { useToast } from "@/components/ui/toast";
+import { useToast } from "@/components/ui/toaster";
 /**
  * TEACHER HOMEWORK GRADING PAGE
  * Page for viewing homework submissions and grading student work
@@ -108,7 +108,7 @@ export default function GradeHomeworkPage() {
         toast({
           title: "Failed to save grades",
           description: "Please try again.",
-          variant: "destructive",
+          variant: "error",
         });
       }
     } catch (err) {
@@ -116,7 +116,7 @@ export default function GradeHomeworkPage() {
       toast({
         title: "Failed to save grades",
         description: "Please check your connection and try again.",
-        variant: "destructive",
+        variant: "error",
       });
     }
   };
@@ -137,7 +137,7 @@ export default function GradeHomeworkPage() {
       toast({
         title: "Failed to release grades",
         description: "Please try again.",
-        variant: "destructive",
+        variant: "error",
       });
     } finally {
       setIsReleasing(false);

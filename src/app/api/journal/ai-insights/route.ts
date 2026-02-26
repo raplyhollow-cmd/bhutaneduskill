@@ -162,7 +162,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(response);
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.apiError(error, {
       route: "/api/journal/ai-insights",
       method: "POST",

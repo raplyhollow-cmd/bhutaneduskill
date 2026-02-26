@@ -35,6 +35,7 @@ import {
   Maximize2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { portal } from "@/styles/design-tokens";
 
 export interface Message {
   id: string;
@@ -182,7 +183,7 @@ export function AICareerCoach({
             onClick={() => setIsExpanded(true)}
             size="lg"
             style={{
-              background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)',
+              background: portal.student.gradient,
               border: 'none',
               boxShadow: '0 4px 14px rgba(0, 0, 0.15)'
             }}
@@ -211,7 +212,7 @@ export function AICareerCoach({
         {/* Header */}
         <CardHeader
         className="text-white p-4 space-y-0"
-        style={{ background: 'linear-gradient(to right, rgb(249 115 22), rgb(194 65 12))' }}
+        style={{ background: `linear-gradient(to right, ${portal.student.primary}, ${portal.student.primaryDark})` }}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">

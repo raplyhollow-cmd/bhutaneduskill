@@ -3,12 +3,13 @@
  * Track and update student progress through lessons
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
-import { logger } from "@/lib/logger";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { moduleProgress, learningModules } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse } from "@/lib/api/response-helpers";
+import { logger } from "@/lib/logger";
 import { z } from "zod";
 
 interface Params {
@@ -32,18 +33,12 @@ const updateProgressSchema = z.object({
 });
 
 // POST /api/student/modules/[id]/progress - Update progress
-export async function POST(request: NextRequest, { params }: Params) {
-  try {
-    const authResult = await requireAuth(["student"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-    const { userId } = authResult;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth, context?: { params: Promise<{ id: string }> }) => {
+    const { userId } = auth;
 
     const body = await request.json();
+    const { id } = await context!.params;
     const validationResult = updateProgressSchema.safeParse(body);
 
     if (!validationResult.success) {
@@ -57,7 +52,6 @@ export async function POST(request: NextRequest, { params }: Params) {
     }
 
     const { lessonId, contentId, completed, timeSpent } = validationResult.data;
-    const { id } = await params;
 
     // Get existing progress
     const progress = await db.query.moduleProgress.findFirst({
@@ -101,10 +95,7 @@ export async function POST(request: NextRequest, { params }: Params) {
     });
 
     if (!module) {
-      return NextResponse.json(
-        { error: "Module not found" },
-        { status: 404 }
-      );
+      return errorResponse("Module not found", 404);
     }
 
     const content = module.content as ModuleContentData | null;
@@ -148,50 +139,34 @@ export async function POST(request: NextRequest, { params }: Params) {
       completedLessons: completedLessons.length,
     });
 
-    return NextResponse.json({ progress: updated });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/student/modules/[id]/progress", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to update progress" },
-      { status: 500 }
-    );
-  }
-}
+    return successResponse({ progress: updated });
+  },
+  ["student"]
+);
 
 // GET /api/student/modules/[id]/progress - Get current progress
-export async function GET(request: NextRequest, { params }: Params) {
-  try {
-    const authResult = await requireAuth(["student"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
+export const GET = createApiRoute(
+  async (request: NextRequest, auth, context?: { params: Promise<{ id: string }> }) => {
+    try {
+      const { userId } = auth;
+      const { id } = await context!.params;
+
+      const progress = await db.query.moduleProgress.findFirst({
+        where: and(
+          eq(moduleProgress.moduleId, id),
+          eq(moduleProgress.studentId, userId)
+        ),
+      });
+
+      if (!progress) {
+        return errorResponse("Not enrolled in this module", 404);
+      }
+
+      return successResponse({ progress });
+    } catch (error) {
+      logger.apiError(error, { route: "/api/student/modules/[id]/progress", method: "GET" });
+      return errorResponse("Failed to fetch progress", 500);
     }
-    const { userId } = authResult;
-
-    const { id } = await params;
-
-    const progress = await db.query.moduleProgress.findFirst({
-      where: and(
-        eq(moduleProgress.moduleId, id),
-        eq(moduleProgress.studentId, userId)
-      ),
-    });
-
-    if (!progress) {
-      return NextResponse.json(
-        { error: "Not enrolled in this module" },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({ progress });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/student/modules/[id]/progress", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch progress" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ["student"]
+);

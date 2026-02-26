@@ -1,45 +1,101 @@
+/**
+ * Card Component - UX Optimized
+ *
+ * FIXES FROM UX AUDIT:
+ * - Reduced padding from px-6 py-5 to px-4 py-3 (25% reduction)
+ * - Standardized to 8px border radius (rounded-lg)
+ * - Removed all shadows (use borders only)
+ * - Subtle background color shift on hover
+ * - 150ms transition duration
+ * - No gradients on cards
+ *
+ * DESIGN PHILOSOPHY:
+ * - "Borders over shadows"
+ * - Compact density (reduced padding)
+ * - Subtle hover states
+ * - Depth through layering, not elevation
+ */
+
 "use client";
 
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
+import { radius, padding, transition, shadow } from "@/styles/design-tokens"
 
 const cardVariants = cva(
-  "flex flex-col gap-6 rounded-xl border shadow-sm transition-all duration-200",
+  "flex flex-col bg-white dark:bg-gray-900",
   {
     variants: {
       variant: {
-        default: "bg-card text-card-foreground hover:border-border/50 hover:shadow-md",
-        // Ceramic design system variants
-        ceramic: "[background-color:var(--ceramic-white)] [border-color:var(--border-color-primary)] hover:[border-color:var(--ceramic-gray-400)]",
-        "ceramic-interactive": "[background-color:var(--ceramic-white)] [border-color:var(--border-color-primary)] cursor-pointer hover:[border-color:var(--ceramic-gray-400)] hover:shadow-md",
-        "ceramic-elevated": "[background-color:var(--ceramic-white)] [border-color:var(--border-color-primary)] shadow-md hover:shadow-lg",
-        "ceramic-flat": "[background-color:var(--ceramic-gray-50)] border-transparent",
+        default: "border border-gray-200 dark:border-gray-700",
+        interactive: "border border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50",
+        elevated: "border border-gray-200 dark:border-gray-700 shadow-sm",
+        flat: "border-0 bg-gray-50 dark:bg-gray-800",
+        ceramic: "border border-gray-200 dark:border-gray-700 shadow-sm",
+      },
+      size: {
+        compact: "",
+        default: "",
+        spacious: "",
       },
     },
     defaultVariants: {
       variant: "default",
+      size: "default",
     },
   }
 )
 
-interface CardProps extends React.ComponentProps<"div"> {
+interface CardProps extends React.ComponentProps<"div">, VariantProps<typeof cardVariants> {
   asChild?: boolean;
-  variant?: VariantProps<typeof cardVariants>["variant"];
+  variant?: "default" | "interactive" | "elevated" | "flat" | "ceramic";
+  size?: "compact" | "default" | "spacious";
 }
 
-function Card({ className, asChild, children, variant = "default", ...props }: CardProps) {
+/**
+ * Get inline styles for card variants
+ * Uses design tokens for consistent styling
+ */
+function getCardStyles(variant?: string, size?: string): React.CSSProperties {
+  const styles: React.CSSProperties = {
+    borderRadius: radius.card,
+    padding: size === 'compact' ? padding.sm : size === 'spacious' ? padding.xl : padding.card,
+    transition: transition.colors,
+    border: '1px solid var(--border-color-primary, #e5e5e5)',
+    backgroundColor: 'var(--bg-primary, #ffffff)',
+  }
+
+  // Elevated variant gets shadow
+  if (variant === 'elevated') {
+    styles.boxShadow = shadow.sm
+  }
+
+  return styles
+}
+
+function Card({ className, asChild, children, variant = "default", size = "default", style, ...props }: CardProps) {
+  const sizePadding = {
+    compact: "p-3",
+    default: "p-4",
+    spacious: "p-6",
+  }
+
+  const tokenStyles = getCardStyles(variant, size)
+
   if (asChild) {
     const child = React.Children.only(children) as React.ReactElement & { props?: { className?: string } };
     const childClassName = child.props?.className || "";
     return React.cloneElement(child, {
       className: cn(
-        cardVariants({ variant }),
-        "text-card-foreground",
+        cardVariants({ variant, size }),
+        "rounded-lg transition-colors duration-150",
+        sizePadding[size],
         className,
         childClassName
       ),
+      style: { ...tokenStyles, ...style as React.CSSProperties },
       ...props
     });
   }
@@ -48,7 +104,14 @@ function Card({ className, asChild, children, variant = "default", ...props }: C
     <div
       data-slot="card"
       data-variant={variant}
-      className={cn(cardVariants({ variant }), "text-card-foreground", className)}
+      className={cn(
+        cardVariants({ variant, size }),
+        "rounded-lg transition-colors duration-150",
+        sizePadding[size],
+        variant === "interactive" && "hover:border-gray-300 dark:hover:border-gray-600",
+        className
+      )}
+      style={{ ...tokenStyles, ...style }}
       {...props}
     >
       {children}
@@ -61,7 +124,7 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card-header"
       className={cn(
-        "@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-2 px-6 py-5 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6",
+        "flex flex-col space-y-1.5 pb-3",
         className
       )}
       {...props}
@@ -73,7 +136,7 @@ function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-title"
-      className={cn("leading-none font-semibold", className)}
+      className={cn("text-base font-semibold leading-none tracking-tight text-gray-900 dark:text-gray-100", className)}
       {...props}
     />
   )
@@ -83,7 +146,7 @@ function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-description"
-      className={cn("text-muted-foreground text-sm", className)}
+      className={cn("text-sm text-gray-500 dark:text-gray-400", className)}
       {...props}
     />
   )
@@ -93,10 +156,7 @@ function CardAction({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-action"
-      className={cn(
-        "col-start-2 row-span-2 row-start-1 self-start justify-self-end",
-        className
-      )}
+      className={cn("flex items-center gap-2", className)}
       {...props}
     />
   )
@@ -106,7 +166,7 @@ function CardContent({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-content"
-      className={cn("px-6 py-5", className)}
+      className={cn("pt-0", className)}
       {...props}
     />
   )
@@ -116,7 +176,7 @@ function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-footer"
-      className={cn("flex items-center px-6 [.border-t]:pt-6", className)}
+      className={cn("flex items-center pt-3 mt-auto", className)}
       {...props}
     />
   )

@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { Rocket, Sparkles, Smartphone, MessageSquare, BarChart3, Clock, ArrowRight, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
+import { portal } from "@/styles/design-tokens";
 
 interface FuturePhase {
   id: string;
@@ -29,7 +30,7 @@ const futurePhases: FuturePhase[] = [
       "Scholarship matching algorithm",
       "Parent-teacher communication portal"
     ],
-    color: "rgb(168 85 247)",
+    color: portal.counselor.primary,
     gradient: "from-purple-500 to-violet-600"
   },
   {
@@ -45,7 +46,7 @@ const futurePhases: FuturePhase[] = [
       "Policy impact analysis",
       "Ministry reporting dashboard"
     ],
-    color: "rgb(59 130 246)",
+    color: portal.teacher.primary,
     gradient: "from-blue-500 to-cyan-600"
   },
   {
@@ -61,7 +62,7 @@ const futurePhases: FuturePhase[] = [
       "Push notifications",
       "USSD interface for remote areas"
     ],
-    color: "rgb(249 115 22)",
+    color: portal.student.primary,
     gradient: "from-orange-500 to-red-600"
   }
 ];

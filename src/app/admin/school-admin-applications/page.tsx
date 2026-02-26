@@ -22,7 +22,28 @@ export default async function AdminSchoolAdminApplicationsPage() {
   const { userId } = authResult;
 
   // Get all applications with user and school details using raw SQL
-  let applications: any[] = [];
+  interface SchoolAdminApplication {
+    id: string;
+    status: string;
+    paymentStatus: string;
+    paymentAmount: number | null;
+    paymentDate: string | null;
+    paymentMethod: string | null;
+    paymentReference: string | null;
+    appliedAt: string;
+    reviewedAt: string | null;
+    reviewedBy: string | null;
+    rejectionReason: string | null;
+    notes: string | null;
+    userId: string;
+    userName: string | null;
+    userEmail: string | null;
+    userPhone: string | null;
+    schoolId: string;
+    schoolName: string | null;
+    schoolCode: string | null;
+  }
+  let applications: SchoolAdminApplication[] = [];
   try {
     const sql = neon(process.env.DATABASE_URL!);
     applications = await sql`
@@ -51,19 +72,19 @@ export default async function AdminSchoolAdminApplicationsPage() {
       LEFT JOIN schools s ON saa.school_id = s.id
       ORDER BY saa.applied_at DESC
     `;
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error("Failed to fetch school admin applications", {
-      error: error?.message || String(error),
-      stack: error?.stack
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined
     });
     applications = [];
   }
 
   // Calculate stats
-  const pendingCount = applications.filter((a: any) => a.status === "pending_approval").length;
-  const approvedCount = applications.filter((a: any) => a.status === "approved").length;
-  const rejectedCount = applications.filter((a: any) => a.status === "rejected").length;
-  const pendingPaymentCount = applications.filter((a: any) => a.paymentStatus === "pending").length;
+  const pendingCount = applications.filter((a) => a.status === "pending_approval").length;
+  const approvedCount = applications.filter((a) => a.status === "approved").length;
+  const rejectedCount = applications.filter((a) => a.status === "rejected").length;
+  const pendingPaymentCount = applications.filter((a) => a.paymentStatus === "pending").length;
 
   return (
     <SchoolAdminApplicationsClient

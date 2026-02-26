@@ -18,28 +18,29 @@
  *     pendingApplications={pendingUsers}
  *     departments={departments}
  *     classes={classes}
- *     onBatchApprove={handleBatchApprove}
- *     onBatchReject={handleBatchReject}
- *   />
  */
-
 "use client";
 
-import * as React from "react";
-import { CheckCircle, XCircle, Loader2, Users, GraduationCap, User, AlertCircle } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useToast } from "@/components/ui/toast";
-import { useDebouncedSave } from "@/hooks/use-debounced-save";
+import React from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { useToast } from "@/components/ui/toaster";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Search, Filter, X, Check, XCircle, ChevronDown, ChevronUp, Loader2, AlertCircle, GraduationCap, BookOpen } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { portal, semantic, semanticGradients } from "@/styles/design-tokens";
 import { MultiSelect, type MultiSelectOption } from "@/components/ui/multi-select";
 import { PremiumTable, PremiumTableRow, PremiumTableCell } from "@/components/admin/premium-table";
 import {
@@ -51,7 +52,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 
 // =============================================================================
 // TYPES
@@ -222,7 +222,7 @@ export function BulkApprovalGrid({
       toast.success({ description: "Changes saved" });
     },
     onError: (error) => {
-      toast.error({ description: error.message });
+      toast.error({ description: error instanceof Error ? error.message : String(error) });
     },
   });
 
@@ -403,7 +403,7 @@ export function BulkApprovalGrid({
     } catch (error) {
       toast.error({
         title: "Rejection failed",
-        description: error instanceof Error ? error.message : "Could not reject selected applicants",
+        description: error instanceof Error ? error instanceof Error ? error.message : String(error) : "Could not reject selected applicants",
       });
     } finally {
       setIsBulkRejecting(false);
@@ -478,8 +478,8 @@ export function BulkApprovalGrid({
                           style={{
                             background:
                               user.type === "student"
-                                ? "linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)"
-                                : "linear-gradient(135deg, rgb(59 130 246) 0%, rgb(37 99 235) 100%)",
+                                ? portal.student.gradient
+                                : portal.teacher.gradient,
                           }}
                         >
                           {user.type === "student" ? (
@@ -650,8 +650,7 @@ export function BulkApprovalGrid({
                 onClick={handleBatchApprove}
                 disabled={!hasSelection || isBulkApproving || isBulkRejecting}
                 style={{
-                  background:
-                    "linear-gradient(135deg, rgb(34 197 94) 0%, rgb(22 163 74) 100%)",
+                  background: semanticGradients.success.gradient,
                 }}
                 className="text-white shadow-md hover:shadow-lg transition-shadow border-0"
               >

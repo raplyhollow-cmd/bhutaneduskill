@@ -88,7 +88,10 @@ export async function GET(req: NextRequest) {
 
     // In a full implementation, you would fetch settings from a platform_settings table
     // For now, we'll use environment variables and default values
-    const settings: Record<string, any> = {
+    type PlatformSettings = {
+      [key: string]: string | number | boolean | null | Record<string, boolean>;
+    };
+    const settings: PlatformSettings = {
       ...defaultSettings,
       // Override with environment variables if available
       platformName: process.env.NEXT_PUBLIC_PLATFORM_NAME || defaultSettings.platformName,
@@ -103,10 +106,11 @@ export async function GET(req: NextRequest) {
       success: true,
       data: settings,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.apiError(error, { route: "/", method: "GET" });
+    const errorMessage = error instanceof Error ? error.message : "Failed to fetch settings";
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to fetch settings" },
+      { success: false, error: errorMessage },
       { status: 500 }
     );
   }
@@ -134,7 +138,8 @@ export async function POST(req: NextRequest) {
     // In a full implementation, you would update a platform_settings table
     // For now, we'll update environment variables or a settings JSON file
 
-    let updatedSettings: Record<string, any> = {};
+    type UpdatedSettings = Record<string, string | number | boolean | Date | undefined>;
+    let updatedSettings: UpdatedSettings = {};
 
     switch (category) {
       case "general":
@@ -292,10 +297,10 @@ export async function POST(req: NextRequest) {
       message: "Settings updated successfully",
       data: updatedSettings,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to update settings" },
+      { success: false, error: error instanceof Error ? error.message : "Failed to update settings" },
       { status: 500 }
     );
   }
@@ -370,10 +375,10 @@ export async function PATCH(req: NextRequest) {
           { status: 400 }
         );
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.apiError(error, { route: "/", method: "GET" });
     return NextResponse.json(
-      { success: false, error: error.message || "Failed to perform action" },
+      { success: false, error: error instanceof Error ? error.message : "Failed to perform action" },
       { status: 500 }
     );
   }

@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { logger } from "@/lib/logger";
+import { semanticGradients, portal } from "@/styles/design-tokens";
 
 interface AssessmentProfile {
   completedAssessments: number;
@@ -74,12 +75,12 @@ const TRAIT_COLORS: Record<string, string> = {
 };
 
 const TRAIT_GRADIENTS: Record<string, string> = {
-  R: "linear-gradient(135deg, rgb(239 68 68) 0%, rgb(220 38 38) 100%)",
-  I: "linear-gradient(135deg, rgb(59 130 246) 0%, rgb(37 99 235) 100%)",
-  A: "linear-gradient(135deg, rgb(168 85 247) 0%, rgb(147 51 234) 100%)",
-  S: "linear-gradient(135deg, rgb(34 197 94) 0%, rgb(22 163 74) 100%)",
-  E: "linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)",
-  C: "linear-gradient(135deg, rgb(107 114 128) 0%, rgb(75 85 99) 100%)",
+  R: semanticGradients.error.gradient,       // Red - Realistic
+  I: semanticGradients.info.gradient,        // Blue - Investigative
+  A: portal.counselor.gradient,               // Purple - Artistic
+  S: semanticGradients.success.gradient,      // Green - Social
+  E: semanticGradients.warning.gradient,      // Orange - Enterprising
+  C: portal.parent.gradient,                  // Gray - Conventional
 };
 
 export function AssessmentProfileCard() {

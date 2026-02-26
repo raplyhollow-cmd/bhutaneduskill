@@ -1141,7 +1141,7 @@ export default function SchoolAdminLibraryPage() {
               <Label htmlFor="memberType">Member Type *</Label>
               <Select
                 value={memberForm.memberType}
-                onValueChange={(value: any) => setMemberForm({ ...memberForm, memberType: value })}
+                onValueChange={(value: "student" | "teacher" | "staff") => setMemberForm({ ...memberForm, memberType: value })}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select type" />

@@ -50,7 +50,7 @@ async function main() {
     INSERT INTO user_roles 
       ("id", "user_id", "role_id", "assigned_by", "created_at")
     VALUES 
-      ('ur-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9)),
+      ('ur-' + Date.now() + '-' + Math.random().toString(36).substring(2, 11)),
       '${userId}',
       '${roleId}',
       '${userId}',

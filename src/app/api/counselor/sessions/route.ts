@@ -3,31 +3,27 @@
  *
  * GET /api/counselor/sessions - Get counselor sessions
  * POST /api/counselor/sessions - Create a new counseling session
- * PATCH /api/counselor/sessions/[id] - Update session status/notes
- * DELETE /api/counselor/sessions/[id] - Cancel a session
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
-import { logger } from "@/lib/logger";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { counselingSessions, users } from "@/lib/db/schema";
-import { eq, and, gte, lte, desc, count, sql } from "drizzle-orm";
+import { eq, and, gte, desc, count, sql } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse, notFoundResponse, createdResponse } from "@/lib/api/response-helpers";
+import { logger } from "@/lib/logger";
 import { nanoid } from "nanoid";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import type { SessionStats } from "@/types";
 
 // ============================================================================
 // GET - Get counselor sessions with statistics
 // ============================================================================
 
-export async function GET(request: NextRequest) {
-  const authResult = await requireAuth(['counselor', 'admin']);
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error, status: authResult.status }, { status: authResult.status });
-  }
-
-  try {
-    const { user } = authResult;
+export const GET = createApiRoute(
+  async (request, auth) => {
+    const { user } = auth;
     const url = new URL(request.url);
     const status = url.searchParams.get('status'); // scheduled, in_progress, completed, cancelled, no-show
     const limit = parseInt(url.searchParams.get('limit') || '50', 10);
@@ -36,12 +32,6 @@ export async function GET(request: NextRequest) {
     const conditions = user.type === 'admin'
       ? undefined
       : eq(counselingSessions.counselorId, user.id);
-
-    if (status) {
-      const statusCondition = eq(counselingSessions.status, status);
-      // @ts-ignore - dynamic condition building
-      const combined = conditions ? and(conditions, statusCondition) : statusCondition;
-    }
 
     // Get sessions using the correct field name: sessionDate
     const sessions = await db.query.counselingSessions.findMany({
@@ -111,40 +101,28 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const stats = {
+    const stats: SessionStats = {
       upcomingSessions: upcomingCount[0]?.count || 0,
       completedToday: completedTodayCount[0]?.count || 0,
       totalHours: Math.round(totalHours * 10) / 10,
       groupSessions: groupSessionsCount[0]?.count || 0,
     };
 
-    return NextResponse.json({
-      data: {
-        sessions,
-        stats,
-      },
-    } satisfies ApiSuccess<{ sessions: typeof sessions; stats: typeof stats }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/counselor/sessions", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch sessions", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return successResponse({
+      sessions,
+      stats,
+    });
+  },
+  ['counselor', 'admin']
+);
 
 // ============================================================================
 // POST - Create a new counseling session
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  const authResult = await requireAuth(['counselor', 'admin']);
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error, status: authResult.status }, { status: authResult.status });
-  }
-
-  try {
-    const { user } = authResult;
+export const POST = createApiRoute(
+  async (request, auth) => {
+    const { user } = auth;
     const body = await request.json();
     const {
       studentId,
@@ -159,17 +137,11 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!sessionDate || !startTime || !endTime) {
-      return NextResponse.json(
-        { error: "Session date, start time, and end time are required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("Session date, start time, and end time are required");
     }
 
     if (type === 'individual' && !studentId) {
-      return NextResponse.json(
-        { error: "Student ID is required for individual sessions", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("Student ID is required for individual sessions");
     }
 
     // Verify student exists for individual sessions
@@ -179,10 +151,7 @@ export async function POST(request: NextRequest) {
       });
 
       if (!student || student.type !== 'student') {
-        return NextResponse.json(
-          { error: "Student not found", status: 404 } satisfies ApiErrorResponse,
-          { status: 404 }
-        );
+        return notFoundResponse("Student");
       }
     }
 
@@ -219,14 +188,7 @@ export async function POST(request: NextRequest) {
       studentId,
     });
 
-    return NextResponse.json({
-      data: { session: newSession },
-    } satisfies ApiSuccess<{ session: typeof newSession }>, { status: 201 });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/counselor/sessions", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to create session", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return createdResponse({ session: newSession });
+  },
+  ['counselor', 'admin']
+);

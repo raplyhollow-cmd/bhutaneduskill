@@ -36,6 +36,19 @@ import { motion, AnimatePresence } from "framer-motion";
 
 type Answers = Record<string, number>;
 
+type AssessmentResult = {
+  riasecType: string;
+  scores: {
+    realistic: number;
+    investigative: number;
+    artistic: number;
+    social: number;
+    enterprising: number;
+    conventional: number;
+  };
+  dominantTraits: string[];
+};
+
 // Trait icons and descriptions for each RIASEC category
 const TRAIT_INFO: Record<
   string,
@@ -93,7 +106,7 @@ export default function AssessmentPage() {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState<Answers>({});
   const [isCompleted, setIsCompleted] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<AssessmentResult | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [direction, setDirection] = useState<"next" | "prev">("next");
 
@@ -140,7 +153,7 @@ export default function AssessmentPage() {
     }
   };
 
-  const saveAssessment = async (finalAnswers: Answers, assessmentResult: any) => {
+  const saveAssessment = async (finalAnswers: Answers, assessmentResult: AssessmentResult) => {
     setIsSaving(true);
     try {
       const response = await fetch("/api/assessments/riasec", {

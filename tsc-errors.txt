@@ -1,0 +1,30 @@
+src/app/api/admin/content/colleges/route.ts(52,3): error TS1005: ',' expected.
+src/app/api/admin/content/colleges/route.ts(52,4): error TS1128: Declaration or statement expected.
+src/app/api/admin/content/colleges/route.ts(53,12): error TS1005: ';' expected.
+src/app/api/admin/content/colleges/route.ts(106,3): error TS1005: ',' expected.
+src/app/api/admin/content/colleges/route.ts(106,4): error TS1128: Declaration or statement expected.
+src/app/api/admin/content/colleges/route.ts(107,12): error TS1005: ';' expected.
+src/app/api/admin/content/colleges/route.ts(176,3): error TS1005: ',' expected.
+src/app/api/admin/content/colleges/route.ts(176,4): error TS1128: Declaration or statement expected.
+src/app/api/admin/content/colleges/route.ts(177,12): error TS1005: ';' expected.
+src/app/api/admin/content/colleges/route.ts(219,3): error TS1005: ',' expected.
+src/app/api/admin/content/colleges/route.ts(219,4): error TS1128: Declaration or statement expected.
+src/app/api/admin/content/colleges/route.ts(220,12): error TS1005: ';' expected.
+src/app/api/admin/roles/route.ts(63,3): error TS1005: ',' expected.
+src/app/api/admin/roles/route.ts(63,4): error TS1128: Declaration or statement expected.
+src/app/api/admin/roles/route.ts(64,12): error TS1005: ';' expected.
+src/app/api/admin/roles/route.ts(107,3): error TS1005: ',' expected.
+src/app/api/admin/roles/route.ts(107,4): error TS1128: Declaration or statement expected.
+src/app/api/admin/roles/route.ts(108,12): error TS1005: ';' expected.
+src/app/api/admin/roles/route.ts(155,3): error TS1005: ',' expected.
+src/app/api/admin/roles/route.ts(155,4): error TS1128: Declaration or statement expected.
+src/app/api/admin/roles/route.ts(156,12): error TS1005: ';' expected.
+src/app/api/admin/roles/route.ts(191,3): error TS1005: ',' expected.
+src/app/api/admin/roles/route.ts(191,4): error TS1128: Declaration or statement expected.
+src/app/api/admin/roles/route.ts(192,12): error TS1005: ';' expected.
+src/app/api/parent/report-cards/route.ts(88,1): error TS1005: ',' expected.
+src/app/api/parent/report-cards/route.ts(88,3): error TS1434: Unexpected keyword or identifier.
+src/app/api/parent/report-cards/route.ts(90,1): error TS1128: Declaration or statement expected.
+src/app/teacher/attendance/page.tsx(742,13): error TS1128: Declaration or statement expected.
+src/app/teacher/attendance/page.tsx(742,14): error TS1005: '}' expected.
+src/app/teacher/attendance/page.tsx(742,15): error TS1381: Unexpected token. Did you mean `{'}'}` or `&rbrace;`?

@@ -3,7 +3,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { medicalReferrals, medicalRecords } from "@/lib/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql, Sql } from "drizzle-orm";
+
+type DrizzleCondition = Sql<boolean> | ReturnType<typeof eq>;
+
+interface ReferralUpdateData {
+  status: string;
+  appointmentDate?: Date;
+  appointmentTime?: string;
+  responseReceived?: boolean;
+  responseNotes?: string;
+  updatedAt: Date;
+}
 
 /**
  * GET /api/school-admin/medical/referrals - Get medical referrals
@@ -21,7 +32,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const studentId = searchParams.get('studentId');
 
-    let whereConditions: any[] = [eq(medicalReferrals.schoolId, user.schoolId)];
+    const whereConditions: DrizzleCondition[] = [eq(medicalReferrals.schoolId, user.schoolId)];
 
     if (status) {
       whereConditions.push(eq(medicalReferrals.status, status));
@@ -140,7 +151,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const updateData: any = {
+    const updateData: ReferralUpdateData = {
       status,
       updatedAt: new Date(),
     };

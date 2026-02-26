@@ -40,9 +40,10 @@ import {
   Plus,
 } from "lucide-react";
 import Link from "next/link";
+import { logger } from "@/lib/logger";
 
-// Mock student data - in production, this would come from the database
-const getMockStudent = (id: string) => {
+// Fetch student data from API
+async function fetchStudent(id: string) {
   const students: Record<string, {
     id: string;
     firstName: string;

@@ -2,12 +2,14 @@ import { logger } from "@/lib/logger";
 /**
  * HOSTEL MANAGEMENT API ROUTE
  *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ *
  * Handles hostel rooms, allocations, and attendance for students
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
-import { requireAuth } from "@/lib/auth-utils";
 import {
   users,
   hostelAllocations,
@@ -26,21 +28,20 @@ import {
 import { eq, and, desc, sql, or, gte, lte, count } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { successResponse, errorResponse, badRequestResponse, forbiddenResponse } from "@/lib/api/response-helpers";
 
 // ============================================================================
 // GET - Fetch hostel data
 // ============================================================================
 
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin", "school-admin", "student"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error } as ApiErrorResponse,
-        { status: authResult.status }
-      );
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId, user } = authResult;
+
+    const { userId, user } = auth;
 
     const currentUser = await db.query.users.findFirst({
       where: eq(users.id, userId),
@@ -55,10 +56,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!currentUser) {
-      return NextResponse.json(
-        { error: "User not found", status: 404 } as ApiErrorResponse,
-        { status: 404 }
-      );
+      return errorResponse("User not found", 404);
     }
 
     const { searchParams } = new URL(request.url);
@@ -398,29 +396,22 @@ export async function GET(request: NextRequest) {
         schoolId: currentUser.schoolId,
       },
     });
-  } catch (error: unknown) {
-    logger.apiError(error, { route: "/api/hostel", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch hostel data" } as ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin', 'school-admin', 'student']
+);
 
 // ============================================================================
 // POST - Create hostel records (allocation, leave request, etc.)
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin", "school-admin", "student"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error } as ApiErrorResponse,
-        { status: authResult.status }
-      );
+export const POST = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId, user } = authResult;
+
+    const { userId, user } = auth;
 
     const currentUser = await db.query.users.findFirst({
       where: eq(users.id, userId),
@@ -437,10 +428,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!currentUser) {
-      return NextResponse.json(
-        { error: "User not found", status: 404 } as ApiErrorResponse,
-        { status: 404 }
-      );
+      return errorResponse("User not found", 404);
     }
 
     const body = await request.json();
@@ -449,10 +437,7 @@ export async function POST(request: NextRequest) {
     // Action: request-allocation (Student requests hostel accommodation)
     if (action === "request-allocation") {
       if (currentUser.type !== "student") {
-        return NextResponse.json(
-          { error: "Only students can request hostel allocation" } as ApiErrorResponse,
-          { status: 403 }
-        );
+        return forbiddenResponse("Only students can request hostel allocation");
       }
 
       const {
@@ -473,13 +458,9 @@ export async function POST(request: NextRequest) {
       });
 
       if (existingAllocation) {
-        return NextResponse.json(
-          {
-            error: "You already have an active hostel allocation",
-            status: 400,
-            details: { existingAllocation },
-          } as ApiErrorResponse,
-          { status: 400 }
+        return badRequestResponse(
+          "You already have an active hostel allocation",
+          { existingAllocation }
         );
       }
 
@@ -542,10 +523,7 @@ export async function POST(request: NextRequest) {
     // Action: request-leave (Student requests leave from hostel)
     if (action === "request-leave") {
       if (currentUser.type !== "student") {
-        return NextResponse.json(
-          { error: "Only students can request leave" } as ApiErrorResponse,
-          { status: 403 }
-        );
+        return forbiddenResponse("Only students can request leave");
       }
 
       const {
@@ -608,10 +586,7 @@ export async function POST(request: NextRequest) {
     // Action: mark-attendance (Warden marks hostel attendance)
     if (action === "mark-attendance") {
       if (currentUser.role !== "school_admin" && currentUser.role !== "admin") {
-        return NextResponse.json(
-          { error: "Only wardens can mark attendance" } as ApiErrorResponse,
-          { status: 403 }
-        );
+        return forbiddenResponse("Only wardens can mark attendance");
       }
 
       const { attendanceData } = body;
@@ -692,10 +667,7 @@ export async function POST(request: NextRequest) {
     // Action: allocate-room (Admin allocates room to student)
     if (action === "allocate-room") {
       if (currentUser.role !== "school_admin" && currentUser.role !== "admin") {
-        return NextResponse.json(
-          { error: "Only admins can allocate rooms" } as ApiErrorResponse,
-          { status: 403 }
-        );
+        return forbiddenResponse("Only admins can allocate rooms");
       }
 
       const { studentId, hostelId, roomId, bedNumber, feeType, feeAmount } = body;
@@ -707,10 +679,7 @@ export async function POST(request: NextRequest) {
       });
 
       if (!student) {
-        return NextResponse.json(
-          { error: "Student not found" } as ApiErrorResponse,
-          { status: 404 }
-        );
+        return errorResponse("Student not found", 404);
       }
 
       // Check room capacity
@@ -719,17 +688,11 @@ export async function POST(request: NextRequest) {
       });
 
       if (!room) {
-        return NextResponse.json(
-          { error: "Room not found" } as ApiErrorResponse,
-          { status: 404 }
-        );
+        return errorResponse("Room not found", 404);
       }
 
       if (room.occupiedBeds >= room.capacity) {
-        return NextResponse.json(
-          { error: "Room is at full capacity" } as ApiErrorResponse,
-          { status: 400 }
-        );
+        return badRequestResponse("Room is at full capacity");
       }
 
       // Create or update allocation
@@ -797,10 +760,7 @@ export async function POST(request: NextRequest) {
       });
 
       if (!allocation) {
-        return NextResponse.json(
-          { error: "Allocation not found" } as ApiErrorResponse,
-          { status: 404 }
-        );
+        return errorResponse("Allocation not found", 404);
       }
 
       // Update allocation status
@@ -844,10 +804,7 @@ export async function POST(request: NextRequest) {
       const { allocationId, newRoomId, reason } = body;
 
       if (currentUser.type !== "student") {
-        return NextResponse.json(
-          { error: "Only students can request room changes" } as ApiErrorResponse,
-          { status: 403 }
-        );
+        return forbiddenResponse("Only students can request room changes");
       }
 
       // Verify allocation belongs to student
@@ -859,10 +816,7 @@ export async function POST(request: NextRequest) {
       });
 
       if (!allocation) {
-        return NextResponse.json(
-          { error: "Allocation not found" } as ApiErrorResponse,
-          { status: 404 }
-        );
+        return errorResponse("Allocation not found", 404);
       }
 
       // Create a room change request (using complaints table for tracking)
@@ -898,10 +852,7 @@ export async function POST(request: NextRequest) {
     // Action: record-payment (Record hostel fee payment)
     if (action === "record-payment") {
       if (currentUser.role !== "school_admin" && currentUser.role !== "admin") {
-        return NextResponse.json(
-          { error: "Only admins can record payments" } as ApiErrorResponse,
-          { status: 403 }
-        );
+        return forbiddenResponse("Only admins can record payments");
       }
 
       const {
@@ -971,10 +922,7 @@ export async function POST(request: NextRequest) {
       });
 
       if (!leaveRequest) {
-        return NextResponse.json(
-          { error: "Leave request not found" } as ApiErrorResponse,
-          { status: 404 }
-        );
+        return errorResponse("Leave request not found", 404);
       }
 
       const [updated] = await db
@@ -1002,10 +950,7 @@ export async function POST(request: NextRequest) {
     // Action: create-building (Create new hostel building)
     if (action === "create-building") {
       if (currentUser.role !== "school_admin" && currentUser.role !== "admin") {
-        return NextResponse.json(
-          { error: "Only admins can create buildings" } as ApiErrorResponse,
-          { status: 403 }
-        );
+        return forbiddenResponse("Only admins can create buildings");
       }
 
       const buildingData = body;
@@ -1032,10 +977,7 @@ export async function POST(request: NextRequest) {
     // Action: create-room (Create new room in hostel)
     if (action === "create-room") {
       if (currentUser.role !== "school_admin" && currentUser.role !== "admin") {
-        return NextResponse.json(
-          { error: "Only admins can create rooms" } as ApiErrorResponse,
-          { status: 403 }
-        );
+        return forbiddenResponse("Only admins can create rooms");
       }
 
       const { hostelId, roomNumber, floor, roomType, capacity, ...roomData } = body;
@@ -1107,33 +1049,23 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json(
-      { error: "Invalid action" } as ApiErrorResponse,
-      { status: 400 }
-    );
-  } catch (error: unknown) {
-    logger.apiError(error, { route: "/api/hostel", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to process request" } as ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return badRequestResponse("Invalid action");
+  },
+  ['admin', 'school-admin', 'student']
+);
 
 // ============================================================================
 // PATCH - Update hostel records
 // ============================================================================
 
-export async function PATCH(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin", "school-admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error } as ApiErrorResponse,
-        { status: authResult.status }
-      );
+export const PATCH = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId } = authResult;
+
+    const { userId } = auth;
 
     const body = await request.json();
     const { action, id, ...updateData } = body;
@@ -1208,31 +1140,20 @@ export async function PATCH(request: NextRequest) {
       });
     }
 
-    return NextResponse.json(
-      { error: "Invalid action" } as ApiErrorResponse,
-      { status: 400 }
-    );
-  } catch (error: unknown) {
-    logger.apiError(error, { route: "/api/hostel", method: "PATCH" });
-    return NextResponse.json(
-      { error: "Failed to update record" } as ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return badRequestResponse("Invalid action");
+  },
+  ['admin', 'school-admin']
+);
 
 // ============================================================================
 // DELETE - Delete hostel records
 // ============================================================================
 
-export async function DELETE(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin", "school-admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error } as ApiErrorResponse,
-        { status: authResult.status }
-      );
+export const DELETE = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
 
     const { searchParams } = new URL(request.url);
@@ -1240,42 +1161,25 @@ export async function DELETE(request: NextRequest) {
     const id = searchParams.get("id");
 
     if (!id) {
-      return NextResponse.json(
-        { error: "ID is required" } as ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("ID is required");
     }
 
     // Action: delete-building
     if (action === "delete-building") {
       await db.delete(hostelBuildings).where(eq(hostelBuildings.id, id));
-      return NextResponse.json({
-        success: true,
-        message: "Building deleted successfully",
-      });
+      return successResponse({ success: true, message: "Building deleted successfully" });
     }
 
     // Action: delete-room
     if (action === "delete-room") {
       await db.delete(hostelRooms).where(eq(hostelRooms.id, id));
-      return NextResponse.json({
-        success: true,
-        message: "Room deleted successfully",
-      });
+      return successResponse({ success: true, message: "Room deleted successfully" });
     }
 
-    return NextResponse.json(
-      { error: "Invalid action" } as ApiErrorResponse,
-      { status: 400 }
-    );
-  } catch (error: unknown) {
-    logger.apiError(error, { route: "/api/hostel", method: "DELETE" });
-    return NextResponse.json(
-      { error: "Failed to delete record" } as ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return badRequestResponse("Invalid action");
+  },
+  ['admin', 'school-admin']
+);
 
 // ============================================================================
 // Helper Functions

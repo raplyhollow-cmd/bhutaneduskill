@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight, ExternalLink, Github, Sparkles, Target, Users, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { portal } from "@/styles/design-tokens";
 
 const projects = [
   {
@@ -13,7 +14,7 @@ const projects = [
     description: "Transforming education across 50+ schools with AI-powered learning paths and real-time student analytics.",
     category: "EdTech",
     year: "2025",
-    image: "linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)",
+    image: portal.student.gradient,
     tags: ["Next.js", "AI/ML", "PostgreSQL", "Clerk"],
     stats: { students: "15,000+", schools: "50+", impact: "95%" },
     link: "#",
@@ -25,7 +26,7 @@ const projects = [
     description: "An intelligent career matching system using psychometric assessments and AI to guide students toward their ideal paths.",
     category: "AI/ML",
     year: "2025",
-    image: "linear-gradient(135deg, rgb(59 130 246) 0%, rgb(37 99 235) 100%)",
+    image: portal.teacher.gradient,
     tags: ["TypeScript", "OpenAI", "Drizzle", "Neon"],
     stats: { students: "8,500+", matches: "12,000+", accuracy: "89%" },
     link: "#",
@@ -37,7 +38,7 @@ const projects = [
     description: "Complete administrative ecosystem for Bhutan's Ministry of Education with multi-tenant architecture.",
     category: "SaaS",
     year: "2024",
-    image: "linear-gradient(135deg, rgb(168 85 247) 0%, rgb(147 51 234) 100%)",
+    image: portal.counselor.gradient,
     tags: ["React", "PostgreSQL", "Vercel", "Stripe"],
     stats: { users: "25,000+", requests: "1M+", uptime: "99.9%" },
     link: "#",

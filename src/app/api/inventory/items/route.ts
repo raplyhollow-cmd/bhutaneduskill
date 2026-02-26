@@ -1,15 +1,18 @@
 /**
  * Inventory Items API
  * Handles CRUD operations for inventory items
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute, getAuth } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
-import { inventoryItems, inventoryCategories, users } from "@/lib/db/schema";
-import { eq, and, desc, like, sql, or, isNull } from "drizzle-orm";
+import { inventoryItems, inventoryCategories } from "@/lib/db/schema";
+import { eq, and, desc, like, sql, or } from "drizzle-orm";
 import { logger } from "@/lib/logger";
-import type { ApiSuccess, ApiErrorResponse, Pagination, ListQueryParams } from "@/types";
+import type { ApiSuccess, ApiErrorResponse, Pagination } from "@/types";
+import { successResponse, errorResponse, badRequestResponse, notFoundResponse } from "@/lib/api/response-helpers";
 
 interface PaginatedData<T> {
   items: T[];
@@ -30,7 +33,7 @@ interface InventoryItemFilters {
   location?: string;
 }
 
-interface GetItemsQuery extends ListQueryParams {
+interface GetItemsQuery {
   category?: string;
   itemType?: string;
   status?: string;
@@ -39,16 +42,14 @@ interface GetItemsQuery extends ListQueryParams {
   location?: string;
 }
 
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { user, userId } = authResult;
+
+    const { user, userId } = auth;
 
     const { searchParams } = new URL(request.url);
     const page = Math.max(1, Number(searchParams.get("page")) || 1);
@@ -223,14 +224,9 @@ export async function GET(request: NextRequest) {
         pagination,
       },
     } satisfies ApiSuccess<PaginatedData<typeof itemsWithCategory[0]>>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/inventory/items", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch inventory items", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin']
+);
 
 // ============================================================================
 // POST /api/inventory/items - Create new inventory item
@@ -273,25 +269,20 @@ interface CreateItemInput {
   notes?: string;
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
+export const POST = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { user, userId } = authResult;
+
+    const { user, userId } = auth;
 
     const data: CreateItemInput = await request.json();
 
     // Validate required fields
     if (!data.name || !data.categoryId || !data.itemType) {
-      return NextResponse.json(
-        { error: "Missing required fields: name, categoryId, itemType", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("Missing required fields: name, categoryId, itemType");
     }
 
     // Generate unique IDs
@@ -304,10 +295,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!category) {
-      return NextResponse.json(
-        { error: "Category not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return notFoundResponse("Category");
     }
 
     const now = new Date();
@@ -368,14 +356,9 @@ export async function POST(request: NextRequest) {
       data: newItem,
       message: "Inventory item created successfully",
     } satisfies ApiSuccess<typeof newItem>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/inventory/items", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to create inventory item", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin']
+);
 
 // ============================================================================
 // PATCH /api/inventory/items - Update inventory item
@@ -385,24 +368,19 @@ interface UpdateItemInput extends Partial<CreateItemInput> {
   id: string;
 }
 
-export async function PATCH(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
+export const PATCH = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId } = authResult;
+
+    const { userId } = auth;
 
     const data: UpdateItemInput = await request.json();
 
     if (!data.id) {
-      return NextResponse.json(
-        { error: "Item ID is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("Item ID is required");
     }
 
     // Check if item exists
@@ -411,10 +389,7 @@ export async function PATCH(request: NextRequest) {
     });
 
     if (!existingItem) {
-      return NextResponse.json(
-        { error: "Item not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return notFoundResponse("Item");
     }
 
     // Prepare update data
@@ -477,38 +452,28 @@ export async function PATCH(request: NextRequest) {
       data: updatedItem,
       message: "Inventory item updated successfully",
     } satisfies ApiSuccess<typeof updatedItem>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/inventory/items", method: "PATCH" });
-    return NextResponse.json(
-      { error: "Failed to update inventory item", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin']
+);
 
 // ============================================================================
 // DELETE /api/inventory/items - Delete inventory item
 // ============================================================================
 
-export async function DELETE(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
+export const DELETE = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
     }
-    const { userId } = authResult;
+
+    const { userId } = auth;
 
     const { searchParams } = new URL(request.url);
     const itemId = searchParams.get("id");
 
     if (!itemId) {
-      return NextResponse.json(
-        { error: "Item ID is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("Item ID is required");
     }
 
     // Check if item exists
@@ -517,10 +482,7 @@ export async function DELETE(request: NextRequest) {
     });
 
     if (!existingItem) {
-      return NextResponse.json(
-        { error: "Item not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return notFoundResponse("Item");
     }
 
     await db.delete(inventoryItems).where(eq(inventoryItems.id, itemId));
@@ -530,11 +492,6 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({
       data: { message: "Inventory item deleted successfully" },
     } satisfies ApiSuccess<{ message: string }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/inventory/items", method: "DELETE" });
-    return NextResponse.json(
-      { error: "Failed to delete inventory item", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin']
+);
