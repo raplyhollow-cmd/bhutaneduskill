@@ -67,12 +67,15 @@ interface Notification {
 }
 
 interface NotificationsResponse {
-  data: Notification[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
+  success: boolean;
+  data: {
+    notifications: Notification[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
   };
 }
 
@@ -137,7 +140,7 @@ export default function AdminNotificationsPage() {
       }
 
       const result: NotificationsResponse = await response.json();
-      setNotifications(result.data || []);
+      setNotifications(result.data.notifications || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
       logger.error("Error fetching notifications:", err);

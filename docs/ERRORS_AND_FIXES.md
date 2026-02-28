@@ -699,4 +699,445 @@ grep -r "semantic\\.warning\\.gradient" src/
 
 **Document Owner**: Development Team
 **Review Frequency**: Weekly
-**Version**: 1.3
+**Version**: 1.4
+
+---
+
+## 9. February 28, 2026 - Admin Portal Bug Fixes
+
+### Error: Analytics API 500 - Incorrect `.having()` clause
+
+**Severity**: CRITICAL (Analytics page fails to load)
+
+**Symptoms**:
+```
+GET /api/admin/analytics-data 500 (Internal Server Error)
+TypeError: Invalid having clause usage
+```
+
+**Root Cause**:
+Drizzle ORM's `.having()` method does not accept lambda functions like `.where()` does. The code was using:
+```typescript
+.having((users) => sql`${users.grade} IS NOT NULL`)
+```
+
+This is incorrect syntax for Drizzle's `.having()` method.
+
+**Permanent Fix**:
+Move the condition from `.having()` to `.where()` with proper `and()` wrapper:
+
+**Before (WRONG)**:
+```typescript
+// src/app/api/admin/analytics-data/route.ts line 433
+const studentGradesResult = await db
+  .select({
+    grade: users.grade,
+    count: count(),
+  })
+  .from(users)
+  .where(eq(users.type, 'student'))
+  .groupBy(users.grade)
+  .having((users) => sql`${users.grade} IS NOT NULL`)  // ❌ Wrong syntax
+  .orderBy(desc(count()))
+  .limit(5);
+```
+
+**After (CORRECT)**:
+```typescript
+const studentGradesResult = await db
+  .select({
+    grade: users.grade,
+    count: count(),
+  })
+  .from(users)
+  .where(and(
+    eq(users.type, 'student'),
+    sql`${users.grade} IS NOT NULL`  // ✅ Moved to where() with and()
+  ))
+  .groupBy(users.grade)
+  .orderBy(desc(count()))
+  .limit(5);
+```
+
+**Files Fixed**:
+- [src/app/api/admin/analytics-data/route.ts:433](src/app/api/admin/analytics-data/route.ts)
+
+---
+
+### Error: ".map is not a function" on Notifications/Partners pages
+
+**Severity**: P1 (Pages crash with TypeError)
+
+**Symptoms**:
+```
+TypeError: notifications.map is not a function
+    at NotificationsList
+```
+
+**Root Cause**:
+API responses have nested structure: `{ success: true, data: { notifications: [] } }`
+But the component was accessing `result.data` directly instead of `result.data.notifications`.
+
+**Permanent Fix**:
+Update interfaces and data access patterns to match nested API response structure.
+
+**Before (WRONG)**:
+```typescript
+// src/app/admin/notifications/page.tsx
+interface NotificationsResponse {
+  success: boolean;
+  data: Notification[];  // ❌ Missing nesting
+}
+
+const result: NotificationsResponse = await response.json();
+setNotifications(result.data || []);  // ❌ result.data is { notifications, pagination }, not array
+```
+
+**After (CORRECT)**:
+```typescript
+interface NotificationsResponse {
+  success: boolean;
+  data: {
+    notifications: Notification[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
+  };
+}
+
+const result: NotificationsResponse = await response.json();
+setNotifications(result.data.notifications || []);  // ✅ Access nested array
+setPagination(result.data.pagination);
+```
+
+**Files Fixed**:
+- [src/app/admin/notifications/page.tsx](src/app/admin/notifications/page.tsx)
+- [src/app/admin/partners/page.tsx](src/app/admin/partners/page.tsx)
+
+---
+
+### Error: API Routes 401/500 - Incorrect Auth Pattern
+
+**Severity**: P1 (Authentication failures)
+
+**Symptoms**:
+```
+GET /api/admin/notifications 401 (Unauthorized)
+GET /api/admin/partners 500 (Internal Server Error)
+```
+
+**Root Cause**:
+API routes were manually calling `getAuth(request)` instead of using the auth provided by `createApiRoute` wrapper.
+
+**Permanent Fix**:
+Use the `auth` parameter passed by `createApiRoute` wrapper:
+
+**Before (WRONG)**:
+```typescript
+export const GET = createApiRoute(
+  async (req: NextRequest) => {
+    // ❌ Manually calling getAuth - duplicate auth check
+    const authResult = await getAuth(req);
+    if (!authResult.userId) {
+      return errorResponse("Unauthorized", 401);
+    }
+    const { userId } = authResult;
+    // ... rest of logic
+  },
+  ['admin']
+);
+```
+
+**After (CORRECT)**:
+```typescript
+export const GET = createApiRoute(
+  async (req: NextRequest, auth) => {  // ✅ auth is provided by wrapper
+    const { userId, user } = auth;     // ✅ Use provided auth
+    // ... rest of logic
+  },
+  ['admin']  // ✅ Wrapper handles role check automatically
+);
+```
+
+**Files Fixed**:
+- [src/app/api/admin/notifications/route.ts](src/app/api/admin/notifications/route.ts)
+- [src/app/api/admin/partners/route.ts](src/app/api/admin/partners/route.ts)
+
+---
+
+### Error: Missing QueryClient Provider
+
+**Severity**: P1 (React Query hooks fail)
+
+**Symptoms**:
+```
+Error: useQuery must be used within QueryClientProvider
+```
+
+**Root Cause**:
+App was using TanStack Query hooks but wasn't wrapped with `QueryClientProvider`.
+
+**Permanent Fix**:
+
+**1. Create QueryProvider component** (src/components/providers/query-provider.tsx):
+```typescript
+"use client";
+
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useState, type ReactNode } from "react";
+
+export function QueryProvider({ children }: { children: ReactNode }) {
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 1000 * 60 * 5, // 5 minutes
+            retry: 1,
+          },
+        },
+      })
+  );
+
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+}
+```
+
+**2. Wrap app in root layout** (src/app/layout.tsx):
+```typescript
+import { QueryProvider } from "@/components/providers/query-provider";
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <ClerkProvider publishableKey={publishableKey}>
+      <html lang="en">
+        <body>
+          <AppErrorBoundary>
+            <ThemeProvider>
+              <UserProvider>
+                <QueryProvider>  {/* ✅ Wrap with QueryProvider */}
+                  <TransitionProvider>
+                    <ToastProvider>
+                      {children}
+                    </ToastProvider>
+                  </TransitionProvider>
+                </QueryProvider>
+              </UserProvider>
+            </ThemeProvider>
+          </AppErrorBoundary>
+        </body>
+      </html>
+    </ClerkProvider>
+  );
+}
+```
+
+**Files Created**:
+- [src/components/providers/query-provider.tsx](src/components/providers/query-provider.tsx)
+
+**Files Modified**:
+- [src/app/layout.tsx](src/app/layout.tsx)
+
+---
+
+## Session Summary: February 28, 2026
+
+| Fix Type | Files | Impact |
+|----------|-------|--------|
+| Analytics `.having()` clause | 1 | ✅ Analytics page now loads |
+| Notifications data access | 1 | ✅ Notifications list displays |
+| Partners data access | 1 | ✅ Partners list displays |
+| API auth patterns | 2 | ✅ Authentication works correctly |
+| QueryClient provider | 2 | ✅ React Query hooks functional |
+
+**Verification Commands**:
+```bash
+# Type check
+npx tsc --noEmit
+
+# Test analytics API
+curl http://localhost:3003/api/admin/analytics-data
+
+# Test notifications API
+curl http://localhost:3003/api/admin/notifications
+
+# Test partners API
+curl http://localhost:3003/api/admin/partners
+```
+
+---
+
+## Additional Fixes (February 28, 2026 - After Physical Testing)
+
+### Error: Notifications Insert - SQL `default` keyword issue
+
+**Severity**: CRITICAL (Cannot create notifications)
+
+**Symptoms**:
+```
+Failed query: insert into "notifications" (...) values (..., default, default, ...)
+```
+
+**Root Cause**:
+When `undefined` is passed to Drizzle's `.values()` for optional timestamp fields (`scheduledFor`, `sentAt`), it generates SQL with the `default` keyword which is invalid syntax.
+
+**Permanent Fix**:
+Only include fields in the insert object if they have actual values. Omit `undefined` fields entirely.
+
+**Before (WRONG)**:
+```typescript
+const notification = await db
+  .insert(notifications)
+  .values({
+    id: notificationId,
+    title: body.title.trim(),
+    // ... other fields
+    scheduledFor,  // ❌ undefined causes SQL "default" keyword
+    expiresAt,     // ❌ undefined causes SQL "default" keyword
+  })
+  .returning();
+```
+
+**After (CORRECT)**:
+```typescript
+// Build notification values object - only include defined fields
+const notificationValues: Record<string, any> = {
+  id: notificationId,
+  title: body.title.trim(),
+  // ... other fields
+};
+
+// Only add optional timestamp fields if they have values
+if (scheduledFor) {
+  notificationValues.scheduledFor = scheduledFor;
+}
+if (expiresAt) {
+  notificationValues.expiresAt = expiresAt;
+}
+
+const notification = await db
+  .insert(notifications)
+  .values(notificationValues)  // ✅ Only defined fields included
+  .returning();
+```
+
+**Files Fixed**:
+- [src/app/api/admin/notifications/route.ts:284-309](src/app/api/admin/notifications/route.ts)
+
+---
+
+### Error: Partners API - Array Destructuring on Empty Result
+
+**Severity**: P1 (Could fail if query returns empty)
+
+**Symptoms**:
+```
+TypeError: Cannot destructure property 'totalCount' of 'undefined' as it is undefined
+```
+
+**Root Cause**:
+`const [{ totalCount }] = await db.select(...)` fails if the query returns an empty array.
+
+**Permanent Fix**:
+Use array access pattern with null fallback.
+
+**Before (WRONG)**:
+```typescript
+const [{ totalCount }] = await db
+  .select({ totalCount: count() })
+  .from(partners)
+  .where(whereClause);
+// ❌ Throws if result is []
+```
+
+**After (CORRECT)**:
+```typescript
+const countResult = await db
+  .select({ totalCount: count() })
+  .from(partners)
+  .where(whereClause);
+
+const totalCount = countResult[0]?.totalCount || 0;  // ✅ Safe fallback
+```
+
+**Files Fixed**:
+- [src/app/api/admin/partners/route.ts:207-211](src/app/api/admin/partners/route.ts)
+
+---
+
+### Error: Analytics API - Generic 500 Error
+
+**Severity**: P1 (Cannot identify which metric query is failing)
+
+**Symptoms**:
+```
+GET /api/admin/analytics-data 500
+Failed to fetch analytics data
+```
+
+**Root Cause**:
+Using `Promise.all()` means if any one metric query fails, the entire request fails with no indication of which query caused the problem.
+
+**Permanent Fix**:
+Use `Promise.allSettled()` to catch individual metric failures with detailed error messages.
+
+**Before (WRONG)**:
+```typescript
+const [schoolEngagement, userGrowth, careerInterests, ...] = await Promise.all([
+  getSchoolEngagementMetrics(),
+  getUserGrowthTrends(),
+  getCareerInterestsDistribution(),
+  // ...
+]);
+// ❌ If any fails, all fail with generic error
+```
+
+**After (CORRECT)**:
+```typescript
+const results = await Promise.allSettled([
+  getSchoolEngagementMetrics(),
+  getUserGrowthTrends(),
+  getCareerInterestsDistribution(),
+  // ...
+]);
+
+// Check for errors and log them
+const errors: string[] = [];
+const metricNames = ["schoolEngagement", "userGrowth", "careerInterests", ...];
+
+for (let i = 0; i < results.length; i++) {
+  if (results[i].status === "rejected") {
+    const metricName = metricNames[i];
+    const error = results[i].reason;
+    errors.push(`${metricName}: ${error?.message || String(error)}`);
+    logger.error(`Analytics metric ${metricName} failed`, {
+      error: error?.message || String(error),
+      stack: error?.stack
+    });
+  }
+}
+
+if (errors.length > 0) {
+  return errorResponse(`Failed to fetch analytics data: ${errors.join("; ")}`, 500);
+}
+```
+
+**Files Fixed**:
+- [src/app/api/admin/analytics-data/route.ts:142-220](src/app/api/admin/analytics-data/route.ts)
+
+---
+
+## Testing Commands (February 28, 2026)
+
+```bash
+# Type check
+npx tsc --noEmit
+
+# Test with authentication (get auth token from browser)
+curl -H "Authorization: Bearer YOUR_TOKEN" http://localhost:3003/api/admin/analytics-data
+curl -H "Authorization: Bearer YOUR_TOKEN" http://localhost:3003/api/admin/notifications
+curl -H "Authorization: Bearer YOUR_TOKEN" http://localhost:3003/api/admin/partners
+```

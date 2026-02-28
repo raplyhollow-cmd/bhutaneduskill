@@ -8,6 +8,7 @@ import { UserProvider } from "@/hooks/use-current-user";
 import { AppErrorBoundary } from "@/components/error/app-error-boundary";
 import { TransitionProvider } from "@/components/transitions/transition-provider";
 import { GlobalProviders } from "@/components/global/global-providers";
+import { QueryProvider } from "@/components/providers/query-provider";
 import "./globals.css";
 import "../styles/ceramic.css";
 
@@ -43,15 +44,17 @@ export default function RootLayout({
           <AppErrorBoundary>
             <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
               <UserProvider>
-                <TransitionProvider>
-                  <ToastProvider>
-                    {children}
-                  </ToastProvider>
-                </TransitionProvider>
-                {/* Render UnifiedAIAssistant directly - it's already a client component */}
-                <UnifiedAIAssistant />
-                {/* Global UI Providers */}
-                <GlobalProviders />
+                <QueryProvider>
+                  <TransitionProvider>
+                    <ToastProvider>
+                      {children}
+                    </ToastProvider>
+                  </TransitionProvider>
+                  {/* Render UnifiedAIAssistant directly - it's already a client component */}
+                  <UnifiedAIAssistant />
+                  {/* Global UI Providers */}
+                  <GlobalProviders />
+                </QueryProvider>
               </UserProvider>
             </ThemeProvider>
           </AppErrorBoundary>

@@ -112,10 +112,6 @@ function validatePartnerInput(data: CreatePartnerInput): { valid: boolean; error
 
 export const GET = createApiRoute(
   async (req: NextRequest, auth) => {
-    if (!auth) {
-      return errorResponse("Unauthorized", 401);
-    }
-
     const { userId } = auth;
 
     try {
@@ -209,10 +205,12 @@ export const GET = createApiRoute(
         .offset(offset);
 
       // Get total count for pagination
-      const [{ totalCount }] = await db
+      const countResult = await db
         .select({ totalCount: count() })
         .from(partners)
         .where(whereClause);
+
+      const totalCount = countResult[0]?.totalCount || 0;
 
       // Get statistics by type
       const statsByType = await db
@@ -280,7 +278,8 @@ export const GET = createApiRoute(
       });
     } catch (error) {
       logger.apiError(error, { route: "/api/admin/partners", method: "GET" });
-      return errorResponse("Failed to fetch partners", 500);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      return errorResponse(`Failed to fetch partners: ${errorMessage}`, 500);
     }
   },
   ['admin']
@@ -292,10 +291,6 @@ export const GET = createApiRoute(
 
 export const POST = createApiRoute(
   async (req: NextRequest, auth) => {
-    if (!auth) {
-      return errorResponse("Unauthorized", 401);
-    }
-
     const { userId } = auth;
 
     try {

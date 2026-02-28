@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.2.1] - Admin Portal Bug Fixes (February 28, 2026)
+
+### Fixed
+
+**Analytics API - 500 Error**
+- Fixed incorrect `.having()` clause usage in Drizzle ORM query
+- Changed from `.having((users) => sql`${users.grade} IS NOT NULL`)` to `.where(and(eq(users.type, 'student'), sql`${users.grade} IS NOT NULL`))`
+- Analytics page now loads successfully
+
+**Notifications Page - `.map is not a function` Error**
+- Fixed nested data access pattern in notifications page
+- Updated interface to match API response structure: `{ success: true, data: { notifications: [], pagination: {} } }`
+- Changed from `result.data` to `result.data.notifications`
+
+**Partners Page - `.map is not a function` Error**
+- Fixed nested data access pattern in partners page
+- Updated interface to match API response structure: `{ success: true, data: { partners: [], pagination: {}, statistics: {} } }`
+- Changed from `result.data` to `result.data.partners`
+
+**API Routes - Auth Pattern**
+- Verified all admin API routes use correct `createApiRoute` pattern
+- Notifications API receives auth as second parameter
+- Partners API receives auth as second parameter
+
+**QueryClient Provider**
+- Created `QueryProvider` component for TanStack Query
+- Added provider to root layout wrapper
+- React Query hooks now work correctly
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `src/app/api/admin/analytics-data/route.ts` | Fixed `.having()` clause |
+| `src/app/admin/notifications/page.tsx` | Fixed data access pattern |
+| `src/app/admin/partners/page.tsx` | Fixed data access pattern |
+| `src/components/providers/query-provider.tsx` | Created new provider |
+| `src/app/layout.tsx` | Added QueryProvider wrapper |
+| `docs/ERRORS_AND_FIXES.md` | Added February 28 fixes section |
+
+### Verification
+
+```bash
+# All fixes verified with:
+npx tsc --noEmit  # ✅ 0 errors
+npm run dev       # ✅ Server runs on port 3003
+```
+
+---
+
 ## [2.2.0] - TypeScript Error Resolution & Route Migration Complete (February 28, 2026)
 
 ### Added

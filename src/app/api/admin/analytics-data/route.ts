@@ -14,7 +14,7 @@ import { db } from "@/lib/db";
 import { users, schools, assessments, assessmentResults, riasecResults, mbtiResults, discResults, careerMatches, examResultsEnhanced, attendance, feePayments, studentFees, subscriptions, invoices, homework, homeworkSubmissions, rubApplications } from "@/lib/db/schema";
 import { sql, eq, and, gte, lte, desc, count, avg, sum } from "drizzle-orm";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
-import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, errorResponse } from "@/lib/api/response-helpers";
 import { logger } from "@/lib/logger";
 
@@ -139,28 +139,16 @@ function getMonthKey(date: Date): string {
 // API Handler
 // ============================================================================
 
-export const GET = createApiRoute<Record<string, unknown>, AnalyticsData>(
-  async (request: NextRequest) => {
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
     const startTime = Date.now();
-    const auth = getAuth(request);
-    if (!auth) {
-      return errorResponse("Unauthorized", 401);
-    }
-
     const { userId } = auth;
 
     logger.info("Fetching analytics data", { userId });
 
     try {
       // Calculate all metrics in parallel for better performance
-      const [
-        schoolEngagement,
-        userGrowth,
-        careerInterests,
-        assessmentCompletion,
-        academicPerformance,
-        revenue,
-      ] = await Promise.all([
+      const results = await Promise.allSettled([
         getSchoolEngagementMetrics(),
         getUserGrowthTrends(),
         getCareerInterestsDistribution(),
@@ -168,6 +156,33 @@ export const GET = createApiRoute<Record<string, unknown>, AnalyticsData>(
         getAcademicPerformanceMetrics(),
         getRevenueMetrics(),
       ]);
+
+      // Check for errors and log them
+      const errors: string[] = [];
+      const metricNames = ["schoolEngagement", "userGrowth", "careerInterests", "assessmentCompletion", "academicPerformance", "revenue"];
+
+      for (let i = 0; i < results.length; i++) {
+        if (results[i].status === "rejected") {
+          const metricName = metricNames[i];
+          const error = results[i].reason;
+          errors.push(`${metricName}: ${error?.message || String(error)}`);
+          logger.error(`Analytics metric ${metricName} failed`, { error: error?.message || String(error), stack: error?.stack });
+        }
+      }
+
+      if (errors.length > 0) {
+        return errorResponse(`Failed to fetch analytics data: ${errors.join("; ")}`, 500);
+      }
+
+      // Extract values from fulfilled promises
+      const [
+        schoolEngagement,
+        userGrowth,
+        careerInterests,
+        assessmentCompletion,
+        academicPerformance,
+        revenue,
+      ] = results.map((r) => r.status === "fulfilled" ? r.value : null);
 
       const data: AnalyticsData = {
         schoolEngagement,
@@ -185,7 +200,8 @@ export const GET = createApiRoute<Record<string, unknown>, AnalyticsData>(
       return successResponse(data);
     } catch (error) {
       logger.apiError(error, { route: "/api/admin/analytics-data", method: "GET" });
-      return errorResponse("Failed to fetch analytics data", 500);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      return errorResponse(`Failed to fetch analytics data: ${errorMessage}`, 500);
     }
   },
   ['admin']
@@ -433,9 +449,11 @@ async function getCareerInterestsDistribution(): Promise<CareerInterestsDistribu
       count: count(),
     })
     .from(users)
-    .where(eq(users.type, 'student'))
+    .where(and(
+      eq(users.type, 'student'),
+      sql`${users.grade} IS NOT NULL`
+    ))
     .groupBy(users.grade)
-    .having((users) => sql`${users.grade} IS NOT NULL`)
     .orderBy(desc(count()))
     .limit(5);
 

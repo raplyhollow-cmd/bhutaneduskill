@@ -75,14 +75,16 @@ interface PartnerStatistics {
 
 interface PartnersResponse {
   success: boolean;
-  data: Partner[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
+  data: {
+    partners: Partner[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
+    statistics: PartnerStatistics;
   };
-  statistics: PartnerStatistics;
 }
 
 export default function AdminPartnersPage() {
@@ -150,10 +152,11 @@ export default function AdminPartnersPage() {
         throw new Error("Failed to fetch partners");
       }
 
-      const data: PartnersResponse = await response.json();
-      setPartners(data.data || []);
-      setPagination(data.pagination);
-      setStats(data.statistics);
+      const result: PartnersResponse = await response.json();
+      const responseData = result.data;
+      setPartners(responseData.partners || []);
+      setPagination(responseData.pagination);
+      setStats(responseData.statistics);
     } catch (err) {
       logger.error("Failed to fetch partners:", err);
       setError("Failed to load partners. Please try again.");

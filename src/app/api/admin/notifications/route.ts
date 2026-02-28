@@ -13,7 +13,7 @@ import { notifications, notificationDeliveries, users } from "@/lib/db/schema";
 import { eq, and, desc, asc, like, or, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { logger } from "@/lib/logger";
-import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, errorResponse, badRequestResponse, createdResponse } from "@/lib/api/response-helpers";
 
 // ============================================================================
@@ -188,12 +188,7 @@ interface CreateNotificationRequest {
 }
 
 export const POST = createApiRoute(
-  async (request: NextRequest) => {
-    const auth = getAuth(request);
-    if (!auth) {
-      return errorResponse("Unauthorized", 401);
-    }
-
+  async (request: NextRequest, auth) => {
     const { user, userId } = auth;
 
     try {
@@ -286,31 +281,40 @@ export const POST = createApiRoute(
         ((user.firstName as string) && (user.lastName as string) ? `${user.firstName} ${user.lastName}` : "Admin");
       const senderRole: string = (user.type as string) || "admin";
 
+      // Build notification values object - only include defined fields
+      const notificationValues: Record<string, any> = {
+        id: notificationId,
+        title: body.title.trim(),
+        message: body.message.trim(),
+        type: body.type || "announcement",
+        category: body.category || null,
+        targetAudience: body.targetAudience,
+        targetUserIds: body.targetUserIds ? JSON.stringify(body.targetUserIds) : null,
+        targetSchoolIds: body.targetSchoolIds ? JSON.stringify(body.targetSchoolIds) : null,
+        priority: body.priority || "normal",
+        status,
+        senderId: userId,
+        senderName: senderName,
+        senderRole: senderRole,
+        actionUrl: body.actionUrl || null,
+        actionLabel: body.actionLabel || null,
+        attachments: body.attachments ? JSON.stringify(body.attachments) : null,
+        totalRecipients: estimatedRecipients,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      // Only add optional timestamp fields if they have values
+      if (scheduledFor) {
+        notificationValues.scheduledFor = scheduledFor;
+      }
+      if (expiresAt) {
+        notificationValues.expiresAt = expiresAt;
+      }
+
       const notification = await db
         .insert(notifications)
-        .values({
-          id: notificationId,
-          title: body.title.trim(),
-          message: body.message.trim(),
-          type: body.type || "announcement",
-          category: body.category || null,
-          targetAudience: body.targetAudience,
-          targetUserIds: body.targetUserIds ? JSON.stringify(body.targetUserIds) : null,
-          targetSchoolIds: body.targetSchoolIds ? JSON.stringify(body.targetSchoolIds) : null,
-          priority: body.priority || "normal",
-          status,
-          senderId: userId,
-          senderName: senderName,
-          senderRole: senderRole,
-          scheduledFor,
-          actionUrl: body.actionUrl || null,
-          actionLabel: body.actionLabel || null,
-          attachments: body.attachments ? JSON.stringify(body.attachments) : null,
-          expiresAt,
-          totalRecipients: estimatedRecipients,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        })
+        .values(notificationValues)
         .returning();
 
       logger.info("Notification created", {

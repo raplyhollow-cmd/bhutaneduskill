@@ -164,14 +164,27 @@ export default function AdminAnalyticsPage() {
     try {
       const response = await fetch("/api/admin/analytics-data");
 
+      if (!response) {
+        throw new Error("No response received - possible network error");
+      }
+
       if (!response.ok) {
-        throw new Error("Failed to fetch analytics data");
+        // Try to get more details from the error response
+        let errorDetails = `Status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorDetails = errorData.error || errorData.details || `Status: ${response.status}`;
+        } catch {
+          // If we can't parse JSON, just use status
+        }
+        throw new Error(`Failed to fetch analytics data (${errorDetails})`);
       }
 
       const result = await response.json();
       setAnalyticsData(result.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      const errorMessage = err instanceof Error ? err.message : "An error occurred";
+      setError(errorMessage);
       logger.error("Error fetching analytics:", err);
     } finally {
       setLoading(false);
