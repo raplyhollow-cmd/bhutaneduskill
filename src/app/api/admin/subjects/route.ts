@@ -13,7 +13,7 @@ import { db } from "@/lib/db";
 import { subjects } from "@/lib/db/schema";
 import { eq, desc, isNull, and } from "drizzle-orm";
 import { z } from "zod";
-import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, errorResponse, badRequestResponse, createdResponse, conflictResponse } from "@/lib/api/response-helpers";
 import { logger } from "@/lib/logger";
 import { nanoid } from "nanoid";
@@ -83,8 +83,7 @@ export const GET = createApiRoute(
 // ============================================================================
 
 export const POST = createApiRoute(
-  async (request: NextRequest) => {
-    const auth = getAuth(request);
+  async (request: NextRequest, auth) => {
     if (!auth) {
       return errorResponse("Unauthorized", 401);
     }

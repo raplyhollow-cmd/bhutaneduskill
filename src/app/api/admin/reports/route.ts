@@ -3,13 +3,12 @@ import { db } from "@/lib/db";
 import { users, schools, assessmentSubmissions, careerMatches } from "@/lib/db/schema";
 import { count, eq, and, desc } from "drizzle-orm";
 import { logger } from "@/lib/logger";
-import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse } from "@/lib/api/response-helpers";
 
 // GET /api/admin/reports - Get report templates and recent reports
 export const GET = createApiRoute(
-  async (request: NextRequest) => {
-    const auth = getAuth(request);
+  async (request: NextRequest, auth) => {
     if (!auth) {
       return successResponse({ stats: { totalSchools: 0, totalStudents: 0, totalTeachers: 0, totalCounselors: 0, recentSubmissions: 0 }, reportTemplates: [], recentReports: [] });
     }
@@ -106,8 +105,7 @@ export const GET = createApiRoute(
 
 // POST /api/admin/reports - Generate a report
 export const POST = createApiRoute(
-  async (request: NextRequest) => {
-    const auth = getAuth(request);
+  async (request: NextRequest, auth) => {
     if (!auth) {
       return successResponse({ error: "Unauthorized" });
     }
@@ -127,10 +125,12 @@ export const POST = createApiRoute(
             name: schools.name,
             code: schools.code,
             type: schools.type,
-            tier: schools.tier,
+            subscriptionTier: schools.subscriptionTier,
             city: schools.city,
-            status: schools.status,
+            subscriptionStatus: schools.subscriptionStatus,
             createdAt: schools.createdAt,
+            schoolType: schools.schoolType,
+            address: schools.address,
           })
           .from(schools)
           .orderBy(desc(schools.createdAt));

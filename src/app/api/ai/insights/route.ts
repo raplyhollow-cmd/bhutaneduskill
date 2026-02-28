@@ -1,5 +1,4 @@
 import { logger } from "@/lib/logger";
-import { requireAuth } from "@/lib/auth-utils";
 /**
  * UNIFIED AI INSIGHTS API
  *
@@ -19,7 +18,7 @@ import { db } from "@/lib/db";
 import { users, riasecResults, mbtiResults, assessments, careerMatches as careerMatchesTable } from "@/lib/db/schema";
 import { eq, desc as drizzleDesc } from "drizzle-orm";
 import { safeTrackAIInteraction, AI_FEATURE_IDS } from "@/lib/ai/track-interaction";
-import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, errorResponse, badRequestResponse } from "@/lib/api/response-helpers";
 
 interface InsightRequest {
@@ -45,30 +44,15 @@ interface AIInsight {
 // ============================================================================
 
 export const POST = createApiRoute(
-  async (request, { userId }) => {
-    const auth = await requireAuth([]);
-
-    if (!auth) {
-      return errorResponse("Unauthorized", 401);
-    }
+  async (request: NextRequest, auth) => {
+    const { userId, user } = auth;
 
     try {
       const body: InsightRequest = await request.json();
       const { userRole, contextData } = body;
 
-      // Validate user role matches request
-      const userList = await db
-        .select({ type: users.type, firstName: users.firstName, lastName: users.lastName })
-        .from(users)
-        .where(eq(users.id, userId))
-        .limit(1);
-
-      const user = userList[0];
-
-      if (!user) {
-        logger.apiError(new Error("[AI Insights] User not found"), { route: "/api/ai/insights", method: "POST", userId });
-        return successResponse({ insights: [] }); // Return empty insights instead of error for better UX
-      }
+      // Validate user role matches request - use the user object from auth
+      const userType = user.type;
 
       // Log role mismatch but continue anyway for better UX
       if (user.type !== userRole) {
@@ -80,8 +64,13 @@ export const POST = createApiRoute(
         // Continue with requested role instead of blocking
       }
 
-      // Generate insights based on role
-      const insights = await generateInsights(userRole, contextData, user, userId);
+      // Generate insights based on role - transform user to match expected shape
+      const userForInsights = {
+        type: user.type,
+        firstName: user.firstName || null,
+        lastName: user.lastName || null,
+      };
+      const insights = await generateInsights(userRole, contextData, userForInsights, userId);
 
       // Track AI interaction (non-blocking)
       safeTrackAIInteraction({

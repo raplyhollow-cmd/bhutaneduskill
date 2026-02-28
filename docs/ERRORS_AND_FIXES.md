@@ -1469,5 +1469,85 @@ WHERE user_id = 'user-Uu42g3j_PqPc0QqwjxMBR';
 
 ---
 
-**Last Updated**: February 28, 2026 (Evening)
-**Version**: 1.5
+## Additional Fixes (February 28, 2026 - Late Evening)
+
+### Error: API Routes - "getAuth(request)" Returns Null in createApiRoute
+
+**Severity**: CRITICAL (All API routes using this pattern return 401 Unauthorized)
+
+**Symptoms**:
+```
+POST http://localhost:3003/api/admin/schools 401 (Unauthorized)
+Error: Unauthorized
+```
+
+**Root Cause**:
+The `createApiRoute` wrapper passes authentication as the **second parameter** to the handler function. But many routes were using `getAuth(request)` which looks for `request.auth` - a property that is never set by `createApiRoute`.
+
+**The Wrong Pattern**:
+```typescript
+// ❌ WRONG - auth is passed as 2nd parameter, not on request
+export const POST = createApiRoute(
+  async (request: NextRequest) => {
+    const auth = getAuth(request);  // ❌ This looks for request.auth (null!)
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
+    }
+  },
+  ['admin']
+);
+```
+
+**How createApiRoute Actually Works**:
+```typescript
+// src/lib/api/route-handler.ts line 56-57
+const result = await handler(req, authResult || null, context);
+//                              ^^^^^^^^^^^^^^^^
+//                              Auth is passed as 2nd parameter
+```
+
+**The Correct Pattern**:
+```typescript
+// ✅ CORRECT - Receive auth as 2nd parameter
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {  // ✅ auth is 2nd parameter
+    if (!auth) {
+      return errorResponse("Unauthorized", 401);
+    }
+    const { userId, user } = auth;
+  },
+  ['admin']
+);
+```
+
+**Files Fixed**:
+- [src/app/api/admin/schools/route.ts](src/app/api/admin/schools/route.ts) - GET and POST handlers
+- [src/app/api/admin/subjects/route.ts](src/app/api/admin/subjects/route.ts) - POST handler
+- [src/app/api/admin/reports/route.ts](src/app/api/admin/reports/route.ts) - GET and POST handlers
+
+**Remaining Routes with Same Pattern**: 100+ API routes still use `getAuth(request)`. This is a systematic issue that needs batch fixing. Run this command to find them:
+
+```bash
+grep -rn "getAuth(request)" src/app/api/
+```
+
+**Migration Pattern**:
+```typescript
+// Step 1: Add auth parameter to handler
+- async (request: NextRequest) => {
++ async (request: NextRequest, auth) => {
+
+// Step 2: Remove getAuth call
+- const auth = getAuth(request);
+- if (!auth) { return errorResponse("Unauthorized", 401); }
++ if (!auth) { return errorResponse("Unauthorized", 401); }
+
+// Step 3: Remove getAuth from imports (if no longer used)
+- import { createApiRoute, getAuth } from "@/lib/api/route-handler";
++ import { createApiRoute } from "@/lib/api/route-handler";
+```
+
+---
+
+**Last Updated**: February 28, 2026 (Late Evening)
+**Version**: 1.6

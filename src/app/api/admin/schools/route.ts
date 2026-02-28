@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { schools } from "@/lib/db/schema";
 import { eq, sql, desc } from "drizzle-orm";
-import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, errorResponse, badRequestResponse, createdResponse, conflictResponse } from "@/lib/api/response-helpers";
 import { logger } from "@/lib/logger";
 import { TIER_LIMITS, type SubscriptionTier } from "@/lib/billing-utils";
@@ -32,8 +32,7 @@ interface CreateSchoolRequest {
 // ============================================================================
 
 export const POST = createApiRoute(
-  async (request: NextRequest) => {
-    const auth = getAuth(request);
+  async (request: NextRequest, auth) => {
     if (!auth) {
       return errorResponse("Unauthorized", 401);
     }
@@ -144,8 +143,7 @@ export const POST = createApiRoute(
 // ============================================================================
 
 export const GET = createApiRoute(
-  async (request: NextRequest) => {
-    const auth = getAuth(request);
+  async (request: NextRequest, auth) => {
     if (!auth) {
       return errorResponse("Unauthorized", 401);
     }

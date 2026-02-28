@@ -40,7 +40,7 @@ export const GET = createApiRoute(
           name: schools.name,
           code: schools.code,
           type: schools.type,
-          tier: schools.tier,
+          subscriptionTier: schools.subscriptionTier,
           city: schools.city,
         })
         .from(schools)

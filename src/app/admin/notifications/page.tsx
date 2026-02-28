@@ -184,7 +184,7 @@ export default function AdminNotificationsPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            notificationId: createResult.data.id,
+            notificationId: createResult.notification.id,
           }),
         });
 
