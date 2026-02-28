@@ -17,9 +17,10 @@ import { db } from "@/lib/db";
 import { users, parents, parentToStudent } from "@/lib/db/schema";
 import { parentTeacherConversations, parentTeacherMessages } from "@/lib/db/parent-teacher-chat-schema";
 import { eq, and, inArray, desc } from "drizzle-orm";
-import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, errorResponse, notFoundResponse, badRequestResponse } from "@/lib/api/response-helpers";
 import { logger } from "@/lib/logger";
+import type { AuthContext } from "@/lib/api/route-handler";
 
 // ============================================================================
 // TYPES
@@ -53,8 +54,7 @@ interface SendMessageInput {
 // ============================================================================
 
 export const GET = createApiRoute(
-  async (request: NextRequest) => {
-    const auth = getAuth(request);
+  async (request: NextRequest, auth: AuthContext | null) => {
     if (!auth) {
       return errorResponse("Unauthorized", 401);
     }
@@ -145,8 +145,7 @@ export const GET = createApiRoute(
 // ============================================================================
 
 export const POST = createApiRoute(
-  async (request: NextRequest) => {
-    const auth = getAuth(request);
+  async (request: NextRequest, auth: AuthContext | null) => {
     if (!auth) {
       return errorResponse("Unauthorized", 401);
     }

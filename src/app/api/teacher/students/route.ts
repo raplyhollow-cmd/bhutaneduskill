@@ -15,7 +15,7 @@ import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { users, classes, enrollments, homeworkSubmissions, attendance } from "@/lib/db/schema";
 import { eq, and, desc, inArray, sql } from "drizzle-orm";
-import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, errorResponse } from "@/lib/api/response-helpers";
 import type {
   StudentWithParent,
@@ -24,14 +24,14 @@ import type {
   HomeworkSummary,
   EnrichedStudentData,
 } from "@/types";
+import type { AuthContext } from "@/lib/api/route-handler";
 
 // ============================================================================
 // GET /api/teacher/students - Get teacher's students across all classes
 // ============================================================================
 
 export const GET = createApiRoute(
-  async (request: NextRequest) => {
-    const auth = getAuth(request);
+  async (request: NextRequest, auth: AuthContext | null) => {
     if (!auth) {
       return errorResponse("Unauthorized", 401);
     }

@@ -16,9 +16,10 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users, classes, enrollments, homework, homeworkSubmissions } from "@/lib/db/schema";
 import { eq, desc, and, inArray, gte } from "drizzle-orm";
-import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, errorResponse } from "@/lib/api/response-helpers";
 import { logger } from "@/lib/logger";
+import type { AuthContext } from "@/lib/api/route-handler";
 
 // ============================================================================
 // TYPES
@@ -40,8 +41,7 @@ interface AttentionItem {
 }
 
 export const GET = createApiRoute(
-  async (request: NextRequest) => {
-    const auth = getAuth(request);
+  async (request: NextRequest, auth: AuthContext | null) => {
     if (!auth) {
       return errorResponse("Unauthorized", 401);
     }

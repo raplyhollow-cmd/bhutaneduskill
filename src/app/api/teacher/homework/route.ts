@@ -14,11 +14,12 @@ import { db } from "@/lib/db";
 import { homework, users, classes, subjects } from "@/lib/db/schema";
 import { eq, and, desc, sql, or } from "drizzle-orm";
 import { z } from "zod";
-import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, errorResponse, badRequestResponse, notFoundResponse, forbiddenResponse, createdResponse, deletedResponse } from "@/lib/api/response-helpers";
 import { logger } from "@/lib/logger";
 import { requirePermission } from "@/lib/rbac";
 import type { SQL } from "drizzle-orm";
+import type { AuthContext } from "@/lib/api/route-handler";
 
 // ============================================================================
 // TYPES
@@ -89,8 +90,7 @@ const updateHomeworkSchema = z.object({
 // ============================================================================
 
 export const GET = createApiRoute(
-  async (request: NextRequest) => {
-    const auth = getAuth(request);
+  async (request: NextRequest, auth: AuthContext | null) => {
     if (!auth) {
       return errorResponse("Unauthorized", 401);
     }
@@ -202,8 +202,7 @@ export const GET = createApiRoute(
 // ============================================================================
 
 export const POST = createApiRoute(
-  async (request: NextRequest) => {
-    const auth = getAuth(request);
+  async (request: NextRequest, auth: AuthContext | null) => {
     if (!auth) {
       return errorResponse("Unauthorized", 401);
     }
@@ -304,8 +303,7 @@ export const POST = createApiRoute(
 // ============================================================================
 
 export const PATCH = createApiRoute(
-  async (request: NextRequest) => {
-    const auth = getAuth(request);
+  async (request: NextRequest, auth: AuthContext | null) => {
     if (!auth) {
       return errorResponse("Unauthorized", 401);
     }
@@ -397,8 +395,7 @@ export const PATCH = createApiRoute(
 // ============================================================================
 
 export const DELETE = createApiRoute(
-  async (request: NextRequest) => {
-    const auth = getAuth(request);
+  async (request: NextRequest, auth: AuthContext | null) => {
     if (!auth) {
       return errorResponse("Unauthorized", 401);
     }

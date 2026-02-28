@@ -32,9 +32,10 @@ import {
   classSubjects,
 } from "@/lib/db/schema";
 import { eq, and, gte, lte, desc, sql, inArray, count } from "drizzle-orm";
-import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, errorResponse } from "@/lib/api/response-helpers";
 import { logger } from "@/lib/logger";
+import type { AuthContext } from "@/lib/api/route-handler";
 
 // ============================================================================
 // TYPES
@@ -511,8 +512,7 @@ async function calculateGradeDistribution(
 // ============================================================================
 
 export const GET = createApiRoute<Record<string, unknown>, ReportData>(
-  async (request: NextRequest) => {
-    const auth = getAuth(request);
+  async (request: NextRequest, auth: AuthContext | null) => {
     if (!auth) {
       return errorResponse("Unauthorized", 401);
     }

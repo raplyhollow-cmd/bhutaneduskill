@@ -6,10 +6,11 @@
  */
 
 import { db } from "@/lib/db";
-import { users, classes, homework, homeworkSubmissions, attendance, studentFees, enrollments, assessments, examResultsEnhanced, moduleProgress, learningModules, tuitionEnrollments, tuitionCourses, subjects, careerMatches, riasecResults } from "@/lib/db/schema";
+import { users, classes, homework, homeworkSubmissions, attendance, studentFees, enrollments, assessments, examResultsEnhanced, moduleProgress, learningModules, tuitionEnrollments, tuitionCourses, subjects, careerMatches, riasecResults, schools } from "@/lib/db/schema";
 import { eq, and, count, desc, sql, gte, lte, inArray } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth-utils";
 import { cache } from "react";
+import { logger } from "@/lib/logger";
 
 // ============================================================================
 // TYPES
@@ -157,6 +158,8 @@ export interface StudentInfo {
   className: string | null;
   classId: string | null;
   schoolId: string | null;
+  schoolName: string | null;  // School name to confirm student's school
+  classTeacherName: string | null;  // Class teacher name for current period
   dateOfBirth: string | null;
   profileImage: string | null;
 }
@@ -330,6 +333,8 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
       className: null,
       classId: null,
       schoolId: userRecord.schoolId,
+      schoolName: null,
+      classTeacherName: null,
       dateOfBirth: userRecord.dateOfBirth,
       profileImage: userRecord.profileImage,
     };
@@ -371,6 +376,43 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
     .limit(1)
     .then(rows => rows[0] || null);
 
+  // Fetch school name to confirm student's school
+  let schoolName: string | null = null;
+  if (userRecord.schoolId) {
+    try {
+      const [school] = await db
+        .select({ name: schools.name })
+        .from(schools)
+        .where(eq(schools.id, userRecord.schoolId))
+        .limit(1);
+      schoolName = school?.name || null;
+    } catch {
+      // If school query fails, continue without school name
+    }
+  }
+
+  // Fetch class teacher name for current period
+  let classTeacherName: string | null = null;
+  let className: string | null = null;
+  if (enrollment?.classId) {
+    try {
+      const [classRecord] = await db
+        .select({
+          name: classes.name,
+          classTeacherName: classes.classTeacherName,
+        })
+        .from(classes)
+        .where(eq(classes.id, enrollment.classId))
+        .limit(1);
+      if (classRecord) {
+        className = classRecord.name;
+        classTeacherName = classRecord.classTeacherName;
+      }
+    } catch {
+      // If class query fails, continue without class info
+    }
+  }
+
   const studentInfo: StudentInfo = {
     id: studentRecords[0].id,
     firstName: userRecord.firstName,
@@ -380,9 +422,11 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
     phone: userRecord.phone,
     classGrade: userRecord.classGrade,
     section: userRecord.section,
-    className: null, // Relation removed - would need separate query
+    className,
     classId: enrollment?.classId || null,
     schoolId: userRecord.schoolId,
+    schoolName,
+    classTeacherName,
     dateOfBirth: userRecord.dateOfBirth,
     profileImage: userRecord.profileImage,
   };
@@ -658,34 +702,39 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
     }
   }
 
-  // Fee deadlines
+  // Fee deadlines - wrap in try-catch to handle missing table or query errors
   if (schoolId) {
-    const feeData = await db
-      .select()
-      .from(studentFees)
-      .where(and(
-        eq(studentFees.studentId, studentId),
-        sql`${studentFees.amountPending} > 0`
-      ))
-      .limit(1)
-      .then(rows => rows[0] || null);
+    try {
+      const feeData = await db
+        .select()
+        .from(studentFees)
+        .where(and(
+          eq(studentFees.studentId, studentId),
+          sql`${studentFees.amountPending} IS NOT NULL AND ${studentFees.amountPending} > 0`
+        ))
+        .limit(1)
+        .then(rows => rows[0] || null);
 
-    if (feeData?.dueDate) {
-      const dueDate = new Date(feeData.dueDate);
-      const daysUntil = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      if (feeData?.dueDate) {
+        const dueDate = new Date(feeData.dueDate);
+        const daysUntil = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
-      if (daysUntil >= 0 && daysUntil <= 30) {
-        deadlines.push({
-          id: `fee-${feeData.id}`,
-          type: "fee",
-          title: "Fee Payment Due",
-          description: `Nu. ${feeData.amountPending} pending`,
-          dueDate: feeData.dueDate,
-          daysUntil,
-          urgency: daysUntil <= 7 ? "high" : "medium",
-          link: `/student/fees`,
-        });
+        if (daysUntil >= 0 && daysUntil <= 30) {
+          deadlines.push({
+            id: `fee-${feeData.id}`,
+            type: "fee",
+            title: "Fee Payment Due",
+            description: `Nu. ${feeData.amountPending} pending`,
+            dueDate: feeData.dueDate,
+            daysUntil,
+            urgency: daysUntil <= 7 ? "high" : "medium",
+            link: `/student/fees`,
+          });
+        }
       }
+    } catch (error) {
+      // Silently ignore fee query errors (table may not exist, connection issue, etc.)
+      logger.debug("Fee query failed - fee deadlines will not be shown", { error });
     }
   }
 
@@ -724,26 +773,31 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
     hollandCode,
   };
 
-  // 9. Get fee status
+  // 9. Get fee status - wrap in try-catch to handle missing table or query errors
   let feeStatus: FeeStatus | null = null;
 
   if (schoolId) {
-    const studentFee = await db
-      .select()
-      .from(studentFees)
-      .where(eq(studentFees.studentId, studentId))
-      .limit(1)
-      .then(rows => rows[0] || null);
+    try {
+      const studentFee = await db
+        .select()
+        .from(studentFees)
+        .where(eq(studentFees.studentId, studentId))
+        .limit(1)
+        .then(rows => rows[0] || null);
 
-    if (studentFee) {
-      const feeWithExtras = studentFee as StudentFeeWithExtras;
-      feeStatus = {
-        totalAmount: feeWithExtras.totalAmount || 0,
-        amountPaid: feeWithExtras.amountPaid || 0,
-        amountPending: studentFee.amountPending || 0,
-        status: studentFee.status as "paid" | "partial" | "pending",
-        dueDate: feeWithExtras.dueDate || null,
-      };
+      if (studentFee) {
+        const feeWithExtras = studentFee as StudentFeeWithExtras;
+        feeStatus = {
+          totalAmount: feeWithExtras.totalAmount || 0,
+          amountPaid: feeWithExtras.amountPaid || 0,
+          amountPending: studentFee.amountPending || 0,
+          status: studentFee.status as "paid" | "partial" | "pending",
+          dueDate: feeWithExtras.dueDate || null,
+        };
+      }
+    } catch (error) {
+      // Silently ignore fee query errors (table may not exist, connection issue, etc.)
+      logger.debug("Fee status query failed - fees will not be shown", { error });
     }
   }
 
@@ -865,6 +919,43 @@ export async function getStudentProgressData(): Promise<StudentProgressData> {
     .limit(1)
     .then(rows => rows[0] || null);
 
+  // Fetch school name
+  let schoolName: string | null = null;
+  if (userRecord.schoolId) {
+    try {
+      const [school] = await db
+        .select({ name: schools.name })
+        .from(schools)
+        .where(eq(schools.id, userRecord.schoolId))
+        .limit(1);
+      schoolName = school?.name || null;
+    } catch {
+      // If school query fails, continue without school name
+    }
+  }
+
+  // Fetch class teacher name
+  let classTeacherName: string | null = null;
+  let className: string | null = null;
+  if (enrollment?.classId) {
+    try {
+      const [classRecord] = await db
+        .select({
+          name: classes.name,
+          classTeacherName: classes.classTeacherName,
+        })
+        .from(classes)
+        .where(eq(classes.id, enrollment.classId))
+        .limit(1);
+      if (classRecord) {
+        className = classRecord.name;
+        classTeacherName = classRecord.classTeacherName;
+      }
+    } catch {
+      // If class query fails, continue without class info
+    }
+  }
+
   const studentInfo: StudentInfo = {
     id: studentRecords[0].id,
     firstName: userRecord.firstName,
@@ -874,9 +965,11 @@ export async function getStudentProgressData(): Promise<StudentProgressData> {
     phone: userRecord.phone,
     classGrade: userRecord.classGrade,
     section: userRecord.section,
-    className: null, // Relation removed - would need separate query
+    className,
     classId: enrollment?.classId || null,
     schoolId: userRecord.schoolId,
+    schoolName,
+    classTeacherName,
     dateOfBirth: userRecord.dateOfBirth,
     profileImage: userRecord.profileImage,
   };

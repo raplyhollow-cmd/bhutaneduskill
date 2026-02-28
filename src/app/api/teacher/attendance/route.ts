@@ -11,16 +11,16 @@ import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { users, classes, enrollments, teacherAssignments } from "@/lib/db/schema";
 import { eq, and, inArray } from "drizzle-orm";
-import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, errorResponse } from "@/lib/api/response-helpers";
+import type { AuthContext } from "@/lib/api/route-handler";
 
 // ============================================================================
 // GET /api/teacher/attendance - Get classes for attendance marking
 // ============================================================================
 
 export const GET = createApiRoute(
-  async (request: NextRequest) => {
-    const auth = getAuth(request);
+  async (request: NextRequest, auth: AuthContext | null) => {
     if (!auth) {
       return errorResponse("Unauthorized", 401);
     }

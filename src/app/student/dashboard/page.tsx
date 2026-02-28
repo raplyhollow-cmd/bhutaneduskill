@@ -1,24 +1,22 @@
 /**
- * STUDENT DASHBOARD
+ * STUDENT DASHBOARD - Bubble/Gemini Style
  *
  * Key features:
- * - Welcome banner with student name
- * - Quick stats (assessments, career matches, goals, XP)
- * - Recommended next steps
- * - Upcoming deadlines
- * - Recent activity
- * Now using real database data via server actions.
+ * - Clean, modern bubble-style cards
+ * - School and class teacher info prominently displayed
+ * - Conversational AI interface
+ * - Well-organized card grid
+ * - Better visual hierarchy
  */
 
 "use client";
 
 import { logger } from "@/lib/logger";
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CeramicCallout } from "@/components/ui/ceramic-callout";
 import {
   ClipboardCheck,
   Briefcase,
@@ -31,6 +29,11 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
+  GraduationCap,
+  User,
+  School,
+  Award,
+  Flame,
 } from "lucide-react";
 import Link from "next/link";
 import { fetchStudentDashboard } from "../_actions";
@@ -42,84 +45,116 @@ import { RoadmapTracker } from "@/components/student/roadmap-tracker";
 import { MarksOverviewCard } from "@/components/student/marks-overview-card";
 import type { StudentDashboardData } from "@/lib/api/student";
 
-// Force dynamic rendering - this page uses server actions that require headers
 export const dynamic = 'force-dynamic';
 
-// Loading component
+// Loading component with bubble skeleton
 function DashboardSkeleton() {
   return (
-    <div className="space-y-8">
-      <Card className="border-0">
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <Skeleton className="h-8 w-48 mb-2" />
-              <Skeleton className="h-4 w-96" />
-            </div>
-            <Skeleton className="w-16 h-16 rounded-full" />
-          </div>
-        </CardContent>
-      </Card>
-      <div className="grid md:grid-cols-4 gap-6">
+    <div className="space-y-6 p-4">
+      <Skeleton className="h-32 w-full rounded-3xl" />
+      <div className="grid md:grid-cols-4 gap-4">
         {[1, 2, 3, 4].map((i) => (
-          <Card key={i}>
-            <CardHeader className="pb-3">
-              <Skeleton className="h-4 w-24" />
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-8 w-16 mb-2" />
-              <Skeleton className="h-3 w-20" />
-            </CardContent>
-          </Card>
+          <Skeleton key={i} className="h-28 rounded-2xl" />
         ))}
       </div>
+      <Skeleton className="h-48 w-full rounded-2xl" />
     </div>
   );
 }
 
-// Calculate XP based on achievements
-function calculateXP(
-  completedAssessments: number,
-  homeworkGraded: number,
-  attendanceRate: number,
-  modulesCompleted: number
-): { xp: number; level: number; progress: number } {
-  const assessmentXP = completedAssessments * 50;
-  const homeworkXP = homeworkGraded * 25;
-  const attendanceXP = Math.floor(attendanceRate * 2);
-  const moduleXP = modulesCompleted * 100;
-
-  const totalXP = assessmentXP + homeworkXP + attendanceXP + moduleXP;
-  const level = Math.floor(totalXP / 500) + 1;
-  const xpInLevel = totalXP % 500;
-  const progress = Math.round((xpInLevel / 500) * 100);
-
-  return { xp: totalXP, level, progress };
+// Bubble card component
+function BubbleCard({ children, className = "", gradient = false }: { children: React.ReactNode; className?: string; gradient?: boolean }) {
+  return (
+    <Card className={`rounded-2xl border-0 shadow-sm hover:shadow-md transition-all duration-300 ${gradient ? "text-white" : ""} ${className}`}>
+      <CardContent className="p-5">
+        {children}
+      </CardContent>
+    </Card>
+  );
 }
 
-// Get urgency badge style - ceramic variants
-function getUrgencyBadge(urgency: "high" | "medium" | "low"): "ceramic-error" | "ceramic-warning" | "ceramic-default" {
-  switch (urgency) {
-    case "high":
-      return "ceramic-error";
-    case "medium":
-      return "ceramic-warning";
-    case "low":
-      return "ceramic-default";
-  }
+// Stat bubble component
+function StatBubble({
+  icon: Icon,
+  label,
+  value,
+  subtext,
+  color = "orange",
+  href,
+}: {
+  icon: any;
+  label: string;
+  value: string | number;
+  subtext?: string;
+  color?: "orange" | "blue" | "green" | "purple";
+  href?: string;
+}) {
+  const colors = {
+    orange: "bg-gradient-to-br from-orange-400 to-orange-600 text-white",
+    blue: "bg-gradient-to-br from-blue-400 to-blue-600 text-white",
+    green: "bg-gradient-to-br from-emerald-400 to-emerald-600 text-white",
+    purple: "bg-gradient-to-br from-purple-400 to-purple-600 text-white",
+  };
+
+  const content = (
+    <BubbleCard className={colors[color]}>
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-white/80 text-sm font-medium mb-1">{label}</p>
+          <p className="text-2xl font-bold">{value}</p>
+          {subtext && <p className="text-white/70 text-xs mt-1">{subtext}</p>}
+        </div>
+        <Icon className="w-8 h-8 text-white/30" />
+      </div>
+    </BubbleCard>
+  );
+
+  return href ? <Link href={href}>{content}</Link> : content;
 }
 
-// Format date relative to today
-function formatRelativeDate(dateString: string): string {
-  const date = new Date(dateString);
-  const today = new Date();
-  const diffTime = Math.abs(today.getTime() - date.getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+// Action bubble component
+function ActionBubble({
+  icon: Icon,
+  title,
+  description,
+  badge,
+  urgency = "medium",
+  href,
+}: {
+  icon: any;
+  title: string;
+  description: string;
+  badge?: string;
+  urgency?: "high" | "medium" | "low";
+  href: string;
+}) {
+  const urgencyColors = {
+    high: "border-l-4 border-l-red-500 bg-red-50 dark:bg-red-950/20",
+    medium: "border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-950/20",
+    low: "border-l-4 border-l-blue-500 bg-blue-50 dark:bg-blue-950/20",
+  };
 
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
-  if (diffDays <= 7) return `${diffDays} days ago`;
-  return date.toLocaleDateString();
+  return (
+    <Link href={href}>
+      <Card className={`rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer ${urgencyColors[urgency]}`}>
+        <CardContent className="p-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 flex items-center justify-center">
+              <Icon className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <h4 className="font-semibold text-gray-900 dark:text-gray-100 truncate">{title}</h4>
+                {badge && <Badge className="text-xs">{badge}</Badge>}
+              </div>
+              <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{description}</p>
+            </div>
+            <ArrowRight className="w-5 h-5 text-gray-400 flex-shrink-0" />
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
+  );
 }
 
 export default function StudentDashboardPage() {
@@ -147,28 +182,22 @@ export default function StudentDashboardPage() {
     }
 
     loadData();
-
-    return () => {
-      mounted = false;
-    };
+    return () => { mounted = false; };
   }, []);
 
-  if (isLoading) {
-    return <DashboardSkeleton />;
-  }
+  if (isLoading) return <DashboardSkeleton />;
 
   if (error || !dashboardData) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-ceramic-bg">
-        <Card variant="ceramic" className="max-w-md mx-4">
-          <CardHeader>
-            <CardTitle className="text-ceramic-negative">Dashboard Error</CardTitle>
-            <CardDescription>
-              There was a problem loading your dashboard. Please try refreshing the page.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="ceramic" asChild>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 to-amber-50 dark:from-gray-900 dark:to-gray-800">
+        <Card className="max-w-md mx-4 rounded-2xl">
+          <CardContent className="p-6 text-center">
+            <AlertCircle className="w-12 h-12 text-orange-500 mx-auto mb-4" />
+            <h2 className="text-lg font-semibold mb-2">Dashboard Error</h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              There was a problem loading your dashboard. Please try refreshing.
+            </p>
+            <Button asChild>
               <Link href="/student">Reload Page</Link>
             </Button>
           </CardContent>
@@ -181,17 +210,17 @@ export default function StudentDashboardPage() {
 
   // Calculate XP
   const modulesCompleted = achievements.filter(a => a.type === "module").length;
-  const { xp, level, progress: xpProgress } = calculateXP(
-    assessments.completed,
-    homework.graded,
-    attendance.rate,
-    modulesCompleted
-  );
+  const assessmentXP = assessments.completed * 50;
+  const homeworkXP = homework.graded * 25;
+  const attendanceXP = Math.floor(attendance.rate * 2);
+  const moduleXP = modulesCompleted * 100;
+  const totalXP = assessmentXP + homeworkXP + attendanceXP + moduleXP;
+  const level = Math.floor(totalXP / 500) + 1;
+  const xpProgress = Math.round(((totalXP % 500) / 500) * 100);
 
-  // Determine recommended actions based on actual data
+  // Build recommended actions
   const recommendedActions = [];
 
-  // Assessment recommendation
   if (assessments.completed < 3) {
     const pendingAssessments = ["RIASEC", "DISC", "MBTI", "Work Values", "Learning Styles"].slice(assessments.completed);
     recommendedActions.push({
@@ -199,349 +228,303 @@ export default function StudentDashboardPage() {
       title: `Complete ${pendingAssessments[0] || "Career"} Assessment`,
       description: "Discover your strengths and interests",
       icon: ClipboardCheck,
-      iconBg: "bg-orange-100",
-      iconColor: "text-orange-600",
       badge: assessments.completed === 0 ? "Start Here" : "Recommended",
-      badgeColor: "bg-orange-100 text-orange-700",
+      urgency: "high" as const,
       link: "/student/assessment",
     });
   }
 
-  // Career plan recommendation
-  if (assessments.completed >= 1) {
-    recommendedActions.push({
-      id: "plan",
-      title: "Update Your Career Plan",
-      description: "Set goals based on your assessment results",
-      icon: Target,
-      iconBg: "bg-blue-100",
-      iconColor: "text-blue-600",
-      badge: "Update",
-      badgeColor: "bg-blue-100 text-blue-700",
-      link: "/student/plan",
-    });
-  }
-
-  // Pending homework recommendation
   if (homework.pending > 0) {
     recommendedActions.push({
       id: "homework",
-      title: `${homework.pending} Homework Assignment${homework.pending > 1 ? "s" : ""} Pending`,
+      title: `${homework.pending} Homework ${homework.pending > 1 ? "Assignments" : "Assignment"} Pending`,
       description: "Stay on top of your assignments",
       icon: BookOpen,
-      iconBg: "bg-amber-100",
-      iconColor: "text-amber-600",
       badge: `${homework.pending} Pending`,
-      badgeColor: "bg-amber-100 text-amber-700",
+      urgency: homework.pending > 3 ? "high" : "medium" as const,
       link: "/student/homework",
     });
   }
 
-  // Explore colleges recommendation
+  if (fees?.amountPending && fees.amountPending > 0 && fees.dueDate) {
+    const dueDate = new Date(fees.dueDate);
+    const daysUntil = Math.ceil((dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    if (daysUntil <= 14) {
+      recommendedActions.push({
+        id: "fees",
+        title: `Fee Payment Due (${daysUntil} day${daysUntil === 1 ? "" : "s"} left)`,
+        description: `Nu. ${fees.amountPending} pending`,
+        icon: AlertCircle,
+        badge: "Action Needed",
+        urgency: daysUntil <= 7 ? "high" : "medium" as const,
+        link: "/student/fees",
+      });
+    }
+  }
+
   if (assessments.completed >= 2) {
     recommendedActions.push({
       id: "colleges",
       title: "Explore RUB Colleges",
       description: "Find programs that match your profile",
       icon: Briefcase,
-      iconBg: "bg-purple-100",
-      iconColor: "text-purple-600",
       badge: "Explore",
-      badgeColor: "bg-purple-100 text-purple-700",
+      urgency: "low" as const,
       link: "/student/rub",
     });
   }
 
-  // Fee reminder
-  if (fees && fees.amountPending > 0 && fees.dueDate) {
-    const dueDate = new Date(fees.dueDate);
-    const daysUntil = Math.ceil((dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-    if (daysUntil <= 14) {
-      recommendedActions.push({
-        id: "fees",
-        title: `Fee Payment Due (${daysUntil} ${daysUntil === 1 ? "day" : "days"} left)`,
-        description: `Nu. ${fees.amountPending} pending`,
-        icon: AlertCircle,
-        iconBg: "bg-red-100",
-        iconColor: "text-red-600",
-        badge: "Action Needed",
-        badgeColor: "bg-red-100 text-red-700",
-        link: "/student/fees",
-      });
-    }
-  }
-
   return (
-    <div className="space-y-8">
-      {/* Welcome Banner */}
-      <Card style={{ background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)' }} className="text-white border-0">
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold mb-2">
-                Welcome back, {student.firstName}!
-              </h1>
-              <p className="text-orange-50">
-                {student.className ? `Class ${student.classGrade}${student.section ? " " + student.section : ""}` : "Student"} • Continue your career exploration journey
-              </p>
+    <div className="space-y-6 p-4 max-w-7xl mx-auto">
+      {/* Welcome Header with School & Class Teacher Info */}
+      <Card className="rounded-3xl border-0 overflow-hidden">
+        <div className="bg-gradient-to-br from-orange-500 via-orange-600 to-amber-600 p-6 text-white">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2">
+                <Flame className="w-6 h-6 text-orange-200" />
+                <h1 className="text-2xl md:text-3xl font-bold">Welcome back, {student.firstName}!</h1>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 text-orange-100 text-sm">
+                {student.schoolName && (
+                  <span className="flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full">
+                    <School className="w-4 h-4" />
+                    {student.schoolName}
+                  </span>
+                )}
+                {student.className && (
+                  <span className="flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full">
+                    <GraduationCap className="w-4 h-4" />
+                    Class {student.classGrade}{student.section ? ` ${student.section}` : ""}
+                  </span>
+                )}
+                {student.classTeacherName && (
+                  <span className="flex items-center gap-1 bg-white/20 px-3 py-1 rounded-full">
+                    <User className="w-4 h-4" />
+                    Class Teacher: {student.classTeacherName}
+                  </span>
+                )}
+              </div>
             </div>
-            <Sparkles className="w-16 h-16 text-orange-200 opacity-50" />
+            <div className="flex items-center gap-4 bg-white/20 rounded-2xl px-5 py-3">
+              <div>
+                <p className="text-orange-100 text-xs">Level</p>
+                <p className="text-2xl font-bold">{level}</p>
+              </div>
+              <div className="w-px h-10 bg-white/30" />
+              <div>
+                <p className="text-orange-100 text-xs">Total XP</p>
+                <p className="text-2xl font-bold">{totalXP}</p>
+              </div>
+            </div>
+          </div>
+          <Progress value={xpProgress} className="h-2 mt-4 bg-white/20" />
+          <p className="text-orange-100 text-xs mt-1">{xpProgress}% to Level {level + 1}</p>
+        </div>
+      </Card>
+
+      {/* Pending Enrollment Alert */}
+      {dashboardData.onboardingStatus === "pending_enrollment" && (
+        <Card className="rounded-2xl border-l-4 border-l-amber-500 bg-amber-50 dark:bg-amber-950/20">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-4">
+              <Clock className="w-6 h-6 text-amber-600" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-amber-900 dark:text-amber-100">Enrollment Pending</h3>
+                <p className="text-sm text-amber-700 dark:text-amber-300">
+                  Your application is being reviewed. You can take assessments and explore careers while waiting.
+                </p>
+              </div>
+              <Badge className="bg-amber-200 text-amber-800">Awaiting Approval</Badge>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Stats Bubbles Row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatBubble
+          icon={ClipboardCheck}
+          label="Assessments"
+          value={`${assessments.completed}/5`}
+          subtext="Career assessments"
+          color="orange"
+          href="/student/assessment"
+        />
+        <StatBubble
+          icon={Briefcase}
+          label="Career Matches"
+          value={careerMatches.totalMatches}
+          subtext={careerMatches.topMatches > 0 ? `${careerMatches.topMatches} top matches` : "Based on profile"}
+          color="blue"
+          href="/student/careers"
+        />
+        <StatBubble
+          icon={Target}
+          label="Active Goals"
+          value={assessments.completed >= 1 ? "3" : "0"}
+          subtext={assessments.completed >= 1 ? "Short-term goals" : "Complete assessment"}
+          color="green"
+          href="/student/plan"
+        />
+        <StatBubble
+          icon={TrendingUp}
+          label="Attendance"
+          value={`${attendance.rate}%`}
+          subtext={`${attendance.presentDays} present days`}
+          color="purple"
+        />
+      </div>
+
+      {/* AI Chat Section - Gemini Style */}
+      <Card className="rounded-3xl border-0 shadow-lg overflow-hidden">
+        <CardContent className="p-0">
+          <div className="bg-gradient-to-br from-violet-500 to-purple-600 p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-white">AI Career Coach</h3>
+                <p className="text-white/80 text-sm">Your personal guide to career success</p>
+              </div>
+            </div>
+          </div>
+          <div className="p-4 bg-gray-50 dark:bg-gray-900">
+            <AICareerCoachWidget />
           </div>
         </CardContent>
       </Card>
 
-      {/* Pending Enrollment Banner - Ceramic Styled */}
-      {dashboardData.onboardingStatus === "pending_enrollment" && (
-        <CeramicCallout variant="ceramic-warning">
-          <div className="flex items-center gap-4">
-            <div className="p-2 bg-ceramic-orange-100 rounded-full">
-              <Clock className="h-6 w-6 text-ceramic-orange-600" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-ceramic-primary mb-1">Enrollment Pending</h3>
-              <p className="text-ceramic-secondary text-sm">
-                Your application is being reviewed by the school administration.
-                You will be notified once enrolled. In the meantime, you can take
-                assessments and explore career options.
-              </p>
-            </div>
-            <div className="hidden md:block">
-              <Badge variant="ceramic-warning">
-                Awaiting Approval
-              </Badge>
-            </div>
+      {/* Recommended Actions - Bubble Style */}
+      {recommendedActions.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+            <Target className="w-5 h-5 text-orange-500" />
+            Recommended for You
+          </h2>
+          <div className="grid md:grid-cols-2 gap-3">
+            {recommendedActions.slice(0, 4).map((action) => (
+              <ActionBubble
+                key={action.id}
+                icon={action.icon}
+                title={action.title}
+                description={action.description}
+                badge={action.badge}
+                urgency={action.urgency}
+                href={action.link}
+              />
+            ))}
           </div>
-        </CeramicCallout>
+        </div>
       )}
 
-      {/* AI Insights Section - Dynamic from API */}
-      <StudentAIInsights
-        dashboardData={{
-          assessments,
-          homework,
-          attendance,
-          careerMatches,
-          fees,
-        }}
-      />
-
-      {/* NEW: Row 1 - AI Career Coach + Quick Stats */}
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* AI Career Coach Widget */}
-        <div className="lg:col-span-1">
-          <AICareerCoachWidget />
-        </div>
-
-        {/* Quick Stats - Ceramic Styled */}
-        <div className="lg:col-span-2 grid md:grid-cols-4 gap-6">
-          {/* Assessments Completed */}
-          <Card variant="ceramic">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-ceramic-secondary flex items-center gap-2">
-                <ClipboardCheck className="w-4 h-4" />
-                Assessments
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-ceramic-primary">{assessments.completed}/5</div>
-              <p className="text-xs text-ceramic-dimmed mt-1">Career assessments</p>
-              {assessments.completed < 5 && (
-                <Link href="/student/assessment" className="text-xs text-orange-600 hover:underline mt-2 inline-block">
-                  Complete more →
-                </Link>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Career Matches */}
-          <Card variant="ceramic">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-ceramic-secondary flex items-center gap-2">
-                <Briefcase className="w-4 h-4" />
-                Career Matches
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-ceramic-primary">{careerMatches.totalMatches}</div>
-              <p className="text-xs text-ceramic-dimmed mt-1">
-                {careerMatches.topMatches > 0 ? `${careerMatches.topMatches} top matches` : "Based on your profile"}
-              </p>
-              {careerMatches.totalMatches > 0 && (
-                <Link href="/student/careers" className="text-xs text-orange-600 hover:underline mt-2 inline-block">
-                  View careers →
-                </Link>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Goals Set */}
-          <Card variant="ceramic">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-ceramic-secondary flex items-center gap-2">
-                <Target className="w-4 h-4" />
-                Active Goals
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-ceramic-primary">{assessments.completed >= 1 ? "3" : "0"}</div>
-              <p className="text-xs text-ceramic-dimmed mt-1">
-                {assessments.completed >= 1 ? "Short-term goals set" : "Complete assessment first"}
-              </p>
-              {assessments.completed >= 1 && (
-                <Link href="/student/plan" className="text-xs text-orange-600 hover:underline mt-2 inline-block">
-                  Update goals →
-                </Link>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* XP & Level */}
-          <Card variant="ceramic">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-ceramic-secondary flex items-center gap-2">
-                <TrendingUp className="w-4 h-4" />
-                Your Progress
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-end gap-2">
-                <div className="text-2xl font-bold text-ceramic-primary">Level {level}</div>
-                <div className="text-sm text-ceramic-dimmed mb-1">{xp} XP</div>
-              </div>
-              <Progress value={xpProgress} className="h-2 mt-2" />
-              <p className="text-xs text-ceramic-dimmed mt-1">{xpProgress}% to Level {level + 1}</p>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-      {/* NEW: Row 2 - Roadmap Tracker + Marks Overview */}
+      {/* Two Column Layout */}
       <div className="grid lg:grid-cols-2 gap-6">
+        {/* Roadmap Tracker */}
         <RoadmapTracker />
+
+        {/* Marks Overview */}
         <MarksOverviewCard />
       </div>
 
-      {/* Recommended Next Steps - Ceramic Styled */}
-      {recommendedActions.length > 0 && (
-        <Card variant="ceramic">
-          <CardHeader>
-            <CardTitle>Recommended for You</CardTitle>
-            <CardDescription>Personalized next steps based on your progress</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {recommendedActions.slice(0, 4).map((action) => (
-                <Link key={action.id} href={action.link}>
-                  <div className="flex items-center justify-between p-4 rounded-lg border border-ceramic-border hover:border-ceramic-orange-300 hover:bg-ceramic-orange-50/50 transition-colors cursor-pointer group">
-                    <div className="flex items-center gap-4">
-                      <div className={`w-10 h-10 rounded-full ${action.iconBg} flex items-center justify-center`}>
-                        <action.icon className={`w-5 h-5 ${action.iconColor}`} />
+      {/* Upcoming Deadlines - Clean List */}
+      {deadlines.length > 0 && (
+        <BubbleCard>
+          <div className="flex items-center gap-2 mb-4">
+            <Calendar className="w-5 h-5 text-orange-500" />
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">Upcoming Deadlines</h3>
+          </div>
+          <div className="space-y-2">
+            {deadlines.slice(0, 5).map((deadline) => {
+              const dueDate = new Date(deadline.dueDate);
+              const daysUntil = Math.ceil((dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+              const isPast = daysUntil < 0;
+
+              return (
+                <Link key={deadline.id} href={deadline.link}>
+                  <div className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                        deadline.type === "homework" ? "bg-blue-100 text-blue-600" :
+                        deadline.type === "assessment" ? "bg-purple-100 text-purple-600" :
+                        deadline.type === "fee" ? "bg-red-100 text-red-600" :
+                        "bg-gray-100 text-gray-600"
+                      }`}>
+                        {deadline.type === "homework" ? <BookOpen className="w-5 h-5" /> :
+                         deadline.type === "assessment" ? <ClipboardCheck className="w-5 h-5" /> :
+                         deadline.type === "fee" ? <AlertCircle className="w-5 h-5" /> :
+                         <Calendar className="w-5 h-5" />}
                       </div>
                       <div>
-                        <div className="font-medium text-ceramic-primary flex items-center gap-2">
-                          {action.title}
-                          <Badge variant={action.badgeColor.includes("orange") ? "ceramic-warning" : action.badgeColor.includes("blue") ? "ceramic-info" : action.badgeColor.includes("purple") ? "ceramic" : "ceramic-default"}>
-                            {action.badge}
-                          </Badge>
-                        </div>
-                        <div className="text-sm text-ceramic-secondary">{action.description}</div>
+                        <p className="font-medium text-gray-900 dark:text-gray-100">{deadline.title}</p>
+                        <p className="text-sm text-gray-500">{deadline.type}</p>
                       </div>
                     </div>
-                    <ArrowRight className="w-5 h-5 text-ceramic-dimmed group-hover:text-orange-600 transition-colors" />
+                    <div className="text-right">
+                      <Badge variant={deadline.urgency === "high" ? "destructive" : deadline.urgency === "medium" ? "default" : "secondary"}>
+                        {isPast ? "Overdue" : daysUntil === 0 ? "Today" : daysUntil === 1 ? "Tomorrow" : `${daysUntil} days`}
+                      </Badge>
+                    </div>
                   </div>
                 </Link>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+              );
+            })}
+          </div>
+        </BubbleCard>
+      )}
+
+      {/* Recent Achievements - Bubble Grid */}
+      {achievements.length > 0 && (
+        <BubbleCard>
+          <div className="flex items-center gap-2 mb-4">
+            <Award className="w-5 h-5 text-orange-500" />
+            <h3 className="font-semibold text-gray-900 dark:text-gray-100">Recent Achievements</h3>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {achievements.slice(0, 6).map((achievement) => {
+              const xpGain = achievement.type === "assessment" ? 50 : achievement.type === "module" ? 100 : 25;
+              return (
+                <div
+                  key={achievement.id}
+                  className="p-4 rounded-xl bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-950/20 dark:to-amber-950/10 border border-orange-200 dark:border-orange-900"
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                      achievement.type === "assessment" ? "bg-purple-100 text-purple-600" :
+                      achievement.type === "module" ? "bg-green-100 text-green-600" :
+                      "bg-blue-100 text-blue-600"
+                    }`}>
+                      {achievement.type === "assessment" ? <ClipboardCheck className="w-4 h-4" /> :
+                       achievement.type === "module" ? <BookOpen className="w-4 h-4" /> :
+                       <TrendingUp className="w-4 h-4" />}
+                    </div>
+                    <Badge className="bg-orange-200 text-orange-800 text-xs">+{xpGain} XP</Badge>
+                  </div>
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100 line-clamp-2">{achievement.title}</p>
+                  <p className="text-xs text-gray-500 mt-1">{formatRelativeDate(achievement.date)}</p>
+                </div>
+              );
+            })}
+          </div>
+        </BubbleCard>
       )}
 
       {/* Assessment Profile Card */}
-      {assessments.completed >= 1 && (
-        <AssessmentProfileCard />
-      )}
-
-      {/* Upcoming Deadlines - Ceramic Styled */}
-      {deadlines.length > 0 && (
-        <Card variant="ceramic">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calendar className="w-5 h-5" />
-              Upcoming Deadlines
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {deadlines.slice(0, 5).map((deadline) => (
-                <div key={deadline.id} className="flex items-center justify-between p-3 rounded-lg bg-ceramic-gray-50 dark:bg-ceramic-gray-800">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-2 h-2 rounded-full ${
-                      deadline.urgency === "high" ? "bg-ceramic-negative" :
-                      deadline.urgency === "medium" ? "bg-ceramic-warning" :
-                      "bg-ceramic-positive"
-                    }`} />
-                    <div>
-                      <div className="font-medium text-ceramic-primary">{deadline.title}</div>
-                      <div className="text-sm text-ceramic-secondary">{deadline.type}</div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Badge variant={getUrgencyBadge(deadline.urgency)}>
-                      {deadline.urgency === "high" ? "Due Soon" :
-                       deadline.urgency === "medium" ? "This Week" : "Upcoming"}
-                    </Badge>
-                    <div className="text-sm text-ceramic-secondary flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {formatRelativeDate(deadline.dueDate)}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Recent Achievements - Ceramic Styled */}
-      {achievements.length > 0 && (
-        <Card variant="ceramic">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5" />
-              Recent Achievements
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-2 gap-3">
-              {achievements.slice(0, 6).map((achievement) => (
-                <div key={achievement.id} className="flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-orange-50 to-amber-50 border border-ceramic-orange-200">
-                  <div className={`w-10 h-10 rounded-full ${
-                    achievement.type === "assessment" ? "bg-ceramic-purple-100" :
-                    achievement.type === "module" ? "bg-ceramic-green-100" :
-                    "bg-ceramic-blue-100"
-                  } flex items-center justify-center`}>
-                    {achievement.type === "assessment" ? (
-                      <ClipboardCheck className="w-5 h-5 text-ceramic-brand" />
-                    ) : achievement.type === "module" ? (
-                      <BookOpen className="w-5 h-5 text-ceramic-positive" />
-                    ) : (
-                      <TrendingUp className="w-5 h-5 text-ceramic-blue-600" />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-medium text-ceramic-primary">{achievement.title}</div>
-                    <div className="text-xs text-ceramic-dimmed">{formatRelativeDate(achievement.date)}</div>
-                  </div>
-                  <Badge variant="ceramic-default">
-                    {achievement.type === "assessment" ? "+50 XP" :
-                     achievement.type === "module" ? "+100 XP" : "+25 XP"}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {assessments.completed >= 1 && <AssessmentProfileCard />}
     </div>
   );
+}
+
+// Helper function for date formatting
+function formatRelativeDate(dateString: string): string {
+  const date = new Date(dateString);
+  const today = new Date();
+  const diffTime = Math.abs(today.getTime() - date.getTime());
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays <= 7) return `${diffDays} days ago`;
+  return date.toLocaleDateString();
 }

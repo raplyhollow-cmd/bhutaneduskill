@@ -257,6 +257,68 @@ const students = await db.query.users.findMany({
 
 **Note**: If you need to use `db.query`, you must use the `neon-serverless` driver. The `neon-http` driver is for simple SQL queries only.
 
+### Error: "column cannot be cast automatically to type json"
+
+**Severity**: P1 (Blocks `db:push`, prevents schema changes)
+
+**Symptoms**:
+```
+PostgresError: column "weekly_menu" cannot be cast automatically to type json
+PostgresError: column "cooks" cannot be cast automatically to type json
+PostgresError: column "recommendations" cannot be cast automatically to type json
+```
+
+**Root Cause**:
+Initial migration created columns as `text` type, but schema files define them as `json`. PostgreSQL cannot automatically cast `text` to `json` without explicit instructions using the `USING` clause.
+
+This was a systematic issue affecting **96+ JSON columns** across multiple tables: hostel_mess, hostel_rooms, announcements, homework, classes, users, schools, assessments, bcse_registrations, career_matches, and many more.
+
+**Permanent Fix (Clean Slate Approach)**:
+
+Since individual column fixes kept revealing more affected columns, the most reliable solution is:
+
+1. **Drop all tables** - Start fresh
+2. **Run `db:push`** - Recreate from schema with correct types
+
+```bash
+# Step 1: Drop all tables
+node scripts/drop-all-tables.js
+
+# Step 2: Recreate with correct types
+npm run db:push
+```
+
+**Scripts Created**:
+- `scripts/drop-all-tables.js` - Drops all 196 tables
+- `scripts/fix-all-json-columns.js` - Fixes individual columns if needed
+- `scripts/verify-db-state.js` - Verifies database health
+
+**SQL Pattern (for individual fixes)**:
+```sql
+ALTER TABLE "table_name" ALTER COLUMN "column_name" SET DATA TYPE json
+USING COALESCE(column_name::json, '[]'::json);
+```
+
+**Why This Happened**:
+- Original migration files had `text` type for JSON columns
+- Schema files were later updated to use `json()` type
+- `drizzle-kit push` compares migration files against current schema
+- Without dropping tables, the mismatch persists
+
+**Verification**:
+```bash
+# Check JSON column types
+node scripts/check-json-columns.js
+
+# Scan for suspicious columns
+node scripts/scan-wrong-json-columns.js
+```
+
+**Result After Fix**:
+- 196 tables recreated with correct types
+- 366 JSON columns with proper `json`/`jsonb` types
+- All `text` columns (contact_email, contact_phone, tenant_id, subscription_tier) verified correct
+
 ---
 
 ## 4. Authentication Errors
@@ -1628,9 +1690,42 @@ if (pendingStatuses.includes(user.onboardingStatus || "")) {
 - `src/app/student/layout.tsx` - Already had isPendingApproval logic
 - `src/app/pending-approval/page.tsx` - Shows waiting page
 
-**Note**: Students are now properly blocked until school admin approves their application.
+**Note**: Students are now properly blocked until approved. Multi-role approval system has been implemented.
 
-**Future Enhancement**: Consider allowing class teachers to approve students in their classes as an alternative workflow.
+**Multi-Role Approval System (IMPLEMENTED ✅)**:
+Students can now be approved by THREE different roles:
+1. **School Admins** - Approve their school's students via `/school-admin/students/pending`
+2. **Platform Admins** - Approve any student via `/admin/students`
+3. **Class Teachers** - Approve students for grades they teach via `/teacher/approvals`
+
+**Approval APIs**:
+```typescript
+// Approve (works for all three roles)
+POST /api/school-admin/applications/[id]/approve
+Body: { type: "student" }
+→ Sets onboardingStatus = "enrolled"
+
+// Reject (works for all three roles)
+PATCH /api/school-admin/applications/[id]/reject
+Body: { type: "student", reason: "..." }
+
+// Get pending students (teacher only)
+GET /api/teacher/pending-students
+```
+
+**Onboarding Status Flow**:
+```
+pending_enrollment (blocked) → enrolled (allowed) → complete
+```
+
+**Security**:
+- Teachers can only approve students in grades they teach
+- School admins can approve any student in their school
+- Platform admins have no restrictions
+
+**Files Added**:
+- `src/app/teacher/approvals/page.tsx` - Teacher approval UI
+- `src/app/api/teacher/pending-students/route.ts` - Teacher's pending students API
 
 ---
 
@@ -1683,4 +1778,4 @@ npm run db:push    # Create/update notifications tables
 ---
 
 **Last Updated**: March 1, 2026
-**Version**: 1.9
+**Version**: 2.0

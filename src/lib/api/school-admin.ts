@@ -263,11 +263,14 @@ export async function getDashboardStats(schoolId: string): Promise<DashboardStat
 
   const pendingAttendance = pendingAttendanceResult.count - completedAttendanceResult.count;
 
-  // Count pending fees
+  // Count pending fees - handle NULL values properly
   const [pendingFeesResult] = await db
     .select({ count: count() })
     .from(studentFees)
-    .where(and(eq(studentFees.schoolId, schoolId), sql`${studentFees.amountPending} > 0`));
+    .where(and(
+      eq(studentFees.schoolId, schoolId),
+      sql`${studentFees.amountPending} IS NOT NULL AND ${studentFees.amountPending} > 0`
+    ));
 
   // Calculate total revenue from current term
   const currentYear = new Date().getFullYear();
