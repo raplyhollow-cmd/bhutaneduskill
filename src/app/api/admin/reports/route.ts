@@ -121,7 +121,19 @@ export const POST = createApiRoute(
 
     switch (reportType) {
       case "school-performance": {
-        const allSchools = await db.select().from(schools).orderBy(desc(schools.createdAt));
+        const allSchools = await db
+          .select({
+            id: schools.id,
+            name: schools.name,
+            code: schools.code,
+            type: schools.type,
+            tier: schools.tier,
+            city: schools.city,
+            status: schools.status,
+            createdAt: schools.createdAt,
+          })
+          .from(schools)
+          .orderBy(desc(schools.createdAt));
 
         // Get student counts per school
         const schoolStats = await Promise.all(

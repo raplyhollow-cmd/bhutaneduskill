@@ -34,14 +34,35 @@ export const GET = createApiRoute(
     // Get school information if user has a school
     let schoolRecord = null;
     if (userRecord.schoolId) {
-      schoolRecord = await db.select().from(schools).where(eq(schools.id, userRecord.schoolId)).limit(1).then(r => r[0]);
+      schoolRecord = await db
+        .select({
+          id: schools.id,
+          name: schools.name,
+          code: schools.code,
+          type: schools.type,
+          tier: schools.tier,
+          city: schools.city,
+        })
+        .from(schools)
+        .where(eq(schools.id, userRecord.schoolId))
+        .limit(1)
+        .then(r => r[0]);
     }
 
     // Get department information if teacher has a department
     let departmentRecord = null;
     if (teacherRecord?.department) {
       // Try to find department by name (since teachers table stores department name)
-      departmentRecord = await db.select().from(departments).where(eq(departments.name, teacherRecord.department)).limit(1).then(r => r[0]);
+      departmentRecord = await db
+        .select({
+          id: departments.id,
+          name: departments.name,
+          code: departments.code,
+        })
+        .from(departments)
+        .where(eq(departments.name, teacherRecord.department))
+        .limit(1)
+        .then(r => r[0]);
     }
 
     // Parse subjects from JSON string if available
