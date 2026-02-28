@@ -1370,6 +1370,68 @@ const schoolRecord = await db
 
 ---
 
+### Error: Teacher/Student Setup - Schools Query Selecting All Columns
+
+**Severity**: CRITICAL (Setup fails with database query error)
+
+**Symptoms**:
+```
+Failed to process setup
+Failed query: select * from "schools" where "schools"."code" = $1
+```
+
+**Root Cause**:
+Same issue as school-admin - using `.select()` without specifying columns causes failures when columns don't exist.
+
+**Permanent Fix**:
+Apply the same pattern - select only specific columns.
+
+**Files Fixed**:
+- [src/app/api/setup/teacher/route.ts:216-220](src/app/api/setup/teacher/route.ts)
+- [src/app/api/setup/student/route.ts:219-224](src/app/api/setup/student/route.ts)
+
+---
+
+### Error: School-Admin Subjects Page - Empty Global Subjects Dropdown
+
+**Severity**: MEDIUM (UI feature doesn't work)
+
+**Symptoms**:
+```
+Clicking "Add Subject" shows empty dropdown
+No global subjects appear despite 110 records in database
+```
+
+**Root Cause**:
+The API `/api/subjects/global` returns `{ data: { subjects: [...] } }` but the frontend was accessing `data.subjects` instead of `data.data.subjects`.
+
+**Permanent Fix**:
+Correctly unwrap the nested response structure.
+
+**Before (WRONG)**:
+```typescript
+// src/app/school-admin/subjects/page.tsx line 108-110
+const res = await fetch("/api/subjects/global");
+const data = await res.json();
+setGlobalSubjects(data.subjects || []);  // ❌ Wrong path
+```
+
+**After (CORRECT)**:
+```typescript
+// src/app/school-admin/subjects/page.tsx line 108-111
+const res = await fetch("/api/subjects/global");
+const json = await res.json();
+setGlobalSubjects(json.data?.subjects || []);  // ✅ Correct path
+```
+
+**Files Fixed**:
+- [src/app/school-admin/subjects/page.tsx:106-114](src/app/school-admin/subjects/page.tsx)
+
+**Related Files**:
+- [src/lib/db/seed-subjects.ts](src/lib/db/seed-subjects.ts) - New seed script for Bhutan curriculum subjects
+
+---
+
 ## Session Summary: February 28, 2026 (Evening)
 
 | Fix Type | Files | Impact |
