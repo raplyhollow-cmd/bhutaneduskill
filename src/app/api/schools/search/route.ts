@@ -19,7 +19,7 @@ import { schools } from "@/lib/db/schema";
 import { ilike } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { createApiRoute } from "@/lib/api/route-handler";
-import { badRequestResponse } from "@/lib/api/response-helpers";
+import { successResponse, badRequestResponse } from "@/lib/api/response-helpers";
 
 export const GET = createApiRoute(
   async (request: NextRequest) => {
@@ -50,10 +50,7 @@ export const GET = createApiRoute(
       resultsCount: results.length,
     });
 
-    return {
-      success: true,
-      schools: results,
-    };
+    return successResponse({ schools: results });
   },
   [] // Open endpoint - no auth required
 );

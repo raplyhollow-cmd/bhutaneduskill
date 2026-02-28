@@ -116,9 +116,10 @@ export const toastAnimation = {
 
   easing: {
     // Clerk-style cubic bezier for smooth entrance
-    enter: 'cubic-bezier(0.16, 1, 0.3, 1)',
+    // Framer Motion requires array format, not CSS string
+    enter: [0.16, 1, 0.3, 1] as const,
     // Quick exit
-    exit: 'cubic-bezier(0.4, 0, 1, 1)',
+    exit: [0.4, 0, 1, 1] as const,
     // Progress bar linear
     progress: 'linear',
   },

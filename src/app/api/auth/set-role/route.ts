@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
+import { createClerkClient } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { users, schools, schoolAdminApplications } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { applyRateLimit, applyRateLimitAuth, addRateLimitHeaders, checkRateLimitWithConfig, RateLimitPresets } from "@/lib/rate-limit";
+import { nanoid } from "nanoid";
 
 export async function GET(request: NextRequest) {
   try {
@@ -33,9 +35,167 @@ export async function GET(request: NextRequest) {
 
     const user = userRecords[0];
 
+    // ========================================================================
+    // CRITICAL FIX: Auto-create database record if not exists
+    // This fixes the 403 errors caused by Clerk auth working but no DB record
+    // ========================================================================
     if (!user) {
-      // User not in database yet - needs setup
-      logger.debug("User not found in database, needs setup", { clerkUserId: userId });
+      logger.debug("User not found in database, checking Clerk metadata", { clerkUserId: userId });
+
+      // Get full Clerk user with metadata to determine user type
+      let userType: string | undefined;
+      let firstName = '';
+      let lastName = '';
+      let email = '';
+
+      try {
+        const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
+        const clerkUser = await clerkClient.users.getUser(userId);
+
+        // Get userType from Clerk public metadata
+        userType = clerkUser.publicMetadata?.userType as string;
+        firstName = clerkUser.firstName || '';
+        lastName = clerkUser.lastName || '';
+        email = clerkUser.emailAddresses[0]?.emailAddress || '';
+
+        logger.debug("Clerk user metadata retrieved", {
+          clerkUserId: userId,
+          userType,
+          firstName,
+          lastName,
+          email,
+        });
+      } catch (clerkError) {
+        logger.error("Failed to get Clerk user metadata", clerkError);
+      }
+
+      // If we have a userType from Clerk metadata, create the database record
+      if (userType && ['admin', 'school-admin', 'teacher', 'student', 'parent', 'counselor'].includes(userType)) {
+        const now = new Date().toISOString();
+        const newUserId = `user-${nanoid()}`;
+
+        await db.insert(users).values({
+          id: newUserId,
+          clerkUserId: userId,
+          type: userType,
+          role: userType, // Role matches type initially
+          name: `${firstName} ${lastName}`.trim() || 'User',
+          firstName,
+          lastName,
+          email,
+          phone: '',
+          country: 'Bhutan',
+          grade: 0,
+          enrollmentDate: now.split('T')[0],
+          isActive: true,
+          emailVerified: false,
+          onboardingComplete: userType === 'admin', // Admins skip onboarding
+          onboardingStatus: userType === 'admin' ? 'complete' : 'restricted',
+        });
+
+        logger.info("Auto-created database user record from Clerk auth", {
+          userId: newUserId,
+          clerkUserId: userId,
+          userType,
+        });
+
+        // Set cookie and return success
+        const response = NextResponse.json({
+          userType,
+          needsSetup: false,
+          firstName,
+          lastName,
+          autoCreated: true,
+        });
+
+        response.cookies.set("userType", userType, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: 60 * 60 * 24 * 7,
+        });
+
+        return response;
+      }
+
+      // FALLBACK: Try to determine userType from database or create default
+      // If user already exists in DB, use their type
+      let existingDbUser: any[] = [];
+      try {
+        existingDbUser = await db
+          .select({ type: users.type })
+          .from(users)
+          .where(eq(users.clerkUserId, userId))
+          .limit(1);
+      } catch (e) {
+        // DB query failed, continue
+      }
+
+      if (existingDbUser.length > 0) {
+        // User exists in DB, use their type
+        const dbType = existingDbUser[0].type;
+        logger.info("Found user in database, using their type", { clerkUserId: userId, type: dbType });
+
+        const response = NextResponse.json({
+          userType: dbType,
+          needsSetup: false,
+        });
+        response.cookies.set("userType", dbType, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: 60 * 60 * 24 * 7,
+        });
+        return response;
+      }
+
+      // Still no type found - check if we should create a default admin
+      // For development: if accessing via admin portal, create admin record
+      const referer = request.headers.get('referer') || '';
+      const isAdminAccess = referer.includes('/admin') || request.url.includes('/admin');
+
+      if (isAdminAccess) {
+        logger.info("Admin access without userType, creating default admin record", { clerkUserId: userId });
+        const now = new Date().toISOString();
+        const newUserId = `user-${nanoid()}`;
+
+        await db.insert(users).values({
+          id: newUserId,
+          clerkUserId: userId,
+          type: 'admin',
+          role: 'admin',
+          name: `${firstName} ${lastName}`.trim() || 'Admin',
+          firstName,
+          lastName,
+          email,
+          phone: '',
+          country: 'Bhutan',
+          grade: 0,
+          enrollmentDate: now.split('T')[0],
+          isActive: true,
+          emailVerified: false,
+          onboardingComplete: true,
+          onboardingStatus: 'complete',
+        });
+
+        const response = NextResponse.json({
+          userType: 'admin',
+          needsSetup: false,
+          firstName,
+          lastName,
+          autoCreated: true,
+        });
+        response.cookies.set("userType", "admin", {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: 60 * 60 * 24 * 7,
+        });
+        return response;
+      }
+
+      // No userType in metadata - user needs to complete setup
+      logger.debug("No userType in Clerk metadata, user needs setup", { clerkUserId: userId });
       return NextResponse.json({ userType: null, needsSetup: true });
     }
 

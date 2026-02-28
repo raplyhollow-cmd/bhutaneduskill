@@ -141,7 +141,7 @@ export function EditCounselorModal({ open, onClose, onSuccess, counselor }: Edit
                 <SelectValue placeholder="Select a school" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No School (Platform Counselor)</SelectItem>
+                <SelectItem value="none">No School (Platform Counselor)</SelectItem>
                 {/* TODO: Fetch schools from API */}
                 <SelectItem value="school1">Demo School 1</SelectItem>
                 <SelectItem value="school2">Demo School 2</SelectItem>

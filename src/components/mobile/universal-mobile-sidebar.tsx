@@ -35,7 +35,7 @@ interface UniversalMobileSidebarProps {
   userImage?: string;
 }
 
-// SWIPE_THRESHOLD: Distance in px to trigger menu close on swipe
+// SWIPE_THRESHOLD: Distance in px to trigger menu close
 const SWIPE_THRESHOLD = 50;
 // SWIPE_VELOCITY_THRESHOLD: Velocity in px/ms to trigger menu close
 const SWIPE_VELOCITY_THRESHOLD = 0.3;
@@ -208,28 +208,15 @@ export function UniversalMobileSidebar({
 
       {/* Universal Sidebar - Desktop: always visible, Mobile: slides in/out with gesture */}
       {/* Uses 100dvh to fix iOS Safari address bar bug */}
-      <motion.aside
+      <aside
         ref={sidebarRef}
         id="universal-sidebar"
-        drag={isMobileMenuOpen ? "x" : false}
-        dragConstraints={{ left: 0, right: 0 }}
-        dragElastic={0.2}
-        onDragEnd={handleDragEnd}
-        initial={false}
-        animate={isMobileMenuOpen ? "open" : "closed"}
-        variants={{
-          open: { x: 0 },
-          closed: { x: "-100%" },
-        } as Variants}
-        transition={{
-          type: "spring",
-          stiffness: 300,
-          damping: 30,
-        }}
         className={cn(
-          "nav-clerk fixed top-0 left-0 z-40 overflow-hidden lg:translate-x-0",
-          // Hide sidebar on mobile when closed (using translate)
-          !isMobileMenuOpen && "-translate-x-full lg:translate-x-0"
+          "nav-clerk fixed top-0 left-0 z-40 overflow-hidden transition-transform duration-300 ease-in-out",
+          // Desktop: always visible
+          "lg:translate-x-0",
+          // Mobile: visible when menu is open, hidden when closed
+          isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         )}
         style={{
           height: settings.viewport.fullHeight,
@@ -388,7 +375,7 @@ export function UniversalMobileSidebar({
             </Link>
           </div>
         </div>
-      </motion.aside>
+      </aside>
 
       {/* Mobile Bottom Navigation - Only visible on small screens */}
       {topNavItems.length > 0 && (
@@ -500,95 +487,96 @@ export function UniversalPortalHeader({
 
   return (
     <header className="topnav-clerk bg-white border-b border-gray-200 sticky top-0 z-[50]">
-      <div className="px-4 sm:px-6 py-3 sm:py-4">
-        <div className="flex items-center justify-between gap-2">
-          <motion.div
-            className="flex-1 min-w-0"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">
-              {title || "Dashboard"}
-            </h1>
-            {subtitle && (
-              <p className="text-xs sm:text-sm text-ceramic-secondary mt-0.5 truncate">
-                {subtitle}
-              </p>
-            )}
-          </motion.div>
-          <motion.div
-            className="flex items-center gap-2 sm:gap-4"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.3, delay: 0.05 }}
-          >
-            {/* Notifications - Integrated NotificationBell component */}
-            <NotificationBell className="hover:bg-ceramic-gray-100 rounded-full" />
+      <div className="flex items-center justify-between py-3 sm:py-4 pl-4 pr-4 lg:pl-[272px] lg:pr-0">
+        {/* Left side - Title */}
+        <motion.div
+          className="flex-1 min-w-0"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">
+            {title || "Dashboard"}
+          </h1>
+          {subtitle && (
+            <p className="text-xs sm:text-sm text-ceramic-secondary mt-0.5 truncate">
+              {subtitle}
+            </p>
+          )}
+        </motion.div>
 
-            {/* User dropdown menu - mobile optimized */}
-            {userName && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <motion.button
-                    className="flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-ceramic-brand rounded-full pr-1 sm:pr-2"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    transition={{ type: "spring", stiffness: 300 }}
+        {/* Right side - Actions (flush to right edge) */}
+        <motion.div
+          className="flex items-center gap-3 flex-shrink-0"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3, delay: 0.05 }}
+        >
+          {/* Notifications */}
+          <NotificationBell className="hover:bg-ceramic-gray-100 rounded-full" />
+
+          {/* User dropdown - at true top-right edge */}
+          {userName && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <motion.button
+                  className="flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-ceramic-brand/50 rounded-full px-2 py-1.5 hover:bg-ceramic-gray-50 dark:hover:bg-ceramic-gray-800 transition-colors"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  transition={{ type: "spring", stiffness: 300 }}
+                >
+                  <div className="text-right hidden sm:block">
+                    <p className="font-medium text-sm text-ceramic-primary">{userName}</p>
+                    <p className="text-xs text-ceramic-secondary capitalize">
+                      {portalType.replace("-", " ")}
+                    </p>
+                  </div>
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold shadow-sm flex-shrink-0"
+                    style={{ background: config.gradient }}
                   >
-                    <div className="text-right hidden sm:block">
-                      <p className="font-medium text-sm text-ceramic-primary">{userName}</p>
-                      <p className="text-xs text-ceramic-secondary capitalize">
-                        {portalType.replace("-", " ")}
-                      </p>
-                    </div>
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold shadow-sm"
-                      style={{ background: config.gradient }}
-                    >
-                      <span className="text-sm font-semibold">
-                        {getUserInitials()}
-                      </span>
-                    </div>
-                    <ChevronDown className="w-4 h-4 text-ceramic-dimmed hidden sm:block" />
-                  </motion.button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56" variant="ceramic">
-                  <DropdownMenuLabel ceramicVariant="ceramic">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">{userName}</p>
-                      <p className="text-xs leading-none text-ceramic-dimmed capitalize">
-                        {portalType.replace("-", " ")}
-                      </p>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator ceramicVariant="ceramic" />
-                  <DropdownMenuItem asChild ceramicVariant="ceramic">
-                    <a href={`/${portalType}/settings`} className="flex items-center gap-2 cursor-pointer">
-                      <User className="w-4 h-4" />
-                      <span>Profile</span>
-                    </a>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild ceramicVariant="ceramic">
-                    <a href={`/${portalType}/settings`} className="flex items-center gap-2 cursor-pointer">
-                      <Settings className="w-4 h-4" />
-                      <span>Settings</span>
-                    </a>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator ceramicVariant="ceramic" />
-                  <DropdownMenuItem
-                    onClick={handleSignOut}
-                    ceramicVariant="ceramic"
-                    className="text-ceramic-negative focus:text-ceramic-negative cursor-pointer"
-                  >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    <span>Sign Out</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </motion.div>
-        </div>
+                    <span className="text-sm font-semibold">
+                      {getUserInitials()}
+                    </span>
+                  </div>
+                  <ChevronDown className="w-4 h-4 text-ceramic-dimmed hidden sm:block" />
+                </motion.button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56" variant="ceramic">
+                <DropdownMenuLabel ceramicVariant="ceramic">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{userName}</p>
+                    <p className="text-xs leading-none text-ceramic-dimmed capitalize">
+                      {portalType.replace("-", " ")}
+                    </p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator ceramicVariant="ceramic" />
+                <DropdownMenuItem asChild ceramicVariant="ceramic">
+                  <a href={`/${portalType}/settings`} className="flex items-center gap-2 cursor-pointer">
+                    <User className="w-4 h-4" />
+                    <span>Profile</span>
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild ceramicVariant="ceramic">
+                  <a href={`/${portalType}/settings`} className="flex items-center gap-2 cursor-pointer">
+                    <Settings className="w-4 h-4" />
+                    <span>Settings</span>
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator ceramicVariant="ceramic" />
+                <DropdownMenuItem
+                  onClick={handleSignOut}
+                  ceramicVariant="ceramic"
+                  className="text-ceramic-negative focus:text-ceramic-negative cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  <span>Sign Out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </motion.div>
       </div>
     </header>
   );

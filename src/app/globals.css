@@ -166,9 +166,9 @@
   --ceramic-bg-main: var(--ceramic-white);
   --ceramic-bg-menu: var(--ceramic-white);
   --ceramic-bg-separator: var(--ceramic-gray-200);
-  --ceramic-primary: var(--ceramic-gray-100);
-  --ceramic-secondary: var(--ceramic-gray-800);
-  --ceramic-dimmed: var(--ceramic-gray-600);
+  --ceramic-primary: var(--ceramic-gray-900);
+  --ceramic-secondary: var(--ceramic-gray-600);
+  --ceramic-dimmed: var(--ceramic-gray-500);
   --ceramic-positive: var(--ceramic-green-400);
   --ceramic-negative: var(--ceramic-red-600);
   --ceramic-warning: var(--ceramic-orange-500);
@@ -179,6 +179,30 @@
   --border-color-primary: #eeeef0;
   --border-color-secondary: #f7f7f8;
 
+  /* ----- DROPDOWN TEXT VISIBILITY FIX ----- */
+  /* Fix dropdown menu text that inherits wrong color and appears white/invisible */
+}
+
+.dropdown-menu,
+.dropdown-item,
+[role="menuitem"],
+select option {
+  color: var(--ceramic-gray-900) !important;
+}
+
+/* Dark mode dropdown */
+.dark .dropdown-menu,
+.dark .dropdown-item,
+.dark [role="menuitem"],
+.dark select option {
+  color: var(--ceramic-gray-100) !important;
+}
+
+/* ============================================
+   TYPOGRAPHY SYSTEM (remaining styles)
+   ============================================ */
+
+:root {
   /* ----- TYPOGRAPHY SYSTEM ----- */
   --font-suisse: "suisse", "suisse Fallback", system-ui, -apple-system, sans-serif;
   --font-geist-numbers: "geistNumbers", system-ui;
@@ -1175,7 +1199,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 var(--spacing-6);
+  padding-left: var(--spacing-6);
+  padding-right: 0;
+}
+
+@media (min-width: 1024px) {
+  .topnav-clerk {
+    padding-left: 272px;
+  }
 }
 
 .dark .topnav-clerk {

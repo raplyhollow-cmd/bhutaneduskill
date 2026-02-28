@@ -115,7 +115,7 @@ export default clerkMiddleware(async (auth, request) => {
   // Zero Data Access Enforcement for Restricted/Pending Users
   // ============================================================================
   // Block API access for users with restricted or pending approval status
-  // They can only access specific endpoints needed for setup
+  // CRITICAL: Platform admins (type='admin') BYPASS all these checks - they own the platform
   if (userId && request.nextUrl.pathname.startsWith("/api")) {
     const allowedPaths = [
       "/api/user/profile",
@@ -123,6 +123,9 @@ export default clerkMiddleware(async (auth, request) => {
       "/api/auth/",
       "/api/setup/",
       "/api/schools/search", // For school search in setup
+      "/api/admin/setup-admin", // Platform admin setup endpoint
+      "/api/notifications/", // Allow notifications API
+      "/api/debug/", // Allow debug endpoints
     ];
 
     const isAllowedPath = allowedPaths.some(path =>
@@ -139,18 +142,28 @@ export default clerkMiddleware(async (auth, request) => {
 
     if (!isAllowedPath && !isPublicPage) {
       try {
-        // Check user's onboarding status from database
+        console.log("[Middleware] Checking API access for:", request.nextUrl.pathname);
+        // Check user's type and onboarding status from database
+        // Platform admins bypass ALL restrictions
         const userRecords = await db
-          .select({ onboardingStatus: users.onboardingStatus })
+          .select({
+            type: users.type,
+            onboardingStatus: users.onboardingStatus
+          })
           .from(users)
           .where(eq(users.clerkUserId, userId))
           .limit(1);
 
         if (userRecords.length > 0) {
-          const { onboardingStatus } = userRecords[0];
+          const { type, onboardingStatus } = userRecords[0];
 
+          // PLATFORM ADMIN BYPASS: Skip all restrictions for platform admins
+          if (type === 'admin') {
+            console.log("[Middleware] Platform admin bypass - allowing full access to:", request.nextUrl.pathname);
+            // Platform admin has full access - continue to route handler
+          }
           // Block access for restricted and pending_approval users
-          if (onboardingStatus === "restricted" || onboardingStatus === "pending_approval") {
+          else if (onboardingStatus === "restricted" || onboardingStatus === "pending_approval") {
             return NextResponse.json(
               {
                 error: onboardingStatus === "restricted"
@@ -163,7 +176,7 @@ export default clerkMiddleware(async (auth, request) => {
           }
 
           // Redirect rejected users to rejected page
-          if (onboardingStatus === "rejected") {
+          else if (onboardingStatus === "rejected") {
             return NextResponse.json(
               {
                 error: "Your application was not approved",

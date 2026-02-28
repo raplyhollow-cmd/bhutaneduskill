@@ -277,6 +277,13 @@ export const GET = createApiRoute(
         },
       });
     } catch (error) {
+      console.error("[Partners API] Catch block error:", {
+        error,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorName: error instanceof Error ? error.name : 'Unknown',
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+
       logger.apiError(error, { route: "/api/admin/partners", method: "GET" });
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       return errorResponse(`Failed to fetch partners: ${errorMessage}`, 500);

@@ -38,8 +38,11 @@ export function createApiRoute<
     const authResult = await requireAuth(allowedRoles);
 
     if ("error" in authResult) {
+      console.log("[createApiRoute] Auth failed:", authResult.error, "status:", authResult.status);
       return errorResponse(authResult.error, authResult.status);
     }
+
+    console.log("[createApiRoute] Auth succeeded, calling handler for:", req.url);
 
     try {
       // Call the actual handler, passing the auth result directly
@@ -64,12 +67,29 @@ export function createApiRoute<
       // Default: return as JSON
       return NextResponse.json(result, { status: 200 });
     } catch (error) {
+      // Enhanced error logging for debugging
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorName = error instanceof Error ? error.name : 'Unknown';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+
+      console.log("[createApiRoute] CATCH BLOCK ERROR:", {
+        errorMessage,
+        errorName,
+        route: req.url || "unknown",
+        method: req.method,
+        hasStack: !!errorStack,
+      });
+
       logger.apiError(error, {
         route: req.url || "unknown",
         method: req.method,
+        errorMessage,
+        errorName,
       });
 
-      return errorResponse("An error occurred while processing your request", 500);
+      // Use getErrorMessage to handle empty error messages
+      const displayMessage = getErrorMessage(error);
+      return errorResponse(`An error occurred: ${displayMessage}`, 500);
     }
   };
 }
@@ -103,6 +123,22 @@ export interface AuthenticatedRequest extends NextRequest {
  */
 export function getAuth(req: NextRequest): AuthContext | null {
   return (req as AuthenticatedRequest).auth || null;
+}
+
+/**
+ * Helper function to extract meaningful error messages
+ * Handles cases where Error objects have empty messages
+ */
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    // If error has message, use it
+    if (error.message && error.message.trim().length > 0) {
+      return error.message;
+    }
+    // Otherwise use error name
+    return error.name || 'Unknown Error';
+  }
+  return String(error);
 }
 
 /**

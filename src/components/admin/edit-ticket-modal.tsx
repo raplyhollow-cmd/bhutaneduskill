@@ -171,7 +171,7 @@ export function EditTicketModal({ open, onClose, onSuccess, ticket }: EditTicket
                   <SelectItem value="Tech Team">Tech Team</SelectItem>
                   <SelectItem value="Finance Team">Finance Team</SelectItem>
                   <SelectItem value="Dev Team">Dev Team</SelectItem>
-                  <SelectItem value="">Unassigned</SelectItem>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
                 </SelectContent>
               </Select>
             </div>

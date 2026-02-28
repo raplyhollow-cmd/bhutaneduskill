@@ -281,21 +281,21 @@ export default function SchoolDetailPage() {
   const statCards = [
     {
       label: "Students",
-      value: school.stats.students,
+      value: school.stats?.students || 0,
       icon: Users,
       color: "text-blue-600",
       bgColor: "bg-blue-50",
     },
     {
       label: "Teachers",
-      value: school.stats.teachers,
+      value: school.stats?.teachers || 0,
       icon: GraduationCap,
       color: "text-green-600",
       bgColor: "bg-green-50",
     },
     {
       label: "Counselors",
-      value: school.stats.counselors,
+      value: school.stats?.counselors || 0,
       icon: UserCheck,
       color: "text-purple-600",
       bgColor: "bg-purple-50",

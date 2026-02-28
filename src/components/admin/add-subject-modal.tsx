@@ -192,7 +192,7 @@ export function AddSubjectModal({ open, onClose, onSuccess }: AddSubjectModalPro
                   <SelectValue placeholder="All grades" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All grades</SelectItem>
+                  <SelectItem value="all">All grades</SelectItem>
                   {Array.from({ length: 12 }, (_, i) => i + 1).map((g) => (
                     <SelectItem key={g} value={g.toString()}>
                       Grade {g}

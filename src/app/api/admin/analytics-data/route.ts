@@ -640,69 +640,84 @@ async function getAcademicPerformanceMetrics(): Promise<AcademicPerformanceMetri
  * Calculate Revenue Metrics
  */
 async function getRevenueMetrics(): Promise<RevenueMetrics> {
-  // Active subscriptions
-  const [activeSubsResult] = await db
-    .select({ count: count() })
-    .from(subscriptions)
-    .where(sql`${subscriptions.status} = 'active' OR ${subscriptions.status} = 'trialing'`);
+  try {
+    // Active subscriptions
+    const [activeSubsResult] = await db
+      .select({ count: count() })
+      .from(subscriptions)
+      .where(sql`${subscriptions.status} = 'active' OR ${subscriptions.status} = 'trialing'`);
 
-  const activeSubscriptions = activeSubsResult?.count || 0;
+    const activeSubscriptions = activeSubsResult?.count || 0;
 
-  // Monthly recurring revenue (MRR)
-  const [mrrResult] = await db
-    .select({
-      total: sum(subscriptions.price),
-    })
-    .from(subscriptions)
-    .where(sql`${subscriptions.status} = 'active' AND ${subscriptions.billingCycle} = 'monthly'`);
+    // Monthly recurring revenue (MRR)
+    const [mrrResult] = await db
+      .select({
+        total: sum(subscriptions.price),
+      })
+      .from(subscriptions)
+      .where(sql`${subscriptions.status} = 'active' AND ${subscriptions.billingCycle} = 'monthly'`);
 
-  const mrrFromMonthly = mrrResult?.total || 0;
+    const mrrFromMonthly = mrrResult?.total || 0;
 
-  // Convert yearly subscriptions to monthly equivalent
-  const [yearlyResult] = await db
-    .select({
-      total: sum(subscriptions.price),
-    })
-    .from(subscriptions)
-    .where(sql`${subscriptions.status} = 'active' AND ${subscriptions.billingCycle} = 'yearly'`);
+    // Convert yearly subscriptions to monthly equivalent
+    const [yearlyResult] = await db
+      .select({
+        total: sum(subscriptions.price),
+      })
+      .from(subscriptions)
+      .where(sql`${subscriptions.status} = 'active' AND ${subscriptions.billingCycle} = 'yearly'`);
 
-  const mrrFromYearly = yearlyResult?.total
-    ? Math.round((Number(yearlyResult.total) / 12))
-    : 0;
+    const mrrFromYearly = yearlyResult?.total
+      ? Math.round((Number(yearlyResult.total) / 12))
+      : 0;
 
-  const monthlyRecurringRevenue = Number(mrrFromMonthly) + mrrFromYearly;
+    const monthlyRecurringRevenue = Number(mrrFromMonthly) + mrrFromYearly;
 
-  // Annual recurring revenue (ARR)
-  const annualRecurringRevenue = monthlyRecurringRevenue * 12;
+    // Annual recurring revenue (ARR)
+    const annualRecurringRevenue = monthlyRecurringRevenue * 12;
 
-  // Payment status from fee payments
-  const [pendingResult] = await db
-    .select({ count: count() })
-    .from(feePayments)
-    .where(eq(feePayments.status, 'pending'));
+    // Payment status from fee payments
+    const [pendingResult] = await db
+      .select({ count: count() })
+      .from(feePayments)
+      .where(eq(feePayments.status, 'pending'));
 
-  const [paidResult] = await db
-    .select({ count: count() })
-    .from(feePayments)
-    .where(eq(feePayments.status, 'paid'));
+    const [paidResult] = await db
+      .select({ count: count() })
+      .from(feePayments)
+      .where(eq(feePayments.status, 'paid'));
 
-  // Overdue: fee records with due date past and status pending
-  const [overdueResult] = await db
-    .select({ count: count() })
-    .from(studentFees)
-    .where(and(
-      eq(studentFees.status, 'pending'),
-      sql`${studentFees.dueDate} < ${new Date().toISOString()}`
-    ));
+    // Overdue: fee records with due date past and status pending
+    const [overdueResult] = await db
+      .select({ count: count() })
+      .from(studentFees)
+      .where(and(
+        eq(studentFees.status, 'pending'),
+        sql`${studentFees.dueDate} < ${new Date().toISOString()}`
+      ));
 
-  return {
-    activeSubscriptions,
-    monthlyRecurringRevenue,
-    annualRecurringRevenue,
-    paymentStatus: {
-      pending: pendingResult?.count || 0,
-      paid: paidResult?.count || 0,
-      overdue: overdueResult?.count || 0,
-    },
-  };
+    return {
+      activeSubscriptions,
+      monthlyRecurringRevenue,
+      annualRecurringRevenue,
+      paymentStatus: {
+        pending: pendingResult?.count || 0,
+        paid: paidResult?.count || 0,
+        overdue: overdueResult?.count || 0,
+      },
+    };
+  } catch (error) {
+    console.error("[Analytics] Revenue metrics failed (billing tables may not exist):", error);
+    // Return zeros if billing tables don't exist or queries fail
+    return {
+      activeSubscriptions: 0,
+      monthlyRecurringRevenue: 0,
+      annualRecurringRevenue: 0,
+      paymentStatus: {
+        pending: 0,
+        paid: 0,
+        overdue: 0,
+      },
+    };
+  }
 }

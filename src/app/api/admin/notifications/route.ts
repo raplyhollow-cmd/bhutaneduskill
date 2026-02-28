@@ -281,36 +281,41 @@ export const POST = createApiRoute(
         ((user.firstName as string) && (user.lastName as string) ? `${user.firstName} ${user.lastName}` : "Admin");
       const senderRole: string = (user.type as string) || "admin";
 
-      // Build notification values object - only include defined fields
+      // Helper function to ensure empty strings are converted to null
+      const toNull = (value: string | undefined | null): string | null => {
+        if (value === undefined || value === null || value === "") return null;
+        return value;
+      };
+
+      // Build notification values object - use null explicitly for all optional fields
       const notificationValues: Record<string, any> = {
         id: notificationId,
         title: body.title.trim(),
         message: body.message.trim(),
         type: body.type || "announcement",
-        category: body.category || null,
+        category: toNull(body.category),
         targetAudience: body.targetAudience,
-        targetUserIds: body.targetUserIds ? JSON.stringify(body.targetUserIds) : null,
-        targetSchoolIds: body.targetSchoolIds ? JSON.stringify(body.targetSchoolIds) : null,
+        targetUserIds: body.targetUserIds && body.targetUserIds.length > 0 ? JSON.stringify(body.targetUserIds) : null,
+        targetSchoolIds: body.targetSchoolIds && body.targetSchoolIds.length > 0 ? JSON.stringify(body.targetSchoolIds) : null,
         priority: body.priority || "normal",
         status,
         senderId: userId,
         senderName: senderName,
         senderRole: senderRole,
-        actionUrl: body.actionUrl || null,
-        actionLabel: body.actionLabel || null,
-        attachments: body.attachments ? JSON.stringify(body.attachments) : null,
+        scheduledFor: scheduledFor || null,
+        sentAt: null,
+        actionUrl: toNull(body.actionUrl),
+        actionLabel: toNull(body.actionLabel),
+        data: null,
+        attachments: body.attachments && body.attachments.length > 0 ? JSON.stringify(body.attachments) : null,
+        expiresAt: expiresAt || null,
         totalRecipients: estimatedRecipients,
+        deliveredCount: 0,
+        readCount: 0,
+        failedCount: 0,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
-
-      // Only add optional timestamp fields if they have values
-      if (scheduledFor) {
-        notificationValues.scheduledFor = scheduledFor;
-      }
-      if (expiresAt) {
-        notificationValues.expiresAt = expiresAt;
-      }
 
       const notification = await db
         .insert(notifications)

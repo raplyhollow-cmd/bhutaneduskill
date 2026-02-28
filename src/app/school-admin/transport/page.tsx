@@ -1375,7 +1375,7 @@ export default function SchoolAdminTransportPage() {
                     <SelectValue placeholder="Select vehicle" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No vehicle assigned</SelectItem>
+                    <SelectItem value="none">No vehicle assigned</SelectItem>
                     {vehicles.map((v) => (
                       <SelectItem key={v.id} value={v.id}>
                         {v.registrationNumber} - {v.vehicleType}

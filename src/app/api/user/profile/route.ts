@@ -11,7 +11,7 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, errorResponse, badRequestResponse } from "@/lib/api/response-helpers";
 import { logger } from "@/lib/logger";
 
@@ -28,12 +28,8 @@ interface UserWithSettings {
 // ============================================================================
 
 export const GET = createApiRoute(
-  async (request: NextRequest) => {
-    const auth = getAuth(request);
-    if (!auth) {
-      return errorResponse("Unauthorized", 401);
-    }
-
+  async (request: NextRequest, auth) => {
+    // auth is passed by createApiRoute wrapper
     const { user } = auth;
 
     // User already fetched from DB by requireAuth, just transform and return
@@ -55,12 +51,8 @@ export const GET = createApiRoute(
 // ============================================================================
 
 export const POST = createApiRoute(
-  async (request: NextRequest) => {
-    const auth = getAuth(request);
-    if (!auth) {
-      return errorResponse("Unauthorized", 401);
-    }
-
+  async (request: NextRequest, auth) => {
+    // auth is passed by createApiRoute wrapper
     const { user } = auth;
     const body = await request.json();
     logger.info("Updating profile", { userId: user.id });

@@ -160,8 +160,10 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
 
       const data = await response.json();
 
-      setNotifications(data.data || []);
-      setUnreadCount(data.unreadCount || 0);
+      // API returns { success: true, data: { notifications: [], unreadCount: 0, pagination: {} } }
+      const responseData = data.data || {};
+      setNotifications(responseData.notifications || []);
+      setUnreadCount(responseData.unreadCount || 0);
 
       return data;
     } catch (err) {

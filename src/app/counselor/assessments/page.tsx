@@ -132,10 +132,12 @@ export default function CounselorAssessmentsPage() {
         if (!response.ok) throw new Error("Failed to fetch assessment results");
         const data = await response.json();
 
-        setResults(data.results || []);
+        // API returns { success: true, data: { results: [], ... } }
+        const responseData = data.data || {};
+        setResults(responseData.results || []);
         setStats({
-          totalCompleted: data.totalCompleted || 0,
-          completionRate: data.completionRate || 0,
+          totalCompleted: responseData.totalCompleted || 0,
+          completionRate: responseData.completionRate || 0,
         });
       } catch (error) {
         logger.error("Error loading assessment results:", error);

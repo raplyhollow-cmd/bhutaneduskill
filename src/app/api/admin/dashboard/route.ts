@@ -1,8 +1,8 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users, schools, assessments, careerMatches, schoolAdminApplications } from "@/lib/db/schema";
-import { eq, and, desc, gte, count, isNotNull } from "drizzle-orm";
-import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { eq, and, or, desc, gte, count, isNotNull } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, errorResponse } from "@/lib/api/response-helpers";
 import { logger } from "@/lib/logger";
 
@@ -17,13 +17,9 @@ import { logger } from "@/lib/logger";
  * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 export const GET = createApiRoute(
-  async (request: NextRequest) => {
-    const auth = getAuth(request);
-    if (!auth) {
-      return errorResponse("Unauthorized", 401);
-    }
-
-    const { userId } = auth;
+  async (request: NextRequest, auth) => {
+    // Auth is provided by createApiRoute wrapper
+    const { user, userId } = auth;
 
     // Initialize response data with defaults
     let stats = {
@@ -71,7 +67,10 @@ export const GET = createApiRoute(
     try {
       const totalTeachersResult = await db.select({ count: count() })
         .from(users)
-        .where(eq(users.type, "teacher"));
+        .where(or(
+          eq(users.type, "teacher"),
+          eq(users.type, "school-admin")
+        ));
       stats.totalTeachers = totalTeachersResult[0]?.count || 0;
     } catch (error) {
       logger.warn("Failed to fetch total teachers", error);

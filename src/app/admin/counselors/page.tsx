@@ -125,7 +125,8 @@ export default function AdminCounselorsPage() {
       if (!response.ok) throw new Error("Failed to fetch counselors");
 
       const data = await response.json();
-      const counselorsData: CounselorData[] = data.data || [];
+      // API returns { success: true, data: { data: [...], pagination: {...} } }
+      const counselorsData: CounselorData[] = data.data?.data || [];
 
       // Enrich with stats and assignments (for now using mock stats)
       const enriched = counselorsData.map((c: CounselorData) => ({

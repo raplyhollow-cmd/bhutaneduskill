@@ -734,43 +734,62 @@ export async function requireAuth(allowedRoles?: string[]): Promise<
   const { userId } = await auth();
 
   if (!userId) {
+    console.log("[requireAuth] No userId from Clerk");
     return { error: "Unauthorized", status: 401 };
   }
+
+  console.log("[requireAuth] Clerk userId:", userId);
 
   // Get user with role from database
   // IMPORTANT: Use db.select() instead of db.query.users.findFirst() to avoid loading relations
   // The users table has a self-referential 'parent' relation that causes circular reference issues
-  const userRecords = await db
-    .select({
-      id: users.id,
-      clerkUserId: users.clerkUserId,
-      type: users.type,
-      firstName: users.firstName,
-      lastName: users.lastName,
-      name: users.name,
-      email: users.email,
-      phone: users.phone,
-      schoolId: users.schoolId,
-      onboardingStatus: users.onboardingStatus,
-      onboardingComplete: users.onboardingComplete,
-      profileImage: users.profileImage,  // Fixed: was profilePicture (doesn't exist)
-    })
-    .from(users)
-    .where(eq(users.clerkUserId, userId))
-    .limit(1);
+  let userRecords;
+  try {
+    userRecords = await db
+      .select({
+        id: users.id,
+        clerkUserId: users.clerkUserId,
+        type: users.type,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        name: users.name,
+        email: users.email,
+        phone: users.phone,
+        schoolId: users.schoolId,
+        onboardingStatus: users.onboardingStatus,
+        onboardingComplete: users.onboardingComplete,
+        profileImage: users.profileImage,  // Fixed: was profilePicture (doesn't exist)
+      })
+      .from(users)
+      .where(eq(users.clerkUserId, userId))
+      .limit(1);
+  } catch (dbError) {
+    console.error("[requireAuth] Database query failed:", dbError);
+    return {
+      error: `Authentication failed: ${dbError instanceof Error ? dbError.message : String(dbError)}`,
+      status: 500
+    };
+  }
+
+  console.log("[requireAuth] Database query result count:", userRecords.length);
 
   if (userRecords.length === 0) {
+    console.log("[requireAuth] User not found in database for clerkUserId:", userId);
     return { error: "User not found", status: 404 };
   }
 
   // Cast through unknown first because we're selecting a subset of User fields
   const user = userRecords[0] as unknown as User;
 
-  // Check role if required
-  if (allowedRoles && !allowedRoles.includes(user.type)) {
+  console.log("[requireAuth] User found:", { id: user.id, type: user.type, allowedRoles });
+
+  // Check role if required (empty array = no role restriction)
+  if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(user.type)) {
+    console.log("[requireAuth] Role mismatch - user type:", user.type, "allowed:", allowedRoles);
     return { error: "Forbidden", status: 403 };
   }
 
+  console.log("[requireAuth] SUCCESS - returning user");
   return { user, userId: user.id };
 }
 

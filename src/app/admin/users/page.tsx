@@ -241,18 +241,21 @@ export default function AdminUsersPage() {
         throw new Error("Failed to fetch users");
       }
 
-      const data: PaginatedResponse = await response.json();
-      setUsers(data.data || []);
-      setPagination(data.pagination);
+      const data = await response.json() as { success: boolean; data?: { data?: User[]; pagination?: { page: number; limit: number; total: number; totalPages: number } } };
+      const usersData = data.data?.data || [];
+      const paginationData = data.data?.pagination || { page: 1, limit: 20, total: 0, totalPages: 1 };
+
+      setUsers(usersData);
+      setPagination(paginationData);
 
       // Calculate stats from the data
       const statsData: UserStats = {
-        total: data.pagination.total,
-        students: data.data.filter((u) => u.type === "student").length,
-        teachers: data.data.filter((u) => u.type === "teacher").length,
-        parents: data.data.filter((u) => u.type === "parent").length,
-        admins: data.data.filter((u) => u.type === "admin").length,
-        counselors: data.data.filter((u) => u.type === "counselor").length,
+        total: paginationData.total,
+        students: usersData.filter((u) => u.type === "student").length,
+        teachers: usersData.filter((u) => u.type === "teacher").length,
+        parents: usersData.filter((u) => u.type === "parent").length,
+        admins: usersData.filter((u) => u.type === "admin").length,
+        counselors: usersData.filter((u) => u.type === "counselor").length,
       };
       setStats(statsData);
     } catch (err) {

@@ -185,12 +185,14 @@ export function AdminLayoutClient({ children, userName, portalType }: AdminLayou
       )}
 
       {/* Always render the main structure */}
+      {/* Header - extends full viewport width, button at true top-right */}
+      <UniversalPortalHeader
+        portalType={portalType}
+        userName={userName}
+        title={getPageTitle(pathname)}
+      />
+      {/* Main content with sidebar padding */}
       <div className="lg:pl-64 pb-16 lg:pb-0">
-        <UniversalPortalHeader
-          portalType={portalType}
-          userName={userName}
-          title={getPageTitle(pathname)}
-        />
         <main className={cn(
           "p-4 sm:p-6",
           "min-h-[calc(100dvh-64px)]"
