@@ -34,27 +34,31 @@ export function createApiRoute<
     req: AuthenticatedRequest & { params?: Promise<TParams> },
     context?: { params?: Promise<TParams> }
   ): Promise<NextResponse> => {
-    // Authentication check - skip if allowedRoles is empty (open endpoint)
-    let authResult: { user: any; userId: string } | { error: string; status: number } | null = null;
-
-    if (allowedRoles.length > 0) {
-      // Protected endpoint - require auth
-      authResult = await requireAuth(allowedRoles);
-
-      if ("error" in authResult) {
-        console.log("[createApiRoute] Auth failed:", authResult.error, "status:", authResult.status);
-        return errorResponse(authResult.error, authResult.status);
-      }
-
-      console.log("[createApiRoute] Auth succeeded, calling handler for:", req.url);
-    } else {
-      // Open endpoint - no auth required
-      console.log("[createApiRoute] Open endpoint (no auth), calling handler for:", req.url);
-    }
-
     try {
-      // Call the actual handler, passing auth (or null for open endpoints)
-      const result = await handler(req, authResult || null, context);
+      // Authentication check - skip if allowedRoles is empty (open endpoint)
+      let result: any;
+
+      if (allowedRoles.length > 0) {
+        // Protected endpoint - require auth
+        const authResult = await requireAuth(allowedRoles);
+
+        if ("error" in authResult) {
+          console.log("[createApiRoute] Auth failed:", authResult.error, "status:", authResult.status);
+          return errorResponse(authResult.error, authResult.status);
+        }
+
+        console.log("[createApiRoute] Auth succeeded, calling handler for:", req.url);
+
+        // Call the actual handler, passing auth context
+        const authContext = { userId: authResult.userId, user: authResult.user };
+        result = await handler(req, authContext, context);
+      } else {
+        // Open endpoint - no auth required
+        console.log("[createApiRoute] Open endpoint (no auth), calling handler for:", req.url);
+
+        // Call the actual handler, passing null for auth
+        result = await handler(req, null, context);
+      }
 
       // Convert plain object returns to NextResponse
       if (result instanceof NextResponse || result instanceof Response) {

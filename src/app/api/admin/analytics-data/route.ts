@@ -11,8 +11,8 @@
 
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { users, schools, assessments, assessmentResults, riasecResults, mbtiResults, discResults, careerMatches, examResultsEnhanced, attendance, feePayments, studentFees, subscriptions, invoices, homework, homeworkSubmissions, rubApplications } from "@/lib/db/schema";
-import { sql, eq, and, gte, lte, desc, count, avg, sum } from "drizzle-orm";
+import { users, schools, assessments, assessmentResults, riasecResults, mbtiResults, discResults, careerMatches, examResultsEnhanced, attendance, feePayments, studentFees, subscriptions, invoices } from "@/lib/db/schema";
+import { sql, eq, and, gte, desc, count, avg, sum } from "drizzle-orm";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
 import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, errorResponse } from "@/lib/api/response-helpers";
@@ -97,12 +97,12 @@ interface RevenueMetrics {
 }
 
 interface AnalyticsData {
-  schoolEngagement: SchoolEngagementMetrics;
-  userGrowth: UserGrowthTrends;
-  careerInterests: CareerInterestsDistribution;
-  assessmentCompletion: AssessmentCompletionMetrics;
-  academicPerformance: AcademicPerformanceMetrics;
-  revenue: RevenueMetrics;
+  schoolEngagement?: SchoolEngagementMetrics;
+  userGrowth?: UserGrowthTrends;
+  careerInterests?: CareerInterestsDistribution;
+  assessmentCompletion?: AssessmentCompletionMetrics;
+  academicPerformance?: AcademicPerformanceMetrics;
+  revenue?: RevenueMetrics;
   generatedAt: string;
 }
 
@@ -140,7 +140,7 @@ function getMonthKey(date: Date): string {
 // ============================================================================
 
 export const GET = createApiRoute(
-  async (request: NextRequest, auth) => {
+  async (_request: NextRequest, auth) => {
     const startTime = Date.now();
     const { userId } = auth;
 
@@ -162,11 +162,12 @@ export const GET = createApiRoute(
       const metricNames = ["schoolEngagement", "userGrowth", "careerInterests", "assessmentCompletion", "academicPerformance", "revenue"];
 
       for (let i = 0; i < results.length; i++) {
-        if (results[i].status === "rejected") {
+        const result = results[i] as PromiseFulfilledResult<unknown> | PromiseRejectedResult;
+        if (result.status === "rejected") {
           const metricName = metricNames[i];
-          const error = results[i].reason;
+          const error = result.reason;
           errors.push(`${metricName}: ${error?.message || String(error)}`);
-          logger.error(`Analytics metric ${metricName} failed`, { error: error?.message || String(error), stack: error?.stack });
+          logger.error(`Analytics metric ${metricName} failed`, { error: error?.message || String(error), stack: (error as Error)?.stack });
         }
       }
 
@@ -185,12 +186,12 @@ export const GET = createApiRoute(
       ] = results.map((r) => r.status === "fulfilled" ? r.value : null);
 
       const data: AnalyticsData = {
-        schoolEngagement,
-        userGrowth,
-        careerInterests,
-        assessmentCompletion,
-        academicPerformance,
-        revenue,
+        schoolEngagement: (schoolEngagement ?? undefined) as SchoolEngagementMetrics | undefined,
+        userGrowth: (userGrowth ?? undefined) as UserGrowthTrends | undefined,
+        careerInterests: (careerInterests ?? undefined) as CareerInterestsDistribution | undefined,
+        assessmentCompletion: (assessmentCompletion ?? undefined) as AssessmentCompletionMetrics | undefined,
+        academicPerformance: (academicPerformance ?? undefined) as AcademicPerformanceMetrics | undefined,
+        revenue: (revenue ?? undefined) as RevenueMetrics | undefined,
         generatedAt: new Date().toISOString(),
       };
 

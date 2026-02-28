@@ -22,11 +22,13 @@ import { successResponse, errorResponse, notFoundResponse } from "@/lib/api/resp
 export const GET = createApiRoute<{ id: string }>(
   async (request: NextRequest, auth, context) => {
     const { id } = await context!.params!;
-    const { userId } = auth;
+    const { userId, user } = auth;
 
-    // Check schools.read permission
-    const permCheck = await requirePermission(userId, "schools.read");
-    if (permCheck) return permCheck;
+    // Platform admins (type: "admin") have all permissions - skip RBAC check
+    if (user.type !== "admin") {
+      const permCheck = await requirePermission(userId, "schools.read");
+      if (permCheck) return permCheck;
+    }
 
     const [school] = await db
       .select()
@@ -50,11 +52,14 @@ export const GET = createApiRoute<{ id: string }>(
 export const PUT = createApiRoute<{ id: string }>(
   async (request: NextRequest, auth, context) => {
     const { id } = await context!.params!;
-    const { userId } = auth;
+    const { userId, user } = auth;
 
-    // Check schools.update permission - platform admins have all permissions
-    const permCheck = await requirePermission(userId, "schools.update");
-    if (permCheck) return permCheck;
+    // Platform admins (type: "admin") have all permissions - skip RBAC check
+    // RBAC check is only for non-admin users with specific role assignments
+    if (user.type !== "admin") {
+      const permCheck = await requirePermission(userId, "schools.update");
+      if (permCheck) return permCheck;
+    }
 
     const body = await request.json();
 
@@ -98,11 +103,13 @@ export const PUT = createApiRoute<{ id: string }>(
 export const DELETE = createApiRoute<{ id: string }>(
   async (request: NextRequest, auth, context) => {
     const { id } = await context!.params!;
-    const { userId } = auth;
+    const { userId, user } = auth;
 
-    // Check schools.delete permission
-    const permCheck = await requirePermission(userId, "schools.delete");
-    if (permCheck) return permCheck;
+    // Platform admins (type: "admin") have all permissions - skip RBAC check
+    if (user.type !== "admin") {
+      const permCheck = await requirePermission(userId, "schools.delete");
+      if (permCheck) return permCheck;
+    }
 
     // Delete related records first (tables without cascade delete)
     // Note: Tables with cascade delete will be handled automatically by PostgreSQL

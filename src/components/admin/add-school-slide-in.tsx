@@ -24,7 +24,8 @@ export function AddSchoolSlideIn({ isOpen, onClose, onSuccess }: AddSchoolSlideI
   const [formData, setFormData] = useState({
     name: "",
     district: "Thimphu",
-    schoolType: "public" as "public" | "private" | "international",
+    type: "public" as "public" | "private",  // Ownership: Government/Private
+    schoolLevel: "middle_secondary" as "primary" | "middle_secondary" | "higher_secondary",  // School level
     address: "",
     contactEmail: "",
     contactPhone: "",
@@ -72,6 +73,8 @@ export function AddSchoolSlideIn({ isOpen, onClose, onSuccess }: AddSchoolSlideI
         body: JSON.stringify({
           name: formData.name,
           code: schoolCode,
+          type: formData.type,  // Ownership: public/private
+          schoolType: formData.schoolLevel,  // School level: primary/middle_secondary/higher_secondary
           address: formData.address,
           city: formData.district,
           districtId: formData.district,
@@ -79,8 +82,9 @@ export function AddSchoolSlideIn({ isOpen, onClose, onSuccess }: AddSchoolSlideI
           contactPhone: formData.contactPhone,
           subscriptionTier: formData.subscriptionTier,
           maxStudents: formData.maxStudents,
-          schoolType: formData.schoolType,  // Use form value (public/private/international)
-          level: "PP-XII",
+          level: formData.schoolLevel === "primary" ? "PP-VI" :
+                 formData.schoolLevel === "middle_secondary" ? "PP-X" :
+                 formData.schoolLevel === "higher_secondary" ? "XI-XII" : "PP-XII",
         }),
       });
 
@@ -92,7 +96,8 @@ export function AddSchoolSlideIn({ isOpen, onClose, onSuccess }: AddSchoolSlideI
         setFormData({
           name: "",
           district: "Thimphu",
-          schoolType: "public",
+          type: "public",
+          schoolLevel: "middle_secondary",
           address: "",
           contactEmail: "",
           contactPhone: "",
@@ -123,7 +128,8 @@ export function AddSchoolSlideIn({ isOpen, onClose, onSuccess }: AddSchoolSlideI
     setFormData({
       name: "",
       district: "Thimphu",
-      schoolType: "public",
+      type: "public",
+      schoolLevel: "middle_secondary",
       address: "",
       contactEmail: "",
       contactPhone: "",
@@ -216,22 +222,41 @@ export function AddSchoolSlideIn({ isOpen, onClose, onSuccess }: AddSchoolSlideI
           </Select>
         </div>
 
-        {/* School Type */}
+        {/* School Type (Ownership) */}
         <div className="space-y-2">
-          <Label htmlFor="schoolType" className="text-sm font-medium text-ceramic-primary">
+          <Label htmlFor="type" className="text-sm font-medium text-ceramic-primary">
             School Type <span className="text-red-500">*</span>
           </Label>
           <Select
-            value={formData.schoolType}
-            onValueChange={(value) => handleChange("schoolType", value)}
+            value={formData.type}
+            onValueChange={(value) => handleChange("type", value)}
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select school type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="public">Public (Government)</SelectItem>
+              <SelectItem value="public">Government</SelectItem>
               <SelectItem value="private">Private</SelectItem>
-              <SelectItem value="international">International</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* School Level */}
+        <div className="space-y-2">
+          <Label htmlFor="schoolLevel" className="text-sm font-medium text-ceramic-primary">
+            School Level <span className="text-red-500">*</span>
+          </Label>
+          <Select
+            value={formData.schoolLevel}
+            onValueChange={(value) => handleChange("schoolLevel", value)}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select school level" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="primary">Primary (PP-VI)</SelectItem>
+              <SelectItem value="middle_secondary">Middle Secondary (PP-X)</SelectItem>
+              <SelectItem value="higher_secondary">Higher Secondary (XI-XII)</SelectItem>
             </SelectContent>
           </Select>
         </div>

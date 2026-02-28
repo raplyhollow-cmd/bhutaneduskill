@@ -287,8 +287,8 @@ export const POST = createApiRoute(
         return value;
       };
 
-      // Build notification values object - use null explicitly for all optional fields
-      const notificationValues: Record<string, any> = {
+      // Build notification values object
+      const notificationValues = {
         id: notificationId,
         title: body.title.trim(),
         message: body.message.trim(),

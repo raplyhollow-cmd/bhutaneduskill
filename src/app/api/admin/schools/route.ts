@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { schools } from "@/lib/db/schema";
-import { eq, sql, desc } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, errorResponse, badRequestResponse, createdResponse, conflictResponse } from "@/lib/api/response-helpers";
 import { logger } from "@/lib/logger";
@@ -15,7 +15,8 @@ import { nanoid } from "nanoid";
 interface CreateSchoolRequest {
   name: string;
   code: string;
-  schoolType?: string;
+  type?: string; // Ownership type: "public" | "private"
+  schoolType?: string; // School level: "primary" | "middle_secondary" | "higher_secondary"
   level?: string;
   address?: string;
   city?: string;
@@ -66,21 +67,24 @@ export const POST = createApiRoute(
       }
 
       // Calculate Max Students based on Tier
-      const maxStudents = body.maxStudents || TIER_LIMITS[tier] || TIER_LIMITS.standard;
+      const tierLimit = (tier as keyof typeof TIER_LIMITS) ? TIER_LIMITS[tier as keyof typeof TIER_LIMITS] : TIER_LIMITS.standard;
+      const maxStudents = body.maxStudents || tierLimit || 100;
 
       // Generate School ID
       const schoolId = `school_${nanoid()}`;
 
       // Create School Record
-      const newSchool = await db
+      await db
         .insert(schools)
         .values({
           id: schoolId,
           name: body.name,
           code: body.code.toUpperCase(),
-          type: body.schoolType || "public", // Use form value: public/private/international
-          schoolType: "middle_secondary", // School level (could be made configurable later)
-          level: body.level || "PP-XII",
+          type: body.type || "public", // Ownership type: public/private from form
+          schoolType: body.schoolType || "middle_secondary", // School level: primary/middle_secondary/higher_secondary
+          level: body.level || body.schoolType === "primary" ? "PP-VI" :
+                  body.schoolType === "middle_secondary" ? "PP-X" :
+                  body.schoolType === "higher_secondary" ? "XI-XII" : "PP-XII",
           address: body.address || "TBD",
           city: body.city || "Thimphu",
           state: body.city || "Thimphu", // Using city as state for Bhutan
@@ -89,11 +93,11 @@ export const POST = createApiRoute(
           phone: body.contactPhone || "+975-2-322256",
           email: body.contactEmail || "admin@school.edu.bt",
           website: "https://school.edu.bt",
-          logo: "/logos/default-school-logo.png",
+          logo: "/logo.png",
           establishedYear: new Date().getFullYear(),
           accreditationStatus: "registered",
-          campusSize: "Standard",
-          board: "BCSEA", // Bhutan Council for School Examinations and Assessment
+          campusSize: "10 acres",
+          board: "BCSE",
           principalName: "TBD",
           principalEmail: body.contactEmail || "principal@school.edu.bt",
           principalPhone: body.contactPhone || "+975-2-322256",
@@ -104,21 +108,38 @@ export const POST = createApiRoute(
           districtId: body.districtId || null,
           contactEmail: body.contactEmail || null,
           contactPhone: body.contactPhone || null,
+          tenantId: body.tenantId || schoolId, // Use schoolId as default tenantId for multi-tenancy
           subscriptionTier: tier,
           subscriptionStatus: "active",
           maxStudents,
           isActive: true,
+          activatedAt: new Date(), // Explicit activation timestamp
+          setupComplete: false, // Explicit setup status
+          setupCompletedAt: null, // Will be set when setup is complete
+          currentSessionYear: String(new Date().getFullYear()), // Current academic session
+          feeGenerationDate: null, // No fees generated yet
+          feeGenerationStatus: "pending", // Fee generation status
           facilities: [],
           createdAt: new Date(),
           updatedAt: new Date(),
-        })
-        .returning();
+        });
+
+      // Fetch the created school using select (more reliable than .returning() with neon-http)
+      const [createdSchool] = await db
+        .select()
+        .from(schools)
+        .where(eq(schools.id, schoolId))
+        .limit(1);
+
+      if (!createdSchool) {
+        return errorResponse("School created but failed to retrieve", 500);
+      }
 
       // Log Success
       logger.info("School created successfully", {
         schoolId,
-        schoolName: newSchool[0].name,
-        schoolCode: newSchool[0].code,
+        schoolName: createdSchool.name,
+        schoolCode: createdSchool.code,
         tier,
         maxStudents,
         createdBy: userId,
@@ -126,13 +147,18 @@ export const POST = createApiRoute(
 
       // Return Response
       return createdResponse({
-        school: newSchool[0],
-        message: `School "${newSchool[0].name}" created successfully with ${tier} tier (${maxStudents} student capacity)`
+        school: createdSchool,
+        message: `School "${createdSchool.name}" created successfully with ${tier} tier (${maxStudents} student capacity)`
       });
 
     } catch (error) {
       logger.apiError(error, { route: "/api/admin/schools", method: "POST" });
-      return errorResponse("Failed to create school", 500);
+      // Log the actual error message for debugging
+      console.error("School creation error:", error);
+      return errorResponse(
+        error instanceof Error ? error.message : "Failed to create school",
+        500
+      );
     }
   },
   ['admin']
@@ -152,8 +178,6 @@ export const GET = createApiRoute(
 
     try {
       const { searchParams } = new URL(request.url);
-      const status = searchParams.get("status");
-      const tier = searchParams.get("tier");
       const limit = parseInt(searchParams.get("limit") || "50");
       const offset = parseInt(searchParams.get("offset") || "0");
 

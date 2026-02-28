@@ -1,7 +1,7 @@
 # Bhutan EduSkill - Errors and Fixes Documentation
 
 > **Purpose**: Comprehensive documentation of all error types encountered and their permanent solutions.
-> **Last Updated**: February 28, 2026 (Evening)
+> **Last Updated**: March 1, 2026
 
 ---
 
@@ -17,6 +17,7 @@
 8. [Build/Compilation Errors](#8-buildcompilation-errors)
 9. [February 28, 2026 - Admin Portal Bug Fixes](#9-february-28-2026---admin-portal-bug-fixes)
 10. [API Auth & Pending Approval Fixes](#10-api-auth--pending-approval-fixes)
+11. [Notification Send Error](#11-notification-send-error-notification-id-is-required)
 
 ---
 
@@ -1593,5 +1594,55 @@ npm run db:studio  # Verify table structure
 
 ---
 
-**Last Updated**: February 28, 2026 (Late Evening)
-**Version**: 1.7
+---
+
+### Error: Notification Send - "Notification ID is required"
+
+**Severity**: HIGH (Cannot send notifications)
+
+**Symptoms**:
+```
+POST /api/admin/notifications/send 400 (Bad Request)
+Notification ID is required
+```
+
+**Root Cause**:
+The frontend was accessing `createResult.data.id` but the API returns `{ notification: {...} }`, not `{ data: { id: ... } }`.
+
+**Permanent Fix**:
+Update the frontend to use the correct response structure.
+
+**Before (WRONG)**:
+```tsx
+const createResult = await createResponse.json();
+notificationId: createResult.data.id,  // ❌ undefined
+```
+
+**After (CORRECT)**:
+```tsx
+const createResult = await createResponse.json();
+notificationId: createResult.notification.id,  // ✅ correct
+```
+
+**API Response Structure**:
+```typescript
+// src/app/api/admin/notifications/route.ts returns:
+return createdResponse({
+  notification: notification[0],  // <-- Access this, not data
+  message: "Notification created successfully",
+});
+```
+
+**Files Affected**:
+- `src/app/admin/notifications/page.tsx` - Line 187: Fixed response path
+
+**Related Errors**:
+If you see "column ... does not exist" errors with notifications, the table may not exist:
+```bash
+npm run db:push    # Create/update notifications tables
+```
+
+---
+
+**Last Updated**: March 1, 2026
+**Version**: 1.9

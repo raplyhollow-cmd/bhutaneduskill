@@ -80,15 +80,15 @@ async function fixAllJsonColumns() {
     for (const column of columns) {
       try {
         // Check current type
-        const result = await sql\`
+        const result = await sql`
           SELECT data_type
           FROM information_schema.columns
-          WHERE table_name = \${table}
-          AND column_name = \${column}
-        \`;
+          WHERE table_name = ${table}
+          AND column_name = ${column}
+        `;
 
         if (result.length === 0) {
-          console.log(\`⊙ Skip: \${table}.\${column} (table/column doesn't exist)\`);
+          console.log(`⊙ Skip: ${table}.${column} (table/column doesn't exist)`);
           skipped++;
           continue;
         }
@@ -96,44 +96,44 @@ async function fixAllJsonColumns() {
         const currentType = result[0].data_type;
 
         if (currentType === 'json') {
-          console.log(\`✓ Already json: \${table}.\${column}\`);
+          console.log(`✓ Already json: ${table}.${column}`);
           skipped++;
           continue;
         }
 
         if (currentType !== 'text') {
-          console.log(\`⊙ Skip: \${table}.\${column} (is \${currentType}, not text)\`);
+          console.log(`⊙ Skip: ${table}.${column} (is ${currentType}, not text)`);
           skipped++;
           continue;
         }
 
         // Fix it
-        console.log(\`Fixing: \${table}.\${column} (\${currentType} → json)\`);
+        console.log(`Fixing: ${table}.${column} (${currentType} → json)`);
 
-        await sql.unsafe(\`
-          ALTER TABLE "\${table}"
-          ALTER COLUMN "\${column}"
+        await sql.unsafe(`
+          ALTER TABLE "${table}"
+          ALTER COLUMN "${column}"
           SET DATA TYPE json
-          USING COALESCE(\${column}::json, '[]'::json)
-        \`);
+          USING COALESCE(${column}::json, '[]'::json)
+        `);
 
-        console.log(\`  ✓ Fixed \${table}.\${column}\`);
+        console.log(`  ✓ Fixed ${table}.${column}`);
         fixed++;
 
       } catch (error) {
-        console.error(\`  ✗ Error \${table}.\${column}: \${error.message}\`);
+        console.error(`  ✗ Error ${table}.${column}: ${error.message}`);
         errors++;
       }
     }
   }
 
-  console.log(\`\n=== Summary ===\`);
-  console.log(\`Fixed: \${fixed}\`);
-  console.log(\`Skipped: \${skipped}\`);
-  console.log(\`Errors: \${errors}\`);
+  console.log(`\n=== Summary ===`);
+  console.log(`Fixed: ${fixed}`);
+  console.log(`Skipped: ${skipped}`);
+  console.log(`Errors: ${errors}`);
 
   if (fixed > 0) {
-    console.log(\`\n✓ All JSON columns fixed! Now run 'npm run db:push'\`);
+    console.log(`\n✓ All JSON columns fixed! Now run 'npm run db:push'`);
   }
 }
 
