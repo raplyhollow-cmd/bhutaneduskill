@@ -272,7 +272,7 @@ export const POST = createApiRoute(
       message: "RUB admission predictions generated successfully",
     } satisfies ApiSuccess<RUBPredictorResponse>);
   },
-  [] // No specific role requirement
+  ["admin", "school-admin", "teacher", "student", "parent", "counselor"] // All authenticated users
 );
 
 // ============================================================================

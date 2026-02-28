@@ -175,7 +175,7 @@ export const POST = createApiRoute(
       message: "Career predictions generated successfully",
     } satisfies ApiSuccess<CareerPredictorResponse>);
   },
-  [] // No specific role requirement
+  ["admin", "school-admin", "teacher", "student", "parent", "counselor"] // All authenticated users
 );
 
 // ============================================================================

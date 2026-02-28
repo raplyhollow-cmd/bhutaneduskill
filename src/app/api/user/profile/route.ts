@@ -43,7 +43,7 @@ export const GET = createApiRoute(
 
     return successResponse({ profile: transformedProfile, needsSetup: false });
   },
-  [] // No role restriction - any authenticated user can access
+  ["admin", "school-admin", "teacher", "student", "parent", "counselor"] // All authenticated users can access
 );
 
 // ============================================================================
@@ -109,5 +109,5 @@ export const POST = createApiRoute(
       profile: updatedUser
     });
   },
-  [] // No role restriction - any authenticated user can access
+  ["admin", "school-admin", "teacher", "student", "parent", "counselor"] // All authenticated users can access
 );

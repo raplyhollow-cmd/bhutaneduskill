@@ -66,7 +66,7 @@ export const GET = createApiRoute(
 
     return successResponse(notifications);
   },
-  [] // No role restriction - any authenticated user
+  ["admin", "school-admin", "teacher", "student", "parent", "counselor"] // All authenticated users
 );
 
 /**
@@ -155,7 +155,7 @@ export const PATCH = createApiRoute(
 
     return badRequestResponse("Invalid action. Use 'markAsRead' or 'markAllAsRead'");
   },
-  [] // No role restriction - any authenticated user
+  ["admin", "school-admin", "teacher", "student", "parent", "counselor"] // All authenticated users
 );
 
 /**
@@ -184,5 +184,5 @@ export const DELETE = createApiRoute(
 
     return successResponse({ deleted: true });
   },
-  [] // No role restriction - any authenticated user
+  ["admin", "school-admin", "teacher", "student", "parent", "counselor"] // All authenticated users
 );

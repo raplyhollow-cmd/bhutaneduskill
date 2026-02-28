@@ -27,7 +27,7 @@ export const GET = createApiRoute(
 
     return successResponse(settings);
   },
-  [] // Any authenticated user can access their settings
+  ["admin", "school-admin", "teacher", "student", "parent", "counselor"] // All authenticated users can access their settings
 );
 
 // ============================================================================

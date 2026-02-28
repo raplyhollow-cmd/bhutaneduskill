@@ -141,7 +141,7 @@ export const POST = createApiRoute(
       message: "Subscription created successfully",
     });
   },
-  [] // Any authenticated user can subscribe to push notifications
+  ["admin", "school-admin", "teacher", "student", "parent", "counselor"] // All authenticated users can subscribe to push notifications
 );
 
 // ============================================================================
@@ -174,5 +174,5 @@ export const GET = createApiRoute(
 
     return successResponse(sanitized);
   },
-  [] // Any authenticated user can view their subscriptions
+  ["admin", "school-admin", "teacher", "student", "parent", "counselor"] // All authenticated users can view their subscriptions
 );

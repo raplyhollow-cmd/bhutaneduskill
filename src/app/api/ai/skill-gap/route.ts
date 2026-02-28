@@ -122,7 +122,7 @@ export const POST = createApiRoute(
       message: "Skill gap analysis completed successfully",
     } satisfies ApiSuccess<SkillGapResponse>);
   },
-  [] // No specific role requirement - any authenticated user
+  ["admin", "school-admin", "teacher", "student", "parent", "counselor"] // All authenticated users
 );
 
 // ============================================================================

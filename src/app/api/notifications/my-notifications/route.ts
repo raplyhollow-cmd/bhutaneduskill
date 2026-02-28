@@ -78,7 +78,7 @@ export const GET = createApiRoute(
       },
     });
   },
-  [] // Any authenticated user can access their notifications
+  ["admin", "school-admin", "teacher", "student", "parent", "counselor"] // All authenticated users can access their notifications
 );
 
 // ============================================================================
@@ -198,5 +198,5 @@ export const POST = createApiRoute(
       readAt: now,
     });
   },
-  [] // Any authenticated user can mark their notifications as read
+  ["admin", "school-admin", "teacher", "student", "parent", "counselor"] // All authenticated users can mark their notifications as read
 );

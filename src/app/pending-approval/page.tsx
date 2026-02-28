@@ -39,8 +39,8 @@ export default function PendingApprovalPage() {
         const response = await fetch("/api/user/profile");
         if (response.ok) {
           const data = await response.json();
-          // API returns { profile: {...}, needsSetup: false }
-          const userProfile = data.profile || data.user;
+          // API returns { data: { profile: {...}, needsSetup: false } }
+          const userProfile = data.data?.profile || data.profile || data.user;
           setUser(userProfile);
 
           console.log("Pending approval page - user status:", {
@@ -50,7 +50,9 @@ export default function PendingApprovalPage() {
           });
 
           // If user is already approved, redirect to their portal
-          if (userProfile?.onboardingStatus === "enrolled" || userProfile?.onboardingStatus === "active") {
+          if (userProfile?.onboardingStatus === "enrolled" ||
+              userProfile?.onboardingStatus === "active" ||
+              userProfile?.onboardingStatus === "complete") {
             const redirectMap: Record<string, string> = {
               student: "/student",
               teacher: "/teacher",

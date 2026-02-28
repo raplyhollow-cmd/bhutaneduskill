@@ -99,5 +99,5 @@ export const POST = createApiRoute(
 
     return badRequestResponse("Must provide subscriptionId, endpoint, or all: true");
   },
-  [] // Any authenticated user can unsubscribe
+  ["admin", "school-admin", "teacher", "student", "parent", "counselor"] // All authenticated users can unsubscribe
 );

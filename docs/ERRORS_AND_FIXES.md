@@ -1,7 +1,7 @@
 # Bhutan EduSkill - Errors and Fixes Documentation
 
 > **Purpose**: Comprehensive documentation of all error types encountered and their permanent solutions.
-> **Last Updated**: February 23, 2026
+> **Last Updated**: February 28, 2026 (Evening)
 
 ---
 
@@ -15,6 +15,8 @@
 6. [Deprecated API Usage](#6-deprecated-api-usage)
 7. [Teacher/Student Approval Flow](#7-teacherstudent-approval-flow-dual-status-system)
 8. [Build/Compilation Errors](#8-buildcompilation-errors)
+9. [February 28, 2026 - Admin Portal Bug Fixes](#9-february-28-2026---admin-portal-bug-fixes)
+10. [API Auth & Pending Approval Fixes](#10-api-auth--pending-approval-fixes)
 
 ---
 
@@ -1141,3 +1143,269 @@ curl -H "Authorization: Bearer YOUR_TOKEN" http://localhost:3003/api/admin/analy
 curl -H "Authorization: Bearer YOUR_TOKEN" http://localhost:3003/api/admin/notifications
 curl -H "Authorization: Bearer YOUR_TOKEN" http://localhost:3003/api/admin/partners
 ```
+
+---
+
+## Additional Fixes (February 28, 2026 - Evening Session)
+
+### Error: API Routes - "Cannot destructure property 'user' of 'auth' as it is null"
+
+**Severity**: CRITICAL (All notifications, push, and user profile APIs failing)
+
+**Symptoms**:
+```
+Error: Cannot destructure property 'user' of 'auth' as it is null.
+    at useNotifications.useCallback[fetchUnreadCount]
+    at POST /api/user/profile
+```
+
+**Root Cause**:
+Multiple API routes had `allowedRoles = []` (empty array) which tells `createApiRoute` to skip authentication and pass `auth: null` to the handler. But the handlers were trying to destructure `auth` (e.g., `const { userId } = auth` or `const { user } = auth`), which fails when `auth` is `null`.
+
+**The `createApiRoute` Pattern**:
+```typescript
+// When allowedRoles is empty, auth is null
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    // auth is null when allowedRoles = []
+    const { userId } = auth;  // ❌ Cannot destructure null
+  },
+  [] // Open endpoint - no auth required
+);
+```
+
+**Permanent Fix**:
+For routes that require authentication, populate `allowedRoles` with all user types instead of leaving it empty.
+
+**Before (WRONG)**:
+```typescript
+// src/app/api/notifications/my-notifications/unread-count/route.ts
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;  // ❌ auth is null!
+    // ...
+  },
+  [] // ❌ Empty array means "open endpoint", auth = null
+);
+```
+
+**After (CORRECT)**:
+```typescript
+// src/app/api/notifications/my-notifications/unread-count/route.ts
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;  // ✅ auth has { userId, user }
+    // ...
+  },
+  ["admin", "school-admin", "teacher", "student", "parent", "counselor"] // ✅ All authenticated users
+);
+```
+
+**Intentionally Public Routes** (keep `allowedRoles = []`):
+- `/api/schools/search` - School search for setup wizard
+- `/api/push/vapid-public-key` - Returns public VAPID key
+- `/api/marketing/schools` - Public school listing
+- `/api/marketing/testimonials` - Public testimonials
+
+**Files Fixed**:
+- [src/app/api/notifications/my-notifications/unread-count/route.ts](src/app/api/notifications/my-notifications/unread-count/route.ts)
+- [src/app/api/notifications/my-notifications/route.ts](src/app/api/notifications/my-notifications/route.ts)
+- [src/app/api/notifications/route.ts](src/app/api/notifications/route.ts)
+- [src/app/api/push/subscribe/route.ts](src/app/api/push/subscribe/route.ts)
+- [src/app/api/push/notifications/route.ts](src/app/api/push/notifications/route.ts)
+- [src/app/api/push/settings/route.ts](src/app/api/push/settings/route.ts)
+- [src/app/api/push/unsubscribe/route.ts](src/app/api/push/unsubscribe/route.ts)
+- [src/app/api/user/profile/route.ts](src/app/api/user/profile/route.ts)
+- [src/app/api/ai/career-coach/route.ts](src/app/api/ai/career-coach/route.ts)
+- [src/app/api/ai/insights/route.ts](src/app/api/ai/insights/route.ts)
+- [src/app/api/ai/skill-gap/route.ts](src/app/api/ai/skill-gap/route.ts)
+
+---
+
+### Error: Pending-Approval Page - User Stuck Even After Approval
+
+**Severity**: CRITICAL (Approved users cannot access their portal)
+
+**Symptoms**:
+- User approved in database (`onboardingStatus: "complete"`, application status: `"approved"`)
+- User still sees pending-approval page
+- Page polls every 30 seconds but never redirects
+
+**Root Cause #1**: Status check mismatch
+- Page checked for `onboardingStatus === "enrolled"` or `"active"`
+- Approve API sets status to `"complete"`
+
+**Root Cause #2**: Response structure mismatch
+- API returns: `{ data: { profile: {...}, needsSetup: false } }`
+- Page accessed: `data.profile` instead of `data.data.profile`
+
+**Permanent Fix #1** - Add "complete" to status check:
+
+**Before (WRONG)**:
+```typescript
+// src/app/pending-approval/page.tsx line 53
+if (userProfile?.onboardingStatus === "enrolled" || userProfile?.onboardingStatus === "active") {
+  // ...
+}
+```
+
+**After (CORRECT)**:
+```typescript
+// src/app/pending-approval/page.tsx line 53
+if (userProfile?.onboardingStatus === "enrolled" ||
+    userProfile?.onboardingStatus === "active" ||
+    userProfile?.onboardingStatus === "complete") {  // ✅ Add "complete"
+  // ...
+}
+```
+
+**Permanent Fix #2** - Extract profile from nested response:
+
+**Before (WRONG)**:
+```typescript
+// src/app/pending-approval/page.tsx line 41-43
+const data = await response.json();
+const userProfile = data.profile || data.user;  // ❌ Wrong path
+```
+
+**After (CORRECT)**:
+```typescript
+// src/app/pending-approval/page.tsx line 41-43
+const data = await response.json();
+const userProfile = data.data?.profile || data.profile || data.user;  // ✅ Check nested path first
+```
+
+**Files Fixed**:
+- [src/app/pending-approval/page.tsx:53-55](src/app/pending-approval/page.tsx) - Added "complete" status check
+- [src/app/pending-approval/page.tsx:43](src/app/pending-approval/page.tsx) - Fixed data extraction
+
+---
+
+### Error: School-Admin Setup - JSON Column Type Mismatch
+
+**Severity**: CRITICAL (Cannot create school-admin users)
+
+**Symptoms**:
+```
+Failed query: insert into "users" (...)
+```
+
+**Root Cause**:
+JSON columns in the `users` table (like `section`, `parentContact`, `parentPhone`, `emergencyContact`) were receiving empty strings `""` instead of `null`. PostgreSQL JSON columns don't accept empty strings as valid JSON.
+
+**Permanent Fix**:
+Use `null` for JSON columns instead of empty strings.
+
+**Before (WRONG)**:
+```typescript
+// src/app/api/setup/school-admin/route.ts line 91-122
+await db.insert(users).values({
+  // ...
+  section: "",           // ❌ Empty string in JSON column
+  parentContact: "",     // ❌ Empty string in JSON column
+  parentPhone: "",       // ❌ Empty string in JSON column
+  emergencyContact: "",  // ❌ Empty string in JSON column
+});
+```
+
+**After (CORRECT)**:
+```typescript
+// src/app/api/setup/school-admin/route.ts line 91-122
+await db.insert(users).values({
+  // ...
+  section: null,         // ✅ Use null for JSON columns
+  parentContact: null,   // ✅ Use null for JSON columns
+  parentPhone: null,     // ✅ Use null for JSON columns
+  emergencyContact: null, // ✅ Use null for JSON columns
+});
+```
+
+**Files Fixed**:
+- [src/app/api/setup/school-admin/route.ts:105-114](src/app/api/setup/school-admin/route.ts)
+
+---
+
+### Error: School-Admin Setup - Schools Query Selecting All Columns
+
+**Severity**: CRITICAL (Setup fails with database query error)
+
+**Symptoms**:
+```
+Failed to process setup
+Failed query: select "id", "name", ... from "schools" where "schools"."code" = $1
+```
+
+**Root Cause**:
+The query was using `.select()` without specifying columns, which caused Drizzle to try to select all columns. Some columns like `current_session_year`, `fee_generation_date`, `fee_generation_status` may not exist in the database.
+
+**Permanent Fix**:
+Select only specific columns needed for the operation.
+
+**Before (WRONG)**:
+```typescript
+// src/app/api/setup/school-admin/route.ts line 138-146
+const schoolRecord = await db
+  .select()  // ❌ Selects ALL columns - may fail on missing columns
+  .from(schools)
+  .where(eq(schools.code, data.schoolCode))
+  .limit(1);
+```
+
+**After (CORRECT)**:
+```typescript
+// src/app/api/setup/school-admin/route.ts line 138-146
+const schoolRecord = await db
+  .select({
+    id: schools.id,
+    name: schools.name,
+    code: schools.code,  // ✅ Only select what we need
+  })
+  .from(schools)
+  .where(eq(schools.code, data.schoolCode))
+  .limit(1);
+```
+
+**Files Fixed**:
+- [src/app/api/setup/school-admin/route.ts:139-143](src/app/api/setup/school-admin/route.ts)
+
+---
+
+## Session Summary: February 28, 2026 (Evening)
+
+| Fix Type | Files | Impact |
+|----------|-------|--------|
+| API routes `allowedRoles = []` | 11 | ✅ All authenticated APIs working |
+| Pending-approval status check | 1 | ✅ Approved users can access portal |
+| Pending-approval data extraction | 1 | ✅ Profile data loads correctly |
+| School-admin JSON columns | 1 | ✅ Can create school-admin users |
+| Schools query column selection | 1 | ✅ Setup completes successfully |
+
+**Verification Commands**:
+```bash
+# Check database for user status
+node scripts/check-user-status.js
+
+# Test notification unread count
+curl -H "Cookie: __session=YOUR_TOKEN" http://localhost:3003/api/notifications/my-notifications/unread-count
+
+# Test user profile
+curl -H "Cookie: __session=YOUR_TOKEN" http://localhost:3003/api/user/profile
+```
+
+**Database Status Check**:
+```sql
+-- Verify user approval
+SELECT id, email, type, onboarding_complete, onboarding_status
+FROM users
+WHERE email = 'raplyhollow2@gmail.com';
+
+-- Verify application status
+SELECT id, user_id, school_id, status, reviewed_by, reviewed_at
+FROM school_admin_applications
+WHERE user_id = 'user-Uu42g3j_PqPc0QqwjxMBR';
+```
+
+---
+
+**Last Updated**: February 28, 2026 (Evening)
+**Version**: 1.5

@@ -85,5 +85,5 @@ export const GET = createApiRoute(
       pagination,
     });
   },
-  [] // Any authenticated user can view their push notification history
+  ["admin", "school-admin", "teacher", "student", "parent", "counselor"] // All authenticated users can view their push notification history
 );

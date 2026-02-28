@@ -22,7 +22,7 @@ import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, badRequestResponse } from "@/lib/api/response-helpers";
 
 export const GET = createApiRoute(
-  async (request: NextRequest) => {
+  async (request: NextRequest, auth: any) => { // auth is null for open endpoints
     const { searchParams } = new URL(request.url);
     const name = searchParams.get("name");
 

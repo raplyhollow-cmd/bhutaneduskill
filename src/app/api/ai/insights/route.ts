@@ -109,7 +109,7 @@ export const POST = createApiRoute(
       return errorResponse("Failed to generate insights", 500);
     }
   },
-  [] // No role restriction - any authenticated user
+  ["admin", "school-admin", "teacher", "student", "parent", "counselor"] // All authenticated users
 );
 
 // ============================================================================

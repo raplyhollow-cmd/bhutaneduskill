@@ -273,7 +273,7 @@ export const POST = createApiRoute(
 
     return NextResponse.json(responseWithData);
   },
-  [] // No specific role requirement - any authenticated user
+  ["admin", "school-admin", "teacher", "student", "parent", "counselor"] // All authenticated users
 );
 
 // ============================================================================

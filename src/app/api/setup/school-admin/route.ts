@@ -98,23 +98,23 @@ export async function POST(request: NextRequest) {
         lastName,
         email,
         phone: "", // Will be updated from form data
-        profileImage: clerkUser.image_url || "",
-        dateOfBirth: "", // Will be updated from form data
-        gender: "other", // Default
+        profileImage: clerkUser.image_url || null,
+        dateOfBirth: null, // Will be updated from form data
+        gender: null,
         grade: 0, // Required integer, default to 0
-        section: "",
-        rollNumber: "",
-        address: "",
-        city: "",
-        state: "",
-        postalCode: "",
+        section: null, // JSON column - use null not ""
+        rollNumber: null,
+        address: null,
+        city: null,
+        state: null,
+        postalCode: null,
         country: "Bhutan",
-        parentContact: "",
-        parentPhone: "",
-        emergencyContact: "",
-        bloodGroup: "",
-        enrollmentDate: new Date().toISOString(),
-        lastLogin: new Date().toISOString(),
+        parentContact: null, // JSON column
+        parentPhone: null, // JSON column
+        emergencyContact: null, // JSON column
+        bloodGroup: null,
+        enrollmentDate: new Date().toISOString().split('T')[0], // Date only string
+        lastLogin: new Date().toISOString().split('T')[0],
         emailVerified: false,
         onboardingComplete: false,
         createdAt: new Date(),
@@ -136,7 +136,11 @@ export async function POST(request: NextRequest) {
     // Verify school code if provided
     if (data?.schoolCode) {
       const schoolRecord = await db
-        .select()
+        .select({
+          id: schools.id,
+          name: schools.name,
+          code: schools.code,
+        })
         .from(schools)
         .where(eq(schools.code, data.schoolCode))
         .limit(1);

@@ -55,5 +55,5 @@ export const GET = createApiRoute(
       urgentCount: 0,
     });
   },
-  [] // Any authenticated user can get their unread count
+  ["admin", "school-admin", "teacher", "student", "parent", "counselor"] // All authenticated users can get their unread count
 );

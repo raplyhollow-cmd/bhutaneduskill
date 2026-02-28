@@ -128,7 +128,7 @@ export const POST = createApiRoute(
       message: "Scholarship matching completed successfully",
     } satisfies ApiSuccess<ScholarshipMatcherResponse>);
   },
-  [] // No specific role requirement
+  ["admin", "school-admin", "teacher", "student", "parent", "counselor"] // All authenticated users
 );
 
 // ============================================================================

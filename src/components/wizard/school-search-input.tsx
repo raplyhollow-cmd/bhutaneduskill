@@ -134,9 +134,13 @@ export function SchoolSearchInput({
 
       const data = await response.json();
 
-      if (data.success && data.schools) {
-        setResults(data.schools);
-        setIsOpen(data.schools.length > 0);
+      // Handle both old format { success: true, schools: [...] }
+      // and new format { data: { schools: [...] } }
+      const schools = data.data?.schools || data.schools;
+
+      if (schools) {
+        setResults(schools);
+        setIsOpen(schools.length > 0);
       } else {
         setResults([]);
         setIsOpen(false);
