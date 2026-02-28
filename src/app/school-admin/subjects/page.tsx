@@ -106,8 +106,9 @@ export default function SchoolAdminSubjectsPage() {
   const loadGlobalSubjects = async () => {
     try {
       const res = await fetch("/api/subjects/global");
-      const data = await res.json();
-      setGlobalSubjects(data.subjects || []);
+      const json = await res.json();
+      // API returns { data: { subjects: [...] } }
+      setGlobalSubjects(json.data?.subjects || []);
     } catch (err) {
       console.error("Failed to load global subjects:", err);
     }

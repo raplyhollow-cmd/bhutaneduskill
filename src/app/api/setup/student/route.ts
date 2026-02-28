@@ -218,7 +218,11 @@ export async function POST(request: NextRequest) {
     // Verify school code if provided and link user to school
     if (data?.schoolCode) {
       const schoolRecord = await db
-        .select()
+        .select({
+          id: schools.id,
+          name: schools.name,
+          code: schools.code,
+        })
         .from(schools)
         .where(eq(schools.code, data.schoolCode))
         .limit(1);
