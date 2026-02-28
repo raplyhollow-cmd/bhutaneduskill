@@ -7,7 +7,7 @@ import { PortalErrorBoundary } from "@/components/error/portal-error-boundary";
 import { cn } from "@/lib/utils";
 import { portal } from "@/styles/design-tokens";
 import { CommandPalette, useCommandPalette, createNavigationCommands, createQuickActionsCommands } from "@/components/ui/command-palette";
-import { Home, Users, ClipboardList, BookOpen, Calendar, BarChart3, Settings, MessageSquare, Link as LinkIcon } from "lucide-react";
+import { Home, Users, ClipboardList, BookOpen, Calendar, BarChart3, Settings, MessageSquare, Link as LinkIcon, CheckCircle } from "lucide-react";
 
 interface TeacherLayoutClientProps {
   children: React.ReactNode;
@@ -52,6 +52,13 @@ export function TeacherLayoutClient({ children, userName, portalType, needsSetup
       action: () => router.push("/teacher/students"),
     },
     {
+      id: "approvals",
+      label: "Approvals",
+      icon: CheckCircle,
+      shortcut: "A",
+      action: () => router.push("/teacher/approvals"),
+    },
+    {
       id: "homework",
       label: "Homework",
       icon: ClipboardList,
@@ -62,7 +69,7 @@ export function TeacherLayoutClient({ children, userName, portalType, needsSetup
       id: "attendance",
       label: "Attendance",
       icon: ClipboardList,
-      shortcut: "A",
+      shortcut: "T",
       action: () => router.push("/teacher/attendance"),
     },
     {

@@ -17,6 +17,7 @@ import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, errorResponse, badRequestResponse, notFoundResponse, forbiddenResponse } from "@/lib/api/response-helpers";
 
 // POST /api/school-admin/applications/[id]/approve - Approve student/teacher application
+// Now supports: school-admin, platform admin, and class teachers
 export const POST = createApiRoute(
   async (request: NextRequest, auth, context: { params: Promise<{ id: string }> }) => {
     const { userId, user } = auth;
@@ -26,10 +27,23 @@ export const POST = createApiRoute(
     const body = await request.json();
     const { type } = body; // 'student' or 'teacher'
 
-    // Check permission
-    const permission = type === 'student' ? 'students.approve' : 'teachers.approve';
-    const permCheck = await requirePermission(userId, permission);
-    if (permCheck) return permCheck;
+    // Check permission based on user type
+    // - Platform admins (admin) can approve anyone
+    // - School admins can approve their school's applications
+    // - Teachers can approve students for classes they teach
+    if (user.type === 'teacher') {
+      // Teachers can only approve students, not other teachers
+      if (type !== 'student') {
+        return forbiddenResponse("Teachers can only approve student applications");
+      }
+      // Permission check for teachers is done below (class assignment)
+    } else if (user.type === 'school-admin') {
+      // School admins use RBAC (if available) or are implicitly allowed
+      const permission = type === 'student' ? 'students.approve' : 'teachers.approve';
+      const permCheck = await requirePermission(userId, permission);
+      if (permCheck) return permCheck;
+    }
+    // Platform admins (type: 'admin') have implicit permission
 
     // Get the applicant
     const applicants = await db
@@ -54,12 +68,31 @@ export const POST = createApiRoute(
       return forbiddenResponse("Access denied");
     }
 
-    // Update user to approved
+    // For teachers: verify they teach a class for the student's grade
+    if (user.type === 'teacher' && type === 'student') {
+      // Check if teacher teaches any class for the student's grade
+      const teacherClasses = await db
+        .select()
+        .from(classes)
+        .where(
+          and(
+            eq(classes.schoolId, user.schoolId!),
+            eq(classes.grade, applicant.classGrade || 0)
+          )
+        )
+        .limit(1);
+
+      if (teacherClasses.length === 0) {
+        return forbiddenResponse("You can only approve students for grades you teach");
+      }
+    }
+
+    // Update user to approved - use 'enrolled' status for students
     await db
       .update(users)
       .set({
         onboardingComplete: true,
-        onboardingStatus: 'complete',
+        onboardingStatus: type === 'student' ? 'enrolled' : 'complete',
         updatedAt: new Date(),
       })
       .where(eq(users.id, applicantId));
@@ -126,10 +159,11 @@ export const POST = createApiRoute(
       message: `${type === 'student' ? 'Student' : 'Teacher'} application approved successfully`,
     });
   },
-  ['school-admin', 'admin']
+  ['school-admin', 'admin', 'teacher']
 );
 
 // PATCH /api/school-admin/applications/[id]/reject - Reject student/teacher application
+// Supports: school-admin, platform admin, and class teachers (for students)
 export const PATCH = createApiRoute(
   async (request: NextRequest, auth, context: { params: Promise<{ id: string }> }) => {
     const { userId, user } = auth;
@@ -139,10 +173,19 @@ export const PATCH = createApiRoute(
     const body = await request.json();
     const { type, reason } = body;
 
-    // Check permission
-    const permission = type === 'student' ? 'students.approve' : 'teachers.approve';
-    const permCheck = await requirePermission(userId, permission);
-    if (permCheck) return permCheck;
+    // Check permission based on user type
+    if (user.type === 'teacher') {
+      // Teachers can only reject students, not other teachers
+      if (type !== 'student') {
+        return forbiddenResponse("Teachers can only reject student applications");
+      }
+    } else if (user.type === 'school-admin') {
+      // School admins use RBAC (if available) or are implicitly allowed
+      const permission = type === 'student' ? 'students.approve' : 'teachers.approve';
+      const permCheck = await requirePermission(userId, permission);
+      if (permCheck) return permCheck;
+    }
+    // Platform admins (type: 'admin') have implicit permission
 
     // Get the applicant
     const applicants = await db
@@ -183,10 +226,11 @@ export const PATCH = createApiRoute(
       message: `${type === 'student' ? 'Student' : 'Teacher'} application rejected`,
     });
   },
-  ['school-admin', 'admin']
+  ['school-admin', 'admin', 'teacher']
 );
 
 // Separate route for rejection to be clearer
+// Supports: school-admin, platform admin, and class teachers (for students)
 export const DELETE = createApiRoute(
   async (request: NextRequest, auth, context: { params: Promise<{ id: string }> }) => {
     const { userId, user } = auth;
@@ -201,10 +245,19 @@ export const DELETE = createApiRoute(
       return badRequestResponse("Type parameter required");
     }
 
-    // Check permission
-    const permission = type === 'student' ? 'students.approve' : 'teachers.approve';
-    const permCheck = await requirePermission(userId, permission);
-    if (permCheck) return permCheck;
+    // Check permission based on user type
+    if (user.type === 'teacher') {
+      // Teachers can only reject students, not other teachers
+      if (type !== 'student') {
+        return forbiddenResponse("Teachers can only reject student applications");
+      }
+    } else if (user.type === 'school-admin') {
+      // School admins use RBAC (if available) or are implicitly allowed
+      const permission = type === 'student' ? 'students.approve' : 'teachers.approve';
+      const permCheck = await requirePermission(userId, permission);
+      if (permCheck) return permCheck;
+    }
+    // Platform admins (type: 'admin') have implicit permission
 
     // Get the applicant
     const applicants = await db
@@ -244,5 +297,5 @@ export const DELETE = createApiRoute(
       message: `${type === 'student' ? 'Student' : 'Teacher'} application rejected`,
     });
   },
-  ['school-admin', 'admin']
+  ['school-admin', 'admin', 'teacher']
 );

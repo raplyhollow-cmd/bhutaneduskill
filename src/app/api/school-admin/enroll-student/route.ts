@@ -16,10 +16,11 @@ import { createApiRoute } from "@/lib/api/route-handler";
 /**
  * POST /api/school-admin/enroll-student
  * Approve a student application and create enrollment record
+ * Now supports: school-admin, platform admin, and class teachers
  */
 export const POST = createApiRoute(
   async (req: NextRequest, auth) => {
-    const { userId: adminId } = auth;
+    const { userId: adminId, user } = auth;
 
     const body = await req.json();
     const { applicationId, studentId, classId } = body;
@@ -28,23 +29,27 @@ export const POST = createApiRoute(
       return { error: "Missing required fields: applicationId, studentId, classId", status: 400 };
     }
 
-    // Verify the application belongs to the admin's school
-    const [admin] = await db.select({
+    // Get the requesting user's info
+    const [requestingUser] = await db.select({
       id: users.id,
+      type: users.type,
       schoolId: users.schoolId,
+      classGrade: users.classGrade,
       firstName: users.firstName,
       lastName: users.lastName,
     }).from(users).where(eq(users.id, adminId)).limit(1);
 
-    if (!admin?.schoolId) {
-      return { error: "Admin school not found", status: 404 };
+    if (!requestingUser?.schoolId && requestingUser.type !== 'admin') {
+      return { error: "User school not found", status: 404 };
     }
+
+    const schoolId = requestingUser.schoolId || '';
 
     // Get the application
     const [application] = await db.select().from(studentApplications).where(
       and(
         eq(studentApplications.id, applicationId),
-        eq(studentApplications.schoolId, admin.schoolId)
+        eq(studentApplications.schoolId, schoolId)
       )
     ).limit(1);
 
@@ -56,10 +61,25 @@ export const POST = createApiRoute(
       return { error: `Application already ${application.status}`, status: 400 };
     }
 
+    // For teachers: verify they teach this class
+    if (requestingUser.type === 'teacher') {
+      const [teacherClass] = await db.select().from(classes).where(
+        eq(classes.id, classId)
+      ).limit(1);
+
+      if (!teacherClass || teacherClass.schoolId !== schoolId) {
+        return { error: "Class not found", status: 404 };
+      }
+      // Verify the teacher teaches this grade
+      if (teacherClass.grade !== requestingUser.classGrade) {
+        return { error: "You can only enroll students in classes you teach", status: 403 };
+      }
+    }
+
     // Verify the class exists and belongs to the school
     const [targetClass] = await db.select().from(classes).where(eq(classes.id, classId)).limit(1);
 
-    if (!targetClass || ("schoolId" in targetClass && targetClass.schoolId !== admin.schoolId)) {
+    if (!targetClass || ("schoolId" in targetClass && targetClass.schoolId !== schoolId)) {
       return { error: "Class not found", status: 404 };
     }
 
@@ -80,10 +100,14 @@ export const POST = createApiRoute(
       updatedAt: now,
     });
 
-    // Update student onboarding status
+    // Update student onboarding status - use 'enrolled' for auth check
     await db
       .update(users)
-      .set({ onboardingStatus: "complete" })
+      .set({
+        onboardingStatus: "enrolled",
+        onboardingComplete: true,
+        updatedAt: now,
+      })
       .where(eq(users.id, studentId));
 
     // Update application status
@@ -99,7 +123,7 @@ export const POST = createApiRoute(
       .where(eq(studentApplications.id, applicationId));
 
     // Notify student about approval
-    await notifyStudentAboutEnrollment(studentId, targetClass.name, admin.schoolId);
+    await notifyStudentAboutEnrollment(studentId, targetClass.name, schoolId);
 
     logger.info("Student enrolled successfully", {
       applicationId,
@@ -115,7 +139,7 @@ export const POST = createApiRoute(
       message: "Student enrolled successfully",
     };
   },
-  ["school-admin"]
+  ["school-admin", "admin", "teacher"]
 );
 
 /**
