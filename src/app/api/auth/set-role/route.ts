@@ -222,20 +222,25 @@ export async function GET(request: NextRequest) {
       return response;
     }
 
-    // School admins: check if their application is approved
-    // First check onboardingStatus directly (more efficient)
-    // Handle both pending_approval and pending_enrollment statuses
-    if (user.type === "school-admin" &&
-        (user.onboardingStatus === "pending_approval" || user.onboardingStatus === "pending_enrollment")) {
-      logger.debug("School admin awaiting approval", { userId: user.id, onboardingStatus: user.onboardingStatus });
+    // Check if user is awaiting approval (pending_enrollment or pending_approval)
+    // This applies to students, teachers, and school-admins
+    const pendingStatuses = ["pending_approval", "pending_enrollment", "pending"];
+    if (pendingStatuses.includes(user.onboardingStatus || "")) {
+      logger.debug("User awaiting approval", {
+        userId: user.id,
+        type: user.type,
+        onboardingStatus: user.onboardingStatus
+      });
       return NextResponse.json({
         userType: null,
         needsSetup: true,
         awaitingApproval: true,
+        onboardingStatus: user.onboardingStatus,
       });
     }
 
-    // Fallback: check application status table if onboardingStatus not set
+    // DEPRECATED: Fallback check for school-admin application status table
+    // This is kept for backward compatibility but should not be needed
     if (user.type === "school-admin" && user.schoolId && !user.onboardingStatus) {
       try {
         const application = await db

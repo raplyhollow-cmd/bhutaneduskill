@@ -1596,6 +1596,44 @@ npm run db:studio  # Verify table structure
 
 ---
 
+### Error: Students Bypass Approval - Direct Dashboard Access
+
+**Severity**: CRITICAL (Security vulnerability)
+
+**Symptoms**:
+Students can access dashboard immediately after signup without waiting for school admin approval.
+
+**Root Cause**:
+The `/api/auth/set-role` endpoint checked `onboardingStatus` for school-admins but not for students/teachers. Any user with a valid `type` was allowed in.
+
+**Permanent Fix**:
+Added universal pending status check for all user types.
+
+**src/app/api/auth/set-role.ts**:
+```typescript
+// Check if user is awaiting approval (applies to ALL user types)
+const pendingStatuses = ["pending_approval", "pending_enrollment", "pending"];
+if (pendingStatuses.includes(user.onboardingStatus || "")) {
+  return NextResponse.json({
+    userType: null,
+    needsSetup: true,
+    awaitingApproval: true,
+    onboardingStatus: user.onboardingStatus,
+  });
+}
+```
+
+**Files Affected**:
+- `src/app/api/auth/set-role.ts` - Added universal pending check
+- `src/app/student/layout.tsx` - Already had isPendingApproval logic
+- `src/app/pending-approval/page.tsx` - Shows waiting page
+
+**Note**: Students are now properly blocked until school admin approves their application.
+
+**Future Enhancement**: Consider allowing class teachers to approve students in their classes as an alternative workflow.
+
+---
+
 ### Error: Notification Send - "Notification ID is required"
 
 **Severity**: HIGH (Cannot send notifications)
