@@ -78,8 +78,8 @@ export const POST = createApiRoute(
           id: schoolId,
           name: body.name,
           code: body.code.toUpperCase(),
-          type: body.schoolType || "middle_secondary",
-          schoolType: body.schoolType || "public",
+          type: body.schoolType || "public", // Use form value: public/private/international
+          schoolType: "middle_secondary", // School level (could be made configurable later)
           level: body.level || "PP-XII",
           address: body.address || "TBD",
           city: body.city || "Thimphu",

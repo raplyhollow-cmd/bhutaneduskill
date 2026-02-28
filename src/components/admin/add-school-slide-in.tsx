@@ -24,6 +24,7 @@ export function AddSchoolSlideIn({ isOpen, onClose, onSuccess }: AddSchoolSlideI
   const [formData, setFormData] = useState({
     name: "",
     district: "Thimphu",
+    schoolType: "public" as "public" | "private" | "international",
     address: "",
     contactEmail: "",
     contactPhone: "",
@@ -78,7 +79,7 @@ export function AddSchoolSlideIn({ isOpen, onClose, onSuccess }: AddSchoolSlideI
           contactPhone: formData.contactPhone,
           subscriptionTier: formData.subscriptionTier,
           maxStudents: formData.maxStudents,
-          schoolType: "middle_secondary",
+          schoolType: formData.schoolType,  // Use form value (public/private/international)
           level: "PP-XII",
         }),
       });
@@ -91,6 +92,7 @@ export function AddSchoolSlideIn({ isOpen, onClose, onSuccess }: AddSchoolSlideI
         setFormData({
           name: "",
           district: "Thimphu",
+          schoolType: "public",
           address: "",
           contactEmail: "",
           contactPhone: "",
@@ -121,6 +123,7 @@ export function AddSchoolSlideIn({ isOpen, onClose, onSuccess }: AddSchoolSlideI
     setFormData({
       name: "",
       district: "Thimphu",
+      schoolType: "public",
       address: "",
       contactEmail: "",
       contactPhone: "",
@@ -209,6 +212,26 @@ export function AddSchoolSlideIn({ isOpen, onClose, onSuccess }: AddSchoolSlideI
               <SelectItem value="Chukha">Chukha</SelectItem>
               <SelectItem value="Dagana">Dagana</SelectItem>
               <SelectItem value="Tsirang">Tsirang</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* School Type */}
+        <div className="space-y-2">
+          <Label htmlFor="schoolType" className="text-sm font-medium text-ceramic-primary">
+            School Type <span className="text-red-500">*</span>
+          </Label>
+          <Select
+            value={formData.schoolType}
+            onValueChange={(value) => handleChange("schoolType", value)}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select school type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="public">Public (Government)</SelectItem>
+              <SelectItem value="private">Private</SelectItem>
+              <SelectItem value="international">International</SelectItem>
             </SelectContent>
           </Select>
         </div>

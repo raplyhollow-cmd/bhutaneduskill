@@ -1549,5 +1549,49 @@ grep -rn "getAuth(request)" src/app/api/
 
 ---
 
+### Error: Partners API - Missing Database Column
+
+**Severity**: CRITICAL (Partners page fails to load)
+
+**Symptoms**:
+```
+GET /api/admin/partners 500 (Internal Server Error)
+Failed query: select ... from "partners" left join "schools" ...
+column "contact_person" does not exist
+```
+
+**Root Cause**:
+The `partners` table in the database was missing the `contact_person` column. The Drizzle schema defined this column, but the database table was created without it (likely due to an incomplete migration or manual table creation).
+
+**Permanent Fix**:
+Add the missing column to the database.
+
+**SQL Migration**:
+```sql
+ALTER TABLE partners
+ADD COLUMN IF NOT EXISTS contact_person text;
+```
+
+**Verification**:
+```sql
+SELECT column_name, data_type
+FROM information_schema.columns
+WHERE table_name = 'partners'
+AND column_name = 'contact_person';
+```
+
+**Files Affected**:
+- `src/app/api/admin/partners/route.ts` - Selects `contactPerson` column
+- `src/lib/db/schema.ts` - Defines `contactPerson: text("contact_person")`
+
+**Prevention**:
+After modifying the schema, always run:
+```bash
+npm run db:push    # Push schema changes to database
+npm run db:studio  # Verify table structure
+```
+
+---
+
 **Last Updated**: February 28, 2026 (Late Evening)
-**Version**: 1.6
+**Version**: 1.7

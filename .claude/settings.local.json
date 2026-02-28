@@ -69,7 +69,8 @@
       "Bash(npx playwright install chromium)",
       "Bash(for f in src/app/api/student/homework/[id]/draft/route.ts src/app/api/student/homework/[id]/feedback/route.ts)",
       "Bash(xargs -I{} sh -c 'echo \"\"$\\(grep -c \"\"db\\\\.query\"\" {}\\) {}\"\"')",
-      "Bash(1)"
+      "Bash(1)",
+      "Bash(git commit:*)"
     ]
   }
 }

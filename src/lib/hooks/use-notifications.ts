@@ -257,36 +257,89 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
   // POLLING EFFECT
   // ============================================================================
 
+  // Store options in refs to avoid recreating the effect
+  const optionsRef = useRef({ pollingInterval, enableToasts, limit, unreadOnly });
+  optionsRef.current = { pollingInterval, enableToasts, limit, unreadOnly };
+
   useEffect(() => {
+    // Inline fetch logic to avoid dependency on external functions
+    const fetchCount = async () => {
+      try {
+        const response = await fetch("/api/notifications/my-notifications/unread-count");
+        if (response.ok) {
+          const data = await response.json();
+          const count = data.data?.unreadCount || 0;
+          const urgent = data.data?.urgentCount || 0;
+          setUnreadCount(count);
+          setUrgentCount(urgent);
+          return count;
+        }
+      } catch (err) {
+        console.error("Failed to fetch unread count:", err);
+      }
+      return 0;
+    };
+
+    const fetchList = async () => {
+      setIsLoading(true);
+      try {
+        const params = new URLSearchParams({
+          limit: optionsRef.current.limit.toString(),
+          status: optionsRef.current.unreadOnly ? "unread" : "all",
+        });
+
+        const response = await fetch(`/api/notifications/my-notifications?${params}`);
+        if (response.ok) {
+          const data = await response.json();
+          const responseData = data.data || {};
+          setNotifications(responseData.notifications || []);
+          setUnreadCount(responseData.unreadCount || 0);
+        }
+      } catch (err) {
+        console.error("Failed to fetch notifications:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     // Initial fetch
-    fetchNotifications();
-    fetchUnreadCount().then((count) => {
+    fetchList();
+    fetchCount().then((count) => {
       previousUnreadCount.current = count;
     });
 
     // Set up polling
     const intervalId = setInterval(async () => {
-      const newCount = await fetchUnreadCount();
+      const newCount = await fetchCount();
 
       // Detect new notifications
       if (
-        enableToasts &&
+        optionsRef.current.enableToasts &&
         !hasShownInitialToast.current &&
         newCount > previousUnreadCount.current
       ) {
         const diff = newCount - previousUnreadCount.current;
-        showNewNotificationToast(diff);
+        // Show toast directly without using the callback
+        if (typeof window !== "undefined" && diff > 0) {
+          const { toast: toastFn } = require("@/components/ui/toast");
+          toastFn({
+            title: diff === 1 ? "New notification" : "New notifications",
+            description: `You have ${diff} new notification${diff > 1 ? "s" : ""}.`,
+            variant: "info",
+            duration: 4000,
+          });
+        }
       }
 
       hasShownInitialToast.current = true;
       previousUnreadCount.current = newCount;
 
       // Refresh notification list periodically
-      await fetchNotifications();
+      await fetchList();
     }, pollingInterval);
 
     return () => clearInterval(intervalId);
-  }, [pollingInterval, fetchNotifications, fetchUnreadCount, enableToasts, showNewNotificationToast]);
+  }, [pollingInterval]); // Only depend on the stable pollingInterval
 
   return {
     unreadCount,
@@ -313,7 +366,32 @@ export function useUnreadCount(options: { pollingInterval?: number } = {}) {
   const [unreadCount, setUnreadCount] = useState(0);
   const [urgentCount, setUrgentCount] = useState(0);
 
-  const fetchCount = useCallback(async () => {
+  // Use ref to track latest polling interval
+  const pollingIntervalRef = useRef(pollingInterval);
+  pollingIntervalRef.current = pollingInterval;
+
+  useEffect(() => {
+    // Inline fetch to avoid dependency issues
+    const fetchCount = async () => {
+      try {
+        const response = await fetch("/api/notifications/my-notifications/unread-count");
+        if (response.ok) {
+          const data = await response.json();
+          setUnreadCount(data.data?.unreadCount || 0);
+          setUrgentCount(data.data?.urgentCount || 0);
+        }
+      } catch (err) {
+        console.error("Failed to fetch unread count:", err);
+      }
+    };
+
+    fetchCount();
+    const intervalId = setInterval(fetchCount, pollingIntervalRef.current);
+    return () => clearInterval(intervalId);
+  }, []); // Empty deps - effect runs once on mount
+
+  // Provide a refresh function
+  const refresh = useCallback(async () => {
     try {
       const response = await fetch("/api/notifications/my-notifications/unread-count");
       if (response.ok) {
@@ -326,13 +404,7 @@ export function useUnreadCount(options: { pollingInterval?: number } = {}) {
     }
   }, []);
 
-  useEffect(() => {
-    fetchCount();
-    const intervalId = setInterval(fetchCount, pollingInterval);
-    return () => clearInterval(intervalId);
-  }, [pollingInterval, fetchCount]);
-
-  return { unreadCount, urgentCount, refresh: fetchCount };
+  return { unreadCount, urgentCount, refresh };
 }
 
 /**
