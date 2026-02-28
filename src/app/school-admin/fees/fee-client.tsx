@@ -10,14 +10,14 @@ import { logger } from "@/lib/logger";
 
 import { useState } from "react";
 import { PortalHeader } from "@/components/shared/portal-sidebar";
-import { FeeManager } from "@/components/fees";
+import { FeeManager, type FeeStructure, type StudentFee, type Payment } from "@/components/fees";
 import { DollarSign } from "lucide-react";
 import { fetchFeeData } from "../_actions";
 
 interface FeeData {
-  structures: Array<Record<string, unknown> | { id: string; name: string; description?: string; amount?: number; frequency?: string; dueDay?: number; classId?: string; applicableTo?: string; isActive?: boolean; grade?: number | null; totalAnnualAmount?: number | null; totalFees?: number | null }>;
-  studentFees: Array<Record<string, unknown> | { id: string; studentId: string; studentName: string; studentRoll: string; classId: string; className: string; structureId: string; structureName: string; amount: number; paidAmount: number; waivedAmount: number; dueDate: string | null; status: "paid" | "partial" | "overdue" }>;
-  payments: Array<Record<string, unknown> | { id: string; studentFeeId: string; studentName: string; amount: number; method: string; transactionId: string | null; date: string; receiptNumber: string | null; collectedBy: string | null }>;
+  structures: unknown[];
+  studentFees: unknown[];
+  payments: unknown[];
   summary: {
     totalExpected: number;
     totalCollected: number;

@@ -29,6 +29,10 @@ export interface ParentChild {
   isPrimaryContact: boolean;
 }
 
+export type AttendanceRecord = typeof attendance.$inferSelect;
+export type HomeworkRecord = typeof homework.$inferSelect;
+export type StudentFeeRecord = typeof studentFees.$inferSelect;
+
 export interface ParentChildWithEnrollment extends ParentChild {
   currentClass?: {
     id: string;
@@ -113,9 +117,10 @@ export async function getParentChildren(userId: string): Promise<ParentChild[]> 
     }
 
     // Get all parent-student relationships
-    const relationships = await db.query.parentToStudent.findMany({
-      where: eq(parentToStudent.parentId, parentRecord.id),
-    });
+    const relationships = await db
+      .select()
+      .from(parentToStudent)
+      .where(eq(parentToStudent.parentId, parentRecord.id));
 
     if (relationships.length === 0) {
       return [];
@@ -231,18 +236,19 @@ export async function getParentChildrenWithEnrollment(userId: string): Promise<P
 export async function batchFetchChildrenAttendance(
   studentIds: string[],
   limit: number = 30
-): Promise<Map<string, any[]>> {
+): Promise<Map<string, AttendanceRecord[]>> {
   try {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    const records = await db.query.attendance.findMany({
-      where: sql`${attendance.studentId} IN ${sql.raw(`('${studentIds.join("','")}'\)`)}`,
-      orderBy: [desc(attendance.date)],
-      limit: limit * studentIds.length, // Approximate limit
-    });
+    const records = await db
+      .select()
+      .from(attendance)
+      .where(sql`${attendance.studentId} IN ${sql.raw(`('${studentIds.join("','")}'\)`)}`)
+      .orderBy(desc(attendance.date))
+      .limit(limit * studentIds.length); // Approximate limit
 
-    const attendanceMap = new Map<string, any[]>();
+    const attendanceMap = new Map<string, AttendanceRecord[]>();
     for (const studentId of studentIds) {
       attendanceMap.set(
         studentId,
@@ -268,15 +274,16 @@ export async function batchFetchChildrenAttendance(
 export async function batchFetchChildrenHomework(
   classIds: string[],
   limit: number = 10
-): Promise<Map<string, any[]>> {
+): Promise<Map<string, HomeworkRecord[]>> {
   try {
-    const records = await db.query.homework.findMany({
-      where: sql`${homework.classId} IN ${sql.raw(`('${classIds.join("','")}'\)`)}`,
-      orderBy: [desc(homework.dueDate)],
-      limit: limit * classIds.length,
-    });
+    const records = await db
+      .select()
+      .from(homework)
+      .where(sql`${homework.classId} IN ${sql.raw(`('${classIds.join("','")}'\)`)}`)
+      .orderBy(desc(homework.dueDate))
+      .limit(limit * classIds.length);
 
-    const homeworkMap = new Map<string, any[]>();
+    const homeworkMap = new Map<string, HomeworkRecord[]>();
     for (const classId of classIds) {
       homeworkMap.set(
         classId,
@@ -298,14 +305,15 @@ export async function batchFetchChildrenHomework(
  * @param studentIds - Array of student IDs
  * @returns Map of studentId -> fee records
  */
-export async function batchFetchChildrenFees(studentIds: string[]): Promise<Map<string, any[]>> {
+export async function batchFetchChildrenFees(studentIds: string[]): Promise<Map<string, StudentFeeRecord[]>> {
   try {
-    const records = await db.query.studentFees.findMany({
-      where: sql`${studentFees.studentId} IN ${sql.raw(`('${studentIds.join("','")}'\)`)}`,
-      orderBy: [desc(studentFees.dueDate)],
-    });
+    const records = await db
+      .select()
+      .from(studentFees)
+      .where(sql`${studentFees.studentId} IN ${sql.raw(`('${studentIds.join("','")}'\)`)}`)
+      .orderBy(desc(studentFees.dueDate));
 
-    const feesMap = new Map<string, any[]>();
+    const feesMap = new Map<string, StudentFeeRecord[]>();
     for (const studentId of studentIds) {
       feesMap.set(
         studentId,

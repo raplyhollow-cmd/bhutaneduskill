@@ -1,4 +1,3 @@
-import { logger } from "@/lib/logger";
 /**
  * AI JOURNAL INSIGHTS API
  *
@@ -7,19 +6,22 @@ import { logger } from "@/lib/logger";
  * - Auto-tagging suggestions
  * - Writing improvement suggestions
  * - Post-save encouragement
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { logger } from "@/lib/logger";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users, riasecResults, mbtiResults } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import {
   generatePersonalizedPrompt,
   suggestTags,
   getWritingSuggestions,
   generateEntryFeedback,
 } from "@/lib/ai/journal-helpers";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 type AIAction = "prompt" | "suggest" | "feedback" | "tags" | "suggestions";
 
@@ -41,59 +43,50 @@ interface AIRequest {
 // POST - Generate AI Insights
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["student"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const POST = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId } = auth;
 
     // Safely parse request body
     let body: AIRequest;
     try {
-      body = await request.json() as AIRequest;
-    } catch (parseError) {
-      return NextResponse.json(
-        { error: "Invalid request body" },
-        { status: 400 }
-      );
+      body = await req.json() as AIRequest;
+    } catch {
+      return { error: "Invalid request body", status: 400 };
     }
 
     const { action, entry, context } = body;
 
     // Fetch user context for personalization
-    const userProfile = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: {
-        id: true,
-        name: true,
-        interests: true,
-        settings: true,
-      },
-    });
+    const [userProfile] = await db
+      .select({
+        id: users.id,
+        name: users.name,
+        interests: users.interests,
+        settings: users.settings,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
 
     if (!userProfile) {
-      return NextResponse.json(
-        { error: "User not found" },
-        { status: 404 }
-      );
+      return { error: "User not found", status: 404 };
     }
 
     // Get assessment results for context
-    const riasecResult = await db.query.riasecResults.findFirst({
-      where: eq(riasecResults.userId, userId),
-      orderBy: (riasecResults, { desc }) => [desc(riasecResults.createdAt)],
-    });
+    const [riasecResult] = await db
+      .select()
+      .from(riasecResults)
+      .where(eq(riasecResults.userId, userId))
+      .orderBy(desc(riasecResults.createdAt))
+      .limit(1);
 
-    const mbtiResult = await db.query.mbtiResults.findFirst({
-      where: eq(mbtiResults.userId, userId),
-      orderBy: (mbtiResults, { desc }) => [desc(mbtiResults.createdAt)],
-    });
+    const [mbtiResult] = await db
+      .select()
+      .from(mbtiResults)
+      .where(eq(mbtiResults.userId, userId))
+      .orderBy(desc(mbtiResults.createdAt))
+      .limit(1);
 
     // Build context for AI
     const aiContext = {
@@ -116,10 +109,7 @@ export async function POST(request: NextRequest) {
 
       case "tags":
         if (!entry?.content) {
-          return NextResponse.json(
-            { error: "Entry content is required for tag suggestions" },
-            { status: 400 }
-          );
+          return { error: "Entry content is required for tag suggestions", status: 400 };
         }
         response.tags = await suggestTags(entry.content);
         break;
@@ -127,29 +117,20 @@ export async function POST(request: NextRequest) {
       case "suggest":
       case "suggestions":
         if (!entry?.content) {
-          return NextResponse.json(
-            { error: "Entry content is required for writing suggestions" },
-            { status: 400 }
-          );
+          return { error: "Entry content is required for writing suggestions", status: 400 };
         }
         response.suggestions = await getWritingSuggestions(entry.content);
         break;
 
       case "feedback":
         if (!entry) {
-          return NextResponse.json(
-            { error: "Entry data is required for feedback" },
-            { status: 400 }
-          );
+          return { error: "Entry data is required for feedback", status: 400 };
         }
         response.feedback = await generateEntryFeedback(entry);
         break;
 
       default:
-        return NextResponse.json(
-          { error: `Invalid action: ${action}` },
-          { status: 400 }
-        );
+        return { error: `Invalid action: ${action}`, status: 400 };
     }
 
     logger.info("AI journal insights generated", {
@@ -160,31 +141,24 @@ export async function POST(request: NextRequest) {
       ),
     });
 
-    return NextResponse.json(response);
-
-  } catch (error: unknown) {
-    logger.apiError(error, {
-      route: "/api/journal/ai-insights",
-      method: "POST",
-    });
-
-    return NextResponse.json(
-      { error: "Failed to generate AI insights" },
-      { status: 500 }
-    );
-  }
-}
+    return response;
+  },
+  ['student']
+);
 
 // ============================================================================
 // GET - Check AI availability
 // ============================================================================
 
-export async function GET() {
-  return NextResponse.json({
-    available: true,
-    feature: "AI Journal Assistant",
-    actions: ["prompt", "suggest", "feedback", "tags", "suggestions"],
-    description: "AI-powered journaling assistance",
-    requiresAuth: true,
-  });
-}
+export const GET = createApiRoute(
+  async () => {
+    return {
+      available: true,
+      feature: "AI Journal Assistant",
+      actions: ["prompt", "suggest", "feedback", "tags", "suggestions"],
+      description: "AI-powered journaling assistance",
+      requiresAuth: true,
+    };
+  },
+  ['student']
+);

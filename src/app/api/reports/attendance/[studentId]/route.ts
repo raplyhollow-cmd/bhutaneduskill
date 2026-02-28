@@ -1,42 +1,34 @@
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { requirePermission } from "@/lib/rbac";
 import { db } from "@/lib/db";
 import { attendance, users } from "@/lib/db/schema";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
 
-interface Params {
-  params: Promise<{ studentId: string }>;
-}
-
 // GET /api/reports/attendance/[studentId] - Student attendance report
-export async function GET(request: NextRequest, { params }: Params) {
-  try {
-    const { studentId } = await params;
-
-    // Authenticate user
-    const authResult = await requireAuth();
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const GET = createApiRoute<{ studentId: string }>(
+  async (req, auth, context) => {
+    const { userId } = auth;
+    const { studentId } = await (context?.params || {});
 
     // Check RBAC permission for viewing reports
     const permCheck = await requirePermission(userId, "reports.view");
     if (permCheck) return permCheck;
 
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(req.url);
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
     const termId = searchParams.get("termId");
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-    });
+    const [currentUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
 
     if (!currentUser || !["admin", "teacher", "counselor", "parent"].includes(currentUser.type)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return { error: "Forbidden", status: 403 };
     }
 
     // Build conditions
@@ -49,10 +41,11 @@ export async function GET(request: NextRequest, { params }: Params) {
       conditions.push(lte(attendance.date, endDate));
     }
 
-    const records = await db.query.attendance.findMany({
-      where: and(...conditions),
-      orderBy: [desc(attendance.date)],
-    });
+    const records = await db
+      .select()
+      .from(attendance)
+      .where(and(...conditions))
+      .orderBy(desc(attendance.date));
 
     // Calculate detailed statistics
     const stats = {
@@ -102,16 +95,15 @@ export async function GET(request: NextRequest, { params }: Params) {
     // Flag if attendance is below 75%
     patterns.needsAttention = stats.attendancePercentage < 75;
 
-    return NextResponse.json({
-      studentId: studentId,
-      period: { startDate, endDate, termId },
-      stats,
-      records,
-      monthlyTrends: Object.entries(monthlyTrends).map(([month, data]) => ({ month, ...data })),
-      patterns,
-    });
-  } catch (error) {
-    logger.error("Attendance report error:", error);
-    return NextResponse.json({ error: "Failed to generate report" }, { status: 500 });
+    return {
+      data: {
+        studentId: studentId,
+        period: { startDate, endDate, termId },
+        stats,
+        records,
+        monthlyTrends: Object.entries(monthlyTrends).map(([month, data]) => ({ month, ...data })),
+        patterns,
+      }
+    };
   }
-}
+);

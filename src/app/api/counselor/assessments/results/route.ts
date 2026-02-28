@@ -52,13 +52,13 @@ export const GET = createApiRoute(
 
     if (user.type === "counselor") {
       // Get school assignments for this counselor
-      const assignments = await db.query.counselorAssignments.findMany({
-        where: and(
+      const assignments = await db
+        .select({ schoolId: counselorAssignments.schoolId })
+        .from(counselorAssignments)
+        .where(and(
           eq(counselorAssignments.counselorId, userId),
           eq(counselorAssignments.isActive, true)
-        ),
-        columns: { schoolId: true },
-      });
+        ));
       targetSchoolIds = assignments.map((a) => a.schoolId);
     } else if (user.schoolId) {
       // Admin with a school ID
@@ -75,9 +75,10 @@ export const GET = createApiRoute(
     }
 
     // Get all students from assigned schools
-    const schoolStudents = await db.query.users.findMany({
-      where: sql`${users.schoolId} IN ${sql.raw(`('${targetSchoolIds.join("','")}')`)}`,
-    });
+    const schoolStudents = await db
+      .select()
+      .from(users)
+      .where(sql`${users.schoolId} IN ${sql.raw(`('${targetSchoolIds.join("','")}')`)}`);
 
     const studentIds = schoolStudents.map(s => s.id);
     const studentMap = new Map(schoolStudents.map(s => [s.id, s]));
@@ -95,10 +96,10 @@ export const GET = createApiRoute(
     }
 
     // Fetch school names
-    const schoolsData = await db.query.schools.findMany({
-      where: sql`${schools.id} IN ${sql.raw(`('${targetSchoolIds.join("','")}')`)}`,
-      columns: { id: true, name: true },
-    });
+    const schoolsData = await db
+      .select({ id: schools.id, name: schools.name })
+      .from(schools)
+      .where(sql`${schools.id} IN ${sql.raw(`('${targetSchoolIds.join("','")}')`)}`);
     schoolsData.forEach(s => schoolMap.set(s.id, s.name));
 
     // Build conditions for assessments
@@ -127,9 +128,10 @@ export const GET = createApiRoute(
       .where(and(...assessmentConditions.map(c => sql.raw(c.toString()))));
 
     // Get career matches for top careers
-    const careerMatchesData = await db.query.careerMatches.findMany({
-      where: sql`${careerMatches.studentId} IN ${sql.raw(`('${studentIds.join("','")}')`)}`,
-    });
+    const careerMatchesData = await db
+      .select()
+      .from(careerMatches)
+      .where(sql`${careerMatches.studentId} IN ${sql.raw(`('${studentIds.join("','")}')`)}`);
 
     // Group career matches by student
     const careersByStudent = new Map<string, typeof careerMatchesData[number]>();

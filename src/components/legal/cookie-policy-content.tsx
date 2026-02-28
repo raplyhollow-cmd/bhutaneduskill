@@ -9,7 +9,7 @@ import { Cookie, Shield, Eye, Settings, AlertCircle } from "lucide-react";
 
 interface PolicySectionProps {
   title: string;
-  icon: React.ElementType;
+  icon: React.ElementType<React.SVGProps<SVGSVGElement>>;
   children: React.ReactNode;
 }
 

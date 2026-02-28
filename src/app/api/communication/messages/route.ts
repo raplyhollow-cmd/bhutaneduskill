@@ -5,16 +5,19 @@
  * - GET: Fetch conversations and messages
  * - POST: Send new messages or create conversations
  * - PATCH: Mark messages as read/unread
+ * - DELETE: Delete message or archive conversation
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
-import { conversations, messages, users, schools } from "@/lib/db/schema";
+import { conversations, messages, users } from "@/lib/db/schema";
 import { eq, and, or, desc, asc, inArray, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, badRequestResponse, notFoundResponse, forbiddenResponse } from "@/lib/api/response-helpers";
 
 // ============================================================================
 // TYPES
@@ -106,17 +109,9 @@ interface ConversationWithParticipants {
 // GET - Fetch conversations and messages
 // ============================================================================
 
-export async function GET(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["parent", "teacher", "admin", "school-admin", "counselor"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId, user } = authResult;
+export const GET = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId, user } = auth;
     const searchParams = req.nextUrl.searchParams;
     const conversationId = searchParams.get("conversationId");
     const unreadOnly = searchParams.get("unreadOnly") === "true";
@@ -128,24 +123,15 @@ export async function GET(req: NextRequest) {
 
     // If specific conversation requested, fetch its messages
     if (conversationId) {
-      // Verify user is a participant
-      const conversation = await db.query.conversations.findFirst({
-        where: eq(conversations.id, conversationId),
-      });
+      const conversation = await db.select().from(conversations).where(eq(conversations.id, conversationId)).limit(1).then(r => r[0]);
 
       if (!conversation) {
-        return NextResponse.json(
-          { error: "Conversation not found", status: 404 } satisfies ApiErrorResponse,
-          { status: 404 }
-        );
+        return notFoundResponse("Conversation");
       }
 
       const participants = conversation.participants as string[] | null;
       if (!participants || !participants.includes(userId)) {
-        return NextResponse.json(
-          { error: "Forbidden: Not a participant", status: 403 } satisfies ApiErrorResponse,
-          { status: 403 }
-        );
+        return forbiddenResponse("Not a participant in this conversation");
       }
 
       // Fetch messages for this conversation
@@ -199,12 +185,10 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      return NextResponse.json({
-        data: {
-          conversation,
-          messages: messagesList,
-        },
-      } satisfies ApiSuccess<{ conversation: typeof conversation; messages: typeof messagesList }>);
+      return successResponse({
+        conversation,
+        messages: messagesList,
+      });
     }
 
     // Fetch user's conversations
@@ -320,45 +304,26 @@ export async function GET(req: NextRequest) {
       filteredConversations = enrichedConversations.filter((conv) => (conv.unreadCount || 0) > 0);
     }
 
-    return NextResponse.json({
-      data: {
-        conversations: filteredConversations,
-        total: filteredConversations.length,
-      },
-    } satisfies ApiSuccess<{ conversations: typeof filteredConversations; total: number }>);
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/communication/messages", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch messages", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return successResponse({
+      conversations: filteredConversations,
+      total: filteredConversations.length,
+    });
+  },
+  ["parent", "teacher", "admin", "school-admin", "counselor"]
+);
 
 // ============================================================================
 // POST - Send message or create conversation
 // ============================================================================
 
-export async function POST(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["parent", "teacher", "admin", "school-admin", "counselor"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId, user } = authResult;
+export const POST = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId, user } = auth;
     const body = await req.json() as SendMessageBody;
 
     // Validate required fields
     if (!body.content || body.content.trim() === "") {
-      return NextResponse.json(
-        { error: "Message content is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("Message content is required");
     }
 
     let conversationId = body.conversationId;
@@ -367,22 +332,14 @@ export async function POST(req: NextRequest) {
     // If no conversation provided, create a new one
     if (!conversationId) {
       if (!body.recipientId) {
-        return NextResponse.json(
-          { error: "Recipient or conversation ID is required", status: 400 } satisfies ApiErrorResponse,
-          { status: 400 }
-        );
+        return badRequestResponse("Recipient or conversation ID is required");
       }
 
       // Verify recipient exists
-      const recipient = await db.query.users.findFirst({
-        where: eq(users.id, body.recipientId),
-      });
+      const recipient = await db.select().from(users).where(eq(users.id, body.recipientId)).limit(1).then(r => r[0]);
 
       if (!recipient) {
-        return NextResponse.json(
-          { error: "Recipient not found", status: 404 } satisfies ApiErrorResponse,
-          { status: 404 }
-        );
+        return notFoundResponse("Recipient");
       }
 
       // Check if a conversation already exists between these users
@@ -420,23 +377,15 @@ export async function POST(req: NextRequest) {
     }
 
     // Verify user is a participant in the conversation
-    const conversation = await db.query.conversations.findFirst({
-      where: eq(conversations.id, conversationId),
-    });
+    const conversation = await db.select().from(conversations).where(eq(conversations.id, conversationId)).limit(1).then(r => r[0]);
 
     if (!conversation) {
-      return NextResponse.json(
-        { error: "Conversation not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return notFoundResponse("Conversation");
     }
 
     const participants = conversation.participants as string[] | null;
     if (!participants || !participants.includes(userId)) {
-      return NextResponse.json(
-        { error: "Forbidden: Not a participant", status: 403 } satisfies ApiErrorResponse,
-        { status: 403 }
-      );
+      return forbiddenResponse("Not a participant in this conversation");
     }
 
     // Create message
@@ -469,59 +418,35 @@ export async function POST(req: NextRequest) {
 
     logger.info("Message sent", { messageId, conversationId, userId });
 
-    return NextResponse.json({
-      data: {
-        message: newMessage,
-        conversationId,
-      },
-    } satisfies ApiSuccess<{ message: typeof newMessage; conversationId: string }>);
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/communication/messages", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to send message", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return successResponse({
+      message: newMessage,
+      conversationId,
+    });
+  },
+  ["parent", "teacher", "admin", "school-admin", "counselor"]
+);
 
 // ============================================================================
 // PATCH - Mark messages as read/unread
 // ============================================================================
 
-export async function PATCH(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["parent", "teacher", "admin", "school-admin", "counselor"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const PATCH = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId } = auth;
     const body = await req.json() as MessageReadBody;
 
     if (!body.messageIds || !Array.isArray(body.messageIds) || body.messageIds.length === 0) {
       // If no specific message IDs, mark all messages in conversation
       if (body.conversationId) {
-        const conversation = await db.query.conversations.findFirst({
-          where: eq(conversations.id, body.conversationId),
-        });
+        const conversation = await db.select().from(conversations).where(eq(conversations.id, body.conversationId)).limit(1).then(r => r[0]);
 
         if (!conversation) {
-          return NextResponse.json(
-            { error: "Conversation not found", status: 404 } satisfies ApiErrorResponse,
-            { status: 404 }
-          );
+          return notFoundResponse("Conversation");
         }
 
         const participants = conversation.participants as string[] | null;
         if (!participants || !participants.includes(userId)) {
-          return NextResponse.json(
-            { error: "Forbidden: Not a participant", status: 403 } satisfies ApiErrorResponse,
-            { status: 403 }
-          );
+          return forbiddenResponse("Not a participant in this conversation");
         }
 
         // Get all messages in conversation not sent by current user
@@ -562,24 +487,17 @@ export async function PATCH(req: NextRequest) {
           read: body.read,
         });
 
-        return NextResponse.json({
-          data: { updated: messagesList.length },
-        } satisfies ApiSuccess<{ updated: number }>);
+        return successResponse({ updated: messagesList.length });
       }
 
-      return NextResponse.json(
-        { error: "Message IDs or conversation ID required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("Message IDs or conversation ID required");
     }
 
     // Mark specific messages as read/unread
     let updatedCount = 0;
 
     for (const messageId of body.messageIds) {
-      const msg = await db.query.messages.findFirst({
-        where: eq(messages.id, messageId),
-      });
+      const msg = await db.select().from(messages).where(eq(messages.id, messageId)).limit(1).then(r => r[0]);
 
       if (!msg) continue;
 
@@ -609,56 +527,32 @@ export async function PATCH(req: NextRequest) {
 
     logger.info("Messages marked", { userId, count: updatedCount, read: body.read });
 
-    return NextResponse.json({
-      data: { updated: updatedCount },
-    } satisfies ApiSuccess<{ updated: number }>);
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/communication/messages", method: "PATCH" });
-    return NextResponse.json(
-      { error: "Failed to update message status", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return successResponse({ updated: updatedCount });
+  },
+  ["parent", "teacher", "admin", "school-admin", "counselor"]
+);
 
 // ============================================================================
-// DELETE - Delete message or conversation
+// DELETE - Delete message or archive conversation
 // ============================================================================
 
-export async function DELETE(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["parent", "teacher", "admin", "school-admin", "counselor"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const DELETE = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId } = auth;
     const searchParams = req.nextUrl.searchParams;
     const messageId = searchParams.get("messageId");
     const conversationId = searchParams.get("conversationId");
 
     if (messageId) {
       // Delete specific message (only if sender is current user or admin)
-      const msg = await db.query.messages.findFirst({
-        where: eq(messages.id, messageId),
-      });
+      const msg = await db.select().from(messages).where(eq(messages.id, messageId)).limit(1).then(r => r[0]);
 
       if (!msg) {
-        return NextResponse.json(
-          { error: "Message not found", status: 404 } satisfies ApiErrorResponse,
-          { status: 404 }
-        );
+        return notFoundResponse("Message");
       }
 
       if (msg.senderId !== userId) {
-        return NextResponse.json(
-          { error: "Forbidden: Can only delete own messages", status: 403 } satisfies ApiErrorResponse,
-          { status: 403 }
-        );
+        return forbiddenResponse("Can only delete own messages");
       }
 
       await db
@@ -672,30 +566,20 @@ export async function DELETE(req: NextRequest) {
 
       logger.info("Message deleted", { messageId, userId });
 
-      return NextResponse.json({
-        data: { deleted: messageId },
-      } satisfies ApiSuccess<{ deleted: string }>);
+      return successResponse({ deleted: messageId });
     }
 
     if (conversationId) {
       // Archive conversation
-      const conversation = await db.query.conversations.findFirst({
-        where: eq(conversations.id, conversationId),
-      });
+      const conversation = await db.select().from(conversations).where(eq(conversations.id, conversationId)).limit(1).then(r => r[0]);
 
       if (!conversation) {
-        return NextResponse.json(
-          { error: "Conversation not found", status: 404 } satisfies ApiErrorResponse,
-          { status: 404 }
-        );
+        return notFoundResponse("Conversation");
       }
 
       const participants = conversation.participants as string[] | null;
       if (!participants || !participants.includes(userId)) {
-        return NextResponse.json(
-          { error: "Forbidden: Not a participant", status: 403 } satisfies ApiErrorResponse,
-          { status: 403 }
-        );
+        return forbiddenResponse("Not a participant in this conversation");
       }
 
       await db
@@ -708,21 +592,10 @@ export async function DELETE(req: NextRequest) {
 
       logger.info("Conversation archived", { conversationId, userId });
 
-      return NextResponse.json({
-        data: { archived: conversationId },
-      } satisfies ApiSuccess<{ archived: string }>);
+      return successResponse({ archived: conversationId });
     }
 
-    return NextResponse.json(
-      { error: "Message ID or conversation ID required", status: 400 } satisfies ApiErrorResponse,
-      { status: 400 }
-    );
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/communication/messages", method: "DELETE" });
-    return NextResponse.json(
-      { error: "Failed to delete", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return badRequestResponse("Message ID or conversation ID required");
+  },
+  ["parent", "teacher", "admin", "school-admin", "counselor"]
+);

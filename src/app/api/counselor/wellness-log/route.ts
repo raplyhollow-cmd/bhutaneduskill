@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { counselingSessions, users, schools, parents, parentToStudent } from "@/lib/db/schema";
@@ -12,17 +12,9 @@ import type { ApiSuccess, ApiErrorResponse } from "@/types";
  * Log a private wellness counseling session
  * Creates anonymized data for Ministry reporting
  */
-export async function POST(req: Request) {
-  try {
-    const authResult = await requireAuth(["counselor"]);
-    if ("error" in authResult) {
-      return Response.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const POST = createApiRoute(
+  async (req, auth) => {
+    const { userId } = auth;
     const body = await req.json();
 
     const {
@@ -41,17 +33,19 @@ export async function POST(req: Request) {
     } = body;
 
     if (!studentId || !sessionType || !notes) {
-      return Response.json(
-        { error: "studentId, sessionType, and notes are required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "studentId, sessionType, and notes are required", status: 400 } satisfies ApiErrorResponse;
     }
 
     // Get student info for Ministry anonymization
-    const student = await db.query.users.findFirst({
-      where: eq(users.id, studentId),
-      columns: { id: true, schoolId: true, classGrade: true },
-    });
+    const [student] = await db
+      .select({
+        id: users.id,
+        schoolId: users.schoolId,
+        classGrade: users.classGrade,
+      })
+      .from(users)
+      .where(eq(users.id, studentId))
+      .limit(1);
 
     if (!student) {
       return Response.json(
@@ -61,10 +55,15 @@ export async function POST(req: Request) {
     }
 
     // Get school info for dzongkhag
-    const school = await db.query.schools.findFirst({
-      where: eq(schools.id, student.schoolId!),
-      columns: { id: true, name: true, level: true },
-    });
+    const [school] = await db
+      .select({
+        id: schools.id,
+        name: schools.name,
+        level: schools.level,
+      })
+      .from(schools)
+      .where(eq(schools.id, student.schoolId!))
+      .limit(1);
 
     // Create session record
     const sessionId = `session-${nanoid()}`;
@@ -91,9 +90,11 @@ export async function POST(req: Request) {
     // Notify parent if requested
     if (notifyParent) {
       // Get parent for this student
-      const parentLink = await db.query.parentToStudent.findFirst({
-        where: eq(parentToStudent.studentId, studentId),
-      });
+      const [parentLink] = await db
+        .select()
+        .from(parentToStudent)
+        .where(eq(parentToStudent.studentId, studentId))
+        .limit(1);
 
       if (parentLink) {
         // In a full implementation, this would send SMS/email
@@ -147,7 +148,7 @@ export async function POST(req: Request) {
       concerns: concerns?.length || 0,
     });
 
-    return Response.json({
+    return {
       data: {
         sessionId,
         ministryData,
@@ -165,32 +166,19 @@ export async function POST(req: Request) {
         duration: number | undefined;
       };
       message: string;
-    }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/counselor/wellness-log", method: "POST" });
-    return Response.json(
-      { error: "Failed to log wellness session", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    }>;
+  },
+  ["counselor"]
+);
 
 /**
  * GET /api/counselor/wellness-log
  *
  * Get recent wellness sessions for counselor
  */
-export async function GET(req: Request) {
-  try {
-    const authResult = await requireAuth(["counselor"]);
-    if ("error" in authResult) {
-      return Response.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (req, auth) => {
+    const { userId } = auth;
     const { searchParams } = new URL(req.url);
     const limit = parseInt(searchParams.get("limit") || "20");
 
@@ -214,7 +202,7 @@ export async function GET(req: Request) {
       .orderBy(desc(counselingSessions.sessionDate))
       .limit(limit);
 
-    return Response.json({
+    return {
       data: {
         sessions,
         count: sessions.length,
@@ -222,12 +210,7 @@ export async function GET(req: Request) {
     } satisfies ApiSuccess<{
       sessions: unknown[];
       count: number;
-    }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/counselor/wellness-log", method: "GET" });
-    return Response.json(
-      { error: "Failed to fetch wellness sessions", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    }>;
+  },
+  ["counselor"]
+);

@@ -43,27 +43,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
-// Types for real session data
-interface CounselingSession {
-  id: string;
-  studentId: string | null;
-  studentName?: string;
-  participants?: string[];
-  type: "individual" | "group" | "family";
-  status: "scheduled" | "completed" | "cancelled" | "no-show";
-  sessionDate: string;
-  startTime: string;
-  endTime: string;
-  location: string;
-  topic: string | null;
-  notes: string | null;
-  outcome: string | null;
-  isRecurring: boolean;
-  schoolId: string | null;
-  createdAt: string;
-  updatedAt: string;
-}
-
 // Calendar data for the current month
 const generateCalendarDays = () => {
   const days = [];
@@ -95,14 +74,22 @@ const statusOptions = ["All", "Scheduled", "Completed", "Cancelled"];
 
 type CounselingSession = {
   id: string;
+  studentId: string | null;
   studentName?: string;
-  topic?: string;
-  type: string;
-  status: string;
-  date: string;
-  time?: string;
-  duration?: number;
-  notes?: string;
+  participants?: string[];
+  type: "individual" | "group" | "family";
+  status: "scheduled" | "completed" | "cancelled" | "no-show";
+  sessionDate: string;
+  startTime: string;
+  endTime: string;
+  location: string;
+  topic: string | null;
+  notes: string | null;
+  outcome: string | null;
+  isRecurring: boolean;
+  schoolId: string | null;
+  createdAt: string;
+  updatedAt: string;
 };
 
 type SessionStats = {
@@ -164,7 +151,7 @@ export default function CounselorSessionsPage() {
   };
 
   // Quick add session handler - creates session with default settings
-  const handleQuickAddSession = async (topic: string) => {
+  const handleQuickAddSession = async (topic: string): Promise<{ success: true; data?: unknown } | { success: false; error: string }> => {
     try {
       // Schedule for tomorrow at 10 AM
       const tomorrow = new Date();
@@ -189,7 +176,7 @@ export default function CounselorSessionsPage() {
         return { success: true };
       } else {
         const data = await response.json();
-        return { success: false, error: data.error || "Failed to schedule session" };
+        return { success: false, error: (data.error as string) || "Failed to schedule session" };
       }
     } catch (error) {
       return { success: false, error: "Network error. Please try again." };
@@ -489,10 +476,10 @@ export default function CounselorSessionsPage() {
             <div className="flex items-center justify-between">
               <CardTitle>February 2024</CardTitle>
               <div className="flex items-center gap-1">
-                <Button variant="outline" size="icon-sm">
+                <Button variant="outline" size="sm">
                   <ChevronLeft className="w-4 h-4" />
                 </Button>
-                <Button variant="outline" size="icon-sm">
+                <Button variant="outline" size="sm">
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>

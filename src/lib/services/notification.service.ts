@@ -155,10 +155,10 @@ export async function notifyMinistryVerification(
 ): Promise<Notification> {
   try {
     // Get all admin users to notify
-    const adminUsers = await db.query.users.findMany({
-      where: eq(users.type, "admin"),
-      columns: { id: true },
-    });
+    const adminUsers = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.type, "admin"));
 
     const targetUserIds = adminUsers.map((u) => u.id);
 
@@ -352,15 +352,18 @@ export async function getUserNotifications(
   try {
     const { unreadOnly = false, limit = 50, offset = 0 } = options;
 
-    const deliveries = await db.query.notificationDeliveries.findMany({
-      where: and(
-        eq(notificationDeliveries.userId, userId),
-        unreadOnly ? sql`${notificationDeliveries.readAt} IS NULL` : undefined
-      ),
-      orderBy: [desc(notificationDeliveries.createdAt)],
-      limit,
-      offset,
-    });
+    const deliveries = await db
+      .select()
+      .from(notificationDeliveries)
+      .where(
+        and(
+          eq(notificationDeliveries.userId, userId),
+          unreadOnly ? sql`${notificationDeliveries.readAt} IS NULL` : undefined
+        )
+      )
+      .orderBy(desc(notificationDeliveries.createdAt))
+      .limit(limit)
+      .offset(offset);
 
     const notificationIds = deliveries.map((d) => d.notificationId);
 
@@ -368,9 +371,10 @@ export async function getUserNotifications(
       return [];
     }
 
-    const notificationRecords = await db.query.notifications.findMany({
-      where: inArray(notifications.id, notificationIds),
-    });
+    const notificationRecords = await db
+      .select()
+      .from(notifications)
+      .where(inArray(notifications.id, notificationIds));
 
     const notificationMap = new Map(
       notificationRecords.map((n) => [n.id, n])
@@ -441,12 +445,17 @@ export async function markAsRead(
   userId: string
 ): Promise<NotificationDelivery | null> {
   try {
-    const delivery = await db.query.notificationDeliveries.findFirst({
-      where: and(
-        eq(notificationDeliveries.notificationId, notificationId),
-        eq(notificationDeliveries.userId, userId)
-      ),
-    });
+    const delivery = await db
+      .select()
+      .from(notificationDeliveries)
+      .where(
+        and(
+          eq(notificationDeliveries.notificationId, notificationId),
+          eq(notificationDeliveries.userId, userId)
+        )
+      )
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!delivery) {
       return null;
@@ -495,12 +504,15 @@ export async function markAsRead(
  */
 export async function markAllAsRead(userId: string): Promise<number> {
   try {
-    const unreadDeliveries = await db.query.notificationDeliveries.findMany({
-      where: and(
-        eq(notificationDeliveries.userId, userId),
-        sql`${notificationDeliveries.readAt} IS NULL`
-      ),
-    });
+    const unreadDeliveries = await db
+      .select()
+      .from(notificationDeliveries)
+      .where(
+        and(
+          eq(notificationDeliveries.userId, userId),
+          sql`${notificationDeliveries.readAt} IS NULL`
+        )
+      );
 
     if (unreadDeliveries.length === 0) {
       return 0;
@@ -558,12 +570,17 @@ export async function deleteNotification(
   userId: string
 ): Promise<boolean> {
   try {
-    const delivery = await db.query.notificationDeliveries.findFirst({
-      where: and(
-        eq(notificationDeliveries.notificationId, notificationId),
-        eq(notificationDeliveries.userId, userId)
-      ),
-    });
+    const delivery = await db
+      .select()
+      .from(notificationDeliveries)
+      .where(
+        and(
+          eq(notificationDeliveries.notificationId, notificationId),
+          eq(notificationDeliveries.userId, userId)
+        )
+      )
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!delivery) {
       return false;
@@ -593,9 +610,12 @@ export async function deleteNotification(
  */
 export async function getUserNotificationSettings(userId: string) {
   try {
-    const settings = await db.query.userNotificationSettings.findFirst({
-      where: eq(userNotificationSettings.userId, userId),
-    });
+    const settings = await db
+      .select()
+      .from(userNotificationSettings)
+      .where(eq(userNotificationSettings.userId, userId))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!settings) {
       // Create default settings

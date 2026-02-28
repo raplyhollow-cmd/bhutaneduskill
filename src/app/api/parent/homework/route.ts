@@ -38,10 +38,10 @@ export const GET = createApiRoute(
 
     try {
       // FERPA COMPLIANCE: Get parent record first
-      const parentRecords = await db.query.parents.findMany({
-        where: eq(parents.userId, currentUser.id),
-        columns: { id: true },
-      });
+      const parentRecords = await db
+      .select({ id: parents.id })
+      .from(parents)
+      .where(eq(parents.userId, currentUser.id));
 
       if (parentRecords.length === 0) {
         return successResponse({
@@ -53,9 +53,10 @@ export const GET = createApiRoute(
       const parentId = parentRecords[0].id;
 
       // Get all parent-student relationships
-      const relationships = await db.query.parentToStudent.findMany({
-        where: eq(parentToStudent.parentId, parentId),
-      });
+      const relationships = await db
+      .select()
+      .from(parentToStudent)
+      .where(eq(parentToStudent.parentId, parentId));
 
       if (relationships.length === 0) {
         return successResponse({
@@ -78,20 +79,20 @@ export const GET = createApiRoute(
       }
 
       // Get all verified children
-      const children = await db.query.users.findMany({
-        where: and(
-          eq(users.type, "student"),
-          inArray(users.id, studentIds)
-        ),
-        columns: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          classGrade: true,
-          section: true,
-          profileImage: true,
-        },
-      });
+      const children = await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        classGrade: users.classGrade,
+        section: users.section,
+        profilePicture: users.profilePicture,
+      })
+      .from(users)
+      .where(and(
+        eq(users.type, "student"),
+        inArray(users.id, studentIds)
+      ));
 
       if (children.length === 0) {
         return successResponse({
@@ -108,12 +109,13 @@ export const GET = createApiRoute(
       const childIds = filteredChildren.map((c) => c.id);
 
       // Get active enrollments for all children
-      const childEnrollments = await db.query.enrollments.findMany({
-        where: and(
-          inArray(enrollments.studentId, childIds),
-          eq(enrollments.status, "active")
-        ),
-      });
+      const childEnrollments = await db
+      .select()
+      .from(enrollments)
+      .where(and(
+        inArray(enrollments.studentId, childIds),
+        eq(enrollments.status, "active")
+      ));
 
       const classIds = childEnrollments.map((e) => e.classId);
 
@@ -125,18 +127,20 @@ export const GET = createApiRoute(
       }
 
       // Get all homework for children's classes
-      const allHomework = await db.query.homework.findMany({
-        where: and(
-          inArray(homework.classId, classIds),
-          eq(homework.isPublished, true)
-        ),
-        orderBy: [desc(homework.dueDate)],
-      });
+      const allHomework = await db
+      .select()
+      .from(homework)
+      .where(and(
+        inArray(homework.classId, classIds),
+        eq(homework.isPublished, true)
+      ))
+      .orderBy(desc(homework.dueDate));
 
       // Get all submissions for these children
-      const allSubmissions = await db.query.homeworkSubmissions.findMany({
-        where: inArray(homeworkSubmissions.studentId, childIds),
-      });
+      const allSubmissions = await db
+      .select()
+      .from(homeworkSubmissions)
+      .where(inArray(homeworkSubmissions.studentId, childIds));
 
       // Create a map for quick lookup
       const submissionMap = new Map<string, typeof allSubmissions[0]>();

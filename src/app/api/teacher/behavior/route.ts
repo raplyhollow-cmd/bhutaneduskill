@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { teacherBehaviorLogs } from "@/lib/db/teacher-logs-schema";
 import { users, classes, notifications, parentToStudent } from "@/lib/db/schema";
-import { eq, desc, and, inArray } from "drizzle-orm";
+import { eq, desc, and, inArray, asc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { createApiRoute, type AuthContext } from "@/lib/api/route-handler";
 import { successResponse, errorResponse } from "@/lib/api/response-helpers";
@@ -47,20 +47,24 @@ export const POST = createApiRoute(
     }
 
     // Verify student exists
-    const student = await db.query.users.findFirst({
-      where: eq(users.id, studentId),
-      columns: { id: true, firstName: true, lastName: true, parentId: true },
-    });
+    const [student] = await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        parentId: users.parentId,
+      })
+      .from(users)
+      .where(eq(users.id, studentId))
+      .limit(1);
 
-    if (!student) {
+    if (!student[0]) {
       return errorResponse("Student not found");
     }
 
     // If classId provided, verify teacher teaches this class
     if (classId) {
-      const classRecord = await db.query.classes.findFirst({
-        where: eq(classes.id, classId),
-      });
+      const classRecord = await db.select().from(classes).where(eq(classes.id, classId)).limit(1).then(r => r[0]);
 
       if (!classRecord || classRecord.teacherId !== userId) {
         return errorResponse("You do not teach this class");
@@ -91,12 +95,10 @@ export const POST = createApiRoute(
     if (type === 'demerit' && student.parentId) {
       try {
         // Get parent-student relationship
-        const parentRelationship = await db.query.parentToStudent.findFirst({
-          where: and(
+        const parentRelationship = await db.select().from(parentToStudent).where(and(
             eq(parentToStudent.parentId, student.parentId),
             eq(parentToStudent.studentId, studentId)
-          ),
-        });
+          )).limit(1).then(r => r[0]);
 
         if (parentRelationship) {
           const notificationId = `notif-${nanoid()}`;
@@ -179,10 +181,10 @@ export const GET = createApiRoute(
     // Get teacher's classes if requesting as teacher
     let teacherClassIds: string[] = [];
     if (currentUser.type === 'teacher') {
-      const teacherClasses = await db.query.classes.findMany({
-        where: eq(classes.teacherId, userId),
-        columns: { id: true },
-      });
+      const teacherClasses = await db
+      .select({ id: classes.id })
+      .from(classes)
+      .where(eq(classes.teacherId, userId));
       teacherClassIds = teacherClasses.map((c) => c.id);
     }
 
@@ -213,25 +215,36 @@ export const GET = createApiRoute(
     }
 
     // Fetch behavior logs
-    const logs = await db.query.teacherBehaviorLogs.findMany({
-      where: conditions.length > 0 ? and(...conditions) : undefined,
-      orderBy: [desc(teacherBehaviorLogs.createdAt)],
-      limit,
-    });
+    const logs = await db.select()
+      .from(teacherBehaviorLogs)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(teacherBehaviorLogs.createdAt))
+      .limit(limit);
 
     // Enrich with student and teacher names
     const enrichedLogs = await Promise.all(
       logs.map(async (log) => {
-        const [student, teacher] = await Promise.all([
-          db.query.users.findFirst({
-            where: eq(users.id, log.studentId),
-            columns: { id: true, firstName: true, lastName: true, profileImage: true },
-          }),
-          db.query.users.findFirst({
-            where: eq(users.id, log.teacherId),
-            columns: { id: true, firstName: true, lastName: true },
-          }),
-        ]);
+        const [studentData, teacherData] = await Promise.all([
+      db.select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImage: users.profileImage,
+      })
+      .from(users)
+      .where(eq(users.id, log.studentId))
+      .limit(1),
+      db.select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+      })
+      .from(users)
+      .where(eq(users.id, log.teacherId))
+      .limit(1),
+    ]);
+    const student = studentData[0];
+    const teacher = teacherData[0];
 
         return {
           ...log,

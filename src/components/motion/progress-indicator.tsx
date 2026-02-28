@@ -17,7 +17,7 @@
 "use client";
 
 import { motion, HTMLMotionProps } from "framer-motion";
-import { forwardRef, useMemo } from "react";
+import { forwardRef, useMemo, type CSSProperties } from "react";
 import { prefersReducedMotion } from "@/lib/motion/tokens";
 import { cn } from "@/lib/utils";
 
@@ -107,6 +107,7 @@ const LinearProgress = forwardRef<HTMLDivElement, ProgressIndicatorProps>(
       size = "md",
       thickness,
       className = "",
+      style: propStyle,
       ...props
     },
     ref
@@ -114,20 +115,22 @@ const LinearProgress = forwardRef<HTMLDivElement, ProgressIndicatorProps>(
     const height = thickness ? `${thickness}px` : sizeMap[size].height;
     const barColor = customColor || colorMap[color];
 
+    // Extract non-style props to pass to div
+    const { style: _style, ...divProps } = props as any;
+
     return (
       <div
         ref={ref}
         className={cn("relative w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700", className)}
-        style={{ height }}
-        {...props}
+        style={{ height, ...propStyle } as React.CSSProperties}
+        {...divProps}
       >
         <motion.div
           className="h-full"
-          style={{ backgroundColor: barColor }}
+          style={{ backgroundColor: barColor, transformOrigin: "left" } as React.CSSProperties}
           initial={{ scaleX: 0 }}
           animate={{ scaleX: progress / 100 }}
           transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-          transformOrigin="left"
         />
         {showLabel && (
           <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white mix-blend-difference">
@@ -154,6 +157,7 @@ const CircularProgress = forwardRef<HTMLDivElement, ProgressIndicatorProps>(
       size = "md",
       thickness,
       className = "",
+      style: propStyle,
       ...props
     },
     ref
@@ -165,12 +169,15 @@ const CircularProgress = forwardRef<HTMLDivElement, ProgressIndicatorProps>(
     const circumference = 2 * Math.PI * radius;
     const strokeDashoffset = circumference - (progress / 100) * circumference;
 
+    // Extract non-style props to pass to div
+    const { style: _style, ...divProps } = props as any;
+
     return (
       <div
         ref={ref}
         className={cn("relative inline-flex items-center justify-center", className)}
-        style={{ width: circleSize, height: circleSize }}
-        {...props}
+        style={{ width: circleSize, height: circleSize, ...propStyle } as React.CSSProperties}
+        {...divProps}
       >
         {/* Background circle */}
         <svg
@@ -226,9 +233,12 @@ CircularProgress.displayName = "CircularProgress";
 // ============================================================================
 
 const IndeterminateProgress = forwardRef<HTMLDivElement, ProgressIndicatorProps>(
-  ({ color = "brand", customColor, size = "md", thickness, className = "", ...props }, ref) => {
+  ({ color = "brand", customColor, size = "md", thickness, className = "", style: propStyle, ...props }, ref) => {
     const height = thickness ? `${thickness}px` : sizeMap[size].height;
     const barColor = customColor || colorMap[color];
+
+    // Extract non-style props to pass to div
+    const { style: _style, ...divProps } = props as any;
 
     if (prefersReducedMotion()) {
       // Static loading bar for reduced motion
@@ -239,10 +249,10 @@ const IndeterminateProgress = forwardRef<HTMLDivElement, ProgressIndicatorProps>
             "w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700",
             className
           )}
-          style={{ height }}
-          {...props}
+          style={{ height, ...propStyle } as React.CSSProperties}
+          {...divProps}
         >
-          <div className="h-full" style={{ backgroundColor: barColor, width: "30%" }} />
+          <div className="h-full" style={{ backgroundColor: barColor, width: "30%" } as React.CSSProperties} />
         </div>
       );
     }
@@ -254,12 +264,12 @@ const IndeterminateProgress = forwardRef<HTMLDivElement, ProgressIndicatorProps>
           "relative w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700",
           className
         )}
-        style={{ height }}
-        {...props}
+        style={{ height, ...propStyle } as React.CSSProperties}
+        {...divProps}
       >
         <motion.div
           className="absolute inset-y-0 left-0 h-full"
-          style={{ backgroundColor: barColor, width: "30%" }}
+          style={{ backgroundColor: barColor, width: "30%" } as React.CSSProperties}
           animate={{ x: ["-100%", "400%"] }}
           transition={{ duration: 1.5, repeat: Infinity, repeatType: "loop", ease: "linear" }}
         />

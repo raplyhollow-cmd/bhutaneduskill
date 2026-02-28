@@ -1,19 +1,14 @@
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
 import { users, examResults } from "@/lib/db/schema";
 import { eq, and, or, desc } from "drizzle-orm";
-import { requireAuth } from "@/lib/auth-utils";
 import { canAccessSchool } from "@/lib/db/tenant";
 
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['student', 'teacher', 'admin', 'school-admin', 'parent', 'counselor']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const currentUser = authResult.user;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const currentUser = auth.user;
 
     const { searchParams } = new URL(request.url);
     const studentId = searchParams.get("studentId");
@@ -26,24 +21,28 @@ export async function GET(request: NextRequest) {
     if (["counselor", "teacher", "admin"].includes(currentUser.type)) {
       if (studentId) {
         // Verify access to the student (same school for counselor/teacher)
-        const student = await db.query.users.findFirst({
-          where: eq(users.id, studentId),
-        });
+        const studentList = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, studentId))
+          .limit(1);
+        const student = studentList[0] || null;
 
         if (!student) {
-          return NextResponse.json({ error: "Student not found" }, { status: 404 });
+          return { error: "Student not found", status: 404 };
         }
 
-        if (!canAccessSchool(currentUser, student.schoolId || "")) {
-          return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        if (student.schoolId && !canAccessSchool({ type: currentUser.type, schoolId: currentUser.schoolId }, student.schoolId)) {
+          return { error: "Forbidden", status: 403 };
         }
 
         whereCondition = eq(examResults.userId, studentId);
       } else if (currentUser.schoolId) {
         // Get all results for students in the same school
-        const schoolStudents = await db.query.users.findMany({
-          where: eq(users.schoolId, currentUser.schoolId),
-        });
+        const schoolStudents = await db
+          .select()
+          .from(users)
+          .where(eq(users.schoolId, currentUser.schoolId));
         const studentIds = schoolStudents.map((s) => s.id);
 
         if (studentIds.length > 0) {
@@ -53,34 +52,52 @@ export async function GET(request: NextRequest) {
     }
 
     // Additional filter by exam type if provided
-    let results = await db.query.examResults.findMany({
-      where: whereCondition,
-      orderBy: desc(examResults.examYear),
-      with: {
-        user: true,
-      },
-    });
+    // Using db.select with leftJoin instead of db.query
+    let results = await db
+      .select({
+        id: examResults.id,
+        userId: examResults.userId,
+        examName: examResults.examName,
+        examType: examResults.examType,
+        examYear: examResults.examYear,
+        academicYear: examResults.academicYear,
+        term: examResults.term,
+        examDate: examResults.examDate,
+        subjects: examResults.subjects,
+        totalMarks: examResults.totalMarks,
+        maxTotalMarks: examResults.maxTotalMarks,
+        totalMarksObtained: examResults.totalMarksObtained,
+        percentage: examResults.percentage,
+        totalPercentage: examResults.totalPercentage,
+        grade: examResults.grade,
+        division: examResults.division,
+        rank: examResults.rank,
+        remarks: examResults.remarks,
+        createdAt: examResults.createdAt,
+        updatedAt: examResults.updatedAt,
+        // User fields
+        userFirstName: users.firstName,
+        userLastName: users.lastName,
+        userEmail: users.email,
+      })
+      .from(examResults)
+      .leftJoin(users, eq(examResults.userId, users.id))
+      .where(whereCondition)
+      .orderBy(desc(examResults.examYear));
 
     // Filter by exam type if specified
     if (examType) {
       results = results.filter((r) => r.examType === examType);
     }
 
-    return NextResponse.json({ results });
-  } catch (error: unknown) {
-    logger.error("Results fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch results" }, { status: 500 });
-  }
-}
+    return { results };
+  },
+  ['student', 'teacher', 'admin', 'school-admin', 'parent', 'counselor']
+);
 
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['teacher', 'admin', 'school-admin', 'counselor']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const currentUser = authResult.user;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const currentUser = auth.user;
 
     const body = await request.json();
     const { userId, examType, examYear, subjects } = body;
@@ -92,16 +109,19 @@ export async function POST(request: NextRequest) {
     // Counselors, teachers, and admins can enter results for students
     if (["counselor", "teacher", "admin"].includes(currentUser.type)) {
       if (userId) {
-        const student = await db.query.users.findFirst({
-          where: eq(users.id, userId),
-        });
+        const studentList = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, userId))
+          .limit(1);
+        const student = studentList[0] || null;
 
         if (!student) {
-          return NextResponse.json({ error: "Student not found" }, { status: 404 });
+          return { error: "Student not found", status: 404 };
         }
 
-        if (!canAccessSchool(currentUser, student.schoolId || "")) {
-          return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        if (student.schoolId && !canAccessSchool({ type: currentUser.type, schoolId: currentUser.schoolId }, student.schoolId)) {
+          return { error: "Forbidden", status: 403 };
         }
 
         targetUserId = student.id;
@@ -144,12 +164,7 @@ export async function POST(request: NextRequest) {
       })
       .returning();
 
-    return NextResponse.json({ success: true, result });
-  } catch (error: unknown) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    logger.error("Results save error:", error);
-    return NextResponse.json({ error: "Failed to save results" }, { status: 500 });
-  }
-}
+    return { success: true, result };
+  },
+  ['teacher', 'admin', 'school-admin', 'counselor']
+);

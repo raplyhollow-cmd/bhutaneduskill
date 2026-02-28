@@ -1,0 +1,1165 @@
+
+Running 59 tests using 1 worker
+
+  x   1 [chromium] › src\tests\e2e\comprehensive\01-school-admin.spec.ts:25:7 › School Admin Portal - Comprehensive › Step 1: Verify role selection page loads (32.6s)
+  x   2 [chromium] › src\tests\e2e\comprehensive\01-school-admin.spec.ts:41:7 › School Admin Portal - Comprehensive › Step 2: Select School Admin role and proceed (37.2s)
+  x   3 [chromium] › src\tests\e2e\comprehensive\01-school-admin.spec.ts:62:7 › School Admin Portal - Comprehensive › Step 3: Find/Create School step (36.5s)
+  x   4 [chromium] › src\tests\e2e\comprehensive\01-school-admin.spec.ts:86:7 › School Admin Portal - Comprehensive › Step 4: Fill school details (33.5s)
+  x   5 [chromium] › src\tests\e2e\comprehensive\01-school-admin.spec.ts:118:7 › School Admin Portal - Comprehensive › Step 5: Fill personal details (36.0s)
+  x   6 [chromium] › src\tests\e2e\comprehensive\01-school-admin.spec.ts:153:7 › School Admin Portal - Comprehensive › Step 6: Test progressive saving (Back/Next navigation) (0ms)
+  x   7 [chromium] › src\tests\e2e\comprehensive\01-school-admin.spec.ts:185:7 › School Admin Portal - Comprehensive › Step 7: Test validation with empty fields (0ms)
+  x   8 [chromium] › src\tests\e2e\comprehensive\01-school-admin.spec.ts:213:7 › School Admin Portal - Comprehensive › Step 8: Test toast notifications (0ms)
+  x   9 [chromium] › src\tests\e2e\comprehensive\01-school-admin.spec.ts:252:7 › School Admin Portal - Comprehensive › Step 9: Check wizard step indicator (0ms)
+  x  10 [chromium] › src\tests\e2e\comprehensive\01-school-admin.spec.ts:267:7 › School Admin Portal - Comprehensive › Step 10: Final completion attempt (0ms)
+  x  11 [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:24:7 › Teacher Portal - Comprehensive › Step 1: Verify Teacher role card exists (0ms)
+  x  12 [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:37:7 › Teacher Portal - Comprehensive › Step 2: Select Teacher role (0ms)
+  x  13 [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:51:7 › Teacher Portal - Comprehensive › Step 3: Navigate to Find School step (0ms)
+  x  14 [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:68:7 › Teacher Portal - Comprehensive › Step 4: Fill personal details (0ms)
+  x  15 [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:96:7 › Teacher Portal - Comprehensive › Step 5: Subjects & Classes step (0ms)
+  x  16 [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:124:7 › Teacher Portal - Comprehensive › Step 6: Select subjects (0ms)
+  x  17 [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:154:7 › Teacher Portal - Comprehensive › Step 7: Test wizard navigation (Back button) (0ms)
+  x  18 [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:177:7 › Teacher Portal - Comprehensive › Step 8: Test validation errors (0ms)
+  x  19 [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:200:7 › Teacher Portal - Comprehensive › Step 9: Test toast notifications on error (0ms)
+  x  20 [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:225:7 › Teacher Portal - Comprehensive › Step 10: Complete wizard and check for approval screen (0ms)
+  x  21 [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:261:7 › Teacher Portal - Comprehensive › Step 11: Check for teacher-specific steps (0ms)
+  x  22 [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:274:7 › Teacher Portal - Comprehensive › Step 12: Test form data persistence (0ms)
+  x  23 [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:24:7 › Student Portal - Comprehensive › Step 1: Verify Student role card exists (0ms)
+  x  24 [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:35:7 › Student Portal - Comprehensive › Step 2: Select Student role (0ms)
+  x  25 [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:47:7 › Student Portal - Comprehensive › Step 3: Find School step (0ms)
+  x  26 [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:64:7 › Student Portal - Comprehensive › Step 4: Your Details step (0ms)
+  x  27 [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:98:7 › Student Portal - Comprehensive › Step 5: Academic Info step (Grade, Section, etc.) (0ms)
+  x  28 [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:123:7 › Student Portal - Comprehensive › Step 6: Select Grade and Section (0ms)
+  x  29 [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:153:7 › Student Portal - Comprehensive › Step 7: Test blood group selection (0ms)
+  x  30 [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:182:7 › Student Portal - Comprehensive › Step 8: Test gender selection (0ms)
+  x  31 [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:204:7 › Student Portal - Comprehensive › Step 9: Complete wizard and verify completion (0ms)
+  x  32 [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:232:7 › Student Portal - Comprehensive › Step 10: Check for RIASEC assessment prompt (0ms)
+  x  33 [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:254:7 › Student Portal - Comprehensive › Step 11: Test toast notifications (0ms)
+  x  34 [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:278:7 › Student Portal - Comprehensive › Step 12: Test progressive form saving (0ms)
+  x  35 [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:321:7 › Student Portal - Comprehensive › Step 13: Verify student-specific steps (0ms)
+  x  36 [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:22:7 › Platform Admin - Comprehensive › Step 1: Check if admin role exists in wizard (0ms)
+  x  37 [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:38:7 › Platform Admin - Comprehensive › Step 2: Try direct admin creation endpoint (0ms)
+  x  38 [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:51:7 › Platform Admin - Comprehensive › Step 3: Test admin dashboard access (if already logged in) (0ms)
+  x  39 [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:69:7 › Platform Admin - Comprehensive › Step 4: Check admin dashboard components (0ms)
+  x  40 [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:87:7 › Platform Admin - Comprehensive › Step 5: Test notification center on admin dashboard (0ms)
+  x  41 [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:108:7 › Platform Admin - Comprehensive › Step 6: Check for admin menu items (0ms)
+  x  42 [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:130:7 › Platform Admin - Comprehensive › Step 7: Test schools management page (0ms)
+  x  43 [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:149:7 › Platform Admin - Comprehensive › Step 8: Test users management page (0ms)
+  x  44 [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:168:7 › Platform Admin - Comprehensive › Step 9: Test settings page (0ms)
+  x  45 [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:181:7 › Platform Admin - Comprehensive › Step 10: Test analytics page (0ms)
+  x  46 [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:200:7 › Platform Admin - Comprehensive › Step 11: Test toast notification on admin actions (0ms)
+  x  47 [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:235:7 › Platform Admin - Comprehensive › Step 12: Check for error states (0ms)
+  x  48 [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:23:7 › Toast Notifications - Comprehensive › Test 1: Verify toast container exists (0ms)
+  x  49 [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:36:7 › Toast Notifications - Comprehensive › Test 2: Trigger error toast (empty form submission) (0ms)
+  x  50 [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:69:7 › Toast Notifications - Comprehensive › Test 3: Test toast visibility and positioning (0ms)
+  x  51 [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:97:7 › Toast Notifications - Comprehensive › Test 4: Test toast animation (0ms)
+  x  52 [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:118:7 › Toast Notifications - Comprehensive › Test 5: Test toast stacking (multiple toasts) (0ms)
+  x  53 [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:144:7 › Toast Notifications - Comprehensive › Test 6: Test toast dismissal (0ms)
+  x  54 [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:182:7 › Toast Notifications - Comprehensive › Test 7: Test toast colors (variants) (0ms)
+  x  55 [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:212:7 › Toast Notifications - Comprehensive › Test 8: Test toast with descriptions (0ms)
+  x  56 [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:235:7 › Toast Notifications - Comprehensive › Test 9: Test loading toast variant (0ms)
+  x  57 [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:257:7 › Toast Notifications - Comprehensive › Test 10: Test toast auto-dismiss behavior (0ms)
+  x  58 [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:286:7 › Toast Notifications - Comprehensive › Test 11: Test toast on different screen sizes (0ms)
+  x  59 [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:313:7 › Toast Notifications - Comprehensive › Test 12: Test toast z-index (appears above other elements) (0ms)
+
+
+  1) [chromium] › src\tests\e2e\comprehensive\01-school-admin.spec.ts:25:7 › School Admin Portal - Comprehensive › Step 1: Verify role selection page loads 
+
+    [31mTest timeout of 30000ms exceeded while running "beforeEach" hook.[39m
+
+      17 |   const testSchoolName = `Test School ${testTimestamp}`;
+      18 |
+    > 19 |   test.beforeEach(async ({ page }) => {
+         |        ^
+      20 |     // Navigate to setup page
+      21 |     await page.goto('/setup/unified');
+      22 |     await page.waitForLoadState('networkidle');
+        at D:\VS STUDIO PROJECT\bhutaneduskill\src\tests\e2e\comprehensive\01-school-admin.spec.ts:19:8
+
+    Error: page.waitForLoadState: Test timeout of 30000ms exceeded.
+
+      20 |     // Navigate to setup page
+      21 |     await page.goto('/setup/unified');
+    > 22 |     await page.waitForLoadState('networkidle');
+         |                ^
+      23 |   });
+      24 |
+      25 |   test('Step 1: Verify role selection page loads', async ({ page }) => {
+        at D:\VS STUDIO PROJECT\bhutaneduskill\src\tests\e2e\comprehensive\01-school-admin.spec.ts:22:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\comprehensive-01-school-ad-ad52f-y-role-selection-page-loads-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\comprehensive-01-school-ad-ad52f-y-role-selection-page-loads-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\comprehensive-01-school-ad-ad52f-y-role-selection-page-loads-chromium\error-context.md
+
+  2) [chromium] › src\tests\e2e\comprehensive\01-school-admin.spec.ts:41:7 › School Admin Portal - Comprehensive › Step 2: Select School Admin role and proceed 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('text=School Admin').first()[22m
+
+
+      42 |     // Select School Admin role
+      43 |     const schoolAdminCard = page.locator('text=School Admin').first();
+    > 44 |     await schoolAdminCard.click();
+         |                           ^
+      45 |     await page.waitForTimeout(500);
+      46 |
+      47 |     // Verify Next button is enabled
+        at D:\VS STUDIO PROJECT\bhutaneduskill\src\tests\e2e\comprehensive\01-school-admin.spec.ts:44:27
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\comprehensive-01-school-ad-50dfd-hool-Admin-role-and-proceed-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\comprehensive-01-school-ad-50dfd-hool-Admin-role-and-proceed-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\comprehensive-01-school-ad-50dfd-hool-Admin-role-and-proceed-chromium\error-context.md
+
+  3) [chromium] › src\tests\e2e\comprehensive\01-school-admin.spec.ts:62:7 › School Admin Portal - Comprehensive › Step 3: Find/Create School step 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('text=School Admin').first()[22m
+
+
+      62 |   test('Step 3: Find/Create School step', async ({ page }) => {
+      63 |     // Select role first
+    > 64 |     await page.locator('text=School Admin').first().click();
+         |                                                     ^
+      65 |     await page.waitForTimeout(500);
+      66 |     await page.locator('button:has-text("Next"), button:has-text("Continue")').first().click();
+      67 |     await page.waitForTimeout(1000);
+        at D:\VS STUDIO PROJECT\bhutaneduskill\src\tests\e2e\comprehensive\01-school-admin.spec.ts:64:53
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\comprehensive-01-school-ad-d02ae-p-3-Find-Create-School-step-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\comprehensive-01-school-ad-d02ae-p-3-Find-Create-School-step-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\comprehensive-01-school-ad-d02ae-p-3-Find-Create-School-step-chromium\error-context.md
+
+  4) [chromium] › src\tests\e2e\comprehensive\01-school-admin.spec.ts:86:7 › School Admin Portal - Comprehensive › Step 4: Fill school details 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('text=School Admin').first()[22m
+
+
+      86 |   test('Step 4: Fill school details', async ({ page }) => {
+      87 |     // Navigate to school details step
+    > 88 |     await page.locator('text=School Admin').first().click();
+         |                                                     ^
+      89 |     await page.waitForTimeout(500);
+      90 |     await page.locator('button:has-text("Next")').first().click();
+      91 |     await page.waitForTimeout(1000);
+        at D:\VS STUDIO PROJECT\bhutaneduskill\src\tests\e2e\comprehensive\01-school-admin.spec.ts:88:53
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\comprehensive-01-school-ad-77f69--Step-4-Fill-school-details-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\comprehensive-01-school-ad-77f69--Step-4-Fill-school-details-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\comprehensive-01-school-ad-77f69--Step-4-Fill-school-details-chromium\error-context.md
+
+  5) [chromium] › src\tests\e2e\comprehensive\01-school-admin.spec.ts:118:7 › School Admin Portal - Comprehensive › Step 5: Fill personal details 
+
+    [31mTest timeout of 30000ms exceeded.[39m
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+    [2m  - waiting for locator('text=School Admin').first()[22m
+
+
+      118 |   test('Step 5: Fill personal details', async ({ page }) => {
+      119 |     // Navigate through steps to personal details
+    > 120 |     await page.locator('text=School Admin').first().click();
+          |                                                     ^
+      121 |     await page.waitForTimeout(500);
+      122 |
+      123 |     // Click Next until we reach details step
+        at D:\VS STUDIO PROJECT\bhutaneduskill\src\tests\e2e\comprehensive\01-school-admin.spec.ts:120:53
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\comprehensive-01-school-ad-fb0f9-tep-5-Fill-personal-details-chromium\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\comprehensive-01-school-ad-fb0f9-tep-5-Fill-personal-details-chromium\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\comprehensive-01-school-ad-fb0f9-tep-5-Fill-personal-details-chromium\error-context.md
+
+  6) [chromium] › src\tests\e2e\comprehensive\01-school-admin.spec.ts:153:7 › School Admin Portal - Comprehensive › Step 6: Test progressive saving (Back/Next navigation) 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  7) [chromium] › src\tests\e2e\comprehensive\01-school-admin.spec.ts:185:7 › School Admin Portal - Comprehensive › Step 7: Test validation with empty fields 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  8) [chromium] › src\tests\e2e\comprehensive\01-school-admin.spec.ts:213:7 › School Admin Portal - Comprehensive › Step 8: Test toast notifications 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  9) [chromium] › src\tests\e2e\comprehensive\01-school-admin.spec.ts:252:7 › School Admin Portal - Comprehensive › Step 9: Check wizard step indicator 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  10) [chromium] › src\tests\e2e\comprehensive\01-school-admin.spec.ts:267:7 › School Admin Portal - Comprehensive › Step 10: Final completion attempt 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  11) [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:24:7 › Teacher Portal - Comprehensive › Step 1: Verify Teacher role card exists 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  12) [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:37:7 › Teacher Portal - Comprehensive › Step 2: Select Teacher role 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  13) [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:51:7 › Teacher Portal - Comprehensive › Step 3: Navigate to Find School step 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  14) [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:68:7 › Teacher Portal - Comprehensive › Step 4: Fill personal details 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  15) [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:96:7 › Teacher Portal - Comprehensive › Step 5: Subjects & Classes step 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  16) [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:124:7 › Teacher Portal - Comprehensive › Step 6: Select subjects 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  17) [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:154:7 › Teacher Portal - Comprehensive › Step 7: Test wizard navigation (Back button) 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  18) [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:177:7 › Teacher Portal - Comprehensive › Step 8: Test validation errors 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  19) [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:200:7 › Teacher Portal - Comprehensive › Step 9: Test toast notifications on error 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  20) [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:225:7 › Teacher Portal - Comprehensive › Step 10: Complete wizard and check for approval screen 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  21) [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:261:7 › Teacher Portal - Comprehensive › Step 11: Check for teacher-specific steps 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  22) [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:274:7 › Teacher Portal - Comprehensive › Step 12: Test form data persistence 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  23) [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:24:7 › Student Portal - Comprehensive › Step 1: Verify Student role card exists 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  24) [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:35:7 › Student Portal - Comprehensive › Step 2: Select Student role 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  25) [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:47:7 › Student Portal - Comprehensive › Step 3: Find School step 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  26) [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:64:7 › Student Portal - Comprehensive › Step 4: Your Details step 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  27) [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:98:7 › Student Portal - Comprehensive › Step 5: Academic Info step (Grade, Section, etc.) 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  28) [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:123:7 › Student Portal - Comprehensive › Step 6: Select Grade and Section 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  29) [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:153:7 › Student Portal - Comprehensive › Step 7: Test blood group selection 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  30) [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:182:7 › Student Portal - Comprehensive › Step 8: Test gender selection 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  31) [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:204:7 › Student Portal - Comprehensive › Step 9: Complete wizard and verify completion 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  32) [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:232:7 › Student Portal - Comprehensive › Step 10: Check for RIASEC assessment prompt 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  33) [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:254:7 › Student Portal - Comprehensive › Step 11: Test toast notifications 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  34) [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:278:7 › Student Portal - Comprehensive › Step 12: Test progressive form saving 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  35) [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:321:7 › Student Portal - Comprehensive › Step 13: Verify student-specific steps 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  36) [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:22:7 › Platform Admin - Comprehensive › Step 1: Check if admin role exists in wizard 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  37) [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:38:7 › Platform Admin - Comprehensive › Step 2: Try direct admin creation endpoint 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  38) [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:51:7 › Platform Admin - Comprehensive › Step 3: Test admin dashboard access (if already logged in) 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  39) [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:69:7 › Platform Admin - Comprehensive › Step 4: Check admin dashboard components 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  40) [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:87:7 › Platform Admin - Comprehensive › Step 5: Test notification center on admin dashboard 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  41) [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:108:7 › Platform Admin - Comprehensive › Step 6: Check for admin menu items 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  42) [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:130:7 › Platform Admin - Comprehensive › Step 7: Test schools management page 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  43) [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:149:7 › Platform Admin - Comprehensive › Step 8: Test users management page 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  44) [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:168:7 › Platform Admin - Comprehensive › Step 9: Test settings page 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  45) [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:181:7 › Platform Admin - Comprehensive › Step 10: Test analytics page 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  46) [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:200:7 › Platform Admin - Comprehensive › Step 11: Test toast notification on admin actions 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  47) [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:235:7 › Platform Admin - Comprehensive › Step 12: Check for error states 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  48) [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:23:7 › Toast Notifications - Comprehensive › Test 1: Verify toast container exists 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  49) [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:36:7 › Toast Notifications - Comprehensive › Test 2: Trigger error toast (empty form submission) 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  50) [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:69:7 › Toast Notifications - Comprehensive › Test 3: Test toast visibility and positioning 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  51) [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:97:7 › Toast Notifications - Comprehensive › Test 4: Test toast animation 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  52) [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:118:7 › Toast Notifications - Comprehensive › Test 5: Test toast stacking (multiple toasts) 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  53) [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:144:7 › Toast Notifications - Comprehensive › Test 6: Test toast dismissal 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  54) [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:182:7 › Toast Notifications - Comprehensive › Test 7: Test toast colors (variants) 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  55) [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:212:7 › Toast Notifications - Comprehensive › Test 8: Test toast with descriptions 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  56) [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:235:7 › Toast Notifications - Comprehensive › Test 9: Test loading toast variant 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  57) [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:257:7 › Toast Notifications - Comprehensive › Test 10: Test toast auto-dismiss behavior 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  58) [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:286:7 › Toast Notifications - Comprehensive › Test 11: Test toast on different screen sizes 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  59) [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:313:7 › Toast Notifications - Comprehensive › Test 12: Test toast z-index (appears above other elements) 
+
+    Error: worker process exited unexpectedly (code=3221225794, signal=null)
+
+  59 failed
+    [chromium] › src\tests\e2e\comprehensive\01-school-admin.spec.ts:25:7 › School Admin Portal - Comprehensive › Step 1: Verify role selection page loads 
+    [chromium] › src\tests\e2e\comprehensive\01-school-admin.spec.ts:41:7 › School Admin Portal - Comprehensive › Step 2: Select School Admin role and proceed 
+    [chromium] › src\tests\e2e\comprehensive\01-school-admin.spec.ts:62:7 › School Admin Portal - Comprehensive › Step 3: Find/Create School step 
+    [chromium] › src\tests\e2e\comprehensive\01-school-admin.spec.ts:86:7 › School Admin Portal - Comprehensive › Step 4: Fill school details 
+    [chromium] › src\tests\e2e\comprehensive\01-school-admin.spec.ts:118:7 › School Admin Portal - Comprehensive › Step 5: Fill personal details 
+    [chromium] › src\tests\e2e\comprehensive\01-school-admin.spec.ts:153:7 › School Admin Portal - Comprehensive › Step 6: Test progressive saving (Back/Next navigation) 
+    [chromium] › src\tests\e2e\comprehensive\01-school-admin.spec.ts:185:7 › School Admin Portal - Comprehensive › Step 7: Test validation with empty fields 
+    [chromium] › src\tests\e2e\comprehensive\01-school-admin.spec.ts:213:7 › School Admin Portal - Comprehensive › Step 8: Test toast notifications 
+    [chromium] › src\tests\e2e\comprehensive\01-school-admin.spec.ts:252:7 › School Admin Portal - Comprehensive › Step 9: Check wizard step indicator 
+    [chromium] › src\tests\e2e\comprehensive\01-school-admin.spec.ts:267:7 › School Admin Portal - Comprehensive › Step 10: Final completion attempt 
+    [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:24:7 › Teacher Portal - Comprehensive › Step 1: Verify Teacher role card exists 
+    [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:37:7 › Teacher Portal - Comprehensive › Step 2: Select Teacher role 
+    [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:51:7 › Teacher Portal - Comprehensive › Step 3: Navigate to Find School step 
+    [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:68:7 › Teacher Portal - Comprehensive › Step 4: Fill personal details 
+    [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:96:7 › Teacher Portal - Comprehensive › Step 5: Subjects & Classes step 
+    [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:124:7 › Teacher Portal - Comprehensive › Step 6: Select subjects 
+    [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:154:7 › Teacher Portal - Comprehensive › Step 7: Test wizard navigation (Back button) 
+    [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:177:7 › Teacher Portal - Comprehensive › Step 8: Test validation errors 
+    [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:200:7 › Teacher Portal - Comprehensive › Step 9: Test toast notifications on error 
+    [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:225:7 › Teacher Portal - Comprehensive › Step 10: Complete wizard and check for approval screen 
+    [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:261:7 › Teacher Portal - Comprehensive › Step 11: Check for teacher-specific steps 
+    [chromium] › src\tests\e2e\comprehensive\02-teacher.spec.ts:274:7 › Teacher Portal - Comprehensive › Step 12: Test form data persistence 
+    [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:24:7 › Student Portal - Comprehensive › Step 1: Verify Student role card exists 
+    [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:35:7 › Student Portal - Comprehensive › Step 2: Select Student role 
+    [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:47:7 › Student Portal - Comprehensive › Step 3: Find School step 
+    [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:64:7 › Student Portal - Comprehensive › Step 4: Your Details step 
+    [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:98:7 › Student Portal - Comprehensive › Step 5: Academic Info step (Grade, Section, etc.) 
+    [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:123:7 › Student Portal - Comprehensive › Step 6: Select Grade and Section 
+    [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:153:7 › Student Portal - Comprehensive › Step 7: Test blood group selection 
+    [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:182:7 › Student Portal - Comprehensive › Step 8: Test gender selection 
+    [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:204:7 › Student Portal - Comprehensive › Step 9: Complete wizard and verify completion 
+    [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:232:7 › Student Portal - Comprehensive › Step 10: Check for RIASEC assessment prompt 
+    [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:254:7 › Student Portal - Comprehensive › Step 11: Test toast notifications 
+    [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:278:7 › Student Portal - Comprehensive › Step 12: Test progressive form saving 
+    [chromium] › src\tests\e2e\comprehensive\03-student.spec.ts:321:7 › Student Portal - Comprehensive › Step 13: Verify student-specific steps 
+    [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:22:7 › Platform Admin - Comprehensive › Step 1: Check if admin role exists in wizard 
+    [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:38:7 › Platform Admin - Comprehensive › Step 2: Try direct admin creation endpoint 
+    [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:51:7 › Platform Admin - Comprehensive › Step 3: Test admin dashboard access (if already logged in) 
+    [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:69:7 › Platform Admin - Comprehensive › Step 4: Check admin dashboard components 
+    [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:87:7 › Platform Admin - Comprehensive › Step 5: Test notification center on admin dashboard 
+    [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:108:7 › Platform Admin - Comprehensive › Step 6: Check for admin menu items 
+    [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:130:7 › Platform Admin - Comprehensive › Step 7: Test schools management page 
+    [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:149:7 › Platform Admin - Comprehensive › Step 8: Test users management page 
+    [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:168:7 › Platform Admin - Comprehensive › Step 9: Test settings page 
+    [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:181:7 › Platform Admin - Comprehensive › Step 10: Test analytics page 
+    [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:200:7 › Platform Admin - Comprehensive › Step 11: Test toast notification on admin actions 
+    [chromium] › src\tests\e2e\comprehensive\04-platform-admin.spec.ts:235:7 › Platform Admin - Comprehensive › Step 12: Check for error states 
+    [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:23:7 › Toast Notifications - Comprehensive › Test 1: Verify toast container exists 
+    [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:36:7 › Toast Notifications - Comprehensive › Test 2: Trigger error toast (empty form submission) 
+    [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:69:7 › Toast Notifications - Comprehensive › Test 3: Test toast visibility and positioning 
+    [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:97:7 › Toast Notifications - Comprehensive › Test 4: Test toast animation 
+    [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:118:7 › Toast Notifications - Comprehensive › Test 5: Test toast stacking (multiple toasts) 
+    [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:144:7 › Toast Notifications - Comprehensive › Test 6: Test toast dismissal 
+    [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:182:7 › Toast Notifications - Comprehensive › Test 7: Test toast colors (variants) 
+    [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:212:7 › Toast Notifications - Comprehensive › Test 8: Test toast with descriptions 
+    [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:235:7 › Toast Notifications - Comprehensive › Test 9: Test loading toast variant 
+    [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:257:7 › Toast Notifications - Comprehensive › Test 10: Test toast auto-dismiss behavior 
+    [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:286:7 › Toast Notifications - Comprehensive › Test 11: Test toast on different screen sizes 
+    [chromium] › src\tests\e2e\comprehensive\05-toast-notifications.spec.ts:313:7 › Toast Notifications - Comprehensive › Test 12: Test toast z-index (appears above other elements) 
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  [2m[WebServer] [22m [31m[1m⨯[22m[39m Failed to generate static paths for /sign-in/[[...sign-in]]:
+[2m[WebServer] [22m[Error: Jest worker encountered 2 child process exceptions, exceeding retry limit] {
+[2m[WebServer] [22m  type: [32m'WorkerError'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m [Error: Jest worker encountered 2 child process exceptions, exceeding retry limit] {
+[2m[WebServer] [22m  type: [32m'WorkerError'[39m,
+[2m[WebServer] [22m  page: [32m'/sign-in'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m [Error: Jest worker encountered 2 child process exceptions, exceeding retry limit] {
+[2m[WebServer] [22m  type: [32m'WorkerError'[39m,
+[2m[WebServer] [22m  page: [32m'/sign-in/SignIn_clerk_catchall_check_1772132470400'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m [Error: Jest worker encountered 2 child process exceptions, exceeding retry limit] {
+[2m[WebServer] [22m  type: [32m'WorkerError'[39m,
+[2m[WebServer] [22m  page: [32m'/sign-in'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m [Error: Jest worker encountered 2 child process exceptions, exceeding retry limit] {
+[2m[WebServer] [22m  type: [32m'WorkerError'[39m,
+[2m[WebServer] [22m  page: [32m'/sign-in'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m [Error: Jest worker encountered 2 child process exceptions, exceeding retry limit] {
+[2m[WebServer] [22m  type: [32m'WorkerError'[39m,
+[2m[WebServer] [22m  page: [32m'/sign-in'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m [Error: Jest worker encountered 2 child process exceptions, exceeding retry limit] {
+[2m[WebServer] [22m  type: [32m'WorkerError'[39m,
+[2m[WebServer] [22m  page: [32m'/sign-in'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m [Error: Jest worker encountered 2 child process exceptions, exceeding retry limit] {
+[2m[WebServer] [22m  type: [32m'WorkerError'[39m,
+[2m[WebServer] [22m  page: [32m'/sign-in'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m [Error: Jest worker encountered 2 child process exceptions, exceeding retry limit] {
+[2m[WebServer] [22m  type: [32m'WorkerError'[39m,
+[2m[WebServer] [22m  page: [32m'/sign-in'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m [Error: Jest worker encountered 2 child process exceptions, exceeding retry limit] {
+[2m[WebServer] [22m  type: [32m'WorkerError'[39m,
+[2m[WebServer] [22m  page: [32m'/sign-in'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m [Error: Jest worker encountered 2 child process exceptions, exceeding retry limit] {
+[2m[WebServer] [22m  type: [32m'WorkerError'[39m,
+[2m[WebServer] [22m  page: [32m'/sign-in'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m [Error: Jest worker encountered 2 child process exceptions, exceeding retry limit] {
+[2m[WebServer] [22m  type: [32m'WorkerError'[39m,
+[2m[WebServer] [22m  page: [32m'/sign-in'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m [Error: Jest worker encountered 2 child process exceptions, exceeding retry limit] {
+[2m[WebServer] [22m  type: [32m'WorkerError'[39m,
+[2m[WebServer] [22m  page: [32m'/sign-in'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m [Error: Jest worker encountered 2 child process exceptions, exceeding retry limit] {
+[2m[WebServer] [22m  type: [32m'WorkerError'[39m,
+[2m[WebServer] [22m  page: [32m'/sign-in'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m [Error: Jest worker encountered 2 child process exceptions, exceeding retry limit] {
+[2m[WebServer] [22m  type: [32m'WorkerError'[39m,
+[2m[WebServer] [22m  page: [32m'/sign-in'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m [Error: Jest worker encountered 2 child process exceptions, exceeding retry limit] {
+[2m[WebServer] [22m  type: [32m'WorkerError'[39m,
+[2m[WebServer] [22m  page: [32m'/sign-in'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m(node:24168) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 unpipe listeners added to [Socket]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+[2m[WebServer] [22m(Use `node --trace-warnings ...` to show where the warning was created)
+[2m[WebServer] [22m(node:24168) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 error listeners added to [Socket]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+[2m[WebServer] [22m(node:24168) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 close listeners added to [Socket]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+[2m[WebServer] [22m(node:24168) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 finish listeners added to [Socket]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+[2m[WebServer] [22m(node:24168) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 unpipe listeners added to [Socket]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+[2m[WebServer] [22m(node:24168) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 error listeners added to [Socket]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+[2m[WebServer] [22m(node:24168) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 close listeners added to [Socket]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+[2m[WebServer] [22m(node:24168) MaxListenersExceededWarning: Possible EventEmitter memory leak detected. 11 finish listeners added to [Socket]. MaxListeners is 10. Use emitter.setMaxListeners() to increase limit
+[2m[WebServer] [22m [31m[1m⨯[22m[39m [Error: Jest worker encountered 2 child process exceptions, exceeding retry limit] {
+[2m[WebServer] [22m  type: [32m'WorkerError'[39m,
+[2m[WebServer] [22m  page: [32m'/sign-in'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m [Error: Jest worker encountered 2 child process exceptions, exceeding retry limit] {
+[2m[WebServer] [22m  type: [32m'WorkerError'[39m,
+[2m[WebServer] [22m  page: [32m'/sign-in'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m [Error: Jest worker encountered 2 child process exceptions, exceeding retry limit] {
+[2m[WebServer] [22m  type: [32m'WorkerError'[39m,
+[2m[WebServer] [22m  page: [32m'/sign-in'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m [Error: Jest worker encountered 2 child process exceptions, exceeding retry limit] {
+[2m[WebServer] [22m  type: [32m'WorkerError'[39m,
+[2m[WebServer] [22m  page: [32m'/sign-in'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m [Error: Jest worker encountered 2 child process exceptions, exceeding retry limit] {
+[2m[WebServer] [22m  type: [32m'WorkerError'[39m,
+[2m[WebServer] [22m  page: [32m'/sign-in'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m [Error: Jest worker encountered 2 child process exceptions, exceeding retry limit] {
+[2m[WebServer] [22m  type: [32m'WorkerError'[39m,
+[2m[WebServer] [22m  page: [32m'/sign-in'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m [Error: Jest worker encountered 2 child process exceptions, exceeding retry limit] {
+[2m[WebServer] [22m  type: [32m'WorkerError'[39m,
+[2m[WebServer] [22m  page: [32m'/sign-in'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: Failed to load chunk server/chunks/ssr/src_ba1c5935._.js from module [project]/node_modules/next/dist/esm/build/templates/app-page.js?page=/setup/unified/page { GLOBAL_ERROR_MODULE => "[project]/src/app/global-error.tsx [app-rsc] (ecmascript, Next.js Server Component)", METADATA_0 => "[project]/src/app/favicon.ico.mjs { IMAGE => \"[project]/src/app/favicon.ico (static in ecmascript)\" } [app-rsc] (structured image object, ecmascript, Next.js Server Component)", MODULE_1 => "[project]/src/app/layout.tsx [app-rsc] (ecmascript, Next.js Server Component)", MODULE_2 => "[project]/src/app/error.tsx [app-rsc] (ecmascript, Next.js Server Component)", MODULE_3 => "[project]/src/app/not-found.tsx [app-rsc] (ecmascript, Next.js Server Component)", MODULE_4 => "[project]/node_modules/next/dist/client/components/builtin/forbidden.js [app-rsc] (ecmascript, Next.js Server Component)", MODULE_5 => "[project]/node_modules/next/dist/client/components/builtin/unauthorized.js [app-rsc] (ecmascript, Next.js Server Component)", MODULE_6 => "[project]/src/app/global-error.tsx [app-rsc] (ecmascript, Next.js Server Component)", MODULE_7 => "[project]/src/app/setup/layout.tsx [app-rsc] (ecmascript, Next.js Server Component)", MODULE_8 => "[project]/src/app/setup/unified/page.tsx [app-rsc] (ecmascript, Next.js Server Component)" } [app-rsc] (ecmascript) <locals>] {
+[2m[WebServer] [22m  [cause]: SyntaxError: Identifier 'error' has already been declared
+[2m[WebServer] [22m      at <unknown> [90m(D:\VS STUDIO PROJECT\bhutaneduskill\[39m.next\server\chunks\ssr\src_ba1c5935._.js:4733[90m)[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m unhandledRejection: [Error: Failed to load chunk server/chunks/ssr/src_ba1c5935._.js from module [project]/node_modules/next/dist/esm/build/templates/app-page.js?page=/setup/unified/page { GLOBAL_ERROR_MODULE => "[project]/src/app/global-error.tsx [app-rsc] (ecmascript, Next.js Server Component)", METADATA_0 => "[project]/src/app/favicon.ico.mjs { IMAGE => \"[project]/src/app/favicon.ico (static in ecmascript)\" } [app-rsc] (structured image object, ecmascript, Next.js Server Component)", MODULE_1 => "[project]/src/app/layout.tsx [app-rsc] (ecmascript, Next.js Server Component)", MODULE_2 => "[project]/src/app/error.tsx [app-rsc] (ecmascript, Next.js Server Component)", MODULE_3 => "[project]/src/app/not-found.tsx [app-rsc] (ecmascript, Next.js Server Component)", MODULE_4 => "[project]/node_modules/next/dist/client/components/builtin/forbidden.js [app-rsc] (ecmascript, Next.js Server Component)", MODULE_5 => "[project]/node_modules/next/dist/client/components/builtin/unauthorized.js [app-rsc] (ecmascript, Next.js Server Component)", MODULE_6 => "[project]/src/app/global-error.tsx [app-rsc] (ecmascript, Next.js Server Component)", MODULE_7 => "[project]/src/app/setup/layout.tsx [app-rsc] (ecmascript, Next.js Server Component)", MODULE_8 => "[project]/src/app/setup/unified/page.tsx [app-rsc] (ecmascript, Next.js Server Component)" } [app-rsc] (ecmascript) <locals>] {
+[2m[WebServer] [22m  [cause]: SyntaxError: Identifier 'error' has already been declared
+[2m[WebServer] [22m      at <unknown> [90m(D:\VS STUDIO PROJECT\bhutaneduskill\[39m.next\server\chunks\ssr\src_ba1c5935._.js:4733[90m)[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m unhandledRejection:  [Error: Failed to load chunk server/chunks/ssr/src_ba1c5935._.js from module [project]/node_modules/next/dist/esm/build/templates/app-page.js?page=/setup/unified/page { GLOBAL_ERROR_MODULE => "[project]/src/app/global-error.tsx [app-rsc] (ecmascript, Next.js Server Component)", METADATA_0 => "[project]/src/app/favicon.ico.mjs { IMAGE => \"[project]/src/app/favicon.ico (static in ecmascript)\" } [app-rsc] (structured image object, ecmascript, Next.js Server Component)", MODULE_1 => "[project]/src/app/layout.tsx [app-rsc] (ecmascript, Next.js Server Component)", MODULE_2 => "[project]/src/app/error.tsx [app-rsc] (ecmascript, Next.js Server Component)", MODULE_3 => "[project]/src/app/not-found.tsx [app-rsc] (ecmascript, Next.js Server Component)", MODULE_4 => "[project]/node_modules/next/dist/client/components/builtin/forbidden.js [app-rsc] (ecmascript, Next.js Server Component)", MODULE_5 => "[project]/node_modules/next/dist/client/components/builtin/unauthorized.js [app-rsc] (ecmascript, Next.js Server Component)", MODULE_6 => "[project]/src/app/global-error.tsx [app-rsc] (ecmascript, Next.js Server Component)", MODULE_7 => "[project]/src/app/setup/layout.tsx [app-rsc] (ecmascript, Next.js Server Component)", MODULE_8 => "[project]/src/app/setup/unified/page.tsx [app-rsc] (ecmascript, Next.js Server Component)" } [app-rsc] (ecmascript) <locals>] {
+[2m[WebServer] [22m  [cause]: SyntaxError: Identifier 'error' has already been declared
+[2m[WebServer] [22m      at <unknown> [90m(D:\VS STUDIO PROJECT\bhutaneduskill\[39m.next\server\chunks\ssr\src_ba1c5935._.js:4733[90m)[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m ./src/app/setup/unified/page.tsx:143:10
+[2m[WebServer] [22mEcmascript file had an error
+[2m[WebServer] [22m[0m [90m 141 |[39m   [36mconst[39m [currentStep[33m,[39m setCurrentStep] [33m=[39m useState([35m1[39m)[33m;[39m
+[2m[WebServer] [22m [90m 142 |[39m   [36mconst[39m [isLoading[33m,[39m setIsLoading] [33m=[39m useState([36mfalse[39m)[33m;[39m
+[2m[WebServer] [22m[31m[1m>[22m[39m[90m 143 |[39m   [36mconst[39m [error[33m,[39m setError] [33m=[39m useState([32m""[39m)[33m;[39m
+[2m[WebServer] [22m [90m     |[39m          [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+[2m[WebServer] [22m [90m 144 |[39m
+[2m[WebServer] [22m [90m 145 |[39m   [90m// Check if user is already set up (especially admin users)[39m
+[2m[WebServer] [22m [90m 146 |[39m   [90m// Also check for pre-filled school code from URL[39m[0m
+[2m[WebServer] [22m
+[2m[WebServer] [22mthe name `error` is defined multiple times
+[2m[WebServer] [22m
+[2m[WebServer] [22mImport traces:
+[2m[WebServer] [22m  Client Component Browser:
+[2m[WebServer] [22m    ./src/app/setup/unified/page.tsx [Client Component Browser]
+[2m[WebServer] [22m    ./src/app/setup/unified/page.tsx [Server Component]
+[2m[WebServer] [22m
+[2m[WebServer] [22m  Client Component SSR:
+[2m[WebServer] [22m    ./src/app/setup/unified/page.tsx [Client Component SSR]
+[2m[WebServer] [22m    ./src/app/setup/unified/page.tsx [Server Component]
+[2m[WebServer] [22m
+[2m[WebServer] [22m
+[2m[WebServer] [22m [31m[1m⨯[22m[39m ./src/app/setup/unified/page.tsx:143:10
+[2m[WebServer] [22mEcmascript file had an error
+[2m[WebServer] [22m[0m [90m 141 |[39m   [36mconst[39m [currentStep[33m,[39m setCurrentStep] [33m=[39m useState([35m1[39m)[33m;[39m
+[2m[WebServer] [22m [90m 142 |[39m   [36mconst[39m [isLoading[33m,[39m setIsLoading] [33m=[39m useState([36mfalse[39m)[33m;[39m
+[2m[WebServer] [22m[31m[1m>[22m[39m[90m 143 |[39m   [36mconst[39m [error[33m,[39m setError] [33m=[39m useState([32m""[39m)[33m;[39m
+[2m[WebServer] [22m [90m     |[39m          [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+[2m[WebServer] [22m [90m 144 |[39m
+[2m[WebServer] [22m [90m 145 |[39m   [90m// Check if user is already set up (especially admin users)[39m
+[2m[WebServer] [22m [90m 146 |[39m   [90m// Also check for pre-filled school code from URL[39m[0m
+[2m[WebServer] [22m
+[2m[WebServer] [22mthe name `error` is defined multiple times
+[2m[WebServer] [22m
+[2m[WebServer] [22mImport traces:
+[2m[WebServer] [22m  Client Component Browser:
+[2m[WebServer] [22m    ./src/app/setup/unified/page.tsx [Client Component Browser]
+[2m[WebServer] [22m    ./src/app/setup/unified/page.tsx [Server Component]
+[2m[WebServer] [22m
+[2m[WebServer] [22m  Client Component SSR:
+[2m[WebServer] [22m    ./src/app/setup/unified/page.tsx [Client Component SSR]
+[2m[WebServer] [22m    ./src/app/setup/unified/page.tsx [Server Component]
+[2m[WebServer] [22m
+[2m[WebServer] [22m
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m ./src/app/setup/unified/page.tsx:143:10
+[2m[WebServer] [22mEcmascript file had an error
+[2m[WebServer] [22m[0m [90m 141 |[39m   [36mconst[39m [currentStep[33m,[39m setCurrentStep] [33m=[39m useState([35m1[39m)[33m;[39m
+[2m[WebServer] [22m [90m 142 |[39m   [36mconst[39m [isLoading[33m,[39m setIsLoading] [33m=[39m useState([36mfalse[39m)[33m;[39m
+[2m[WebServer] [22m[31m[1m>[22m[39m[90m 143 |[39m   [36mconst[39m [error[33m,[39m setError] [33m=[39m useState([32m""[39m)[33m;[39m
+[2m[WebServer] [22m [90m     |[39m          [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+[2m[WebServer] [22m [90m 144 |[39m
+[2m[WebServer] [22m [90m 145 |[39m   [90m// Check if user is already set up (especially admin users)[39m
+[2m[WebServer] [22m [90m 146 |[39m   [90m// Also check for pre-filled school code from URL[39m[0m
+[2m[WebServer] [22m
+[2m[WebServer] [22mthe name `error` is defined multiple times
+[2m[WebServer] [22m
+[2m[WebServer] [22mImport traces:
+[2m[WebServer] [22m  Client Component Browser:
+[2m[WebServer] [22m    ./src/app/setup/unified/page.tsx [Client Component Browser]
+[2m[WebServer] [22m    ./src/app/setup/unified/page.tsx [Server Component]
+[2m[WebServer] [22m
+[2m[WebServer] [22m  Client Component SSR:
+[2m[WebServer] [22m    ./src/app/setup/unified/page.tsx [Client Component SSR]
+[2m[WebServer] [22m    ./src/app/setup/unified/page.tsx [Server Component]
+[2m[WebServer] [22m
+[2m[WebServer] [22m
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m ./src/app/setup/unified/page.tsx:143:10
+[2m[WebServer] [22mEcmascript file had an error
+[2m[WebServer] [22m[0m [90m 141 |[39m   [36mconst[39m [currentStep[33m,[39m setCurrentStep] [33m=[39m useState([35m1[39m)[33m;[39m
+[2m[WebServer] [22m [90m 142 |[39m   [36mconst[39m [isLoading[33m,[39m setIsLoading] [33m=[39m useState([36mfalse[39m)[33m;[39m
+[2m[WebServer] [22m[31m[1m>[22m[39m[90m 143 |[39m   [36mconst[39m [error[33m,[39m setError] [33m=[39m useState([32m""[39m)[33m;[39m
+[2m[WebServer] [22m [90m     |[39m          [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+[2m[WebServer] [22m [90m 144 |[39m
+[2m[WebServer] [22m [90m 145 |[39m   [90m// Check if user is already set up (especially admin users)[39m
+[2m[WebServer] [22m [90m 146 |[39m   [90m// Also check for pre-filled school code from URL[39m[0m
+[2m[WebServer] [22m
+[2m[WebServer] [22mthe name `error` is defined multiple times
+[2m[WebServer] [22m
+[2m[WebServer] [22mImport traces:
+[2m[WebServer] [22m  Client Component Browser:
+[2m[WebServer] [22m    ./src/app/setup/unified/page.tsx [Client Component Browser]
+[2m[WebServer] [22m    ./src/app/setup/unified/page.tsx [Server Component]
+[2m[WebServer] [22m
+[2m[WebServer] [22m  Client Component SSR:
+[2m[WebServer] [22m    ./src/app/setup/unified/page.tsx [Client Component SSR]
+[2m[WebServer] [22m    ./src/app/setup/unified/page.tsx [Server Component]
+[2m[WebServer] [22m
+[2m[WebServer] [22m
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m ./src/app/setup/unified/page.tsx:143:10
+[2m[WebServer] [22mEcmascript file had an error
+[2m[WebServer] [22m[0m [90m 141 |[39m   [36mconst[39m [currentStep[33m,[39m setCurrentStep] [33m=[39m useState([35m1[39m)[33m;[39m
+[2m[WebServer] [22m [90m 142 |[39m   [36mconst[39m [isLoading[33m,[39m setIsLoading] [33m=[39m useState([36mfalse[39m)[33m;[39m
+[2m[WebServer] [22m[31m[1m>[22m[39m[90m 143 |[39m   [36mconst[39m [error[33m,[39m setError] [33m=[39m useState([32m""[39m)[33m;[39m
+[2m[WebServer] [22m [90m     |[39m          [31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m[31m[1m^[22m[39m
+[2m[WebServer] [22m [90m 144 |[39m
+[2m[WebServer] [22m [90m 145 |[39m   [90m// Check if user is already set up (especially admin users)[39m
+[2m[WebServer] [22m [90m 146 |[39m   [90m// Also check for pre-filled school code from URL[39m[0m
+[2m[WebServer] [22m
+[2m[WebServer] [22mthe name `error` is defined multiple times
+[2m[WebServer] [22m
+[2m[WebServer] [22mImport traces:
+[2m[WebServer] [22m  Client Component Browser:
+[2m[WebServer] [22m    ./src/app/setup/unified/page.tsx [Client Component Browser]
+[2m[WebServer] [22m    ./src/app/setup/unified/page.tsx [Server Component]
+[2m[WebServer] [22m
+[2m[WebServer] [22m  Client Component SSR:
+[2m[WebServer] [22m    ./src/app/setup/unified/page.tsx [Client Component SSR]
+[2m[WebServer] [22m    ./src/app/setup/unified/page.tsx [Server Component]
+[2m[WebServer] [22m
+[2m[WebServer] [22m
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: write EPIPE] { errno: [33m-4047[39m, code: [32m'EPIPE'[39m, syscall: [32m'write'[39m }
+[2m[WebServer] [22m[Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m[Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m[Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m[Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m[Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m[Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m[Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m[Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m[Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m[Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m[Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m[Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m[Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m[Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m[Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m[Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException: [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}
+[2m[WebServer] [22m [31m[1m⨯[22m[39m uncaughtException:  [Error: spawn UNKNOWN] {
+[2m[WebServer] [22m  errno: [33m-4094[39m,
+[2m[WebServer] [22m  code: [32m'UNKNOWN'[39m,
+[2m[WebServer] [22m  syscall: [32m'spawn'[39m
+[2m[WebServer] [22m}

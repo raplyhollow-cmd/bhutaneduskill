@@ -561,7 +561,7 @@ export default function SchoolAdminLibraryPage() {
       </div>
 
       {/* Main Content */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "overview" | "books" | "circulation" | "members" | "reservations" | "fines")}>
         <TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-6">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="books">Books</TabsTrigger>

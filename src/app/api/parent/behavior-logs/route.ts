@@ -21,18 +21,21 @@ export const GET = createApiRoute(
     const { userId } = auth;
 
     // Get parent record
-    const parentRecord = await db.query.parents.findFirst({
-      where: eq(parents.userId, userId),
-    });
+    const [parentRecord] = await db
+      .select()
+      .from(parents)
+      .where(eq(parents.userId, userId))
+      .limit(1);
 
     if (!parentRecord) {
       return errorResponse("Parent record not found", 404);
     }
 
     // Get linked children
-    const relationships = await db.query.parentToStudent.findMany({
-      where: eq(parentToStudent.parentId, parentRecord.id),
-    });
+    const relationships = await db
+      .select()
+      .from(parentToStudent)
+      .where(eq(parentToStudent.parentId, parentRecord.id));
 
     if (relationships.length === 0) {
       return successResponse({
@@ -69,15 +72,15 @@ export const GET = createApiRoute(
       .limit(50);
 
     // Get student names for the logs
-    const studentRecords = await db.query.users.findMany({
-      where: inArray(users.id, studentIds),
-      columns: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        name: true,
-      },
-    });
+    const studentRecords = await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        name: users.name,
+      })
+      .from(users)
+      .where(inArray(users.id, studentIds));
 
     const studentMap = new Map(studentRecords.map((s) => [s.id, s]));
 

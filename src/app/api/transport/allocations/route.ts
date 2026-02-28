@@ -19,6 +19,9 @@ import { logger } from "@/lib/logger";
 import { createApiRoute, getAuth } from "@/lib/api/route-handler";
 import { successResponse, errorResponse, badRequestResponse, notFoundResponse } from "@/lib/api/response-helpers";
 
+// Type for Drizzle condition array
+type DbCondition = ReturnType<typeof eq>;
+
 // Types for proper TypeScript safety
 interface TransportAllocationWithDetails {
   id: string;
@@ -72,10 +75,17 @@ export const GET = createApiRoute(
 
     const { userId, user } = auth;
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: { id: true, type: true, role: true, schoolId: true },
-    });
+    const currentUser = await db
+      .select({
+        id: users.id,
+        type: users.type,
+        role: users.role,
+        schoolId: users.schoolId,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!currentUser) {
       return notFoundResponse("User");
@@ -89,16 +99,51 @@ export const GET = createApiRoute(
 
     // Student viewing their own allocation
     if (action === "my-allocation" || (!action && currentUser.type === "student")) {
-      const allocation = await db.query.transportAllocations.findFirst({
-        where: and(
-          eq(transportAllocations.studentId, currentUser.id),
-          eq(transportAllocations.isActive, true)
-        ),
-        with: {
-          route: true,
-          vehicle: true,
-        },
-      });
+      const allocation = await db
+        .select({
+          id: transportAllocations.id,
+          studentId: transportAllocations.studentId,
+          routeId: transportAllocations.routeId,
+          vehicleId: transportAllocations.vehicleId,
+          stopName: transportAllocations.stopName,
+          pickupPoint: transportAllocations.pickupPoint,
+          dropPoint: transportAllocations.dropPoint,
+          pickupTime: transportAllocations.pickupTime,
+          dropTime: transportAllocations.dropTime,
+          academicYear: transportAllocations.academicYear,
+          fee: transportAllocations.fee,
+          isPaid: transportAllocations.isPaid,
+          isActive: transportAllocations.isActive,
+          createdAt: transportAllocations.createdAt,
+          updatedAt: transportAllocations.updatedAt,
+          // Route fields
+          routeId_route: transportRoutes.id,
+          routeNumber: transportRoutes.routeNumber,
+          routeName: transportRoutes.name,
+          routeRouteName: transportRoutes.routeName,
+          routeStartLocation: transportRoutes.startLocation,
+          routeEndLocation: transportRoutes.endLocation,
+          routeFee: transportRoutes.fee,
+          routeStops: transportRoutes.stops,
+          // Vehicle fields
+          vehicleId_vehicle: vehicles.id,
+          vehicleRegistrationNumber: vehicles.registrationNumber,
+          vehicleType: vehicles.vehicleType,
+          vehicleCapacity: vehicles.capacity,
+          vehicleDriverName: vehicles.driverName,
+          vehicleDriverPhone: vehicles.driverPhone,
+        })
+        .from(transportAllocations)
+        .leftJoin(transportRoutes, eq(transportAllocations.routeId, transportRoutes.id))
+        .leftJoin(vehicles, eq(transportAllocations.vehicleId, vehicles.id))
+        .where(
+          and(
+            eq(transportAllocations.studentId, currentUser.id),
+            eq(transportAllocations.isActive, true)
+          )
+        )
+        .limit(1)
+        .then(rows => rows[0] || null);
 
       if (!allocation) {
         return successResponse({
@@ -109,21 +154,29 @@ export const GET = createApiRoute(
       }
 
       // Get student details
-      const student = await db.query.users.findFirst({
-        where: eq(users.id, currentUser.id),
-        columns: { id: true, firstName: true, lastName: true, classGrade: true, section: true },
-      });
+      const student = await db
+        .select({
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          classGrade: users.classGrade,
+          section: users.section,
+        })
+        .from(users)
+        .where(eq(users.id, currentUser.id))
+        .limit(1)
+        .then(rows => rows[0] || null);
 
       // Get driver info from vehicle
       let driver: { id: string; firstName: string; lastName: string; phone?: string } | null = null;
-      const vehicleData = allocation.vehicle as unknown as {
-        id: string;
-        registrationNumber: string;
-        vehicleType: string;
-        capacity: number;
-        driverName?: string;
-        driverPhone?: string;
-      } | null;
+      const vehicleData = allocation.vehicleRegistrationNumber ? {
+        id: allocation.vehicleId_vehicle || "",
+        registrationNumber: allocation.vehicleRegistrationNumber,
+        vehicleType: allocation.vehicleType,
+        capacity: allocation.vehicleCapacity,
+        driverName: allocation.vehicleDriverName,
+        driverPhone: allocation.vehicleDriverPhone,
+      } : null;
 
       if (vehicleData) {
         const nameParts = (vehicleData.driverName || "").split(" ");
@@ -135,20 +188,24 @@ export const GET = createApiRoute(
         };
       }
 
-      const routeData = allocation.route as unknown as {
-        id: string;
-        routeNumber: string;
-        name: string;
-        routeName?: string;
-        startLocation: string;
-        endLocation: string;
-        fee: number;
-        stops?: Array<{
+      const routeData = allocation.routeId_route ? {
+        id: allocation.routeId_route,
+        routeNumber: allocation.routeNumber,
+        name: allocation.routeName,
+        routeName: allocation.routeRouteName,
+        startLocation: allocation.routeStartLocation,
+        endLocation: allocation.routeEndLocation,
+        fee: allocation.routeFee,
+        stops: allocation.routeStops as Array<{
+          id: string;
           name: string;
-          location: { lat: string; lng: string };
+          location: { latitude: number; longitude: number };
           time: string;
-        }>;
-      } | null;
+          order: number;
+          morningPickup: boolean;
+          afternoonDrop: boolean;
+        }> | undefined,
+      } : null;
 
       return successResponse({
         allocation: {
@@ -205,16 +262,45 @@ export const GET = createApiRoute(
       // Only active allocations
       conditions.push(eq(transportAllocations.isActive, true));
 
-      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+      const whereClause = conditions.length > 0 ? and(...conditions as DbCondition[]) : undefined;
 
-      const allocations = await db.query.transportAllocations.findMany({
-        where: whereClause,
-        with: {
-          route: true,
-          vehicle: true,
-        },
-        orderBy: [desc(transportAllocations.createdAt)],
-      });
+      const allocations = await db
+        .select({
+          id: transportAllocations.id,
+          studentId: transportAllocations.studentId,
+          routeId: transportAllocations.routeId,
+          vehicleId: transportAllocations.vehicleId,
+          stopName: transportAllocations.stopName,
+          pickupPoint: transportAllocations.pickupPoint,
+          dropPoint: transportAllocations.dropPoint,
+          pickupTime: transportAllocations.pickupTime,
+          dropTime: transportAllocations.dropTime,
+          academicYear: transportAllocations.academicYear,
+          fee: transportAllocations.fee,
+          isPaid: transportAllocations.isPaid,
+          isActive: transportAllocations.isActive,
+          createdAt: transportAllocations.createdAt,
+          updatedAt: transportAllocations.updatedAt,
+          // Route fields
+          routeId_route: transportRoutes.id,
+          routeNumber: transportRoutes.routeNumber,
+          routeName: transportRoutes.name,
+          routeStartLocation: transportRoutes.startLocation,
+          routeEndLocation: transportRoutes.endLocation,
+          routeFee: transportRoutes.fee,
+          // Vehicle fields
+          vehicleId_vehicle: vehicles.id,
+          vehicleRegistrationNumber: vehicles.registrationNumber,
+          vehicleType: vehicles.vehicleType,
+          vehicleCapacity: vehicles.capacity,
+          vehicleDriverName: vehicles.driverName,
+          vehicleDriverPhone: vehicles.driverPhone,
+        })
+        .from(transportAllocations)
+        .leftJoin(transportRoutes, eq(transportAllocations.routeId, transportRoutes.id))
+        .leftJoin(vehicles, eq(transportAllocations.vehicleId, vehicles.id))
+        .where(whereClause)
+        .orderBy(desc(transportAllocations.createdAt));
 
       // Enrich with student details
       // OPTIMIZATION: Batch fetch all student details
@@ -265,8 +351,22 @@ export const GET = createApiRoute(
           createdAt: allocation.createdAt,
           updatedAt: allocation.updatedAt,
           student: studentData,
-          route: allocation.route as unknown as TransportAllocationWithDetails["route"],
-          vehicle: allocation.vehicle as unknown as TransportAllocationWithDetails["vehicle"],
+          route: allocation.routeId_route ? {
+            id: allocation.routeId_route,
+            routeNumber: allocation.routeNumber || "",
+            name: allocation.routeName || "",
+            startLocation: allocation.routeStartLocation || "",
+            endLocation: allocation.routeEndLocation || "",
+            fee: allocation.routeFee ?? 0,
+          } : undefined,
+          vehicle: allocation.vehicleId_vehicle ? {
+            id: allocation.vehicleId_vehicle,
+            registrationNumber: allocation.vehicleRegistrationNumber || "",
+            vehicleType: allocation.vehicleType || "",
+            capacity: allocation.vehicleCapacity ?? 0,
+            driverName: allocation.vehicleDriverName || "",
+            driverPhone: allocation.vehicleDriverPhone,
+          } : undefined,
         };
 
         allocationsWithStudents.push(allocationWithDetails);
@@ -307,10 +407,17 @@ export const POST = createApiRoute(
 
     const { userId } = auth;
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: { id: true, type: true, role: true, schoolId: true },
-    });
+    const currentUser = await db
+      .select({
+        id: users.id,
+        type: users.type,
+        role: users.role,
+        schoolId: users.schoolId,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!currentUser) {
       return notFoundResponse("User");
@@ -334,18 +441,24 @@ export const POST = createApiRoute(
     }
 
     // Verify student exists
-    const student = await db.query.users.findFirst({
-      where: eq(users.id, studentId),
-    });
+    const student = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, studentId))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!student) {
       return notFoundResponse("Student");
     }
 
     // Verify route exists
-    const route = await db.query.transportRoutes.findFirst({
-      where: eq(transportRoutes.id, routeId),
-    });
+    const route = await db
+      .select()
+      .from(transportRoutes)
+      .where(eq(transportRoutes.id, routeId))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!route) {
       return notFoundResponse("Route");

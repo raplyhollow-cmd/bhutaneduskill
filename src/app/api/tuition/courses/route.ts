@@ -1,9 +1,9 @@
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
 import { tuitionCourses, tutors, users, tuitionCategories, tuitionEnrollments } from "@/lib/db/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, asc } from "drizzle-orm";
 import { z } from "zod";
 
 const courseSchema = z.object({
@@ -50,13 +50,9 @@ const courseSchema = z.object({
 });
 
 // GET /api/tuition/courses - List all courses
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
 
     const { searchParams } = new URL(request.url);
     const subject = searchParams.get("subject");
@@ -78,10 +74,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Get courses with tutor info
-    const coursesList = await db.query.tuitionCourses.findMany({
-      where: conditions.length > 0 ? and(...conditions) : undefined,
-      orderBy: [desc(tuitionCourses.createdAt)],
-    });
+    const coursesList = await db.select()
+      .from(tuitionCourses)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(tuitionCourses.createdAt));
 
     // Fetch tutor information for each course
     const coursesWithTutors = await Promise.all(
@@ -92,32 +88,27 @@ export async function GET(request: NextRequest) {
 
         // Get tutor info from tutors table
         if (course.tutorId) {
-          const tutorRecord = await db.query.tutors.findFirst({
-            where: eq(tutors.userId, course.tutorId),
-            with: {
-              user: {
-                columns: {
-                  id: true,
-                  firstName: true,
-                  lastName: true,
-                  profilePicture: true,
-                },
-              },
-            },
-          });
+          const [tutorRecord] = await db
+            .select({
+              id: tutors.id,
+              userId: tutors.userId,
+              userFirstName: users.firstName,
+              userLastName: users.lastName,
+              userProfilePicture: users.profilePicture,
+            })
+            .from(tutors)
+            .innerJoin(users, eq(tutors.userId, users.id))
+            .where(eq(tutors.userId, course.tutorId))
+            .limit(1);
 
           if (tutorRecord) {
-            const userArray = tutorRecord.user as unknown as { id: string; firstName: string | null; lastName: string | null; profilePicture: string | null }[] | undefined;
-            const user = userArray?.[0];
-            tutorName = user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || null : null;
+            tutorName = `${tutorRecord.userFirstName || ""} ${tutorRecord.userLastName || ""}`.trim() || null;
             tutorDisplayId = tutorRecord.id;
           }
         }
 
         // Get enrollment count
-        const enrollmentCountResult = await db.query.tuitionEnrollments.findMany({
-          where: eq(tuitionEnrollments, course.id),
-        });
+        const enrollmentCountResult = await db.select().from(tuitionEnrollments).where(eq(tuitionEnrollments.courseId, course.id));
         enrollmentCount = enrollmentCountResult.length;
 
         return {
@@ -157,49 +148,41 @@ export async function GET(request: NextRequest) {
       filtered = filtered.filter(c => c.status === "published");
     }
 
-    return NextResponse.json({ courses: filtered });
-  } catch (error) {
-    logger.error("Courses fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch courses" }, { status: 500 });
-  }
-}
+    return { courses: filtered };
+  },
+  ['admin', 'school-admin', 'teacher']
+);
 
 // POST /api/tuition/courses - Create course
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId, user } = authResult;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId, user } = auth;
 
     const body = await request.json();
     const validatedData = courseSchema.parse(body);
 
     // Verify tutor exists and get the user ID
-    const tutor = await db.query.tutors.findFirst({
-      where: eq(tutors.id, validatedData.tutorId),
-      with: {
-        user: true,
-      },
-    });
+    const [tutor] = await db
+      .select({
+        id: tutors.id,
+        userId: tutors.userId,
+      })
+      .from(tutors)
+      .where(eq(tutors.id, validatedData.tutorId))
+      .limit(1);
 
     if (!tutor) {
-      return NextResponse.json({ error: "Tutor not found" }, { status: 404 });
+      return { error: "Tutor not found", status: 404 };
     }
 
-    // Extract user from the relation array
-    const userArray = tutor.user as unknown as { id: string }[] | undefined;
-    const tutorUser = userArray?.[0];
-    if (!tutorUser) {
-      return NextResponse.json({ error: "Tutor user not found" }, { status: 404 });
-    }
+    const tutorUser = { id: tutor.userId };
 
     // Get school ID from current user
-    const currentUserData = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: { schoolId: true },
-    });
+    const currentUserData = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
 
     const courseId = `course_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
@@ -230,18 +213,13 @@ export async function POST(request: NextRequest) {
       prerequisites: validatedData.prerequisites || [],
       type: validatedData.type,
       status: validatedData.status || "draft",
-      schoolId: currentUserData?.schoolId || null,
+      schoolId: currentUserData[0]?.schoolId || null,
       isActive: true,
       createdAt: new Date(),
       updatedAt: new Date(),
     }).returning();
 
-    return NextResponse.json({ course: newCourse }, { status: 201 });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: "Validation failed", details: error.issues }, { status: 400 });
-    }
-    logger.error("Course creation error:", error);
-    return NextResponse.json({ error: "Failed to create course" }, { status: 500 });
-  }
-}
+    return { course: newCourse };
+  },
+  ['admin', 'school-admin', 'teacher']
+);

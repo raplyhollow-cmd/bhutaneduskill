@@ -4,9 +4,8 @@
  * GET /api/admin/system-status - Get system health status
  */
 
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
-import { NextResponse } from "next/server";
 
 // Simulated service health checks
 // In production, these would make actual requests to services
@@ -123,16 +122,8 @@ async function getPlatformMetrics() {
 /**
  * GET - System status
  */
-export async function GET(req: Request) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { success: false, error: authResult.error },
-        { status: authResult.status === 401 ? 401 : 403 }
-      );
-    }
-
+export const GET = createApiRoute(
+  async () => {
     // Check all services in parallel
     const [dbHealth, authHealth, emailHealth, aiHealth, metrics] =
       await Promise.all([
@@ -151,21 +142,12 @@ export async function GET(req: Request) {
       ? "down"
       : "degraded";
 
-    return NextResponse.json({
+    return {
       status: overallStatus,
       services,
       metrics,
       timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    logger.error("Failed to fetch system status:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to fetch system status",
-        status: "unknown",
-      },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);

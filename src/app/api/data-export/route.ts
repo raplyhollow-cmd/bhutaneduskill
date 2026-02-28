@@ -1,17 +1,18 @@
-import { logger } from "@/lib/logger";
 /**
  * COMPREHENSIVE DATA EXPORT API
  *
  * POST /api/data-export - Export data in various formats
  * GET /api/data-export/sources - Get available data sources
  * GET /api/data-export/templates - Get report templates
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
 import { users, assessments, riasecResults, careerMatches, careerPlans, examResults } from "@/lib/db/schema";
-import { eq, and, desc, gt } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import {
   dataSources,
   exportData,
@@ -20,6 +21,8 @@ import {
   anonymizeData,
   type ExportFormat,
 } from "@/lib/data-export";
+import { logger } from "@/lib/logger";
+import { successResponse, errorResponse, badRequestResponse } from "@/lib/api/response-helpers";
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -102,15 +105,10 @@ interface ExportBody {
 // GET - List available data sources and templates
 // ============================================================================
 
-export async function GET(request: NextRequest) {
-  const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user } = auth;
 
-  const { user } = authResult;
-
-  try {
     const { searchParams } = new URL(request.url);
     const action = searchParams.get("action");
 
@@ -123,7 +121,7 @@ export async function GET(request: NextRequest) {
         fieldCount: value.fields.length,
       }));
 
-      return NextResponse.json({ sources });
+      return { sources };
     }
 
     // Return report templates
@@ -139,55 +137,46 @@ export async function GET(request: NextRequest) {
           parameterCount: t.parameters.length,
         }));
 
-      return NextResponse.json({ templates });
+      return { templates };
     }
 
     // Return data source schema (for field selection)
     if (action === "schema") {
       const sourceId = searchParams.get("source");
       if (!sourceId || !dataSources[sourceId as keyof typeof dataSources]) {
-        return NextResponse.json({ error: "Invalid data source" }, { status: 400 });
+        return badRequestResponse("Invalid data source");
       }
 
       const source = dataSources[sourceId as keyof typeof dataSources];
-      return NextResponse.json({
+      return {
         id: sourceId,
         name: source.name,
         description: source.description,
         fields: source.fields,
-      });
+      };
     }
 
-    return NextResponse.json({
+    return {
       sources: Object.keys(dataSources),
       templates: reportTemplates.length,
-    });
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json({ error: "Failed to fetch export info" }, { status: 500 });
-  }
-}
+    };
+  },
+  ['admin', 'school-admin', 'teacher']
+);
 
 // ============================================================================
 // POST - Export data
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user } = auth;
 
-  const { user } = authResult;
-
-  const body = await request.json() as ExportBody;
-  const { dataSource, format = "json", fields, filters, limit, offset, anonymize } = body;
-
-  try {
+    const body = await request.json() as ExportBody;
+    const { dataSource, format = "json", fields, filters, limit, offset, anonymize } = body;
 
     if (!dataSource || !dataSources[dataSource as keyof typeof dataSources]) {
-      return NextResponse.json({ error: "Invalid data source" }, { status: 400 });
+      return badRequestResponse("Invalid data source");
     }
 
     const source = dataSources[dataSource as keyof typeof dataSources];
@@ -198,7 +187,7 @@ export async function POST(request: NextRequest) {
     let totalRecords = 0;
 
     // Apply tenant/school filtering for non-admin users
-    const userTenantId = user.tenantId;
+    // Note: tenantId not available on user object, using schoolId for filtering
     const userSchoolId = user.schoolId;
     const isAdmin = user.type === "admin";
 
@@ -301,7 +290,7 @@ export async function POST(request: NextRequest) {
       }
 
       default:
-        return NextResponse.json({ error: "Data source not yet implemented for export" }, { status: 501 });
+        return errorResponse("Data source not yet implemented for export", 501);
     }
 
     totalRecords = data.length;
@@ -377,11 +366,11 @@ export async function POST(request: NextRequest) {
         break;
 
       default:
-        return NextResponse.json({ error: "Unsupported format" }, { status: 400 });
+        return badRequestResponse("Unsupported format");
     }
 
     // Create response with file download headers
-    return new NextResponse(exportContent, {
+    return new Response(exportContent, {
       status: 200,
       headers: {
         "Content-Type": contentType,
@@ -389,25 +378,6 @@ export async function POST(request: NextRequest) {
         "X-Record-Count": String(totalRecords),
       },
     });
-
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json({ error: "Export failed", details: errorMessage }, { status: 500 });
-  }
-}
-
-// ============================================================================
-// OPTIONS - CORS support
-// ============================================================================
-
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, Authorization",
-    },
-  });
-}
+  },
+  ['admin', 'school-admin', 'teacher']
+);

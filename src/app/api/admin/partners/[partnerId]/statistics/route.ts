@@ -4,39 +4,35 @@
  * GET /api/admin/partners/[partnerId]/statistics - Get partner statistics
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { partners } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ partnerId: string }> }
-) {
-  const authResult = await requireAuth(["admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status },
-      { status: authResult.status }
-    );
-  }
-
-  try {
+export const GET = createApiRoute(
+  async (
+    request: NextRequest,
+    auth,
+    { params }: { params: Promise<{ partnerId: string }> }
+  ) => {
     const { partnerId } = await params;
 
     if (!partnerId) {
-      return NextResponse.json({ error: "Partner ID is required" }, { status: 400 });
+      return { error: "Partner ID is required", status: 400 };
     }
 
     // Get partner details
-    const partner = await db.query.partners.findFirst({
-      where: eq(partners.id, partnerId),
-    });
+    const partnerResult = await db
+      .select()
+      .from(partners)
+      .where(eq(partners.id, partnerId))
+      .limit(1);
+    const partner = partnerResult[0];
 
     if (!partner) {
-      return NextResponse.json({ error: "Partner not found" }, { status: 404 });
+      return { error: "Partner not found", status: 404 };
     }
 
     // Calculate statistics
@@ -63,19 +59,13 @@ export async function GET(
     };
 
     logger.info("Partner statistics fetched", {
-      userId: authResult.userId,
+      userId: auth.userId,
       partnerId,
     });
 
-    return NextResponse.json({
-      success: true,
+    return {
       data: statistics,
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/partners/[partnerId]/statistics", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch partner statistics", details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);

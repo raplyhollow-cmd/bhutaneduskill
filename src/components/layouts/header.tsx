@@ -301,17 +301,17 @@ export const Breadcrumb = forwardRef<HTMLElement, BreadcrumbProps>(
           )}
           {displayItems.map((item, index) => (
             <li key={index} className="flex items-center gap-1">
-              {item.href ? (
+              {"href" in item && item.href ? (
                 <a
                   href={item.href}
                   className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
                 >
-                  {item.icon && <span className="h-4 w-4 shrink-0">{item.icon}</span>}
+                  {"icon" in item && item.icon && <span className="h-4 w-4 shrink-0">{item.icon}</span>}
                   <span className="truncate max-w-[150px]">{item.label}</span>
                 </a>
               ) : (
                 <span className="flex items-center gap-1.5 rounded-md px-2 py-1.5 font-medium text-foreground">
-                  {item.icon && <span className="h-4 w-4 shrink-0">{item.icon}</span>}
+                  {"icon" in item && item.icon && <span className="h-4 w-4 shrink-0">{item.icon}</span>}
                   <span className="truncate max-w-[150px]">{item.label}</span>
                 </span>
               )}

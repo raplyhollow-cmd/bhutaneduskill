@@ -1,14 +1,17 @@
 /**
  * Asset Assignments API
  * Handles asset assignment to users/departments
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { assetAssignments, inventoryItems, users } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse, notFoundResponse } from "@/lib/api/response-helpers";
 import type { ApiSuccess, ApiErrorResponse, Pagination } from "@/types";
 
 interface PaginatedData<T> {
@@ -16,22 +19,33 @@ interface PaginatedData<T> {
   pagination: Pagination;
 }
 
+interface CreateAssignmentInput {
+  itemId: string;
+  assignedToId: string;
+  assignedToName: string;
+  assignedToType: string;
+  assignmentType: string;
+  expectedReturnDate?: string;
+  conditionAtAssignment?: string;
+  assignmentNotes?: string;
+}
+
+interface UpdateAssignmentInput {
+  id: string;
+  status?: string;
+  actualReturnDate?: string;
+  conditionAtReturn?: string;
+  returnNotes?: string;
+}
+
 // ============================================================================
 // GET /api/inventory/assignments - List asset assignments
 // ============================================================================
 
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { user, userId } = authResult;
-
-    const { searchParams } = new URL(request.url);
+export const GET = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { user, userId } = auth;
+    const { searchParams } = new URL(req.url);
     const page = Math.max(1, Number(searchParams.get("page")) || 1);
     const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 20));
     const status = searchParams.get("status") || "";
@@ -121,77 +135,43 @@ export async function GET(request: NextRequest) {
 
     logger.info("Fetched asset assignments", { userId, count: assignments.length });
 
-    return NextResponse.json({
-      data: {
-        items: assignmentsWithDetails,
-        pagination,
-      },
-    } satisfies ApiSuccess<PaginatedData<typeof assignmentsWithDetails[0]>>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/inventory/assignments", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch assignments", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return successResponse({
+      items: assignmentsWithDetails,
+      pagination,
+    } satisfies PaginatedData<typeof assignmentsWithDetails[0]>);
+  },
+  ["admin"]
+);
 
 // ============================================================================
 // POST /api/inventory/assignments - Create new asset assignment
 // ============================================================================
 
-interface CreateAssignmentInput {
-  itemId: string;
-  assignedToId: string;
-  assignedToName: string;
-  assignedToType: string;
-  assignmentType: string;
-  expectedReturnDate?: string;
-  conditionAtAssignment?: string;
-  assignmentNotes?: string;
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { user, userId } = authResult;
-
-    const data: CreateAssignmentInput = await request.json();
+export const POST = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { user, userId } = auth;
+    const data: CreateAssignmentInput = await req.json();
 
     // Validate required fields
     if (!data.itemId || !data.assignedToId || !data.assignedToType || !data.assignmentType) {
-      return NextResponse.json(
-        {
-          error: "Missing required fields: itemId, assignedToId, assignedToType, assignmentType",
-          status: 400,
-        } satisfies ApiErrorResponse,
-        { status: 400 }
+      return badRequestResponse(
+        "Missing required fields: itemId, assignedToId, assignedToType, assignmentType"
       );
     }
 
     // Check if item exists and is available
-    const item = await db.query.inventoryItems.findFirst({
-      where: eq(inventoryItems.id, data.itemId),
-    });
+    const [item] = await db
+      .select()
+      .from(inventoryItems)
+      .where(eq(inventoryItems.id, data.itemId))
+      .limit(1);
 
     if (!item) {
-      return NextResponse.json(
-        { error: "Item not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return notFoundResponse("Item");
     }
 
     if (item.quantity <= 0) {
-      return NextResponse.json(
-        { error: "Item is out of stock", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return errorResponse("Item is out of stock", 400);
     }
 
     const now = new Date();
@@ -239,61 +219,36 @@ export async function POST(request: NextRequest) {
 
     logger.info("Created asset assignment", { userId, assignmentId, itemId: data.itemId });
 
-    return NextResponse.json({
-      data: newAssignment,
+    return successResponse({
+      assignment: newAssignment,
       message: "Asset assigned successfully",
-    } satisfies ApiSuccess<typeof newAssignment>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/inventory/assignments", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to create assignment", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    });
+  },
+  ["admin"]
+);
 
 // ============================================================================
 // PATCH /api/inventory/assignments - Return or update assignment
 // ============================================================================
 
-interface UpdateAssignmentInput {
-  id: string;
-  status?: string;
-  actualReturnDate?: string;
-  conditionAtReturn?: string;
-  returnNotes?: string;
-}
-
-export async function PATCH(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { userId } = authResult;
-
-    const data: UpdateAssignmentInput = await request.json();
+export const PATCH = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId } = auth;
+    const data: UpdateAssignmentInput = await req.json();
 
     if (!data.id) {
-      return NextResponse.json(
-        { error: "Assignment ID is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("Assignment ID is required");
     }
 
     // Check if assignment exists
-    const existingAssignment = await db.query.assetAssignments.findFirst({
-      where: eq(assetAssignments.id, data.id),
-    });
+    const [existingAssignment] = await db
+      .select()
+      .from(assetAssignments)
+      .where(eq(assetAssignments.id, data.id))
+      .limit(1);
 
     if (!existingAssignment) {
-      return NextResponse.json(
-        { error: "Assignment not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return notFoundResponse("Assignment");
     }
 
     const now = new Date();
@@ -337,15 +292,10 @@ export async function PATCH(request: NextRequest) {
 
     logger.info("Updated asset assignment", { userId, assignmentId: data.id });
 
-    return NextResponse.json({
-      data: updatedAssignment,
+    return successResponse({
+      assignment: updatedAssignment,
       message: "Assignment updated successfully",
-    } satisfies ApiSuccess<typeof updatedAssignment>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/inventory/assignments", method: "PATCH" });
-    return NextResponse.json(
-      { error: "Failed to update assignment", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    });
+  },
+  ["admin"]
+);

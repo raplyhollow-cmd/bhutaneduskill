@@ -1,0 +1,138 @@
+.next/types/validator.ts(2673,31): error TS2344: Type 'typeof import("D:/VS STUDIO PROJECT/bhutaneduskill/src/app/api/ai/study-planner/route")' does not satisfy the constraint 'RouteHandlerConfig<"/api/ai/study-planner">'.
+  Types of property 'POST' are incompatible.
+    Type '(req: AuthenticatedRequest & { params?: Promise<{ classGrade: string; subjects: string[]; availableHoursPerDay: number; weakSubjects: string[]; strongSubjects: string[]; examDates?: string[]; goals?: string; preferredStudyTime?: "morning" | "afternoon" | "evening" | "night"; }>; }, context?: { ...; }) => Promise<Nex...' is not assignable to type '(request: NextRequest, context: { params: Promise<{}>; }) => void | Response | Promise<void | Response>'.
+      Types of parameters 'context' and 'context' are incompatible.
+        Type '{ params: Promise<{}>; }' is not assignable to type '{ params?: Promise<{ classGrade: string; subjects: string[]; availableHoursPerDay: number; weakSubjects: string[]; strongSubjects: string[]; examDates?: string[]; goals?: string; preferredStudyTime?: "morning" | "afternoon" | "evening" | "night"; }>; }'.
+          Types of property 'params' are incompatible.
+            Type 'Promise<{}>' is not assignable to type 'Promise<{ classGrade: string; subjects: string[]; availableHoursPerDay: number; weakSubjects: string[]; strongSubjects: string[]; examDates?: string[]; goals?: string; preferredStudyTime?: "morning" | "afternoon" | "evening" | "night"; }>'.
+              Type '{}' is missing the following properties from type '{ classGrade: string; subjects: string[]; availableHoursPerDay: number; weakSubjects: string[]; strongSubjects: string[]; examDates?: string[]; goals?: string; preferredStudyTime?: "morning" | "afternoon" | "evening" | "night"; }': classGrade, subjects, availableHoursPerDay, weakSubjects, strongSubjects
+src/app/school-admin/_actions.ts(768,13): error TS2352: Conversion of type '{ id: string; schoolId: string; name: string; grade: number; section: string; roomNumber: string; capacity: number; homeroomTeacherId: string; homeroomTeacherName: string; classTeacherId: string; ... 5 more ...; updatedAt: Date; }' to type 'ClassDetail' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Property 'students' is missing in type '{ id: string; schoolId: string; name: string; grade: number; section: string; roomNumber: string; capacity: number; homeroomTeacherId: string; homeroomTeacherName: string; classTeacherId: string; ... 5 more ...; updatedAt: Date; }' but required in type 'ClassDetail'.
+src/app/school-admin/classes/[id]/page.tsx(168,5): error TS2322: Type '{ id: string; studentId: string; rollNumber: string; status: string; section: string; academicYear: string; enrollmentDate: string; classId: string; createdAt: Date; updatedAt: Date; }[]' is not assignable to type 'DrizzleEnrollmentResult[]'.
+  Property 'student' is missing in type '{ id: string; studentId: string; rollNumber: string; status: string; section: string; academicYear: string; enrollmentDate: string; classId: string; createdAt: Date; updatedAt: Date; }' but required in type 'DrizzleEnrollmentResult'.
+src/app/school-admin/classes/[id]/page.tsx(316,5): error TS2322: Type '{ id: string; studentId: string; classId: string; schoolId: string; date: string; checkInTime: string; status: string; recordedBy: string; notes: string; reason: string; entryMethod: string; createdAt: Date; updatedAt: Date; }[]' is not assignable to type 'AttendanceItem[]'.
+  Type '{ id: string; studentId: string; classId: string; schoolId: string; date: string; checkInTime: string; status: string; recordedBy: string; notes: string; reason: string; entryMethod: string; createdAt: Date; updatedAt: Date; }' is not assignable to type 'AttendanceItem'.
+    Types of property 'date' are incompatible.
+      Type 'string' is not assignable to type 'Date'.
+src/app/school-admin/notices/page.tsx(158,19): error TS2322: Type '{ createdAt: Date; id: string; updatedAt: Date; schoolId: string; category: string; title: string; priority: string; targetAudience: string; attachments: { id: string; name: string; url: string; type: string; size: number; }[]; ... 11 more ...; pinOrder: number; }[]' is not assignable to type 'Notice[]'.
+  Type '{ createdAt: Date; id: string; updatedAt: Date; schoolId: string; category: string; title: string; priority: string; targetAudience: string; attachments: { id: string; name: string; url: string; type: string; size: number; }[]; ... 11 more ...; pinOrder: number; }' is not assignable to type 'Notice'.
+    Types of property 'priority' are incompatible.
+      Type 'string' is not assignable to type '"low" | "high" | "normal" | "urgent"'.
+src/app/ui-showcase/page.tsx(559,36): error TS2322: Type 'string' is not assignable to type 'GapToken'.
+src/components/motion/animated-wrapper.tsx(129,15): error TS2322: Type '{ children: any; custom?: any; id?: string; color?: string; title?: string; itemType?: string; role?: AriaRole; resource?: string; content?: string; results?: number; style?: MotionStyle; ... 318 more ...; className: string; }' is not assignable to type 'DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>'.
+  Type '{ children: any; custom?: any; id?: string; color?: string; title?: string; itemType?: string; role?: AriaRole; resource?: string; content?: string; results?: number; style?: MotionStyle; ... 318 more ...; className: string; }' is not assignable to type 'HTMLAttributes<HTMLDivElement>'.
+    The types of 'style.accentColor' are incompatible between these types.
+      Type 'MotionValue<number> | MotionValue<string> | CustomValueType | AccentColor | MotionValue<any>' is not assignable to type 'AccentColor'.
+        Type 'MotionValue<number>' is not assignable to type 'AccentColor'.
+src/components/motion/pressable.tsx(37,18): error TS2430: Interface 'PressableProps' incorrectly extends interface 'Omit<HTMLMotionProps<"div">, "whileTap" | "onPress">'.
+  Types of property 'children' are incompatible.
+    Type 'ReactNode | ((props: { isPressed: boolean; }) => ReactNode)' is not assignable to type 'ReactNode | MotionValue<number> | MotionValue<string>'.
+      Type '(props: { isPressed: boolean; }) => ReactNode' is not assignable to type 'ReactNode | MotionValue<number> | MotionValue<string>'.
+src/components/motion/progress-indicator.tsx(118,8): error TS2322: Type '{ children: Element[]; variant?: ProgressVariant; id?: string; title?: string; onChange?: ChangeEventHandler<HTMLDivElement, Element>; ... 329 more ...; className: string; }' is not assignable to type 'DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>'.
+  Type '{ children: Element[]; variant?: ProgressVariant; id?: string; title?: string; onChange?: ChangeEventHandler<HTMLDivElement, Element>; ... 329 more ...; className: string; }' is not assignable to type 'HTMLAttributes<HTMLDivElement>'.
+    Types of property 'onDrag' are incompatible.
+      Type '(event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => void' is not assignable to type 'DragEventHandler<HTMLDivElement>'.
+        Target signature provides too few arguments. Expected 2 or more, but got 1.
+src/components/motion/progress-indicator.tsx(130,11): error TS2322: Type '{ className: string; style: any; initial: { scaleX: number; }; animate: { scaleX: number; }; transition: any; transformOrigin: string; }' is not assignable to type 'IntrinsicAttributes & Omit<HTMLMotionProps<"div">, "ref"> & RefAttributes<HTMLDivElement>'.
+  Property 'transformOrigin' does not exist on type 'IntrinsicAttributes & Omit<HTMLMotionProps<"div">, "ref"> & RefAttributes<HTMLDivElement>'.
+src/components/motion/progress-indicator.tsx(169,8): error TS2322: Type '{ children: Element[]; variant?: ProgressVariant; id?: string; title?: string; onChange?: ChangeEventHandler<HTMLDivElement, Element>; ... 330 more ...; className: string; }' is not assignable to type 'DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>'.
+  Type '{ children: Element[]; variant?: ProgressVariant; id?: string; title?: string; onChange?: ChangeEventHandler<HTMLDivElement, Element>; ... 330 more ...; className: string; }' is not assignable to type 'HTMLAttributes<HTMLDivElement>'.
+    Types of property 'onDrag' are incompatible.
+      Type '(event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => void' is not assignable to type 'DragEventHandler<HTMLDivElement>'.
+        Target signature provides too few arguments. Expected 2 or more, but got 1.
+src/components/motion/progress-indicator.tsx(236,10): error TS2322: Type '{ children: Element; variant?: ProgressVariant; id?: string; title?: string; onChange?: ChangeEventHandler<HTMLDivElement, Element>; ... 331 more ...; className: string; }' is not assignable to type 'DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>'.
+  Type '{ children: Element; variant?: ProgressVariant; id?: string; title?: string; onChange?: ChangeEventHandler<HTMLDivElement, Element>; ... 331 more ...; className: string; }' is not assignable to type 'HTMLAttributes<HTMLDivElement>'.
+    Types of property 'onDrag' are incompatible.
+      Type '(event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => void' is not assignable to type 'DragEventHandler<HTMLDivElement>'.
+        Target signature provides too few arguments. Expected 2 or more, but got 1.
+src/components/motion/progress-indicator.tsx(251,8): error TS2322: Type '{ children: Element; variant?: ProgressVariant; id?: string; title?: string; onChange?: ChangeEventHandler<HTMLDivElement, Element>; ... 331 more ...; className: string; }' is not assignable to type 'DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>'.
+  Type '{ children: Element; variant?: ProgressVariant; id?: string; title?: string; onChange?: ChangeEventHandler<HTMLDivElement, Element>; ... 331 more ...; className: string; }' is not assignable to type 'HTMLAttributes<HTMLDivElement>'.
+    Types of property 'onDrag' are incompatible.
+      Type '(event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => void' is not assignable to type 'DragEventHandler<HTMLDivElement>'.
+        Target signature provides too few arguments. Expected 2 or more, but got 1.
+src/components/ui/card.tsx(98,7): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Object literal may only specify known properties, and 'style' does not exist in type 'Partial<{ className?: string; }> & Attributes'.
+src/components/ui/field-validation.tsx(352,10): error TS2322: Type '{ name?: string; color?: string; title?: string; itemType?: string; role?: AriaRole; resource?: string; value: string | number | readonly string[]; content?: string; results?: number; form?: string; slot?: string; ... 281 more ...; className: string; }' is not assignable to type 'DetailedHTMLProps<TextareaHTMLAttributes<HTMLTextAreaElement>, HTMLTextAreaElement>'.
+  Type '{ name?: string; color?: string; title?: string; itemType?: string; role?: AriaRole; resource?: string; value: string | number | readonly string[]; content?: string; results?: number; form?: string; slot?: string; ... 281 more ...; className: string; }' is not assignable to type 'TextareaHTMLAttributes<HTMLTextAreaElement>'.
+    Types of property 'onChange' are incompatible.
+      Type 'ChangeEventHandler<HTMLTextAreaElement, HTMLTextAreaElement> | ((e: ChangeEvent<HTMLInputElement, Element>) => void)' is not assignable to type 'ChangeEventHandler<HTMLTextAreaElement, HTMLTextAreaElement>'.
+        Type '(e: React.ChangeEvent<HTMLInputElement>) => void' is not assignable to type 'ChangeEventHandler<HTMLTextAreaElement, HTMLTextAreaElement>'.
+          Types of parameters 'e' and 'event' are incompatible.
+            Type 'ChangeEvent<HTMLTextAreaElement, HTMLTextAreaElement>' is not assignable to type 'ChangeEvent<HTMLInputElement, Element>'.
+              Type 'HTMLTextAreaElement' is missing the following properties from type 'HTMLInputElement': accept, align, alt, capture, and 29 more.
+src/components/ui/input.tsx(44,11): error TS2430: Interface 'InputProps' incorrectly extends interface 'ClassAttributes<HTMLInputElement> & InputHTMLAttributes<HTMLInputElement>'.
+  Type 'InputProps' is not assignable to type 'InputHTMLAttributes<HTMLInputElement>'.
+    Types of property 'size' are incompatible.
+      Type 'string' is not assignable to type 'number'.
+        Type 'string' is not assignable to type 'number'.
+src/lib/ai/gemini-server.ts(130,7): error TS4104: The type 'readonly [{ readonly category: "HARM_CATEGORY_HARASSMENT"; readonly threshold: "BLOCK_MEDIUM_AND_ABOVE"; }, { readonly category: "HARM_CATEGORY_HATE_SPEECH"; readonly threshold: "BLOCK_MEDIUM_AND_ABOVE"; }, { ...; }, { ...; }]' is 'readonly' and cannot be assigned to the mutable type 'SafetySetting[]'.
+src/lib/ai/gemini-server.ts(168,7): error TS4104: The type 'readonly [{ readonly category: "HARM_CATEGORY_HARASSMENT"; readonly threshold: "BLOCK_MEDIUM_AND_ABOVE"; }, { readonly category: "HARM_CATEGORY_HATE_SPEECH"; readonly threshold: "BLOCK_MEDIUM_AND_ABOVE"; }, { ...; }, { ...; }]' is 'readonly' and cannot be assigned to the mutable type 'SafetySetting[]'.
+src/lib/ai/gemini-server.ts(327,7): error TS4104: The type 'readonly [{ readonly category: "HARM_CATEGORY_HARASSMENT"; readonly threshold: "BLOCK_MEDIUM_AND_ABOVE"; }, { readonly category: "HARM_CATEGORY_HATE_SPEECH"; readonly threshold: "BLOCK_MEDIUM_AND_ABOVE"; }, { ...; }, { ...; }]' is 'readonly' and cannot be assigned to the mutable type 'SafetySetting[]'.
+src/lib/bcse/bcse-api.ts(160,9): error TS2322: Type 'string' is not assignable to type '"pending" | "approved" | "rejected"'.
+src/lib/bcse/bcse-api.ts(190,9): error TS2322: Type 'unknown' is not assignable to type 'number'.
+src/lib/bcse/bcse-api.ts(191,9): error TS2322: Type 'unknown' is not assignable to type 'number'.
+src/lib/bcse/bcse-api.ts(192,9): error TS2740: Type '{}' is missing the following properties from type '{ index: number; success: boolean; error?: string; }[]': length, pop, push, concat, and 35 more.
+src/lib/bcse/bcse-api.ts(228,17): error TS2352: Conversion of type 'Record<string, unknown>' to type 'BCSEExamResult' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'Record<string, unknown>' is missing the following properties from type 'BCSEExamResult': indexNumber, examType, examYear, studentName, and 7 more.
+src/lib/bcse/bcse-api.ts(257,9): error TS2740: Type '{}' is missing the following properties from type 'BCSEExamResult[]': length, pop, push, concat, and 35 more.
+src/lib/bcse/bcse-api.ts(282,9): error TS2740: Type '{}' is missing the following properties from type 'BCSESubjectInfo[]': length, pop, push, concat, and 35 more.
+src/lib/bcse/bcse-api.ts(313,9): error TS2740: Type '{}' is missing the following properties from type '{ subjects: string[]; combinationCode: string; }[]': length, pop, push, concat, and 35 more.
+src/lib/bcse/importer.ts(106,57): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/lib/bcse/importer.ts(163,47): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/lib/bcse/importer.ts(164,59): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/lib/bcse/importer.ts(165,51): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/lib/bcse/importer.ts(166,53): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+src/lib/bcse/importer.ts(169,15): error TS2352: Conversion of type 'Record<string, unknown>' to type 'BCSEResultImportRow' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'Record<string, unknown>' is missing the following properties from type 'BCSEResultImportRow': indexNumber, cidNumber, studentName, examType, and 9 more.
+src/lib/bcse/importer.ts(228,44): error TS2345: Argument of type 'BCSEResultImportRow' is not assignable to parameter of type 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'BCSEResultImportRow'.
+src/lib/bcse/scholarship-eligibility.ts(202,16): error TS2304: Cannot find name 'BCSEScholarship'.
+src/lib/data-export/import.ts(301,9): error TS2322: Type '{ data: { id: string; schoolId: string; name: string; grade: number; section: string; roomNumber: string; capacity: number; homeroomTeacherId: string; homeroomTeacherName: string; classTeacherId: string; ... 5 more ...; updatedAt: Date; }[]; filename: string; headers: string[]; }' is not assignable to type 'ExportData'.
+  Types of property 'data' are incompatible.
+    Type '{ id: string; schoolId: string; name: string; grade: number; section: string; roomNumber: string; capacity: number; homeroomTeacherId: string; homeroomTeacherName: string; classTeacherId: string; ... 5 more ...; updatedAt: Date; }[]' is not assignable to type 'ExportRecord[]'.
+      Type '{ id: string; schoolId: string; name: string; grade: number; section: string; roomNumber: string; capacity: number; homeroomTeacherId: string; homeroomTeacherName: string; classTeacherId: string; ... 5 more ...; updatedAt: Date; }' is not assignable to type 'ExportRecord'.
+        Property 'createdAt' is incompatible with index signature.
+          Type 'Date' is not assignable to type 'string | number | boolean'.
+src/lib/data-export/import.ts(304,9): error TS2322: Type '{ data: { id: string; studentId: string; classId: string; schoolId: string; date: string; checkInTime: string; status: string; recordedBy: string; notes: string; reason: string; entryMethod: string; createdAt: Date; updatedAt: Date; }[]; filename: string; headers: string[]; }' is not assignable to type 'ExportData'.
+  Types of property 'data' are incompatible.
+    Type '{ id: string; studentId: string; classId: string; schoolId: string; date: string; checkInTime: string; status: string; recordedBy: string; notes: string; reason: string; entryMethod: string; createdAt: Date; updatedAt: Date; }[]' is not assignable to type 'ExportRecord[]'.
+      Type '{ id: string; studentId: string; classId: string; schoolId: string; date: string; checkInTime: string; status: string; recordedBy: string; notes: string; reason: string; entryMethod: string; createdAt: Date; updatedAt: Date; }' is not assignable to type 'ExportRecord'.
+        Property 'createdAt' is incompatible with index signature.
+          Type 'Date' is not assignable to type 'string | number | boolean'.
+src/lib/data/bhutan-data.ts(665,7): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(value: { id: string | SQL<unknown> | Placeholder<string, any>; name: string | SQL<unknown> | Placeholder<string, any>; code: string | SQL<unknown> | Placeholder<string, any>; ... 4 more ...; isActive?: boolean | ... 1 more ... | Placeholder<...>; }): PgInsertBase<...>', gave the following error.
+    Type 'number' is not assignable to type 'SQL<unknown> | Date | Placeholder<string, any>'.
+  Overload 2 of 2, '(values: { id: string | SQL<unknown> | Placeholder<string, any>; name: string | SQL<unknown> | Placeholder<string, any>; code: string | SQL<unknown> | Placeholder<string, any>; ... 4 more ...; isActive?: boolean | ... 1 more ... | Placeholder<...>; }[]): PgInsertBase<...>', gave the following error.
+    Argument of type '{ createdAt: number; id: "district-thimphu"; name: "Thimphu"; nameDzongkha: "ཐིམ་ཕུ་"; code: "TH"; isCity: true; isActive: true; } | { createdAt: number; id: "district-paro"; name: "Paro"; nameDzongkha: "སྤ་རོ་"; code: "PA"; isCity: false; isActive: true; } | ... 17 more ... | { ...; }' is not assignable to parameter of type '{ id: string | SQL<unknown> | Placeholder<string, any>; name: string | SQL<unknown> | Placeholder<string, any>; code: string | SQL<unknown> | Placeholder<string, any>; ... 4 more ...; isActive?: boolean | ... 1 more ... | Placeholder<...>; }[]'.
+      Object literal may only specify known properties, and 'createdAt' does not exist in type '{ id: string | SQL<unknown> | Placeholder<string, any>; name: string | SQL<unknown> | Placeholder<string, any>; code: string | SQL<unknown> | Placeholder<string, any>; ... 4 more ...; isActive?: boolean | ... 1 more ... | Placeholder<...>; }[]'.
+src/lib/data/bhutan-data.ts(671,30): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(value: { id: string | SQL<unknown> | Placeholder<string, any>; name: string | SQL<unknown> | Placeholder<string, any>; code: string | SQL<unknown> | Placeholder<string, any>; ... 39 more ...; feeGenerationStatus?: string | ... 1 more ... | Placeholder<...>; }): PgInsertBase<...>', gave the following error.
+    Type 'number' is not assignable to type 'SQL<unknown> | Date | Placeholder<string, any>'.
+  Overload 2 of 2, '(values: { id: string | SQL<unknown> | Placeholder<string, any>; name: string | SQL<unknown> | Placeholder<string, any>; code: string | SQL<unknown> | Placeholder<string, any>; ... 39 more ...; feeGenerationStatus?: string | ... 1 more ... | Placeholder<...>; }[]): PgInsertBase<...>', gave the following error.
+    Argument of type '{ tenantId: string; createdAt: number; id: "school-thimphu-hss"; districtId: "district-thimphu"; name: "Thimphu Higher Secondary School"; code: "THIMPHU-HSS"; schoolType: "HSS"; level: "PP-XII"; address: "Thimphu, Bhutan"; } | ... 39 more ... | { ...; }' is not assignable to parameter of type '{ id: string | SQL<unknown> | Placeholder<string, any>; name: string | SQL<unknown> | Placeholder<string, any>; code: string | SQL<unknown> | Placeholder<string, any>; ... 39 more ...; feeGenerationStatus?: string | ... 1 more ... | Placeholder<...>; }[]'.
+      Object literal may only specify known properties, and 'tenantId' does not exist in type '{ id: string | SQL<unknown> | Placeholder<string, any>; name: string | SQL<unknown> | Placeholder<string, any>; code: string | SQL<unknown> | Placeholder<string, any>; ... 39 more ...; feeGenerationStatus?: string | ... 1 more ... | Placeholder<...>; }[]'.
+src/lib/db/seed.ts(231,28): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(value: { id: string | SQL<unknown> | Placeholder<string, any>; name: string | SQL<unknown> | Placeholder<string, any>; createdAt: SQL<unknown> | Date | Placeholder<...>; ... 12 more ...; academicYear?: string | ... 1 more ... | Placeholder<...>; }): PgInsertBase<...>', gave the following error.
+    Object literal may only specify known properties, and 'students' does not exist in type '{ id: string | SQL<unknown> | Placeholder<string, any>; name: string | SQL<unknown> | Placeholder<string, any>; createdAt: SQL<unknown> | Date | Placeholder<...>; ... 12 more ...; academicYear?: string | ... 1 more ... | Placeholder<...>; }'.
+  Overload 2 of 2, '(values: { id: string | SQL<unknown> | Placeholder<string, any>; name: string | SQL<unknown> | Placeholder<string, any>; createdAt: SQL<unknown> | Date | Placeholder<...>; ... 12 more ...; academicYear?: string | ... 1 more ... | Placeholder<...>; }[]): PgInsertBase<...>', gave the following error.
+    Object literal may only specify known properties, and 'id' does not exist in type '{ id: string | SQL<unknown> | Placeholder<string, any>; name: string | SQL<unknown> | Placeholder<string, any>; createdAt: SQL<unknown> | Date | Placeholder<...>; ... 12 more ...; academicYear?: string | ... 1 more ... | Placeholder<...>; }[]'.
+src/lib/db/seed.ts(265,31): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(value: { id: string | SQL<unknown> | Placeholder<string, any>; name: string | SQL<unknown> | Placeholder<string, any>; code: string | SQL<unknown> | Placeholder<string, any>; ... 9 more ...; applicableGrades?: string | ... 1 more ... | Placeholder<...>; }): PgInsertBase<...>', gave the following error.
+    Object literal may only specify known properties, and 'nameDzongkha' does not exist in type '{ id: string | SQL<unknown> | Placeholder<string, any>; name: string | SQL<unknown> | Placeholder<string, any>; code: string | SQL<unknown> | Placeholder<string, any>; ... 9 more ...; applicableGrades?: string | ... 1 more ... | Placeholder<...>; }'.
+  Overload 2 of 2, '(values: { id: string | SQL<unknown> | Placeholder<string, any>; name: string | SQL<unknown> | Placeholder<string, any>; code: string | SQL<unknown> | Placeholder<string, any>; ... 9 more ...; applicableGrades?: string | ... 1 more ... | Placeholder<...>; }[]): PgInsertBase<...>', gave the following error.
+    Object literal may only specify known properties, and 'id' does not exist in type '{ id: string | SQL<unknown> | Placeholder<string, any>; name: string | SQL<unknown> | Placeholder<string, any>; code: string | SQL<unknown> | Placeholder<string, any>; ... 9 more ...; applicableGrades?: string | ... 1 more ... | Placeholder<...>; }[]'.
+src/lib/db/subscription-schema.ts(33,54): error TS2552: Cannot find name 'subscriptionPlans'. Did you mean 'subscriptionPayments'?
+src/lib/hooks/use-push-notification.ts(293,9): error TS2322: Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'string | BufferSource'.
+  Type 'Uint8Array<ArrayBufferLike>' is not assignable to type 'ArrayBufferView<ArrayBuffer>'.
+    Types of property 'buffer' are incompatible.
+      Type 'ArrayBufferLike' is not assignable to type 'ArrayBuffer'.
+        Type 'SharedArrayBuffer' is missing the following properties from type 'ArrayBuffer': resizable, resize, detached, transfer, transferToFixedLength
+src/lib/motion/loading.ts(64,5): error TS2353: Object literal may only specify known properties, and 'visible' does not exist in type 'Variant'.
+src/lib/motion/loading.ts(71,5): error TS2353: Object literal may only specify known properties, and 'hidden' does not exist in type 'Variant'.
+src/lib/motion/loading.ts(231,5): error TS2353: Object literal may only specify known properties, and 'visible' does not exist in type 'Variant'.
+src/lib/motion/loading.ts(240,5): error TS2353: Object literal may only specify known properties, and 'hidden' does not exist in type 'Variant'.
+src/lib/motion/loading.ts(264,5): error TS2353: Object literal may only specify known properties, and 'visible' does not exist in type 'Variant'.
+src/lib/motion/loading.ts(271,5): error TS2353: Object literal may only specify known properties, and 'hidden' does not exist in type 'Variant'.
+src/lib/motion/loading.ts(388,5): error TS2353: Object literal may only specify known properties, and 'hidden' does not exist in type 'Variant'.
+src/lib/motion/loading.ts(397,5): error TS2353: Object literal may only specify known properties, and 'hidden' does not exist in type 'Variant'.

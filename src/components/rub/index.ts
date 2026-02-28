@@ -4,4 +4,3 @@
  */
 
 export { RUBCollegeCard } from "./rub-college-card";
-export { default as RUBCollegeCard } from "./rub-college-card";

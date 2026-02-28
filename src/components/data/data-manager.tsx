@@ -392,7 +392,7 @@ export function DataManager({
                       const isSelected = selectedRows.has(itemId);
 
                       return (
-                        <TableRow key={itemId as any} className={isSelected ? "bg-blue-50" : ""}>
+                        <TableRow key={itemId as React.Key} className={isSelected ? "bg-blue-50" : ""}>
                           <TableCell>
                             <Button
                               variant="ghost"

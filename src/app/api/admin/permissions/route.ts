@@ -5,22 +5,14 @@ import { logger } from "@/lib/logger";
  * GET /api/admin/permissions - List all permissions (grouped by module)
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { permissions } from "@/lib/db/schema";
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 // GET /api/admin/permissions - List all permissions (grouped by module)
-export async function GET(request: NextRequest) {
-  const authResult = await requireAuth(["admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json(
-      { success: false, error: authResult.error },
-      { status: authResult.status }
-    );
-  }
-
-  try {
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
     const { searchParams } = new URL(request.url);
     const module = searchParams.get("module");
 
@@ -40,31 +32,24 @@ export async function GET(request: NextRequest) {
         return acc;
       }, {});
 
-      return NextResponse.json({
-        success: true,
+      return {
         data: {
           grouped,
           modules: Object.keys(grouped),
           total: allPermissions.length,
         },
-      });
+      };
     }
 
     // Filter by specific module
     const filtered = allPermissions.filter(p => p.module === module);
 
-    return NextResponse.json({
-      success: true,
+    return {
       data: {
         permissions: filtered,
         total: filtered.length,
       },
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch permissions" },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);

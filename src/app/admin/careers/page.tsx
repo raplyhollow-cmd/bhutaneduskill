@@ -44,6 +44,7 @@ type CareerData = {
   id: string;
   name: string;
   slug: string;
+  title?: string;
   description?: string | null;
   riasecCode?: string | null;
   hollandCodes?: Record<string, number> | null;
@@ -55,6 +56,10 @@ type CareerData = {
   bhutanDemand?: string | null;
   bhutanSpecific?: boolean;
   isActive?: boolean;
+  // Computed/alias fields for UI
+  demandOutlook?: string;
+  educationPath?: string[];
+  salaryRange?: string;
 };
 import Link from "next/link";
 import {
@@ -84,8 +89,8 @@ const riasecColors: Record<string, string> = {
 };
 
 export default function AdminCareersPage() {
-  const [careers, setCareers] = useState<any[]>([]);
-  const [filteredCareers, setFilteredCareers] = useState<any[]>([]);
+  const [careers, setCareers] = useState<CareerData[]>([]);
+  const [filteredCareers, setFilteredCareers] = useState<CareerData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [demandFilter, setDemandFilter] = useState("all");
@@ -153,8 +158,31 @@ export default function AdminCareersPage() {
     setLoading(true);
     try {
       const data = await getCareers();
-      setCareers(data);
-      setFilteredCareers(data);
+      // Transform data to match CareerData type with computed fields
+      const transformedData = data.map((career: any): CareerData => ({
+        id: career.id,
+        name: career.name,
+        slug: career.slug,
+        title: career.title,
+        description: career.description,
+        riasecCode: career.riasecCode,
+        hollandCodes: career.hollandCodes,
+        skills: career.skills,
+        educationLevel: career.educationLevel,
+        subjects: career.subjects,
+        workEnvironment: career.workEnvironment,
+        typicalSalary: career.typicalSalary,
+        bhutanDemand: career.bhutanDemand,
+        bhutanSpecific: career.bhutanSpecific,
+        isActive: career.isActive,
+        demandOutlook: (career.bhutanDemand === "high" || career.bhutanDemand === "medium" || career.bhutanDemand === "low")
+          ? career.bhutanDemand
+          : "medium",
+        salaryRange: career.typicalSalary || undefined,
+        educationPath: career.educationLevel ? [career.educationLevel] : undefined,
+      }));
+      setCareers(transformedData);
+      setFilteredCareers(transformedData);
     } catch (error) {
       logger.error("Failed to fetch careers:", error);
     } finally {
@@ -820,7 +848,24 @@ export default function AdminCareersPage() {
           setEditingCareer(null);
         }}
         onSuccess={fetchCareers}
-        career={editingCareer}
+        career={editingCareer ? {
+          id: editingCareer.id,
+          name: editingCareer.name,
+          slug: editingCareer.slug,
+          description: editingCareer.description || undefined,
+          riasecCode: editingCareer.riasecCode || undefined,
+          skills: editingCareer.skills || undefined,
+          educationLevel: Array.isArray(editingCareer.educationLevel)
+            ? editingCareer.educationLevel[0] || "high_school"
+            : editingCareer.educationLevel || "high_school",
+          subjects: editingCareer.subjects || undefined,
+          workEnvironment: editingCareer.workEnvironment || undefined,
+          typicalSalary: editingCareer.typicalSalary || undefined,
+          bhutanDemand: (editingCareer.bhutanDemand === "high" || editingCareer.bhutanDemand === "medium" || editingCareer.bhutanDemand === "low")
+            ? editingCareer.bhutanDemand
+            : undefined,
+          bhutanSpecific: editingCareer.bhutanSpecific || undefined,
+        } : null}
       />
     </div>
   );

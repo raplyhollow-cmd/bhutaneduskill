@@ -4,6 +4,9 @@ import { users, schools, tenants, districts, classes, enrollments, subjects, hom
 import { nanoid } from "nanoid";
 import { eq } from "drizzle-orm";
 
+// Subject type enum matching the database schema
+type SubjectType = "core" | "elective" | "language" | "additional";
+
 // ============================================================================
 // DEMO TENANT
 // ============================================================================
@@ -238,9 +241,9 @@ async function seedDatabase() {
     capacity: 40,
     homeroomTeacherName: DEMO_USERS.teacher.firstName + " " + DEMO_USERS.teacher.lastName,
     classTeacherName: DEMO_USERS.teacher.firstName + " " + DEMO_USERS.teacher.lastName,
-    teacherId: teacherUserId,
+    classTeacherId: teacherUserId,
+    homeroomTeacherId: teacherUserId,
     academicYear: "2024-2025",
-    students: [],
     isActive: true,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -268,8 +271,7 @@ async function seedDatabase() {
       name: sub.name,
       code: sub.code,
       grade: sub.grade,
-      nameDzongkha: "",
-      type: "core" as any,
+      type: "core" as SubjectType,
       description: `${sub.name} - core subject`,
       createdAt: new Date(),
       updatedAt: new Date(),

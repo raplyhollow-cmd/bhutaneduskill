@@ -87,10 +87,17 @@ export const GET = createApiRoute(
     const { userId } = auth;
 
     // Get current user
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: { id: true, type: true, schoolId: true, role: true },
-    });
+    const currentUserList = await db
+      .select({
+        id: users.id,
+        type: users.type,
+        schoolId: users.schoolId,
+        role: users.role,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    const currentUser = currentUserList[0] || null;
 
     if (!currentUser) {
       return errorResponse("User not found", 404);
@@ -105,7 +112,7 @@ export const GET = createApiRoute(
     const conditions: (typeof leaveRequests | ReturnType<typeof eq>)[] = [];
 
     // Filter by user role
-    const isAdmin = currentUser.role === "school_admin" || currentUser.role === "admin";
+    const isAdmin = currentUser.role === "school-admin" || currentUser.role === "admin";
     if (isAdmin && currentUser.schoolId) {
       conditions.push(eq(leaveRequests.schoolId, currentUser.schoolId));
     } else if (!isAdmin) {
@@ -122,22 +129,58 @@ export const GET = createApiRoute(
       conditions.push(eq(leaveRequests.applicantType, type));
     }
 
-    // Fetch leave requests
-    const leaveData = await db.query.leaveRequests.findMany({
-      where: conditions.length > 0 ? and(...conditions) : undefined,
-      with: {
-        applicant: {
-          columns: { id: true, firstName: true, lastName: true, email: true },
-        },
-        approver: {
-          columns: { id: true, firstName: true, lastName: true },
-        },
-        substituteTeacher: {
-          columns: { id: true, firstName: true, lastName: true },
-        },
-      },
-      orderBy: [desc(leaveRequests.createdAt)],
-    });
+    // Fetch leave requests using db.select with leftJoin
+    // Use multiple queries to avoid complex joins
+    const leaveDataRaw = await db
+      .select()
+      .from(leaveRequests)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(leaveRequests.createdAt));
+
+    // Get related users via individual lookups (neon-http limitation)
+    const leaveData = await Promise.all(
+      leaveDataRaw.map(async (lr) => {
+        // Fetch applicant
+        let applicant = null;
+        if (lr.applicantId) {
+          const applicantList = await db
+            .select({ id: users.id, firstName: users.firstName, lastName: users.lastName, email: users.email })
+            .from(users)
+            .where(eq(users.id, lr.applicantId))
+            .limit(1);
+          applicant = applicantList[0] || null;
+        }
+
+        // Fetch approver
+        let approver = null;
+        if (lr.approvedBy) {
+          const approverList = await db
+            .select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+            .from(users)
+            .where(eq(users.id, lr.approvedBy))
+            .limit(1);
+          approver = approverList[0] || null;
+        }
+
+        // Fetch substitute teacher
+        let substituteTeacher = null;
+        if (lr.substituteTeacherId) {
+          const subList = await db
+            .select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+            .from(users)
+            .where(eq(users.id, lr.substituteTeacherId))
+            .limit(1);
+          substituteTeacher = subList[0] || null;
+        }
+
+        return {
+          ...lr,
+          applicant,
+          approver,
+          substituteTeacher,
+        };
+      })
+    );
 
     // Filter by year (client-side for approved leaves)
     const filteredByYear = leaveData.filter((req) => {
@@ -186,10 +229,17 @@ export const POST = createApiRoute(
 
     const { userId } = auth;
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: { id: true, type: true, role: true, schoolId: true },
-    });
+    const currentUserList = await db
+      .select({
+        id: users.id,
+        type: users.type,
+        role: users.role,
+        schoolId: users.schoolId,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    const currentUser = currentUserList[0] || null;
 
     if (!currentUser) {
       return errorResponse("User not found", 404);
@@ -289,12 +339,15 @@ async function calculateLeaveBalance(
   year: string
 ): Promise<LeaveBalanceInfo> {
   // Get all approved leave requests for the user in the given year
-  const approvedLeaves = await db.query.leaveRequests.findMany({
-    where: and(
-      eq(leaveRequests.applicantId, userId),
-      eq(leaveRequests.status, "approved")
-    ),
-  });
+  const approvedLeaves = await db
+    .select()
+    .from(leaveRequests)
+    .where(
+      and(
+        eq(leaveRequests.applicantId, userId),
+        eq(leaveRequests.status, "approved")
+      )
+    );
 
   // Filter by year and calculate days used
   const yearNumber = parseInt(year, 10);

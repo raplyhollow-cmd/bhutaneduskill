@@ -8,6 +8,7 @@
  */
 
 import { pgTable, text, integer, boolean, timestamp, pgEnum , json} from "drizzle-orm/pg-core";
+import { subscriptionPlans, discountCodes, invoices } from "./billing-schema";
 
 // Re-export billing tables from billing-schema.ts
 export {

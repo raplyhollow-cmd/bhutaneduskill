@@ -1,10 +1,13 @@
 /**
- * BCSE Result Import API
+ * BCSE RESULT IMPORT API
+ *
  * Import BCSE examination results from CSV/Excel
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import {
   importBCSEFromCSV,
@@ -12,45 +15,34 @@ import {
   getBCSEImportStats,
   type ImportOptions,
 } from "@/lib/bcse/importer";
+import { badRequestResponse } from "@/lib/api/response-helpers";
 
-/**
- * POST /api/bcse/results/import
- * Import BCSE results from CSV
- */
-export async function POST(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["school_admin", "admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+// ============================================================================
+// POST /api/bcse/results/import
+// ============================================================================
+
+export const POST = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId } = auth;
 
     const body = await req.json();
     const { csvContent, schoolId, academicYear, examType, skipExisting = true } = body;
 
     // Validate required fields
     if (!csvContent) {
-      return NextResponse.json({
-        error: "CSV content is required",
-      }, { status: 400 });
+      return badRequestResponse("CSV content is required");
     }
 
     if (!schoolId) {
-      return NextResponse.json({
-        error: "School ID is required",
-      }, { status: 400 });
+      return badRequestResponse("School ID is required");
     }
 
     if (!academicYear) {
-      return NextResponse.json({
-        error: "Academic year is required",
-      }, { status: 400 });
+      return badRequestResponse("Academic year is required");
     }
 
     if (!examType || !["BCSE_10", "BCSE_12"].includes(examType)) {
-      return NextResponse.json({
-        error: "Exam type must be BCSE_10 or BCSE_12",
-      }, { status: 400 });
+      return badRequestResponse("Exam type must be BCSE_10 or BCSE_12");
     }
 
     // Import results
@@ -71,7 +63,7 @@ export async function POST(req: NextRequest) {
       failed: result.failed,
     });
 
-    return NextResponse.json({
+    return {
       success: result.success,
       data: {
         totalRows: result.totalRows,
@@ -79,27 +71,17 @@ export async function POST(req: NextRequest) {
         failed: result.failed,
         errors: result.errors,
       },
-    });
+    };
+  },
+  ['school-admin', 'admin']
+);
 
-  } catch (error) {
-    logger.apiError(error, { route: "/api/bcse/results/import", method: "POST" });
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : "Failed to import BCSE results",
-    }, { status: 500 });
-  }
-}
+// ============================================================================
+// GET /api/bcse/results/import
+// ============================================================================
 
-/**
- * GET /api/bcse/results/import
- * Get import statistics or CSV template
- */
-export async function GET(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["school_admin", "admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
+export const GET = createApiRoute(
+  async (req: NextRequest, auth) => {
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
     const schoolId = searchParams.get("schoolId");
@@ -108,32 +90,28 @@ export async function GET(req: NextRequest) {
     // Generate CSV template
     if (action === "template") {
       const template = generateCSVTemplate(examType);
-      return NextResponse.json({
+      return {
         success: true,
         data: {
           template,
           filename: `bcse_${examType}_template.csv`,
         },
-      });
+      };
     }
 
     // Get import statistics
     if (action === "stats" && schoolId) {
       const stats = await getBCSEImportStats(schoolId);
-      return NextResponse.json({
+      return {
         success: true,
         data: stats,
-      });
+      };
     }
 
-    return NextResponse.json({
+    return {
       error: "Invalid action. Use 'template' or 'stats' with schoolId",
-    }, { status: 400 });
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/bcse/results/import", method: "GET" });
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : "Failed to process request",
-    }, { status: 500 });
-  }
-}
+      status: 400,
+    };
+  },
+  ['school-admin', 'admin']
+);

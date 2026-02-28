@@ -1,8 +1,8 @@
 /**
  * TEST NOTIFICATION API
  *
- * DEVELOPMENT ONLY endpoint for testing the notification system.
- * DISABLED IN PRODUCTION for security.
+ * Development-only endpoint for testing the notification system.
+ * Returns 404 in production for security.
  *
  * POST /api/test/notifications
  *
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: authResult.error }, { status: authResult.status });
     }
 
-    const { userId, user } = authResult;
+    const { userId } = authResult;
     const { searchParams } = new URL(req.url);
 
     // Get test type from query params
@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
       method: "POST",
     });
     return NextResponse.json(
-      { error: "Internal server error", details: error.message },
+      { error: "Internal server error", details: error instanceof Error ? error.message : undefined },
       { status: 500 }
     );
   }
@@ -136,8 +136,8 @@ export async function POST(req: NextRequest) {
 /**
  * GET /api/test/notifications
  *
- * Returns available test notification types
- * DISABLED IN PRODUCTION
+ * Returns available test notification types.
+ * Returns 404 in production.
  */
 export async function GET() {
   const isDevelopment = process.env.NODE_ENV === "development";

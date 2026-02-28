@@ -4,8 +4,8 @@
  * Allows counselors to share resources with students via notifications
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
 import { counselorResources, users } from "@/lib/db/schema";
 import { notifications, notificationDeliveries } from "@/lib/db/notifications-schema";
@@ -20,25 +20,20 @@ interface ShareResourceRequest {
 }
 
 // POST /api/counselor/resources/share - Share a resource with students
-export async function POST(request: NextRequest) {
-  const authResult = await requireAuth(['admin', 'counselor']);
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
+export const POST = createApiRoute(
+  async (req, auth) => {
+    const { userId, user } = auth;
+    const body: ShareResourceRequest = await req.json();
 
-  const { userId, user } = authResult;
-  const body: ShareResourceRequest = await request.json();
+    const { resourceId, studentIds, message } = body;
 
-  const { resourceId, studentIds, message } = body;
-
-  try {
     // Validate request
     if (!resourceId) {
-      return NextResponse.json({ error: "Resource ID is required" }, { status: 400 });
+      return { error: "Resource ID is required", status: 400 };
     }
 
     if (!studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
-      return NextResponse.json({ error: "At least one student ID is required" }, { status: 400 });
+      return { error: "At least one student ID is required", status: 400 };
     }
 
     // Verify the resource exists
@@ -49,7 +44,7 @@ export async function POST(request: NextRequest) {
       .limit(1);
 
     if (resource.length === 0) {
-      return NextResponse.json({ error: "Resource not found" }, { status: 404 });
+      return { error: "Resource not found", status: 404 };
     }
 
     // Verify all students exist
@@ -66,10 +61,7 @@ export async function POST(request: NextRequest) {
     const invalidIds = studentIds.filter((id) => !validStudentIds.has(id));
 
     if (invalidIds.length > 0) {
-      return NextResponse.json(
-        { error: `Invalid student IDs: ${invalidIds.join(", ")}` },
-        { status: 400 }
-      );
+      return { error: `Invalid student IDs: ${invalidIds.join(", ")}`, status: 400 };
     }
 
     const now = new Date();
@@ -89,7 +81,7 @@ export async function POST(request: NextRequest) {
         priority: "normal",
         status: "sent",
         senderId: userId as string,
-        senderName: (user.name as string) || "Counselor",
+        senderName: `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Counselor",
         senderRole: "counselor",
         actionUrl: resourceUrl,
         actionLabel: "View Resource",
@@ -131,14 +123,14 @@ export async function POST(request: NextRequest) {
       sharedBy: userId,
     });
 
-    return NextResponse.json({
-      success: true,
-      notificationId,
-      sharedWith: studentIds.length,
-      message: `Resource shared with ${studentIds.length} student(s)`,
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/counselor/resources/share", method: "POST" });
-    return NextResponse.json({ error: "Failed to share resource" }, { status: 500 });
-  }
-}
+    return {
+      data: {
+        success: true,
+        notificationId,
+        sharedWith: studentIds.length,
+        message: `Resource shared with ${studentIds.length} student(s)`,
+      }
+    };
+  },
+  ["admin", "counselor"]
+);

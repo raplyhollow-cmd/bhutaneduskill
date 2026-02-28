@@ -1,13 +1,22 @@
-import { NextRequest, NextResponse } from "next/server";
+/**
+ * SCHOOL ADMIN STUDENTS BULK IMPORT API
+ *
+ * POST /api/school-admin/students/bulk-import - Import multiple students
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users, students, userRoles, roles, classes, enrollments } from "@/lib/db/schema";
-import { requireAuth } from "@/lib/auth-utils";
 import { requirePermission } from "@/lib/rbac";
 import { enforceSeatCapacity, getCapacityStatus } from "@/lib/billing-utils";
 import { logger } from "@/lib/logger";
 import { eq, and, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse, conflictResponse } from "@/lib/api/response-helpers";
 
 // ============================================================================
 // TYPES
@@ -40,73 +49,48 @@ interface ImportResult {
   errors: Array<{ index: number; name: string; error: string }>;
 }
 
-// ============================================================================
 // POST /api/school-admin/students/bulk-import - Import multiple students
-// ============================================================================
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId, user } = auth;
 
-export async function POST(request: NextRequest) {
-  try {
-    // 1. Authentication
-    const authResult = await requireAuth(["school-admin", "admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { userId, user } = authResult;
-
-    // 2. Permission Check
+    // Permission Check
     const permCheck = await requirePermission(userId, "students.create");
     if (permCheck) return permCheck;
 
-    // 3. Get School ID
+    // Get School ID
     const schoolId = user.type === "admin"
       ? request.headers.get("x-school-id") // Platform admin specifies school
       : user.schoolId; // School admin uses their own school
 
     if (!schoolId) {
-      return NextResponse.json(
-        { error: "School ID not found", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("School ID not found");
     }
 
-    // 4. Parse Request Body
+    // Parse Request Body
     const body: BulkImportRequest = await request.json();
     const { studentList, createClass = true } = body;
 
-    // 5. Validate Input
+    // Validate Input
     if (!Array.isArray(studentList) || studentList.length === 0) {
-      return NextResponse.json(
-        { error: "studentList must be a non-empty array", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("studentList must be a non-empty array");
     }
 
     if (studentList.length > 500) {
-      return NextResponse.json(
-        { error: "Maximum 500 students can be imported at once", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("Maximum 500 students can be imported at once");
     }
 
-    // 6. Check Seat Capacity BEFORE importing
+    // Check Seat Capacity BEFORE importing
     try {
       await enforceSeatCapacity(schoolId, studentList.length);
     } catch (capacityError) {
       const capacityInfo = await getCapacityStatus(schoolId);
-      return NextResponse.json(
-        {
-          error: capacityError instanceof Error ? capacityError.message : "Insufficient capacity",
-          status: 409,
-          capacityInfo,
-        },
-        { status: 409 }
+      return conflictResponse(
+        capacityError instanceof Error ? capacityError.message : "Insufficient capacity"
       );
     }
 
-    // 7. Get Student Role
+    // Get Student Role
     const [studentRole] = await db
       .select()
       .from(roles)
@@ -114,13 +98,10 @@ export async function POST(request: NextRequest) {
       .limit(1);
 
     if (!studentRole) {
-      return NextResponse.json(
-        { error: "Student role not found in system", status: 500 } satisfies ApiErrorResponse,
-        { status: 500 }
-      );
+      return errorResponse("Student role not found in system", 500);
     }
 
-    // 8. Process Imports
+    // Process Imports
     const result: ImportResult = {
       total: studentList.length,
       successful: 0,
@@ -224,7 +205,7 @@ export async function POST(request: NextRequest) {
         logger.error("Failed to import student", {
           index: i,
           name: studentData.name,
-          error: error instanceof Error ? error.message : String(error),
+          error,
         });
 
         result.errors.push({
@@ -236,7 +217,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 9. Log Summary
+    // Log Summary
     logger.info("Bulk student import completed", {
       schoolId,
       importedBy: userId,
@@ -245,20 +226,11 @@ export async function POST(request: NextRequest) {
       failed: result.failed,
     });
 
-    // 10. Return Result
-    return NextResponse.json({
-      data: result,
-      message: `Import completed: ${result.successful} successful, ${result.failed} failed`,
-    } satisfies ApiSuccess<ImportResult>);
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/students/bulk-import", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to process bulk import", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    // Return Result
+    return successResponse(result satisfies ImportResult);
+  },
+["school-admin", "admin"]
+);
 
 // ============================================================================
 // HELPER FUNCTIONS

@@ -1,0 +1,170 @@
+[
+  {
+    "page": "Student Home",
+    "path": "/student",
+    "statusCode": 0,
+    "duration": 2086,
+    "status": "ERROR",
+    "error": "Command failed: curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/student\n"
+  },
+  {
+    "page": "Dashboard",
+    "path": "/student/dashboard",
+    "statusCode": 0,
+    "duration": 2913,
+    "status": "ERROR",
+    "error": "Command failed: curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/student/dashboard\n"
+  },
+  {
+    "page": "Classes",
+    "path": "/student/classes",
+    "statusCode": 0,
+    "duration": 2337,
+    "status": "ERROR",
+    "error": "Command failed: curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/student/classes\n"
+  },
+  {
+    "page": "Homework",
+    "path": "/student/homework",
+    "statusCode": 0,
+    "duration": 2534,
+    "status": "ERROR",
+    "error": "Command failed: curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/student/homework\n"
+  },
+  {
+    "page": "Career Plan",
+    "path": "/student/plan",
+    "statusCode": 0,
+    "duration": 2672,
+    "status": "ERROR",
+    "error": "Command failed: curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/student/plan\n"
+  },
+  {
+    "page": "Progress",
+    "path": "/student/progress",
+    "statusCode": 0,
+    "duration": 2618,
+    "status": "ERROR",
+    "error": "Command failed: curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/student/progress\n"
+  },
+  {
+    "page": "Results",
+    "path": "/student/results",
+    "statusCode": 0,
+    "duration": 3149,
+    "status": "ERROR",
+    "error": "Command failed: curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/student/results\n"
+  },
+  {
+    "page": "RIASEC Assessment",
+    "path": "/student/assessment/riasec",
+    "statusCode": 0,
+    "duration": 3187,
+    "status": "ERROR",
+    "error": "Command failed: curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/student/assessment/riasec\n"
+  },
+  {
+    "page": "SPARK Basic",
+    "path": "/student/assessment/spark-basic",
+    "statusCode": 0,
+    "duration": 4449,
+    "status": "ERROR",
+    "error": "Command failed: curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/student/assessment/spark-basic\n"
+  },
+  {
+    "page": "SPARK Advanced",
+    "path": "/student/assessment/spark-advanced",
+    "statusCode": 0,
+    "duration": 2514,
+    "status": "ERROR",
+    "error": "Command failed: curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/student/assessment/spark-advanced\n"
+  },
+  {
+    "page": "SPARK Lite",
+    "path": "/student/assessment/spark-lite",
+    "statusCode": 0,
+    "duration": 3233,
+    "status": "ERROR",
+    "error": "Command failed: curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/student/assessment/spark-lite\n"
+  },
+  {
+    "page": "Careers",
+    "path": "/student/careers",
+    "statusCode": 0,
+    "duration": 2796,
+    "status": "ERROR",
+    "error": "Command failed: curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/student/careers\n"
+  },
+  {
+    "page": "Saved Careers",
+    "path": "/student/saved",
+    "statusCode": 0,
+    "duration": 3693,
+    "status": "ERROR",
+    "error": "Command failed: curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/student/saved\n"
+  },
+  {
+    "page": "Roadmap",
+    "path": "/student/roadmap",
+    "statusCode": 0,
+    "duration": 3996,
+    "status": "ERROR",
+    "error": "Command failed: curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/student/roadmap\n"
+  },
+  {
+    "page": "RUB Predictor",
+    "path": "/student/rub",
+    "statusCode": 0,
+    "duration": 2942,
+    "status": "ERROR",
+    "error": "Command failed: curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/student/rub\n"
+  },
+  {
+    "page": "Scholarships",
+    "path": "/student/scholarships",
+    "statusCode": 0,
+    "duration": 2653,
+    "status": "ERROR",
+    "error": "Command failed: curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/student/scholarships\n"
+  },
+  {
+    "page": "Learning Modules",
+    "path": "/student/learning",
+    "statusCode": 0,
+    "duration": 2529,
+    "status": "ERROR",
+    "error": "Command failed: curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/student/learning\n"
+  },
+  {
+    "page": "Journal",
+    "path": "/student/journal",
+    "statusCode": 0,
+    "duration": 3287,
+    "status": "ERROR",
+    "error": "Command failed: curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/student/journal\n"
+  },
+  {
+    "page": "Settings",
+    "path": "/student/settings",
+    "statusCode": 0,
+    "duration": 2041,
+    "status": "ERROR",
+    "error": "Command failed: curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/student/settings\n"
+  },
+  {
+    "page": "Achievements",
+    "path": "/student/achievements",
+    "statusCode": 0,
+    "duration": 2910,
+    "status": "ERROR",
+    "error": "Command failed: curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/student/achievements\n"
+  },
+  {
+    "page": "Announcements",
+    "path": "/student/announcements",
+    "statusCode": 0,
+    "duration": 2444,
+    "status": "ERROR",
+    "error": "Command failed: curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/student/announcements\n"
+  }
+]

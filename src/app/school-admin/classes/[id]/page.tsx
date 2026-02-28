@@ -10,7 +10,7 @@
  */
 
 import { notFound } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { classes, users, enrollments, subjects, teacherAssignments, attendance, homework } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
@@ -46,17 +46,10 @@ import { ClassDetailClient } from "@/components/school-admin/class-detail-client
 import { AssignTeacherButton } from "@/components/school-admin/assign-teacher-button";
 import { SubjectTeachersCard } from "@/components/school-admin/subject-teachers-card";
 
-type HomeworkItem = {
-  id: string;
-  title: string;
-  dueDate: Date;
-  isPublished: boolean;
-};
-
 type AttendanceItem = {
   id: string;
   status: string;
-  date: Date;
+  date: Date | string;
 };
 
 interface ClassDetailPageProps {
@@ -91,7 +84,7 @@ interface DrizzleEnrollmentResult {
   classId: string;
   createdAt: Date;
   updatedAt: Date;
-  student: Student[];
+  student?: Student[];
 }
 
 interface DrizzleTeacherAssignmentResult {
@@ -111,7 +104,7 @@ interface DrizzleTeacherAssignmentResult {
 interface HomeworkItem {
   id: string;
   title: string;
-  dueDate: string | Date;
+  dueDate: Date | string;
   isPublished: boolean;
 }
 
@@ -129,10 +122,11 @@ interface ClassInfo {
 }
 
 async function getClassData(classId: string) {
-  const { userId } = await auth();
-  if (!userId) {
+  const authResult = await requireAuth(["school-admin", "admin"]);
+  if ("error" in authResult) {
     return null;
   }
+  const { userId } = authResult;
 
   // Get class details using db.select
   let classInfoResult: ClassInfo[] = [];
@@ -366,10 +360,11 @@ async function getClassData(classId: string) {
 }
 
 export default async function ClassDetailPage({ params, searchParams }: ClassDetailPageProps) {
-  const { userId } = await auth();
-  if (!userId) {
-    return <div>Please sign in to access this page.</div>;
+  const authResult = await requireAuth(["school-admin", "admin"]);
+  if ("error" in authResult) {
+    return <div>{authResult.error}</div>;
   }
+  const { userId } = authResult;
 
   const { id } = await params;
   const data = await getClassData(id);

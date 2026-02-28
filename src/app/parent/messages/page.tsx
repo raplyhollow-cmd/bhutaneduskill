@@ -343,7 +343,7 @@ export default function ParentMessagesPage() {
     try {
       const res = await fetch(`/api/parent/messages/${conversationId}`);
       if (res.ok) {
-        const data: ConversationData = await res.json();
+        const data = await res.json() as { data?: { messages?: Message[] } };
         setMessages(data.data?.messages || []);
       }
     } catch (error) {

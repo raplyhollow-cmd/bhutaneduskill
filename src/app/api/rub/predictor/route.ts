@@ -12,6 +12,16 @@ import { eq, and, sql } from "drizzle-orm";
 import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, errorResponse, badRequestResponse, forbiddenResponse, notFoundResponse } from "@/lib/api/response-helpers";
 
+interface RubProgram {
+  id: string;
+  collegeId: string;
+  name: string;
+  level: string;
+  field: string;
+  minPercentage: number;
+  requiredSubjects?: string[];
+}
+
 interface AdmissionPrediction {
   collegeId: string;
   collegeName: string;
@@ -44,7 +54,7 @@ export const POST = createApiRoute(
 
     if (user?.type === "counselor" && studentId) {
       targetStudentId = studentId;
-    } else if (studentId && ["admin", "school_admin"].includes(user?.type || "")) {
+    } else if (studentId && ["admin", "school-admin"].includes(user?.type || "")) {
       targetStudentId = studentId;
     }
 
@@ -80,15 +90,6 @@ export const POST = createApiRoute(
     }
 
     // Get programs to predict for
-    interface RubProgram {
-      id: string;
-      collegeId: string;
-      name: string;
-      level: string;
-      field: string;
-      minPercentage: number;
-      requiredSubjects?: string[];
-    }
     let targetPrograms: RubProgram[] = [];
 
     if (Array.isArray(programIds) && programIds.length > 0) {

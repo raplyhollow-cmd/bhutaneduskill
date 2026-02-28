@@ -2,68 +2,169 @@
  * PAYSLIP PDF GENERATOR API
  *
  * GET /api/teacher/payslips/[id]/pdf - Generate and download payslip PDF
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users, schools } from "@/lib/db/schema";
 import { payrollRecords } from "@/lib/db/payroll-schema";
 import { eq } from "drizzle-orm";
 import { formatCurrency } from "@/lib/payroll/calculator";
+import { createApiRoute } from "@/lib/api/route-handler";
 
-interface RouteContext {
-  params: Promise<{ id: string }>;
+interface PayslipPDFParams extends Record<string, unknown> {
+  id: string;
+}
+
+interface PayslipRecord {
+  id: string;
+  teacherId: string;
+  payrollId: string;
+  basicSalary: number;
+  allowances: Array<{ name: string; amount: number }>;
+  deductions: Array<{ name: string; amount: number }>;
+  netSalary: number;
+  paymentDate?: Date | string;
+  schoolId?: string;
+  employeeId?: string;
+  employeeCode?: string;
+  employeeName?: string;
+  payrollMonth?: number;
+  payrollYear?: number;
+  teacherName?: string;
+  paymentStatus?: string;
+  designation?: string;
+  department?: string;
+  bankName?: string;
+  bankAccountNumber?: string;
+  gradePay?: number;
+  bonus?: number;
+  arrears?: number;
+  leaveEncashmentAmount?: number;
+  leaveEncashmentDays?: number;
+  totalEarnings?: number;
+  totalDeductions?: number;
+  netPay?: number;
+  [key: string]: unknown;
 }
 
 // GET /api/teacher/payslips/[id]/pdf - Generate payslip PDF
-export async function GET(request: NextRequest, context: RouteContext) {
-  const params = await context.params;
-  try {
-    const authResult = await requireAuth(["admin", "school-admin", "teacher"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { user } = authResult;
-
-    const { id } = params;
+export const GET = createApiRoute<PayslipPDFParams>(
+  async (request: NextRequest, auth, context) => {
+    const { user } = auth;
+    const { id } = await context!.params!;
 
     // Get payroll record
-    const record = await db.query.payrollRecords.findFirst({
-      where: eq(payrollRecords.id, id),
-    });
+    const [record] = await db
+      .select()
+      .from(payrollRecords)
+      .where(eq(payrollRecords.id, id))
+      .limit(1);
 
     if (!record) {
-      return NextResponse.json({ error: "Payroll record not found" }, { status: 404 });
+      return { error: "Payroll record not found", status: 404 };
     }
 
+    // Ensure all required properties are present
+    // Map allowances/deductions to simplified format
+    const allowances = (record.allowances || []).map((a: { allowanceName?: string; name?: string; amount: number }) => ({
+      name: a.allowanceName || a.name || "Allowance",
+      amount: a.amount || 0,
+    }));
+
+    const deductions = (record.deductions || []).map((d: { deductionName?: string; name?: string; amount: number }) => ({
+      name: d.deductionName || d.name || "Deduction",
+      amount: d.amount || 0,
+    }));
+
+    const payrollRecord: PayslipRecord = {
+      id: record.id,
+      teacherId: record.employeeId,
+      payrollId: record.payrollRunId,
+      basicSalary: record.basicSalary,
+      allowances,
+      deductions,
+      netSalary: record.netPay || 0,
+      paymentDate: undefined,
+      schoolId: record.schoolId,
+      employeeId: record.employeeId,
+      employeeCode: record.employeeCode,
+      employeeName: record.employeeName,
+      payrollMonth: record.payrollMonth,
+      payrollYear: record.payrollYear,
+      teacherName: record.employeeName,
+      paymentStatus: record.paymentStatus,
+      designation: record.designation,
+      department: record.department,
+      bankName: record.bankName,
+      bankAccountNumber: record.bankAccountNumber,
+      gradePay: record.gradePay,
+      bonus: record.bonus,
+      arrears: record.arrears,
+      leaveEncashmentAmount: record.leaveEncashmentAmount,
+      leaveEncashmentDays: record.leaveEncashmentDays,
+      totalEarnings: record.totalEarnings,
+      totalDeductions: record.totalDeductions,
+      netPay: record.netPay,
+    };
+
     // Check permission
-    if (user.type === "teacher" && record.employeeId !== user.id) {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 });
+    if (user.type === "teacher" && payrollRecord.employeeId !== user.id) {
+      return { error: "Access denied", status: 403 };
     }
 
     // Get school details
-    const school = await db.query.schools.findFirst({
-      where: eq(schools.id, record.schoolId),
-    });
+    const [schoolRecord] = await db
+      .select()
+      .from(schools)
+      .where(eq(schools.id, payrollRecord.schoolId || ""))
+      .limit(1);
 
     // Generate HTML content for PDF
-    const html = generatePayslipHTML(record, school);
+    const html = generatePayslipHTML(
+      {
+        ...payrollRecord,
+        id: payrollRecord.id,
+        teacherId: payrollRecord.teacherId,
+        payrollId: payrollRecord.payrollId,
+        payrollMonth: payrollRecord.payrollMonth || 1,
+        payrollYear: payrollRecord.payrollYear || new Date().getFullYear(),
+        teacherName: payrollRecord.teacherName || payrollRecord.employeeName || "N/A",
+        employeeId: payrollRecord.employeeId,
+        designation: payrollRecord.designation,
+        department: payrollRecord.department,
+        basicSalary: payrollRecord.basicSalary,
+        allowances: payrollRecord.allowances,
+        deductions: payrollRecord.deductions,
+        netSalary: payrollRecord.netSalary,
+        paymentDate: typeof payrollRecord.paymentDate === "string"
+          ? payrollRecord.paymentDate
+          : payrollRecord.paymentDate?.toISOString(),
+      },
+      schoolRecord?.[0] || {
+        name: "",
+        code: "",
+        address: "",
+        logo: "",
+        contactEmail: "",
+        contactPhone: "",
+      }
+    );
 
     // For now, return HTML that can be printed to PDF
     // In production, you would use a PDF library like jsPDF, puppeteer, or react-pdf
-    return new NextResponse(html, {
+    return new Response(html, {
       headers: {
         "Content-Type": "text/html; charset=utf-8",
         "Content-Disposition": `inline; filename="payslip-${record.payrollMonth}-${record.payrollYear}-${record.employeeCode || record.employeeName.replace(/\s+/g, "-")}.html"`,
       },
     });
-  } catch (error) {
-    logger.apiError(error, { route: `/api/teacher/payslips/${params.id}/pdf`, method: "GET" });
-    return NextResponse.json({ error: "Failed to generate payslip" }, { status: 500 });
-  }
-}
+  },
+  ["admin", "school-admin", "teacher"]
+);
 
 /**
  * Generate HTML payslip for printing/PDF conversion
@@ -377,7 +478,7 @@ function generatePayslipHTML(record: PayslipRecord & {
           ` : ""}
           ${(record.allowances || []).map((a: { name: string; amount: number }) => `
           <tr>
-            <td>${a.allowanceName}</td>
+            <td>${a.name}</td>
             <td class="amount positive">${formatCurrency(a.amount || 0, "BTN")}</td>
           </tr>
           `).join("")}
@@ -423,7 +524,7 @@ function generatePayslipHTML(record: PayslipRecord & {
         <tbody>
           ${(record.deductions || []).map((d: { name: string; amount: number }) => `
           <tr>
-            <td>${d.deductionName}</td>
+            <td>${d.name}</td>
             <td class="amount negative">${formatCurrency(d.amount || 0, "BTN")}</td>
           </tr>
           `).join("")}

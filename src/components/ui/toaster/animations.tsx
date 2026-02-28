@@ -5,8 +5,30 @@
  * Inspired by Clerk.com's smooth, snappy animations
  */
 
-import { Variants, Transition } from "framer-motion"
+import { Variants, Transition, Easing } from "framer-motion"
 import { toastAnimation } from "./tokens"
+
+// ============================================================================
+// TYPE DEFINITIONS
+// ============================================================================
+
+interface CustomVariants {
+  [key: string]: {
+    x?: number | [number, number, number];
+    y?: number | [number, number, number];
+    opacity?: number | [number, number, number];
+    scale?: number | [number, number, number];
+    rotate?: number | [number, number, number];
+    pathLength?: number | [number, number, number];
+    scaleX?: number | [number, number, number];
+    transition?: Transition;
+  } | ((props: { duration: number }) => {
+    scaleX: number;
+    transition: Transition;
+  });
+}
+
+type ToastVariants = Variants & CustomVariants;
 
 // ============================================================================
 // SLIDE-IN ANIMATIONS (from right, like Clerk)
@@ -16,7 +38,7 @@ import { toastAnimation } from "./tokens"
  * Toast slides in from right with fade
  * Use for: top-right positioned toasts (Clerk's default)
  */
-export const slideInRight: Variants = {
+export const slideInRight: ToastVariants = {
   hidden: {
     x: 400,
     opacity: 0,
@@ -29,7 +51,7 @@ export const slideInRight: Variants = {
     transition: {
       type: "tween",
       duration: toastAnimation.duration.enter / 1000,
-      ease: toastAnimation.easing.enter as any,
+      ease: toastAnimation.easing.enter as Easing,
     },
   },
   exit: {
@@ -39,7 +61,7 @@ export const slideInRight: Variants = {
     transition: {
       type: "tween",
       duration: toastAnimation.duration.exit / 1000,
-      ease: toastAnimation.easing.exit as any,
+      ease: toastAnimation.easing.exit as Easing,
     },
   },
 }
@@ -48,7 +70,7 @@ export const slideInRight: Variants = {
  * Toast slides in from left with fade
  * Use for: top-left positioned toasts
  */
-export const slideInLeft: Variants = {
+export const slideInLeft: ToastVariants = {
   hidden: {
     x: -400,
     opacity: 0,
@@ -61,7 +83,7 @@ export const slideInLeft: Variants = {
     transition: {
       type: "tween",
       duration: toastAnimation.duration.enter / 1000,
-      ease: toastAnimation.easing.enter as any,
+      ease: toastAnimation.easing.enter as Easing,
     },
   },
   exit: {
@@ -71,7 +93,7 @@ export const slideInLeft: Variants = {
     transition: {
       type: "tween",
       duration: toastAnimation.duration.exit / 1000,
-      ease: toastAnimation.easing.exit as any,
+      ease: toastAnimation.easing.exit as Easing,
     },
   },
 }
@@ -80,7 +102,7 @@ export const slideInLeft: Variants = {
  * Toast slides in from top with fade
  * Use for: top-center positioned toasts
  */
-export const slideInTop: Variants = {
+export const slideInTop: ToastVariants = {
   hidden: {
     y: -100,
     opacity: 0,
@@ -93,7 +115,7 @@ export const slideInTop: Variants = {
     transition: {
       type: "tween",
       duration: toastAnimation.duration.enter / 1000,
-      ease: toastAnimation.easing.enter as any,
+      ease: toastAnimation.easing.enter as Easing,
     },
   },
   exit: {
@@ -103,7 +125,7 @@ export const slideInTop: Variants = {
     transition: {
       type: "tween",
       duration: toastAnimation.duration.exit / 1000,
-      ease: toastAnimation.easing.exit as any,
+      ease: toastAnimation.easing.exit as Easing,
     },
   },
 }
@@ -112,7 +134,7 @@ export const slideInTop: Variants = {
  * Toast slides in from bottom with fade
  * Use for: bottom positioned toasts
  */
-export const slideInBottom: Variants = {
+export const slideInBottom: ToastVariants = {
   hidden: {
     y: 100,
     opacity: 0,
@@ -125,7 +147,7 @@ export const slideInBottom: Variants = {
     transition: {
       type: "tween",
       duration: toastAnimation.duration.enter / 1000,
-      ease: toastAnimation.easing.enter as any,
+      ease: toastAnimation.easing.enter as Easing,
     },
   },
   exit: {
@@ -135,7 +157,7 @@ export const slideInBottom: Variants = {
     transition: {
       type: "tween",
       duration: toastAnimation.duration.exit / 1000,
-      ease: toastAnimation.easing.exit as any,
+      ease: toastAnimation.easing.exit as Easing,
     },
   },
 }
@@ -143,7 +165,7 @@ export const slideInBottom: Variants = {
 /**
  * Scale in animation (for center-positioned toasts)
  */
-export const scaleIn: Variants = {
+export const scaleIn: ToastVariants = {
   hidden: {
     scale: 0.9,
     opacity: 0,
@@ -175,7 +197,7 @@ export const scaleIn: Variants = {
  * Progress bar shrinks from full width to zero
  * Use for: auto-dismiss countdown indicator
  */
-export const progressShrink: Variants = {
+export const progressShrink: ToastVariants = {
   full: {
     scaleX: 1,
     transition: {
@@ -199,7 +221,7 @@ export const progressShrink: Variants = {
 /**
  * Success checkmark animation
  */
-export const checkmarkDraw: Variants = {
+export const checkmarkDraw: ToastVariants = {
   hidden: {
     pathLength: 0,
     opacity: 0,
@@ -223,7 +245,7 @@ export const checkmarkDraw: Variants = {
 /**
  * Error X animation
  */
-export const errorX: Variants = {
+export const errorX: ToastVariants = {
   hidden: {
     pathLength: 0,
     opacity: 0,
@@ -248,7 +270,7 @@ export const errorX: Variants = {
 /**
  * Loading spinner animation
  */
-export const spinner: Variants = {
+export const spinner: ToastVariants = {
   hidden: {
     rotate: 0,
   },
@@ -266,7 +288,7 @@ export const spinner: Variants = {
 /**
  * Icon bounce on mount
  */
-export const iconBounce: Variants = {
+export const iconBounce: ToastVariants = {
   hidden: {
     scale: 0,
     rotate: -180,
@@ -285,15 +307,16 @@ export const iconBounce: Variants = {
 /**
  * Subtle pulse for attention
  */
-export const subtlePulse: Variants = {
+export const subtlePulse: ToastVariants = {
   idle: {
     scale: 1,
   },
   pulse: {
-    scale: [1, 1.05, 1],
+    scale: [1, 1.05, 1] as any,
     transition: {
       duration: 0.6,
       repeat: 1,
+      repeatType: "loop" as const,
       ease: "easeInOut",
     },
   },
@@ -327,8 +350,8 @@ export const stackChildren = {
 /**
  * Get the appropriate animation variants based on position
  */
-export function getAnimationForPosition(position: string): Variants {
-  const animations: Record<string, Variants> = {
+export function getAnimationForPosition(position: string): ToastVariants {
+  const animations: Record<string, ToastVariants> = {
     'top-right': slideInRight,
     'bottom-right': slideInRight,
     'top-left': slideInLeft,
@@ -342,8 +365,8 @@ export function getAnimationForPosition(position: string): Variants {
 /**
  * Get icon animation based on variant
  */
-export function getIconAnimation(variant: string): Variants {
-  const animations: Record<string, Variants> = {
+export function getIconAnimation(variant: string): ToastVariants {
+  const animations: Record<string, ToastVariants> = {
     success: checkmarkDraw,
     error: errorX,
     loading: spinner,

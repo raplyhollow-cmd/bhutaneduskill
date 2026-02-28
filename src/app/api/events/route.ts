@@ -111,23 +111,19 @@ export const GET = createApiRoute(
       );
     }
 
-    // Fetch events with pagination
-    const [events, totalCount] = await Promise.all([
-      db.query.schoolEvents.findMany({
-        where: and(...conditions),
-        with: {
-          organizer: {
-            columns: { id: true, firstName: true, lastName: true, email: true },
-          },
-        },
-        orderBy: [desc(schoolEvents.startDate), desc(schoolEvents.createdAt)],
-        limit,
-        offset,
-      }),
-      db.select({ count: count() })
-        .from(schoolEvents)
-        .where(and(...conditions))
-    ]);
+    // Fetch events with pagination using db.select
+    const events = await db
+      .select()
+      .from(schoolEvents)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(schoolEvents.startDate), desc(schoolEvents.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const totalCount = await db
+      .select({ count: count() })
+      .from(schoolEvents)
+      .where(conditions.length > 0 ? and(...conditions) : undefined);
 
     // For each event, get registration count and user registration
     interface EventWithRegistration {
@@ -155,13 +151,17 @@ export const GET = createApiRoute(
         result.registeredCount = registrationCounts[0]?.count || 0;
 
         // Get user registration
-        const userRegistration = await db.query.eventRegistrations.findFirst({
-          where: and(
-            eq(eventRegistrations.eventId, event.id),
-            eq(eventRegistrations.userId, user.id)
-          ),
-        });
-        result.userRegistration = userRegistration || null;
+        const userRegistrationList = await db
+          .select()
+          .from(eventRegistrations)
+          .where(
+            and(
+              eq(eventRegistrations.eventId, event.id),
+              eq(eventRegistrations.userId, user.id)
+            )
+          )
+          .limit(1);
+        result.userRegistration = userRegistrationList[0] || null;
 
         return result;
       })
@@ -178,7 +178,7 @@ export const GET = createApiRoute(
       user: {
         id: user.id,
         role: user.type,
-        canCreate: user.type === "school_admin" || user.type === "admin" || user.type === "teacher",
+        canCreate: user.type === "school-admin" || user.type === "admin" || user.type === "teacher",
       },
     });
   },
@@ -199,7 +199,7 @@ export const POST = createApiRoute(
     const { userId, user } = auth;
 
     // Only admins and teachers can create events
-    const canCreate = user.type === "school_admin" || user.type === "admin" || user.type === "teacher";
+    const canCreate = user.type === "school-admin" || user.type === "admin" || user.type === "teacher";
     if (!canCreate) {
       return forbiddenResponse("You don't have permission to create events");
     }
@@ -290,9 +290,12 @@ export const PATCH = createApiRoute(
     }
 
     // Check if event exists and user has permission
-    const existingEvent = await db.query.schoolEvents.findFirst({
-      where: eq(schoolEvents.id, id),
-    });
+    const existingEventList = await db
+      .select()
+      .from(schoolEvents)
+      .where(eq(schoolEvents.id, id))
+      .limit(1);
+    const existingEvent = existingEventList[0] || null;
 
     if (!existingEvent) {
       return notFoundResponse("Event");
@@ -307,12 +310,14 @@ export const PATCH = createApiRoute(
       return forbiddenResponse("You don't have permission to edit this event");
     }
 
-    // Update event
+    // Update event - only update fields that were provided
+    const updateValues: Record<string, unknown> = {
+      ...updateData,
+      updatedAt: new Date(),
+    };
+
     const [updatedEvent] = await db.update(schoolEvents)
-      .set({
-        ...updateData,
-        updatedAt: new Date(),
-      } as typeof schoolEvents.$inferInsert)
+      .set(updateValues as typeof schoolEvents.$inferInsert)
       .where(eq(schoolEvents.id, id))
       .returning();
 
@@ -346,9 +351,12 @@ export const DELETE = createApiRoute(
     }
 
     // Check if event exists and user has permission
-    const existingEvent = await db.query.schoolEvents.findFirst({
-      where: eq(schoolEvents.id, id),
-    });
+    const existingEventList = await db
+      .select()
+      .from(schoolEvents)
+      .where(eq(schoolEvents.id, id))
+      .limit(1);
+    const existingEvent = existingEventList[0] || null;
 
     if (!existingEvent) {
       return notFoundResponse("Event");

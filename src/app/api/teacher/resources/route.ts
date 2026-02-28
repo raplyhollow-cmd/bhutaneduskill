@@ -10,12 +10,12 @@
  */
 
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { digitalResources, subjects, classes } from "@/lib/db/schema";
 import { eq, desc, and, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 /**
  * GET - Retrieve teaching resources
@@ -26,15 +26,10 @@ import { nanoid } from "nanoid";
  * - search: Search in title/description
  * - limit: Number of records (default: 50)
  */
-export async function GET(request: NextRequest) {
-  const authResult = await requireAuth(['teacher', 'admin', 'school-admin']);
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId, user: currentUser } = auth;
 
-  const { userId, user: currentUser } = authResult;
-
-  try {
     const { searchParams } = new URL(request.url);
     const subjectId = searchParams.get('subjectId');
     const grade = searchParams.get('grade');
@@ -63,11 +58,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch resources
-    const resources = await db.query.digitalResources.findMany({
-      where: conditions.length > 0 ? and(...conditions) : undefined,
-      orderBy: [desc(digitalResources.createdAt)],
-      limit,
-    });
+    const resources = await db
+      .select()
+      .from(digitalResources)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(digitalResources.createdAt))
+      .limit(limit);
 
     // Filter by search term in application
     let filteredResources = resources;
@@ -79,37 +75,24 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({
+    return {
       success: true,
       data: filteredResources,
       count: filteredResources.length,
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/teacher/resources", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch resources" },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ['teacher', 'admin', 'school-admin']
+);
 
 /**
  * POST - Upload a new teaching resource
  */
-export async function POST(request: NextRequest) {
-  const authResult = await requireAuth(['teacher']);
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId, user: currentUser } = auth;
 
-  const { userId, user: currentUser } = authResult;
-
-  try {
     if (!currentUser.schoolId) {
-      return NextResponse.json(
-        { error: "You must be assigned to a school to upload resources" },
-        { status: 400 }
-      );
+      return { error: "You must be assigned to a school to upload resources", status: 400 };
     }
 
     const body = await request.json();
@@ -122,26 +105,17 @@ export async function POST(request: NextRequest) {
       fileSize,
       category,
       tags,
-      chapterId,
-      subjectId,
-      grade,
     } = body;
 
     // Validate required fields
     if (!title || !resourceType || !fileUrl) {
-      return NextResponse.json(
-        { error: "Missing required fields: title, resourceType, fileUrl" },
-        { status: 400 }
-      );
+      return { error: "Missing required fields: title, resourceType, fileUrl", status: 400 };
     }
 
     // Validate resource type
     const validTypes = ['document', 'video', 'audio', 'image', 'presentation', 'spreadsheet', 'other'];
     if (!validTypes.includes(resourceType)) {
-      return NextResponse.json(
-        { error: `Invalid resourceType. Must be one of: ${validTypes.join(', ')}` },
-        { status: 400 }
-      );
+      return { error: `Invalid resourceType. Must be one of: ${validTypes.join(', ')}`, status: 400 };
     }
 
     const resourceId = `resource-${nanoid()}`;
@@ -181,18 +155,13 @@ export async function POST(request: NextRequest) {
       resourceType,
     });
 
-    return NextResponse.json({
+    return {
       success: true,
       data: newResource,
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/teacher/resources", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to upload resource" },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ['teacher', 'admin', 'school-admin']
+);
 
 // Helper function to determine format from URL
 function getResourceFormatFromUrl(url: string): string {

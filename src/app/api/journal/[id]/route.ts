@@ -1,9 +1,19 @@
+/**
+ * JOURNAL [id] API
+ *
+ * GET /api/journal/[id] - Get a single journal entry
+ * PUT /api/journal/[id] - Update a journal entry
+ * DELETE /api/journal/[id] - Delete a journal entry
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
-import { requireAuth } from "@/lib/auth-utils";
 import { eq } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 // ============================================================================
 // TYPES
@@ -25,18 +35,15 @@ interface UserSettings {
 }
 
 // GET /api/journal/[id] - Get a single journal entry
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(['student']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
+export const GET = createApiRoute(
+  async (req: NextRequest, auth, context) => {
+    const { user } = auth;
+    const params = await context?.params as { id?: string } | undefined;
+    const id = params?.id;
 
-    const { user } = authResult;
-    const { id } = await params;
+    if (!id) {
+      return { error: "Missing entry ID", status: 400 };
+    }
 
     const settings = (user?.settings as UserSettings) || {};
     const entries = settings.journalEntries || [];
@@ -44,29 +51,25 @@ export async function GET(
     const entry = entries.find((e: JournalEntry) => e.id === id);
 
     if (!entry) {
-      return NextResponse.json({ error: "Entry not found" }, { status: 404 });
+      return { error: "Entry not found", status: 404 };
     }
 
-    return NextResponse.json({ entry });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json({ error: "Failed to fetch entry" }, { status: 500 });
-  }
-}
+    return { entry };
+  },
+  ['student']
+);
 
 // PUT /api/journal/[id] - Update a journal entry
-export async function PUT(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(['student']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const PUT = createApiRoute(
+  async (req: NextRequest, auth, context) => {
+    const { user } = auth;
+    const params = await context?.params as { id?: string } | undefined;
+    const id = params?.id;
+
+    if (!id) {
+      return { error: "Missing entry ID", status: 400 };
     }
 
-    const { user } = authResult;
-    const { id } = await params;
     const body = await req.json();
     const { title, content, mood, tags, date } = body;
 
@@ -76,7 +79,7 @@ export async function PUT(
     const entryIndex = entries.findIndex((e: JournalEntry) => e.id === id);
 
     if (entryIndex === -1) {
-      return NextResponse.json({ error: "Entry not found" }, { status: 404 });
+      return { error: "Entry not found", status: 404 };
     }
 
     entries[entryIndex] = {
@@ -96,26 +99,21 @@ export async function PUT(
       })
       .where(eq(users.id, user.id));
 
-    return NextResponse.json({ entry: entries[entryIndex] });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json({ error: "Failed to update entry" }, { status: 500 });
-  }
-}
+    return { entry: entries[entryIndex] };
+  },
+  ['student']
+);
 
 // DELETE /api/journal/[id] - Delete a journal entry
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(['student']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
+export const DELETE = createApiRoute(
+  async (req: NextRequest, auth, context) => {
+    const { user } = auth;
+    const params = await context?.params as { id?: string } | undefined;
+    const id = params?.id;
 
-    const { user } = authResult;
-    const { id } = await params;
+    if (!id) {
+      return { error: "Missing entry ID", status: 400 };
+    }
 
     const settings = (user?.settings as UserSettings) || {};
     const entries: JournalEntry[] = settings.journalEntries || [];
@@ -130,9 +128,7 @@ export async function DELETE(
       })
       .where(eq(users.id, user.id));
 
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json({ error: "Failed to delete entry" }, { status: 500 });
-  }
-}
+    return { success: true };
+  },
+  ['student']
+);

@@ -15,6 +15,18 @@ export interface GenerateReportCardOptions {
 }
 
 // ============================================================================
+// TYPE DEFINITIONS
+// ============================================================================
+
+interface ColorRGB {
+  0: number;
+  1: number;
+  2: number;
+}
+
+type ColorMap = Record<string, number[]>;
+
+// ============================================================================
 // IMAGE LOADING HELPERS
 // ============================================================================
 
@@ -165,7 +177,8 @@ export async function generateReportCardPDF(
 
   // Draw background
   if (colors.background) {
-    pdf.setFillColor(colors.background[0] as any, colors.background[1] as any, colors.background[2] as any);
+    const bg = colors.background;
+    pdf.setFillColor(bg[0], bg[1], bg[2]);
     pdf.rect(0, 0, pageWidth, pageHeight, "F");
   }
 
@@ -211,7 +224,7 @@ async function drawHeader(
   pdf: jsPDF,
   data: ReportCardData,
   pageWidth: number,
-  colors: Record<string, number[]>,
+  colors: ColorMap,
   options: GenerateReportCardOptions
 ): Promise<number> {
   const template = getTemplate(data.grade);
@@ -224,23 +237,27 @@ async function drawHeader(
 
   // School name
   pdf.setFontSize(18);
-  pdf.setTextColor(colors.primary[0] as any, colors.primary[1] as any, colors.primary[2] as any);
+  const primaryColor = colors.primary;
+  pdf.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
   pdf.setFont("helvetica", "bold");
   pdf.text(data.schoolName, pageWidth / 2, 15, { align: "center" });
 
   // Report card title
   pdf.setFontSize(12);
-  pdf.setTextColor(colors.secondary[0] as any, colors.secondary[1] as any, colors.secondary[2] as any);
+  const secondaryColor = colors.secondary;
+  pdf.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
   pdf.setFont("helvetica", "normal");
   pdf.text("PROGRESS REPORT", pageWidth / 2, 22, { align: "center" });
 
   // Term and academic year
   pdf.setFontSize(10);
-  pdf.setTextColor(colors.text[0] as any, colors.text[1] as any, colors.text[2] as any);
+  const textColor = colors.text;
+  pdf.setTextColor(textColor[0], textColor[1], textColor[2]);
   pdf.text(`${data.term} - ${data.academicYear}`, pageWidth / 2, 28, { align: "center" });
 
   // Decorative line
-  pdf.setDrawColor(colors.accent[0] as any, colors.accent[1] as any, colors.accent[2] as any);
+  const accentColor = colors.accent;
+  pdf.setDrawColor(accentColor[0], accentColor[1], accentColor[2]);
   pdf.setLineWidth(1);
   pdf.line(15, 35, pageWidth - 15, 35);
 
@@ -255,7 +272,7 @@ async function drawStudentInfo(
   data: ReportCardData,
   startY: number,
   pageWidth: number,
-  colors: Record<string, number[]>,
+  colors: ColorMap,
   options: GenerateReportCardOptions
 ): Promise<number> {
   let yPos = startY;
@@ -278,7 +295,8 @@ async function drawStudentInfo(
   }
 
   // Student details
-  pdf.setTextColor(colors.text[0] as any, colors.text[1] as any, colors.text[2] as any);
+  const textColor = colors.text;
+  pdf.setTextColor(textColor[0], textColor[1], textColor[2]);
   pdf.setFontSize(10);
   pdf.setFont("helvetica", "bold");
   pdf.text(data.studentName, 42, yPos + 6);
@@ -315,12 +333,13 @@ function drawAttendance(
   data: ReportCardData,
   startY: number,
   pageWidth: number,
-  colors: Record<string, number[]>
+  colors: ColorMap
 ): number {
   const yPos = startY;
 
   // Attendance box
-  pdf.setFillColor(colors.primary[0] as any, colors.primary[1] as any, colors.primary[2] as any);
+  const primaryColor = colors.primary;
+  pdf.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
   pdf.roundedRect(15, yPos, pageWidth - 30, 12, 2, 2, "F");
 
   pdf.setTextColor(255, 255, 255);
@@ -355,7 +374,7 @@ function drawSubjectsTable(
   data: ReportCardData,
   startY: number,
   pageWidth: number,
-  colors: Record<string, number[]>,
+  colors: ColorMap,
   subjectsPerPage: number
 ): number {
   const tableWidth = pageWidth - 30;
@@ -365,7 +384,8 @@ function drawSubjectsTable(
   const headers = ["Subject", "Marks", "Max", "Grade", "Remarks"];
 
   // Table header
-  pdf.setFillColor(colors.primary[0] as any, colors.primary[1] as any, colors.primary[2] as any);
+  const primaryColor = colors.primary;
+  pdf.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
   pdf.rect(tableX, yPos, tableWidth, 8, "F");
   pdf.setTextColor(255, 255, 255);
   pdf.setFontSize(9);
@@ -380,7 +400,8 @@ function drawSubjectsTable(
 
   // Table rows
   pdf.setFont("helvetica", "normal");
-  pdf.setTextColor(colors.text[0] as any, colors.text[1] as any, colors.text[2] as any);
+  const textColor = colors.text;
+  pdf.setTextColor(textColor[0], textColor[1], textColor[2]);
 
   data.subjects.forEach((subject, index) => {
     // Alternate row color
@@ -424,12 +445,13 @@ function drawPerformanceSummary(
   data: ReportCardData,
   startY: number,
   pageWidth: number,
-  colors: Record<string, number[]>
+  colors: ColorMap
 ): number {
   const yPos = startY;
 
   // Summary box
-  pdf.setFillColor(colors.secondary[0] as any, colors.secondary[1] as any, colors.secondary[2] as any);
+  const secondaryColor = colors.secondary;
+  pdf.setFillColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
   pdf.roundedRect(15, yPos, pageWidth - 30, 20, 2, 2, "F");
 
   pdf.setTextColor(255, 255, 255);
@@ -479,14 +501,15 @@ function drawRemarks(
   data: ReportCardData,
   startY: number,
   pageWidth: number,
-  colors: Record<string, number[]>
+  colors: ColorMap
 ): number {
   const yPos = startY;
 
   pdf.setFillColor(250, 250, 250);
   pdf.roundedRect(15, yPos, pageWidth - 30, 18, 2, 2, "F");
 
-  pdf.setTextColor(colors.text[0] as any, colors.text[1] as any, colors.text[2] as any);
+  const textColor = colors.text;
+  pdf.setTextColor(textColor[0], textColor[1], textColor[2]);
   pdf.setFontSize(9);
   pdf.setFont("helvetica", "bold");
   pdf.text("Remarks", 20, yPos + 6);
@@ -525,9 +548,9 @@ function drawSignatures(
     showParent?: boolean;
     customSignatures?: Array<{ title: string; name: string }>;
   },
-  colors: Record<string, number[]>
+  colors: ColorMap
 ): void {
-  const signaturesList = [];
+  const signaturesList: Array<{ title: string; name: string }> = [];
 
   if (signatures.showClassTeacher && data.classTeacherName) {
     signaturesList.push({ title: "Class Teacher", name: data.classTeacherName });
@@ -547,17 +570,18 @@ function drawSignatures(
   });
 
   const sigWidth = (pageWidth - 30) / signaturesList.length;
+  const textColor = colors.text;
 
   signaturesList.forEach((sig, index) => {
     const xPos = 15 + index * sigWidth + sigWidth / 2;
 
     // Signature line
-    pdf.setDrawColor(colors.text[0] as any, colors.text[1] as any, colors.text[2] as any);
+    pdf.setDrawColor(textColor[0], textColor[1], textColor[2]);
     pdf.setLineWidth(0.5);
     pdf.line(xPos - 25, yPos + 15, xPos + 25, yPos + 15);
 
     // Title
-    pdf.setTextColor(colors.text[0] as any, colors.text[1] as any, colors.text[2] as any);
+    pdf.setTextColor(textColor[0], textColor[1], textColor[2]);
     pdf.setFontSize(8);
     pdf.setFont("helvetica", "normal");
     pdf.text(sig.title, xPos, yPos + 10, { align: "center" });

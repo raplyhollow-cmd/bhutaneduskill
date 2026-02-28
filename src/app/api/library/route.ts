@@ -4,65 +4,88 @@
  * Handles book catalog, borrowing, and circulation operations
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { books, circulation, users } from "@/lib/db/schema";
 import { eq, and, desc, or, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 // GET - Fetch books and circulation records
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['student', 'teacher', 'admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId, user } = authResult;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId, user } = auth;
 
     const url = new URL(request.url);
     const action = url.searchParams.get("action"); // books, my-borrows, search
 
     if (action === "my-borrows") {
       // Get user's borrowed books
-      const borrowedBooks = await db.query.circulation.findMany({
-        where: and(
-          eq(circulation.borrowerId, user.id),
-          eq(circulation.status, "borrowed")
-        ),
-        with: {
-          book: true,
-        },
-        orderBy: [desc(circulation.borrowDate)],
-      });
+      const borrowedBooks = await db
+        .select({
+          id: circulation.id,
+          bookId: circulation.bookId,
+          borrowerId: circulation.borrowerId,
+          borrowDate: circulation.borrowDate,
+          dueDate: circulation.dueDate,
+          returnDate: circulation.returnDate,
+          status: circulation.status,
+          fine: circulation.fine,
+          finePaid: circulation.finePaid,
+          renewals: circulation.renewals,
+          maxRenewals: circulation.maxRenewals,
+          book: {
+            id: books.id,
+            title: books.title,
+            author: books.author,
+            isbn: books.isbn,
+            category: books.category,
+            coverImage: books.coverImage,
+          },
+        })
+        .from(circulation)
+        .leftJoin(books, eq(circulation.bookId, books.id))
+        .where(
+          and(
+            eq(circulation.borrowerId, user.id),
+            eq(circulation.status, "borrowed")
+          )
+        )
+        .orderBy(desc(circulation.borrowDate));
 
-      return NextResponse.json({
-        borrowedBooks,
+      return {
+        borrowedBooks: borrowedBooks.map(row => ({
+          ...row,
+          book: row.book || null,
+        })),
         user: {
           id: user.id,
           type: user.type,
         },
-      });
+      };
     }
 
     if (action === "search") {
       const query = url.searchParams.get("q");
       if (!query) {
-        return NextResponse.json({ books: [] });
+        return { books: [] };
       }
 
       // Search books by title, author, or ISBN
-      const searchResults = await db.query.books.findMany({
-        where: and(
-          eq(books.schoolId, user.schoolId || ""),
-          or(
-            eq(books.status, "available"),
-            eq(books.status, "borrowed")
+      const searchResults = await db
+        .select()
+        .from(books)
+        .where(
+          and(
+            eq(books.schoolId, user.schoolId || ""),
+            or(
+              eq(books.status, "available"),
+              eq(books.status, "borrowed")
+            )
           )
-        ),
-        limit: 20,
-      });
+        )
+        .limit(20);
 
       // Filter by search term in application
       const filteredBooks = searchResults.filter(book =>
@@ -70,74 +93,92 @@ export async function GET(request: NextRequest) {
         book.isbn?.toLowerCase().includes(query.toLowerCase())
       );
 
-      return NextResponse.json({ books: filteredBooks });
+      return { books: filteredBooks };
     }
 
     // Default: Get all books for the school
-    const allBooks = await db.query.books.findMany({
-      where: and(
-        eq(books.schoolId, user.schoolId || ""),
-        sql`${books.isActive} = 1`
-      ),
-      limit: 50,
-      orderBy: [desc(books.createdAt)],
-    });
+    const allBooks = await db
+      .select()
+      .from(books)
+      .where(
+        and(
+          eq(books.schoolId, user.schoolId || ""),
+          sql`${books.isActive} = true`
+        )
+      )
+      .limit(50)
+      .orderBy(desc(books.createdAt));
 
     // Get user's current borrows
-    const myBorrows = await db.query.circulation.findMany({
-      where: and(
-        eq(circulation.borrowerId, user.id),
-        eq(circulation.status, "borrowed")
-      ),
-      with: {
-        book: true,
-      },
-    });
+    const myBorrows = await db
+      .select({
+        id: circulation.id,
+        bookId: circulation.bookId,
+        borrowerId: circulation.borrowerId,
+        borrowDate: circulation.borrowDate,
+        dueDate: circulation.dueDate,
+        returnDate: circulation.returnDate,
+        status: circulation.status,
+        fine: circulation.fine,
+        finePaid: circulation.finePaid,
+        renewals: circulation.renewals,
+        maxRenewals: circulation.maxRenewals,
+        book: {
+          id: books.id,
+          title: books.title,
+          author: books.author,
+          isbn: books.isbn,
+          category: books.category,
+          coverImage: books.coverImage,
+        },
+      })
+      .from(circulation)
+      .leftJoin(books, eq(circulation.bookId, books.id))
+      .where(
+        and(
+          eq(circulation.borrowerId, user.id),
+          eq(circulation.status, "borrowed")
+        )
+      );
 
-    return NextResponse.json({
+    return {
       books: allBooks,
-      myBorrows,
+      myBorrows: myBorrows.map(row => ({
+        ...row,
+        book: row.book || null,
+      })),
       user: {
         id: user.id,
         type: user.type,
       },
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/library", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch library data" },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ['student', 'teacher', 'admin', 'school-admin']
+);
 
 // POST - Borrow a book
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['student', 'teacher']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId, user } = authResult;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId, user } = auth;
 
     const body = await request.json();
     const { action, bookId, borrowDays } = body;
 
     if (action === "borrow") {
       // Check if book is available
-      const book = await db.query.books.findFirst({
-        where: eq(books.id, bookId),
-      });
+      const book = await db
+        .select()
+        .from(books)
+        .where(eq(books.id, bookId))
+        .limit(1)
+        .then(rows => rows[0] || null);
 
       if (!book) {
-        return NextResponse.json({ error: "Book not found" }, { status: 404 });
+        return { error: "Book not found", status: 404 };
       }
 
       if (book.status !== "available") {
-        return NextResponse.json(
-          { error: "Book is not available for borrowing" },
-          { status: 400 }
-        );
+        return { error: "Book is not available for borrowing", status: 400 };
       }
 
       // Calculate due date
@@ -146,7 +187,7 @@ export async function POST(request: NextRequest) {
       dueDate.setDate(dueDate.getDate() + (borrowDays || 14));
 
       // Create circulation record
-      const [circulationRecord] = await db.insert(circulation).values({
+      const circulationRecord = await db.insert(circulation).values({
         id: nanoid(),
         bookId: bookId,
         studentId: user.id,
@@ -164,45 +205,41 @@ export async function POST(request: NextRequest) {
       // Update book status
       await db.update(books).set({ status: "borrowed" }).where(eq(books.id, bookId));
 
-      return NextResponse.json({
-        success: true,
-        circulation: circulationRecord[0] || circulationRecord,
-      });
+      return {
+        circulation: circulationRecord,
+      };
     }
 
-    return NextResponse.json({
+    return {
       error: "Invalid action",
       details: "Valid actions: borrow",
-    }, { status: 400 });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/library", method: "POST" });
-    return NextResponse.json({ error: "Failed to process request" }, { status: 500 });
-  }
-}
+    };
+  },
+  ['student', 'teacher']
+);
 
 // PUT - Return or renew a book
-export async function PUT(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['student', 'teacher']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId, user } = authResult;
+export const PUT = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId, user } = auth;
 
     const body = await request.json();
     const { circulationId, action, newBookId } = body;
 
     if (action === "return") {
-      const circulationRecord = await db.query.circulation.findFirst({
-        where: eq(circulation.id, circulationId),
-      });
+      const circulationRecord = await db
+        .select()
+        .from(circulation)
+        .where(eq(circulation.id, circulationId))
+        .limit(1)
+        .then(rows => rows[0] || null);
 
       if (!circulationRecord || circulationRecord.borrowerId !== user.id) {
-        return NextResponse.json({ error: "Circulation not found" }, { status: 404 });
+        return { error: "Circulation not found", status: 404 };
       }
 
       if (circulationRecord.status !== "borrowed") {
-        return NextResponse.json({ error: "Book not borrowed" }, { status: 400 });
+        return { error: "Book not borrowed", status: 400 };
       }
 
       const returnDate = new Date();
@@ -215,43 +252,37 @@ export async function PUT(request: NextRequest) {
         .where(eq(circulation.id, circulationId));
 
       // Get the updated record
-      const returnedRecord = await db.query.circulation.findFirst({
-        where: eq(circulation.id, circulationId),
-      });
+      const returnedRecord = await db
+        .select()
+        .from(circulation)
+        .where(eq(circulation.id, circulationId))
+        .limit(1)
+        .then(rows => rows[0] || null);
 
       // Update book status back to available
-      await db.update(books).set({ status: "available" }).where(eq(books.id, returnedRecord?.bookId || circulationRecord.bookId));
+      await db.update(books).set({ status: "available" }).where(eq(books.id, returnedRecord?.bookId || (circulationRecord as { bookId?: string })?.bookId || ""));
 
-      return NextResponse.json({ success: true, circulation: returnedRecord });
+      return { circulation: returnedRecord };
     }
 
-    return NextResponse.json({ error: "Invalid action" }, { status: 400 });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/library", method: "PUT" });
-    return NextResponse.json({ error: "Failed to process request" }, { status: 500 });
-  }
-}
+    return { error: "Invalid action", status: 400 };
+  },
+  ['student', 'teacher']
+);
 
 // DELETE - Remove book record (admin only)
-export async function DELETE(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
+export const DELETE = createApiRoute(
+  async (request: NextRequest, auth) => {
     const url = new URL(request.url);
     const id = url.searchParams.get("id");
 
     if (!id) {
-      return NextResponse.json({ error: "Book ID is required" }, { status: 400 });
+      return { error: "Book ID is required", status: 400 };
     }
 
     await db.delete(books).where(eq(books.id, id));
 
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/library", method: "DELETE" });
-    return NextResponse.json({ error: "Failed to delete book" }, { status: 500 });
-  }
-}
+    return { success: true };
+  },
+  ['admin', 'school-admin']
+);

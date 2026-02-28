@@ -134,12 +134,12 @@ function ExpressAddDemo() {
     // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 1000))
     // Add to our local list (in real app, this would be an API call)
-    return { success: true }
+    return { success: true, error: undefined as string | undefined }
   }
 
   const handleAddTeacher = async (name: string) => {
     await new Promise((resolve) => setTimeout(resolve, 800))
-    return { success: true }
+    return { success: true, error: undefined as string | undefined }
   }
 
   return (
@@ -251,6 +251,7 @@ function InPlaceEditorDemo() {
                 placeholder="Student bio"
                 rows={3}
                 maxLength={200}
+                multiline
               />
             </div>
           </div>

@@ -67,7 +67,7 @@ const CONCERN_CATEGORIES = [
 export default function WellnessCompassPage() {
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
-  const [students, setStudents] = useState<any[]>([]);
+  const [students, setStudents] = useState<Array<{ id: string; name: string; firstName?: string; lastName?: string; classGrade?: number }>>([]);
   const [showMinistryPreview, setShowMinistryPreview] = useState(false);
 
   // Form state
@@ -93,9 +93,11 @@ export default function WellnessCompassPage() {
 
   async function fetchStudents() {
     try {
-      // In a real app, fetch from API
-      // For now, use mock data or empty
-      setStudents([]);
+      const response = await fetch('/api/counselor/students');
+      if (response.ok) {
+        const data = await response.json();
+        setStudents(data.data.students || []);
+      }
     } catch (error) {
       console.error("Error fetching students:", error);
     }

@@ -35,29 +35,47 @@ export const GET = createApiRoute(
 
     const { userId } = auth;
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: { schoolId: true, type: true },
-    });
+    const currentUserResult = await db
+      .select({ schoolId: users.schoolId, type: users.type })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    const currentUser = currentUserResult[0];
 
     const { searchParams } = new URL(request.url);
     const classId = searchParams.get("classId");
 
-    let fetchedAnnouncements = await db.query.announcements.findMany({
-      where: and(
-        eq(announcements.schoolId, currentUser?.schoolId || ""),
-        sql`${announcements.isPublished} = 1`
-      ),
-      with: {
-        createdBy: {
-          columns: { id: true, firstName: true, lastName: true },
-        },
-        class: {
-          columns: { id: true, name: true },
-        },
-      },
-      orderBy: [desc(announcements.isPinned), desc(announcements.createdAt)],
-    });
+    let fetchedAnnouncements = await db
+      .select({
+        id: announcements.id,
+        title: announcements.title,
+        content: announcements.content,
+        targetAudience: announcements.targetAudience,
+        classId: announcements.classId,
+        schoolId: announcements.schoolId,
+        priority: announcements.priority,
+        isPinned: announcements.isPinned,
+        isPublished: announcements.isPublished,
+        createdAt: announcements.createdAt,
+        updatedAt: announcements.updatedAt,
+        authorId: announcements.authorId,
+        authorName: announcements.authorName,
+        creatorId: users.id,
+        creatorFirstName: users.firstName,
+        creatorLastName: users.lastName,
+        classIdRef: classes.id,
+        className: classes.name,
+      })
+      .from(announcements)
+      .leftJoin(users, eq(announcements.authorId, users.id))
+      .leftJoin(classes, eq(announcements.classId, classes.id))
+      .where(
+        and(
+          eq(announcements.schoolId, currentUser?.schoolId || ""),
+          sql`${announcements.isPublished} = 1`
+        )
+      )
+      .orderBy(desc(announcements.isPinned), desc(announcements.createdAt));
 
     // Filter by class if specified
     if (classId) {
@@ -79,10 +97,18 @@ export const POST = createApiRoute(
 
     const { userId, user } = auth;
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: { id: true, type: true, schoolId: true, firstName: true, lastName: true },
-    });
+    const currentUserResult = await db
+      .select({
+        id: users.id,
+        type: users.type,
+        schoolId: users.schoolId,
+        firstName: users.firstName,
+        lastName: users.lastName,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    const currentUser = currentUserResult[0];
 
     if (!currentUser || (currentUser.type !== "teacher" && currentUser.type !== "admin")) {
       return forbiddenResponse("Only teachers and admins can create announcements");
@@ -91,23 +117,36 @@ export const POST = createApiRoute(
     const input: CreateAnnouncementInput = await request.json();
     const { title, content, targetAudience, classId, priority, isPinned, scheduledFor } = input;
 
+    const now = new Date();
+
     // Create announcement
     const [newAnnouncement] = await db.insert(announcements).values({
-      ...({
-        title,
-        authorId: currentUser.id,
-        authorName: `${currentUser.firstName} ${currentUser.lastName || ""}`.trim(),
-      }),
+      id: `announcement-${Date.now()}`,
+      title,
       content,
+      excerpt: content.substring(0, 200),
       targetAudience,
       classId: classId || null,
       schoolId: currentUser.schoolId,
-      priority: priority === "high" ? 3 : priority === "medium" ? 2 : 1,
-      isPinned: isPinned ? 1 : 0,
-      isPublished: isPinned ? 1 : 0,
-      createdAt: Math.floor(Date.now() / 1000),
-      updatedAt: Math.floor(Date.now() / 1000),
-    } as any).returning();
+      priority: priority === "high" ? "high" : priority === "medium" ? "normal" : "low",
+      isPinned: isPinned || false,
+      isPublished: isPinned || false,
+      targetGradeLevel: "",
+      targetClassIds: null,
+      targetUserIds: null,
+      category: "general",
+      publishDate: scheduledFor ? scheduledFor.toISOString() : now.toISOString(),
+      expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days
+      authorId: currentUser.id,
+      authorName: `${currentUser.firstName} ${currentUser.lastName || ""}`.trim(),
+      authorRole: currentUser.type,
+      publishedAt: now,
+      viewCount: 0,
+      isArchived: false,
+      attachments: [],
+      createdAt: now,
+      updatedAt: now,
+    }).returning();
 
     // Revalidate cache
     revalidatePath("/dashboard");
@@ -134,21 +173,26 @@ export const DELETE = createApiRoute(
       return badRequestResponse("Announcement ID required");
     }
 
-    const announcement = await db.query.announcements.findFirst({
-      where: eq(announcements.id, announcementId),
-    });
+    const announcementResult = await db
+      .select()
+      .from(announcements)
+      .where(eq(announcements.id, announcementId))
+      .limit(1);
+    const announcement = announcementResult[0];
 
     if (!announcement) {
       return notFoundResponse("Announcement");
     }
 
     // Check ownership
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: { id: true, type: true },
-    });
+    const currentUserResult = await db
+      .select({ id: users.id, type: users.type })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    const currentUser = currentUserResult[0];
 
-    if ((announcement as any).authorId !== currentUser.id && currentUser.type !== "admin") {
+    if ((announcement as { authorId?: string })?.authorId !== currentUser.id && currentUser.type !== "admin") {
       return forbiddenResponse("You can only delete your own announcements");
     }
 

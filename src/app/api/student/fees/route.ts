@@ -1,41 +1,36 @@
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { studentFees, users, feePayments, feeStructures } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 // GET /api/student/fees - Get own fee details
-export async function GET(request: NextRequest) {
-  const authResult = await requireAuth(['student', 'parent', 'admin']);
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user: currentUser } = auth;
 
-  const { user: currentUser } = authResult;
-
-  try {
-    const fees = await db.query.studentFees.findMany({
-      where: eq(studentFees.studentId, currentUser.id),
-      with: {
-        structure: true,
-      },
-      orderBy: [desc(studentFees.createdAt)],
-    });
+    // Get fees using db.select (neon-http compatible)
+    const fees = await db
+      .select()
+      .from(studentFees)
+      .where(eq(studentFees.studentId, currentUser.id))
+      .orderBy(desc(studentFees.createdAt));
 
     // Calculate total outstanding
     const totalOutstanding = fees.reduce((sum, fee) => sum + (fee.amountPending || 0), 0);
     const totalPaid = fees.reduce((sum, fee) => sum + (fee.amountPaid || 0), 0);
 
-    // Get recent payments
+    // Get recent payments using db.select (neon-http compatible)
     const studentFeeIds = fees.map(f => f.id);
-    const payments = studentFeeIds.length > 0 ? await db.query.feePayments.findMany({
-      where: eq(feePayments.studentFeeId, studentFeeIds[0]), // Note: This needs to be updated for multiple fee IDs
-      orderBy: [desc(feePayments.collectedAt)],
-      limit: 10,
-    }) : [];
+    const payments = studentFeeIds.length > 0 ? await db
+      .select()
+      .from(feePayments)
+      .where(eq(feePayments.studentFeeId, studentFeeIds[0])) // Note: This needs to be updated for multiple fee IDs
+      .orderBy(desc(feePayments.collectedAt))
+      .limit(10) : [];
 
-    return NextResponse.json({
+    return {
       fees,
       summary: {
         totalOutstanding,
@@ -43,9 +38,7 @@ export async function GET(request: NextRequest) {
         pendingFees: fees.filter(f => f.status === "pending" || f.status === "partial").length,
       },
       recentPayments: payments,
-    });
-  } catch (error) {
-    logger.error("Student fees fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch fees" }, { status: 500 });
-  }
-}
+    };
+  },
+  ['student', 'parent', 'admin']
+);

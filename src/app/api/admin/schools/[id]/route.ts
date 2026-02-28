@@ -6,7 +6,7 @@
  * PATCH /api/admin/schools/[id] - Update school
  */
 
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { schools, users, districts } from "@/lib/db/schema";
@@ -16,20 +16,9 @@ import { NextResponse } from "next/server";
 /**
  * GET - Fetch school details with users
  */
-export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { success: false, error: authResult.error },
-        { status: authResult.status === 401 ? 401 : 403 }
-      );
-    }
-
-    const { id } = await params;
+export const GET = createApiRoute(
+  async (req: Request, auth, { params }: { params?: Promise<{ id: string }> }) => {
+    const { id } = await params!;
 
     // Fetch school with district info
     const schoolResult = await db
@@ -78,10 +67,7 @@ export async function GET(
       .limit(1);
 
     if (schoolResult.length === 0) {
-      return NextResponse.json(
-        { success: false, error: "School not found" },
-        { status: 404 }
-      );
+      return { error: "School not found", status: 404 };
     }
 
     const school = schoolResult[0];
@@ -116,8 +102,7 @@ export async function GET(
       .orderBy(desc(users.createdAt))
       .limit(10);
 
-    const response = {
-      success: true,
+    return {
       data: {
         ...school,
         stats: {
@@ -128,35 +113,17 @@ export async function GET(
         users: schoolUsers,
       },
     };
-
-    return NextResponse.json(response.data);
-  } catch (error) {
-    logger.error("Failed to fetch school details:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch school details" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ["admin"]
+);
 
 /**
  * DELETE - Delete a school
  */
-export async function DELETE(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { success: false, error: authResult.error },
-        { status: authResult.status === 401 ? 401 : 403 }
-      );
-    }
-
-    const { userId } = authResult;
-    const { id } = await params;
+export const DELETE = createApiRoute(
+  async (req: Request, auth, { params }: { params?: Promise<{ id: string }> }) => {
+    const { userId } = auth;
+    const { id } = await params!;
 
     // Check if school exists
     const school = await db
@@ -166,10 +133,7 @@ export async function DELETE(
       .limit(1);
 
     if (school.length === 0) {
-      return NextResponse.json(
-        { success: false, error: "School not found" },
-        { status: 404 }
-      );
+      return { error: "School not found", status: 404 };
     }
 
     // Check if school has users
@@ -179,13 +143,10 @@ export async function DELETE(
       .where(eq(users.schoolId, id));
 
     if ((userCount[0]?.count || 0) > 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Cannot delete school with associated users. Please reassign or delete users first.",
-        },
-        { status: 400 }
-      );
+      return {
+        error: "Cannot delete school with associated users. Please reassign or delete users first.",
+        status: 400,
+      };
     }
 
     // Delete the school
@@ -193,34 +154,18 @@ export async function DELETE(
 
     logger.info("School deleted", { schoolId: id, deletedBy: userId });
 
-    return NextResponse.json({ success: true, message: "School deleted successfully" });
-  } catch (error) {
-    logger.error("Failed to delete school:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to delete school" },
-      { status: 500 }
-    );
-  }
-}
+    return { success: true, message: "School deleted successfully" };
+  },
+  ["admin"]
+);
 
 /**
  * PATCH - Update school
  */
-export async function PATCH(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { success: false, error: authResult.error },
-        { status: authResult.status === 401 ? 401 : 403 }
-      );
-    }
-
-    const { userId } = authResult;
-    const { id } = await params;
+export const PATCH = createApiRoute(
+  async (req: Request, auth, { params }: { params?: Promise<{ id: string }> }) => {
+    const { userId } = auth;
+    const { id } = await params!;
     const body = await req.json();
 
     // Check if school exists
@@ -231,10 +176,7 @@ export async function PATCH(
       .limit(1);
 
     if (school.length === 0) {
-      return NextResponse.json(
-        { success: false, error: "School not found" },
-        { status: 404 }
-      );
+      return { error: "School not found", status: 404 };
     }
 
     // Update allowed fields only
@@ -251,7 +193,7 @@ export async function PATCH(
       "isActive",
     ];
 
-    const updateData: Record<string, any> = {};
+    const updateData: Record<string, unknown> = {};
     for (const field of allowedFields) {
       if (field in body) {
         updateData[field] = body[field];
@@ -259,10 +201,7 @@ export async function PATCH(
     }
 
     if (Object.keys(updateData).length === 0) {
-      return NextResponse.json(
-        { success: false, error: "No valid fields to update" },
-        { status: 400 }
-      );
+      return { error: "No valid fields to update", status: 400 };
     }
 
     updateData.updatedAt = new Date();
@@ -274,12 +213,7 @@ export async function PATCH(
 
     logger.info("School updated", { schoolId: id, updatedBy: userId });
 
-    return NextResponse.json({ success: true, message: "School updated successfully" });
-  } catch (error) {
-    logger.error("Failed to update school:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to update school" },
-      { status: 500 }
-    );
-  }
-}
+    return { success: true, message: "School updated successfully" };
+  },
+  ["admin"]
+);

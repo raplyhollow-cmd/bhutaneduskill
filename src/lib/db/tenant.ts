@@ -14,13 +14,12 @@ export async function getCurrentUser() {
     return null;
   }
 
-  const user = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, userId),
-    with: {
-      tenant: true,
-      school: true,
-    },
-  });
+  const user = await db
+    .select()
+    .from(users)
+    .where(eq(users.clerkUserId, userId))
+    .limit(1)
+    .then(rows => rows[0] || null);
 
   return user;
 }
@@ -127,8 +126,10 @@ export async function getAccessibleTenantIds(userId: string): Promise<string[]> 
 
   // Admins can see all tenants
   if (user.type === "admin") {
-    const allTenants = await db.query.tenants.findMany();
-    return allTenants.map((t) => (t as unknown as { id: string }).id);
+    const allTenants = await db
+      .select({ id: tenants.id })
+      .from(tenants);
+    return allTenants.map((t) => t.id);
   }
 
   // Others can only see their own tenant

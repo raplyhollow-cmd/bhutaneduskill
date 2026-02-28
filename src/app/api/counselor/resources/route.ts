@@ -172,7 +172,7 @@ export const GET = createApiRoute(
           downloads: r.downloadCount || 0,
           views: r.viewCount || 0,
           url: r.url || "#",
-          thumbnail: (r.content as any)?.thumbnailUrl || null,
+          thumbnail: (r.content as { thumbnailUrl?: string } | null)?.thumbnailUrl || null,
         })),
         categories,
         stats: {

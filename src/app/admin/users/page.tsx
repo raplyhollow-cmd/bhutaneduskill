@@ -208,7 +208,9 @@ export default function AdminUsersPage() {
   // Filter states
   const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
   const [roleFilter, setRoleFilter] = useState(searchParams.get("role") || "all");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "pending">(searchParams.get("status") as any || "all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "pending">(
+    (searchParams.get("status") as "all" | "active" | "inactive" | "pending") || "all"
+  );
 
   // Modal state
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -647,7 +649,7 @@ export default function AdminUsersPage() {
                 return (
                   <button
                     key={chip.value}
-                    onClick={() => setStatusFilter(chip.value as any)}
+                    onClick={() => setStatusFilter(chip.value as "all" | "active" | "inactive" | "pending")}
                     className={`
                       inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200
                       ${isActive

@@ -38,15 +38,15 @@ type Answers = Record<string, number>;
 
 type AssessmentResult = {
   riasecType: string;
-  scores: {
-    realistic: number;
-    investigative: number;
-    artistic: number;
-    social: number;
-    enterprising: number;
-    conventional: number;
-  };
-  dominantTraits: string[];
+  riasecCode?: string;
+  scores?: Record<string, number>;
+  dominantTraits?: string[];
+  realistic: number;
+  investigative: number;
+  artistic: number;
+  social: number;
+  enterprising: number;
+  conventional: number;
 };
 
 // Trait icons and descriptions for each RIASEC category
@@ -153,7 +153,7 @@ export default function AssessmentPage() {
     }
   };
 
-  const saveAssessment = async (finalAnswers: Answers, assessmentResult: AssessmentResult) => {
+  const saveAssessment = async (finalAnswers: Answers, assessmentResult: AssessmentResult & { riasecCode?: string; scores?: Record<string, number> }) => {
     setIsSaving(true);
     try {
       const response = await fetch("/api/assessments/riasec", {
@@ -162,8 +162,8 @@ export default function AssessmentPage() {
         body: JSON.stringify({
           answers: finalAnswers,
           results: assessmentResult,
-          scores: assessmentResult.scores,
-          hollandCode: assessmentResult.hollandCode,
+          scores: assessmentResult.scores || {},
+          hollandCode: assessmentResult.riasecCode || '',
         }),
       });
 
@@ -221,10 +221,18 @@ export default function AssessmentPage() {
 
     const riasecCode = sorted.map(([cat]) => cat).join("");
 
-    const assessmentResult = {
+    // Build assessment result matching the expected type
+    const assessmentResult: AssessmentResult = {
+      riasecType: riasecCode,
       riasecCode,
       scores: normalizedScores,
       dominantTraits: sorted.map(([cat]) => cat),
+      realistic: normalizedScores.R || 0,
+      investigative: normalizedScores.I || 0,
+      artistic: normalizedScores.A || 0,
+      social: normalizedScores.S || 0,
+      enterprising: normalizedScores.E || 0,
+      conventional: normalizedScores.C || 0,
     };
 
     // Save to database
@@ -289,7 +297,7 @@ export default function AssessmentPage() {
                 Based on your responses, these are your dominant personality traits
               </p>
               <div className="flex flex-wrap justify-center gap-2 mt-4">
-                {result.riasecCode.split("").map((letter: string) => (
+                {result.riasecCode?.split("").map((letter: string) => (
                   <Badge
                     key={letter}
                     className="px-4 py-2 text-sm bg-white/20 text-white border-white/30 hover:bg-white/30 transition-colors"

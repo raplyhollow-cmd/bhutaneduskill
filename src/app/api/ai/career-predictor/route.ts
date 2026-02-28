@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createApiRoute } from "@/lib/api/route-handler";
+import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
 import { chatWithGemini } from "@/lib/ai/gemini-server";
 import { CAREER_PREDICTOR_SYSTEM } from "@/lib/ai/prompts";
@@ -22,7 +23,7 @@ import type { ApiSuccess, ApiErrorResponse } from "@/types";
 // TYPES
 // ============================================================================
 
-export interface CareerPredictorRequest {
+export interface CareerPredictorRequest extends Record<string, unknown> {
   hollandCode?: string;
   mbtiType?: string;
   grades?: Record<string, number>;
@@ -54,12 +55,11 @@ export interface CareerPredictorResponse {
 // POST - Predict Career Path
 // ============================================================================
 
-export const POST = createApiRoute<CareerPredictorRequest, CareerPredictorResponse>(
-  async (request) => {
-    const auth = await requireAuth([]);
+export const POST = createApiRoute(
+  async (req, auth) => {
     const { userId } = auth;
 
-    const body = await request.json();
+    const body = await req.json();
     const requestData = body as CareerPredictorRequest;
 
     // Auto-fetch user's assessment data from database if not provided in request
@@ -74,9 +74,7 @@ export const POST = createApiRoute<CareerPredictorRequest, CareerPredictorRespon
 
     // Fetch user profile for career plan (target career)
     if (!targetCareer) {
-      const userCareerPlan = await db.query.careerPlans.findFirst({
-        where: eq(careerPlans.userId, userId),
-      });
+      const userCareerPlan = await db.select().from(careerPlans).where(eq(careerPlans.userId, userId)).limit(1).then(rows => rows[0] || null);
       if (userCareerPlan?.targetCareer) {
         targetCareer = userCareerPlan.targetCareer;
       }
@@ -84,10 +82,7 @@ export const POST = createApiRoute<CareerPredictorRequest, CareerPredictorRespon
 
     // Fetch RIASEC assessment result if not provided
     if (!hollandCode) {
-      const riasecResult = await db.query.riasecResults.findFirst({
-        where: eq(riasecResults.userId, userId),
-        orderBy: desc(riasecResults.createdAt),
-      });
+      const riasecResult = await db.select().from(riasecResults).where(eq(riasecResults.userId, userId)).orderBy(desc(riasecResults.createdAt)).limit(1).then(rows => rows[0] || null);
       if (riasecResult?.hollandCode) {
         hollandCode = riasecResult.hollandCode;
         completedAssessments++;
@@ -96,10 +91,7 @@ export const POST = createApiRoute<CareerPredictorRequest, CareerPredictorRespon
 
     // Fetch MBTI assessment result if not provided
     if (!mbtiType) {
-      const mbtiResult = await db.query.mbtiResults.findFirst({
-        where: eq(mbtiResults.userId, userId),
-        orderBy: desc(mbtiResults.createdAt),
-      });
+      const mbtiResult = await db.select().from(mbtiResults).where(eq(mbtiResults.userId, userId)).orderBy(desc(mbtiResults.createdAt)).limit(1).then(rows => rows[0] || null);
       if (mbtiResult?.personalityType) {
         mbtiType = mbtiResult.personalityType;
         completedAssessments++;
@@ -108,11 +100,7 @@ export const POST = createApiRoute<CareerPredictorRequest, CareerPredictorRespon
 
     // Fetch academic grades from exam results if not provided
     if (!grades || Object.keys(grades).length === 0) {
-      const examResults = await db.query.examResultsEnhanced.findMany({
-        where: eq(examResultsEnhanced.userId, userId),
-        orderBy: desc(examResultsEnhanced.examYear),
-        limit: 10,
-      });
+      const examResults = await db.select().from(examResultsEnhanced).where(eq(examResultsEnhanced.userId, userId)).orderBy(desc(examResultsEnhanced.examYear)).limit(10);
 
       if (examResults.length > 0) {
         grades = {} as Record<string, number>;
@@ -131,9 +119,7 @@ export const POST = createApiRoute<CareerPredictorRequest, CareerPredictorRespon
 
     // Fetch interests from user profile if not provided
     if (interests.length === 0) {
-      const userProfile = await db.query.users.findFirst({
-        where: eq(users.id, userId),
-      });
+      const userProfile = await db.select().from(users).where(eq(users.id, userId)).limit(1).then(rows => rows[0] || null);
       if (userProfile?.interests && Array.isArray(userProfile.interests)) {
         interests = userProfile.interests;
       }
@@ -485,18 +471,23 @@ function generateFallbackPrediction(data: CareerPredictorRequest): CareerPredict
 // GET - Check availability
 // ============================================================================
 
-export async function GET() {
-  return NextResponse.json({
-    available: true,
-    feature: "AI Career Path Predictor",
-    description: "ML-powered career success predictions based on your profile",
-    requiresAuth: true,
-    inputFields: [
-      "hollandCode",
-      "mbtiType",
-      "grades",
-      "interests",
-      "targetCareer",
-    ],
-  });
-}
+export const GET = createApiRoute(
+  async () => {
+    return {
+      data: {
+        available: true,
+        feature: "AI Career Path Predictor",
+        description: "ML-powered career success predictions based on your profile",
+        requiresAuth: true,
+        inputFields: [
+          "hollandCode",
+          "mbtiType",
+          "grades",
+          "interests",
+          "targetCareer",
+        ],
+      }
+    };
+  },
+  []
+);

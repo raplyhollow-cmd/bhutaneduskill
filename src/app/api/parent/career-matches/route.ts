@@ -1,10 +1,10 @@
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { careerMatches, users, careers, parents, parentToStudent } from "@/lib/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 /**
  * GET /api/parent/career-matches?childId={id}
@@ -21,24 +21,21 @@ import type { ApiSuccess, ApiErrorResponse } from "@/types";
  * - Skills and subjects needed
  * - Salary and growth outlook
  * - Bhutan-specific demand information
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
-export async function GET(request: NextRequest) {
-  const authResult = await requireAuth(["parent"]);
-  if ("error" in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
 
-  const { userId } = authResult;
-
-  try {
     const { searchParams } = new URL(request.url);
     const childId = searchParams.get("childId");
 
     if (!childId) {
-      return NextResponse.json(
-        { error: "Child ID is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return {
+        error: "Child ID is required",
+        status: 400,
+      } satisfies ApiErrorResponse;
     }
 
     // FERPA COMPLIANCE: Get parent record first
@@ -50,10 +47,10 @@ export async function GET(request: NextRequest) {
 
     if (!parentRecord) {
       logger.warn("No parent record found for user", { userId });
-      return NextResponse.json(
-        { error: "Parent record not found", status: 403 } satisfies ApiErrorResponse,
-        { status: 403 }
-      );
+      return {
+        error: "Parent record not found",
+        status: 403,
+      } satisfies ApiErrorResponse;
     }
 
     // FERPA COMPLIANCE: Verify parent-child relationship via parent_to_student join table
@@ -74,10 +71,10 @@ export async function GET(request: NextRequest) {
         childId,
         route: "/api/parent/career-matches",
       });
-      return NextResponse.json(
-        { error: "You are not authorized to view this child's data", status: 403 } satisfies ApiErrorResponse,
-        { status: 403 }
-      );
+      return {
+        error: "You are not authorized to view this child's data",
+        status: 403,
+      } satisfies ApiErrorResponse;
     }
 
     // Verify the child exists
@@ -88,10 +85,10 @@ export async function GET(request: NextRequest) {
       .limit(1);
 
     if (!childCheck) {
-      return NextResponse.json(
-        { error: "Child not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return {
+        error: "Child not found",
+        status: 404,
+      } satisfies ApiErrorResponse;
     }
 
     // Fetch career matches for the child with career details
@@ -143,14 +140,9 @@ export async function GET(request: NextRequest) {
 
     const enrichedMatches = Array.from(uniqueMatches.values());
 
-    return NextResponse.json({
+    return {
       data: { matches: enrichedMatches, total: enrichedMatches.length },
-    } satisfies ApiSuccess<{ matches: typeof enrichedMatches; total: number }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch career matches", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    } satisfies ApiSuccess<{ matches: typeof enrichedMatches; total: number }>;
+  },
+  ["parent"]
+);

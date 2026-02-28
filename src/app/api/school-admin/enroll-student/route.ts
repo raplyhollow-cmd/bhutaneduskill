@@ -1,5 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import {
   users,
@@ -12,69 +11,56 @@ import {
 import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { logger } from "@/lib/logger";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 /**
  * POST /api/school-admin/enroll-student
  * Approve a student application and create enrollment record
  */
-export async function POST(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["school_admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId: adminId } = authResult;
+export const POST = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId: adminId } = auth;
 
     const body = await req.json();
     const { applicationId, studentId, classId } = body;
 
     if (!applicationId || !studentId || !classId) {
-      return NextResponse.json(
-        { error: "Missing required fields: applicationId, studentId, classId" },
-        { status: 400 }
-      );
+      return { error: "Missing required fields: applicationId, studentId, classId", status: 400 };
     }
 
     // Verify the application belongs to the admin's school
-    const admin = await db.query.users.findFirst({
-      where: eq(users.id, adminId),
-      columns: {
-        schoolId: true,
-        firstName: true,
-        lastName: true,
-      },
-    });
+    const [admin] = await db.select({
+      id: users.id,
+      schoolId: users.schoolId,
+      firstName: users.firstName,
+      lastName: users.lastName,
+    }).from(users).where(eq(users.id, adminId)).limit(1);
 
     if (!admin?.schoolId) {
-      return NextResponse.json({ error: "Admin school not found" }, { status: 404 });
+      return { error: "Admin school not found", status: 404 };
     }
 
     // Get the application
-    const application = await db.query.studentApplications.findFirst({
-      where: and(
+    const [application] = await db.select().from(studentApplications).where(
+      and(
         eq(studentApplications.id, applicationId),
         eq(studentApplications.schoolId, admin.schoolId)
-      ),
-    });
+      )
+    ).limit(1);
 
     if (!application) {
-      return NextResponse.json({ error: "Application not found" }, { status: 404 });
+      return { error: "Application not found", status: 404 };
     }
 
     if (application.status !== "pending") {
-      return NextResponse.json(
-        { error: `Application already ${application.status}` },
-        { status: 400 }
-      );
+      return { error: `Application already ${application.status}`, status: 400 };
     }
 
     // Verify the class exists and belongs to the school
-    const targetClass = await db.query.classes.findFirst({
-      where: eq(classes.id, classId),
-    });
+    const [targetClass] = await db.select().from(classes).where(eq(classes.id, classId)).limit(1);
 
-    if (!targetClass || targetClass.schoolId !== admin.schoolId) {
-      return NextResponse.json({ error: "Class not found" }, { status: 404 });
+    if (!targetClass || ("schoolId" in targetClass && targetClass.schoolId !== admin.schoolId)) {
+      return { error: "Class not found", status: 404 };
     }
 
     // Create enrollment record
@@ -123,16 +109,14 @@ export async function POST(req: NextRequest) {
       adminId,
     });
 
-    return NextResponse.json({
+    return {
       success: true,
       enrollmentId,
       message: "Student enrolled successfully",
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/enroll-student", method: "POST" });
-    return NextResponse.json({ error: "Failed to enroll student" }, { status: 500 });
-  }
-}
+    };
+  },
+  ["school-admin"]
+);
 
 /**
  * Notify student about successful enrollment
@@ -159,7 +143,7 @@ async function notifyStudentAboutEnrollment(
       status: "sent",
       senderId: schoolId,
       senderName: "School Administration",
-      senderRole: "school_admin",
+      senderRole: "school-admin",
       actionUrl: "/student/dashboard",
       actionLabel: "Go to Dashboard",
       sentAt: now,

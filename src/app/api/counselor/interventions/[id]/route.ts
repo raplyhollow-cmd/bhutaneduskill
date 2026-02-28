@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { users, studentInterventions, interventionNotes } from "@/lib/db/schema";
@@ -36,21 +36,10 @@ interface AddNoteBody {
 // GET - Get single intervention by ID
 // ============================================================================
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(["counselor", "admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } ,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId, user } = authResult;
-    const { id } = await params;
+export const GET = createApiRoute<{ id: string }>(
+  async (req, auth, context) => {
+    const { userId, user } = auth;
+    const { id } = await (context?.params || {});
 
     // Get intervention with student and school info
     const interventionData = await db
@@ -71,20 +60,14 @@ export async function GET(
       .limit(1);
 
     if (interventionData.length === 0) {
-      return NextResponse.json(
-        { error: "Intervention not found", status: 404 } ,
-        { status: 404 }
-      );
+      return { error: "Intervention not found", status: 404 };
     }
 
     const { intervention, student } = interventionData[0];
 
     // Check permission - counselors can only see their own interventions
     if (user.type === "counselor" && intervention.counselorId !== userId) {
-      return NextResponse.json(
-        { error: "You don't have permission to view this intervention", status: 403 } ,
-        { status: 403 }
-      );
+      return { error: "You don't have permission to view this intervention", status: 403 };
     }
 
     // Get progress notes for this intervention
@@ -98,9 +81,9 @@ export async function GET(
 
     logger.info("Retrieved intervention details", { interventionId: id, userId });
 
-    return NextResponse.json({
-      success: true,
+    return {
       data: {
+        success: true,
         intervention: {
           ...intervention,
           studentName,
@@ -108,36 +91,20 @@ export async function GET(
           progressNotes: notesData,
         },
       },
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/counselor/interventions/[id]", method: "GET" });
-    return NextResponse.json(
-      { success: false, error: "Failed to retrieve intervention", status: 500 },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["counselor", "admin"]
+);
 
 // ============================================================================
 // PATCH - Update intervention (progress, status, goals, outcome)
 // ============================================================================
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(["counselor", "admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } ,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId, user } = authResult;
-    const { id } = await params;
-    const body: UpdateInterventionBody = await request.json();
+export const PATCH = createApiRoute<{ id: string }>(
+  async (req, auth, context) => {
+    const { userId, user } = auth;
+    const { id } = await (context?.params || {});
+    const body: UpdateInterventionBody = await req.json();
 
     // Check if intervention exists and user has permission
     const existingIntervention = await db
@@ -147,17 +114,11 @@ export async function PATCH(
       .limit(1);
 
     if (existingIntervention.length === 0) {
-      return NextResponse.json(
-        { error: "Intervention not found", status: 404 } ,
-        { status: 404 }
-      );
+      return { error: "Intervention not found", status: 404 };
     }
 
     if (user.type === "counselor" && existingIntervention[0].counselorId !== userId) {
-      return NextResponse.json(
-        { error: "You don't have permission to update this intervention", status: 403 } ,
-        { status: 403 }
-      );
+      return { error: "You don't have permission to update this intervention", status: 403 };
     }
 
     // Prepare update values
@@ -198,38 +159,21 @@ export async function PATCH(
 
     logger.info("Updated intervention", { interventionId: id, userId, updates: Object.keys(body) });
 
-    return NextResponse.json({
-      success: true,
-      data: { intervention: updatedIntervention },
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/counselor/interventions/[id]", method: "PATCH" });
-    return NextResponse.json(
-      { success: false, error: "Failed to update intervention", status: 500 },
-      { status: 500 }
-    );
-  }
-}
+    return {
+      data: { success: true, intervention: updatedIntervention },
+    };
+  },
+  ["counselor", "admin"]
+);
 
 // ============================================================================
 // DELETE - Delete intervention
 // ============================================================================
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(["counselor", "admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } ,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId, user } = authResult;
-    const { id } = await params;
+export const DELETE = createApiRoute<{ id: string }>(
+  async (req, auth, context) => {
+    const { userId, user } = auth;
+    const { id } = await (context?.params || {});
 
     // Check if intervention exists and user has permission
     const existingIntervention = await db
@@ -239,17 +183,11 @@ export async function DELETE(
       .limit(1);
 
     if (existingIntervention.length === 0) {
-      return NextResponse.json(
-        { error: "Intervention not found", status: 404 } ,
-        { status: 404 }
-      );
+      return { error: "Intervention not found", status: 404 };
     }
 
     if (user.type === "counselor" && existingIntervention[0].counselorId !== userId) {
-      return NextResponse.json(
-        { error: "You don't have permission to delete this intervention", status: 403 } ,
-        { status: 403 }
-      );
+      return { error: "You don't have permission to delete this intervention", status: 403 };
     }
 
     // Delete intervention (cascade will delete associated notes)
@@ -257,45 +195,25 @@ export async function DELETE(
 
     logger.info("Deleted intervention", { interventionId: id, userId });
 
-    return NextResponse.json({
-      success: true,
-      data: { message: "Intervention deleted successfully" },
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/counselor/interventions/[id]", method: "DELETE" });
-    return NextResponse.json(
-      { success: false, error: "Failed to delete intervention", status: 500 },
-      { status: 500 }
-    );
-  }
-}
+    return {
+      data: { success: true, message: "Intervention deleted successfully" },
+    };
+  },
+  ["counselor", "admin"]
+);
 
 // ============================================================================
 // POST - Add progress note to intervention
 // ============================================================================
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(["counselor", "admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } ,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId, user } = authResult;
-    const { id } = await params;
-    const body: AddNoteBody = await request.json();
+export const POST = createApiRoute<{ id: string }>(
+  async (req, auth, context) => {
+    const { userId, user } = auth;
+    const { id } = await (context?.params || {});
+    const body: AddNoteBody = await req.json();
 
     if (!body.content || body.content.trim() === "") {
-      return NextResponse.json(
-        { error: "Note content is required", status: 400 } ,
-        { status: 400 }
-      );
+      return { error: "Note content is required", status: 400 };
     }
 
     // Check if intervention exists and user has permission
@@ -306,17 +224,11 @@ export async function POST(
       .limit(1);
 
     if (existingIntervention.length === 0) {
-      return NextResponse.json(
-        { error: "Intervention not found", status: 404 } ,
-        { status: 404 }
-      );
+      return { error: "Intervention not found", status: 404 };
     }
 
     if (user.type === "counselor" && existingIntervention[0].counselorId !== userId) {
-      return NextResponse.json(
-        { error: "You don't have permission to add notes to this intervention", status: 403 } ,
-        { status: 403 }
-      );
+      return { error: "You don't have permission to add notes to this intervention", status: 403 };
     }
 
     // Create progress note
@@ -372,18 +284,13 @@ export async function POST(
 
     logger.info("Added progress note to intervention", { interventionId: id, noteId, userId });
 
-    return NextResponse.json({
-      success: true,
+    return {
       data: {
+        success: true,
         note: newNote,
         intervention,
       },
-    }, { status: 201 });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/counselor/interventions/[id]", method: "POST" });
-    return NextResponse.json(
-      { success: false, error: "Failed to add note", status: 500 },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["counselor", "admin"]
+);

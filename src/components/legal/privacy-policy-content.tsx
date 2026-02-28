@@ -9,13 +9,14 @@ import { Shield, Eye, Lock, Database, UserX, Mail, Cookie, Globe, Users, AlertCi
 
 interface PolicySectionProps {
   title: string;
-  icon: React.ElementType;
+  icon: React.ElementType<React.SVGProps<SVGSVGElement>>;
+  id?: string;
   children: React.ReactNode;
 }
 
-function PolicySection({ title, icon: Icon, children }: PolicySectionProps) {
+function PolicySection({ title, icon: Icon, id, children }: PolicySectionProps) {
   return (
-    <section className="mb-8">
+    <section className="mb-8" id={id}>
       <div className="flex items-center gap-3 mb-4">
         <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30">
           <Icon className="w-5 h-5 text-orange-600 dark:text-orange-400" strokeWidth={2} />

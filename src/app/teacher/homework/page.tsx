@@ -53,7 +53,7 @@ export default function TeacherHomeworkPage() {
   };
 
   // Quick add homework handler - creates basic homework
-  const handleQuickAddHomework = async (title: string) => {
+  const handleQuickAddHomework = async (title: string): Promise<{ success: true; data?: unknown } | { success: false; error: string }> => {
     try {
       const response = await fetch("/api/teacher/homework", {
         method: "POST",
@@ -72,8 +72,8 @@ export default function TeacherHomeworkPage() {
         await fetchHomework();
         return { success: true };
       } else {
-        const error = await response.json();
-        return { success: false, error: error.error || "Failed to create homework" };
+        const errorData = await response.json();
+        return { success: false, error: (errorData.error as string) || "Failed to create homework" };
       }
     } catch (error: unknown) {
       logger.error("Failed to create quick homework:", error);

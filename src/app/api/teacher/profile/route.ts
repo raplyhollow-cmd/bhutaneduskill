@@ -22,34 +22,26 @@ export const GET = createApiRoute(
     const includeStats = searchParams.get("includeStats") !== "false"; // default true
 
     // Get user record
-    const userRecord = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-    });
+    const userRecord = await db.select().from(users).where(eq(users.id, userId)).limit(1).then(r => r[0]);
 
     if (!userRecord) {
       return Response.json({ success: false, error: "Teacher profile not found" }, { status: 404 });
     }
 
     // Get teacher-specific information
-    const teacherRecord = await db.query.teachers.findFirst({
-      where: eq(teachers.userId, userId),
-    });
+    const teacherRecord = await db.select().from(teachers).where(eq(teachers.userId, userId)).limit(1).then(r => r[0]);
 
     // Get school information if user has a school
     let schoolRecord = null;
     if (userRecord.schoolId) {
-      schoolRecord = await db.query.schools.findFirst({
-        where: eq(schools.id, userRecord.schoolId),
-      });
+      schoolRecord = await db.select().from(schools).where(eq(schools.id, userRecord.schoolId)).limit(1).then(r => r[0]);
     }
 
     // Get department information if teacher has a department
     let departmentRecord = null;
     if (teacherRecord?.department) {
       // Try to find department by name (since teachers table stores department name)
-      departmentRecord = await db.query.departments.findFirst({
-        where: eq(departments.name, teacherRecord.department),
-      });
+      departmentRecord = await db.select().from(departments).where(eq(departments.name, teacherRecord.department)).limit(1).then(r => r[0]);
     }
 
     // Parse subjects from JSON string if available
@@ -130,7 +122,7 @@ export const GET = createApiRoute(
       subjects: subjectsList,
 
       // Employment details
-      joiningDate: teacherRecord?.joiningDate || null,
+      joiningDate: teacherRecord?.joiningDate ? String(teacherRecord.joiningDate) : null,
       status: teacherRecord?.status || "active",
 
       // School info
@@ -153,9 +145,7 @@ export const GET = createApiRoute(
     // Include statistics if requested
     if (includeStats) {
       // Get classes taught by this teacher
-      const teacherClasses = await db.query.classes.findMany({
-        where: eq(classes.teacherId, userId),
-      });
+      const teacherClasses = await db.select().from(classes).where(eq(classes.teacherId, userId));
 
       // Get unique subjects from class-subject assignments for this teacher
       const classIds = teacherClasses.map(c => c.id);
@@ -170,12 +160,19 @@ export const GET = createApiRoute(
 
       if (classIds.length > 0) {
         // Get all class-subject assignments for this teacher
-        const allClassSubjects = await db.query.classSubjects.findMany({
-          where: eq(classSubjects.teacherId, userId),
-          with: {
-            subject: true,
-          },
-        });
+        const allClassSubjects = await db
+          .select({
+            id: classSubjects.id,
+            classId: classSubjects.classId,
+            teacherId: classSubjects.teacherId,
+            subjectId: classSubjects.subjectId,
+            subjectName: subjects.name,
+            subjectCode: subjects.code,
+            subjectType: subjects.type,
+          })
+          .from(classSubjects)
+          .innerJoin(subjects, eq(classSubjects.subjectId, subjects.id))
+          .where(eq(classSubjects.teacherId, userId));
 
         // Build subject statistics
         const subjectMap = new Map<string, {
@@ -188,18 +185,17 @@ export const GET = createApiRoute(
         }>();
 
         for (const cs of allClassSubjects) {
-          const subjectData = cs.subject as unknown as { id: string; name: string; code: string; type: string } | undefined;
-          if (subjectData && classIds.includes(cs.classId)) {
-            const existing = subjectMap.get(subjectData.id);
+          if (classIds.includes(cs.classId)) {
+            const existing = subjectMap.get(cs.subjectId);
             if (existing) {
               existing.classCount++;
               existing.classIds.push(cs.classId);
             } else {
-              subjectMap.set(subjectData.id, {
-                id: subjectData.id,
-                name: subjectData.name,
-                code: subjectData.code,
-                type: subjectData.type,
+              subjectMap.set(cs.subjectId, {
+                id: cs.subjectId,
+                name: cs.subjectName,
+                code: cs.subjectCode,
+                type: cs.subjectType,
                 classCount: 1,
                 classIds: [cs.classId],
               });
@@ -241,7 +237,7 @@ export const GET = createApiRoute(
         classes: teacherClassesWithStudents.map(cls => ({
           id: cls.id,
           name: cls.name,
-          grade: cls.grade,
+          grade: cls.grade !== undefined ? String(cls.grade) : "",
           section: cls.section,
           studentCount: cls.studentCount,
           isActive: cls.isActive ?? true,

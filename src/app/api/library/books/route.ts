@@ -1,10 +1,13 @@
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { books, users, circulation, libraryReservations } from "@/lib/db/schema";
 import { eq, or, like, sql, desc, and } from "drizzle-orm";
 import { z } from "zod";
+import { createApiRoute } from "@/lib/api/route-handler";
+
+// Valid book statuses
+type BookStatus = "available" | "borrowed" | "reserved" | "lost";
 
 const bookSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -21,14 +24,9 @@ const bookSchema = z.object({
 });
 
 // GET /api/library/books - Get books catalog with search
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin', 'student', 'teacher', 'parent']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { user } = authResult;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user } = auth;
     const { searchParams } = new URL(request.url);
 
     const search = searchParams.get("search") || "";
@@ -64,7 +62,7 @@ export async function GET(request: NextRequest) {
 
     // Status filter
     if (status) {
-      conditions.push(eq(books.status, status as any));
+      conditions.push(eq(books.status, status as BookStatus));
     }
 
     // Only show active books
@@ -79,12 +77,13 @@ export async function GET(request: NextRequest) {
       .where(whereClause);
 
     // Get books
-    const booksList = await db.query.books.findMany({
-      where: whereClause,
-      orderBy: [desc(books.createdAt)],
-      limit,
-      offset,
-    });
+    const booksList = await db
+      .select()
+      .from(books)
+      .where(whereClause)
+      .orderBy(desc(books.createdAt))
+      .limit(limit)
+      .offset(offset);
 
     // Calculate availability for each book
     const booksWithAvailability = await Promise.all(
@@ -125,37 +124,24 @@ export async function GET(request: NextRequest) {
       .from(books)
       .where(eq(books.isActive, true));
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        books: booksWithAvailability,
-        pagination: {
-          page,
-          limit,
-          total: count,
-          totalPages: Math.ceil(count / limit),
-        },
-        categories: allCategories.map((c) => c.category),
+    return {
+      books: booksWithAvailability,
+      pagination: {
+        page,
+        limit,
+        total: count,
+        totalPages: Math.ceil(count / limit),
       },
-    });
-  } catch (error) {
-    logger.error("Books fetch error:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch books" },
-      { status: 500 }
-    );
-  }
-}
+      categories: allCategories.map((c) => c.category),
+    };
+  },
+  ['admin', 'school-admin', 'student', 'teacher', 'parent']
+);
 
 // POST /api/library/books - Add a new book (school-admin only)
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { user } = authResult;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user } = auth;
     const body = await request.json();
     const validatedData = bookSchema.parse(body);
 
@@ -182,42 +168,20 @@ export async function POST(request: NextRequest) {
 
     logger.info("Book added", { bookId, title: validatedData.title, userId: user.id });
 
-    return NextResponse.json({
-      success: true,
-      data: { book: newBook },
-    });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { success: false, error: "Validation failed", details: error.issues },
-        { status: 400 }
-      );
-    }
-    logger.error("Book creation error:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to create book" },
-      { status: 500 }
-    );
-  }
-}
+    return { book: newBook };
+  },
+  ['admin', 'school-admin']
+);
 
 // PATCH /api/library/books - Update a book (school-admin only)
-export async function PATCH(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { user } = authResult;
+export const PATCH = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user } = auth;
     const body = await request.json();
     const { id, ...updateData } = body;
 
     if (!id) {
-      return NextResponse.json(
-        { success: false, error: "Book ID is required" },
-        { status: 400 }
-      );
+      return { error: "Book ID is required", status: 400 };
     }
 
     const validatedData = bookSchema.partial().parse(updateData);
@@ -232,50 +196,25 @@ export async function PATCH(request: NextRequest) {
       .returning();
 
     if (updatedBook.length === 0) {
-      return NextResponse.json(
-        { success: false, error: "Book not found" },
-        { status: 404 }
-      );
+      return { error: "Book not found", status: 404 };
     }
 
     logger.info("Book updated", { bookId: id, userId: user.id });
 
-    return NextResponse.json({
-      success: true,
-      data: { book: updatedBook[0] },
-    });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { success: false, error: "Validation failed", details: error.issues },
-        { status: 400 }
-      );
-    }
-    logger.error("Book update error:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to update book" },
-      { status: 500 }
-    );
-  }
-}
+    return { book: updatedBook[0] };
+  },
+  ['admin', 'school-admin']
+);
 
 // DELETE /api/library/books - Delete a book (school-admin only)
-export async function DELETE(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { user } = authResult;
+export const DELETE = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user } = auth;
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
     if (!id) {
-      return NextResponse.json(
-        { success: false, error: "Book ID is required" },
-        { status: 400 }
-      );
+      return { error: "Book ID is required", status: 400 };
     }
 
     // Soft delete by setting isActive to false
@@ -289,23 +228,12 @@ export async function DELETE(request: NextRequest) {
       .returning();
 
     if (deletedBook.length === 0) {
-      return NextResponse.json(
-        { success: false, error: "Book not found" },
-        { status: 404 }
-      );
+      return { error: "Book not found", status: 404 };
     }
 
     logger.info("Book deleted", { bookId: id, userId: user.id });
 
-    return NextResponse.json({
-      success: true,
-      data: { message: "Book deleted successfully" },
-    });
-  } catch (error) {
-    logger.error("Book deletion error:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to delete book" },
-      { status: 500 }
-    );
-  }
-}
+    return { message: "Book deleted successfully" };
+  },
+  ['admin', 'school-admin']
+);

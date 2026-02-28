@@ -1,29 +1,36 @@
-import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { schools, users } from "@/lib/db/schema";
-import { desc, count, sql, eq, and } from "drizzle-orm";
-
 /**
+ * MARKETING SCHOOLS API
+ *
  * GET /api/marketing/schools - Get schools for marketing display
  *
  * Returns schools ordered by student count (most active first)
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
-export async function GET(request: NextRequest) {
-  try {
+
+import { NextRequest } from "next/server";
+import { db } from "@/lib/db";
+import { schools, users } from "@/lib/db/schema";
+import { desc, count, eq, and } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { logger } from "@/lib/logger";
+import { successResponse } from "@/lib/api/response-helpers";
+
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
     // Get schools with student counts
-    const schoolsData = await db.query.schools.findMany({
-      orderBy: [desc(schools.createdAt)],
-      limit: 8,
-      columns: {
-        id: true,
-        name: true,
-        schoolType: true,
-        level: true,
-        city: true,
-        createdAt: true
-      }
-    });
+    const schoolsData = await db
+      .select({
+        id: schools.id,
+        name: schools.name,
+        schoolType: schools.schoolType,
+        level: schools.level,
+        city: schools.city,
+        createdAt: schools.createdAt,
+      })
+      .from(schools)
+      .orderBy(desc(schools.createdAt))
+      .limit(8);
 
     // Format schools for display
     const formattedSchools = await Promise.all(
@@ -47,12 +54,7 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    return NextResponse.json({
-      schools: formattedSchools
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    // Return empty array on error instead of showing fake data
-    return NextResponse.json({ schools: [] }, { status: 200 });
-  }
-}
+    return successResponse({ schools: formattedSchools });
+  },
+  [] // Open endpoint - no auth required
+);

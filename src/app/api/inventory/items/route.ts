@@ -290,9 +290,11 @@ export const POST = createApiRoute(
     const sku = data.sku || `SKU-${Date.now()}`;
 
     // Validate category exists
-    const category = await db.query.inventoryCategories.findFirst({
-      where: eq(inventoryCategories.id, data.categoryId),
-    });
+    const [category] = await db
+      .select()
+      .from(inventoryCategories)
+      .where(eq(inventoryCategories.id, data.categoryId))
+      .limit(1);
 
     if (!category) {
       return notFoundResponse("Category");
@@ -384,9 +386,11 @@ export const PATCH = createApiRoute(
     }
 
     // Check if item exists
-    const existingItem = await db.query.inventoryItems.findFirst({
-      where: eq(inventoryItems.id, data.id),
-    });
+    const [existingItem] = await db
+      .select()
+      .from(inventoryItems)
+      .where(eq(inventoryItems.id, data.id))
+      .limit(1);
 
     if (!existingItem) {
       return notFoundResponse("Item");
@@ -477,9 +481,11 @@ export const DELETE = createApiRoute(
     }
 
     // Check if item exists
-    const existingItem = await db.query.inventoryItems.findFirst({
-      where: eq(inventoryItems.id, itemId),
-    });
+    const [existingItem] = await db
+      .select()
+      .from(inventoryItems)
+      .where(eq(inventoryItems.id, itemId))
+      .limit(1);
 
     if (!existingItem) {
       return notFoundResponse("Item");

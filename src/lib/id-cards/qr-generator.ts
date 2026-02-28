@@ -19,11 +19,22 @@ export interface QRCodeOptions {
   };
 }
 
+type BarcodeFormat = "CODE128" | "CODE39" | "EAN13" | "UPC";
+
 export interface BarcodeOptions {
-  format?: "CODE128" | "CODE39" | "EAN13" | "UPC";
+  format?: BarcodeFormat;
   width?: number;
   height?: number;
   displayValue?: boolean;
+}
+
+// Extended options interface for JsBarcode that includes text property
+interface BarcodeOptionsWithText {
+  format?: BarcodeFormat;
+  width?: number;
+  height?: number;
+  displayValue?: boolean;
+  text?: string;
 }
 
 // ============================================================================
@@ -114,13 +125,11 @@ export function generateBarcode(
   data: string,
   options: BarcodeOptions = {}
 ): string {
-  const opts = {
-    format: (options.format || "CODE128") as any,
+  const opts: JsBarcode.Options = {
+    format: (options.format || "CODE128") as BarcodeFormat,
     width: options.width || 2,
     height: options.height || 50,
     displayValue: options.displayValue !== false,
-    fontSize: 12,
-    margin: 10,
   };
 
   try {
@@ -157,18 +166,16 @@ export function generateBarcodeWithText(
   options: BarcodeOptions = {}
 ): string {
   const canvas = document.createElement("canvas");
-  const opts = {
-    format: (options.format || "CODE128") as any,
+  const opts: BarcodeOptionsWithText = {
+    format: (options.format || "CODE128") as BarcodeFormat,
     width: options.width || 2,
     height: options.height || 50,
     displayValue: true,
     text: displayText,
-    fontSize: 12,
-    margin: 10,
   };
 
   try {
-    JsBarcode(canvas, data, opts);
+    JsBarcode(canvas, data, opts as JsBarcode.Options);
     return canvas.toDataURL("image/png");
   } catch (error) {
     console.error("Failed to generate barcode with text:", error);

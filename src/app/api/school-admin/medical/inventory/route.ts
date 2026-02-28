@@ -1,24 +1,64 @@
-import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { medicineInventory, medicineTransactions } from "@/lib/db/schema";
-import { eq, and, desc, sql, Sql } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { logger } from "@/lib/logger";
 
-type DrizzleCondition = Sql<boolean> | ReturnType<typeof eq>;
+type DrizzleCondition = SQL | ReturnType<typeof eq>;
+
+interface InventorySummary {
+  totalItems: number;
+  totalValue: number;
+  lowStockItems: number;
+  expiredItems: number;
+}
+
+interface InventoryResponse {
+  inventory: unknown[];
+  summary: InventorySummary;
+}
+
+interface InventoryItemResponse {
+  item: unknown;
+}
+
+interface InventoryRequest {
+  medicineName: string;
+  genericName?: string;
+  category: string;
+  description?: string;
+  currentStock?: number;
+  minimumStock?: number;
+  maximumStock?: number;
+  unit: string;
+  unitCost?: number;
+  expiryDate?: string;
+  batchNumber?: string;
+  manufacturer?: string;
+  supplier?: string;
+  storageLocation?: string;
+  storageConditions?: string;
+  isPrescriptionRequired?: boolean;
+  notes?: string;
+}
+
+interface InventoryUpdateRequest {
+  id: string;
+  action: 'restock' | 'usage' | 'discard' | 'adjustment';
+  quantity?: number;
+  notes?: string;
+  referenceType?: string;
+  referenceId?: string;
+}
 
 /**
  * GET /api/school-admin/medical/inventory - Get medicine inventory
  */
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['school-admin', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { user } = authResult;
-    const { searchParams } = new URL(request.url);
+export const GET = createApiRoute<{}, InventoryResponse>(
+  async (req, { user }) => {
+    const { searchParams } = new URL(req.url);
 
     const category = searchParams.get('category');
     const status = searchParams.get('status');
@@ -37,13 +77,14 @@ export async function GET(request: NextRequest) {
       whereConditions.push(sql`${medicineInventory.currentStock} <= ${medicineInventory.minimumStock}`);
     }
 
-    const inventory = await db.query.medicineInventory.findMany({
-      where: whereConditions.length > 1 ? and(...whereConditions) : whereConditions[0],
-      orderBy: [desc(medicineInventory.createdAt)],
-    });
+    const inventory = await db
+      .select()
+      .from(medicineInventory)
+      .where(whereConditions.length > 1 ? sql`${whereConditions[0]} AND ${whereConditions.slice(1).join(' AND ')}` : whereConditions[0])
+      .orderBy(desc(medicineInventory.createdAt));
 
     // Calculate summary
-    const summary = {
+    const summary: InventorySummary = {
       totalItems: inventory.length,
       totalValue: inventory.reduce((sum, item) => {
         const cost = parseFloat(item.unitCost || '0');
@@ -56,28 +97,17 @@ export async function GET(request: NextRequest) {
       }).length,
     };
 
-    return NextResponse.json({
-      success: true,
-      data: { inventory, summary },
-    });
-  } catch (error) {
-    logger.error("Medicine inventory fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch inventory" }, { status: 500 });
-  }
-}
+    return { data: { inventory, summary } };
+  },
+  ['school-admin', 'admin']
+);
 
 /**
  * POST /api/school-admin/medical/inventory - Add new medicine to inventory
  */
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['school-admin', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { user, userId } = authResult;
-    const body = await request.json();
+export const POST = createApiRoute<{}, InventoryItemResponse>(
+  async (req, { user, userId }) => {
+    const body: InventoryRequest = await req.json();
 
     const {
       medicineName,
@@ -100,7 +130,7 @@ export async function POST(request: NextRequest) {
     } = body;
 
     if (!medicineName || !category || !unit) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+      return { error: "Missing required fields", status: 400 };
     }
 
     const medicineId = `med-inv-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
@@ -133,7 +163,7 @@ export async function POST(request: NextRequest) {
     }).returning();
 
     // Create transaction record for initial stock
-    if (currentStock > 0) {
+    if (currentStock && currentStock > 0) {
       await db.insert(medicineTransactions).values({
         id: `med-tx-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`,
         medicineId,
@@ -150,42 +180,33 @@ export async function POST(request: NextRequest) {
 
     logger.info("Medicine added to inventory", { medicineId, schoolId: user.schoolId });
 
-    return NextResponse.json({
-      success: true,
-      data: { item: newItem },
-    });
-  } catch (error) {
-    logger.error("Medicine inventory add error:", error);
-    return NextResponse.json({ error: "Failed to add medicine" }, { status: 500 });
-  }
-}
+    return { data: { item: newItem } };
+  },
+  ['school-admin', 'admin']
+);
 
 /**
  * PATCH /api/school-admin/medical/inventory - Update medicine inventory
  */
-export async function PATCH(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['school-admin', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { user, userId } = authResult;
-    const body = await request.json();
+export const PATCH = createApiRoute<{}, InventoryItemResponse>(
+  async (req, { user, userId }) => {
+    const body: InventoryUpdateRequest = await req.json();
 
     const { id, action, quantity, notes } = body;
 
     if (!id || !action) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+      return { error: "Missing required fields", status: 400 };
     }
 
     // Get current item
-    const item = await db.query.medicineInventory.findFirst({
-      where: eq(medicineInventory.id, id),
-    });
+    const [item] = await db
+      .select()
+      .from(medicineInventory)
+      .where(eq(medicineInventory.id, id))
+      .limit(1);
 
     if (!item) {
-      return NextResponse.json({ error: "Medicine not found" }, { status: 404 });
+      return { error: "Medicine not found", status: 404 };
     }
 
     let newStock = item.currentStock;
@@ -205,7 +226,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (newStock < 0) {
-      return NextResponse.json({ error: "Insufficient stock" }, { status: 400 });
+      return { error: "Insufficient stock", status: 400 };
     }
 
     // Update inventory
@@ -238,12 +259,7 @@ export async function PATCH(request: NextRequest) {
 
     logger.info("Medicine inventory updated", { id, action, newStock, schoolId: user.schoolId });
 
-    return NextResponse.json({
-      success: true,
-      data: { item: updatedItem },
-    });
-  } catch (error) {
-    logger.error("Medicine inventory update error:", error);
-    return NextResponse.json({ error: "Failed to update inventory" }, { status: 500 });
-  }
-}
+    return { data: { item: updatedItem } };
+  },
+  ['school-admin', 'admin']
+);

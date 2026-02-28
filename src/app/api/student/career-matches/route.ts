@@ -1,23 +1,21 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { careerMatches, assessments, riasecResults, mbtiResults, users } from "@/lib/db/schema";
 import { eq, desc, and, inArray } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 /**
  * GET /api/student/career-matches
  *
  * Returns the student's personalized career matches based on their assessment results.
  * This replaces the static CAREERS_DATABASE with real student-specific data.
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
-export async function GET(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(['student']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status || 401 });
-    }
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId } = auth;
 
     // Get student's completed assessments
     const userAssessments = await db
@@ -31,11 +29,11 @@ export async function GET(req: NextRequest) {
       .limit(10);
 
     if (userAssessments.length === 0) {
-      return NextResponse.json({
+      return {
         hasAssessments: false,
         careerMatches: [],
         message: "Complete assessments to see your personalized career matches"
-      });
+      };
     }
 
     // Get all assessment IDs
@@ -91,18 +89,13 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    return NextResponse.json({
+    return {
       hasAssessments: true,
       assessmentCount: userAssessments.length,
       careerMatches: careerMatchesWithDetails,
       hollandCode: riasecResult?.hollandCode || null,
       studentName: `${user?.firstName || 'Student'} ${user?.lastName || ''}`.trim(),
-    });
-  } catch (error) {
-    logger.error(error, { route: "/api/student/career-matches", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch career matches" },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["student"]
+);

@@ -1,61 +1,57 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { studentApplications, users, notifications, notificationDeliveries } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { logger } from "@/lib/logger";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 /**
  * POST /api/school-admin/reject-application
  * Reject a student application
  */
-export async function POST(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["school_admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId: adminId } = authResult;
+export const POST = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId: adminId } = auth;
 
     const body = await req.json();
     const { applicationId, reason } = body;
 
     if (!applicationId) {
-      return NextResponse.json({ error: "Missing applicationId" }, { status: 400 });
+      return { error: "Missing applicationId", status: 400 };
     }
 
     // Verify the application belongs to the admin's school
-    const admin = await db.query.users.findFirst({
-      where: eq(users.id, adminId),
-      columns: {
-        schoolId: true,
-        firstName: true,
-        lastName: true,
-      },
-    });
+    const [admin] = await db
+      .select({
+        schoolId: users.schoolId,
+        firstName: users.firstName,
+        lastName: users.lastName,
+      })
+      .from(users)
+      .where(eq(users.id, adminId))
+      .limit(1);
 
     if (!admin?.schoolId) {
-      return NextResponse.json({ error: "Admin school not found" }, { status: 404 });
+      return { error: "Admin school not found", status: 404 };
     }
 
     // Get the application
-    const application = await db.query.studentApplications.findFirst({
-      where: and(
+    const [application] = await db
+      .select()
+      .from(studentApplications)
+      .where(and(
         eq(studentApplications.id, applicationId),
         eq(studentApplications.schoolId, admin.schoolId)
-      ),
-    });
+      ))
+      .limit(1);
 
     if (!application) {
-      return NextResponse.json({ error: "Application not found" }, { status: 404 });
+      return { error: "Application not found", status: 404 };
     }
 
     if (application.status !== "pending") {
-      return NextResponse.json(
-        { error: `Application already ${application.status}` },
-        { status: 400 }
-      );
+      return { error: `Application already ${application.status}`, status: 400 };
     }
 
     const now = new Date();
@@ -75,30 +71,28 @@ export async function POST(req: NextRequest) {
     // Notify student about rejection
     await notifyStudentAboutRejection(
       application.studentId,
+      admin.schoolId,
       reason || "Application rejected by school administration"
     );
 
     logger.info("Student application rejected", {
       applicationId,
-      studentId: application.studentId,
       adminId,
       reason,
     });
 
-    return NextResponse.json({
+    return {
       success: true,
-      message: "Application rejected",
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/reject-application", method: "POST" });
-    return NextResponse.json({ error: "Failed to reject application" }, { status: 500 });
-  }
-}
+      message: "Application rejected successfully",
+    };
+  },
+  ["school-admin"]
+);
 
 /**
  * Notify student about application rejection
  */
-async function notifyStudentAboutRejection(studentId: string, reason: string) {
+async function notifyStudentAboutRejection(studentId: string, schoolId: string, reason: string) {
   try {
     const notificationId = `notif-${Date.now()}-${nanoid(8)}`;
     const now = new Date();
@@ -116,7 +110,7 @@ async function notifyStudentAboutRejection(studentId: string, reason: string) {
       status: "sent",
       senderId: "system",
       senderName: "School Administration",
-      senderRole: "school_admin",
+      senderRole: "school-admin",
       actionUrl: "/student/dashboard",
       sentAt: now,
       totalRecipients: 1,

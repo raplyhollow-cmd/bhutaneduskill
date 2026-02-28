@@ -1,8 +1,9 @@
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq, desc, sql } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 /**
  * GET /api/marketing/testimonials - Get testimonials for marketing display
@@ -10,8 +11,8 @@ import { eq, desc, sql } from "drizzle-orm";
  * Returns real testimonials from user feedback (when implemented)
  * For now returns empty array - would be populated from feedback table
  */
-export async function GET(request: NextRequest) {
-  try {
+export const GET = createApiRoute(
+  async () => {
     // For now, return empty array
     // When testimonials feature is implemented, this would fetch from a testimonials/feedback table
     // Would join with users table to get author details
@@ -33,11 +34,7 @@ export async function GET(request: NextRequest) {
     //   limit: 4
     // });
 
-    return NextResponse.json({
-      testimonials: []
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json({ testimonials: [] }, { status: 200 });
-  }
-}
+    return { testimonials: [] };
+  },
+  [] // Public route - no auth required
+);

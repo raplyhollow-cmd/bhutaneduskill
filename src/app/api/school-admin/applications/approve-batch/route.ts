@@ -225,9 +225,11 @@ async function processTeacherApproval(
   // If department is provided, update the user's department
   if (assignment?.departmentId) {
     // Verify department belongs to the school
-    const dept = await db.query.departments.findFirst({
-      where: eq(departments.id, assignment.departmentId)
-    });
+    const [dept] = await db
+      .select()
+      .from(departments)
+      .where(eq(departments.id, assignment.departmentId))
+      .limit(1);
 
     if (dept && dept.schoolId === schoolId) {
       await db
@@ -241,11 +243,13 @@ async function processTeacherApproval(
   if (assignment?.classIds && assignment.classIds.length > 0) {
     for (const classId of assignment.classIds) {
       // Verify class belongs to the school
-      const cls = await db.query.classes.findFirst({
-        where: eq(classes.id, classId)
-      });
+      const cls = await db
+      .select()
+      .from(classes)
+      .where(eq(classes.id, classId))
+      .limit(1);
 
-      if (cls && cls.schoolId === schoolId) {
+      if (cls[0] && cls[0].schoolId === schoolId) {
         await db.insert(teacherAssignments).values({
           id: `ta_${nanoid()}`,
           teacherId: applicant.id,

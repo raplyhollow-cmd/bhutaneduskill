@@ -17,7 +17,7 @@
 
 "use client";
 
-import { motion, HTMLMotionProps } from "framer-motion";
+import { motion, HTMLMotionProps, Transition, TargetAndTransition } from "framer-motion";
 import { forwardRef, ReactNode, MouseEvent, TouchEvent } from "react";
 import { prefersReducedMotion, scale } from "@/lib/motion/tokens";
 import { cn } from "@/lib/utils";
@@ -26,7 +26,7 @@ import { cn } from "@/lib/utils";
 // TYPES
 // ============================================================================
 
-export type PressableVariant =
+export type PressableEffect =
   | "scale"        // Scale down (0.98x) - default
   | "snappy"       // Quick scale down (0.95x)
   | "shrink"       // More shrink (0.92x)
@@ -34,17 +34,17 @@ export type PressableVariant =
   | "dim"          // Dim on press
   | "none";        // No press effect
 
-export interface PressableProps extends Omit<HTMLMotionProps<"div">, "whileTap" | "onPress"> {
+export interface PressableProps extends Omit<HTMLMotionProps<"div">, "whileTap" | "onPress" | "children"> {
   /**
    * Press effect variant
    * @default "scale"
    */
-  variant?: PressableVariant;
+  effect?: PressableEffect;
 
   /**
    * Press callback
    */
-  onPress?: (e: MouseEvent | TouchEvent) => void;
+  onPress?: (e: MouseEvent<HTMLDivElement> | TouchEvent<HTMLDivElement>) => void;
 
   /**
    * Disable press effect
@@ -69,8 +69,8 @@ export interface PressableProps extends Omit<HTMLMotionProps<"div">, "whileTap" 
 // ============================================================================
 
 const pressVariants: Record<
-  PressableVariant,
-  { whileTap?: object; whileHover?: object; hoverTap?: object }
+  PressableEffect,
+  { whileTap?: TargetAndTransition | undefined; whileHover?: TargetAndTransition | undefined }
 > = {
   scale: {
     whileTap: prefersReducedMotion()
@@ -116,7 +116,7 @@ export const Pressable = forwardRef<HTMLDivElement, PressableProps>(
   (
     {
       children,
-      variant = "scale",
+      effect = "scale",
       onPress,
       disabled = false,
       withHover = false,
@@ -126,10 +126,10 @@ export const Pressable = forwardRef<HTMLDivElement, PressableProps>(
     },
     ref
   ) => {
-    const variants = pressVariants[variant];
+    const variants = pressVariants[effect];
     const isActive = !disabled && !prefersReducedMotion();
 
-    const handleClick = (e: MouseEvent<Element>) => {
+    const handleClick = (e: MouseEvent<HTMLDivElement>) => {
       if (disabled) return;
       onPress?.(e);
       onClick?.(e);
@@ -170,16 +170,16 @@ Pressable.displayName = "Pressable";
 /**
  * Quick snappy press feedback.
  */
-export const SnappyPress = forwardRef<HTMLDivElement, Omit<PressableProps, "variant">>(
-  (props, ref) => <Pressable ref={ref} variant="snappy" {...props} />
+export const SnappyPress = forwardRef<HTMLDivElement, Omit<PressableProps, "effect">>(
+  (props, ref) => <Pressable ref={ref} effect="snappy" {...(props as any)} />
 );
 SnappyPress.displayName = "SnappyPress";
 
 /**
  * Strong press feedback (more shrink).
  */
-export const StrongPress = forwardRef<HTMLDivElement, Omit<PressableProps, "variant">>(
-  (props, ref) => <Pressable ref={ref} variant="shrink" {...props} />
+export const StrongPress = forwardRef<HTMLDivElement, Omit<PressableProps, "effect">>(
+  (props, ref) => <Pressable ref={ref} effect="shrink" {...(props as any)} />
 );
 StrongPress.displayName = "StrongPress";
 
@@ -187,7 +187,7 @@ StrongPress.displayName = "StrongPress";
  * Pressable with hover effect included.
  */
 export const Interactive = forwardRef<HTMLDivElement, Omit<PressableProps, "withHover">>(
-  (props, ref) => <Pressable ref={ref} variant="scale" withHover {...props} />
+  (props, ref) => <Pressable ref={ref} effect="scale" withHover {...(props as any)} />
 );
 Interactive.displayName = "Interactive";
 
@@ -201,23 +201,23 @@ Interactive.displayName = "Interactive";
  */
 export const PressableButton = forwardRef<
   HTMLButtonElement,
-  Omit<PressableProps & React.ButtonHTMLAttributes<HTMLButtonElement>, "variant">
->(({ children, variant = "scale", disabled = false, className = "", ...props }, ref) => {
-  const variants = pressVariants[variant];
+  Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, "effect"> & { effect?: PressableEffect }
+>(({ children, effect = "scale" as PressableEffect, disabled = false, className = "", ...props }, ref) => {
+  const variants = pressVariants[effect];
   const isActive = !disabled && !prefersReducedMotion();
 
   return (
     <motion.button
-      ref={ref}
+      ref={ref as any}
       className={cn(
         "cursor-pointer",
         disabled && "cursor-not-allowed opacity-50",
         className
       )}
       disabled={disabled}
-      whileTap={isActive ? variants.whileTap : undefined}
-      whileHover={isActive ? variants.whileHover : undefined}
-      {...props}
+      whileTap={(isActive ? variants.whileTap : undefined) as any}
+      whileHover={(isActive ? variants.whileHover : undefined) as any}
+      {...(props as any)}
     >
       {children}
     </motion.button>

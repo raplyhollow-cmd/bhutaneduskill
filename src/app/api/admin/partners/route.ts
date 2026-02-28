@@ -111,8 +111,7 @@ function validatePartnerInput(data: CreatePartnerInput): { valid: boolean; error
 // ============================================================================
 
 export const GET = createApiRoute(
-  async (request: NextRequest) => {
-    const auth = getAuth(request);
+  async (req: NextRequest, auth) => {
     if (!auth) {
       return errorResponse("Unauthorized", 401);
     }
@@ -120,7 +119,7 @@ export const GET = createApiRoute(
     const { userId } = auth;
 
     try {
-      const { searchParams } = new URL(request.url);
+      const { searchParams } = new URL(req.url);
 
       // Parse query parameters
       const query: PartnerListQuery = {
@@ -164,7 +163,7 @@ export const GET = createApiRoute(
         );
       }
 
-      const whereClause = conditions.length > 0 ? and(...conditions as any[]) : undefined;
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
       // Calculate pagination
       const offset = (query.page - 1) * query.limit;
@@ -292,8 +291,7 @@ export const GET = createApiRoute(
 // ============================================================================
 
 export const POST = createApiRoute(
-  async (request: NextRequest) => {
-    const auth = getAuth(request);
+  async (req: NextRequest, auth) => {
     if (!auth) {
       return errorResponse("Unauthorized", 401);
     }
@@ -301,7 +299,7 @@ export const POST = createApiRoute(
     const { userId } = auth;
 
     try {
-      const body = await request.json();
+      const body = await req.json();
 
       // Validate input
       const validation = validatePartnerInput(body);

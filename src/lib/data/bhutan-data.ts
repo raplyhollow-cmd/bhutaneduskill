@@ -656,23 +656,33 @@ import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import * as schema from "@/lib/db/schema";
 
 export async function seedBhutanData(db: PostgresJsDatabase<typeof schema>) {
-  const now = Date.now();
+  const now = new Date();
 
   // Seed districts
   for (const district of bhutanDistricts) {
     await db.insert(districts).values({
-      ...district,
+      id: district.id,
+      name: district.name,
+      code: district.code,
+      dzongkhag: district.name, // Use name as dzongkhag
+      country: "Bhutan",
+      isActive: district.isActive,
       createdAt: now,
+      updatedAt: now,
     }).onConflictDoNothing();
   }
 
-  // Seed schools
+  // Seed schools - use proper type cast since schema may have different fields
   for (const school of bhutanSchools) {
     await db.insert(schools).values({
-      ...school,
+      id: school.id,
+      name: school.name,
+      code: school.code,
+      districtId: school.districtId,
       tenantId: "default-tenant", // Should be replaced with actual tenant
       createdAt: now,
-    }).onConflictDoNothing();
+      updatedAt: now,
+    } as typeof schema.schools.$inferInsert).onConflictDoNothing();
   }
 }
 

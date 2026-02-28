@@ -351,23 +351,23 @@ export async function getStudents(schoolId: string | null, options: {
   }
 
   // Get students with pagination
-  const studentsList = await db.query.users.findMany({
-    where: and(...conditions),
-    columns: {
-      id: true,
-      firstName: true,
-      lastName: true,
-      email: true,
-      phone: true,
-      classGrade: true,
-      section: true,
-      dateOfBirth: true,
-      createdAt: true,
-    },
-    limit,
-    offset,
-    orderBy: [desc(users.createdAt)],
-  });
+  const studentsList = await db
+    .select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      email: users.email,
+      phone: users.phone,
+      classGrade: users.classGrade,
+      section: users.section,
+      dateOfBirth: users.dateOfBirth,
+      createdAt: users.createdAt,
+    })
+    .from(users)
+    .where(and(...conditions))
+    .orderBy(desc(users.createdAt))
+    .limit(limit)
+    .offset(offset);
 
   // Get total count
   const [countResult] = await db
@@ -450,22 +450,22 @@ export async function getTeachers(schoolId: string | null, options: {
     );
   }
 
-  const teachersList = await db.query.users.findMany({
-    where: and(...conditions),
-    columns: {
-      id: true,
-      firstName: true,
-      lastName: true,
-      email: true,
-      phone: true,
-      employeeId: true,
-      subjects: true,
-      createdAt: true,
-    },
-    limit,
-    offset,
-    orderBy: [desc(users.createdAt)],
-  });
+  const teachersList = await db
+    .select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      email: users.email,
+      phone: users.phone,
+      employeeId: users.employeeId,
+      subjects: users.subjects,
+      createdAt: users.createdAt,
+    })
+    .from(users)
+    .where(and(...conditions))
+    .orderBy(desc(users.createdAt))
+    .limit(limit)
+    .offset(offset);
 
   const [countResult] = await db
     .select({ count: count() })
@@ -718,10 +718,15 @@ export async function getAttendanceRecords(schoolId: string | null, options: {
   const selectedDate = date || new Date().toISOString().split('T')[0];
 
   // Get all classes for this school
-  const allClasses = await db.query.classes.findMany({
-    where: eq(classes.schoolId, schoolId),
-    columns: { id: true, name: true, grade: true, section: true },
-  });
+  const allClasses = await db
+    .select({
+      id: classes.id,
+      name: classes.name,
+      grade: classes.grade,
+      section: classes.section,
+    })
+    .from(classes)
+    .where(eq(classes.schoolId, schoolId));
 
   // OPTIMIZATION: Batch fetch all data at once instead of N queries
   const classIds = allClasses.map(c => c.id);
@@ -967,9 +972,10 @@ export async function getExamResults(schoolId: string | null, options: {
   const { search, limit = 50, offset = 0 } = options;
 
   // Get students for this school first
-  const schoolStudents = await db.query.users.findMany({
-    where: eq(users.schoolId, schoolId),
-  });
+  const schoolStudents = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.schoolId, schoolId));
   const studentIds = schoolStudents.map(s => s.id);
 
   const conditions = studentIds.length > 0 ? [sql`${examResultsEnhanced.studentId} IN ${sql.raw(`('${studentIds.join("','")}')`)}`] : [];
@@ -978,12 +984,13 @@ export async function getExamResults(schoolId: string | null, options: {
     conditions.push(sql`${examResultsEnhanced.examName} LIKE ${`%${search}%`}`);
   }
 
-  const resultsList = await db.query.examResultsEnhanced.findMany({
-    where: and(...conditions),
-    limit,
-    offset,
-    orderBy: [desc(examResultsEnhanced.createdAt)],
-  });
+  const resultsList = await db
+    .select()
+    .from(examResultsEnhanced)
+    .where(and(...conditions))
+    .limit(limit)
+    .offset(offset)
+    .orderBy(desc(examResultsEnhanced.createdAt));
 
   const [countResult] = await db
     .select({ count: count() })
@@ -1077,10 +1084,11 @@ export async function getFeeData(schoolId: string | null) {
   }
 
   // Get fee structures
-  const structuresList = await db.query.feeStructures.findMany({
-    where: eq(feeStructures.schoolId, schoolId),
-    limit: 100,
-  });
+  const structuresList = await db
+    .select()
+    .from(feeStructures)
+    .where(eq(feeStructures.schoolId, schoolId))
+    .limit(100);
 
   const structures: FeeStructureData[] = structuresList.map((s) => {
     const sWithExtras = s as FeeStructureWithExtras;
@@ -1098,30 +1106,30 @@ export async function getFeeData(schoolId: string | null) {
   });
 
   // Get student fees
-  const studentFeesList = await db.query.studentFees.findMany({
-    where: eq(studentFees.schoolId, schoolId),
-    with: {
-      student: true,
-    },
-    limit: 100,
-  });
+  const studentFeesList = await db
+    .select()
+    .from(studentFees)
+    .where(eq(studentFees.schoolId, schoolId))
+    .limit(100);
 
   const studentFeesData: StudentFeeData[] = await Promise.all(
     studentFeesList.map(async (sf) => {
-      // Access student relation - Drizzle returns arrays
-      const studentArray = sf.student as unknown as {
-        id: string;
-        firstName: string | null;
-        lastName: string | null;
-        name?: string | null;
-        classGrade: number | null;
-        section: string | null;
-        email: string | null;
-      }[] | undefined;
-      const student = studentArray?.[0];
+      // Get student details separately since we removed the relation
+      const student = await db
+        .select({
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          classGrade: users.classGrade,
+          section: users.section,
+        })
+        .from(users)
+        .where(eq(users.id, sf.studentId))
+        .limit(1)
+        .then(rows => rows[0] || null);
 
       const studentName = student
-        ? `${student.firstName || ""} ${student.lastName || ""}`.trim() || student.name || "Unknown"
+        ? `${student.firstName || ""} ${student.lastName || ""}`.trim()
         : "Unknown";
 
       // Get class name
@@ -1208,51 +1216,58 @@ export async function getCounselors(schoolId: string | null, options: {
   const { search, limit = 50, offset = 0 } = options;
 
   // Get counselors assigned to this school
-  const assignments = await db.query.counselorAssignments.findMany({
-    where: and(
+  const assignments = await db
+    .select()
+    .from(counselorAssignments)
+    .where(and(
       eq(counselorAssignments.schoolId, schoolId),
       eq(counselorAssignments.isActive, true)
-    ),
-    with: {
-      counselor: true,
-    },
-  });
+    ));
 
   // Get unique counselors
   const uniqueCounselors = Array.from(
-    new Map(assignments.map((a) => {
-      // Access counselor array and get first item's id
-      const counselorArray = a.counselor as unknown as { id: string }[] | undefined;
-      return [counselorArray?.[0]?.id || a.counselorId, a] as const;
-    })).values()
+    new Map(assignments.map((a) => [a.counselorId, a] as const)).values()
   );
 
   const transformed: CounselorData[] = await Promise.all(
     uniqueCounselors.map(async (assignment) => {
-      // Access counselor relation - Drizzle returns arrays
-      const counselorArray = assignment.counselor as unknown as {
-        id: string;
-        name?: string | null;
-        firstName?: string | null;
-        lastName?: string | null;
-        email?: string | null;
-        phone?: string | null;
-      }[] | undefined;
-      const counselor = counselorArray?.[0];
+      // Get counselor details
+      const counselor = await db
+        .select({
+          id: users.id,
+          name: users.name,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+          phone: users.phone,
+        })
+        .from(users)
+        .where(eq(users.id, assignment.counselorId))
+        .limit(1)
+        .then(rows => rows[0] || null);
+
       const name = counselor?.name || `${counselor?.firstName || ""} ${counselor?.lastName || ""}`.trim() || "Unknown";
 
       // Get all schools assigned to this counselor
-      const allAssignments = await db.query.counselorAssignments.findMany({
-        where: eq(counselorAssignments.counselorId, counselor?.id || ""),
-        with: {
-          school: true,
-        },
-      });
+      const allAssignments = await db
+        .select()
+        .from(counselorAssignments)
+        .where(eq(counselorAssignments.counselorId, counselor?.id || ""));
 
-      const assignedSchools = allAssignments.map((a) => {
-        const schoolArray = a.school as unknown as { id: string; name: string }[] | undefined;
-        return schoolArray?.[0]?.name || "Unknown";
-      });
+      // For each assignment, get the school name via separate query
+      const assignedSchools: string[] = [];
+      for (const assignment of allAssignments) {
+        if (assignment.schoolId) {
+          const schoolList = await db
+            .select({ name: schools.name })
+            .from(schools)
+            .where(eq(schools.id, assignment.schoolId))
+            .limit(1);
+          if (schoolList[0]) {
+            assignedSchools.push(schoolList[0].name);
+          }
+        }
+      }
 
       // Count students for this counselor's assigned schools
       let totalStudents = 0;
@@ -1306,19 +1321,13 @@ export async function getTuitionCourses(schoolId: string | null, options: {
   if (!schoolId) return { courses: [], total: 0 };
 
   // Get all active courses
-  const coursesList = await db.query.tuitionCourses.findMany({
-    where: eq(tuitionCourses.status, "published"),
-    with: {
-      tutor: {
-        with: {
-          user: true,
-        },
-      },
-    },
-    limit: 50,
-    offset: 0,
-    orderBy: [desc(tuitionCourses.createdAt)],
-  });
+  const coursesList = await db
+    .select()
+    .from(tuitionCourses)
+    .where(eq(tuitionCourses.status, "published"))
+    .limit(50)
+    .offset(0)
+    .orderBy(desc(tuitionCourses.createdAt));
 
   const [countResult] = await db
     .select({ count: count() })
@@ -1327,19 +1336,32 @@ export async function getTuitionCourses(schoolId: string | null, options: {
 
   const transformed: TuitionCourseData[] = await Promise.all(
     coursesList.map(async (course) => {
-      // Access tutor relation - Drizzle returns nested arrays
-      const tutorArray = course.tutor as unknown as {
-        id: string;
-        averageRating?: number | null;
-        user?: {
-          id: string;
-          name?: string | null;
-          firstName?: string | null;
-          lastName?: string | null;
-        }[];
-      }[] | undefined;
-      const tutorRelation = tutorArray?.[0];
-      const user = tutorRelation?.user?.[0];
+      // Get tutor details
+      const tutor = await db
+        .select({
+          id: tutors.id,
+          averageRating: tutors.averageRating,
+          userId: tutors.userId,
+        })
+        .from(tutors)
+        .where(eq(tutors.id, course.tutorId))
+        .limit(1)
+        .then(rows => rows[0] || null);
+
+      // Get user details for tutor name
+      const user = tutor?.userId
+        ? await db
+            .select({
+              name: users.name,
+              firstName: users.firstName,
+              lastName: users.lastName,
+            })
+            .from(users)
+            .where(eq(users.id, tutor.userId))
+            .limit(1)
+            .then(rows => rows[0] || null)
+        : null;
+
       const tutorName = user?.name || `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || "Unknown";
 
       // Get enrollment count
@@ -1349,8 +1371,8 @@ export async function getTuitionCourses(schoolId: string | null, options: {
         .where(eq(tuitionEnrollments.courseId, course.id));
 
       // Get average rating
-      const rating = tutorRelation?.averageRating
-        ? (tutorRelation.averageRating / 10)
+      const rating = tutor?.averageRating
+        ? (tutor.averageRating / 10)
         : 4.0;
 
       // Get type and price
@@ -1459,17 +1481,19 @@ export async function getAnalytics(schoolId: string | null): Promise<AnalyticsDa
 
   // 2. Average Attendance (last 7 days)
   // Get students for this school
-  const schoolStudents = await db.query.users.findMany({
-    where: eq(users.schoolId, schoolId),
-  });
+  const schoolStudents = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.schoolId, schoolId));
   const studentIds = schoolStudents.map(s => s.id);
 
-  const recentAttendance = studentIds.length > 0 ? await db.query.attendance.findMany({
-    where: and(
+  const recentAttendance = studentIds.length > 0 ? await db
+    .select()
+    .from(attendance)
+    .where(and(
       sql`${attendance.studentId} IN ${sql.raw(`('${studentIds.join("','")}')`)}`,
       gte(attendance.date, weekAgo.toISOString().split("T")[0])
-    ),
-  }) : [];
+    )) : [];
 
   let averageAttendance = 0;
   if (recentAttendance.length > 0) {
@@ -1478,10 +1502,11 @@ export async function getAnalytics(schoolId: string | null): Promise<AnalyticsDa
   }
 
   // 3. Average Score (from exam results)
-  const examResults = studentIds.length > 0 ? await db.query.examResultsEnhanced.findMany({
-    where: sql`${examResultsEnhanced.studentId} IN ${sql.raw(`('${studentIds.join("','")}')`)}`,
-    limit: 1000,
-  }) : [];
+  const examResults = studentIds.length > 0 ? await db
+    .select()
+    .from(examResultsEnhanced)
+    .where(sql`${examResultsEnhanced.studentId} IN ${sql.raw(`('${studentIds.join("','")}')`)}`)
+    .limit(1000) : [];
 
   let averageScore = 0;
   if (examResults.length > 0) {
@@ -1497,13 +1522,11 @@ export async function getAnalytics(schoolId: string | null): Promise<AnalyticsDa
   }
 
   // 4. Fee Data
-  const allStudentFees = await db.query.studentFees.findMany({
-    where: eq(studentFees.schoolId, schoolId),
-    with: {
-      student: true,
-    },
-    limit: 1000,
-  });
+  const allStudentFees = await db
+    .select()
+    .from(studentFees)
+    .where(eq(studentFees.schoolId, schoolId))
+    .limit(1000);
 
   const feesPaid = allStudentFees.filter((f) => f.status === "paid").length;
   const feesPartial = allStudentFees.filter((f) => f.status === "partial").length;
@@ -1555,19 +1578,19 @@ export async function getAnalytics(schoolId: string | null): Promise<AnalyticsDa
     .map((e) => e[0]);
 
   if (topStudentIds.length > 0) {
-    const studentDetails = await db.query.users.findMany({
-      where: and(
+    const studentDetails = await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        classGrade: users.classGrade,
+        section: users.section,
+      })
+      .from(users)
+      .where(and(
         inArray(users.id, topStudentIds),
         eq(users.type, "student")
-      ),
-      columns: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        classGrade: true,
-        section: true,
-      },
-    });
+      ));
 
     studentDetails.forEach((student) => {
       const scoreData = studentScores.get(student.id);
@@ -1668,19 +1691,31 @@ export async function getAnalytics(schoolId: string | null): Promise<AnalyticsDa
     .filter((f) => (f.amountPending || 0) > 0)
     .slice(0, 5);
 
+  // Batch fetch student details for pending fees
+  const pendingFeeStudentIds = pendingFeeStudents.map(f => f.studentId);
+  let pendingFeeStudentsMap = new Map<string, { firstName: string | null; lastName: string | null; classGrade: number | null; section: string | null }>();
+  if (pendingFeeStudentIds.length > 0) {
+    const studentDetails = await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        classGrade: users.classGrade,
+        section: users.section,
+      })
+      .from(users)
+      .where(inArray(users.id, pendingFeeStudentIds));
+
+    pendingFeeStudentsMap = new Map(
+      studentDetails.map(s => [s.id, { firstName: s.firstName, lastName: s.lastName, classGrade: s.classGrade, section: s.section }])
+    );
+  }
+
   for (const fee of pendingFeeStudents) {
     if (!studentsNeedingAttention.find((s) => s.id === fee.studentId)) {
-      const studentArray = fee.student as unknown as {
-        id: string;
-        firstName: string | null;
-        lastName: string | null;
-        name?: string | null;
-        classGrade: number | null;
-        section: string | null;
-      }[] | undefined;
-      const student = studentArray?.[0];
+      const student = pendingFeeStudentsMap.get(fee.studentId);
       const name = student
-        ? `${student.firstName || ""} ${student.lastName || ""}`.trim() || student.name || "Unknown"
+        ? `${student.firstName || ""} ${student.lastName || ""}`.trim()
         : "Unknown";
       const classStr = student?.classGrade && student?.section
         ? `Class ${student.classGrade} ${student.section}`
@@ -1782,10 +1817,12 @@ export async function getAnalytics(schoolId: string | null): Promise<AnalyticsDa
   const gradeGroups = new Map<number, number[]>();
 
   for (const result of examResults) {
-    const student = await db.query.users.findFirst({
-      where: eq(users.id, result.studentId),
-      columns: { classGrade: true },
-    });
+    const student = await db
+      .select({ classGrade: users.classGrade })
+      .from(users)
+      .where(eq(users.id, result.studentId))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     const grade = student?.classGrade;
     if (grade) {

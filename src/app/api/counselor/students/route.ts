@@ -9,7 +9,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users, counselorAssignments, schools, assessments, careerPlans, attendance } from "@/lib/db/schema";
-import { eq, and, desc, sql, gte } from "drizzle-orm";
+import { eq, and, desc, sql, gte, inArray } from "drizzle-orm";
 import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, errorResponse } from "@/lib/api/response-helpers";
 import { logger } from "@/lib/logger";
@@ -25,14 +25,16 @@ export const GET = createApiRoute(
     const { user: currentUser, userId } = auth;
 
     try {
-      // Get school assignments for this counselor
-      const assignments = await db.query.counselorAssignments.findMany({
-        where: and(
-          eq(counselorAssignments.counselorId, currentUser.id),
-          eq(counselorAssignments.isActive, true)
-        ),
-        columns: { schoolId: true },
-      });
+      // Get school assignments for this counselor using db.select (neon-http compatible)
+      const assignments = await db
+        .select({ schoolId: counselorAssignments.schoolId })
+        .from(counselorAssignments)
+        .where(
+          and(
+            eq(counselorAssignments.counselorId, currentUser.id),
+            eq(counselorAssignments.isActive, true)
+          )
+        );
 
       const schoolIds = assignments.map((a) => a.schoolId);
 
@@ -48,20 +50,24 @@ export const GET = createApiRoute(
         });
       }
 
-      // Get all students from assigned schools
-      const allStudents = await db.query.users.findMany({
-        where: and(
-          eq(users.type, "student"),
-          sql`${users.schoolId} IN ${sql.raw(`('${schoolIds.join("','")}')`)}`
-        ),
-      });
+      // Get all students from assigned schools using db.select (neon-http compatible)
+      const allStudents = await db
+        .select()
+        .from(users)
+        .where(
+          and(
+            eq(users.type, "student"),
+            schoolIds.length > 0 ? sql`${users.schoolId} IN ${sql.raw(`('${schoolIds.join("','")}')`)}` : undefined
+          )
+        );
 
-      // Get schools data for all students
+      // Get schools data for all students using db.select (neon-http compatible)
       const uniqueSchoolIds = [...new Set(allStudents.map((s) => s.schoolId).filter(Boolean))] as string[];
       const schoolsData = uniqueSchoolIds.length > 0
-        ? await db.query.schools.findMany({
-            where: sql`${schools.id} IN ${sql.raw(`('${uniqueSchoolIds.join("','")}')`)}`,
-          })
+        ? await db
+            .select()
+            .from(schools)
+            .where(sql`${schools.id} IN ${sql.raw(`('${uniqueSchoolIds.join("','")}')`)}`)
         : [];
 
       const schoolMap = new Map(schoolsData.map((s) => [s.id, s]));

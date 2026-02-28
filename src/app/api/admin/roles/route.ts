@@ -65,7 +65,7 @@ export const GET = createApiRoute(
 // POST /api/admin/roles - Create new role
 export const POST = createApiRoute(
   async (req, auth) => {
-    const body = await request.json();
+    const body = await req.json();
     const { name, slug, description } = body;
 
     if (!name || !slug) {
@@ -108,7 +108,7 @@ export const POST = createApiRoute(
 // PATCH /api/admin/roles - Update role
 export const PATCH = createApiRoute(
   async (req, auth) => {
-    const body = await request.json();
+    const body = await req.json();
     const { id, name, description, isActive } = body;
 
     if (!id) {

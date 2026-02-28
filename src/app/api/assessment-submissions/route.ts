@@ -88,9 +88,10 @@ export const POST = createApiRoute(
         assessmentId,
         userId: targetUserId,
         assignedBy: assignedBy || userId,
-        status: "pending",
+        status: "pending" as const,
         ipAddress: request.headers.get("x-forwarded-for") || "unknown",
         createdAt: new Date(),
+        updatedAt: new Date(),
       } as typeof assessmentSubmissions.$inferInsert)
       .returning();
 

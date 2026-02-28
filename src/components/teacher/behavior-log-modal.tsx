@@ -246,7 +246,7 @@ export function BehaviorLogModal({
                   <button
                     key={level.value}
                     type="button"
-                    onClick={() => setSeverity(level.value as any)}
+                    onClick={() => setSeverity(level.value as "low" | "medium" | "high")}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                       severity === level.value
                         ? level.color

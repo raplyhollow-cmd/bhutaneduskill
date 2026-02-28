@@ -268,21 +268,27 @@ export async function generateCareerCoachResponse(
   conversationHistory: CareerCoachMessage[]
 ): Promise<CareerCoachResponse> {
   // Get user profile for context
-  const user = await db.query.users.findFirst({
-    where: eq(users.id, userId),
-  });
+  const user = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1)
+    .then(rows => rows[0] || null);
 
   // Get recent assessment results
-  const riasecResult = await db.query.riasecResults.findFirst({
-    where: eq(riasecResults.userId, userId),
-  });
+  const riasecResult = await db
+    .select()
+    .from(riasecResults)
+    .where(eq(riasecResults.userId, userId))
+    .limit(1)
+    .then(rows => rows[0] || null);
 
   // Get career matches
-  const matches = await db.query.careerMatches.findMany({
-    where: eq(careerMatches.studentId, userId),
-    with: { career: true },
-    limit: 5,
-  }) as unknown as Array<{ career?: { name?: string }; matchScore?: number }>;
+  const matches = await db
+    .select()
+    .from(careerMatches)
+    .where(eq(careerMatches.studentId, userId))
+    .limit(5) as unknown as Array<{ career?: { name?: string }; matchScore?: number }>;
 
   // Extract insights from the message (data capture!)
   const interests = extractCareerInterests(message);

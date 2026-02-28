@@ -1,64 +1,64 @@
 /**
- * DELETE /api/classes/[classId]/enrollments/[studentId]
- * Remove a student from a class
+ * Class Enrollment API
+ *
+ * DELETE /api/classes/[classId]/enrollments/[studentId] - Remove student from class
+ * PATCH /api/classes/[classId]/enrollments/[studentId] - Update enrollment details
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { enrollments, users, classes } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, notFoundResponse, badRequestResponse } from "@/lib/api/response-helpers";
 
-/**
- * DELETE /api/classes/[classId]/enrollments/[studentId]
- * Remove a specific student from a class
- */
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ classId: string; studentId: string }> }
-) {
-  try {
-    const authResult = await requireAuth(['school-admin', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
+type RouteContext = {
+  params: Promise<{ classId: string; studentId: string }>;
+};
 
-    const { userId } = authResult;
-    const { classId, studentId } = await params;
+// ============================================================================
+// DELETE /api/classes/[classId]/enrollments/[studentId]
+// ============================================================================
+
+export const DELETE = createApiRoute(
+  async (req: NextRequest, auth, context: RouteContext) => {
+    const { userId } = auth;
+    const { classId, studentId } = await context.params;
 
     // Verify both class and student exist
     const [classRecord, studentRecord] = await Promise.all([
-      db.query.classes.findFirst({
-        where: eq(classes.id, classId),
-      }),
-      db.query.users.findFirst({
-        where: eq(users.id, studentId),
-      }),
+      db.select().from(classes).where(eq(classes.id, classId)).limit(1).then(r => r[0]),
+      db.select().from(users).where(eq(users.id, studentId)).limit(1).then(r => r[0]),
     ]);
 
     if (!classRecord) {
-      return NextResponse.json({ error: "Class not found" }, { status: 404 });
+      return notFoundResponse("Class");
     }
 
     if (!studentRecord) {
-      return NextResponse.json({ error: "Student not found" }, { status: 404 });
+      return notFoundResponse("Student");
     }
 
     if (studentRecord.type !== "student") {
-      return NextResponse.json({ error: "User is not a student" }, { status: 400 });
+      return errorResponse("User is not a student", 400);
     }
 
     // Find the enrollment record
-    const enrollmentRecord = await db.query.enrollments.findFirst({
-      where: and(
+    const [enrollmentRecord] = await db
+      .select()
+      .from(enrollments)
+      .where(and(
         eq(enrollments.classId, classId),
         eq(enrollments.studentId, studentId)
-      ),
-    });
+      ))
+      .limit(1);
 
     if (!enrollmentRecord) {
-      return NextResponse.json({ error: "Enrollment not found" }, { status: 404 });
+      return notFoundResponse("Enrollment");
     }
 
     // Delete the enrollment
@@ -68,52 +68,41 @@ export async function DELETE(
 
     logger.info("Deleted enrollment", { classId, studentId, userId });
 
-    return NextResponse.json({
+    return successResponse({
       success: true,
       message: "Student removed from class successfully",
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/classes/[classId]/enrollments/[studentId]", method: "DELETE" });
-    return NextResponse.json(
-      { error: "Failed to delete enrollment" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['school-admin', 'admin']
+);
 
-/**
- * PATCH /api/classes/[classId]/enrollments/[studentId]
- * Update enrollment details (e.g., roll number)
- */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ classId: string; studentId: string }> }
-) {
-  try {
-    const authResult = await requireAuth(['school-admin', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
+// ============================================================================
+// PATCH /api/classes/[classId]/enrollments/[studentId]
+// ============================================================================
 
-    const { userId } = authResult;
-    const { classId, studentId } = await params;
-    const body = await request.json();
+export const PATCH = createApiRoute(
+  async (req: NextRequest, auth, context: RouteContext) => {
+    const { userId } = auth;
+    const { classId, studentId } = await context.params;
+    const body = await req.json();
 
     // Find the enrollment record
-    const enrollmentRecord = await db.query.enrollments.findFirst({
-      where: and(
+    const [enrollmentRecord] = await db
+      .select()
+      .from(enrollments)
+      .where(and(
         eq(enrollments.classId, classId),
         eq(enrollments.studentId, studentId)
-      ),
-    });
+      ))
+      .limit(1);
 
     if (!enrollmentRecord) {
-      return NextResponse.json({ error: "Enrollment not found" }, { status: 404 });
+      return notFoundResponse("Enrollment");
     }
 
     // Update allowed fields
     const allowedUpdates = ["rollNumber", "section", "status"];
-    const updates: Record<string, any> = {};
+    const updates: Record<string, unknown> = {};
     for (const field of allowedUpdates) {
       if (field in body) {
         updates[field] = body[field];
@@ -121,10 +110,7 @@ export async function PATCH(
     }
 
     if (Object.keys(updates).length === 0) {
-      return NextResponse.json(
-        { error: "No valid fields to update" },
-        { status: 400 }
-      );
+      return badRequestResponse("No valid fields to update");
     }
 
     const [updatedEnrollment] = await db
@@ -135,15 +121,11 @@ export async function PATCH(
 
     logger.info("Updated enrollment", { classId, studentId, updates, userId });
 
-    return NextResponse.json({
+    return successResponse({
       success: true,
       enrollment: updatedEnrollment,
+      message: "Enrollment updated successfully",
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/classes/[classId]/enrollments/[studentId]", method: "PATCH" });
-    return NextResponse.json(
-      { error: "Failed to update enrollment" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['school-admin', 'admin']
+);

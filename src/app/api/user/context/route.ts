@@ -93,34 +93,37 @@ export async function GET(req: NextRequest) {
       clerkUserId: user.clerkUserId,
       type: user.type,
       role: user.type,
-      name: user.name,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      profileImage: user.profileImage ?? undefined,
+      name: user.name || "",
+      firstName: user.firstName || "",
+      lastName: user.lastName || "",
+      email: user.email || "",
+      profileImage: (user as { profileImage?: string }).profileImage ?? undefined,
       schoolId: user.schoolId ?? undefined,
-      tenantId: user.tenantId ?? undefined,
-      onboardingComplete: user.onboardingComplete ?? undefined,
-      isActive: user.isActive ?? undefined,
-      lastLogin: user.lastLogin,
+      tenantId: (user as { tenantId?: string }).tenantId ?? undefined,
+      onboardingComplete: (user as { onboardingComplete?: boolean }).onboardingComplete ?? undefined,
+      isActive: (user as { isActive?: boolean }).isActive ?? undefined,
+      lastLogin: (user as { lastLogin?: string | null }).lastLogin,
     };
 
     // Fetch school if user has one
     let contextSchool: UserContextSchool | undefined;
     if (user.schoolId) {
       try {
-        const schoolData = await db.query.schools.findFirst({
-          where: eq(schools.id, user.schoolId),
-          columns: {
-            id: true,
-            name: true,
-            code: true,
-            type: true,
-            logo: true,
-            city: true,
-            state: true,
-          },
-        });
+        const schoolDataResult = await db
+          .select({
+            id: schools.id,
+            name: schools.name,
+            code: schools.code,
+            type: schools.type,
+            logo: schools.logo,
+            city: schools.city,
+            state: schools.state,
+          })
+          .from(schools)
+          .where(eq(schools.id, user.schoolId))
+          .limit(1);
+
+        const schoolData = schoolDataResult[0];
 
         if (schoolData) {
           contextSchool = {
@@ -240,7 +243,7 @@ function getDefaultPermissionsForType(userType: string): string[] {
       "notifications.manage",
       "settings.manage",
     ],
-    "school_admin": [
+    "school-admin": [
       // School admin permissions
       "students.view",
       "students.create",

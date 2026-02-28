@@ -21,7 +21,7 @@ import {
   rooms,
   classSubjects,
 } from "@/lib/db/schema";
-import { eq, and, sql, nanoid } from "drizzle-orm";
+import { eq, and, sql, desc, asc } from "drizzle-orm";
 import { createApiRoute, getAuth } from "@/lib/api/route-handler";
 import { successResponse, errorResponse, badRequestResponse, createdResponse, conflictResponse } from "@/lib/api/response-helpers";
 import { nanoid as generateId } from "nanoid";
@@ -148,10 +148,11 @@ export const GET = createApiRoute(
         );
 
       // Fetch time periods
-      const periodsData = await db.query.timePeriods.findMany({
-        where: eq(timePeriods.schoolId, schoolId),
-        orderBy: (timePeriods, { asc }) => [asc(timePeriods.order)],
-      });
+      const periodsData = await db
+        .select()
+        .from(timePeriods)
+        .where(eq(timePeriods.schoolId, schoolId))
+        .orderBy(asc(timePeriods.order));
 
       // Fetch rooms
       const roomsData = await db
@@ -298,21 +299,13 @@ export const POST = createApiRoute(
       }
 
       // Get related data for denormalized fields
-      const classRecord = await db.query.classes.findFirst({
-        where: eq(classes.id, classId),
-      });
+      const classRecord = await db.select().from(classes).where(eq(classes.id, classId)).limit(1).then(r => r[0]);
 
-      const subjectRecord = await db.query.subjects.findFirst({
-        where: eq(subjects.id, subjectId),
-      });
+      const subjectRecord = await db.select().from(subjects).where(eq(subjects.id, subjectId)).limit(1).then(r => r[0]);
 
-      const teacherRecord = await db.query.users.findFirst({
-        where: eq(users.id, teacherId),
-      });
+      const teacherRecord = await db.select().from(users).where(eq(users.id, teacherId)).limit(1).then(r => r[0]);
 
-      const periodRecord = await db.query.timePeriods.findFirst({
-        where: eq(timePeriods.id, periodId),
-      });
+      const periodRecord = await db.select().from(timePeriods).where(eq(timePeriods.id, periodId)).limit(1).then(r => r[0]);
 
       if (!classRecord || !subjectRecord || !teacherRecord || !periodRecord) {
         return badRequestResponse("Invalid reference data provided");
@@ -345,11 +338,13 @@ export const POST = createApiRoute(
 
       // Create the entry
       const entryId = `tte-${generateId()}`;
-      const roomRecord = roomId
-        ? await db.query.rooms.findFirst({
-            where: eq(rooms.id, roomId),
-          })
-        : null;
+      const [roomRecord] = roomId
+        ? await db
+            .select()
+            .from(rooms)
+            .where(eq(rooms.id, roomId))
+            .limit(1)
+        : [null];
 
       await db.insert(timetableEntries).values({
         id: entryId,

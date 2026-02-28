@@ -3,7 +3,7 @@
  * Individual module operations: GET, PUT, DELETE, and POST (for actions)
  */
 
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { learningModules, moduleProgress, users } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -98,27 +98,15 @@ export const GET = createApiRoute(
   async (request: NextRequest, auth, context?: { params: Promise<{ id: string }> }) => {
     const { userId } = auth;
 
-    const { id } = await params;
+    const { id } = await context!.params;
 
-    const module = await db.query.learningModules.findFirst({
-      where: eq(learningModules.id, id),
-      with: {
-        subject: {
-          columns: {
-            id: true,
-            name: true,
-          },
-        },
-        teacher: {
-          columns: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
-        },
-      },
-    });
+    const moduleResult = await db
+      .select()
+      .from(learningModules)
+      .where(eq(learningModules.id, id))
+      .limit(1);
+
+    const module = moduleResult[0] || null;
 
     if (!module) {
       return NextResponse.json(
@@ -136,9 +124,10 @@ export const GET = createApiRoute(
     }
 
     // Get enrollment stats
-    const enrollments = await db.query.moduleProgress.findMany({
-      where: eq(moduleProgress.moduleId, id),
-    });
+    const enrollments = await db
+      .select()
+      .from(moduleProgress)
+      .where(eq(moduleProgress.moduleId, id));
 
     const completedCount = enrollments.filter((e) => e.isCompleted).length;
     const inProgressCount = enrollments.filter((e) => !e.isCompleted && e.progress > 0).length;
@@ -158,7 +147,7 @@ export const GET = createApiRoute(
     };
 
     // Get lessons count from content
-    const content = module.content as ModuleContentData | null;
+    const content = module.content as unknown as ModuleContentData | null;
     const lessonsCount = content?.lessons?.length || 0;
 
     const enrichedModule = {
@@ -199,12 +188,16 @@ export const PUT = createApiRoute(
     }
 
     const data = validationResult.data;
-    const { id } = await params;
+    const { id } = await context!.params;
 
     // Verify ownership
-    const existing = await db.query.learningModules.findFirst({
-      where: eq(learningModules.id, id),
-    });
+    const existingResult = await db
+      .select()
+      .from(learningModules)
+      .where(eq(learningModules.id, id))
+      .limit(1);
+
+    const existing = existingResult[0] || null;
 
     if (!existing) {
       return NextResponse.json(
@@ -266,12 +259,16 @@ export const DELETE = createApiRoute(
   async (request: NextRequest, auth, context?: { params: Promise<{ id: string }> }) => {
     const { userId } = auth;
 
-    const { id } = await params;
+    const { id } = await context!.params;
 
     // Verify ownership
-    const existing = await db.query.learningModules.findFirst({
-      where: eq(learningModules.id, id),
-    });
+    const existingResult = await db
+      .select()
+      .from(learningModules)
+      .where(eq(learningModules.id, id))
+      .limit(1);
+
+    const existing = existingResult[0] || null;
 
     if (!existing) {
       return NextResponse.json(
@@ -288,9 +285,10 @@ export const DELETE = createApiRoute(
     }
 
     // Check for enrollments
-    const enrollments = await db.query.moduleProgress.findMany({
-      where: eq(moduleProgress.moduleId, id),
-    });
+    const enrollments = await db
+      .select()
+      .from(moduleProgress)
+      .where(eq(moduleProgress.moduleId, id));
 
     if (enrollments.length > 0) {
       return NextResponse.json(
@@ -337,12 +335,16 @@ export const POST = createApiRoute(
     }
 
     const { action } = actionResult.data;
-    const { id } = await params;
+    const { id } = await context!.params;
 
     // Verify ownership
-    const existing = await db.query.learningModules.findFirst({
-      where: eq(learningModules.id, id),
-    });
+    const existingResult = await db
+      .select()
+      .from(learningModules)
+      .where(eq(learningModules.id, id))
+      .limit(1);
+
+    const existing = existingResult[0] || null;
 
     if (!existing) {
       return NextResponse.json(

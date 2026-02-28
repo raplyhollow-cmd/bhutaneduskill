@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { rubPrograms, rubColleges } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
 
@@ -37,67 +37,73 @@ const programSchema = z.object({
 type ProgramInput = z.infer<typeof programSchema>;
 
 // GET /api/admin/content/programs - List RUB programs
-export async function GET(request: NextRequest) {
-  const authResult = await requireAuth(['admin']);
-  if ('error' in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
-
-  const { userId } = authResult;
-
-  try {
-    const { searchParams } = new URL(request.url);
+export const GET = createApiRoute(
+  async (req, auth) => {
+    const { userId } = auth;
+    const { searchParams } = new URL(req.url);
     const collegeId = searchParams.get("collegeId");
 
-    const programs = await db.query.rubPrograms.findMany({
-      where: collegeId ? eq(rubPrograms.collegeId, collegeId) : undefined,
-      with: {
-        college: true,
-      },
-    });
+    const programsResult = await db
+      .select({
+        id: rubPrograms.id,
+        collegeId: rubPrograms.collegeId,
+        name: rubPrograms.name,
+        code: rubPrograms.code,
+        level: rubPrograms.level,
+        field: rubPrograms.field,
+        discipline: rubPrograms.discipline,
+        duration: rubPrograms.duration,
+        durationType: rubPrograms.durationType,
+        totalSeats: rubPrograms.totalSeats,
+        minPercentage: rubPrograms.minPercentage,
+        requiredSubjects: rubPrograms.requiredSubjects,
+        eligibilityCriteria: rubPrograms.eligibilityCriteria,
+        tuitionFee: rubPrograms.tuitionFee,
+        hostelFee: rubPrograms.hostelFee,
+        otherFees: rubPrograms.otherFees,
+        totalFee: rubPrograms.totalFee,
+        description: rubPrograms.description,
+        careerProspects: rubPrograms.careerProspects,
+        isActive: rubPrograms.isActive,
+        admissionOpen: rubPrograms.admissionOpen,
+        academicYear: rubPrograms.academicYear,
+        createdAt: rubPrograms.createdAt,
+        updatedAt: rubPrograms.updatedAt,
+        college: {
+          id: rubColleges.id,
+          name: rubColleges.name,
+        },
+      })
+      .from(rubPrograms)
+      .leftJoin(rubColleges, eq(rubPrograms.collegeId, rubColleges.id))
+      .where(collegeId ? eq(rubPrograms.collegeId, collegeId) : undefined);
+    const programs = programsResult;
 
     logger.info("Programs fetched", { userId, count: programs.length });
 
     // Return in the format the frontend expects
-    return NextResponse.json({ data: { programs } } satisfies ApiSuccess<{ programs: typeof programs }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/content/programs", method: "GET", userId });
-    return NextResponse.json(
-      { error: "Failed to fetch programs", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return { data: { programs } } satisfies ApiSuccess<{ programs: typeof programs }>;
+  },
+  ["admin"]
+);
 
 // POST /api/admin/content/programs - Add RUB program
-export async function POST(request: NextRequest) {
-  const authResult = await requireAuth(['admin']);
-  if ('error' in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
-
-  const { userId } = authResult;
-
-  try {
-    const body = await request.json();
+export const POST = createApiRoute(
+  async (req, auth) => {
+    const { userId } = auth;
+    const body = await req.json();
     const validatedData = programSchema.parse(body);
 
     // Verify college exists
-    const college = await db.query.rubColleges.findFirst({
-      where: eq(rubColleges.id, validatedData.collegeId),
-    });
+    const collegeResult = await db
+      .select()
+      .from(rubColleges)
+      .where(eq(rubColleges.id, validatedData.collegeId))
+      .limit(1);
+    const college = collegeResult[0];
 
     if (!college) {
-      return NextResponse.json(
-        { error: "College not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "College not found", status: 404 } satisfies ApiErrorResponse;
     }
 
     const programId = `prog_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
@@ -136,77 +142,51 @@ export async function POST(request: NextRequest) {
 
     logger.info("Program created", { programId, userId });
 
-    return NextResponse.json(
-      {
-        data: newProgram,
-        message: "Program created successfully"
-      } satisfies ApiSuccess<typeof newProgram>,
-      { status: 201 }
-    );
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: "Validation failed", details: error.issues, status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
-    }
-    logger.apiError(error, { route: "/api/admin/content/programs", method: "POST", userId });
-    return NextResponse.json(
-      { error: "Failed to create program", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return {
+      data: newProgram,
+      message: "Program created successfully"
+    } satisfies ApiSuccess<typeof newProgram>;
+  },
+  ["admin"]
+);
 
 // PUT /api/admin/content/programs - Update RUB program
-export async function PUT(request: NextRequest) {
-  const authResult = await requireAuth(['admin']);
-  if ('error' in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
-
-  const { userId } = authResult;
-
-  try {
-    const { searchParams } = new URL(request.url);
+export const PUT = createApiRoute(
+  async (req, auth) => {
+    const { userId } = auth;
+    const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
 
     if (!id) {
-      return NextResponse.json(
-        { error: "Program ID is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "Program ID is required", status: 400 } satisfies ApiErrorResponse;
     }
 
-    const body = await request.json();
+    const body = await req.json();
     const validatedData = programSchema.partial().parse(body);
 
     // Check if program exists
-    const existing = await db.query.rubPrograms.findFirst({
-      where: eq(rubPrograms.id, id),
-    });
+    const existingResult = await db
+      .select()
+      .from(rubPrograms)
+      .where(eq(rubPrograms.id, id))
+      .limit(1);
+    const existing = existingResult[0];
 
     if (!existing) {
-      return NextResponse.json(
-        { error: "Program not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "Program not found", status: 404 } satisfies ApiErrorResponse;
     }
 
     // If collegeId is being updated, verify it exists
     if (validatedData.collegeId) {
-      const college = await db.query.rubColleges.findFirst({
-        where: eq(rubColleges.id, validatedData.collegeId),
-      });
+      const collegeResult = await db
+        .select()
+        .from(rubColleges)
+        .where(eq(rubColleges.id, validatedData.collegeId))
+        .limit(1);
+      const college = collegeResult[0];
 
       if (!college) {
-        return NextResponse.json(
-          { error: "College not found", status: 404 } satisfies ApiErrorResponse,
-          { status: 404 }
-        );
+        return { error: "College not found", status: 404 } satisfies ApiErrorResponse;
       }
     }
 
@@ -275,73 +255,45 @@ export async function PUT(request: NextRequest) {
 
     logger.info("Program updated", { programId: id, userId });
 
-    return NextResponse.json({
+    return {
       data: updatedProgram,
       message: "Program updated successfully"
-    } satisfies ApiSuccess<typeof updatedProgram>);
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: "Validation failed", details: error.issues, status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
-    }
-    logger.apiError(error, { route: "/api/admin/content/programs", method: "PUT", userId });
-    return NextResponse.json(
-      { error: "Failed to update program", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    } satisfies ApiSuccess<typeof updatedProgram>;
+  },
+  ["admin"]
+);
 
 // DELETE /api/admin/content/programs - Delete RUB program
-export async function DELETE(request: NextRequest) {
-  const authResult = await requireAuth(['admin']);
-  if ('error' in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
-
-  const { userId } = authResult;
-
-  try {
-    const { searchParams } = new URL(request.url);
+export const DELETE = createApiRoute(
+  async (req, auth) => {
+    const { userId } = auth;
+    const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
 
     if (!id) {
-      return NextResponse.json(
-        { error: "Program ID is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "Program ID is required", status: 400 } satisfies ApiErrorResponse;
     }
 
     // Check if program exists
-    const existing = await db.query.rubPrograms.findFirst({
-      where: eq(rubPrograms.id, id),
-    });
+    const existingResult = await db
+      .select()
+      .from(rubPrograms)
+      .where(eq(rubPrograms.id, id))
+      .limit(1);
+    const existing = existingResult[0];
 
     if (!existing) {
-      return NextResponse.json(
-        { error: "Program not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "Program not found", status: 404 } satisfies ApiErrorResponse;
     }
 
     await db.delete(rubPrograms).where(eq(rubPrograms.id, id));
 
     logger.info("Program deleted", { programId: id, userId });
 
-    return NextResponse.json({
+    return {
       data: { success: true },
       message: "Program deleted successfully"
-    } satisfies ApiSuccess<{ success: boolean }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/content/programs", method: "DELETE", userId });
-    return NextResponse.json(
-      { error: "Failed to delete program", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    } satisfies ApiSuccess<{ success: boolean }>;
+  },
+  ["admin"]
+);

@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { logger } from "@/lib/logger";
-import { exportData, importData } from "@/lib/data-export/import";
+import { exportData, importData, type ExportDataType } from "@/lib/data-export/import";
 import type { ExportOptions, ImportOptions } from "@/lib/data-export/import";
 import { createApiRoute, getAuth } from "@/lib/api/route-handler";
 import { successResponse, errorResponse } from "@/lib/api/response-helpers";
@@ -26,7 +26,12 @@ export const GET = createApiRoute(
 
     const { searchParams } = new URL(request.url);
     const format = (searchParams.get("format") || "csv") as "csv" | "json" | "excel";
-    const dataType = (searchParams.get("dataType") || "all") as any;
+    const dataTypeParam = searchParams.get("dataType") || "all";
+    // Map the parameter values to the valid ExportDataType values
+    const validDataTypes = ["students", "teachers", "classes", "examResults", "attendance", "homework", "results", "all"] as const;
+    const dataType = validDataTypes.includes(dataTypeParam as any)
+      ? (dataTypeParam as ExportDataType)
+      : ("all" as ExportDataType);
     const schoolId = searchParams.get("schoolId") || "";
     const academicYear = searchParams.get("academicYear") || undefined;
     const classId = searchParams.get("classId") || undefined;
@@ -59,7 +64,7 @@ export const GET = createApiRoute(
         "Content-Type": result.mimeType,
         "Content-Disposition": `attachment; filename="${result.filename}"`,
       },
-    }) as any;
+    });
   },
   ['school-admin', 'admin']
 );

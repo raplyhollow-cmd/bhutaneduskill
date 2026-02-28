@@ -135,9 +135,12 @@ export const EmptyState = forwardRef<HTMLDivElement, EmptyStateProps>(
   }, ref) => {
     const styles = sizeStyles[size];
 
+    // Filter out props that conflict with Framer Motion
+    const { onDrag, onDragEnd, onDragStart, ...safeProps } = props as any;
+
     return (
       <motion.div
-        ref={ref}
+        ref={ref as React.RefObject<HTMLDivElement>}
         variants={containerVariants}
         initial="hidden"
         animate="visible"
@@ -147,7 +150,7 @@ export const EmptyState = forwardRef<HTMLDivElement, EmptyStateProps>(
           variantStyles[variant],
           className
         )}
-        {...props}
+        {...safeProps}
       >
         {/* Illustration (if provided) */}
         {illustration && (

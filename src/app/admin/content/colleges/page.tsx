@@ -60,8 +60,8 @@ type CollegeData = {
 };
 
 export default function AdminCollegesPage() {
-  const [colleges, setColleges] = useState<any[]>([]);
-  const [filteredColleges, setFilteredColleges] = useState<any[]>([]);
+  const [colleges, setColleges] = useState<CollegeData[]>([]);
+  const [filteredColleges, setFilteredColleges] = useState<CollegeData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");

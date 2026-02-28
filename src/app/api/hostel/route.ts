@@ -43,17 +43,19 @@ export const GET = createApiRoute(
 
     const { userId, user } = auth;
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: {
-        id: true,
-        type: true,
-        role: true,
-        schoolId: true,
-        firstName: true,
-        lastName: true,
-      },
-    });
+    const currentUser = await db
+      .select({
+        id: users.id,
+        type: users.type,
+        role: users.role,
+        schoolId: users.schoolId,
+        firstName: users.firstName,
+        lastName: users.lastName,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!currentUser) {
       return errorResponse("User not found", 404);
@@ -64,15 +66,38 @@ export const GET = createApiRoute(
 
     // Action: my-allocation (Student's hostel allocation)
     if (action === "my-allocation" || action === "my-location") {
-      const allocation = await db.query.hostelAllocations.findFirst({
-        where: and(
-          eq(hostelAllocations.studentId, currentUser.id),
-          sql`${hostelAllocations.status} = ${"active"}`
-        ),
-        with: {
-          room: true,
-        },
-      });
+      const allocationResult = await db
+        .select({
+          id: hostelAllocations.id,
+          studentId: hostelAllocations.studentId,
+          hostelId: hostelAllocations.hostelId,
+          roomId: hostelAllocations.roomId,
+          bedNumber: hostelAllocations.bedNumber,
+          allocationDate: hostelAllocations.allocationDate,
+          status: hostelAllocations.status,
+          feeType: hostelAllocations.feeType,
+          feeAmount: hostelAllocations.feeAmount,
+          feePaid: hostelAllocations.feePaid,
+          feeOutstanding: hostelAllocations.feeOutstanding,
+          room: {
+            id: hostelRooms.id,
+            roomNumber: hostelRooms.roomNumber,
+            roomType: hostelRooms.roomType,
+            capacity: hostelRooms.capacity,
+            occupiedBeds: hostelRooms.occupiedBeds,
+          },
+        })
+        .from(hostelAllocations)
+        .leftJoin(hostelRooms, eq(hostelAllocations.roomId, hostelRooms.id))
+        .where(
+          and(
+            eq(hostelAllocations.studentId, currentUser.id),
+            sql`${hostelAllocations.status} = ${"active"}`
+          )
+        )
+        .limit(1);
+
+      const allocation = allocationResult[0] || null;
 
       if (!allocation) {
         return NextResponse.json({
@@ -86,17 +111,21 @@ export const GET = createApiRoute(
       // Get room and hostel details
       let hostel: typeof hostelBuildings.$inferSelect | null = null;
       if (allocation.hostelId) {
-        hostel = await db.query.hostelBuildings.findFirst({
-          where: eq(hostelBuildings.id, allocation.hostelId),
-        });
+        const hostelResult = await db
+          .select()
+          .from(hostelBuildings)
+          .where(eq(hostelBuildings.id, allocation.hostelId))
+          .limit(1);
+        hostel = hostelResult[0] || null;
       }
 
       // Get fee information
-      const fees = await db.query.hostelPayments.findMany({
-        where: eq(hostelPayments.studentId, currentUser.id),
-        orderBy: [desc(hostelPayments.paymentDate)],
-        limit: 10,
-      });
+      const fees = await db
+        .select()
+        .from(hostelPayments)
+        .where(eq(hostelPayments.studentId, currentUser.id))
+        .orderBy(desc(hostelPayments.paymentDate))
+        .limit(10);
 
       return NextResponse.json({
         data: {
@@ -117,17 +146,21 @@ export const GET = createApiRoute(
     if (action === "facilities") {
       const hostelId = searchParams.get("hostelId");
 
-      let facilities = await db.query.hostelFacilities.findMany({
-        where: hostelId
-          ? eq(hostelFacilities.hostelId, hostelId)
-          : eq(hostelFacilities.schoolId, currentUser.schoolId || ""),
-      });
+      let facilities = await db
+        .select()
+        .from(hostelFacilities)
+        .where(
+          hostelId
+            ? eq(hostelFacilities.hostelId, hostelId)
+            : eq(hostelFacilities.schoolId, currentUser.schoolId || "")
+        );
 
       // If no specific hostel, also get building-level facilities
       if (!hostelId && currentUser.schoolId) {
-        const buildings = await db.query.hostelBuildings.findMany({
-          where: eq(hostelBuildings.schoolId, currentUser.schoolId),
-        });
+        const buildings = await db
+          .select()
+          .from(hostelBuildings)
+          .where(eq(hostelBuildings.schoolId, currentUser.schoolId));
 
         // Transform building facilities to facility format
         const buildingFacilities = buildings.flatMap((building) => {
@@ -176,13 +209,22 @@ export const GET = createApiRoute(
         whereConditions.push(eq(hostelRooms.roomType, roomType));
       }
 
-      const rooms = await db.query.hostelRooms.findMany({
-        where: and(...whereConditions),
-        with: {
-          hostel: true,
-        },
-        orderBy: [hostelRooms.roomNumber],
-      });
+      const rooms = await db
+        .select({
+          id: hostelRooms.id,
+          hostelId: hostelRooms.hostelId,
+          roomNumber: hostelRooms.roomNumber,
+          floor: hostelRooms.floor,
+          roomType: hostelRooms.roomType,
+          capacity: hostelRooms.capacity,
+          occupiedBeds: hostelRooms.occupiedBeds,
+          status: hostelRooms.status,
+          hostel: hostelBuildings,
+        })
+        .from(hostelRooms)
+        .leftJoin(hostelBuildings, eq(hostelRooms.hostelId, hostelBuildings.id))
+        .where(and(...whereConditions))
+        .orderBy(hostelRooms.roomNumber);
 
       return NextResponse.json({
         success: true,
@@ -192,10 +234,11 @@ export const GET = createApiRoute(
 
     // Action: buildings (All hostel buildings)
     if (action === "buildings") {
-      const buildings = await db.query.hostelBuildings.findMany({
-        where: eq(hostelBuildings.schoolId, currentUser.schoolId || ""),
-        orderBy: [hostelBuildings.name],
-      });
+      const buildings = await db
+        .select()
+        .from(hostelBuildings)
+        .where(eq(hostelBuildings.schoolId, currentUser.schoolId || ""))
+        .orderBy(hostelBuildings.name);
 
       return NextResponse.json({
         success: true,
@@ -229,11 +272,12 @@ export const GET = createApiRoute(
         whereConditions.push(lte(hostelAttendance.date, endDate));
       }
 
-      const attendance = await db.query.hostelAttendance.findMany({
-        where: and(...whereConditions),
-        orderBy: [desc(hostelAttendance.date)],
-        limit: 31,
-      });
+      const attendance = await db
+        .select()
+        .from(hostelAttendance)
+        .where(and(...whereConditions))
+        .orderBy(desc(hostelAttendance.date))
+        .limit(31);
 
       const stats = {
         total: attendance.length,
@@ -270,11 +314,12 @@ export const GET = createApiRoute(
         whereConditions.push(eq(hostelLeaveRequests.status, status));
       }
 
-      const leaveRequests = await db.query.hostelLeaveRequests.findMany({
-        where: and(...whereConditions),
-        orderBy: [desc(hostelLeaveRequests.createdAt)],
-        limit: 20,
-      });
+      const leaveRequests = await db
+        .select()
+        .from(hostelLeaveRequests)
+        .where(and(...whereConditions))
+        .orderBy(desc(hostelLeaveRequests.createdAt))
+        .limit(20);
 
       return NextResponse.json({
         success: true,
@@ -287,21 +332,27 @@ export const GET = createApiRoute(
       const academicYear = searchParams.get("academicYear") || new Date().getFullYear().toString();
       const roomType = searchParams.get("roomType");
 
-      const feeStructure = await db.query.hostelFees.findFirst({
-        where: and(
-          eq(hostelFees.schoolId, currentUser.schoolId || ""),
-          eq(hostelFees.academicYear, academicYear),
-          roomType ? eq(hostelFees.roomType, roomType) : sql`1=1`
-        ),
-      });
+      const feeStructureResult = await db
+        .select()
+        .from(hostelFees)
+        .where(
+          and(
+            eq(hostelFees.schoolId, currentUser.schoolId || ""),
+            eq(hostelFees.academicYear, academicYear),
+            roomType ? eq(hostelFees.roomType, roomType) : sql`1=1`
+          )
+        )
+        .limit(1);
+      const feeStructure = feeStructureResult[0] || null;
 
       let studentPayments: unknown[] = [];
       if (currentUser.type === "student") {
-        studentPayments = await db.query.hostelPayments.findMany({
-          where: eq(hostelPayments.studentId, currentUser.id),
-          orderBy: [desc(hostelPayments.paymentDate)],
-          limit: 20,
-        });
+        studentPayments = await db
+          .select()
+          .from(hostelPayments)
+          .where(eq(hostelPayments.studentId, currentUser.id))
+          .orderBy(desc(hostelPayments.paymentDate))
+          .limit(20);
       }
 
       return NextResponse.json({
@@ -319,9 +370,10 @@ export const GET = createApiRoute(
         ? eq(hostelMess.hostelId, hostelId)
         : eq(hostelMess.schoolId, currentUser.schoolId || "");
 
-      const messInfo = await db.query.hostelMess.findMany({
-        where: whereCondition,
-      });
+      const messInfo = await db
+        .select()
+        .from(hostelMess)
+        .where(whereCondition);
 
       return NextResponse.json({
         success: true,
@@ -347,10 +399,11 @@ export const GET = createApiRoute(
         );
       }
 
-      const rules = await db.query.hostelRules.findMany({
-        where: and(...whereConditions),
-        orderBy: [hostelRules.displayOrder, hostelRules.category],
-      });
+      const rules = await db
+        .select()
+        .from(hostelRules)
+        .where(and(...whereConditions))
+        .orderBy(hostelRules.displayOrder, hostelRules.category);
 
       return NextResponse.json({
         success: true,
@@ -374,11 +427,12 @@ export const GET = createApiRoute(
         whereConditions.push(eq(hostelComplaints.status, status));
       }
 
-      const complaints = await db.query.hostelComplaints.findMany({
-        where: and(...whereConditions),
-        orderBy: [desc(hostelComplaints.createdAt)],
-        limit: 20,
-      });
+      const complaints = await db
+        .select()
+        .from(hostelComplaints)
+        .where(and(...whereConditions))
+        .orderBy(desc(hostelComplaints.createdAt))
+        .limit(20);
 
       return NextResponse.json({
         success: true,
@@ -413,19 +467,21 @@ export const POST = createApiRoute(
 
     const { userId, user } = auth;
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: {
-        id: true,
-        type: true,
-        role: true,
-        schoolId: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        phone: true,
-      },
-    });
+    const currentUser = await db
+      .select({
+        id: users.id,
+        type: users.type,
+        role: users.role,
+        schoolId: users.schoolId,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        phone: users.phone,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!currentUser) {
       return errorResponse("User not found", 404);
@@ -450,30 +506,37 @@ export const POST = createApiRoute(
       } = body;
 
       // Check if student already has an active allocation
-      const existingAllocation = await db.query.hostelAllocations.findFirst({
-        where: and(
-          eq(hostelAllocations.studentId, currentUser.id),
-          eq(hostelAllocations.status, "active")
-        ),
-      });
+      const existingAllocationResult = await db
+        .select()
+        .from(hostelAllocations)
+        .where(
+          and(
+            eq(hostelAllocations.studentId, currentUser.id),
+            eq(hostelAllocations.status, "active")
+          )
+        )
+        .limit(1);
+      const existingAllocation = existingAllocationResult[0] || null;
 
       if (existingAllocation) {
-        return badRequestResponse(
-          "You already have an active hostel allocation",
-          { existingAllocation }
-        );
+        return errorResponse("You already have an active hostel allocation", 400);
       }
 
       // Get fee structure
-      const feeStructure = await db.query.hostelFees.findFirst({
-        where: and(
-          eq(hostelFees.schoolId, currentUser.schoolId || ""),
-          eq(hostelFees.academicYear, new Date().getFullYear().toString()),
-          preferredRoomType
-            ? eq(hostelFees.roomType, preferredRoomType)
-            : sql`1=1`
-        ),
-      });
+      const feeStructureResult = await db
+        .select()
+        .from(hostelFees)
+        .where(
+          and(
+            eq(hostelFees.schoolId, currentUser.schoolId || ""),
+            eq(hostelFees.academicYear, new Date().getFullYear().toString()),
+            preferredRoomType
+              ? eq(hostelFees.roomType, preferredRoomType)
+              : sql`1=1`
+          )
+        )
+        .limit(1);
+      const feeStructure = feeStructureResult[0] || null;
 
       const feeAmount = feeStructure?.semesterFee || feeStructure?.annualFee || 5000;
 
@@ -585,7 +648,7 @@ export const POST = createApiRoute(
 
     // Action: mark-attendance (Warden marks hostel attendance)
     if (action === "mark-attendance") {
-      if (currentUser.role !== "school_admin" && currentUser.role !== "admin") {
+      if (currentUser.role !== "school-admin" && currentUser.role !== "admin") {
         return forbiddenResponse("Only wardens can mark attendance");
       }
 
@@ -608,12 +671,17 @@ export const POST = createApiRoute(
         } = record;
 
         // Check if attendance already exists
-        const existing = await db.query.hostelAttendance.findFirst({
-          where: and(
-            eq(hostelAttendance.studentId, studentId),
-            eq(hostelAttendance.date, date)
-          ),
-        });
+        const existingResult = await db
+          .select()
+          .from(hostelAttendance)
+          .where(
+            and(
+              eq(hostelAttendance.studentId, studentId),
+              eq(hostelAttendance.date, date)
+            )
+          )
+          .limit(1);
+        const existing = existingResult[0] || null;
 
         if (existing) {
           const [updated] = await db
@@ -666,26 +734,35 @@ export const POST = createApiRoute(
 
     // Action: allocate-room (Admin allocates room to student)
     if (action === "allocate-room") {
-      if (currentUser.role !== "school_admin" && currentUser.role !== "admin") {
+      if (currentUser.role !== "school-admin" && currentUser.role !== "admin") {
         return forbiddenResponse("Only admins can allocate rooms");
       }
 
       const { studentId, hostelId, roomId, bedNumber, feeType, feeAmount } = body;
 
       // Get student info
-      const student = await db.query.users.findFirst({
-        where: eq(users.id, studentId),
-        columns: { id: true, firstName: true, lastName: true },
-      });
+      const studentResult = await db
+        .select({
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+        })
+        .from(users)
+        .where(eq(users.id, studentId))
+        .limit(1);
+      const student = studentResult[0] || null;
 
       if (!student) {
         return errorResponse("Student not found", 404);
       }
 
       // Check room capacity
-      const room = await db.query.hostelRooms.findFirst({
-        where: eq(hostelRooms.id, roomId),
-      });
+      const roomResult = await db
+        .select()
+        .from(hostelRooms)
+        .where(eq(hostelRooms.id, roomId))
+        .limit(1);
+      const room = roomResult[0] || null;
 
       if (!room) {
         return errorResponse("Room not found", 404);
@@ -696,9 +773,12 @@ export const POST = createApiRoute(
       }
 
       // Create or update allocation
-      const existingAllocation = await db.query.hostelAllocations.findFirst({
-        where: eq(hostelAllocations.studentId, studentId),
-      });
+      const existingAllocationResult = await db
+        .select()
+        .from(hostelAllocations)
+        .where(eq(hostelAllocations.studentId, studentId))
+        .limit(1);
+      const existingAllocation = existingAllocationResult[0] || null;
 
       if (existingAllocation) {
         await db
@@ -755,9 +835,12 @@ export const POST = createApiRoute(
     if (action === "checkout") {
       const { allocationId, checkoutReason } = body;
 
-      const allocation = await db.query.hostelAllocations.findFirst({
-        where: eq(hostelAllocations.id, allocationId),
-      });
+      const allocationResult = await db
+        .select()
+        .from(hostelAllocations)
+        .where(eq(hostelAllocations.id, allocationId))
+        .limit(1);
+      const allocation = allocationResult[0] || null;
 
       if (!allocation) {
         return errorResponse("Allocation not found", 404);
@@ -777,9 +860,12 @@ export const POST = createApiRoute(
 
       // Update room occupancy
       if (allocation.roomId) {
-        const room = await db.query.hostelRooms.findFirst({
-          where: eq(hostelRooms.id, allocation.roomId),
-        });
+        const roomResult = await db
+          .select()
+          .from(hostelRooms)
+          .where(eq(hostelRooms.id, allocation.roomId))
+          .limit(1);
+        const room = roomResult[0] || null;
 
         if (room) {
           await db
@@ -808,12 +894,17 @@ export const POST = createApiRoute(
       }
 
       // Verify allocation belongs to student
-      const allocation = await db.query.hostelAllocations.findFirst({
-        where: and(
-          eq(hostelAllocations.id, allocationId),
-          eq(hostelAllocations.studentId, currentUser.id)
-        ),
-      });
+      const allocationResult = await db
+        .select()
+        .from(hostelAllocations)
+        .where(
+          and(
+            eq(hostelAllocations.id, allocationId),
+            eq(hostelAllocations.studentId, currentUser.id)
+          )
+        )
+        .limit(1);
+      const allocation = allocationResult[0] || null;
 
       if (!allocation) {
         return errorResponse("Allocation not found", 404);
@@ -851,7 +942,7 @@ export const POST = createApiRoute(
 
     // Action: record-payment (Record hostel fee payment)
     if (action === "record-payment") {
-      if (currentUser.role !== "school_admin" && currentUser.role !== "admin") {
+      if (currentUser.role !== "school-admin" && currentUser.role !== "admin") {
         return forbiddenResponse("Only admins can record payments");
       }
 
@@ -890,9 +981,12 @@ export const POST = createApiRoute(
 
       // Update allocation fee paid
       if (allocationId) {
-        const allocation = await db.query.hostelAllocations.findFirst({
-          where: eq(hostelAllocations.id, allocationId),
-        });
+        const allocationResult = await db
+          .select()
+          .from(hostelAllocations)
+          .where(eq(hostelAllocations.id, allocationId))
+          .limit(1);
+        const allocation = allocationResult[0] || null;
 
         if (allocation) {
           await db
@@ -917,9 +1011,12 @@ export const POST = createApiRoute(
     if (action === "approve-leave") {
       const { leaveRequestId, status, approvalNotes, gatePassNumber } = body;
 
-      const leaveRequest = await db.query.hostelLeaveRequests.findFirst({
-        where: eq(hostelLeaveRequests.id, leaveRequestId),
-      });
+      const leaveRequestResult = await db
+        .select()
+        .from(hostelLeaveRequests)
+        .where(eq(hostelLeaveRequests.id, leaveRequestId))
+        .limit(1);
+      const leaveRequest = leaveRequestResult[0] || null;
 
       if (!leaveRequest) {
         return errorResponse("Leave request not found", 404);
@@ -949,7 +1046,7 @@ export const POST = createApiRoute(
 
     // Action: create-building (Create new hostel building)
     if (action === "create-building") {
-      if (currentUser.role !== "school_admin" && currentUser.role !== "admin") {
+      if (currentUser.role !== "school-admin" && currentUser.role !== "admin") {
         return forbiddenResponse("Only admins can create buildings");
       }
 
@@ -976,7 +1073,7 @@ export const POST = createApiRoute(
 
     // Action: create-room (Create new room in hostel)
     if (action === "create-room") {
-      if (currentUser.role !== "school_admin" && currentUser.role !== "admin") {
+      if (currentUser.role !== "school-admin" && currentUser.role !== "admin") {
         return forbiddenResponse("Only admins can create rooms");
       }
 

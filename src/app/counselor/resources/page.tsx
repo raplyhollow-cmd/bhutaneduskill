@@ -80,9 +80,12 @@ interface ResourceStats {
   byCategory: Record<string, number>;
 }
 
+// Valid icon names for categories
+type CategoryIconName = "career" | "college" | "scholarship" | "mental" | "study" | "tools" | "video";
+
 // Helper function to get icon for category
-function getCategoryIcon(iconName: string) {
-  const icons: Record<string, React.ComponentType<{ className?: string }>> = {
+function getCategoryIcon(iconName: string): React.ComponentType<{ className?: string }> {
+  const icons: Record<CategoryIconName, React.ComponentType<{ className?: string }>> = {
     "career": GraduationCap,
     "college": Briefcase,
     "scholarship": Heart,
@@ -91,7 +94,7 @@ function getCategoryIcon(iconName: string) {
     "tools": FileText,
     "video": Video,
   };
-  return icons[iconName] || Users;
+  return icons[iconName as CategoryIconName] || Users;
 }
 
 export default function CounselorResourcesPage() {
@@ -342,7 +345,7 @@ export default function CounselorResourcesPage() {
       {/* Category Pills */}
       <div className="flex flex-wrap gap-2">
         {categories.map((category) => {
-          const IconComponent = getCategoryIcon(category.icon as any) as any;
+          const IconComponent = getCategoryIcon(category.icon);
           const isSelected = selectedCategory === category.id;
           return (
             <button

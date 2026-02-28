@@ -1,18 +1,20 @@
 /**
  * STUDENT MODULE COMPLETION API
  * Mark module as completed and generate certificate
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { moduleProgress, learningModules, users } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
+import { createApiRoute } from "@/lib/api/route-handler";
 
-interface Params {
-  params: Promise<{ id: string }>;
+interface ModuleCompletionParams extends Record<string, unknown> {
+  id: string;
 }
 
 /**
@@ -41,95 +43,93 @@ const completeModuleSchema = z.object({
 });
 
 // POST /api/student/modules/[id]/complete - Mark module as completed
-export async function POST(request: NextRequest, { params }: Params) {
-  try {
-    const authResult = await requireAuth(["student"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-    const { userId } = authResult;
+export const POST = createApiRoute<ModuleCompletionParams>(
+  async (request: NextRequest, auth, context) => {
+    const { userId } = auth;
 
     const body = await request.json();
     const validationResult = completeModuleSchema.safeParse(body);
 
     if (!validationResult.success) {
-      return NextResponse.json(
-        {
-          error: "Validation failed",
-          details: validationResult.error.issues,
-        },
-        { status: 400 }
-      );
+      return {
+        error: "Validation failed",
+        details: validationResult.error.issues,
+        status: 400,
+      };
     }
 
     const { quizScore } = validationResult.data;
-    const { id } = await params;
+    const { id } = await context!.params!;
 
-    // Get progress record
-    const progress = await db.query.moduleProgress.findFirst({
-      where: and(
-        eq(moduleProgress.moduleId, id),
-        eq(moduleProgress.studentId, userId)
-      ),
-    });
+    // Get progress record using db.select (neon-http compatible)
+    const progressResult = await db
+      .select()
+      .from(moduleProgress)
+      .where(
+        and(
+          eq(moduleProgress.moduleId, id),
+          eq(moduleProgress.studentId, userId)
+        )
+      )
+      .limit(1);
+
+    const progress = progressResult[0];
 
     if (!progress) {
-      return NextResponse.json(
-        { error: "Not enrolled in this module" },
-        { status: 400 }
-      );
+      return { error: "Not enrolled in this module", status: 400 };
     }
 
     if (progress.isCompleted) {
-      return NextResponse.json(
-        {
-          error: "Module already completed",
-          progress,
-        },
-        { status: 400 }
-      );
+      return {
+        error: "Module already completed",
+        progress,
+        status: 400,
+      };
     }
 
-    // Get module details
-    const module = await db.query.learningModules.findFirst({
-      where: eq(learningModules.id, id),
-      with: {
-        teacher: {
-          columns: {
-            id: true,
-            firstName: true,
-            lastName: true,
-          },
-        },
-      },
-    });
+    // Get module details using db.select (neon-http compatible)
+    const moduleResult = await db
+      .select()
+      .from(learningModules)
+      .where(eq(learningModules.id, id))
+      .limit(1);
+
+    const module = moduleResult[0];
 
     if (!module) {
-      return NextResponse.json(
-        { error: "Module not found" },
-        { status: 404 }
-      );
+      return { error: "Module not found", status: 404 };
     }
 
-    // Get student details for certificate
-    const student = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        schoolId: true,
-      },
-    });
+    // Get teacher details if teacherId exists
+    let teacherData: { firstName?: string; lastName?: string } | null = null;
+    if (module.teacherId) {
+      const teacherResult = await db
+        .select({
+          firstName: users.firstName,
+          lastName: users.lastName,
+        })
+        .from(users)
+        .where(eq(users.id, module.teacherId))
+        .limit(1);
+      teacherData = teacherResult[0] || null;
+    }
+
+    // Get student details for certificate using db.select (neon-http compatible)
+    const studentResult = await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        schoolId: users.schoolId,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    const student = studentResult[0];
 
     if (!student) {
-      return NextResponse.json(
-        { error: "Student not found" },
-        { status: 404 }
-      );
+      return { error: "Student not found", status: 404 };
     }
 
     const now = new Date();
@@ -162,7 +162,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       grade,
     });
 
-    return NextResponse.json({
+    return {
       progress: updated,
       certificate: {
         number: certificateNumber,
@@ -171,15 +171,10 @@ export async function POST(request: NextRequest, { params }: Params) {
         score: quizScore,
         completionDate: now,
         moduleTitle: module.title,
-        studentName: `${student.firstName} ${student.lastName || ""}`.trim(),
-        instructorName: `${(module.teacher as any)?.firstName || ""} ${(module.teacher as any)?.lastName || ""}`.trim(),
+        studentName: `${student!.firstName} ${student!.lastName || ""}`.trim(),
+        instructorName: teacherData ? `${teacherData.firstName || ""} ${teacherData.lastName || ""}`.trim() : undefined,
       },
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/student/modules/[id]/complete", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to complete module" },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["student"]
+);

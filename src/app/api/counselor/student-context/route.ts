@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { users, students, studentInterventions } from "@/lib/db/schema";
@@ -26,26 +26,15 @@ interface StudentContextData {
 }
 
 // GET /api/counselor/student-context - Get student context for intervention
-export async function GET(req: Request) {
-  try {
-    const authResult = await requireAuth(["counselor"]);
-    if ("error" in authResult) {
-      return Response.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (req, auth) => {
+    const { userId } = auth;
 
     const { searchParams } = new URL(req.url);
     const studentId = searchParams.get("studentId");
 
     if (!studentId) {
-      return Response.json(
-        { error: "Student ID is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "Student ID is required", status: 400 } satisfies ApiErrorResponse;
     }
 
     // Get student details
@@ -107,14 +96,7 @@ export async function GET(req: Request) {
       })),
     };
 
-    return Response.json({
-      data,
-    } satisfies ApiSuccess<StudentContextData>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/counselor/student-context", method: "GET" });
-    return Response.json(
-      { error: "Failed to fetch student context", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return { data } satisfies ApiSuccess<StudentContextData>;
+  },
+  ["counselor"]
+);

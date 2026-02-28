@@ -169,7 +169,7 @@ export default function PendingApprovalPage() {
               <div className={`${colors.bg} rounded-xl p-4 border border-opacity-20`}>
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full flex items-center justify-center bg-white shadow-sm">
-                    <span className="text-xl font-bold" style={{ color: colors.from }}>
+                    <span className="text-xl font-bold" style={{ background: colors.gradient, backgroundClip: 'text', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                       {user?.name?.charAt(0).toUpperCase()}
                     </span>
                   </div>

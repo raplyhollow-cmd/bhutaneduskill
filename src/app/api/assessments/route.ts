@@ -56,28 +56,30 @@ export const POST = createApiRoute(
       // Create assessment record
       // For career assessments (riasec, mbti, etc.), provide defaults for required academic fields
       const assessmentId = `assessment-${Date.now()}`;
+      type AssessmentInsert = typeof assessments.$inferInsert;
+      const assessmentValues: AssessmentInsert = {
+        id: assessmentId,
+        userId: userId,
+        type,
+        status: "completed",
+        // Combine answers into results - the schema only has 'results' field
+        results: { answers, ...results },
+        completedAt: new Date(),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        // Required fields for academic assessments - use defaults for career assessments
+        title: `${type.toUpperCase()} Career Assessment`,
+        description: `Career assessment to identify interests and match with suitable careers`,
+        dueDate: new Date().toISOString().split('T')[0], // Today's date as due date
+        totalPoints: 100,
+        passingScore: 60,
+        // Optional fields
+        classId: null,
+        assessmentTypeId: null,
+      };
       const [assessment] = await db
         .insert(assessments)
-        .values({
-          id: assessmentId,
-          userId: userId,
-          type,
-          status: "completed",
-          answers,
-          results,
-          completedAt: new Date(),
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          // Required fields for academic assessments - use defaults for career assessments
-          title: `${type.toUpperCase()} Career Assessment`,
-          description: `Career assessment to identify interests and match with suitable careers`,
-          dueDate: new Date().toISOString().split('T')[0], // Today's date as due date
-          totalPoints: 100,
-          passingScore: 60,
-          // Optional fields
-          classId: null,
-          assessmentTypeId: null,
-        } as any)
+        .values(assessmentValues)
         .returning();
 
       // For RIASEC assessments, save to specialized table
@@ -116,7 +118,7 @@ export const POST = createApiRoute(
           recommendedCareers: results.careerSuggestions || [],
           completedAt: new Date(),
           createdAt: new Date(),
-        } as any);
+        });
       }
 
       // Calculate career matches based on RIASEC results
@@ -161,7 +163,8 @@ export const POST = createApiRoute(
 
       // Save career matches with all required fields
       for (const match of matches) {
-        await db.insert(careerMatches).values({
+        type CareerMatchInsert = typeof careerMatches.$inferInsert;
+        const careerMatchValues: CareerMatchInsert = {
           id: `match-${Date.now()}-${match.careerId}`,
           assessmentId: assessmentId,
           studentId: userId,
@@ -172,7 +175,8 @@ export const POST = createApiRoute(
           assessmentType: type,
           isTopMatch: match.matchScore > 75 ? true : false,
           createdAt: new Date(),
-        } as any);
+        };
+        await db.insert(careerMatches).values(careerMatchValues);
       }
 
       // Log audit event for assessment completion (don't await - non-blocking)

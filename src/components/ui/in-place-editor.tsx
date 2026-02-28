@@ -117,7 +117,7 @@ function useInPlaceEditor(
   })
 
   const { success, error: showError } = useToast()
-  const saveTimeoutRef = React.useRef<NodeJS.Timeout>()
+  const saveTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
 
   // Update edit value when prop changes (from outside edit mode)
   React.useEffect(() => {
@@ -667,7 +667,7 @@ export function InPlaceTextWithUndo({
 }: Omit<InPlaceTextProps, "successDuration">) {
   const [lastSavedValue, setLastSavedValue] = React.useState(value)
   const [showUndo, setShowUndo] = React.useState(false)
-  const undoTimeoutRef = React.useRef<NodeJS.Timeout>()
+  const undoTimeoutRef = React.useRef<NodeJS.Timeout | null>(null)
 
   React.useEffect(() => {
     setLastSavedValue(value)

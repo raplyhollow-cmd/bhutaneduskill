@@ -1,27 +1,25 @@
 /**
  * Student Scholarship Applications API
  * Submit and track scholarship applications
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
 import { rubScholarshipApplications, rubScholarships, users } from "@/lib/db/schema";
 import { db } from "@/lib/db";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 /**
  * GET /api/student/scholarship-applications
  * Get student's scholarship applications
  */
-export async function GET(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["student", "parent", "admin", "school_admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId, user } = authResult;
+export const GET = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId, user } = auth;
 
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
@@ -46,7 +44,7 @@ export async function GET(req: NextRequest) {
       if (student) {
         studentId = targetStudentId;
       }
-    } else if (["admin", "school_admin"].includes(user?.type || "") && targetStudentId) {
+    } else if (["admin", "school-admin"].includes(user?.type || "") && targetStudentId) {
       studentId = targetStudentId;
     }
 
@@ -97,30 +95,21 @@ export async function GET(req: NextRequest) {
       scholarship: scholarshipMap.get(app.scholarshipId),
     }));
 
-    return NextResponse.json({
+    return {
       success: true,
       data: { applications: applicationsWithScholarship },
-    });
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/student/scholarship-applications", method: "GET" });
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : "Failed to fetch applications",
-    }, { status: 500 });
-  }
-}
+    };
+  },
+  ["student", "parent", "admin", "school-admin"]
+);
 
 /**
  * POST /api/student/scholarship-applications
  * Submit new scholarship application
  */
-export async function POST(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["student", "school_admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId, user } = authResult;
+export const POST = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId, user } = auth;
 
     const body = await req.json();
     const {
@@ -134,9 +123,7 @@ export async function POST(req: NextRequest) {
 
     // Validate required fields
     if (!scholarshipId) {
-      return NextResponse.json({
-        error: "Scholarship ID is required",
-      }, { status: 400 });
+      return { error: "Scholarship ID is required", status: 400 };
     }
 
     // Get scholarship details
@@ -147,15 +134,11 @@ export async function POST(req: NextRequest) {
       .limit(1);
 
     if (!scholarship) {
-      return NextResponse.json({
-        error: "Scholarship not found",
-      }, { status: 404 });
+      return { error: "Scholarship not found", status: 404 };
     }
 
     if (!scholarship.isActive) {
-      return NextResponse.json({
-        error: "This scholarship is currently not accepting applications",
-      }, { status: 400 });
+      return { error: "This scholarship is currently not accepting applications", status: 400 };
     }
 
     // Get student details
@@ -166,7 +149,7 @@ export async function POST(req: NextRequest) {
       .limit(1);
 
     if (!student) {
-      return NextResponse.json({ error: "Student not found" }, { status: 404 });
+      return { error: "Student not found", status: 404 };
     }
 
     // Check for existing application
@@ -183,9 +166,7 @@ export async function POST(req: NextRequest) {
       .limit(1);
 
     if (existing) {
-      return NextResponse.json({
-        error: "You have already applied for this scholarship this year",
-      }, { status: 409 });
+      return { error: "You have already applied for this scholarship this year", status: 409 };
     }
 
     // Generate application number
@@ -230,38 +211,27 @@ export async function POST(req: NextRequest) {
       .where(eq(rubScholarshipApplications.id, applicationId))
       .limit(1);
 
-    return NextResponse.json({
+    return {
       success: true,
       data: { ...application, scholarship },
-    });
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/student/scholarship-applications", method: "POST" });
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : "Failed to create application",
-    }, { status: 500 });
-  }
-}
+    };
+  },
+  ["student", "school-admin"]
+);
 
 /**
  * PATCH /api/student/scholarship-applications
  * Update application (withdraw, add documents)
  */
-export async function PATCH(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["student", "school_admin", "admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const PATCH = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId } = auth;
 
     const body = await req.json();
     const { applicationId, action, documents } = body;
 
     if (!applicationId) {
-      return NextResponse.json({
-        error: "Application ID is required",
-      }, { status: 400 });
+      return { error: "Application ID is required", status: 400 };
     }
 
     // Get application
@@ -272,21 +242,17 @@ export async function PATCH(req: NextRequest) {
       .limit(1);
 
     if (!application) {
-      return NextResponse.json({
-        error: "Application not found",
-      }, { status: 404 });
+      return { error: "Application not found", status: 404 };
     }
 
     // Verify ownership (or admin access)
     if (application.studentId !== userId && userId !== "admin") {
-      return NextResponse.json({
-        error: "Access denied",
-      }, { status: 403 });
+      return { error: "Access denied", status: 403 };
     }
 
     const updateData: {
       status?: string;
-      documents?: unknown[];
+      documents?: Array<{ documentType: string; documentUrl: string }>;
       updatedAt: Date;
     } = {
       updatedAt: new Date(),
@@ -295,8 +261,8 @@ export async function PATCH(req: NextRequest) {
     if (action === "withdraw") {
       updateData.status = "withdrawn";
     } else if (action === "add_documents" && documents) {
-      const existingDocs = application.documents || [];
-      updateData.documents = [...existingDocs, ...documents];
+      const existingDocs = (application.documents || []) as Array<{ documentType: string; documentUrl: string }>;
+      updateData.documents = [...existingDocs, ...(documents as Array<{ documentType: string; documentUrl: string }>)];
     }
 
     await db
@@ -304,15 +270,10 @@ export async function PATCH(req: NextRequest) {
       .set(updateData)
       .where(eq(rubScholarshipApplications.id, applicationId));
 
-    return NextResponse.json({
+    return {
       success: true,
       message: "Application updated",
-    });
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/student/scholarship-applications", method: "PATCH" });
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : "Failed to update application",
-    }, { status: 500 });
-  }
-}
+    };
+  },
+  ["student", "school-admin", "admin"]
+);

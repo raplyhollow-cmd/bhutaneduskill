@@ -58,6 +58,9 @@ type IngestResult = {
   draftId?: string;
   recordsExtracted?: number;
   message?: string;
+  confidenceScore?: number;
+  estimatedRecords?: number;
+  preview?: string[];
 };
 
 const sourceTypes = [

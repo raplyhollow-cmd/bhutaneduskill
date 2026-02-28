@@ -10,10 +10,11 @@
  *
  * Protected: Requires 'ministry' or 'admin' role
  * Note: This is VIEW-ONLY - ministry users cannot modify payment data
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import {
@@ -22,6 +23,7 @@ import {
 } from "@/lib/db/schema";
 import { eq, and, desc, sql, count, sum, gte, lte, or, SQL } from "drizzle-orm";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 // ============================================================================
 // TYPES
@@ -43,26 +45,6 @@ interface PaymentTransactionData {
   paidDate: string | null;
   refundAmount: number;
   failureReason: string | null;
-}
-
-/**
- * Simulated payment transaction data from invoices
- * In the current schema, payments are tracked through invoices with paidAt dates
- */
-interface InvoicePaymentData {
-  id: string;
-  invoiceNumber: string;
-  schoolName: string;
-  subscriptionTier: string;
-  amount: string;
-  currency: string;
-  status: string;
-  paymentMethod: string | null;
-  invoiceDate: Date;
-  dueDate: Date;
-  paidAt: Date | null;
-  refundAmount: string | null;
-  refundReason: string | null;
 }
 
 interface SchoolPaymentSummary {
@@ -126,24 +108,9 @@ interface PaymentTrackingResponse {
 // GET HANDLER
 // ============================================================================
 
-export async function GET(req: NextRequest) {
-  const startTime = Date.now();
-
-  try {
-    // Authenticate and authorize
-    const authResult = await requireAuth(["ministry", "admin"]);
-    if ("error" in authResult) {
-      logger.security("unauthorized_access_attempt", {
-        route: "/api/ministry/billing/payments",
-        method: "GET",
-      });
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (req: NextRequest) => {
+    const startTime = Date.now();
     const { searchParams } = new URL(req.url);
 
     // Parse query parameters
@@ -156,7 +123,6 @@ export async function GET(req: NextRequest) {
     logger.info("Payment tracking data requested", {
       route: "/api/ministry/billing/payments",
       method: "GET",
-      userId,
       filters: { status, schoolId, startDate, endDate },
     });
 
@@ -189,27 +155,15 @@ export async function GET(req: NextRequest) {
 
     const duration = Date.now() - startTime;
     logger.info("Payment tracking data retrieved successfully", {
-      userId,
       duration: `${duration}ms`,
       transactionCount: transactions.length,
       alertCount: alerts.length,
     });
 
-    return NextResponse.json({ data: response } satisfies ApiSuccess<PaymentTrackingResponse>);
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/ministry/billing/payments", method: "GET" });
-
-    return NextResponse.json(
-      {
-        error: "Failed to fetch payment tracking data",
-        status: 500,
-        details: process.env.NODE_ENV === "development" ? String(error) : undefined,
-      } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return { data: response };
+  },
+  ["ministry", "admin"]
+);
 
 // ============================================================================
 // DATA FETCHING FUNCTIONS

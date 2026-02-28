@@ -1,34 +1,34 @@
+/**
+ * Individual Announcement API
+ *
+ * GET /api/communication/announcements/[id] - Fetch single announcement
+ * PATCH /api/communication/announcements/[id] - Update announcement
+ * DELETE /api/communication/announcements/[id] - Delete announcement
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
+import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { announcements, users, announcementReads } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
-
-// ============================================================================
-// INDIVIDUAL ANNOUNCEMENT API
-// ============================================================================
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, badRequestResponse, notFoundResponse, forbiddenResponse } from "@/lib/api/response-helpers";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
 
-/**
- * GET /api/communication/announcements/[id]
- *
- * Fetch a single announcement by ID
- */
-export async function GET(request: NextRequest, context: RouteContext) {
-  // Auth: admin, school-admin, teacher can read announcements
-  const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
-  const { userId } = authResult;
+// ============================================================================
+// GET /api/communication/announcements/[id]
+// ============================================================================
 
-  const { id } = await context.params;
+export const GET = createApiRoute(
+  async (req: NextRequest, auth, context: RouteContext) => {
+    const { userId } = auth;
+    const { id } = await context.params;
 
-  try {
     // Get user's school
     const [user] = await db
       .select({ schoolId: users.schoolId })
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       .limit(1);
 
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return notFoundResponse("User");
     }
 
     // Fetch announcement
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       .limit(1);
 
     if (!announcement) {
-      return NextResponse.json({ error: "Announcement not found" }, { status: 404 });
+      return notFoundResponse("Announcement");
     }
 
     // Check if user has read this announcement
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         announcementId: id,
         userId,
         readAt: new Date(),
-      } as any);
+      });
 
       // Increment view count
       await db
@@ -86,33 +86,20 @@ export async function GET(request: NextRequest, context: RouteContext) {
         .where(eq(announcements.id, id));
     }
 
-    return NextResponse.json({ announcement });
-  } catch (error) {
-    logger.apiError(error, { route: "/[id]", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch announcement" },
-      { status: 500 }
-    );
-  }
-}
+    return successResponse({ announcement });
+  },
+  ['admin', 'school-admin', 'teacher']
+);
 
-/**
- * PATCH /api/communication/announcements/[id]
- *
- * Update an announcement
- */
-export async function PATCH(request: NextRequest, context: RouteContext) {
-  // Auth: admin, school-admin, teacher can update announcements
-  const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
-  const { userId } = authResult;
+// ============================================================================
+// PATCH /api/communication/announcements/[id]
+// ============================================================================
 
-  const { id } = await context.params;
-
-  try {
-    const body = await request.json();
+export const PATCH = createApiRoute(
+  async (req: NextRequest, auth, context: RouteContext) => {
+    const { userId } = auth;
+    const { id } = await context.params;
+    const body = await req.json();
 
     // Get user's school and type
     const [user] = await db
@@ -122,7 +109,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       .limit(1);
 
     if (!user || !user.schoolId) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return notFoundResponse("User");
     }
 
     // Check if user can edit (school admin or author)
@@ -138,17 +125,17 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       .limit(1);
 
     if (!existing) {
-      return NextResponse.json({ error: "Announcement not found" }, { status: 404 });
+      return notFoundResponse("Announcement");
     }
 
     // Check permissions
-    const canEdit = user.type === "school_admin" || user.type === "admin" || (existing as any).authorId === userId;
+    const canEdit = user.type === "school-admin" || user.type === "admin" || existing.authorId === userId;
     if (!canEdit) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return forbiddenResponse("You don't have permission to edit this announcement");
     }
 
     // Build update object
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
       updatedAt: new Date(),
     };
 
@@ -177,32 +164,22 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       .where(eq(announcements.id, id))
       .returning();
 
-    return NextResponse.json({ success: true, announcement: updated });
-  } catch (error) {
-    logger.apiError(error, { route: "/[id]", method: "PATCH" });
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to update announcement" },
-      { status: 500 }
-    );
-  }
-}
+    logger.info("Announcement updated", { userId, announcementId: id });
 
-/**
- * DELETE /api/communication/announcements/[id]
- *
- * Delete an announcement
- */
-export async function DELETE(request: NextRequest, context: RouteContext) {
-  // Auth: admin, school-admin, teacher can delete announcements
-  const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
-  const { userId } = authResult;
+    return successResponse({ announcement: updated });
+  },
+  ['admin', 'school-admin', 'teacher']
+);
 
-  const { id } = await context.params;
+// ============================================================================
+// DELETE /api/communication/announcements/[id]
+// ============================================================================
 
-  try {
+export const DELETE = createApiRoute(
+  async (req: NextRequest, auth, context: RouteContext) => {
+    const { userId } = auth;
+    const { id } = await context.params;
+
     // Get user's school and type
     const [user] = await db
       .select({ schoolId: users.schoolId, type: users.type })
@@ -211,7 +188,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       .limit(1);
 
     if (!user || !user.schoolId) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return notFoundResponse("User");
     }
 
     // Check if announcement exists and user has permission
@@ -227,13 +204,13 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       .limit(1);
 
     if (!existing) {
-      return NextResponse.json({ error: "Announcement not found" }, { status: 404 });
+      return notFoundResponse("Announcement");
     }
 
     // Check permissions
-    const canDelete = user.type === "school_admin" || user.type === "admin" || (existing as any).authorId === userId;
+    const canDelete = user.type === "school-admin" || user.type === "admin" || existing.authorId === userId;
     if (!canDelete) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return forbiddenResponse("You don't have permission to delete this announcement");
     }
 
     // Delete announcement
@@ -241,12 +218,9 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       .delete(announcements)
       .where(eq(announcements.id, id));
 
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    logger.apiError(error, { route: "/[id]", method: "DELETE" });
-    return NextResponse.json(
-      { error: "Failed to delete announcement" },
-      { status: 500 }
-    );
-  }
-}
+    logger.info("Announcement deleted", { userId, announcementId: id });
+
+    return successResponse({ success: true });
+  },
+  ['admin', 'school-admin', 'teacher']
+);

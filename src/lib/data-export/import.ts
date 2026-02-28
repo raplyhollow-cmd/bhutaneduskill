@@ -45,7 +45,7 @@ export interface ExportResult {
 /**
  * Generic record type for CSV/JSON export data
  */
-export type ExportRecord = Record<string, string | number | boolean | null | undefined>;
+export type ExportRecord = Record<string, string | number | boolean | Date | null | undefined>;
 
 /**
  * Export data container with metadata
@@ -186,7 +186,7 @@ async function exportClasses(schoolId: string) {
     .where(eq(classes.schoolId, schoolId));
 
   return {
-    data: classData,
+    data: classData as ExportRecord[],
     filename: `classes_${schoolId}_${new Date().toISOString().split("T")[0]}`,
     headers: [
       "ID", "Name", "Grade", "Section", "Class Teacher", "Academic Year", "Room Number"
@@ -219,7 +219,7 @@ async function exportAttendance(schoolId: string, academicYear?: string, classId
     .limit(10000);
 
   return {
-    data: attendanceData,
+    data: attendanceData as ExportRecord[],
     filename: `attendance_${schoolId}_${new Date().toISOString().split("T")[0]}`,
     headers: [
       "ID", "Student ID", "Class ID", "Date", "Status", "Remarks"

@@ -57,50 +57,67 @@ export const GET = createApiRoute(
       }
 
       // Get current user to determine school
-      const currentUser = await db.query.users.findFirst({
-        where: eq(users.id, userId),
-      });
+      const currentUserRecords = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      const currentUser = currentUserRecords[0];
 
       if (!currentUser || !currentUser.schoolId) {
         return NextResponse.json({ error: "User not associated with a school" }, { status: 404 });
       }
 
       // Get student details
-      const studentData = await db.query.users.findFirst({
-        where: and(
+      const studentDataRecords = await db
+        .select()
+        .from(users)
+        .where(and(
           eq(users.id, studentId),
           eq(users.schoolId, currentUser.schoolId),
           eq(users.type, "student")
-        ),
-      });
+        ))
+        .limit(1);
+
+      const studentData = studentDataRecords[0];
 
       if (!studentData) {
         return NextResponse.json({ error: "Student not found" }, { status: 404 });
       }
 
       // Get class data
-      const classData = studentData.classGrade
-        ? await db.query.classes.findFirst({
-            where: eq(classes.grade, studentData.classGrade),
-          })
+      const classDataRecords = studentData.classGrade
+        ? await db
+          .select()
+          .from(classes)
+          .where(eq(classes.grade, studentData.classGrade))
+          .limit(1)
         : null;
 
+      const classData = classDataRecords ? classDataRecords[0] : null;
+
       // Get school details
-      const schoolData = await db.query.schools.findFirst({
-        where: eq(schools.id, currentUser.schoolId),
-      });
+      const schoolDataRecords = await db
+        .select()
+        .from(schools)
+        .where(eq(schools.id, currentUser.schoolId))
+        .limit(1);
+
+      const schoolData = schoolDataRecords[0] || null;
 
       // Get attendance data for the term
       const termStartDate = getTermStartDate(term, academicYear);
       const termEndDate = getTermEndDate(term, academicYear);
 
-      const attendanceData = await db.query.attendance.findMany({
-        where: and(
+      const attendanceData = await db
+        .select()
+        .from(attendance)
+        .where(and(
           eq(attendance.studentId, studentId),
           sql`${attendance.date} >= ${termStartDate}`,
           sql`${attendance.date} <= ${termEndDate}`
-        ),
-      });
+        ));
 
       const totalDays = attendanceData.length;
       const presentDays = attendanceData.filter((a) => a.status === "present").length;
@@ -108,13 +125,14 @@ export const GET = createApiRoute(
       const attendancePercentage = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
 
       // Get exam results for the term
-      const resultsData = await db.query.examResultsEnhanced.findMany({
-        where: and(
+      const resultsData = await db
+        .select()
+        .from(examResultsEnhanced)
+        .where(and(
           eq(examResultsEnhanced.studentId, studentId),
           eq(examResultsEnhanced.examType, term),
           eq(examResultsEnhanced.examYear, parseInt(academicYear))
-        ),
-      });
+        ));
 
       // Calculate aggregate
       const totalMarks = resultsData.reduce((sum, r) => sum + (r.totalMaxMarks || 100), 0);
@@ -123,7 +141,8 @@ export const GET = createApiRoute(
       const aggregateGrade = calculateGrade(aggregatePercentage);
 
       // Format results for report card
-      const formattedResults = (resultsData[0]?.subjects || []).map((result: SubjectResult) => ({
+      const subjectsData = (resultsData[0] as unknown as { subjects?: SubjectResult[] })?.subjects || [];
+      const formattedResults = subjectsData.map((result: SubjectResult) => ({
         subject: result.subjectName || "N/A",
         grade: result.grade || calculateGrade(result.marksObtained, result.maxMarks || 100),
         marks: result.marksObtained || 0,

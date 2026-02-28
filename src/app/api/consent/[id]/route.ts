@@ -1,29 +1,37 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+/**
+ * CONSENT [id] API
+ *
+ * PATCH /api/consent/[id] - Update consent status (approve/revoke)
+ * GET /api/consent/[id] - Get single consent record
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
 import { logger } from "@/lib/logger";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { consentRecords, users } from "@/lib/db/schema";
+import { consentRecords } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import type { ConsentRecord } from "@/lib/db/schema";
+import { createApiRoute } from "@/lib/api/route-handler";
+
+type ConsentContext = { id: string };
 
 // PATCH /api/consent/[id] - Update consent status (approve/revoke)
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const authResult = await requireAuth(['parent', 'admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId, user } = authResult;
+export const PATCH = createApiRoute<ConsentContext>(
+  async (req: NextRequest, auth, context) => {
+    const { user } = auth;
+    const params = await context?.params;
+    const id = params?.id;
 
-    const body = await request.json();
+    if (!id) {
+      return { error: "Missing consent ID", status: 400 };
+    }
+
+    const body = await req.json();
     const { status } = body;
 
     if (!["approved", "revoked", "denied"].includes(status)) {
-      return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+      return { error: "Invalid status", status: 400 };
     }
 
     const [record] = await db
@@ -33,12 +41,12 @@ export async function PATCH(
       .limit(1);
 
     if (!record) {
-      return NextResponse.json({ error: "Consent record not found" }, { status: 404 });
+      return { error: "Consent record not found", status: 404 };
     }
 
     // Only the parent can approve/deny their consent
     if (record.parentId !== user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return { error: "Forbidden", status: 403 };
     }
 
     type ConsentUpdateData = {
@@ -63,25 +71,20 @@ export async function PATCH(
       .where(eq(consentRecords.id, id))
       .returning();
 
-    return NextResponse.json({ record: updatedRecord });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/consent/[id]", method: "PUT" });
-    return NextResponse.json({ error: "Failed to update consent" }, { status: 500 });
-  }
-}
+    return { record: updatedRecord };
+  },
+  ['parent', 'admin', 'school-admin']
+);
 
 // GET /api/consent/[id] - Get single consent record
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const authResult = await requireAuth(['parent', 'admin', 'counselor']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const GET = createApiRoute<ConsentContext>(
+  async (req: NextRequest, _auth, context) => {
+    const params = await context?.params;
+    const id = params?.id;
+
+    if (!id) {
+      return { error: "Missing consent ID", status: 400 };
     }
-    const { userId, user } = authResult;
 
     const [record] = await db
       .select()
@@ -90,12 +93,10 @@ export async function GET(
       .limit(1);
 
     if (!record) {
-      return NextResponse.json({ error: "Consent record not found" }, { status: 404 });
+      return { error: "Consent record not found", status: 404 };
     }
 
-    return NextResponse.json({ record });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/consent/[id]", method: "GET" });
-    return NextResponse.json({ error: "Failed to fetch consent" }, { status: 500 });
-  }
-}
+    return { record };
+  },
+  ['parent', 'admin', 'counselor']
+);

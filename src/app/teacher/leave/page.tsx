@@ -430,8 +430,8 @@ export default function TeacherLeavePage() {
               {leaveRequests.reduce((total, req) => {
                 if (req.status !== "approved") return total;
                 const days = req.numberOfDays || (() => {
-                  const start = new Date((req as any).fromDate || req.startDate);
-                  const end = new Date((req as any).toDate || req.endDate);
+                  const start = new Date(req.startDate);
+                  const end = new Date(req.endDate);
                   return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
                 })();
                 return total + days;
@@ -470,7 +470,13 @@ export default function TeacherLeavePage() {
                 const statusConfig = STATUS_CONFIG[request.status];
                 const StatusIcon = statusConfig.icon;
                 // Use request.type if available (API response), otherwise request.leaveType (for form-created items)
-                const typeValue = (request as any).type || (request as any).leaveType || request.type;
+                type LeaveRequestWithExtras = typeof request & {
+                  leaveType?: string;
+                  fromDate?: string;
+                  toDate?: string;
+                };
+                const requestWithExtras = request as LeaveRequestWithExtras;
+                const typeValue = requestWithExtras.leaveType || request.type;
                 const leaveTypeInfo = LEAVE_TYPES.find(t => t.value === typeValue);
                 // Calculate days if not provided
                 const numberOfDays = request.numberOfDays || (() => {
@@ -479,8 +485,8 @@ export default function TeacherLeavePage() {
                   return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
                 })();
                 // Use mapped fields if available
-                const displayFromDate = (request as any).fromDate || request.startDate;
-                const displayToDate = (request as any).toDate || request.endDate;
+                const displayFromDate = requestWithExtras.fromDate || request.startDate;
+                const displayToDate = requestWithExtras.toDate || request.endDate;
 
                 return (
                   <div

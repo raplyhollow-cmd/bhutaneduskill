@@ -1,9 +1,8 @@
-import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { redFlags, users, schools, studentInterventions, counselorAssignments } from "@/lib/db/schema";
 import { eq, and, inArray, sql, desc } from "drizzle-orm";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 /**
  * GET /api/counselor/red-flags
@@ -11,17 +10,8 @@ import type { ApiSuccess, ApiErrorResponse } from "@/types";
  * Get all red flags for counselor's assigned schools
  * Supports filtering by severity, status, school
  */
-export async function GET(req: Request) {
-  try {
-    const authResult = await requireAuth(["counselor", "admin"]);
-    if ("error" in authResult) {
-      return Response.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (req, { userId }) => {
     const { searchParams } = new URL(req.url);
     const severity = searchParams.get("severity");
     const status = searchParams.get("status") || "flagged";
@@ -29,10 +19,10 @@ export async function GET(req: Request) {
     const limit = parseInt(searchParams.get("limit") || "50");
 
     // Get counselor's assigned schools
-    const assignments = await db.query.counselorAssignments.findMany({
-      where: eq(counselorAssignments.counselorId, userId),
-      columns: { schoolId: true },
-    });
+    const assignments = await db
+      .select({ schoolId: counselorAssignments.schoolId })
+      .from(counselorAssignments)
+      .where(eq(counselorAssignments.counselorId, userId));
     const counselorSchools = assignments.map((a) => a.schoolId);
 
     // Build query conditions
@@ -83,7 +73,7 @@ export async function GET(req: Request) {
       .orderBy(desc(redFlags.createdAt))
       .limit(limit);
 
-    return Response.json({
+    return {
       data: {
         flags,
         count: flags.length,
@@ -93,25 +83,11 @@ export async function GET(req: Request) {
           medium: flags.filter((f) => f.severity === "medium").length,
           low: flags.filter((f) => f.severity === "low").length,
         },
-      },
-    } satisfies ApiSuccess<{
-      flags: unknown[];
-      count: number;
-      summary: {
-        critical: number;
-        high: number;
-        medium: number;
-        low: number;
-      };
-    }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/counselor/red-flags", method: "GET" });
-    return Response.json(
-      { error: "Failed to fetch red flags", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+      }
+    };
+  },
+  ["counselor", "admin"]
+);
 
 /**
  * PATCH /api/counselor/red-flags
@@ -119,37 +95,31 @@ export async function GET(req: Request) {
  * Update red flag status (review, resolve, dismiss)
  * Can optionally create intervention
  */
-export async function PATCH(req: Request) {
-  try {
-    const authResult = await requireAuth(["counselor", "admin"]);
-    if ("error" in authResult) {
-      return Response.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const PATCH = createApiRoute(
+  async (req, { userId }) => {
     const body = await req.json();
     const { flagId, status, resolutionNotes, createIntervention = false } = body;
 
     if (!flagId || !status) {
-      return Response.json(
-        { error: "flagId and status are required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return {
+        error: "flagId and status are required",
+        status: 400
+      };
     }
 
     // Get the red flag
-    const flag = await db.query.redFlags.findFirst({
-      where: eq(redFlags.id, flagId),
-    });
+    const flag = await db
+      .select()
+      .from(redFlags)
+      .where(eq(redFlags.id, flagId))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!flag) {
-      return Response.json(
-        { error: "Red flag not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return {
+        error: "Red flag not found",
+        status: 404
+      };
     }
 
     // Create intervention if requested
@@ -190,22 +160,13 @@ export async function PATCH(req: Request) {
 
     logger.info("Red flag updated", { flagId, status, counselorId: userId });
 
-    return Response.json({
+    return {
       data: {
         flagId,
         status,
         interventionId,
-      },
-    } satisfies ApiSuccess<{
-      flagId: string;
-      status: string;
-      interventionId: string | null;
-    }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/counselor/red-flags", method: "PATCH" });
-    return Response.json(
-      { error: "Failed to update red flag", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+      }
+    };
+  },
+  ["counselor", "admin"]
+);

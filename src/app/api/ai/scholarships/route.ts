@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createApiRoute } from "@/lib/api/route-handler";
+import { requireAuth } from "@/lib/auth-utils";
 import { chatWithGemini } from "@/lib/ai/gemini-server";
 import { SCHOLARSHIP_SYSTEM } from "@/lib/ai/prompts";
 import { safeTrackAIInteraction, AI_FEATURE_IDS } from "@/lib/ai/track-interaction";
@@ -18,7 +19,7 @@ import type { ApiSuccess } from "@/types";
 // TYPES
 // ============================================================================
 
-export interface ScholarshipMatcherRequest {
+export interface ScholarshipMatcherRequest extends Record<string, unknown> {
   academicPerformance?: {
     marks?: Record<string, number>;
     gpa?: number;
@@ -62,12 +63,11 @@ export interface ScholarshipMatcherResponse {
 // POST - Match Scholarships
 // ============================================================================
 
-export const POST = createApiRoute<ScholarshipMatcherRequest, ScholarshipMatcherResponse>(
-  async (request) => {
-    const auth = await requireAuth([]);
+export const POST = createApiRoute(
+  async (req, auth) => {
     const { userId } = auth;
 
-    const body = await request.json() as ScholarshipMatcherRequest;
+    const body = await req.json() as ScholarshipMatcherRequest;
     const requestData = body;
 
     const {
@@ -943,22 +943,27 @@ function getDefaultScholarships(): MatchedScholarship[] {
 // GET - Check availability
 // ============================================================================
 
-export async function GET() {
-  return NextResponse.json({
-    available: true,
-    feature: "AI Scholarship Matcher",
-    description: "Find scholarship opportunities matched to your profile",
-    requiresAuth: true,
-    inputFields: [
-      "academicPerformance.marks",
-      "academicPerformance.gpa",
-      "academicPerformance.class10Marks",
-      "academicPerformance.class12Marks",
-      "familyIncome",
-      "fieldOfStudy",
-      "careerGoals",
-      "specialAchievements",
-      "interests",
-    ],
-  });
-}
+export const GET = createApiRoute(
+  async () => {
+    return {
+      data: {
+        available: true,
+        feature: "AI Scholarship Matcher",
+        description: "Find scholarship opportunities matched to your profile",
+        requiresAuth: true,
+        inputFields: [
+          "academicPerformance.marks",
+          "academicPerformance.gpa",
+          "academicPerformance.class10Marks",
+          "academicPerformance.class12Marks",
+          "familyIncome",
+          "fieldOfStudy",
+          "careerGoals",
+          "specialAchievements",
+          "interests",
+        ],
+      }
+    };
+  },
+  []
+);

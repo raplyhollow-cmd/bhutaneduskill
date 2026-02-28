@@ -1,26 +1,26 @@
 /**
- * BCSE Scholarships API
+ * BCSE SCHOLARSHIPS API
+ *
  * Platform admin manages government scholarship programs
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { bcseResults, users, bcseRegistrations } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
+import { badRequestResponse } from "@/lib/api/response-helpers";
 
-/**
- * GET /api/bcse/scholarships
- * Get scholarship eligibility statistics and student lists
- */
-export async function GET(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+// ============================================================================
+// GET /api/bcse/scholarships
+// ============================================================================
+
+export const GET = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId } = auth;
 
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action");
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
 
     // Get scholarship statistics
     if (action === "stats") {
-      const conditions = [];
+      const conditions: ReturnType<typeof eq | typeof sql>[] = [];
 
       if (examType) {
         conditions.push(eq(bcseResults.examType, examType));
@@ -109,17 +109,17 @@ export async function GET(req: NextRequest) {
         year: examYear || new Date().getFullYear().toString(),
       };
 
-      return NextResponse.json({
+      return {
         success: true,
         data: stats,
-      });
+      };
     }
 
     // Get eligible students list
     if (action === "eligible-students") {
       const minPct = minPercentage ? parseInt(minPercentage, 10) : 65;
 
-      const conditions = [
+      const conditions: ReturnType<typeof eq | typeof sql>[] = [
         eq(bcseResults.passed, true),
         sql`${bcseResults.percentage} >= ${minPct * 100}`, // Stored in hundredths
       ];
@@ -173,39 +173,31 @@ export async function GET(req: NextRequest) {
         percentage: result.percentage / 100, // Convert to actual percentage
       }));
 
-      return NextResponse.json({
+      return {
         success: true,
         data: {
           students: studentsWithNames,
           total: studentsWithNames.length,
           minPercentage: minPct,
         },
-      });
+      };
     }
 
-    return NextResponse.json({
+    return {
       error: "Invalid action. Use 'stats' or 'eligible-students'",
-    }, { status: 400 });
+      status: 400,
+    };
+  },
+  ['admin']
+);
 
-  } catch (error) {
-    logger.apiError(error, { route: "/api/bcse/scholarships", method: "GET" });
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : "Failed to fetch scholarship data",
-    }, { status: 500 });
-  }
-}
+// ============================================================================
+// POST /api/bcse/scholarships
+// ============================================================================
 
-/**
- * POST /api/bcse/scholarships
- * Create or update scholarship programs
- */
-export async function POST(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const POST = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId } = auth;
 
     const body = await req.json();
     const { action, scholarshipData } = body;
@@ -225,7 +217,7 @@ export async function POST(req: NextRequest) {
         academicYear,
       });
 
-      return NextResponse.json({
+      return {
         success: true,
         data: {
           allocated: studentIds.length,
@@ -233,17 +225,13 @@ export async function POST(req: NextRequest) {
           collegeName,
           message: `${studentIds.length} government seats allocated successfully`,
         },
-      });
+      };
     }
 
-    return NextResponse.json({
+    return {
       error: "Invalid action",
-    }, { status: 400 });
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/bcse/scholarships", method: "POST" });
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : "Failed to process scholarship request",
-    }, { status: 500 });
-  }
-}
+      status: 400,
+    };
+  },
+  ['admin']
+);

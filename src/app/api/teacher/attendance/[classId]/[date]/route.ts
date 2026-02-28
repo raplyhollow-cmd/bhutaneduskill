@@ -1,53 +1,61 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { attendance, users, classes, enrollments } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
+import { getTableColumns } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 interface AttendanceRecord {
   studentId: string;
   status: string;
   notes?: string;
-  reason?: string;
+  reason?: string | null;
   checkInTime?: string;
   checkOutTime?: string;
 }
 
-interface Params {
-  params: Promise<{ classId: string; date: string }>;
-}
-
 // GET /api/teacher/attendance/[classId]/[date] - Get attendance for class on date
-export async function GET(request: NextRequest, { params }: Params) {
-  try {
-    const { classId, date } = await params;
-    const authResult = await requireAuth(['teacher']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId, user } = authResult;
+export const GET = createApiRoute<{ classId: string; date: string }>(
+  async (request, auth, context) => {
+    const params = await context!.params;
+    const classId = params.classId;
+    const date = params.date;
 
-    // Get class students
-    const classEnrollments = await db.query.enrollments.findMany({
-      where: and(
+    // Get class students with student data via leftJoin
+    const classEnrollments = await db.select({
+      enrollmentId: enrollments.id,
+      studentId: enrollments.studentId,
+      classId: enrollments.classId,
+      status: enrollments.status,
+      enrollmentDate: enrollments.enrollmentDate,
+      // Student fields
+      student: {
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        clerkUserId: users.clerkUserId,
+      },
+    })
+    .from(enrollments)
+    .leftJoin(users, eq(enrollments.studentId, users.id))
+    .where(
+      and(
         eq(enrollments.classId, classId),
         eq(enrollments.status, "active")
-      ),
-      with: {
-        student: true,
-      },
-    });
+      )
+    );
 
     const studentIds = classEnrollments.map(e => e.studentId);
 
     // Get existing attendance records for this date
-    const existingRecords = await db.query.attendance.findMany({
-      where: and(
+    const existingRecords = await db.select().from(attendance).where(
+      and(
         eq(attendance.classId, classId),
         eq(attendance.date, date)
-      ),
-    });
+      )
+    );
 
     const attendanceMap = new Map(existingRecords.map(r => [r.studentId, r]));
 
@@ -57,32 +65,31 @@ export async function GET(request: NextRequest, { params }: Params) {
       attendance: attendanceMap.get(enrollment.studentId) || null,
     }));
 
-    return NextResponse.json({
+    return {
       date: date,
       classId: classId,
       students: studentsWithAttendance,
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/teacher/attendance/[classId]/[date]", method: "GET" });
-    return NextResponse.json({ error: "Failed to fetch attendance" }, { status: 500 });
-  }
-}
+    };
+  },
+  ['teacher']
+);
 
 // POST /api/teacher/attendance/[classId]/[date] - Mark attendance for entire class
-export async function POST(request: NextRequest, { params }: Params) {
-  try {
-    const { classId, date } = await params;
-    const authResult = await requireAuth(['teacher']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId, user } = authResult;
+export const POST = createApiRoute<{ classId: string; date: string }>(
+  async (request, auth, context) => {
+    const params = await context!.params;
+    const classId = params.classId;
+    const date = params.date;
+    const { user } = auth;
 
     const body = await request.json();
     const { attendance: attendanceData } = body; // Array of { studentId, status, notes, reason }
 
     if (!Array.isArray(attendanceData)) {
-      return NextResponse.json({ error: "Invalid attendance data" }, { status: 400 });
+      return {
+        error: "Invalid attendance data",
+        status: 400
+      };
     }
 
     const now = new Date();
@@ -93,25 +100,25 @@ export async function POST(request: NextRequest, { params }: Params) {
         const { studentId, status, notes, reason, checkInTime, checkOutTime } = record;
 
         // Check for existing record
-        const existing = await db.query.attendance.findFirst({
-          where: and(
+        const [existing] = await db.select().from(attendance).where(
+          and(
             eq(attendance.classId, classId),
             eq(attendance.studentId, studentId),
             eq(attendance.date, date)
-          ),
-        });
+          )
+        ).limit(1);
 
-        if (existing) {
+        if (existing && existing.id) {
           // Update existing
           const [updated] = await db.update(attendance)
             .set({
               status,
               notes,
-              reason: reason as any,
+              reason: reason ?? null,
               checkInTime,
               recordedBy: user.id,
               updatedAt: now,
-            } as any)
+            })
             .where(eq(attendance.id, existing.id))
             .returning();
 
@@ -121,19 +128,19 @@ export async function POST(request: NextRequest, { params }: Params) {
           const [created] = await db.insert(attendance)
             .values({
               id: `att_${Date.now()}_${studentId}`,
-              schoolId: user.schoolId,
+              schoolId: user.schoolId ?? null,
               classId: classId,
               studentId,
               date: date,
               status,
               notes,
-              reason: reason as any,
+              reason: reason ?? null,
               checkInTime,
               recordedBy: user.id,
               entryMethod: "manual",
               createdAt: now,
               updatedAt: now,
-            } as any)
+            })
             .returning();
 
           return created;
@@ -141,9 +148,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       })
     );
 
-    return NextResponse.json({ attendance: results, count: results.length });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/teacher/attendance/[classId]/[date]", method: "POST" });
-    return NextResponse.json({ error: "Failed to mark attendance" }, { status: 500 });
-  }
-}
+    return { attendance: results, count: results.length };
+  },
+  ['teacher']
+);

@@ -431,7 +431,7 @@ export async function POST(request: NextRequest) {
     let rawRole = (user.type as string) || "student";
     let userRole: UserRole = rawRole as UserRole;
     // Convert school_admin to school-admin for consistency with ROLE_SYSTEM_PROMPTS keys
-    if (rawRole === "school_admin") {
+    if (rawRole === "school-admin") {
       userRole = "school-admin";
     }
 
@@ -570,7 +570,7 @@ export async function GET(request: NextRequest) {
     // Normalize role names - handle database underscores vs hyphens
     let rawRole = (authResult.user.type as string) || "student";
     let userRole: UserRole = rawRole as UserRole;
-    if (rawRole === "school_admin") {
+    if (rawRole === "school-admin") {
       userRole = "school-admin";
     }
 

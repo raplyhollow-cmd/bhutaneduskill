@@ -1,11 +1,18 @@
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { requirePermission } from "@/lib/rbac";
 import { db } from "@/lib/db";
 import { users, assessments, workValuesResults } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { calculateCareerMatches } from "@/lib/services/career-matching.service";
+import { createApiRoute } from "@/lib/api/route-handler";
+
+// Type for assessment results JSON field
+type AssessmentResultsData = {
+  answers: unknown;
+  results: unknown;
+};
 
 /**
  * GET /api/assessments/work-values - Get Work Values assessment results
@@ -14,14 +21,8 @@ import { calculateCareerMatches } from "@/lib/services/career-matching.service";
  * - userId: Filter by user ID (for parents viewing children's results)
  * - limit: Maximum results to return (default: 10)
  */
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['parent', 'student', 'teacher', 'admin', 'school-admin', 'counselor']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId, user } = authResult;
-
+export const GET = createApiRoute(
+  async (request, { userId, user }) => {
     const { searchParams } = new URL(request.url);
     const userIdParam = searchParams.get("userId");
     const limit = parseInt(searchParams.get("limit") || "10");
@@ -35,10 +36,11 @@ export async function GET(request: NextRequest) {
       targetUserId = userId;
     } else if (user.type === "parent" && !userIdParam) {
       // Parent must specify which child
-      return NextResponse.json(
-        { error: "userId parameter is required for parents", results: [] },
-        { status: 400 }
-      );
+      return {
+        error: "userId parameter is required for parents",
+        results: [],
+        status: 400
+      };
     }
 
     // Build query conditions
@@ -46,16 +48,18 @@ export async function GET(request: NextRequest) {
 
     let results;
     if (conditions) {
-      results = await db.query.workValuesResults.findMany({
-        where: conditions,
-        orderBy: [desc(workValuesResults.createdAt)],
-        limit,
-      });
+      results = await db
+        .select()
+        .from(workValuesResults)
+        .where(conditions)
+        .orderBy(desc(workValuesResults.createdAt))
+        .limit(limit);
     } else {
-      results = await db.query.workValuesResults.findMany({
-        orderBy: [desc(workValuesResults.createdAt)],
-        limit,
-      });
+      results = await db
+        .select()
+        .from(workValuesResults)
+        .orderBy(desc(workValuesResults.createdAt))
+        .limit(limit);
     }
 
     // Format results to match expected schema
@@ -66,22 +70,13 @@ export async function GET(request: NextRequest) {
       recommendedCareers: result.recommendedCareers as string[] || [],
     }));
 
-    return NextResponse.json({ results: formattedResults });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json({ error: "Failed to fetch work values results", results: [] }, { status: 500 });
-  }
-}
+    return { results: formattedResults };
+  },
+  ['parent', 'student', 'teacher', 'admin', 'school-admin', 'counselor']
+);
 
-export async function POST(request: NextRequest) {
-  try {
-    // Authenticate user
-    const authResult = await requireAuth();
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId, user } = authResult;
-
+export const POST = createApiRoute(
+  async (request, { userId, user }) => {
     // Check RBAC permission for creating assessments
     // Students can create assessments for themselves without special permission
     if (user.type !== "student") {
@@ -110,7 +105,9 @@ export async function POST(request: NextRequest) {
         type: "work-values",
         status: "completed",
         // Store answers and results in the results JSON field
-        results: { answers, results } as any,
+        // TODO: Schema mismatch - personality assessments store different result structure
+        // than the academic assessment type expected by the schema
+        results: { answers, results } as unknown as typeof assessments.$inferInsert.results,
         startedAt: new Date(),
         completedAt: new Date(),
         isActive: true,
@@ -138,9 +135,7 @@ export async function POST(request: NextRequest) {
       // Don't fail the assessment
     }
 
-    return NextResponse.json({ success: true, assessmentId: assessment.id });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json({ error: "Failed to save assessment" }, { status: 500 });
-  }
-}
+    return { success: true, assessmentId: assessment.id };
+  },
+  [] // Any authenticated user
+);

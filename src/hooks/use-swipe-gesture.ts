@@ -353,7 +353,7 @@ export function useSwipeToRefresh({
   const [refreshing, setRefreshing] = useState(false)
   const [pullProgress, setPullProgress] = useState(0)
   const [canRelease, setCanRelease] = useState(false)
-  const debounceRef = useRef<NodeJS.Timeout>()
+  const debounceRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
   return useSwipeGesture({
     ...options,

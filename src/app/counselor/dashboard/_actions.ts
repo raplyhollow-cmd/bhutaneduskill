@@ -1,19 +1,18 @@
-import { logger } from "@/lib/logger";
-/**
- * COUNSELOR DASHBOARD ACTIONS
- *
- * Server actions for counselor dashboard data fetching.
- *
- * NOTE: The dashboard now fetches real data directly from:
- * - /api/counselor/dashboard (stats and students)
- * - /api/ai/insights (AI-powered insights)
- *
- * This file is kept for potential future server-side actions.
- */
+"use server";
 
+import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
-import { users, counselorAssignments, assessments, attendance, schools } from "@/lib/db/schema";
-import { eq, and, desc, count, sql, or, gte } from "drizzle-orm";
+import {
+  counselorAssignments,
+  users,
+  assessments,
+  attendance,
+} from "@/lib/db/schema";
+import { eq, and, sql, gte, desc } from "drizzle-orm";
+
+// ============================================================================
+// TYPES
+// ============================================================================
 
 export interface CounselorStats {
   totalStudents: number;
@@ -23,32 +22,22 @@ export interface CounselorStats {
   aiCoachUsage: number;
 }
 
-export interface StudentInsight {
-  id: string;
-  name: string;
-  school: string;
-  grade: string | number;
-  attendance: number;
-  lastActivity: string;
-  assessmentStatus: "completed" | "in_progress" | "pending";
-  topCareer: string | null;
-  needsAttention: boolean;
-}
-
 /**
- * Fetch counselor stats - for server-side use only.
+ * Fetch counselor statistics
+ *
+ * @deprecated This is a server action for internal use.
  * Client-side dashboard uses /api/counselor/dashboard instead.
  */
 export async function fetchCounselorStats(counselorId: string): Promise<CounselorStats> {
   try {
     // Get school assignments
-    const assignments = await db.query.counselorAssignments.findMany({
-      where: and(
+    const assignments = await db
+      .select({ schoolId: counselorAssignments.schoolId })
+      .from(counselorAssignments)
+      .where(and(
         eq(counselorAssignments.counselorId, counselorId),
         eq(counselorAssignments.isActive, true)
-      ),
-      columns: { schoolId: true },
-    });
+      ));
 
     const schoolIds = assignments.map((a) => a.schoolId);
 
@@ -68,12 +57,13 @@ export async function fetchCounselorStats(counselorId: string): Promise<Counselo
       ? conditions[0]
       : sql`(${sql.join(conditions.map(c => sql.raw(c.toString())), sql` OR `)})`;
 
-    const students = await db.query.users.findMany({
-      where: and(
+    const students = await db
+      .select()
+      .from(users)
+      .where(and(
         eq(users.type, "student"),
-        schoolCondition as any
-      ),
-    });
+        schoolCondition
+      ));
 
     const totalStudents = students.length;
     const studentIds = students.map((s) => s.id);
@@ -83,13 +73,14 @@ export async function fetchCounselorStats(counselorId: string): Promise<Counselo
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
     const recentAssessments = studentIds.length > 0
-      ? await db.query.assessments.findMany({
-          where: and(
-            sql`${assessments.userId} IN ${sql.raw(`('${studentIds.join("','")}')`)}`,
-            sql`${assessments.completedAt} IS NOT NULL`,
-            sql`${assessments.completedAt} >= ${oneWeekAgo.toISOString()}`
-          ),
-        })
+      ? await db
+        .select()
+        .from(assessments)
+        .where(and(
+          sql`${assessments.userId} IN ${sql.raw(`('${studentIds.join("','")}'`)}`,
+          sql`${assessments.completedAt} IS NOT NULL`,
+          sql`${assessments.completedAt} >= ${oneWeekAgo.toISOString()}`
+        ))
       : [];
 
     // Calculate pending reports (students with low attendance)
@@ -98,12 +89,13 @@ export async function fetchCounselorStats(counselorId: string): Promise<Counselo
 
     let studentsNeedingAttention = 0;
     if (studentIds.length > 0) {
-      const attendanceData = await db.query.attendance.findMany({
-        where: and(
-          sql`${attendance.studentId} IN ${sql.raw(`('${studentIds.join("','")}')`)}`,
+      const attendanceData = await db
+        .select()
+        .from(attendance)
+        .where(and(
+          sql`${attendance.studentId} IN ${sql.raw(`('${studentIds.join("','")}'`)}`,
           gte(attendance.date, thirtyDaysAgo.toISOString().split("T")[0])
-        ),
-      });
+        ));
 
       const attendanceByStudent = new Map<string, { present: number; total: number }>();
       for (const record of attendanceData) {

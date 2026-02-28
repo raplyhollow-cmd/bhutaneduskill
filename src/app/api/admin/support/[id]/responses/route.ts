@@ -1,30 +1,17 @@
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
 import { supportTickets, supportTicketResponses, users } from "@/lib/db/schema";
 import { logger } from "@/lib/logger";
 import { eq, and, desc } from "drizzle-orm";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
 import { nanoid } from "nanoid";
-import { NextResponse } from "next/server";
 
 // ============================================================================
 // GET - Get all responses for a ticket
 // ============================================================================
-export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: 401 } satisfies ApiErrorResponse,
-        { status: 401 }
-      );
-    }
-    const { userId } = authResult;
-
-    const { id: ticketId } = await params;
+export const GET = createApiRoute<{ id: string }>(
+  async (req, auth, context) => {
+    const { userId } = auth;
+    const { id: ticketId } = await (context?.params || Promise.resolve({ id: "" }));
 
     // Verify ticket exists
     const ticket = await db
@@ -34,10 +21,7 @@ export async function GET(
       .limit(1);
 
     if (!ticket.length) {
-      return NextResponse.json(
-        { error: "Ticket not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "Ticket not found", status: 404 };
     }
 
     // Get responses
@@ -66,45 +50,24 @@ export async function GET(
       count: responses.length,
     });
 
-    return NextResponse.json({
-      data: responses,
-    } satisfies ApiSuccess<typeof responses>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/support/[id]/responses", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch responses", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return { data: responses };
+  },
+  ["admin"]
+);
 
 // ============================================================================
 // POST - Add a response to a ticket
 // ============================================================================
-export async function POST(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: 401 } satisfies ApiErrorResponse,
-        { status: 401 }
-      );
-    }
-
-    const { userId, user } = authResult;
-    const { id: ticketId } = await params;
+export const POST = createApiRoute<{ id: string }>(
+  async (req, auth, context) => {
+    const { userId, user } = auth;
+    const { id: ticketId } = await (context?.params || Promise.resolve({ id: "" }));
 
     const body = await req.json();
     const { message, isInternal = false, attachments = [] } = body;
 
     if (!message || message.trim() === "") {
-      return NextResponse.json(
-        { error: "Message is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "Message is required", status: 400 };
     }
 
     // Verify ticket exists
@@ -115,10 +78,7 @@ export async function POST(
       .limit(1);
 
     if (!ticket.length) {
-      return NextResponse.json(
-        { error: "Ticket not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "Ticket not found", status: 404 };
     }
 
     // Determine user role for response
@@ -128,17 +88,17 @@ export async function POST(
     }
 
     // Create response
-    const responseId: string = `response-${nanoid()}`;
-    const userName: string = (user.name as string) || "Support Agent";
+    const responseId = `response-${nanoid()}`;
+    const userName = ((user.firstName && user.lastName) ? `${user.firstName} ${user.lastName}` : undefined) || "Support Agent";
 
     const [newResponse] = await db
       .insert(supportTicketResponses)
       .values({
-        id: responseId as string,
-        ticketId: ticketId as string,
-        userId: userId as string,
-        userRole: userRole as string,
-        userName: userName as string,
+        id: responseId,
+        ticketId: ticketId,
+        userId: userId,
+        userRole: userRole,
+        userName: userName,
         message: message.trim(),
         isInternal,
         attachments,
@@ -163,14 +123,7 @@ export async function POST(
       responseId,
     });
 
-    return NextResponse.json({
-      data: newResponse,
-    } satisfies ApiSuccess<typeof newResponse>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/support/[id]/responses", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to create response", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return { data: newResponse };
+  },
+  ["admin"]
+);

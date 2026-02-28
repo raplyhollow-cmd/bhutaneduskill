@@ -18,12 +18,14 @@ type SchoolWithDistrict = {
   name: string;
   code: string;
   schoolType?: string | null;
-  districtId?: string | null;
-  districts?: {
-    id: string;
-    name: string;
-  } | null;
+  level?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  address?: string | null;
   createdAt: Date;
+  districtId?: string | null;
+  districtName?: string | null;
+  isActive?: boolean | null;
 };
 
 // Helper function to get school stats
@@ -98,7 +100,23 @@ export default async function AdminSchoolsPage() {
 
   return (
     <SchoolsClient
-      schoolsWithStats={schoolsWithStats}
+      schoolsWithStats={schoolsWithStats.map((school) => ({
+        id: school.id,
+        name: school.name,
+        code: school.code,
+        schoolType: school.schoolType ?? "public",
+        level: school.level ?? "middle",
+        contactEmail: school.contactEmail ?? "",
+        contactPhone: school.contactPhone ?? "",
+        address: school.address ?? "",
+        createdAt: school.createdAt,
+        tenantId: school.id,
+        tenantName: school.name,
+        districtId: school.districtId ?? "",
+        districtName: school.districtName ?? "Unknown",
+        isActive: school.isActive ?? true,
+        stats: school.stats,
+      }))}
       totalSchools={totalSchools}
       totalStudents={totalStudents}
       totalTeachers={totalTeachers}

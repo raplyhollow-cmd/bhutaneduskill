@@ -38,9 +38,11 @@ export async function POST(request: NextRequest) {
     const data = validation.data!;
 
     // Get student fee record
-    const studentFee = await db.query.studentFees.findFirst({
-      where: eq(studentFees.id, data.studentFeeId),
-    });
+    const [studentFee] = await db
+      .select()
+      .from(studentFees)
+      .where(eq(studentFees.id, data.studentFeeId))
+      .limit(1);
 
     if (!studentFee) {
       return NextResponse.json({ error: "Fee record not found" }, { status: 404 });
@@ -105,7 +107,7 @@ export async function POST(request: NextRequest) {
       referenceId: paymentId,
       amount: paymentAmount,
       currency: data.currency,
-      paymentMethod: data.paymentMethod as any,
+      paymentMethod: data.paymentMethod as "internet_banking" | "mobile_banking" | "card" | "qr_code" | "wallet",
       customerName,
       customerEmail: user.email || undefined,
       customerPhone: user.phone || undefined,

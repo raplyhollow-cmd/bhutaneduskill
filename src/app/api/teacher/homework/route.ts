@@ -108,9 +108,10 @@ export const GET = createApiRoute(
 
     try {
       // Get classes taught by this teacher (teacherId field in classes table)
-      const teacherClasses = await db.query.classes.findMany({
-        where: eq(classes.teacherId, currentUser.id),
-      });
+      const teacherClasses = await db
+        .select({ id: classes.id })
+        .from(classes)
+        .where(eq(classes.teacherId, currentUser.id));
 
       const classIds = teacherClasses.map(c => c.id);
 
@@ -218,9 +219,13 @@ export const POST = createApiRoute(
       const validatedData = createHomeworkSchema.parse(body);
 
       // Verify the class belongs to this teacher
-      const classInfo = await db.query.classes.findFirst({
-        where: eq(classes.id, validatedData.classId),
-      });
+      const classInfoResult = await db
+        .select()
+        .from(classes)
+        .where(eq(classes.id, validatedData.classId))
+        .limit(1);
+
+      const classInfo = classInfoResult[0] || null;
 
       if (!classInfo) {
         return notFoundResponse("Class");
@@ -233,9 +238,13 @@ export const POST = createApiRoute(
 
       // Verify subject if provided
       if (validatedData.subjectId) {
-        const subjectInfo = await db.query.subjects.findFirst({
-          where: eq(subjects.id, validatedData.subjectId),
-        });
+        const subjectInfoResult = await db
+          .select()
+          .from(subjects)
+          .where(eq(subjects.id, validatedData.subjectId))
+          .limit(1);
+
+        const subjectInfo = subjectInfoResult[0] || null;
 
         if (!subjectInfo) {
           return notFoundResponse("Subject");
@@ -264,8 +273,8 @@ export const POST = createApiRoute(
         assignedDate: validatedData.assignedDate,
         totalPoints: totalPoints || 100,
         passingScore,
-        questions: validatedData.questions as any,
-        attachments: validatedData.attachments as any,
+        questions: validatedData.questions as typeof homework.$inferInsert.questions,
+        attachments: validatedData.attachments as typeof homework.$inferInsert.attachments,
         isPublished: validatedData.isPublished ?? false,
         isActive: true,
         createdAt: new Date(),
@@ -319,9 +328,13 @@ export const PATCH = createApiRoute(
       const validatedData = updateHomeworkSchema.parse(body);
 
       // Get existing homework
-      const existingHomework = await db.query.homework.findFirst({
-        where: eq(homework.id, homeworkId),
-      });
+      const existingHomeworkResult = await db
+        .select()
+        .from(homework)
+        .where(eq(homework.id, homeworkId))
+        .limit(1);
+
+      const existingHomework = existingHomeworkResult[0] || null;
 
       if (!existingHomework) {
         return notFoundResponse("Homework");
@@ -329,9 +342,13 @@ export const PATCH = createApiRoute(
 
       // Verify teacher owns this class (unless admin)
       if (currentUser.type !== 'admin') {
-        const classInfo = await db.query.classes.findFirst({
-          where: eq(classes.id, existingHomework.classId),
-        });
+        const classInfoResult = await db
+          .select()
+          .from(classes)
+          .where(eq(classes.id, existingHomework.classId))
+          .limit(1);
+
+        const classInfo = classInfoResult[0] || null;
 
         if (!classInfo || classInfo.teacherId !== currentUser.id) {
           return forbiddenResponse("You don't have permission to update this homework");
@@ -401,9 +418,13 @@ export const DELETE = createApiRoute(
 
     try {
       // Get existing homework
-      const existingHomework = await db.query.homework.findFirst({
-        where: eq(homework.id, homeworkId),
-      });
+      const existingHomeworkResult = await db
+        .select()
+        .from(homework)
+        .where(eq(homework.id, homeworkId))
+        .limit(1);
+
+      const existingHomework = existingHomeworkResult[0] || null;
 
       if (!existingHomework) {
         return notFoundResponse("Homework");
@@ -411,9 +432,13 @@ export const DELETE = createApiRoute(
 
       // Verify teacher owns this class (unless admin)
       if (currentUser.type !== 'admin') {
-        const classInfo = await db.query.classes.findFirst({
-          where: eq(classes.id, existingHomework.classId),
-        });
+        const classInfoResult = await db
+          .select()
+          .from(classes)
+          .where(eq(classes.id, existingHomework.classId))
+          .limit(1);
+
+        const classInfo = classInfoResult[0] || null;
 
         if (!classInfo || classInfo.teacherId !== currentUser.id) {
           return forbiddenResponse("You don't have permission to delete this homework");

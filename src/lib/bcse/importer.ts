@@ -103,7 +103,7 @@ export function validateResultRow(row: Record<string, unknown>): { valid: boolea
     errors.push("Student name is required");
   }
 
-  if (!row.examType || !["BCSE_10", "BCSE_12"].includes(row.examType)) {
+  if (!row.examType || !["BCSE_10", "BCSE_12"].includes(row.examType as string)) {
     errors.push("Exam type must be BCSE_10 or BCSE_12");
   }
 
@@ -160,13 +160,13 @@ export function parseCSV(csvContent: string): BCSEResultImportRow[] {
     }
 
     // Convert types
-    if (row.examYear) row.examYear = parseInt(row.examYear, 10);
-    if (row.aggregateMarks) row.aggregateMarks = parseInt(row.aggregateMarks, 10);
-    if (row.totalMarks) row.totalMarks = parseInt(row.totalMarks, 10);
-    if (row.percentage) row.percentage = parseFloat(row.percentage);
+    if (row.examYear) row.examYear = parseInt(row.examYear as string, 10);
+    if (row.aggregateMarks) row.aggregateMarks = parseInt(row.aggregateMarks as string, 10);
+    if (row.totalMarks) row.totalMarks = parseInt(row.totalMarks as string, 10);
+    if (row.percentage) row.percentage = parseFloat(row.percentage as string);
     if (row.passed) row.passed = row.passed === "true" || row.passed === "TRUE" || row.passed === true;
 
-    rows.push(row as BCSEResultImportRow);
+    rows.push(row as unknown as BCSEResultImportRow);
   }
 
   return rows;
@@ -225,7 +225,7 @@ export async function importBCSEResults(
 
     try {
       // Validate row
-      const validation = validateResultRow(row);
+      const validation = validateResultRow(row as unknown as Record<string, unknown>);
       if (!validation.valid) {
         errors.push({
           row: i + 1,

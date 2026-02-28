@@ -27,7 +27,7 @@ export function createApiRoute<
     req: AuthenticatedRequest & { params?: Promise<TParams> },
     auth: AuthContext,
     context?: { params?: Promise<TParams> }
-  ) => Promise<NextResponse | Response>,
+  ) => Promise<NextResponse | Response | Record<string, unknown>>,
   allowedRoles: UserType[] = []
 ) {
   return async (
@@ -44,8 +44,25 @@ export function createApiRoute<
     try {
       // Call the actual handler, passing the auth result directly
       const result = await handler(req, authResult, context);
-      // Ensure NextResponse is returned
-      return result as NextResponse;
+
+      // Convert plain object returns to NextResponse
+      if (result instanceof NextResponse || result instanceof Response) {
+        return result as NextResponse;
+      }
+
+      // Handle { data, message } responses
+      if ("data" in result) {
+        return NextResponse.json(result, { status: 200 });
+      }
+
+      // Handle { error } responses
+      if ("error" in result) {
+        const status = "status" in result && typeof result.status === "number" ? result.status as number : 400;
+        return NextResponse.json(result, { status });
+      }
+
+      // Default: return as JSON
+      return NextResponse.json(result, { status: 200 });
     } catch (error) {
       logger.apiError(error, {
         route: req.url || "unknown",
@@ -70,6 +87,7 @@ export interface AuthContext {
     firstName?: string;
     lastName?: string;
     email?: string;
+    settings?: unknown;
   };
 }
 

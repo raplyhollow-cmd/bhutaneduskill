@@ -18,6 +18,8 @@ import { createApiRoute, getAuth } from "@/lib/api/route-handler";
 import { successResponse, errorResponse, badRequestResponse, notFoundResponse } from "@/lib/api/response-helpers";
 
 // Types for proper TypeScript safety
+type DbCondition = ReturnType<typeof eq>;
+
 interface CreateVehicleBody {
   registrationNumber: string;
   vehicleNumber?: string;
@@ -86,10 +88,17 @@ export const GET = createApiRoute(
 
     const { userId } = auth;
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: { id: true, type: true, role: true, schoolId: true },
-    });
+    const currentUser = await db
+      .select({
+        id: users.id,
+        type: users.type,
+        role: users.role,
+        schoolId: users.schoolId,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!currentUser) {
       return notFoundResponse("User");
@@ -103,9 +112,12 @@ export const GET = createApiRoute(
 
     // Get specific vehicle by ID
     if (vehicleId) {
-      const vehicle = await db.query.vehicles.findFirst({
-        where: eq(vehicles.id, vehicleId),
-      });
+      const vehicle = await db
+        .select()
+        .from(vehicles)
+        .where(eq(vehicles.id, vehicleId))
+        .limit(1)
+        .then(rows => rows[0] || null);
 
       if (!vehicle) {
         return notFoundResponse("Vehicle");
@@ -119,9 +131,12 @@ export const GET = createApiRoute(
       // Get route info if requested
       let routeData = null;
       if (includeRoute && vehicle.routeId) {
-        routeData = await db.query.transportRoutes.findFirst({
-          where: eq(transportRoutes.id, vehicle.routeId),
-        });
+        routeData = await db
+          .select()
+          .from(transportRoutes)
+          .where(eq(transportRoutes.id, vehicle.routeId))
+          .limit(1)
+          .then(rows => rows[0] || null);
       }
 
       return successResponse({
@@ -150,13 +165,14 @@ export const GET = createApiRoute(
       conditions.push(eq(vehicles.vehicleType, vehicleType));
     }
 
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    const whereClause = conditions.length > 0 ? and(...conditions as DbCondition[]) : undefined;
 
     // Get all vehicles
-    const vehicleList = await db.query.vehicles.findMany({
-      where: whereClause,
-      orderBy: [vehicles.registrationNumber],
-    });
+    const vehicleList = await db
+      .select()
+      .from(vehicles)
+      .where(whereClause)
+      .orderBy(vehicles.registrationNumber);
 
     // Enrich with route data if requested
     const enrichedVehicles: Array<Record<string, unknown>> = [];
@@ -167,9 +183,12 @@ export const GET = createApiRoute(
 
       // Add route data if requested
       if (includeRoute && vehicle.routeId) {
-        const route = await db.query.transportRoutes.findFirst({
-          where: eq(transportRoutes.id, vehicle.routeId),
-        });
+        const route = await db
+          .select()
+          .from(transportRoutes)
+          .where(eq(transportRoutes.id, vehicle.routeId))
+          .limit(1)
+          .then(rows => rows[0] || null);
         enrichedVehicle.route = route;
       }
 
@@ -197,10 +216,17 @@ export const POST = createApiRoute(
 
     const { userId } = auth;
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: { id: true, type: true, role: true, schoolId: true },
-    });
+    const currentUser = await db
+      .select({
+        id: users.id,
+        type: users.type,
+        role: users.role,
+        schoolId: users.schoolId,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!currentUser) {
       return notFoundResponse("User");
@@ -239,9 +265,12 @@ export const POST = createApiRoute(
     }
 
     // Check if registration number already exists
-    const existingVehicle = await db.query.vehicles.findFirst({
-      where: eq(vehicles.registrationNumber, registrationNumber),
-    });
+    const existingVehicle = await db
+      .select()
+      .from(vehicles)
+      .where(eq(vehicles.registrationNumber, registrationNumber))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (existingVehicle) {
       return badRequestResponse("Vehicle with this registration number already exists");
@@ -372,21 +401,29 @@ export const DELETE = createApiRoute(
     }
 
     // Check if vehicle is assigned to any active route
-    const vehicle = await db.query.vehicles.findFirst({
-      where: eq(vehicles.id, vehicleId),
-    });
+    const vehicle = await db
+      .select()
+      .from(vehicles)
+      .where(eq(vehicles.id, vehicleId))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!vehicle) {
       return notFoundResponse("Vehicle");
     }
 
     if (vehicle.routeId) {
-      const activeRoute = await db.query.transportRoutes.findFirst({
-        where: and(
-          eq(transportRoutes.id, vehicle.routeId),
-          eq(transportRoutes.isActive, true)
-        ),
-      });
+      const activeRoute = await db
+        .select()
+        .from(transportRoutes)
+        .where(
+          and(
+            eq(transportRoutes.id, vehicle.routeId),
+            eq(transportRoutes.isActive, true)
+          )
+        )
+        .limit(1)
+        .then(rows => rows[0] || null);
 
       if (activeRoute) {
         return badRequestResponse("Cannot delete vehicle assigned to an active route");

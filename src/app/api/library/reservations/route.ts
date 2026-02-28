@@ -1,13 +1,16 @@
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { libraryReservations, books, users, libraryMembers } from "@/lib/db/schema";
-import { eq, and, sql, desc, or } from "drizzle-orm";
+import { eq, and, sql, desc, or, asc } from "drizzle-orm";
 import { z } from "zod";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 // Reservation expires after 7 days
 const RESERVATION_EXPIRY_DAYS = 7;
+
+// Valid reservation statuses
+type ReservationStatus = "pending" | "fulfilled" | "cancelled" | "expired";
 
 const reservationSchema = z.object({
   bookId: z.string().min(1, "Book ID is required"),
@@ -22,14 +25,9 @@ const updateReservationSchema = z.object({
 });
 
 // GET /api/library/reservations - Get book reservations
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin', 'student', 'teacher']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { user } = authResult;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user } = auth;
     const { searchParams } = new URL(request.url);
 
     const status = searchParams.get("status") || "";
@@ -48,7 +46,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (status) {
-      conditions.push(eq(libraryReservations.status, status as any));
+      conditions.push(eq(libraryReservations.status, status as ReservationStatus));
     }
 
     if (bookId) {
@@ -57,30 +55,43 @@ export async function GET(request: NextRequest) {
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const reservations = await db.query.libraryReservations.findMany({
-      where: whereClause,
-      with: {
+    const reservations = await db
+      .select({
+        id: libraryReservations.id,
+        schoolId: libraryReservations.schoolId,
+        bookId: libraryReservations.bookId,
+        userId: libraryReservations.userId,
+        reservationDate: libraryReservations.reservationDate,
+        expiryDate: libraryReservations.expiryDate,
+        status: libraryReservations.status,
+        priority: libraryReservations.priority,
+        notes: libraryReservations.notes,
+        notifiedDate: libraryReservations.notifiedDate,
+        fulfilledDate: libraryReservations.fulfilledDate,
+        cancelledDate: libraryReservations.cancelledDate,
+        cancellationReason: libraryReservations.cancellationReason,
+        createdAt: libraryReservations.createdAt,
+        updatedAt: libraryReservations.updatedAt,
         book: {
-          columns: {
-            id: true,
-            title: true,
-            author: true,
-            isbn: true,
-            category: true,
-            coverImage: true,
-          },
+          id: books.id,
+          title: books.title,
+          author: books.author,
+          isbn: books.isbn,
+          category: books.category,
+          coverImage: books.coverImage,
         },
         user: {
-          columns: {
-            id: true,
-            name: true,
-            type: true,
-            email: true,
-          },
+          id: users.id,
+          name: users.name,
+          type: users.type,
+          email: users.email,
         },
-      },
-      orderBy: [libraryReservations.priority, libraryReservations.reservationDate],
-    });
+      })
+      .from(libraryReservations)
+      .leftJoin(books, eq(libraryReservations.bookId, books.id))
+      .leftJoin(users, eq(libraryReservations.userId, users.id))
+      .where(whereClause)
+      .orderBy(asc(libraryReservations.priority), asc(libraryReservations.reservationDate));
 
     // Check for expired reservations
     const now = new Date();
@@ -99,118 +110,123 @@ export async function GET(request: NextRequest) {
     }
 
     // Refetch with updated status
-    const updatedReservations = await db.query.libraryReservations.findMany({
-      where: whereClause,
-      with: {
+    const updatedReservations = await db
+      .select({
+        id: libraryReservations.id,
+        schoolId: libraryReservations.schoolId,
+        bookId: libraryReservations.bookId,
+        userId: libraryReservations.userId,
+        reservationDate: libraryReservations.reservationDate,
+        expiryDate: libraryReservations.expiryDate,
+        status: libraryReservations.status,
+        priority: libraryReservations.priority,
+        notes: libraryReservations.notes,
+        notifiedDate: libraryReservations.notifiedDate,
+        fulfilledDate: libraryReservations.fulfilledDate,
+        cancelledDate: libraryReservations.cancelledDate,
+        cancellationReason: libraryReservations.cancellationReason,
+        createdAt: libraryReservations.createdAt,
+        updatedAt: libraryReservations.updatedAt,
         book: {
-          columns: {
-            id: true,
-            title: true,
-            author: true,
-            isbn: true,
-            category: true,
-            coverImage: true,
-          },
+          id: books.id,
+          title: books.title,
+          author: books.author,
+          isbn: books.isbn,
+          category: books.category,
+          coverImage: books.coverImage,
         },
         user: {
-          columns: {
-            id: true,
-            name: true,
-            type: true,
-            email: true,
-          },
+          id: users.id,
+          name: users.name,
+          type: users.type,
+          email: users.email,
         },
-      },
-      orderBy: [libraryReservations.priority, libraryReservations.reservationDate],
-    });
+      })
+      .from(libraryReservations)
+      .leftJoin(books, eq(libraryReservations.bookId, books.id))
+      .leftJoin(users, eq(libraryReservations.userId, users.id))
+      .where(whereClause)
+      .orderBy(asc(libraryReservations.priority), asc(libraryReservations.reservationDate));
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        reservations: updatedReservations,
-        stats: {
-          total: updatedReservations.length,
-          pending: updatedReservations.filter((r) => r.status === "pending").length,
-          ready: updatedReservations.filter((r) => r.status === "ready").length,
-          fulfilled: updatedReservations.filter((r) => r.status === "fulfilled").length,
-          expired: updatedReservations.filter((r) => r.status === "expired").length,
-        },
+    return {
+      reservations: updatedReservations.map(r => ({
+        ...r,
+        book: r.book || null,
+        user: r.user || null,
+      })),
+      stats: {
+        total: updatedReservations.length,
+        pending: updatedReservations.filter((r) => r.status === "pending").length,
+        ready: updatedReservations.filter((r) => r.status === "ready").length,
+        fulfilled: updatedReservations.filter((r) => r.status === "fulfilled").length,
+        expired: updatedReservations.filter((r) => r.status === "expired").length,
       },
-    });
-  } catch (error) {
-    logger.error("Reservations fetch error:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch reservations" },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ['admin', 'school-admin', 'student', 'teacher']
+);
 
 // POST /api/library/reservations - Create book reservation
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin', 'student', 'teacher']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { user } = authResult;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user } = auth;
     const body = await request.json();
     const validatedData = reservationSchema.parse(body);
 
     // Check if book exists
-    const book = await db.query.books.findFirst({
-      where: eq(books.id, validatedData.bookId),
-    });
+    const book = await db
+      .select()
+      .from(books)
+      .where(eq(books.id, validatedData.bookId))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!book) {
-      return NextResponse.json(
-        { success: false, error: "Book not found" },
-        { status: 404 }
-      );
+      return { error: "Book not found", status: 404 };
     }
 
     // Don't allow reservation if book is available
     if (book.status === "available") {
-      return NextResponse.json(
-        { success: false, error: "Book is currently available for borrowing" },
-        { status: 400 }
-      );
+      return { error: "Book is currently available for borrowing", status: 400 };
     }
 
     // Check if user has active library membership
-    const member = await db.query.libraryMembers.findFirst({
-      where: and(
-        eq(libraryMembers.userId, user.id),
-        eq(libraryMembers.schoolId, user.schoolId || ""),
-        eq(libraryMembers.membershipStatus, "active")
-      ),
-    });
+    const member = await db
+      .select()
+      .from(libraryMembers)
+      .where(
+        and(
+          eq(libraryMembers.userId, user.id),
+          eq(libraryMembers.schoolId, user.schoolId || ""),
+          eq(libraryMembers.membershipStatus, "active")
+        )
+      )
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!member) {
-      return NextResponse.json(
-        { success: false, error: "You must have an active library membership to reserve books" },
-        { status: 400 }
-      );
+      return { error: "You must have an active library membership to reserve books", status: 400 };
     }
 
     // Check if user already has a pending/ready reservation for this book
-    const existingReservation = await db.query.libraryReservations.findFirst({
-      where: and(
-        eq(libraryReservations.userId, user.id),
-        eq(libraryReservations.bookId, validatedData.bookId),
-        or(
-          eq(libraryReservations.status, "pending"),
-          eq(libraryReservations.status, "ready")
+    const existingReservation = await db
+      .select()
+      .from(libraryReservations)
+      .where(
+        and(
+          eq(libraryReservations.userId, user.id),
+          eq(libraryReservations.bookId, validatedData.bookId),
+          or(
+            eq(libraryReservations.status, "pending"),
+            eq(libraryReservations.status, "ready")
+          )
         )
-      ),
-    });
+      )
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (existingReservation) {
-      return NextResponse.json(
-        { success: false, error: "You already have an active reservation for this book" },
-        { status: 400 }
-      );
+      return { error: "You already have an active reservation for this book", status: 400 };
     }
 
     // Calculate expiry date
@@ -252,81 +268,75 @@ export async function POST(request: NextRequest) {
       queuePosition,
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        reservation: newReservation,
-        message: queuePosition > 1
-          ? `Book reserved successfully. You are position #${queuePosition} in the queue.`
-          : "Book reserved successfully. You will be notified when it's available.",
-      },
-    });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { success: false, error: "Validation failed", details: error.issues },
-        { status: 400 }
-      );
-    }
-    logger.error("Reservation creation error:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to create reservation" },
-      { status: 500 }
-    );
-  }
-}
+    return {
+      reservation: newReservation,
+      message: queuePosition > 1
+        ? `Book reserved successfully. You are position #${queuePosition} in the queue.`
+        : "Book reserved successfully. You will be notified when it's available.",
+    };
+  },
+  ['admin', 'school-admin', 'student', 'teacher']
+);
 
 // PATCH /api/library/reservations - Update reservation (cancel, fulfill, expire)
-export async function PATCH(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin', 'student', 'teacher']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { user } = authResult;
+export const PATCH = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user } = auth;
     const body = await request.json();
     const validatedData = updateReservationSchema.parse(body);
 
     const { id, action, cancellationReason } = validatedData;
 
     // Get existing reservation
-    const reservation = await db.query.libraryReservations.findFirst({
-      where: eq(libraryReservations.id, id),
-      with: {
-        book: true,
-      },
-    });
+    const reservation = await db
+      .select({
+        id: libraryReservations.id,
+        schoolId: libraryReservations.schoolId,
+        bookId: libraryReservations.bookId,
+        userId: libraryReservations.userId,
+        reservationDate: libraryReservations.reservationDate,
+        expiryDate: libraryReservations.expiryDate,
+        status: libraryReservations.status,
+        priority: libraryReservations.priority,
+        notes: libraryReservations.notes,
+        notifiedDate: libraryReservations.notifiedDate,
+        fulfilledDate: libraryReservations.fulfilledDate,
+        cancelledDate: libraryReservations.cancelledDate,
+        cancellationReason: libraryReservations.cancellationReason,
+        createdAt: libraryReservations.createdAt,
+        updatedAt: libraryReservations.updatedAt,
+        book: {
+          id: books.id,
+          title: books.title,
+          author: books.author,
+          isbn: books.isbn,
+          category: books.category,
+          coverImage: books.coverImage,
+        },
+      })
+      .from(libraryReservations)
+      .leftJoin(books, eq(libraryReservations.bookId, books.id))
+      .where(eq(libraryReservations.id, id))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!reservation) {
-      return NextResponse.json(
-        { success: false, error: "Reservation not found" },
-        { status: 404 }
-      );
+      return { error: "Reservation not found", status: 404 };
     }
 
     // Students/teachers can only cancel their own reservations
     if (action === "cancel" && reservation.userId !== user.id && user.type !== 'admin' && user.type !== 'school-admin') {
-      return NextResponse.json(
-        { success: false, error: "You can only cancel your own reservations" },
-        { status: 403 }
-      );
+      return { error: "You can only cancel your own reservations", status: 403 };
     }
 
     // Only school-admin can fulfill or expire reservations
     if ((action === "fulfill" || action === "expire") && user.type !== 'admin' && user.type !== 'school-admin') {
-      return NextResponse.json(
-        { success: false, error: "Unauthorized" },
-        { status: 403 }
-      );
+      return { error: "Unauthorized", status: 403 };
     }
 
     if (action === "cancel") {
       if (reservation.status === "fulfilled" || reservation.status === "cancelled") {
-        return NextResponse.json(
-          { success: false, error: "Cannot cancel a fulfilled or already cancelled reservation" },
-          { status: 400 }
-        );
+        return { error: "Cannot cancel a fulfilled or already cancelled reservation", status: 400 };
       }
 
       const [updatedReservation] = await db.update(libraryReservations)
@@ -341,13 +351,18 @@ export async function PATCH(request: NextRequest) {
 
       // Notify next person in queue
       if (reservation.status === "ready") {
-        const nextReservation = await db.query.libraryReservations.findFirst({
-          where: and(
-            eq(libraryReservations.bookId, reservation.bookId),
-            eq(libraryReservations.status, "pending")
-          ),
-          orderBy: [libraryReservations.priority, libraryReservations.reservationDate],
-        });
+        const nextReservation = await db
+          .select()
+          .from(libraryReservations)
+          .where(
+            and(
+              eq(libraryReservations.bookId, reservation.bookId),
+              eq(libraryReservations.status, "pending")
+            )
+          )
+          .orderBy(asc(libraryReservations.priority), asc(libraryReservations.reservationDate))
+          .limit(1)
+          .then(rows => rows[0] || null);
 
         if (nextReservation) {
           await db.update(libraryReservations)
@@ -362,18 +377,12 @@ export async function PATCH(request: NextRequest) {
 
       logger.info("Reservation cancelled", { reservationId: id, userId: user.id });
 
-      return NextResponse.json({
-        success: true,
-        data: { reservation: updatedReservation[0] },
-      });
+      return { reservation: updatedReservation[0] };
     }
 
     if (action === "fulfill") {
       if (reservation.status !== "ready") {
-        return NextResponse.json(
-          { success: false, error: "Can only fulfill reservations that are in 'ready' status" },
-          { status: 400 }
-        );
+        return { error: "Can only fulfill reservations that are in 'ready' status", status: 400 };
       }
 
       const [updatedReservation] = await db.update(libraryReservations)
@@ -387,18 +396,12 @@ export async function PATCH(request: NextRequest) {
 
       logger.info("Reservation fulfilled", { reservationId: id, userId: user.id });
 
-      return NextResponse.json({
-        success: true,
-        data: { reservation: updatedReservation[0] },
-      });
+      return { reservation: updatedReservation[0] };
     }
 
     if (action === "expire") {
       if (reservation.status !== "pending" && reservation.status !== "ready") {
-        return NextResponse.json(
-          { success: false, error: "Can only expire pending or ready reservations" },
-          { status: 400 }
-        );
+        return { error: "Can only expire pending or ready reservations", status: 400 };
       }
 
       const [updatedReservation] = await db.update(libraryReservations)
@@ -410,13 +413,18 @@ export async function PATCH(request: NextRequest) {
         .returning();
 
       // Notify next person in queue
-      const nextReservation = await db.query.libraryReservations.findFirst({
-        where: and(
-          eq(libraryReservations.bookId, reservation.bookId),
-          eq(libraryReservations.status, "pending")
-        ),
-        orderBy: [libraryReservations.priority, libraryReservations.reservationDate],
-      });
+      const nextReservation = await db
+        .select()
+        .from(libraryReservations)
+        .where(
+          and(
+            eq(libraryReservations.bookId, reservation.bookId),
+            eq(libraryReservations.status, "pending")
+          )
+        )
+        .orderBy(asc(libraryReservations.priority), asc(libraryReservations.reservationDate))
+        .limit(1)
+        .then(rows => rows[0] || null);
 
       if (nextReservation) {
         await db.update(libraryReservations)
@@ -430,48 +438,23 @@ export async function PATCH(request: NextRequest) {
 
       logger.info("Reservation expired", { reservationId: id, userId: user.id });
 
-      return NextResponse.json({
-        success: true,
-        data: { reservation: updatedReservation[0] },
-      });
+      return { reservation: updatedReservation[0] };
     }
 
-    return NextResponse.json(
-      { success: false, error: "Invalid action" },
-      { status: 400 }
-    );
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { success: false, error: "Validation failed", details: error.issues },
-        { status: 400 }
-      );
-    }
-    logger.error("Reservation update error:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to update reservation" },
-      { status: 500 }
-    );
-  }
-}
+    return { error: "Invalid action", status: 400 };
+  },
+  ['admin', 'school-admin', 'student', 'teacher']
+);
 
 // DELETE /api/library/reservations - Delete reservation
-export async function DELETE(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { user } = authResult;
+export const DELETE = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user } = auth;
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
     if (!id) {
-      return NextResponse.json(
-        { success: false, error: "Reservation ID is required" },
-        { status: 400 }
-      );
+      return { error: "Reservation ID is required", status: 400 };
     }
 
     const deletedReservation = await db
@@ -480,23 +463,12 @@ export async function DELETE(request: NextRequest) {
       .returning();
 
     if (deletedReservation.length === 0) {
-      return NextResponse.json(
-        { success: false, error: "Reservation not found" },
-        { status: 404 }
-      );
+      return { error: "Reservation not found", status: 404 };
     }
 
     logger.info("Reservation deleted", { reservationId: id, userId: user.id });
 
-    return NextResponse.json({
-      success: true,
-      data: { message: "Reservation deleted successfully" },
-    });
-  } catch (error) {
-    logger.error("Reservation deletion error:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to delete reservation" },
-      { status: 500 }
-    );
-  }
-}
+    return { message: "Reservation deleted successfully" };
+  },
+  ['admin', 'school-admin']
+);

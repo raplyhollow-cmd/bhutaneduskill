@@ -1,25 +1,30 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+/**
+ * SCHOOL ADMIN SETUP COMPLETE API
+ *
+ * POST /api/school-admin/setup/complete - Complete school setup
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { schools, departments, classes, subjects } from "@/lib/db/schema";
 import { nanoid } from "nanoid";
 import { logger } from "@/lib/logger";
 import { eq } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, forbiddenResponse } from "@/lib/api/response-helpers";
 
 // POST /api/school-admin/setup/complete - Complete school setup
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId, user } = authResult;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId, user } = auth;
 
     const body = await request.json();
     const { schoolId, data } = body;
 
     if (!schoolId || !user?.schoolId || user.schoolId !== schoolId) {
-      return NextResponse.json({ error: "Invalid school" }, { status: 403 });
+      return forbiddenResponse("Invalid school");
     }
 
     // Update school profile
@@ -102,15 +107,13 @@ export async function POST(request: NextRequest) {
       classesCount: data.classes?.length || 0,
     });
 
-    return NextResponse.json({
+    return successResponse({
       success: true,
       message: "School setup completed successfully",
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/setup/complete", method: "POST" });
-    return NextResponse.json({ error: "Failed to complete setup" }, { status: 500 });
-  }
-}
+  },
+  ['school-admin']
+);
 
 // Helper function to get default subjects for a department
 function getDefaultSubjects(departmentName: string): Array<{ name: string; code: string; type?: string; grades?: string }> {

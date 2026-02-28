@@ -6,11 +6,12 @@
  */
 
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
 import { users, schools, teachers } from "@/lib/db/schema";
-import type { PayrollRecord, Teacher } from "@/lib/db/payroll-schema";
+import type { PayrollRecord } from "@/lib/db/payroll-schema";
+import type { Teacher } from "@/lib/db/schema";
 import {
   payrollRecords,
   payrollRuns,
@@ -64,41 +65,28 @@ interface PayrollSummary {
   pendingCount: number;
 }
 
-interface PayrollListResponse {
-  success: true;
-  records: PayrollRecord[];
-  summary: PayrollSummary;
-}
-
-interface PayrollCreateResponse {
-  success: true;
-  record: PayrollRecord;
-}
-
 // GET /api/school-admin/payroll - List payroll records
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin", "school-admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { user } = authResult;
+export const GET = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { user } = auth;
 
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(req.url);
     const month = searchParams.get("month");
     const year = searchParams.get("year");
     const status = searchParams.get("status");
     const search = searchParams.get("search");
 
     // Get school ID from current user
-    const currentUserData = await db.query.users.findFirst({
-      where: eq(users.id, user.id),
-      columns: { schoolId: true },
-    });
+    const currentUserData = await db
+      .select({ schoolId: users.schoolId })
+      .from(users)
+      .where(eq(users.id, user.id))
+      .limit(1)
+      .then(rows => rows[0]);
 
     const schoolId = currentUserData?.schoolId;
     if (!schoolId) {
-      return NextResponse.json({ error: "School not found" }, { status: 404 });
+      return { error: "School not found" };
     }
 
     // Build conditions
@@ -115,10 +103,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch payroll records
-    const records = await db.query.payrollRecords.findMany({
-      where: and(...conditions),
-      orderBy: [desc(payrollRecords.createdAt)],
-    });
+    const records = await db
+      .select()
+      .from(payrollRecords)
+      .where(and(...conditions))
+      .orderBy(desc(payrollRecords.createdAt));
 
     // Filter by search if provided
     let filteredRecords = records;
@@ -140,29 +129,21 @@ export async function GET(request: NextRequest) {
       pendingCount: filteredRecords.filter((r) => r.paymentStatus === "pending").length,
     };
 
-    const response: PayrollListResponse = {
+    return {
       success: true,
       records: filteredRecords,
       summary,
     };
-
-    return NextResponse.json(response);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/payroll", method: "GET" });
-    return NextResponse.json({ error: "Failed to fetch payroll records" }, { status: 500 });
-  }
-}
+  },
+  ["admin", "school-admin"]
+);
 
 // POST /api/school-admin/payroll - Create manual payroll entry
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin", "school-admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { user } = authResult;
+export const POST = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { user } = auth;
 
-    const body = await request.json() as CreatePayrollRequest;
+    const body = await req.json() as CreatePayrollRequest;
     const {
       employeeId,
       month,
@@ -179,36 +160,43 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!employeeId || !month || !year || basicSalary === undefined) {
-      return NextResponse.json(
-        { error: "Missing required fields: employeeId, month, year, basicSalary" },
-        { status: 400 }
-      );
+      return {
+        error: "Missing required fields: employeeId, month, year, basicSalary"
+      };
     }
 
     // Get school ID
-    const currentUserData = await db.query.users.findFirst({
-      where: eq(users.id, user.id),
-      columns: { schoolId: true },
-    });
+    const currentUserData = await db
+      .select({ schoolId: users.schoolId })
+      .from(users)
+      .where(eq(users.id, user.id))
+      .limit(1)
+      .then(rows => rows[0]);
 
     const schoolId = currentUserData?.schoolId;
     if (!schoolId) {
-      return NextResponse.json({ error: "School not found" }, { status: 404 });
+      return { error: "School not found" };
     }
 
     // Get employee details
-    const employee = await db.query.users.findFirst({
-      where: eq(users.id, employeeId),
-    });
+    const employee = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, employeeId))
+      .limit(1)
+      .then(rows => rows[0]);
 
     if (!employee) {
-      return NextResponse.json({ error: "Employee not found" }, { status: 404 });
+      return { error: "Employee not found" };
     }
 
     // Get teacher details for designation and department
-    const teacherRecord = await db.query.teachers.findFirst({
-      where: eq(teachers.userId, employeeId),
-    });
+    const teacherRecord = await db
+      .select()
+      .from(teachers)
+      .where(eq(teachers.userId, employeeId))
+      .limit(1)
+      .then(rows => rows[0]);
 
     const designation = teacherRecord?.designation || "Teacher";
     const department = teacherRecord?.department || employee.department || "Teaching";
@@ -220,16 +208,19 @@ export async function POST(request: NextRequest) {
     const netPay = totalEarnings - totalDeductions;
 
     // Check if payroll already exists for this employee/month/year
-    const existing = await db.query.payrollRecords.findFirst({
-      where: and(
+    const existing = await db
+      .select()
+      .from(payrollRecords)
+      .where(and(
         eq(payrollRecords.employeeId, employeeId),
         eq(payrollRecords.payrollMonth, parseInt(month)),
         eq(payrollRecords.payrollYear, parseInt(year))
-      ),
-    });
+      ))
+      .limit(1)
+      .then(rows => rows[0]);
 
     if (existing) {
-      return NextResponse.json({ error: "Payroll already exists for this period" }, { status: 400 });
+      return { error: "Payroll already exists for this period" };
     }
 
     // Create payroll record
@@ -293,14 +284,10 @@ export async function POST(request: NextRequest) {
       year,
     });
 
-    const response: PayrollCreateResponse = {
+    return {
       success: true,
       record: newRecord,
     };
-
-    return NextResponse.json(response);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/payroll", method: "POST" });
-    return NextResponse.json({ error: "Failed to create payroll entry" }, { status: 500 });
-  }
-}
+  },
+  ["admin", "school-admin"]
+);

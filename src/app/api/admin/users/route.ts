@@ -299,7 +299,8 @@ export const POST = createApiRoute(
       logger.info("[Admin] Created Clerk user", { userId: clerkUser.id, email });
     } catch (clerkError: unknown) {
       logger.error("[Admin] Failed to create Clerk user", clerkError);
-      return badRequestResponse(`Failed to create user in Clerk: ${clerkError.errors?.[0]?.message || (clerkError instanceof Error ? clerkError.message : 'Unknown error') || 'Unknown error'}`);
+      const errorMsg = clerkError instanceof Error ? clerkError.message : 'Unknown error';
+      return badRequestResponse(`Failed to create user in Clerk: ${errorMsg}`);
     }
 
     // Prepare user data
@@ -366,7 +367,7 @@ export const POST = createApiRoute(
         schoolId: createdUser.schoolId,
       },
       userId,
-      request
+      req
     );
 
     // Return created user without sensitive fields

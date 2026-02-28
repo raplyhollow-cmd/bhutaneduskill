@@ -1,3 +1,13 @@
+/**
+ * SCHOOL ADMIN CURRICULUM ASSIGN API
+ *
+ * GET /api/school-admin/curriculum-assign - Get existing assignments
+ * POST /api/school-admin/curriculum-assign - Save teacher-subject-class assignments
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
+import { NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
@@ -5,50 +15,35 @@ import { classes, users } from "@/lib/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse } from "@/lib/api/response-helpers";
 
 // POST /api/school-admin/curriculum-assign - Save teacher-subject-class assignments
-export async function POST(req: Request) {
-  try {
-    const authResult = await requireAuth(["school-admin"]);
-    if ("error" in authResult) {
-      return Response.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const POST = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId } = auth;
 
     const body = await req.json();
     const { department, grades, sections, academicYear, assignments } = body;
 
     if (!assignments || assignments.length === 0) {
-      return Response.json(
-        { error: "No assignments provided", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("No assignments provided");
     }
 
     // Get school admin's school ID
     const adminRecords = await db
       .select({ schoolId: users.schoolId })
       .from(users)
-      .where(eq(users.clerkUserId, userId))
+      .where(eq(users.id, userId))
       .limit(1);
 
     if (adminRecords.length === 0) {
-      return Response.json(
-        { error: "School admin not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return errorResponse("School admin not found", 404);
     }
 
     const schoolId = adminRecords[0].schoolId;
     if (!schoolId) {
-      return Response.json(
-        { error: "School admin not linked to a school", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("School admin not linked to a school");
     }
 
     // Create new assignments by updating classes directly
@@ -113,55 +108,34 @@ export async function POST(req: Request) {
       count: updatedAssignments.length,
     });
 
-    return Response.json({
-      data: {
-        message: `${updatedAssignments.length} class assignments updated successfully`,
-        count: updatedAssignments.length,
-        summary,
-      },
-    } satisfies ApiSuccess<{ message: string; count: number; summary: Record<string, number> }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/curriculum-assign", method: "POST" });
-    return Response.json(
-      { error: "Failed to save assignments", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return successResponse({
+      message: `${updatedAssignments.length} class assignments updated successfully`,
+      count: updatedAssignments.length,
+      summary,
+    });
+  },
+  ["school-admin"]
+);
 
 // GET /api/school-admin/curriculum-assign - Get existing assignments
-export async function GET(req: Request) {
-  try {
-    const authResult = await requireAuth(["school-admin"]);
-    if ("error" in authResult) {
-      return Response.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId } = auth;
 
     // Get school admin's school ID
     const adminRecords = await db
       .select({ schoolId: users.schoolId })
       .from(users)
-      .where(eq(users.clerkUserId, userId))
+      .where(eq(users.id, userId))
       .limit(1);
 
     if (adminRecords.length === 0) {
-      return Response.json(
-        { error: "School admin not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return errorResponse("School admin not found", 404);
     }
 
     const schoolId = adminRecords[0].schoolId;
     if (!schoolId) {
-      return Response.json(
-        { error: "School admin not linked to a school", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("School admin not linked to a school");
     }
 
     // Get classes with teacher assignments
@@ -200,14 +174,7 @@ export async function GET(req: Request) {
       academicYear: c.academicYear,
     }));
 
-    return Response.json({
-      data: { assignments },
-    } satisfies ApiSuccess<{ assignments: typeof assignments }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/curriculum-assign", method: "GET" });
-    return Response.json(
-      { error: "Failed to fetch assignments", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return successResponse({ assignments });
+  },
+  ["school-admin"]
+);

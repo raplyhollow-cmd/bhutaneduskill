@@ -77,7 +77,17 @@ export default function TeacherLiveSessionsPage() {
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
 
   // Form state for creating session
-  const [newSession, setNewSession] = useState({
+  const [newSession, setNewSession] = useState<{
+    title: string;
+    description: string;
+    subject: string;
+    classId: string;
+    scheduledDate: string;
+    startTime: string;
+    endTime: string;
+    platform: "zoom" | "google_meet" | "teams" | "in_app";
+    isRecorded: boolean;
+  }>({
     title: "",
     description: "",
     subject: "",
@@ -85,7 +95,7 @@ export default function TeacherLiveSessionsPage() {
     scheduledDate: "",
     startTime: "",
     endTime: "",
-    platform: "google_meet" as const,
+    platform: "google_meet",
     isRecorded: false,
   });
 

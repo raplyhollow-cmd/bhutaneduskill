@@ -10,8 +10,8 @@
  * - Private: 2x/year (February + July)
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { schools, users, students, studentFees } from "@/lib/db/schema";
@@ -36,43 +36,36 @@ interface FeeBreakdownItem {
   description: string;
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id: schoolId } = await params;
-    const authResult = await requireAuth(['admin', 'school-admin']);
-
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { userId, user } = authResult;
-    const body = await request.json() as GenerateFeesRequest;
+export const POST = createApiRoute<{ id: string }>(
+  async (req, auth, context) => {
+    const { id: schoolId } = await (context?.params || {});
+    const { userId, user } = auth;
+    const body = await req.json() as GenerateFeesRequest;
 
     // Validate required fields
     if (!body.sessionYear) {
-      return NextResponse.json({ error: "sessionYear is required" }, { status: 400 });
+      return { error: "sessionYear is required", status: 400 };
     }
 
     if (!body.feeBreakdown || body.feeBreakdown.length === 0) {
-      return NextResponse.json({ error: "feeBreakdown is required with at least one item" }, { status: 400 });
+      return { error: "feeBreakdown is required with at least one item", status: 400 };
     }
 
     // Validate school access
-    const school = await db.query.schools.findFirst({
-      where: eq(schools.id, schoolId),
-      columns: {
-        id: true,
-        name: true,
-        type: true,
-        schoolType: true,
-      },
-    });
+    const schoolResult = await db
+      .select({
+        id: schools.id,
+        name: schools.name,
+        type: schools.type,
+        schoolType: schools.schoolType,
+      })
+      .from(schools)
+      .where(eq(schools.id, schoolId))
+      .limit(1);
+    const school = schoolResult[0];
 
     if (!school) {
-      return NextResponse.json({ error: "School not found" }, { status: 404 });
+      return { error: "School not found", status: 404 };
     }
 
     // Check if school admin is trying to access a different school
@@ -83,7 +76,7 @@ export async function POST(
           schoolId,
           userSchoolId: user.schoolId,
         });
-        return NextResponse.json({ error: "You can only generate fees for your own school" }, { status: 403 });
+        return { error: "You can only generate fees for your own school", status: 403 };
       }
     }
 
@@ -96,39 +89,41 @@ export async function POST(
     });
 
     // Get all active students for this school
-    const studentRecords = await db.query.students.findMany({
-      where: and(
+    const studentRecords = await db
+      .select({
+        id: students.id,
+        userId: students.userId,
+      })
+      .from(students)
+      .where(and(
         eq(students.schoolId, schoolId),
         eq(students.status, "active")
-      ),
-      columns: {
-        id: true,
-        userId: true,
-      },
-    });
+      ));
 
     if (studentRecords.length === 0) {
-      return NextResponse.json({
-        success: true,
-        message: "No active students found in this school",
-        generated: 0,
-        skipped: 0,
-      });
+      return {
+        data: {
+          success: true,
+          message: "No active students found in this school",
+          generated: 0,
+          skipped: 0,
+        }
+      };
     }
 
     // Get user IDs for students
     const studentUserIds = studentRecords.map(s => s.userId);
 
     // Fetch user details
-    const studentUsers = await db.query.users.findMany({
-      where: inArray(users.id, studentUserIds),
-      columns: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        name: true,
-      },
-    });
+    const studentUsers = await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        name: users.name,
+      })
+      .from(users)
+      .where(inArray(users.id, studentUserIds));
 
     const userMap = new Map(studentUsers.map(u => [u.id, u]));
 
@@ -221,118 +216,105 @@ export async function POST(
       totalAmount,
     });
 
-    return NextResponse.json({
-      success: true,
-      message: `Successfully generated fees for ${generated} students`,
-      generated,
-      skipped,
-      totalFees: feeIds.length,
-      totalAmount: totalAmount * generated,
-      errors: errors.length > 0 ? errors : undefined,
-      sessionYear: body.sessionYear,
-      schoolName: school.name,
-      schoolType: school.type,
-    });
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/schools/[id]/generate-fees", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to generate fees", details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
-  }
-}
+    return {
+      data: {
+        success: true,
+        message: `Successfully generated fees for ${generated} students`,
+        generated,
+        skipped,
+        totalFees: feeIds.length,
+        totalAmount: totalAmount * generated,
+        errors: errors.length > 0 ? errors : undefined,
+        sessionYear: body.sessionYear,
+        schoolName: school.name,
+        schoolType: school.type,
+      }
+    };
+  },
+  ["admin", "school-admin"]
+);
 
 // GET endpoint to retrieve current fee generation status for a school
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id: schoolId } = await params;
-    const authResult = await requireAuth(['admin', 'school-admin']);
-
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { user } = authResult;
+export const GET = createApiRoute<{ id: string }>(
+  async (req, auth, context) => {
+    const { id: schoolId } = await (context?.params || {});
+    const { user } = auth;
 
     // Validate school access
-    const school = await db.query.schools.findFirst({
-      where: eq(schools.id, schoolId),
-      columns: {
-        id: true,
-        name: true,
-        type: true,
-        schoolType: true,
-        currentSessionYear: true,
-        feeGenerationDate: true,
-        feeGenerationStatus: true,
-      },
-    });
+    const schoolResult = await db
+      .select({
+        id: schools.id,
+        name: schools.name,
+        type: schools.type,
+        schoolType: schools.schoolType,
+        currentSessionYear: schools.currentSessionYear,
+        feeGenerationDate: schools.feeGenerationDate,
+        feeGenerationStatus: schools.feeGenerationStatus,
+      })
+      .from(schools)
+      .where(eq(schools.id, schoolId))
+      .limit(1);
+    const school = schoolResult[0];
 
     if (!school) {
-      return NextResponse.json({ error: "School not found" }, { status: 404 });
+      return { error: "School not found", status: 404 };
     }
 
     // Check if school admin is trying to access a different school
     if (user.type === 'school-admin' && user.schoolId !== schoolId) {
-      return NextResponse.json({ error: "You can only view fee status for your own school" }, { status: 403 });
+      return { error: "You can only view fee status for your own school", status: 403 };
     }
 
     // Count active students
-    const studentCount = await db.query.students.findMany({
-      where: and(
+    const studentCount = await db
+      .select()
+      .from(students)
+      .where(and(
         eq(students.schoolId, schoolId),
         eq(students.status, "active")
-      ),
-    });
+      ));
 
     // Get fee summary for current session
     const existingFees = school.currentSessionYear
-      ? await db.query.studentFees.findMany({
-          where: and(
-            eq(studentFees.schoolId, schoolId),
-            eq(studentFees.year, parseInt(school.currentSessionYear))
-          ),
-        })
+      ? await db
+        .select()
+        .from(studentFees)
+        .where(and(
+          eq(studentFees.schoolId, schoolId),
+          eq(studentFees.year, parseInt(school.currentSessionYear))
+        ))
       : [];
 
     const totalGenerated = existingFees.length;
     const totalAmount = existingFees.reduce((sum, fee) => sum + (fee.amount || 0), 0);
     const totalPaid = existingFees.reduce((sum, fee) => sum + (fee.amountPaid || 0), 0);
 
-    return NextResponse.json({
-      success: true,
-      school: {
-        id: school.id,
-        name: school.name,
-        type: school.type,
-        schoolType: school.schoolType,
-      },
-      session: {
-        year: school.currentSessionYear,
-        generationDate: school.feeGenerationDate,
-        status: school.feeGenerationStatus,
-      },
-      students: {
-        active: studentCount.length,
-      },
-      fees: {
-        totalGenerated,
-        totalAmount,
-        totalPaid,
-        totalPending: totalAmount - totalPaid,
-        paymentRate: totalAmount > 0 ? Math.round((totalPaid / totalAmount) * 100) : 0,
-      },
-    });
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/schools/[id]/generate-fees", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch fee status", details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
-  }
-}
+    return {
+      data: {
+        success: true,
+        school: {
+          id: school.id,
+          name: school.name,
+          type: school.type,
+          schoolType: school.schoolType,
+        },
+        session: {
+          year: school.currentSessionYear,
+          generationDate: school.feeGenerationDate,
+          status: school.feeGenerationStatus,
+        },
+        students: {
+          active: studentCount.length,
+        },
+        fees: {
+          totalGenerated,
+          totalAmount,
+          totalPaid,
+          totalPending: totalAmount - totalPaid,
+          paymentRate: totalAmount > 0 ? Math.round((totalPaid / totalAmount) * 100) : 0,
+        },
+      }
+    };
+  },
+  ["admin", "school-admin"]
+);

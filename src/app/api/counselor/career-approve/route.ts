@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { careerApprovals, rubScholarships, rubPrograms, rubColleges, users, counselorAssignments } from "@/lib/db/schema";
@@ -18,17 +18,9 @@ interface RecommendedScholarship {
  * Create counselor approval for student career path
  * Links to RUB scholarships and programs
  */
-export async function POST(req: Request) {
-  try {
-    const authResult = await requireAuth(["counselor"]);
-    if ("error" in authResult) {
-      return Response.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const POST = createApiRoute(
+  async (req, auth) => {
+    const { userId } = auth;
     const body = await req.json();
 
     const {
@@ -48,20 +40,19 @@ export async function POST(req: Request) {
     } = body;
 
     if (!studentId || !careerTitle || !approvalStatus) {
-      return Response.json(
-        { error: "studentId, careerTitle, and approvalStatus are required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "studentId, careerTitle, and approvalStatus are required", status: 400 } satisfies ApiErrorResponse;
     }
 
     // Check for existing approval
-    const existing = await db.query.careerApprovals.findFirst({
-      where: and(
+    const [existing] = await db
+      .select()
+      .from(careerApprovals)
+      .where(and(
         eq(careerApprovals.studentId, studentId),
         eq(careerApprovals.careerTitle, careerTitle),
         sql`${careerApprovals.validUntil} IS NULL OR ${careerApprovals.validUntil} >= NOW()`
-      ),
-    });
+      ))
+      .limit(1);
 
     if (existing) {
       // Update existing approval
@@ -112,10 +103,11 @@ export async function POST(req: Request) {
     // Find matching RUB scholarships if scholarship ready
     const recommendedScholarships: RecommendedScholarship[] = [];
     if (scholarshipReady || approvalStatus === "approved") {
-      const scholarships = await db.query.rubScholarships.findMany({
-        where: eq(rubScholarships.isActive, true),
-        limit: 5,
-      });
+      const scholarships = await db
+        .select()
+        .from(rubScholarships)
+        .where(eq(rubScholarships.isActive, true))
+        .limit(5);
 
       recommendedScholarships.push(...scholarships.map((s) => ({
         scholarshipId: s.id,
@@ -131,7 +123,7 @@ export async function POST(req: Request) {
       approvalStatus,
     });
 
-    return Response.json({
+    return {
       data: {
         message: `Career ${approvalStatus === "approved" ? "approved" : approvalStatus === "approved_with_reservations" ? "approved with reservations" : "not recommended"}`,
         approvalId: existing?.id || null,
@@ -145,40 +137,27 @@ export async function POST(req: Request) {
         name: string;
         suitability: string;
       }>;
-    }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/counselor/career-approve", method: "POST" });
-    return Response.json(
-      { error: "Failed to create career approval", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    }>;
+  },
+  ["counselor"]
+);
 
 /**
  * GET /api/counselor/career-approve
  *
  * Get students' career matches for counselor review
  */
-export async function GET(req: Request) {
-  try {
-    const authResult = await requireAuth(["counselor"]);
-    if ("error" in authResult) {
-      return Response.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (req, auth) => {
+    const { userId } = auth;
     const { searchParams } = new URL(req.url);
     const studentId = searchParams.get("studentId");
 
     // Get counselor's assigned schools
-    const assignments = await db.query.counselorAssignments.findMany({
-      where: eq(counselorAssignments.counselorId, userId),
-      columns: { schoolId: true },
-    });
+    const assignments = await db
+      .select({ schoolId: counselorAssignments.schoolId })
+      .from(counselorAssignments)
+      .where(eq(counselorAssignments.counselorId, userId));
     const counselorSchools = assignments.map((a) => a.schoolId);
 
     // Get students with completed assessments from counselor's schools
@@ -219,7 +198,7 @@ export async function GET(req: Request) {
       careerMatches: row.career_matches || [],
     }));
 
-    return Response.json({
+    return {
       data: {
         students: studentList,
         count: studentList.length,
@@ -233,12 +212,7 @@ export async function GET(req: Request) {
         careerMatches: unknown[];
       }>;
       count: number;
-    }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/counselor/career-approve", method: "GET" });
-    return Response.json(
-      { error: "Failed to fetch career matches", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    }>;
+  },
+  ["counselor"]
+);

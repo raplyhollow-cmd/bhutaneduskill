@@ -70,9 +70,11 @@ export const GET = createApiRoute(
       }
 
       // Verify the child exists and is a student
-      const child = await db.query.users.findFirst({
-        where: and(eq(users.id, childId), eq(users.type, "student")),
-      });
+      const [child] = await db
+        .select()
+        .from(users)
+        .where(and(eq(users.id, childId), eq(users.type, "student")))
+        .limit(1);
 
       if (!child) {
         return notFoundResponse("Child");
@@ -89,22 +91,31 @@ export const GET = createApiRoute(
       }
 
       // Fetch attendance records
-      const records = await db.query.attendance.findMany({
-        where: and(...conditions),
-        orderBy: [desc(attendanceTable.date)],
-        limit,
-      });
+      const records = await db
+        .select()
+        .from(attendanceTable)
+        .where(and(...conditions))
+        .orderBy(desc(attendanceTable.date))
+        .limit(limit);
 
       // Get child's class info
-      const childEnrollment = await db.query.enrollments.findFirst({
-        where: eq(enrollments.studentId, childId),
-        with: {
-          class: true,
-        },
-        orderBy: [desc(enrollments.createdAt)],
-      });
+      const [childEnrollment] = await db
+        .select()
+        .from(enrollments)
+        .where(eq(enrollments.studentId, childId))
+        .orderBy(desc(enrollments.createdAt))
+        .limit(1);
 
-      const childClass = childEnrollment?.class?.[0];
+      // Get class data separately since we can't use `with` anymore
+      let childClass = null;
+      if (childEnrollment?.classId) {
+        const classResult = await db
+          .select()
+          .from(classes)
+          .where(eq(classes.id, childEnrollment.classId))
+          .limit(1);
+        childClass = classResult[0] || null;
+      }
 
       // Calculate statistics
       const stats: AttendanceStatistics = {
@@ -126,7 +137,7 @@ export const GET = createApiRoute(
         date: r.date,
         status: r.status as "present" | "absent" | "late" | "excused",
         notes: r.notes ?? undefined,
-        recordedBy: r.recordedByBy ?? undefined,
+        recordedBy: r.recordedBy ?? undefined,
         createdAt: r.createdAt,
       }));
 

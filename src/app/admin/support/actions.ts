@@ -138,7 +138,7 @@ export async function getSupportTickets(filters?: {
     const limit = filters?.limit || 50;
     const offset = filters?.offset || 0;
 
-    const conditions: unknown[] = [sql`${supportTickets.isActive} = true`];
+    const conditions: Array<ReturnType<typeof sql>> = [sql`${supportTickets.isActive} = true`];
 
     if (filters?.status) {
       conditions.push(sql`${supportTickets.status} = ${filters.status}`);

@@ -1,91 +1,108 @@
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
 import { tutors, users, tutorReviews } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 
-interface Params {
-  params: Promise<{ id: string }>;
-}
-
 // GET /api/tuition/tutors/[id] - Get tutor profile
-export async function GET(request: NextRequest, { params }: Params) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { id } = await params;
-    const tutor = await db.query.tutors.findFirst({
-      where: eq(tutors.id, id),
-      with: {
+export const GET = createApiRoute<{ id: string }>(
+  async (request: NextRequest, auth, context) => {
+    const { id } = await context!.params!;
+    const [tutor] = await db
+      .select({
+        id: tutors.id,
+        userId: tutors.userId,
+        bio: tutors.bio,
+        subjects: tutors.subjects,
+        qualifications: tutors.qualifications,
+        experience: tutors.experience,
+        gradeLevels: tutors.gradeLevels,
+        location: tutors.location,
+        district: tutors.district,
+        hourlyRate: tutors.hourlyRate,
+        hourlyRateOnline: tutors.hourlyRateOnline,
+        currency: tutors.currency,
+        availability: tutors.availability,
+        teachingMode: tutors.teachingMode,
+        averageRating: tutors.averageRating,
+        totalReviews: tutors.totalReviews,
+        totalStudents: tutors.totalStudents,
+        isVerified: tutors.isVerified,
+        isActive: tutors.isActive,
+        createdAt: tutors.createdAt,
+        updatedAt: tutors.updatedAt,
         user: {
-          columns: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            profilePicture: true,
-            email: true,
-            phone: true,
-          },
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profilePicture: users.profilePicture,
+          email: users.email,
+          phone: users.phone,
         },
-      },
-    });
+      })
+      .from(tutors)
+      .leftJoin(users, eq(tutors.userId, users.id))
+      .where(eq(tutors.id, id))
+      .limit(1);
 
     if (!tutor) {
-      return NextResponse.json({ error: "Tutor not found" }, { status: 404 });
+      return { error: "Tutor not found", status: 404 };
     }
 
     // Get recent reviews
-    const reviews = await db.query.tutorReviews.findMany({
-      where: and(
-        eq(tutorReviews.tutorId, id),
-        eq(tutorReviews.isPublic, true)
-      ),
-      with: {
+    const reviews = await db
+      .select({
+        id: tutorReviews.id,
+        tutorId: tutorReviews.tutorId,
+        studentId: tutorReviews.studentId,
+        rating: tutorReviews.rating,
+        review: tutorReviews.review,
+        response: tutorReviews.response,
+        isPublic: tutorReviews.isPublic,
+        createdAt: tutorReviews.createdAt,
         student: {
-          columns: {
-            firstName: true,
-            lastName: true,
-          },
+          firstName: users.firstName,
+          lastName: users.lastName,
         },
-      },
-      limit: 10,
-    });
+      })
+      .from(tutorReviews)
+      .leftJoin(users, eq(tutorReviews.studentId, users.id))
+      .where(
+        and(
+          eq(tutorReviews.tutorId, id),
+          eq(tutorReviews.isPublic, true)
+        )
+      )
+      .limit(10);
 
-    return NextResponse.json({ tutor: { ...tutor, reviews } });
-  } catch (error) {
-    logger.error("Tutor fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch tutor" }, { status: 500 });
-  }
-}
+    return { tutor: { ...tutor, reviews } };
+  },
+  ['admin', 'school-admin']
+);
 
 // PUT /api/tuition/tutors/[id] - Update tutor profile
-export async function PUT(request: NextRequest, { params }: Params) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { user: currentUser } = authResult;
+export const PUT = createApiRoute<{ id: string }>(
+  async (request: NextRequest, auth, context) => {
+    const { user: currentUser } = auth;
 
     const body = await request.json();
-    const { bio, qualifications, experience, subjects, gradeLevels, location, travelRadius, hourlyRateOnline, hourlyRatePhysical, availableDays, availableSlots, bankAccount } = body;
+    const { bio, qualifications, experience, subjects, gradeLevels, location, district, hourlyRate, hourlyRateOnline, availability, teachingMode } = body;
 
-    const { id } = await params;
+    const { id } = await context!.params!;
     // Verify ownership
-    const tutor = await db.query.tutors.findFirst({
-      where: eq(tutors.id, id),
-    });
+    const [tutor] = await db
+      .select()
+      .from(tutors)
+      .where(eq(tutors.id, id))
+      .limit(1);
 
     if (!tutor) {
-      return NextResponse.json({ error: "Tutor not found" }, { status: 404 });
+      return { error: "Tutor not found", status: 404 };
     }
 
     if (tutor.userId !== currentUser.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return { error: "Forbidden", status: 403 };
     }
 
     const [updated] = await db.update(tutors)
@@ -96,19 +113,16 @@ export async function PUT(request: NextRequest, { params }: Params) {
         ...(subjects !== undefined && { subjects }),
         ...(gradeLevels !== undefined && { gradeLevels }),
         ...(location !== undefined && { location }),
-        ...(travelRadius !== undefined && { travelRadius }),
+        ...(district !== undefined && { district }),
+        ...(hourlyRate !== undefined && { hourlyRate }),
         ...(hourlyRateOnline !== undefined && { hourlyRateOnline }),
-        ...(hourlyRatePhysical !== undefined && { hourlyRatePhysical }),
-        ...(availableDays !== undefined && { availableDays }),
-        ...(availableSlots !== undefined && { availableSlots }),
-        ...(bankAccount !== undefined && { bankAccount }),
+        ...(availability !== undefined && { availability }),
+        ...(teachingMode !== undefined && { teachingMode }),
       })
       .where(eq(tutors.id, id))
       .returning();
 
-    return NextResponse.json({ tutor: updated });
-  } catch (error) {
-    logger.error("Tutor update error:", error);
-    return NextResponse.json({ error: "Failed to update tutor" }, { status: 500 });
-  }
-}
+    return { tutor: updated };
+  },
+  ['admin', 'school-admin']
+);

@@ -3,7 +3,7 @@
  * Track and update student progress through lessons
  */
 
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { moduleProgress, learningModules } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -53,13 +53,19 @@ export const POST = createApiRoute(
 
     const { lessonId, contentId, completed, timeSpent } = validationResult.data;
 
-    // Get existing progress
-    const progress = await db.query.moduleProgress.findFirst({
-      where: and(
-        eq(moduleProgress.moduleId, id),
-        eq(moduleProgress.studentId, userId)
-      ),
-    });
+    // Get existing progress using db.select (neon-http compatible)
+    const progressResult = await db
+      .select()
+      .from(moduleProgress)
+      .where(
+        and(
+          eq(moduleProgress.moduleId, id),
+          eq(moduleProgress.studentId, userId)
+        )
+      )
+      .limit(1);
+
+    const progress = progressResult[0];
 
     if (!progress) {
       return NextResponse.json(
@@ -89,16 +95,20 @@ export const POST = createApiRoute(
       totalTimeSpent += timeSpent;
     }
 
-    // Get module to calculate progress percentage
-    const module = await db.query.learningModules.findFirst({
-      where: eq(learningModules.id, id),
-    });
+    // Get module to calculate progress percentage using db.select (neon-http compatible)
+    const moduleResult = await db
+      .select()
+      .from(learningModules)
+      .where(eq(learningModules.id, id))
+      .limit(1);
+
+    const module = moduleResult[0];
 
     if (!module) {
       return errorResponse("Module not found", 404);
     }
 
-    const content = module.content as ModuleContentData | null;
+    const content = module.content as unknown as ModuleContentData | null;
     const totalLessons = content?.lessons?.length || 1;
 
     // Calculate progress percentage
@@ -151,12 +161,19 @@ export const GET = createApiRoute(
       const { userId } = auth;
       const { id } = await context!.params;
 
-      const progress = await db.query.moduleProgress.findFirst({
-        where: and(
-          eq(moduleProgress.moduleId, id),
-          eq(moduleProgress.studentId, userId)
-        ),
-      });
+      // Use db.select instead of db.query (neon-http compatible)
+      const progressResult = await db
+        .select()
+        .from(moduleProgress)
+        .where(
+          and(
+            eq(moduleProgress.moduleId, id),
+            eq(moduleProgress.studentId, userId)
+          )
+        )
+        .limit(1);
+
+      const progress = progressResult[0];
 
       if (!progress) {
         return errorResponse("Not enrolled in this module", 404);

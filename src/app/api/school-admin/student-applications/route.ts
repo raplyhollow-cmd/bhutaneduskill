@@ -1,32 +1,29 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { studentApplications, users } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 /**
  * GET /api/school-admin/student-applications
  * Fetch student applications for the school admin's school
  */
-export async function GET(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["school_admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId } = auth;
 
     // Get school admin's school ID
-    const admin = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: {
-        schoolId: true,
-      },
-    });
+    const [admin] = await db
+      .select({
+        schoolId: users.schoolId,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
 
     if (!admin?.schoolId) {
-      return NextResponse.json({ error: "School not found" }, { status: 404 });
+      return { error: "School not found", status: 404 };
     }
 
     // Get status filter from query params
@@ -79,9 +76,7 @@ export async function GET(req: NextRequest) {
       count: applications.length,
     });
 
-    return NextResponse.json({ applications });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/student-applications", method: "GET" });
-    return NextResponse.json({ error: "Failed to fetch applications" }, { status: 500 });
-  }
-}
+    return { data: applications };
+  },
+  ["school-admin"]
+);

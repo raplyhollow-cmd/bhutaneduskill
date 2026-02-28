@@ -19,7 +19,7 @@ import {
 
 interface TermsSectionProps {
   title: string;
-  icon: React.ElementType;
+  icon: React.ElementType<React.SVGProps<SVGSVGElement>>;
   children: React.ReactNode;
 }
 

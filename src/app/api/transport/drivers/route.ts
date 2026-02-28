@@ -18,6 +18,7 @@ import { createApiRoute, getAuth } from "@/lib/api/route-handler";
 import { successResponse, errorResponse, badRequestResponse, notFoundResponse } from "@/lib/api/response-helpers";
 
 // Types for proper TypeScript safety
+type DbCondition = ReturnType<typeof eq>;
 interface CreateDriverBody {
   firstName: string;
   lastName?: string;
@@ -65,10 +66,17 @@ export const GET = createApiRoute(
 
     const { userId } = auth;
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: { id: true, type: true, role: true, schoolId: true },
-    });
+    const currentUser = await db
+      .select({
+        id: users.id,
+        type: users.type,
+        role: users.role,
+        schoolId: users.schoolId,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!currentUser) {
       return notFoundResponse("User");
@@ -81,9 +89,12 @@ export const GET = createApiRoute(
 
     // Get specific driver by ID
     if (driverId) {
-      const driver = await db.query.drivers.findFirst({
-        where: eq(drivers.id, driverId),
-      });
+      const driver = await db
+        .select()
+        .from(drivers)
+        .where(eq(drivers.id, driverId))
+        .limit(1)
+        .then(rows => rows[0] || null);
 
       if (!driver) {
         return notFoundResponse("Driver");
@@ -97,9 +108,10 @@ export const GET = createApiRoute(
       // Get assigned vehicles if requested
       let assignedVehicles = [];
       if (includeAssignedVehicles) {
-        const allVehicles = await db.query.vehicles.findMany({
-          where: eq(vehicles.schoolId, driver.schoolId),
-        });
+        const allVehicles = await db
+          .select()
+          .from(vehicles)
+          .where(eq(vehicles.schoolId, driver.schoolId));
         assignedVehicles = allVehicles.filter(
           (v) => v.driverName === `${driver.firstName} ${driver.lastName || ""}`.trim()
         );
@@ -126,13 +138,14 @@ export const GET = createApiRoute(
       conditions.push(eq(drivers.status, status));
     }
 
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    const whereClause = conditions.length > 0 ? and(...conditions as DbCondition[]) : undefined;
 
     // Get all drivers
-    const driverList = await db.query.drivers.findMany({
-      where: whereClause,
-      orderBy: [drivers.firstName],
-    });
+    const driverList = await db
+      .select()
+      .from(drivers)
+      .where(whereClause)
+      .orderBy(drivers.firstName);
 
     // Enrich with assigned vehicles if requested
     const enrichedDrivers: Array<Record<string, unknown>> = [];
@@ -143,9 +156,10 @@ export const GET = createApiRoute(
 
       // Add assigned vehicles count if requested
       if (includeAssignedVehicles) {
-        const allVehicles = await db.query.vehicles.findMany({
-          where: eq(vehicles.schoolId, driver.schoolId),
-        });
+        const allVehicles = await db
+          .select()
+          .from(vehicles)
+          .where(eq(vehicles.schoolId, driver.schoolId));
         const assigned = allVehicles.filter(
           (v) => v.driverName === `${driver.firstName} ${driver.lastName || ""}`.trim()
         );
@@ -177,10 +191,17 @@ export const POST = createApiRoute(
 
     const { userId } = auth;
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: { id: true, type: true, role: true, schoolId: true },
-    });
+    const currentUser = await db
+      .select({
+        id: users.id,
+        type: users.type,
+        role: users.role,
+        schoolId: users.schoolId,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!currentUser) {
       return notFoundResponse("User");
@@ -209,9 +230,12 @@ export const POST = createApiRoute(
     }
 
     // Check if license number already exists
-    const existingDriver = await db.query.drivers.findFirst({
-      where: eq(drivers.licenseNumber, licenseNumber),
-    });
+    const existingDriver = await db
+      .select()
+      .from(drivers)
+      .where(eq(drivers.licenseNumber, licenseNumber))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (existingDriver) {
       return badRequestResponse("Driver with this license number already exists");
@@ -323,18 +347,22 @@ export const DELETE = createApiRoute(
     }
 
     // Check if driver is assigned to any vehicle
-    const driver = await db.query.drivers.findFirst({
-      where: eq(drivers.id, driverId),
-    });
+    const driver = await db
+      .select()
+      .from(drivers)
+      .where(eq(drivers.id, driverId))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!driver) {
       return notFoundResponse("Driver");
     }
 
     const driverFullName = `${driver.firstName} ${driver.lastName || ""}`.trim();
-    const assignedVehicles = await db.query.vehicles.findMany({
-      where: eq(vehicles.schoolId, driver.schoolId),
-    });
+    const assignedVehicles = await db
+      .select()
+      .from(vehicles)
+      .where(eq(vehicles.schoolId, driver.schoolId));
 
     const activeAssignments = assignedVehicles.filter(
       (v) => v.driverName === driverFullName && v.status === "active"

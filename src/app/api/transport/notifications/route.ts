@@ -8,13 +8,13 @@
  * - DELETE: Delete notification
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users, transportRoutes, transportAllocations } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { logger } from "@/lib/logger";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 // Types for proper TypeScript safety
 interface DelayNotification {
@@ -43,21 +43,24 @@ const isExpired = (notification: DelayNotification): boolean => {
 // GET - Fetch delay notifications
 // ============================================================================
 
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth();
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: { id: true, type: true, role: true, schoolId: true },
-    });
+    const currentUser = await db
+      .select({
+        id: users.id,
+        type: users.type,
+        role: users.role,
+        schoolId: users.schoolId,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return { error: "User not found", status: 404 };
     }
 
     const { searchParams } = new URL(request.url);
@@ -79,13 +82,17 @@ export async function GET(request: NextRequest) {
       });
     } else {
       // Students only see notifications for their assigned route
-      const allocation = await db.query.transportAllocations.findFirst({
-        where: and(
-          eq(transportAllocations.studentId, currentUser.id),
-          eq(transportAllocations.isActive, true)
-        ),
-        columns: { routeId: true },
-      });
+      const allocation = await db
+        .select({ routeId: transportAllocations.routeId })
+        .from(transportAllocations)
+        .where(
+          and(
+            eq(transportAllocations.studentId, currentUser.id),
+            eq(transportAllocations.isActive, true)
+          )
+        )
+        .limit(1)
+        .then(rows => rows[0] || null);
 
       if (allocation) {
         notifications = Array.from(notificationsStore.values()).filter((n) => {
@@ -102,19 +109,13 @@ export async function GET(request: NextRequest) {
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
 
-    return NextResponse.json({
+    return {
       notifications,
       total: notifications.length,
       unread: notifications.filter((n) => !n.read).length,
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/transport/notifications", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch notifications" },
-      { status: 500 }
-    );
+    };
   }
-}
+);
 
 // ============================================================================
 // POST - Create delay notification
@@ -128,21 +129,24 @@ interface CreateNotificationBody {
   expiresAt?: string;
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin", "school-admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: { id: true, type: true, role: true, schoolId: true },
-    });
+    const currentUser = await db
+      .select({
+        id: users.id,
+        type: users.type,
+        role: users.role,
+        schoolId: users.schoolId,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return { error: "User not found", status: 404 };
     }
 
     const body: CreateNotificationBody = await request.json();
@@ -150,19 +154,19 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!routeId || !message || delayMinutes === undefined) {
-      return NextResponse.json(
-        { error: "Missing required fields: routeId, message, delayMinutes" },
-        { status: 400 }
-      );
+      return { error: "Missing required fields: routeId, message, delayMinutes", status: 400 };
     }
 
     // Verify route exists
-    const route = await db.query.transportRoutes.findFirst({
-      where: eq(transportRoutes.id, routeId),
-    });
+    const route = await db
+      .select()
+      .from(transportRoutes)
+      .where(eq(transportRoutes.id, routeId))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!route) {
-      return NextResponse.json({ error: "Route not found" }, { status: 404 });
+      return { error: "Route not found", status: 404 };
     }
 
     // Create notification
@@ -192,26 +196,23 @@ export async function POST(request: NextRequest) {
     });
 
     // Get affected students count
-    const affectedAllocations = await db.query.transportAllocations.findMany({
-      where: and(
-        eq(transportAllocations.routeId, routeId),
-        eq(transportAllocations.isActive, true)
-      ),
-    });
+    const affectedAllocations = await db
+      .select()
+      .from(transportAllocations)
+      .where(
+        and(
+          eq(transportAllocations.routeId, routeId),
+          eq(transportAllocations.isActive, true)
+        )
+      );
 
-    return NextResponse.json({
-      success: true,
+    return {
       notification,
       affectedStudents: affectedAllocations.length,
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/transport/notifications", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to create notification" },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ['admin', 'school-admin']
+);
 
 // ============================================================================
 // PATCH - Mark notification as read
@@ -222,20 +223,15 @@ interface UpdateNotificationBody {
   read?: boolean;
 }
 
-export async function PATCH(request: NextRequest) {
-  try {
-    const authResult = await requireAuth();
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
+export const PATCH = createApiRoute(
+  async (request: NextRequest, auth) => {
     const body: UpdateNotificationBody = await request.json();
     const { notificationId, read = true } = body;
 
     const notification = notificationsStore.get(notificationId);
 
     if (!notification) {
-      return NextResponse.json({ error: "Notification not found" }, { status: 404 });
+      return { error: "Notification not found", status: 404 };
     }
 
     // Update notification
@@ -246,30 +242,16 @@ export async function PATCH(request: NextRequest) {
 
     notificationsStore.set(notificationId, updated);
 
-    return NextResponse.json({
-      success: true,
-      notification: updated,
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/transport/notifications", method: "PATCH" });
-    return NextResponse.json(
-      { error: "Failed to update notification" },
-      { status: 500 }
-    );
+    return { notification: updated };
   }
-}
+);
 
 // ============================================================================
 // DELETE - Delete notification
 // ============================================================================
 
-export async function DELETE(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin", "school-admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
+export const DELETE = createApiRoute(
+  async (request: NextRequest, auth) => {
     const { searchParams } = new URL(request.url);
     const notificationId = searchParams.get("id");
     const routeId = searchParams.get("routeId");
@@ -279,15 +261,14 @@ export async function DELETE(request: NextRequest) {
     if (notificationId) {
       const deleted = notificationsStore.delete(notificationId);
       if (!deleted) {
-        return NextResponse.json({ error: "Notification not found" }, { status: 404 });
+        return { error: "Notification not found", status: 404 };
       }
 
       logger.info("Transport notification deleted", { notificationId });
 
-      return NextResponse.json({
-        success: true,
+      return {
         message: "Notification deleted successfully",
-      });
+      };
     }
 
     // Delete all notifications for a route
@@ -302,10 +283,9 @@ export async function DELETE(request: NextRequest) {
 
       logger.info("All notifications for route deleted", { routeId, count });
 
-      return NextResponse.json({
-        success: true,
+      return {
         message: `${count} notification(s) deleted`,
-      });
+      };
     }
 
     // Delete all expired notifications
@@ -320,21 +300,12 @@ export async function DELETE(request: NextRequest) {
 
       logger.info("Expired notifications cleaned up", { count });
 
-      return NextResponse.json({
-        success: true,
+      return {
         message: `${count} expired notification(s) deleted`,
-      });
+      };
     }
 
-    return NextResponse.json(
-      { error: "Specify notification id, routeId, or allExpired parameter" },
-      { status: 400 }
-    );
-  } catch (error) {
-    logger.apiError(error, { route: "/api/transport/notifications", method: "DELETE" });
-    return NextResponse.json(
-      { error: "Failed to delete notification" },
-      { status: 500 }
-    );
-  }
-}
+    return { error: "Specify notification id, routeId, or allExpired parameter", status: 400 };
+  },
+  ['admin', 'school-admin']
+);

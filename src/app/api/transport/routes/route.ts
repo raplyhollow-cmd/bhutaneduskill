@@ -23,9 +23,20 @@ interface RouteStop {
   location: { lat: string; lng: string };
   time: string;
   order?: number;
-  morningPickup?: boolean;
-  afternoonDrop?: boolean;
 }
+
+interface ProcessedRouteStop {
+  id: string;
+  name: string;
+  location: { latitude: number; longitude: number };
+  time: string;
+  order: number;
+  morningPickup: boolean;
+  afternoonDrop: boolean;
+}
+
+// Type for Drizzle condition array - using the actual return type of eq() and similar functions
+type DbCondition = ReturnType<typeof eq>;
 
 interface CreateRouteBody {
   routeNumber: string;
@@ -75,10 +86,17 @@ export const GET = createApiRoute(
 
     const { userId } = auth;
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: { id: true, type: true, role: true, schoolId: true },
-    });
+    const currentUser = await db
+      .select({
+        id: users.id,
+        type: users.type,
+        role: users.role,
+        schoolId: users.schoolId,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!currentUser) {
       return notFoundResponse("User");
@@ -93,9 +111,12 @@ export const GET = createApiRoute(
 
     // Get specific route by ID
     if (routeId) {
-      const route = await db.query.transportRoutes.findFirst({
-        where: eq(transportRoutes.id, routeId),
-      });
+      const route = await db
+        .select()
+        .from(transportRoutes)
+        .where(eq(transportRoutes.id, routeId))
+        .limit(1)
+        .then(rows => rows[0] || null);
 
       if (!route) {
         return notFoundResponse("Route");
@@ -104,20 +125,26 @@ export const GET = createApiRoute(
       // Get vehicle details if requested
       let vehicleData = null;
       if (includeVehicle && route.vehicleId) {
-        vehicleData = await db.query.vehicles.findFirst({
-          where: eq(vehicles.id, route.vehicleId),
-        });
+        vehicleData = await db
+          .select()
+          .from(vehicles)
+          .where(eq(vehicles.id, route.vehicleId))
+          .limit(1)
+          .then(rows => rows[0] || null);
       }
 
       // Get student count if requested
       let studentCount = 0;
       if (includeAllocations) {
-        const allocations = await db.query.transportAllocations.findMany({
-          where: and(
-            eq(transportAllocations.routeId, routeId),
-            eq(transportAllocations.isActive, true)
-          ),
-        });
+        const allocations = await db
+          .select()
+          .from(transportAllocations)
+          .where(
+            and(
+              eq(transportAllocations.routeId, routeId),
+              eq(transportAllocations.isActive, true)
+            )
+          );
         studentCount = allocations.length;
       }
 
@@ -132,9 +159,10 @@ export const GET = createApiRoute(
 
     // Get routes for vehicle
     if (vehicleId) {
-      const routes = await db.query.transportRoutes.findMany({
-        where: eq(transportRoutes.schoolId, currentUser.schoolId || ""),
-      });
+      const routes = await db
+        .select()
+        .from(transportRoutes)
+        .where(eq(transportRoutes.schoolId, currentUser.schoolId || ""));
 
       // Filter routes assigned to this vehicle
       const vehicleRoutes = routes.filter(
@@ -159,23 +187,27 @@ export const GET = createApiRoute(
       conditions.push(eq(transportRoutes.isActive, false));
     }
 
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    const whereClause = conditions.length > 0 ? and(...conditions as DbCondition[]) : undefined;
 
     // Get all routes
-    const routes = await db.query.transportRoutes.findMany({
-      where: whereClause,
-      orderBy: [transportRoutes.routeNumber],
-    });
+    const routes = await db
+      .select()
+      .from(transportRoutes)
+      .where(whereClause)
+      .orderBy(transportRoutes.routeNumber);
 
     // Enrich with student counts and vehicle data if requested
     const enrichedRoutes: Array<Record<string, unknown>> = [];
     for (const route of routes) {
-      const allocations = await db.query.transportAllocations.findMany({
-        where: and(
-          eq(transportAllocations.routeId, route.id),
-          eq(transportAllocations.isActive, true)
-        ),
-      });
+      const allocations = await db
+        .select()
+        .from(transportAllocations)
+        .where(
+          and(
+            eq(transportAllocations.routeId, route.id),
+            eq(transportAllocations.isActive, true)
+          )
+        );
 
       const enrichedRoute: Record<string, unknown> = {
         ...route,
@@ -185,9 +217,12 @@ export const GET = createApiRoute(
 
       // Add vehicle data if requested
       if (includeVehicle && route.vehicleId) {
-        const vehicle = await db.query.vehicles.findFirst({
-          where: eq(vehicles.id, route.vehicleId),
-        });
+        const vehicle = await db
+          .select()
+          .from(vehicles)
+          .where(eq(vehicles.id, route.vehicleId))
+          .limit(1)
+          .then(rows => rows[0] || null);
         enrichedRoute.vehicle = vehicle;
       }
 
@@ -215,10 +250,17 @@ export const POST = createApiRoute(
 
     const { userId } = auth;
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: { id: true, type: true, role: true, schoolId: true },
-    });
+    const currentUser = await db
+      .select({
+        id: users.id,
+        type: users.type,
+        role: users.role,
+        schoolId: users.schoolId,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!currentUser) {
       return notFoundResponse("User");
@@ -248,9 +290,12 @@ export const POST = createApiRoute(
     }
 
     // Check if route number already exists
-    const existingRoute = await db.query.transportRoutes.findFirst({
-      where: eq(transportRoutes.routeNumber, routeNumber),
-    });
+    const existingRoute = await db
+      .select()
+      .from(transportRoutes)
+      .where(eq(transportRoutes.routeNumber, routeNumber))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (existingRoute) {
       return badRequestResponse("Route number already exists");
@@ -258,8 +303,16 @@ export const POST = createApiRoute(
 
     // Process stops with order
     const processedStops = stops.map((stop, index) => ({
-      ...stop,
+      id: `stop-${nanoid()}`,
+      name: stop.name,
+      location: {
+        latitude: parseFloat(stop.location.lat),
+        longitude: parseFloat(stop.location.lng),
+      },
+      time: stop.time,
       order: index,
+      morningPickup: true,
+      afternoonDrop: true,
     }));
 
     // Create route
@@ -328,9 +381,17 @@ export const PATCH = createApiRoute(
     const processedUpdateData: Record<string, unknown> = { ...updateData };
     if (stops) {
       processedUpdateData.stops = stops.map((stop, index) => ({
-        ...stop,
+        id: `stop-${nanoid()}`,
+        name: stop.name,
+        location: {
+          latitude: parseFloat(stop.location.lat),
+          longitude: parseFloat(stop.location.lng),
+        },
+        time: stop.time,
         order: index,
-      })) as any;
+        morningPickup: true,
+        afternoonDrop: true,
+      }));
     }
     // Also update distance/estimatedTime if provided
     if (distance !== undefined) {
@@ -387,12 +448,15 @@ export const DELETE = createApiRoute(
     }
 
     // Check for active allocations
-    const allocations = await db.query.transportAllocations.findMany({
-      where: and(
-        eq(transportAllocations.routeId, routeId),
-        eq(transportAllocations.isActive, true)
-      ),
-    });
+    const allocations = await db
+      .select()
+      .from(transportAllocations)
+      .where(
+        and(
+          eq(transportAllocations.routeId, routeId),
+          eq(transportAllocations.isActive, true)
+        )
+      );
 
     if (allocations.length > 0) {
       return badRequestResponse("Cannot delete route with active allocations");

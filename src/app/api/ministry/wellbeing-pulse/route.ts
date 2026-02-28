@@ -1,9 +1,20 @@
-import { requireAuth } from "@/lib/auth-utils";
+/**
+ * MINISTRY WELLBEING PULSE API
+ * GET /api/ministry/wellbeing-pulse
+ *
+ * Returns anonymized well-being data for Ministry monitoring
+ * Aggregated by dzongkhag, school level, intervention category
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { counselingSessions, redFlags, schools, users } from "@/lib/db/schema";
 import { eq, and, sql, gte, desc } from "drizzle-orm";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { NextRequest } from "next/server";
 
 // ============================================================================
 // TYPES
@@ -70,16 +81,8 @@ interface WellbeingPulseResponse {
  * Returns anonymized well-being data for Ministry monitoring
  * Aggregated by dzongkhag, school level, intervention category
  */
-export async function GET(req: Request) {
-  try {
-    const authResult = await requireAuth(["admin", "ministry"]);
-    if ("error" in authResult) {
-      return Response.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
+export const GET = createApiRoute(
+  async (req: NextRequest) => {
     const { searchParams } = new URL(req.url);
     const dzongkhag = searchParams.get("dzongkhag");
     const period = searchParams.get("period") || "90"; // days
@@ -205,19 +208,19 @@ export async function GET(req: Request) {
       frequency: parseInt(String(row.frequency ?? "0")),
     }));
 
-    const byLocation: RedFlagsByLocation = redFlagsSummary.rows.reduce((acc: RedFlagsByLocation, row: SqlRow) => {
+    const byLocation: RedFlagsByLocation = redFlagsSummary.rows.reduce<RedFlagsByLocation>((acc, row: SqlRow) => {
       const dzongkhag = String(row.dzongkhag ?? "");
-      const severity = String(row.severity ?? "");
+      const severity = String(row.severity ?? "") as keyof RedFlagsBySeverity;
       const count = parseInt(String(row.count ?? "0"));
 
       if (!acc[dzongkhag]) {
         acc[dzongkhag] = { critical: 0, high: 0, medium: 0, low: 0 };
       }
-      if (severity in acc[dzongkhag]) {
-        acc[dzongkhag][severity as keyof RedFlagsBySeverity] = count;
+      if (severity === "critical" || severity === "high" || severity === "medium" || severity === "low") {
+        acc[dzongkhag][severity] = count;
       }
       return acc;
-    }, {});
+    }, {} as RedFlagsByLocation);
 
     const responseData: WellbeingPulseResponse = {
       period: {
@@ -239,14 +242,7 @@ export async function GET(req: Request) {
       topConcerns: topConcernsList,
     };
 
-    return Response.json({
-      data: responseData,
-    } satisfies ApiSuccess<WellbeingPulseResponse>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/ministry/wellbeing-pulse", method: "GET" });
-    return Response.json(
-      { error: "Failed to fetch wellbeing pulse", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return { data: responseData };
+  },
+  ["admin", "ministry"]
+);

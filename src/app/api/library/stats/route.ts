@@ -1,12 +1,28 @@
-import { NextRequest, NextResponse } from "next/server";
+/**
+ * Library Statistics API
+ *
+ * Returns library statistics including:
+ * - Book counts (total, available, borrowed, reserved, overdue)
+ * - Member counts (total, active)
+ * - Circulation stats (borrows/returns this month, fines)
+ * - Monthly trends for borrows, returns, and new books
+ * - Most borrowed books
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
+import { NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { books, circulation, libraryReservations, libraryMembers, digitalResources } from "@/lib/db/schema";
 import { eq, and, gte, lte, count, desc, sql, inArray } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse } from "@/lib/api/response-helpers";
+import type { ApiSuccess, ApiErrorResponse } from "@/types";
 
 // ============================================================================
-// LIBRARY STATS API
+// TYPES
 // ============================================================================
 
 interface MonthlyStats {
@@ -50,6 +66,10 @@ interface MostBorrowedBook {
   category: string;
   borrowCount: number;
 }
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
 
 /**
  * Calculate fine for overdue books
@@ -131,35 +151,18 @@ function groupByMonth<T extends { borrowDate?: string; returnDate?: string; crea
   }));
 }
 
-/**
- * GET /api/library/stats
- *
- * Returns library statistics including:
- * - Book counts (total, available, borrowed, reserved, overdue)
- * - Member counts (total, active)
- * - Circulation stats (borrows/returns this month, fines)
- * - Monthly trends for borrows, returns, and new books
- * - Most borrowed books
- */
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['student', 'teacher', 'admin', 'school-admin', 'counselor']);
-    if ('error' in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status },
-        { status: authResult.status }
-      );
-    }
-    const { userId, user } = authResult;
+// ============================================================================
+// GET /api/library/stats
+// ============================================================================
 
-    const { searchParams } = new URL(request.url);
+export const GET = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId, user } = auth;
+    const { searchParams } = new URL(req.url);
     const schoolId = searchParams.get('schoolId') || user.schoolId || '';
 
     if (!schoolId) {
-      return NextResponse.json(
-        { error: "School ID is required", status: 400 },
-        { status: 400 }
-      );
+      return { error: "School ID is required", status: 400 };
     }
 
     // Get current month boundaries
@@ -167,10 +170,7 @@ export async function GET(request: NextRequest) {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
-    // ============================================================================
     // BOOK STATISTICS
-    // ============================================================================
-
     const [totalBooksResult] = await db
       .select({ value: count() })
       .from(books)
@@ -217,11 +217,7 @@ export async function GET(request: NextRequest) {
         eq(books.isActive, true)
       ));
 
-    // ============================================================================
     // CIRCULATION STATISTICS
-    // ============================================================================
-
-    // Get all circulation records for the school
     const allCirculationRecords = await db
       .select()
       .from(circulation);
@@ -274,10 +270,7 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // ============================================================================
     // RESERVATION STATISTICS
-    // ============================================================================
-
     const [activeReservationsResult] = await db
       .select({ value: count() })
       .from(libraryReservations)
@@ -286,10 +279,7 @@ export async function GET(request: NextRequest) {
         inArray(libraryReservations.status, ['pending', 'ready'])
       ));
 
-    // ============================================================================
     // MEMBER STATISTICS
-    // ============================================================================
-
     const [totalMembersResult] = await db
       .select({ value: count() })
       .from(libraryMembers)
@@ -303,20 +293,13 @@ export async function GET(request: NextRequest) {
         eq(libraryMembers.membershipStatus, 'active')
       ));
 
-    // ============================================================================
     // DIGITAL RESOURCES STATISTICS
-    // ============================================================================
-
     const [digitalResourcesResult] = await db
       .select({ value: count() })
       .from(digitalResources)
       .where(eq(digitalResources.schoolId, schoolId));
 
-    // ============================================================================
     // MONTHLY TRENDS (LAST 6 MONTHS)
-    // ============================================================================
-
-    // Get circulation records for the last 6 months
     const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
     const recentCirculation = schoolCirculation.filter(record => {
       const borrowDate = new Date(record.borrowDate);
@@ -338,17 +321,12 @@ export async function GET(request: NextRequest) {
 
     const newBooksByMonth = groupByMonth(recentBooks, 'createdAt');
 
-    // ============================================================================
     // MOST BORROWED BOOKS
-    // ============================================================================
-
-    // Count borrows per book
     const bookBorrowCount: Record<string, number> = {};
     schoolCirculation.forEach(record => {
       bookBorrowCount[record.bookId] = (bookBorrowCount[record.bookId] || 0) + 1;
     });
 
-    // Get top 10 most borrowed books
     const sortedBookIds = Object.entries(bookBorrowCount)
       .sort(([, a], [, b]) => b - a)
       .slice(0, 10)
@@ -381,10 +359,7 @@ export async function GET(request: NextRequest) {
         .sort((a, b) => b.borrowCount - a.borrowCount);
     }
 
-    // ============================================================================
     // BUILD RESPONSE
-    // ============================================================================
-
     const stats: LibraryStats = {
       totalBooks: Number(totalBooksResult?.value || 0),
       availableBooks: Number(availableBooksResult?.value || 0),
@@ -407,19 +382,11 @@ export async function GET(request: NextRequest) {
 
     logger.info("Library stats fetched", { userId, schoolId });
 
-    return NextResponse.json({
-      data: {
-        stats,
-        mostBorrowedBooks,
-        activeReservations: Number(activeReservationsResult?.value || 0),
-      }
+    return successResponse({
+      stats,
+      mostBorrowedBooks,
+      activeReservations: Number(activeReservationsResult?.value || 0),
     });
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/library/stats", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch library statistics", status: 500 },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['student', 'teacher', 'admin', 'school-admin', 'counselor']
+);

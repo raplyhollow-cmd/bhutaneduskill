@@ -1,4 +1,5 @@
 import { logger } from "@/lib/logger";
+import { requireAuth } from "@/lib/auth-utils";
 /**
  * AI MOOD TRACKER / WELLNESS COACH API
  *
@@ -353,9 +354,7 @@ function generateFallbackResponse(request: MoodTrackerRequest): Omit<MoodTracker
  * POST - Get AI-powered wellness insights
  */
 export const POST = createApiRoute(
-  async (req) => {
-    const auth = await requireAuth(['student']);
-    const { userId } = auth;
+  async (req, auth) => {
 
     const body = await req.json() as MoodTrackerRequest;
 
@@ -384,7 +383,7 @@ export const POST = createApiRoute(
     try {
       const prompt = buildWellnessPrompt({
         ...body,
-        userName: (auth.user?.firstName as string) || (auth.user?.name as string) || "Student",
+        userName: "Student",
       });
 
       const aiResponse = await chatWithGemini(prompt, MOOD_TRACKER_SYSTEM);
@@ -410,7 +409,7 @@ export const POST = createApiRoute(
 
     // Track AI interaction (non-blocking)
     safeTrackAIInteraction({
-      userId,
+      userId: auth.userId,
       featureId: AI_FEATURE_IDS.MOOD_TRACKER,
       interactionData: {
         currentMood: body.currentEntry.mood,
@@ -437,15 +436,20 @@ export const POST = createApiRoute(
 /**
  * GET - Check API availability and provide info
  */
-export async function GET() {
-  return NextResponse.json({
-    available: true,
-    feature: "AI Mood Tracker & Wellness Coach",
-    description: "Track your mood and receive personalized wellness insights",
-    requiresAuth: true,
-    endpoints: {
-      "POST /api/ai/mood-tracker": "Get AI-powered wellness analysis",
-    },
-    crisisResources: BHUTAN_CRISIS_RESOURCES,
-  });
-}
+export const GET = createApiRoute(
+  async () => {
+    return {
+      data: {
+        available: true,
+        feature: "AI Mood Tracker & Wellness Coach",
+        description: "Track your mood and receive personalized wellness insights",
+        requiresAuth: true,
+        endpoints: {
+          "POST /api/ai/mood-tracker": "Get AI-powered wellness analysis",
+        },
+        crisisResources: BHUTAN_CRISIS_RESOURCES,
+      }
+    };
+  },
+  []
+);

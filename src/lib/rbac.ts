@@ -74,7 +74,7 @@ export async function getUserPermissions(userId: string): Promise<UserPermission
       AND (ur.expires_at IS NULL OR ur.expires_at > NOW())
   `;
 
-  return result as UserPermission[];
+  return result as unknown as UserPermission[];
 }
 
 /**
@@ -89,7 +89,7 @@ export async function getUserRoles(userId: string): Promise<UserRole[]> {
       AND (ur.expires_at IS NULL OR ur.expires_at > NOW())
   `;
 
-  return result as UserRole[];
+  return result as unknown as UserRole[];
 }
 
 /**
@@ -210,7 +210,7 @@ export async function getComponentAccess(
       AND (ur.expires_at IS NULL OR ur.expires_at > NOW())
   `;
 
-  return result as ComponentAccessRule[];
+  return result as unknown as ComponentAccessRule[];
 }
 
 // ============================================================================

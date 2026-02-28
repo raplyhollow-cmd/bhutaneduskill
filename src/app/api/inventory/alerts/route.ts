@@ -3,8 +3,8 @@
  * Handles low stock and other inventory alerts
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
 import { inventoryAlerts, inventoryItems, inventoryCategories } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
@@ -20,16 +20,9 @@ interface PaginatedData<T> {
 // GET /api/inventory/alerts - List inventory alerts
 // ============================================================================
 
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { user, userId } = authResult;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user, userId } = auth;
 
     const { searchParams } = new URL(request.url);
     const page = Math.max(1, Number(searchParams.get("page")) || 1);
@@ -124,20 +117,15 @@ export async function GET(request: NextRequest) {
 
     logger.info("Fetched inventory alerts", { userId, count: alerts.length });
 
-    return NextResponse.json({
+    return {
       data: {
         items: alertsWithDetails,
         pagination,
       },
-    } satisfies ApiSuccess<PaginatedData<typeof alertsWithDetails[0]>>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/inventory/alerts", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch alerts", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);
 
 // ============================================================================
 // PATCH /api/inventory/alerts - Update alert status (acknowledge, resolve, dismiss)
@@ -149,44 +137,30 @@ interface UpdateAlertInput {
   resolutionNotes?: string;
 }
 
-export async function PATCH(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { userId } = authResult;
+export const PATCH = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
 
     const data: UpdateAlertInput = await request.json();
 
     if (!data.id || !data.status) {
-      return NextResponse.json(
-        { error: "Missing required fields: id, status", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "Missing required fields: id, status", status: 400 };
     }
 
     const validStatuses = ["active", "acknowledged", "resolved", "dismissed"];
     if (!validStatuses.includes(data.status)) {
-      return NextResponse.json(
-        { error: `Invalid status. Must be one of: ${validStatuses.join(", ")}`, status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: `Invalid status. Must be one of: ${validStatuses.join(", ")}`, status: 400 };
     }
 
     // Check if alert exists
-    const existingAlert = await db.query.inventoryAlerts.findFirst({
-      where: eq(inventoryAlerts.id, data.id),
-    });
+    const [existingAlert] = await db
+      .select()
+      .from(inventoryAlerts)
+      .where(eq(inventoryAlerts.id, data.id))
+      .limit(1);
 
     if (!existingAlert) {
-      return NextResponse.json(
-        { error: "Alert not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "Alert not found", status: 404 };
     }
 
     const now = new Date();
@@ -205,20 +179,10 @@ export async function PATCH(request: NextRequest) {
 
     logger.info("Updated inventory alert", { userId, alertId: data.id, status: data.status });
 
-    return NextResponse.json({
+    return {
       data: updatedAlert,
       message: "Alert updated successfully",
-    } satisfies ApiSuccess<typeof updatedAlert>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/inventory/alerts", method: "PATCH" });
-    return NextResponse.json(
-      { error: "Failed to update alert", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
-
-// ============================================================================
-// Note: POST_checkLowStock functionality moved to /api/inventory/alerts/check-low-stock
-// See: src/app/api/inventory/alerts/check-low-stock/route.ts
-// ============================================================================
+    };
+  },
+  ["admin"]
+);

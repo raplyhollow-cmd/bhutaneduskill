@@ -1,4 +1,5 @@
 import { logger } from "@/lib/logger";
+import { requireAuth } from "@/lib/auth-utils";
 /**
  * UNIFIED AI INSIGHTS API
  *
@@ -581,8 +582,11 @@ async function generateStudentInsights(
       );
 
       if (riasecAssessment?.results) {
-        const results = riasecAssessment.results as { hollandCode?: string };
-        riasecCode = results.hollandCode || results?.results?.hollandCode?.[0] || null;
+        const results = riasecAssessment.results as unknown as Record<string, unknown>;
+        // Check for hollandCode at top level or in nested structure
+        riasecCode = (results.hollandCode as string | undefined)
+          || ((results.results as Record<string, unknown> | undefined)?.hollandCode as string | undefined)
+          || null;
       }
     }
 
@@ -644,8 +648,11 @@ async function generateStudentInsights(
       );
 
       if (mbtiAssessment?.results) {
-        const results = mbtiAssessment.results as { personalityType?: string };
-        mbtiType = results.personalityType || results?.results?.personalityType || null;
+        const results = mbtiAssessment.results as unknown as Record<string, unknown>;
+        // Check for personalityType at top level or in nested structure
+        mbtiType = (results.personalityType as string | undefined)
+          || ((results.results as Record<string, unknown> | undefined)?.personalityType as string | undefined)
+          || null;
       }
     }
 

@@ -1,81 +1,78 @@
-import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
+/**
+ * Single Class API
+ *
+ * GET /api/classes/[classId] - Get single class
+ * PUT /api/classes/[classId] - Update class
+ * DELETE /api/classes/[classId] - Delete class
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
+import { NextRequest } from "next/server";
 import { requireAuth } from "@/lib/auth-utils";
 import { requirePermission } from "@/lib/rbac";
+import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { classes } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, notFoundResponse, forbiddenResponse } from "@/lib/api/response-helpers";
 
+// ============================================================================
 // GET /api/classes/[classId] - Get single class
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ classId: string }> }
-) {
-  try {
+// ============================================================================
+
+export const GET = createApiRoute(
+  async (req: NextRequest, auth, { params }: { params: Promise<{ classId: string }> }) => {
     const { classId } = await params;
-
-    const authResult = await requireAuth(['admin', 'school-admin', 'teacher', 'counselor', 'student']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { userId } = authResult;
+    const { userId } = auth;
 
     // Check classes.read permission
     const permCheck = await requirePermission(userId, "classes.read");
     if (permCheck) return permCheck;
 
-    const classData = await db.query.classes.findFirst({
-      where: eq(classes.id, classId),
-      with: {
-        teacher: true,
-        school: true,
-      },
-    });
+    const [classData] = await db
+      .select()
+      .from(classes)
+      .where(eq(classes.id, classId))
+      .limit(1);
 
     if (!classData) {
-      return NextResponse.json({ error: "Class not found" }, { status: 404 });
+      return notFoundResponse("Class");
     }
 
-    return NextResponse.json({ class: classData });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json({ error: "Failed to fetch class" }, { status: 500 });
-  }
-}
+    return successResponse({ class: classData });
+  },
+  ['admin', 'school-admin', 'teacher', 'counselor', 'student']
+);
 
+// ============================================================================
 // PUT /api/classes/[classId] - Update class
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ classId: string }> }
-) {
-  try {
+// ============================================================================
+
+export const PUT = createApiRoute(
+  async (req: NextRequest, auth, { params }: { params: Promise<{ classId: string }> }) => {
     const { classId } = await params;
-
-    const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { user: currentUser, userId } = authResult;
+    const { user: currentUser, userId } = auth;
+    const body = await req.json();
 
     // Check classes.update permission
     const permCheck = await requirePermission(userId, "classes.update");
     if (permCheck) return permCheck;
 
-    const body = await request.json();
-
     // Check permissions - must be admin or class teacher
-    const classData = await db.query.classes.findFirst({
-      where: eq(classes.id, classId),
-    });
+    const [classData] = await db
+      .select()
+      .from(classes)
+      .where(eq(classes.id, classId))
+      .limit(1);
 
     if (!classData) {
-      return NextResponse.json({ error: "Class not found" }, { status: 404 });
+      return notFoundResponse("Class");
     }
 
     if (currentUser.type !== "admin" && currentUser.type !== "school-admin" && classData.teacherId !== currentUser.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return forbiddenResponse("You don't have permission to update this class");
     }
 
     const [updatedClass] = await db
@@ -84,27 +81,24 @@ export async function PUT(
       .where(eq(classes.id, classId))
       .returning();
 
-    return NextResponse.json({ class: updatedClass });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json({ error: "Failed to update class" }, { status: 500 });
-  }
-}
+    logger.info("Class updated", { classId, userId });
 
+    return successResponse({
+      class: updatedClass,
+      message: "Class updated successfully",
+    });
+  },
+  ['admin', 'school-admin', 'teacher']
+);
+
+// ============================================================================
 // DELETE /api/classes/[classId] - Delete class
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ classId: string }> }
-) {
-  try {
+// ============================================================================
+
+export const DELETE = createApiRoute(
+  async (req: NextRequest, auth, { params }: { params: Promise<{ classId: string }> }) => {
     const { classId } = await params;
-
-    const authResult = await requireAuth(['admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { userId } = authResult;
+    const { userId } = auth;
 
     // Check classes.delete permission
     const permCheck = await requirePermission(userId, "classes.delete");
@@ -112,9 +106,12 @@ export async function DELETE(
 
     await db.delete(classes).where(eq(classes.id, classId));
 
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json({ error: "Failed to delete class" }, { status: 500 });
-  }
-}
+    logger.info("Class deleted", { classId, userId });
+
+    return successResponse({
+      success: true,
+      message: "Class deleted successfully",
+    });
+  },
+  ['admin']
+);

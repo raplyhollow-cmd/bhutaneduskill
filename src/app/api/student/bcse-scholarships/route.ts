@@ -1,10 +1,11 @@
 /**
  * BCSE Scholarship Eligibility API
  * Calculate student eligibility for government scholarships
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
 import {
   calculateScholarshipEligibility,
@@ -13,18 +14,15 @@ import {
   predictRUBAdmission,
   getStudentAcademicProfile,
 } from "@/lib/bcse/scholarship-eligibility";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 /**
  * GET /api/student/bcse-scholarships
  * Get scholarship eligibility for a student
  */
-export async function GET(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["student", "parent", "counselor", "admin", "school_admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId, user } = authResult;
+export const GET = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId, user } = auth;
 
     const { searchParams } = new URL(req.url);
     const examType = searchParams.get("examType") as "BCSE_10" | "BCSE_12" | null;
@@ -42,7 +40,7 @@ export async function GET(req: NextRequest) {
     if (user?.type === "parent" && targetStudentId) {
       // Parent viewing child's eligibility
       studentId = targetStudentId;
-    } else if (["counselor", "admin", "school_admin"].includes(user?.type || "") && targetStudentId) {
+    } else if (["counselor", "admin", "school-admin"].includes(user?.type || "") && targetStudentId) {
       // Staff viewing student's eligibility
       studentId = targetStudentId;
     }
@@ -58,9 +56,10 @@ export async function GET(req: NextRequest) {
     const profile = await getStudentAcademicProfile(studentId, examType || undefined);
 
     if (!profile) {
-      return NextResponse.json({
+      return {
         error: "No BCSE results found for this student",
-      }, { status: 404 });
+        status: 404,
+      };
     }
 
     const response: {
@@ -101,15 +100,10 @@ export async function GET(req: NextRequest) {
       userId,
       studentId,
       examType,
-      eligibleCount: scholarships.filter((s) => s.eligible).length,
+      eligibleCount: scholarships.filter((s) => (s as { eligible?: boolean }).eligible).length,
     });
 
-    return NextResponse.json(response);
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/student/bcse-scholarships", method: "GET" });
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : "Failed to calculate scholarship eligibility",
-    }, { status: 500 });
-  }
-}
+    return response;
+  },
+  ["student", "parent", "counselor", "admin", "school-admin"]
+);

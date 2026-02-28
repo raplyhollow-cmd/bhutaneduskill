@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { rubPrograms, rubColleges } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -6,6 +6,7 @@ import { z } from "zod";
 import { logger } from "@/lib/logger";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
 import { createApiRoute } from "@/lib/api/route-handler";
+import type { PgTimestamp } from "drizzle-orm/pg-core";
 
 /**
  * RUB Program Schema (partial for updates)
@@ -43,17 +44,18 @@ interface RouteContext {
 export const PATCH = createApiRoute(
   async (req, auth, context) => {
     const { userId } = auth;
-    const params = await context.params;
-    const id = params.id;
+    const params = await context?.params || { id: '' };
+    const id = (params as { id: string }).id;
 
     try {
     const body = await req.json();
     const validatedData = programSchema.parse(body);
 
     // Check if program exists
-    const existing = await db.query.rubPrograms.findFirst({
-      where: eq(rubPrograms.id, id),
-    });
+    const [existing] = await db.select()
+      .from(rubPrograms)
+      .where(eq(rubPrograms.id, id))
+      .limit(1);
 
     if (!existing) {
       return NextResponse.json(
@@ -64,9 +66,10 @@ export const PATCH = createApiRoute(
 
     // If collegeId is being updated, verify it exists
     if (validatedData.collegeId) {
-      const college = await db.query.rubColleges.findFirst({
-        where: eq(rubColleges.id, validatedData.collegeId),
-      });
+      const [college] = await db.select()
+        .from(rubColleges)
+        .where(eq(rubColleges.id, validatedData.collegeId))
+        .limit(1);
 
       if (!college) {
         return NextResponse.json(
@@ -77,33 +80,43 @@ export const PATCH = createApiRoute(
     }
 
     // Recalculate total fee if fee fields are provided
-    type RUBProgramUpdateFields = {
-      name?: string;
-      code?: string;
-      collegeId?: string;
-      level?: string;
-      field?: string;
-      discipline?: string | null;
-      duration?: number;
-      durationType?: string;
-      totalSeats?: number;
-      reservedSeats?: Array<{ category: string; seats: number }> | null;
-      minPercentage?: number | null;
-      requiredSubjects?: string[] | null;
-      eligibilityCriteria?: Record<string, unknown> | string;
-      tuitionFee?: number | null;
-      hostelFee?: number | null;
-      otherFees?: number | null;
-      totalFee?: number | null;
-      description?: string | null;
-      careerProspects?: string[] | null;
-      isActive?: boolean;
-      admissionOpen?: boolean;
-      academicYear?: string | null;
-      updatedAt?: Date;
+    // Build update data with proper types matching the schema
+    const updateData: Record<string, unknown> = {
+      updatedAt: new Date(),
     };
-    let updateData: RUBProgramUpdateFields = { ...validatedData };
 
+    // Copy validated fields to updateData
+    if (validatedData.name !== undefined) updateData.name = validatedData.name;
+    if (validatedData.code !== undefined) updateData.code = validatedData.code;
+    if (validatedData.collegeId !== undefined) updateData.collegeId = validatedData.collegeId;
+    if (validatedData.level !== undefined) updateData.level = validatedData.level;
+    if (validatedData.field !== undefined) updateData.field = validatedData.field;
+    if (validatedData.discipline !== undefined) updateData.discipline = validatedData.discipline;
+    if (validatedData.duration !== undefined) updateData.duration = validatedData.duration;
+    if (validatedData.durationType !== undefined) updateData.durationType = validatedData.durationType;
+    if (validatedData.totalSeats !== undefined) updateData.totalSeats = validatedData.totalSeats;
+    if (validatedData.minPercentage !== undefined) updateData.minPercentage = validatedData.minPercentage;
+    if (validatedData.requiredSubjects !== undefined) updateData.requiredSubjects = validatedData.requiredSubjects;
+    if (validatedData.eligibilityCriteria !== undefined) {
+      if (typeof validatedData.eligibilityCriteria === 'string') {
+        try {
+          updateData.eligibilityCriteria = JSON.parse(validatedData.eligibilityCriteria);
+        } catch {
+          updateData.eligibilityCriteria = { criteria: validatedData.eligibilityCriteria };
+        }
+      } else {
+        updateData.eligibilityCriteria = validatedData.eligibilityCriteria;
+      }
+    }
+    if (validatedData.tuitionFee !== undefined) updateData.tuitionFee = validatedData.tuitionFee;
+    if (validatedData.hostelFee !== undefined) updateData.hostelFee = validatedData.hostelFee;
+    if (validatedData.otherFees !== undefined) updateData.otherFees = validatedData.otherFees;
+    if (validatedData.description !== undefined) updateData.description = validatedData.description;
+    if (validatedData.careerProspects !== undefined) updateData.careerProspects = validatedData.careerProspects;
+    if (validatedData.isActive !== undefined) updateData.isActive = validatedData.isActive;
+    if (validatedData.admissionOpen !== undefined) updateData.admissionOpen = validatedData.admissionOpen;
+
+    // Recalculate total fee if fee fields are provided
     if (validatedData.tuitionFee !== undefined ||
         validatedData.hostelFee !== undefined ||
         validatedData.otherFees !== undefined) {
@@ -113,22 +126,8 @@ export const PATCH = createApiRoute(
       updateData.totalFee = tuitionFee + hostelFee + otherFees;
     }
 
-    // Handle eligibilityCriteria - if it's a string in the form, parse it to JSON
-    if (validatedData.eligibilityCriteria !== undefined) {
-      if (typeof validatedData.eligibilityCriteria === 'string') {
-        try {
-          updateData.eligibilityCriteria = JSON.parse(validatedData.eligibilityCriteria);
-        } catch {
-          updateData.eligibilityCriteria = { criteria: validatedData.eligibilityCriteria };
-        }
-      }
-    }
-
     const [updatedProgram] = await db.update(rubPrograms)
-      .set({
-        ...updateData,
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(rubPrograms.id, id))
       .returning();
 
@@ -149,14 +148,15 @@ export const PATCH = createApiRoute(
 export const DELETE = createApiRoute(
   async (req, auth, context) => {
     const { userId } = auth;
-    const params = await context.params;
+    const params = await context.params as { id: string };
     const id = params.id;
 
     try {
     // Check if program exists
-    const existing = await db.query.rubPrograms.findFirst({
-      where: eq(rubPrograms.id, id),
-    });
+    const [existing] = await db.select()
+      .from(rubPrograms)
+      .where(eq(rubPrograms.id, id))
+      .limit(1);
 
     if (!existing) {
       return NextResponse.json(

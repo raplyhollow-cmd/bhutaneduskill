@@ -5,20 +5,16 @@
  */
 
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { payrollRecords } from "@/lib/db/payroll-schema";
 import { eq, desc, and } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 // GET /api/teacher/payslips - List teacher's payslips
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["teacher"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { user } = authResult;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user } = auth;
 
     const { searchParams } = new URL(request.url);
     const year = searchParams.get("year");
@@ -36,11 +32,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch payslips
-    const records = await db.query.payrollRecords.findMany({
-      where: and(...conditions),
-      orderBy: [desc(payrollRecords.payrollYear), desc(payrollRecords.payrollMonth)],
-      limit,
-    });
+    const records = await db
+      .select()
+      .from(payrollRecords)
+      .where(and(...conditions))
+      .orderBy(desc(payrollRecords.payrollYear), desc(payrollRecords.payrollMonth))
+      .limit(limit);
 
     // Calculate summary
     const totalNetPay = records.reduce((sum, r) => sum + (r.netPay || 0), 0);
@@ -48,14 +45,15 @@ export async function GET(request: NextRequest) {
     const totalDeductions = records.reduce((sum, r) => sum + (r.totalDeductions || 0), 0);
 
     // Group by year
-    const byYear: Record<number, any[]> = {};
+    type PayslipRecord = typeof records[number];
+    const byYear: Record<number, PayslipRecord[]> = {};
     for (const record of records) {
       const year = record.payrollYear;
       if (!byYear[year]) byYear[year] = [];
       byYear[year].push(record);
     }
 
-    return NextResponse.json({
+    return {
       success: true,
       payslips: records,
       summary: {
@@ -66,9 +64,7 @@ export async function GET(request: NextRequest) {
         averageNetPay: records.length > 0 ? Math.floor(totalNetPay / records.length) : 0,
       },
       byYear,
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/teacher/payslips", method: "GET" });
-    return NextResponse.json({ error: "Failed to fetch payslips" }, { status: 500 });
-  }
-}
+    };
+  },
+  ["teacher"]
+);

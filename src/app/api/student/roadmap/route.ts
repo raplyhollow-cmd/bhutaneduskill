@@ -11,12 +11,12 @@ import { logger } from "@/lib/logger";
  * - Academic progress
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users, riasecResults, careerMatches, assessments } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import type { RoadmapStage, StudentRoadmap, StageStatus } from "@/types/student";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 // Cache response for 5 minutes
 export const revalidate = 300;
@@ -107,45 +107,50 @@ const DEFAULT_STAGES: RoadmapStage[] = [
   },
 ];
 
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["student"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
 
-    const { userId } = authResult;
+    // Get student profile using db.select (neon-http compatible)
+    const studentResult = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
 
-    // Get student profile
-    const student = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-    });
+    const student = studentResult[0];
 
     if (!student) {
-      return NextResponse.json({ error: "Student not found" }, { status: 404 });
+      return { error: "Student not found", status: 404 };
     }
 
     const currentGrade = student.classGrade || 10;
 
-    // Get RIASEC results for personalization
-    const riasecResult = await db.query.riasecResults.findFirst({
-      where: eq(riasecResults.userId, userId),
-      orderBy: desc(riasecResults.createdAt),
-    });
+    // Get RIASEC results for personalization using db.select (neon-http compatible)
+    const riasecResultResult = await db
+      .select()
+      .from(riasecResults)
+      .where(eq(riasecResults.userId, userId))
+      .orderBy(desc(riasecResults.createdAt))
+      .limit(1);
 
-    // Get career matches for personalization
-    const userAssessments = await db.query.assessments.findMany({
-      where: eq(assessments.userId, userId),
-    });
+    const riasecResult = riasecResultResult[0];
+
+    // Get career matches for personalization using db.select (neon-http compatible)
+    const userAssessments = await db
+      .select()
+      .from(assessments)
+      .where(eq(assessments.userId, userId));
 
     let topCareer: string | undefined;
     const assessmentIds = userAssessments.map((a) => a.id);
     if (assessmentIds.length > 0) {
-      const matches = await db.query.careerMatches.findMany({
-        where: eq(careerMatches.assessmentId, assessmentIds[0]),
-        orderBy: desc(careerMatches.matchScore),
-        limit: 1,
-      });
+      const matches = await db
+        .select()
+        .from(careerMatches)
+        .where(eq(careerMatches.assessmentId, assessmentIds[0]))
+        .orderBy(desc(careerMatches.matchScore))
+        .limit(1);
       if (matches.length > 0) {
         topCareer = matches[0].careerTitle;
       }
@@ -182,14 +187,7 @@ export async function GET(request: NextRequest) {
       personalizedNote,
     };
 
-    return NextResponse.json(roadmap);
-  } catch (error: unknown) {
-    logger.apiError(error, { route: "/api/student/roadmap", method: "GET" });
-
-    // Return default roadmap on error
-    return NextResponse.json({
-      stages: DEFAULT_STAGES,
-      currentGrade: 10,
-    });
-  }
-}
+    return roadmap;
+  },
+  ["student"]
+);

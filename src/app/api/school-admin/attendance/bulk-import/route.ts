@@ -1,31 +1,47 @@
-import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { attendance, users, classes } from "@/lib/db/schema";
+import { attendance } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute } from "@/lib/api/route-handler";
+
+interface AttendanceRecord {
+  studentId: string;
+  classId: string;
+  date: string;
+  status: string;
+  notes?: string;
+  reason?: string;
+}
+
+interface ImportRequest {
+  records: AttendanceRecord[];
+}
+
+interface ImportResult {
+  success: number;
+  failed: number;
+  errors: string[];
+}
+
+interface ImportResponse {
+  results: ImportResult;
+}
 
 // POST /api/school-admin/attendance/bulk-import - CSV import of attendance
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId, user } = authResult;
-
-    const body = await request.json();
-    const { records } = body; // Array of attendance records
+export const POST = createApiRoute<{}, ImportResponse>(
+  async (req, { user, userId }) => {
+    const body: ImportRequest = await req.json();
+    const { records } = body;
 
     if (!Array.isArray(records)) {
-      return NextResponse.json({ error: "Invalid data format" }, { status: 400 });
+      return { error: "Invalid data format", status: 400 };
     }
 
     const now = new Date();
-    const results = {
+    const results: ImportResult = {
       success: 0,
       failed: 0,
-      errors: [] as string[],
+      errors: [],
     };
 
     // Process each record
@@ -41,13 +57,17 @@ export async function POST(request: NextRequest) {
         }
 
         // Check for existing record
-        const existing = await db.query.attendance.findFirst({
-          where: and(
-            eq(attendance.classId, classId),
-            eq(attendance.studentId, studentId),
-            eq(attendance.date, date)
-          ),
-        });
+        const [existing] = await db
+          .select()
+          .from(attendance)
+          .where(
+            and(
+              eq(attendance.classId, classId),
+              eq(attendance.studentId, studentId),
+              eq(attendance.date, date)
+            )
+          )
+          .limit(1);
 
         if (existing) {
           // Update existing
@@ -86,9 +106,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ results }, { status: results.failed > 0 ? 207 : 201 });
-  } catch (error) {
-    logger.error("Bulk import error:", error);
-    return NextResponse.json({ error: "Failed to import attendance" }, { status: 500 });
-  }
-}
+    return { data: { results } };
+  },
+  ['admin', 'school-admin']
+);

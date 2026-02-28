@@ -15,8 +15,9 @@ import type { ApiSuccess } from "@/types";
 type VerifyParams = { userId: string };
 
 // POST /api/admin/users/[userId]/verify - Verify user email
-export const POST = createApiRoute<never, { id: string; emailVerified: boolean }, VerifyParams>(
-  async (_request, { userId: adminId }, context) => {
+export const POST = createApiRoute<VerifyParams, { id: string; emailVerified: boolean }>(
+  async (_request, auth, context) => {
+    const { userId: adminId } = auth;
     const { userId } = await context!.params!;
 
     // Check if user exists

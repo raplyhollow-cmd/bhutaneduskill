@@ -79,7 +79,7 @@ export const GET = createApiRoute(
 
     return successResponse({ registrations, schoolId: user.schoolId });
   },
-  ["school_admin", "admin"]
+  ["school-admin", "admin"]
 );
 
 /**
@@ -161,7 +161,7 @@ export const POST = createApiRoute(
       .limit(1);
 
     if (existing) {
-      return conflictResponse("Student is already registered for this exam", existing);
+      return conflictResponse("Student is already registered for this exam");
     }
 
     // Create registration
@@ -235,5 +235,5 @@ export const POST = createApiRoute(
 
     return successResponse(registration);
   },
-  ["school_admin", "admin"]
+  ["school-admin", "admin"]
 );

@@ -71,7 +71,6 @@ export const GET = createApiRoute(
         date: r.date,
         status: r.status,
         checkInTime: r.checkInTime,
-        checkOutTime: r.checkOutTime || null,
         notes: r.notes,
         className: r.classId, // Will be enriched with join if needed
       }));

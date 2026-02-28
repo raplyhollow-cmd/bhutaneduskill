@@ -24,6 +24,7 @@ import {
   Clock,
   TrendingUp,
   Sparkles,
+  type LucideIcon,
 } from "lucide-react";
 import { AddSchoolSlideIn } from "@/components/admin/add-school-slide-in";
 import { EditSchoolModal } from "@/components/admin/edit-school-modal";
@@ -125,7 +126,7 @@ export function SchoolsClient({
   };
 
   // Quick add school handler - creates school with minimal info
-  const handleQuickAddSchool = async (name: string) => {
+  const handleQuickAddSchool = async (name: string): Promise<{ success: true; data?: unknown } | { success: false; error: string }> => {
     try {
       const response = await fetch("/api/schools", {
         method: "POST",

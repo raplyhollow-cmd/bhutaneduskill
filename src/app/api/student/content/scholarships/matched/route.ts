@@ -1,77 +1,104 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
 import { db } from "@/lib/db";
 import { scholarships, users, assessments, riasecResults } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse } from "@/lib/api/response-helpers";
 
-// GET /api/student/content/scholarships/matched - Get matched scholarships
-export async function GET(request: NextRequest) {
-  const authResult = await requireAuth(['student', 'admin']);
-  if ('error' in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
+// Types for scholarship matching
+interface ScholarshipWithExtras {
+  id: string;
+  name: string;
+  code?: string;
+  type?: string;
+  provider?: string;
+  providerName?: string;
+  description?: string;
+  eligibilityCriteria?: Record<string, unknown>;
+  applicationDeadline?: Date | string;
+  requiredClass?: string;
+  categories?: string[];
+  requiredInterests?: string[];
+  category?: string;
+  isActive: boolean;
+  [key: string]: unknown;
+}
 
-  const { userId } = authResult;
+interface RIASECResultWithScores {
+  id: string;
+  userId: string;
+  hollandCode?: string;
+  realistic?: number;
+  investigative?: number;
+  artistic?: number;
+  social?: number;
+  enterprising?: number;
+  conventional?: number;
+  [key: string]: unknown;
+}
 
-  try {
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-    });
+/**
+ * GET /api/student/content/scholarships/matched - Get matched scholarships
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
+
+    const [currentUser] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
 
     // Get all scholarships
-    const allScholarships = await db.query.scholarships.findMany({
-      where: eq(scholarships.isActive, true),
-    });
+    const allScholarships = await db.select().from(scholarships).where(eq(scholarships.isActive, true));
 
     // Get student's RIASEC results if available
-    const riasecResult = await db.query.riasecResults.findFirst({
-      where: eq(riasecResults.userId, userId),
-      orderBy: [riasecResults.createdAt],
-    });
+    const [riasecResult] = await db.select().from(riasecResults)
+      .where(eq(riasecResults.userId, userId))
+      .orderBy(desc(riasecResults.createdAt))
+      .limit(1);
 
     // Match scholarships based on student profile
-    const matchedScholarships = allScholarships.filter(scholarship => {
+    const matchedScholarships = allScholarships.filter((scholarship) => {
+      const sch = scholarship as ScholarshipWithExtras;
+
       // Filter by deadline
-      if ((scholarship as any).applicationDeadline) {
-        const deadline = new Date((scholarship as any).applicationDeadline);
+      if (sch.applicationDeadline) {
+        const deadline = new Date(sch.applicationDeadline);
         if (deadline < new Date()) return false;
       }
 
       // Filter by class requirement
-      if ((scholarship as any).requiredClass && (scholarship as any).requiredClass !== "Any") {
+      if (sch.requiredClass && sch.requiredClass !== "Any") {
         // Assuming classGrade is stored as number (e.g., 12 for Class 12)
-        const requiredClassNum = parseInt((scholarship as any).requiredClass.replace(/\D/g, "")) || 0;
+        const requiredClassNum = parseInt(sch.requiredClass.replace(/\D/g, "")) || 0;
         if (currentUser.classGrade && currentUser.classGrade < requiredClassNum) {
           return false;
         }
       }
 
       // Match by career clusters if student has RIASEC results
-      if (riasecResult && Array.isArray((scholarship as any).careerClusters) && (scholarship as any).careerClusters.length > 0) {
+      if (riasecResult && Array.isArray(sch.careerClusters) && sch.careerClusters.length > 0) {
         const studentClusters = [riasecResult.hollandCode].flat();
-        const hasClusterMatch = (scholarship as any).careerClusters.some(cluster =>
-          studentClusters.some(code => cluster.includes(code))
+        const hasClusterMatch = sch.careerClusters.some(cluster =>
+          studentClusters.some(code => cluster?.includes(code || ""))
         );
         if (!hasClusterMatch) return false;
       }
 
       // Match by interests (RIASEC codes)
-      if (riasecResult && Array.isArray((scholarship as any).requiredInterests) && (scholarship as any).requiredInterests.length > 0) {
+      const riasec = riasecResult as RIASECResultWithScores | undefined;
+      if (riasec && Array.isArray(sch.requiredInterests) && sch.requiredInterests.length > 0) {
         const studentInterests = [
-          ((riasecResult as any).realistic ?? 0) > 0 ? "R" : null,
-          ((riasecResult as any).investigative ?? 0) > 0 ? "I" : null,
-          ((riasecResult as any).artistic ?? 0) > 0 ? "A" : null,
-          ((riasecResult as any).social ?? 0) > 0 ? "S" : null,
-          ((riasecResult as any).enterprising ?? 0) > 0 ? "E" : null,
-          ((riasecResult as any).conventional ?? 0) > 0 ? "C" : null,
+          (riasec.realistic ?? 0) > 0 ? "R" : null,
+          (riasec.investigative ?? 0) > 0 ? "I" : null,
+          (riasec.artistic ?? 0) > 0 ? "A" : null,
+          (riasec.social ?? 0) > 0 ? "S" : null,
+          (riasec.enterprising ?? 0) > 0 ? "E" : null,
+          (riasec.conventional ?? 0) > 0 ? "C" : null,
         ].filter(Boolean);
 
-        const hasInterestMatch = (scholarship as any).requiredInterests.some(interest =>
+        const hasInterestMatch = sch.requiredInterests.some(interest =>
           studentInterests.includes(interest)
         );
         if (!hasInterestMatch) return false;
@@ -85,11 +112,12 @@ export async function GET(request: NextRequest) {
       let score = 50; // Base score
 
       // Increase score for exact matches
-      if (riasecResult && Array.isArray((scholarship as any).careerClusters) && (scholarship as any).careerClusters.length > 0) {
+      const categories = (scholarship as { categories?: string[] }).categories || [];
+      if (riasecResult && categories.length > 0) {
         score += 20;
       }
 
-      if ((scholarship as any).category === "merit") {
+      if (scholarship.type === "merit") {
         score += 10;
       }
 
@@ -102,12 +130,7 @@ export async function GET(request: NextRequest) {
     // Sort by match score
     scoredScholarships.sort((a, b) => b.matchScore - a.matchScore);
 
-    return NextResponse.json({ scholarships: scoredScholarships });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/student/content/scholarships/matched", method: "GET", userId });
-    return NextResponse.json(
-      { error: "Failed to fetch matched scholarships", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return successResponse({ scholarships: scoredScholarships });
+  },
+  ["student", "admin"]
+);

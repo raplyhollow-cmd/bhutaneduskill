@@ -1,0 +1,217 @@
+🚀 Student Portal QA Test Suite v2
+
+Base URL: http://localhost:3000
+Pages to test: 30
+======================================================================
+
+[1/30] 🧪 Testing: Dashboard
+    Path: /student/dashboard
+    ⏱️  Timeout after 15s
+
+[2/30] 🧪 Testing: Classes
+    Path: /student/classes
+    ⏱️  Timeout after 15s
+
+[3/30] 🧪 Testing: Homework List
+    Path: /student/homework
+    ⏱️  Timeout after 15s
+
+[4/30] 🧪 Testing: Career Plan
+    Path: /student/plan
+    ⏱️  Timeout after 15s
+
+[5/30] 🧪 Testing: Progress
+    Path: /student/progress
+    ⏱️  Timeout after 15s
+
+[6/30] 🧪 Testing: Results
+    Path: /student/results
+    ⏱️  Timeout after 15s
+
+[7/30] 🧪 Testing: RIASEC Assessment
+    Path: /student/assessment/riasec
+    ❌ HTTP 404
+
+[8/30] 🧪 Testing: SPARK Basic
+    Path: /student/assessment/spark-basic
+    ❌ HTTP 404
+
+[9/30] 🧪 Testing: SPARK Advanced
+    Path: /student/assessment/spark-advanced
+    🔒 Auth required
+    🔍 404 Not Found
+    🔥 500 Server Error
+    🔥 Status: SERVER_ERROR (15527ms)
+    📊 4 links, 1 buttons, 1 forms
+
+[10/30] 🧪 Testing: SPARK Lite
+    Path: /student/assessment/spark-lite
+    ⏱️  Timeout after 15s
+
+[11/30] 🧪 Testing: Careers
+    Path: /student/careers
+    🔒 Auth required
+    🔍 404 Not Found
+    🔥 500 Server Error
+    🔥 Status: SERVER_ERROR (17114ms)
+    📊 4 links, 5 buttons, 1 forms
+
+[12/30] 🧪 Testing: Saved Careers
+    Path: /student/saved
+    ❌ HTTP 404
+
+[13/30] 🧪 Testing: Roadmap
+    Path: /student/roadmap
+    🔒 Auth required
+    🔍 404 Not Found
+    🔥 500 Server Error
+    🔥 Status: SERVER_ERROR (16434ms)
+    📊 4 links, 5 buttons, 1 forms
+
+[14/30] 🧪 Testing: RUB Predictor
+    Path: /student/rub
+    🔒 Auth required
+    🔍 404 Not Found
+    🔥 500 Server Error
+    🔥 Status: SERVER_ERROR (11636ms)
+    📊 4 links, 5 buttons, 1 forms
+
+[15/30] 🧪 Testing: Scholarships
+    Path: /student/scholarships
+    🔒 Auth required
+    🔍 404 Not Found
+    🔥 500 Server Error
+    🔥 Status: SERVER_ERROR (15190ms)
+    📊 4 links, 4 buttons, 1 forms
+
+[16/30] 🧪 Testing: Study Abroad
+    Path: /student/study-abroad
+    🔒 Auth required
+    🔍 404 Not Found
+    🔥 500 Server Error
+    🔥 Status: SERVER_ERROR (14727ms)
+    📊 4 links, 5 buttons, 1 forms
+
+[17/30] 🧪 Testing: Learning Modules
+    Path: /student/learning
+    🔒 Auth required
+    🔍 404 Not Found
+    🔥 500 Server Error
+    🔥 Status: SERVER_ERROR (14866ms)
+    📊 4 links, 5 buttons, 1 forms
+
+[18/30] 🧪 Testing: Skills
+    Path: /student/skills
+    🔒 Auth required
+    🔍 404 Not Found
+    🔥 500 Server Error
+    🔥 Status: SERVER_ERROR (15654ms)
+    📊 4 links, 5 buttons, 1 forms
+
+[19/30] 🧪 Testing: Journal
+    Path: /student/journal
+    🔒 Auth required
+    🔍 404 Not Found
+    🔥 500 Server Error
+    🔥 Status: SERVER_ERROR (13733ms)
+    📊 4 links, 5 buttons, 1 forms
+
+[20/30] 🧪 Testing: Leave Applications
+    Path: /student/leave
+    🔒 Auth required
+    🔍 404 Not Found
+    🔥 500 Server Error
+    🔥 Status: SERVER_ERROR (15855ms)
+    📊 2 links, 1 buttons, 0 forms
+
+[21/30] 🧪 Testing: Fees
+    Path: /student/fees
+    ⏱️  Timeout after 15s
+
+[22/30] 🧪 Testing: Hostel
+    Path: /student/hostel
+    ⏱️  Timeout after 15s
+
+[23/30] 🧪 Testing: Library
+    Path: /student/library
+    🔒 Auth required
+    🔍 404 Not Found
+    🔥 500 Server Error
+    🔥 Status: SERVER_ERROR (15208ms)
+    📊 4 links, 5 buttons, 1 forms
+
+[24/30] 🧪 Testing: Transport
+    Path: /student/transport
+    🔒 Auth required
+    🔍 404 Not Found
+    🔥 500 Server Error
+    🔥 Status: SERVER_ERROR (14943ms)
+    📊 2 links, 1 buttons, 0 forms
+
+[25/30] 🧪 Testing: Tuition
+    Path: /student/tuition
+    🔒 Auth required
+    🔍 404 Not Found
+    🔥 500 Server Error
+    🔥 Status: SERVER_ERROR (16497ms)
+    📊 4 links, 5 buttons, 1 forms
+
+[26/30] 🧪 Testing: Achievements
+    Path: /student/achievements
+    🔒 Auth required
+    🔍 404 Not Found
+    🔥 500 Server Error
+    🔥 Status: SERVER_ERROR (17542ms)
+    📊 4 links, 5 buttons, 1 forms
+
+[27/30] 🧪 Testing: Monetize
+    Path: /student/monetize
+    🔒 Auth required
+    🔍 404 Not Found
+    🔥 500 Server Error
+    🔥 Status: SERVER_ERROR (16467ms)
+    📊 4 links, 5 buttons, 1 forms
+
+[28/30] 🧪 Testing: Settings
+    Path: /student/settings
+    🔒 Auth required
+    🔍 404 Not Found
+    🔥 500 Server Error
+    🔥 Status: SERVER_ERROR (13802ms)
+    📊 4 links, 5 buttons, 1 forms
+
+[29/30] 🧪 Testing: Announcements
+    Path: /student/announcements
+    🔒 Auth required
+    🔍 404 Not Found
+    🔥 500 Server Error
+    🔥 Status: SERVER_ERROR (16293ms)
+    📊 4 links, 5 buttons, 1 forms
+
+[30/30] 🧪 Testing: Assessment Profile
+    Path: /student/assessment-profile
+    ❌ HTTP 404
+
+======================================================================
+📊 STUDENT PORTAL - TEST SUMMARY
+======================================================================
+Total Pages Tested: 30
+✅ Passed: 0 (0%)
+⚠️  Warnings: 0 (0%)
+🔒 Auth/Setup Required: 0 (0%)
+❌ Failed: 30 (100%)
+======================================================================
+
+📋 DETAILED RESULTS:
+
+| # | Page                     | Status            | Load Time | HTTP | Issues |
+|---|--------------------------|-------------------|-----------|------|--------|
+| 1 | Dashboard                | ⏱️  TIMEOUT |     N/A |  N/A | Yes  |
+| 2 | Classes                  | ⏱️  TIMEOUT |     N/A |  N/A | Yes  |
+| 3 | Homework List            | ⏱️  TIMEOUT |     N/A |  N/A | Yes  |
+| 4 | Career Plan              | ⏱️  TIMEOUT |     N/A |  N/A | Yes  |
+| 5 | Progress                 | ⏱️  TIMEOUT |     N/A |  N/A | Yes  |
+| 6 | Results                  | ⏱️  TIMEOUT |     N/A |  N/A | Yes  |
+Fatal error: TypeError: http.padStart is not a function
+    at generateReport (D:\VS STUDIO PROJECT\bhutaneduskill\test-student-portal-v2.js:354:90)
+    at runTests (D:\VS STUDIO PROJECT\bhutaneduskill\test-student-portal-v2.js:311:3)

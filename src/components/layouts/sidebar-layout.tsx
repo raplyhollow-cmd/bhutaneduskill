@@ -310,14 +310,14 @@ export interface SidebarNavItemProps extends HTMLAttributes<HTMLAnchorElement> {
   badge?: string | number;
 }
 
-export const SidebarNavItem = forwardRef<HTMLAnchorElement, SidebarNavItemProps>(
+export const SidebarNavItem = forwardRef<HTMLAnchorElement | HTMLButtonElement, SidebarNavItemProps>(
   ({ children, icon, isActive = false, href, collapsed = false, badge, className, ...props }, ref) => {
     const Component = href ? "a" : "button";
 
     return (
       <Component
         ref={ref as any}
-        href={href}
+        href={href || undefined}
         className={cn(
           "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
           "hover:bg-accent hover:text-accent-foreground",
@@ -327,7 +327,7 @@ export const SidebarNavItem = forwardRef<HTMLAnchorElement, SidebarNavItemProps>
           collapsed && "justify-center px-0",
           className
         )}
-        {...props}
+        {...(props as any)}
       >
         {icon && (
           <span className={cn("shrink-0", collapsed ? "" : "h-5 w-5")}>

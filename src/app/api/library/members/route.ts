@@ -1,10 +1,14 @@
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { libraryMembers, users, circulation } from "@/lib/db/schema";
+import { libraryMembers, users, circulation, schools } from "@/lib/db/schema";
 import { eq, and, sql, desc, or } from "drizzle-orm";
 import { z } from "zod";
+import { createApiRoute } from "@/lib/api/route-handler";
+
+// Valid library member types and statuses
+type MemberType = "student" | "teacher" | "staff";
+type MembershipStatus = "active" | "inactive" | "suspended";
 
 const memberSchema = z.object({
   userId: z.string().optional(),
@@ -16,14 +20,9 @@ const memberSchema = z.object({
 });
 
 // GET /api/library/members - Get library members
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { user } = authResult;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user } = auth;
     const { searchParams } = new URL(request.url);
 
     const status = searchParams.get("status") || "";
@@ -43,11 +42,11 @@ export async function GET(request: NextRequest) {
     }
 
     if (status) {
-      conditions.push(eq(libraryMembers.membershipStatus, status as any));
+      conditions.push(eq(libraryMembers.membershipStatus, status as MembershipStatus));
     }
 
     if (memberType) {
-      conditions.push(eq(libraryMembers.memberType, memberType as any));
+      conditions.push(eq(libraryMembers.memberType, memberType as MemberType));
     }
 
     if (search) {
@@ -62,87 +61,93 @@ export async function GET(request: NextRequest) {
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const members = await db.query.libraryMembers.findMany({
-      where: whereClause,
-      with: {
+    const members = await db
+      .select({
+        id: libraryMembers.id,
+        schoolId: libraryMembers.schoolId,
+        userId: libraryMembers.userId,
+        memberType: libraryMembers.memberType,
+        membershipNumber: libraryMembers.membershipNumber,
+        membershipStatus: libraryMembers.membershipStatus,
+        joinedDate: libraryMembers.joinedDate,
+        expiryDate: libraryMembers.expiryDate,
+        borrowingLimit: libraryMembers.borrowingLimit,
+        currentlyBorrowed: libraryMembers.currentlyBorrowed,
+        totalBorrowed: libraryMembers.totalBorrowed,
+        fineDue: libraryMembers.fineDue,
+        notes: libraryMembers.notes,
+        createdAt: libraryMembers.createdAt,
+        updatedAt: libraryMembers.updatedAt,
         user: {
-          columns: {
-            id: true,
-            name: true,
-            email: true,
-            type: true,
-            classGrade: true,
-          },
+          id: users.id,
+          name: users.name,
+          email: users.email,
+          type: users.type,
+          classGrade: users.classGrade,
         },
         school: {
-          columns: {
-            id: true,
-            name: true,
-          },
+          id: schools.id,
+          name: schools.name,
         },
-      },
-      orderBy: [desc(libraryMembers.createdAt)],
-    });
+      })
+      .from(libraryMembers)
+      .leftJoin(users, eq(libraryMembers.userId, users.id))
+      .leftJoin(schools, eq(libraryMembers.schoolId, schools.id))
+      .where(whereClause)
+      .orderBy(desc(libraryMembers.createdAt));
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        members,
-        stats: {
-          total: members.length,
-          active: members.filter((m) => m.membershipStatus === "active").length,
-          students: members.filter((m) => m.memberType === "student").length,
-          teachers: members.filter((m) => m.memberType === "teacher").length,
-          staff: members.filter((m) => m.memberType === "staff").length,
-        },
+    return {
+      members: members.map(m => ({
+        ...m,
+        user: m.user || null,
+        school: m.school || null,
+      })),
+      stats: {
+        total: members.length,
+        active: members.filter((m) => m.membershipStatus === "active").length,
+        students: members.filter((m) => m.memberType === "student").length,
+        teachers: members.filter((m) => m.memberType === "teacher").length,
+        staff: members.filter((m) => m.memberType === "staff").length,
       },
-    });
-  } catch (error) {
-    logger.error("Library members fetch error:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch library members" },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ['admin', 'school-admin']
+);
 
 // POST /api/library/members - Create library membership (school-admin only)
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { user } = authResult;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user } = auth;
     const body = await request.json();
     const validatedData = memberSchema.parse(body);
 
     // If userId is provided, check if user exists and doesn't have membership
     if (validatedData.userId) {
-      const existingMember = await db.query.libraryMembers.findFirst({
-        where: and(
-          eq(libraryMembers.userId, validatedData.userId),
-          eq(libraryMembers.schoolId, user.schoolId || "")
-        ),
-      });
+      const existingMember = await db
+        .select()
+        .from(libraryMembers)
+        .where(
+          and(
+            eq(libraryMembers.userId, validatedData.userId),
+            eq(libraryMembers.schoolId, user.schoolId || "")
+          )
+        )
+        .limit(1)
+        .then(rows => rows[0] || null);
 
       if (existingMember) {
-        return NextResponse.json(
-          { success: false, error: "User already has a library membership" },
-          { status: 400 }
-        );
+        return { error: "User already has a library membership", status: 400 };
       }
 
-      const userExists = await db.query.users.findFirst({
-        where: eq(users.id, validatedData.userId),
-      });
+      const userExists = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, validatedData.userId))
+        .limit(1)
+        .then(rows => rows[0] || null);
 
       if (!userExists) {
-        return NextResponse.json(
-          { success: false, error: "User not found" },
-          { status: 404 }
-        );
+        return { error: "User not found", status: 404 };
       }
     }
 
@@ -182,48 +187,26 @@ export async function POST(request: NextRequest) {
       userId: validatedData.userId || user.id,
     });
 
-    return NextResponse.json({
-      success: true,
-      data: { member: newMember },
-    });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { success: false, error: "Validation failed", details: error.issues },
-        { status: 400 }
-      );
-    }
-    logger.error("Library membership creation error:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to create library membership" },
-      { status: 500 }
-    );
-  }
-}
+    return { member: newMember };
+  },
+  ['admin', 'school-admin']
+);
 
 // PATCH /api/library/members - Update library membership
-export async function PATCH(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { user } = authResult;
+export const PATCH = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user } = auth;
     const body = await request.json();
     const { id, ...updateData } = body;
 
     if (!id) {
-      return NextResponse.json(
-        { success: false, error: "Member ID is required" },
-        { status: 400 }
-      );
+      return { error: "Member ID is required", status: 400 };
     }
 
     const validatedData = memberSchema.partial().parse(updateData);
 
     // Convert expiryDate string to Date if provided
-    const updateValues: Record<string, any> = { ...validatedData };
+    const updateValues: Record<string, unknown> = { ...validatedData };
     if (validatedData.expiryDate) {
       updateValues.expiryDate = new Date(validatedData.expiryDate);
     }
@@ -238,50 +221,25 @@ export async function PATCH(request: NextRequest) {
       .returning();
 
     if (updatedMember.length === 0) {
-      return NextResponse.json(
-        { success: false, error: "Library member not found" },
-        { status: 404 }
-      );
+      return { error: "Library member not found", status: 404 };
     }
 
     logger.info("Library membership updated", { memberId: id, userId: user.id });
 
-    return NextResponse.json({
-      success: true,
-      data: { member: updatedMember[0] },
-    });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { success: false, error: "Validation failed", details: error.issues },
-        { status: 400 }
-      );
-    }
-    logger.error("Library membership update error:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to update library membership" },
-      { status: 500 }
-    );
-  }
-}
+    return { member: updatedMember[0] };
+  },
+  ['admin', 'school-admin']
+);
 
 // DELETE /api/library/members - Delete library membership
-export async function DELETE(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { user } = authResult;
+export const DELETE = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user } = auth;
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
     if (!id) {
-      return NextResponse.json(
-        { success: false, error: "Member ID is required" },
-        { status: 400 }
-      );
+      return { error: "Member ID is required", status: 400 };
     }
 
     // Check if member has borrowed books
@@ -294,10 +252,7 @@ export async function DELETE(request: NextRequest) {
       ));
 
     if (activeBorrows[0]?.count > 0) {
-      return NextResponse.json(
-        { success: false, error: "Cannot delete membership with active borrowed books" },
-        { status: 400 }
-      );
+      return { error: "Cannot delete membership with active borrowed books", status: 400 };
     }
 
     const deletedMember = await db
@@ -306,23 +261,12 @@ export async function DELETE(request: NextRequest) {
       .returning();
 
     if (deletedMember.length === 0) {
-      return NextResponse.json(
-        { success: false, error: "Library member not found" },
-        { status: 404 }
-      );
+      return { error: "Library member not found", status: 404 };
     }
 
     logger.info("Library membership deleted", { memberId: id, userId: user.id });
 
-    return NextResponse.json({
-      success: true,
-      data: { message: "Library membership deleted successfully" },
-    });
-  } catch (error) {
-    logger.error("Library membership deletion error:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to delete library membership" },
-      { status: 500 }
-    );
-  }
-}
+    return { message: "Library membership deleted successfully" };
+  },
+  ['admin', 'school-admin']
+);

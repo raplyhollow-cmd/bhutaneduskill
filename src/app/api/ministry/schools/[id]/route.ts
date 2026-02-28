@@ -5,19 +5,25 @@
  * DELETE /api/ministry/schools/[id] - Delete a school
  *
  * Provides individual school management for Ministry of Education
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { schools, users, assessments } from "@/lib/db/schema";
 import { eq, and, count, sql } from "drizzle-orm";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 // ============================================================================
 // TYPES
 // ============================================================================
+
+interface MinistrySchoolParams extends Record<string, unknown> {
+  id: string;
+}
 
 type SchoolStatus = "active" | "inactive" | "suspended";
 
@@ -54,23 +60,10 @@ interface StatusUpdateRequest {
 // GET HANDLER - Get School Details
 // ============================================================================
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-
-    // Authenticate and authorize - only ministry users can access
-    const authResult = await requireAuth(["ministry", "admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } as ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const GET = createApiRoute<MinistrySchoolParams>(
+  async (req: NextRequest, auth, context) => {
+    const { userId } = auth;
+    const { id } = await context!.params;
 
     logger.info("Ministry school detail accessed", {
       route: "/api/ministry/schools/[id]",
@@ -79,15 +72,14 @@ export async function GET(
     });
 
     // Fetch school
-    const school = await db.query.schools.findFirst({
-      where: eq(schools.id, id),
-    });
+    const [school] = await db
+      .select()
+      .from(schools)
+      .where(eq(schools.id, id))
+      .limit(1);
 
     if (!school) {
-      return NextResponse.json(
-        { error: "School not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "School not found", status: 404 };
     }
 
     // Get student count
@@ -151,54 +143,28 @@ export async function GET(
       schoolId: id,
     });
 
-    return NextResponse.json({
-      data: response,
-      status: 200,
-    } satisfies ApiSuccess<SchoolDetailResponse>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/ministry/schools/[id]", method: "GET" });
-
-    return NextResponse.json(
-      {
-        error: "Failed to fetch school details",
-        status: 500,
-        details: process.env.NODE_ENV === "development" ? String(error) : undefined,
-      } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return { data: response };
+  },
+  ["ministry", "admin"]
+);
 
 // ============================================================================
 // PATCH HANDLER - Update School Status
 // ============================================================================
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-
-    // Authenticate and authorize - only ministry users can update status
-    const authResult = await requireAuth(["ministry", "admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } as ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const PATCH = createApiRoute<MinistrySchoolParams>(
+  async (req: NextRequest, auth, context) => {
+    const { userId } = auth;
+    const { id } = await context!.params;
 
     const body = await req.json();
     const { status, reason } = body as StatusUpdateRequest;
 
     if (!status || !["active", "inactive", "suspended"].includes(status)) {
-      return NextResponse.json(
-        { error: "status must be one of: active, inactive, suspended", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return {
+        error: "status must be one of: active, inactive, suspended",
+        status: 400
+      };
     }
 
     logger.info("Ministry school status update", {
@@ -210,15 +176,14 @@ export async function PATCH(
     });
 
     // Check if school exists
-    const existingSchool = await db.query.schools.findFirst({
-      where: eq(schools.id, id),
-    });
+    const [existingSchool] = await db
+      .select()
+      .from(schools)
+      .where(eq(schools.id, id))
+      .limit(1);
 
     if (!existingSchool) {
-      return NextResponse.json(
-        { error: "School not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "School not found", status: 404 };
     }
 
     // For "suspended" and "inactive", we set isActive to false
@@ -241,48 +206,24 @@ export async function PATCH(
       newStatus: status,
     });
 
-    return NextResponse.json({
+    return {
       data: {
         school: updatedSchool,
         message: `School status updated to ${status}`,
-      },
-      status: 200,
-    } satisfies ApiSuccess<{ school: typeof updatedSchool; message: string }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/ministry/schools/[id]", method: "PATCH" });
-
-    return NextResponse.json(
-      {
-        error: "Failed to update school status",
-        status: 500,
-        details: process.env.NODE_ENV === "development" ? String(error) : undefined,
-      } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+      }
+    };
+  },
+  ["ministry", "admin"]
+);
 
 // ============================================================================
 // DELETE HANDLER - Delete School
 // ============================================================================
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-
-    // Authenticate and authorize - only ministry users can delete schools
-    const authResult = await requireAuth(["ministry", "admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } as ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const DELETE = createApiRoute<MinistrySchoolParams>(
+  async (req: NextRequest, auth, context) => {
+    const { userId } = auth;
+    const { id } = await context!.params;
 
     logger.info("Ministry school deletion requested", {
       route: "/api/ministry/schools/[id]",
@@ -291,15 +232,14 @@ export async function DELETE(
     });
 
     // Check if school exists
-    const existingSchool = await db.query.schools.findFirst({
-      where: eq(schools.id, id),
-    });
+    const [existingSchool] = await db
+      .select()
+      .from(schools)
+      .where(eq(schools.id, id))
+      .limit(1);
 
     if (!existingSchool) {
-      return NextResponse.json(
-        { error: "School not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "School not found", status: 404 };
     }
 
     // Check if school has active users (students, teachers, etc.)
@@ -318,14 +258,11 @@ export async function DELETE(
         totalUsers,
       });
 
-      return NextResponse.json(
-        {
-          error: "Cannot delete school with active users",
-          status: 400,
-          details: `This school has ${totalUsers} associated users. Please deactivate the school or reassign users first.`,
-        } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return {
+        error: "Cannot delete school with active users",
+        status: 400,
+        details: `This school has ${totalUsers} associated users. Please deactivate the school or reassign users first.`,
+      };
     }
 
     // Delete the school
@@ -337,7 +274,7 @@ export async function DELETE(
       schoolName: existingSchool.name,
     });
 
-    return NextResponse.json({
+    return {
       data: {
         success: true,
         message: "School deleted successfully",
@@ -346,23 +283,8 @@ export async function DELETE(
           name: existingSchool.name,
           code: existingSchool.code,
         },
-      },
-      status: 200,
-    } satisfies ApiSuccess<{
-      success: boolean;
-      message: string;
-      deletedSchool: { id: string; name: string; code: string };
-    }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/ministry/schools/[id]", method: "DELETE" });
-
-    return NextResponse.json(
-      {
-        error: "Failed to delete school",
-        status: 500,
-        details: process.env.NODE_ENV === "development" ? String(error) : undefined,
-      } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+      }
+    };
+  },
+  ["ministry", "admin"]
+);

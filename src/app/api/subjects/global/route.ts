@@ -1,17 +1,20 @@
-import { NextRequest, NextResponse } from "next/server";
+/**
+ * GLOBAL SUBJECTS API
+ *
+ * GET /api/subjects/global - Get all global subject templates (for dropdown)
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { subjects } from "@/lib/db/schema";
 import { eq, isNull, desc } from "drizzle-orm";
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse } from "@/lib/api/response-helpers";
 
-// GET /api/subjects/global - Get all global subject templates (for dropdown)
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
     // Fetch all global subject templates (school_id IS NULL)
     const globalSubjects = await db
       .select({
@@ -26,9 +29,7 @@ export async function GET(request: NextRequest) {
       .where(isNull(subjects.schoolId))
       .orderBy(subjects.name, subjects.grade);
 
-    return NextResponse.json({ subjects: globalSubjects });
-  } catch (error) {
-    console.error("Error fetching global subjects:", error);
-    return NextResponse.json({ error: "Failed to fetch global subjects" }, { status: 500 });
-  }
-}
+    return successResponse({ subjects: globalSubjects });
+  },
+  ['admin', 'school-admin']
+);

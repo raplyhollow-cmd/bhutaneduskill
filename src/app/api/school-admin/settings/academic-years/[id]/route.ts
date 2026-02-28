@@ -1,89 +1,85 @@
-import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { academicYears } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { logger } from "@/lib/logger";
+
+interface DeleteResponse {
+  success: true;
+}
+
+interface AcademicYearResponse {
+  academicYear: unknown;
+}
+
+interface AcademicYearUpdateRequest {
+  isActive?: boolean;
+  name?: string;
+  startDate?: string;
+  endDate?: string;
+}
 
 // ============================================================================
 // DELETE - Remove an academic year
 // ============================================================================
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(['school-admin', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { user } = authResult;
-
+export const DELETE = createApiRoute<{ id: string }, DeleteResponse>(
+  async (req, { user }, context) => {
     if (!user.schoolId) {
-      return NextResponse.json({ error: "School not found for user" }, { status: 404 });
+      return { error: "School not found for user", status: 404 };
     }
 
-    const { id } = await params;
+    const { id } = await context!.params;
 
     // Verify the academic year belongs to the user's school
-    const academicYear = await db.query.academicYears.findFirst({
-      where: and(
+    const [academicYear] = await db
+      .select()
+      .from(academicYears)
+      .where(and(
         eq(academicYears.id, id),
         eq(academicYears.schoolId, user.schoolId)
-      ),
-    });
+      ))
+      .limit(1);
 
     if (!academicYear) {
-      return NextResponse.json({ error: "Academic year not found" }, { status: 404 });
+      return { error: "Academic year not found", status: 404 };
     }
 
     // Delete the academic year
     await db.delete(academicYears)
       .where(eq(academicYears.id, id));
 
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    logger.error("Academic year deletion error:", error);
-    return NextResponse.json(
-      { error: "Failed to delete academic year" },
-      { status: 500 }
-    );
-  }
-}
+    return { data: { success: true } };
+  },
+  ['school-admin', 'admin']
+);
 
 // ============================================================================
 // PATCH - Update an academic year (e.g., set as active)
 // ============================================================================
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(['school-admin', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { user } = authResult;
-
+export const PATCH = createApiRoute<{ id: string }, AcademicYearResponse>(
+  async (req, { user }, context) => {
     if (!user.schoolId) {
-      return NextResponse.json({ error: "School not found for user" }, { status: 404 });
+      return { error: "School not found for user", status: 404 };
     }
 
-    const { id } = await params;
-    const body = await request.json();
+    const { id } = await context!.params;
+    const body: AcademicYearUpdateRequest = await req.json();
 
     // Verify the academic year belongs to the user's school
-    const academicYear = await db.query.academicYears.findFirst({
-      where: and(
+    const [academicYear] = await db
+      .select()
+      .from(academicYears)
+      .where(and(
         eq(academicYears.id, id),
         eq(academicYears.schoolId, user.schoolId)
-      ),
-    });
+      ))
+      .limit(1);
 
     if (!academicYear) {
-      return NextResponse.json({ error: "Academic year not found" }, { status: 404 });
+      return { error: "Academic year not found", status: 404 };
     }
 
     // If setting as active, deactivate all others
@@ -102,12 +98,7 @@ export async function PATCH(
       .where(eq(academicYears.id, id))
       .returning();
 
-    return NextResponse.json({ academicYear: updated });
-  } catch (error) {
-    logger.error("Academic year update error:", error);
-    return NextResponse.json(
-      { error: "Failed to update academic year" },
-      { status: 500 }
-    );
-  }
-}
+    return { data: { academicYear: updated } };
+  },
+  ['school-admin', 'admin']
+);

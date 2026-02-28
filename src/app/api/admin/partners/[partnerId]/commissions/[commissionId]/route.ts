@@ -6,7 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { partners, partnerCommissions } from "@/lib/db/schema";
@@ -62,44 +62,43 @@ function validateUpdateInput(data: UpdateCommissionInput): { valid: boolean; err
 // PATCH - Update Commission
 // ============================================================================
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ partnerId: string; commissionId: string }> }
-) {
-  const authResult = await requireAuth(["admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status },
-      { status: authResult.status }
-    );
-  }
-
-  try {
+export const PATCH = createApiRoute(
+  async (
+    request: NextRequest,
+    auth,
+    { params }: { params: Promise<{ partnerId: string; commissionId: string }> }
+  ) => {
     const { partnerId, commissionId } = await params;
 
     if (!partnerId || !commissionId) {
-      return NextResponse.json({ error: "Partner ID and Commission ID are required" }, { status: 400 });
+      return { error: "Partner ID and Commission ID are required", status: 400 };
     }
 
     // Verify partner exists
-    const partner = await db.query.partners.findFirst({
-      where: eq(partners.id, partnerId),
-    });
+    const partnerResult = await db
+      .select()
+      .from(partners)
+      .where(eq(partners.id, partnerId))
+      .limit(1);
+    const partner = partnerResult[0];
 
     if (!partner) {
-      return NextResponse.json({ error: "Partner not found" }, { status: 404 });
+      return { error: "Partner not found", status: 404 };
     }
 
     // Check if commission exists
-    const existingCommission = await db.query.partnerCommissions.findFirst({
-      where: and(
+    const existingCommissionResult = await db
+      .select()
+      .from(partnerCommissions)
+      .where(and(
         eq(partnerCommissions.id, commissionId),
         eq(partnerCommissions.partnerId, partnerId)
-      ),
-    });
+      ))
+      .limit(1);
+    const existingCommission = existingCommissionResult[0];
 
     if (!existingCommission) {
-      return NextResponse.json({ error: "Commission not found" }, { status: 404 });
+      return { error: "Commission not found", status: 404 };
     }
 
     const body = await request.json();
@@ -107,10 +106,11 @@ export async function PATCH(
     // Validate input
     const validation = validateUpdateInput(body);
     if (!validation.valid) {
-      return NextResponse.json(
-        { error: "Validation failed", details: validation.errors },
-        { status: 400 }
-      );
+      return {
+        error: "Validation failed",
+        details: validation.errors,
+        status: 400,
+      };
     }
 
     // Prepare update data
@@ -137,59 +137,49 @@ export async function PATCH(
       .returning();
 
     logger.info("Commission updated", {
-      userId: authResult.userId,
+      userId: auth.userId,
       partnerId,
       commissionId,
       updatedFields: Object.keys(body),
     });
 
-    return NextResponse.json({
-      success: true,
+    return {
       data: updatedCommission,
       message: "Commission updated successfully",
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/partners/[partnerId]/commissions/[commissionId]", method: "PATCH" });
-    return NextResponse.json(
-      { error: "Failed to update commission", details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);
 
 // ============================================================================
 // DELETE - Delete Commission
 // ============================================================================
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ partnerId: string; commissionId: string }> }
-) {
-  const authResult = await requireAuth(["admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status },
-      { status: authResult.status }
-    );
-  }
-
-  try {
+export const DELETE = createApiRoute(
+  async (
+    request: NextRequest,
+    auth,
+    { params }: { params: Promise<{ partnerId: string; commissionId: string }> }
+  ) => {
     const { partnerId, commissionId } = await params;
 
     if (!partnerId || !commissionId) {
-      return NextResponse.json({ error: "Partner ID and Commission ID are required" }, { status: 400 });
+      return { error: "Partner ID and Commission ID are required", status: 400 };
     }
 
     // Verify commission exists
-    const existingCommission = await db.query.partnerCommissions.findFirst({
-      where: and(
+    const existingCommissionResult = await db
+      .select()
+      .from(partnerCommissions)
+      .where(and(
         eq(partnerCommissions.id, commissionId),
         eq(partnerCommissions.partnerId, partnerId)
-      ),
-    });
+      ))
+      .limit(1);
+    const existingCommission = existingCommissionResult[0];
 
     if (!existingCommission) {
-      return NextResponse.json({ error: "Commission not found" }, { status: 404 });
+      return { error: "Commission not found", status: 404 };
     }
 
     // Delete commission
@@ -201,25 +191,19 @@ export async function DELETE(
       ));
 
     logger.info("Commission deleted", {
-      userId: authResult.userId,
+      userId: auth.userId,
       partnerId,
       commissionId,
       amount: existingCommission.amount,
     });
 
-    return NextResponse.json({
-      success: true,
+    return {
       message: "Commission deleted successfully",
       data: {
         id: commissionId,
         deleted: true,
       },
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/partners/[partnerId]/commissions/[commissionId]", method: "DELETE" });
-    return NextResponse.json(
-      { error: "Failed to delete commission", details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);

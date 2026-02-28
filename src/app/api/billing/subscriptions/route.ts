@@ -1,4 +1,3 @@
-import { logger } from "@/lib/logger";
 /**
  * BILLING - SUBSCRIPTIONS API
  *
@@ -8,21 +7,15 @@ import { logger } from "@/lib/logger";
  * DELETE /api/billing/subscriptions - Cancel subscription
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
 import { subscriptions, subscriptionPlans, tenants, users } from "@/lib/db/schema";
 import { eq, desc, and, like, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
-export async function GET(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
-
+export const GET = createApiRoute(
+  async (req, auth) => {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
     const plan = searchParams.get("plan");
@@ -138,8 +131,7 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    return NextResponse.json({
-      success: true,
+    return {
       data: formattedData,
       pagination: {
         page,
@@ -155,33 +147,20 @@ export async function GET(req: NextRequest) {
         pendingInvoices: 0, // Will be updated from invoices endpoint
         overduePayments: revenueStats[0]?.pastDueCount || 0,
       },
-    });
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : "Failed to fetch subscriptions";
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json(
-      { success: false, error: errorMessage },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);
 
-export async function POST(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const POST = createApiRoute(
+  async (req, auth) => {
+    const { userId } = auth;
     const body = await req.json();
 
     const { tenantId, planId, billingCycle = "yearly", isTrial = false, trialDays = 30 } = body;
 
     if (!tenantId || !planId) {
-      return NextResponse.json(
-        { success: false, error: "tenantId and planId are required" },
-        { status: 400 }
-      );
+      return { error: "tenantId and planId are required", status: 400 };
     }
 
     // Get plan details
@@ -192,10 +171,7 @@ export async function POST(req: NextRequest) {
       .limit(1);
 
     if (plan.length === 0) {
-      return NextResponse.json(
-        { success: false, error: "Plan not found" },
-        { status: 404 }
-      );
+      return { error: "Plan not found", status: 404 };
     }
 
     const planData = plan[0];
@@ -259,36 +235,22 @@ export async function POST(req: NextRequest) {
       .where(eq(subscriptions.id, subscriptionId))
       .limit(1);
 
-    return NextResponse.json({
-      success: true,
+    return {
       data: created[0],
-    });
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : "Failed to create subscription";
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json(
-      { success: false, error: errorMessage },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);
 
-export async function PATCH(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const PATCH = createApiRoute(
+  async (req, auth) => {
+    const { userId } = auth;
     const body = await req.json();
 
     const { subscriptionId, action, ...updates } = body;
 
     if (!subscriptionId) {
-      return NextResponse.json(
-        { success: false, error: "subscriptionId is required" },
-        { status: 400 }
-      );
+      return { error: "subscriptionId is required", status: 400 };
     }
 
     // Handle specific actions
@@ -301,10 +263,9 @@ export async function PATCH(req: NextRequest) {
         })
         .where(eq(subscriptions.id, subscriptionId));
 
-      return NextResponse.json({
-        success: true,
+      return {
         message: "Subscription will be cancelled at the end of the current period",
-      });
+      };
     }
 
     if (action === "activate") {
@@ -317,10 +278,9 @@ export async function PATCH(req: NextRequest) {
         })
         .where(eq(subscriptions.id, subscriptionId));
 
-      return NextResponse.json({
-        success: true,
+      return {
         message: "Subscription activated successfully",
-      });
+      };
     }
 
     if (action === "update_usage") {
@@ -336,10 +296,9 @@ export async function PATCH(req: NextRequest) {
         })
         .where(eq(subscriptions.id, subscriptionId));
 
-      return NextResponse.json({
-        success: true,
+      return {
         message: "Usage updated successfully",
-      });
+      };
     }
 
     // Generic updates
@@ -351,35 +310,21 @@ export async function PATCH(req: NextRequest) {
       })
       .where(eq(subscriptions.id, subscriptionId));
 
-    return NextResponse.json({
-      success: true,
+    return {
       message: "Subscription updated successfully",
-    });
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : "Failed to update subscription";
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json(
-      { success: false, error: errorMessage },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);
 
-export async function DELETE(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const DELETE = createApiRoute(
+  async (req, auth) => {
+    const { userId } = auth;
     const { searchParams } = new URL(req.url);
     const subscriptionId = searchParams.get("subscriptionId");
 
     if (!subscriptionId) {
-      return NextResponse.json(
-        { success: false, error: "subscriptionId is required" },
-        { status: 400 }
-      );
+      return { error: "subscriptionId is required", status: 400 };
     }
 
     await db
@@ -391,16 +336,9 @@ export async function DELETE(req: NextRequest) {
       })
       .where(eq(subscriptions.id, subscriptionId));
 
-    return NextResponse.json({
-      success: true,
+    return {
       message: "Subscription canceled successfully",
-    });
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : "Failed to cancel subscription";
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json(
-      { success: false, error: errorMessage },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);

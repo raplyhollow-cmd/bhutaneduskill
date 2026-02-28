@@ -18,8 +18,8 @@ import {
   Filter,
 } from "lucide-react";
 import Link from "next/link";
-import { CAREERS_DATABASE } from "@/lib/tenant";
-import { SCHOLARSHIPS } from "@/lib/scholarship-database";
+import { CAREERS_DATABASE, type Career } from "@/lib/tenant";
+import { SCHOLARSHIPS, type Scholarship } from "@/lib/scholarship-database";
 
 type SavedItem = {
   id: string;
@@ -27,6 +27,16 @@ type SavedItem = {
   itemId: string;
   savedAt: string;
 };
+
+// Type guard for Career
+function isCareer(item: Career | Scholarship): item is Career {
+  return "slug" in item && "riasecCode" in item;
+}
+
+// Type guard for Scholarship
+function isScholarship(item: Career | Scholarship): item is Scholarship {
+  return "provider" in item && "link" in item;
+}
 
 export default function SavedPage() {
   const [savedCareers, setSavedCareers] = useState<string[]>([]);
@@ -163,7 +173,7 @@ export default function SavedPage() {
             <CardContent className="pt-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
-                  {type === "career" ? (
+                  {isCareer(item) ? (
                     <>
                       <h3 className="text-lg font-bold text-gray-900 mb-1">
                         {item.name}
@@ -200,7 +210,7 @@ export default function SavedPage() {
               </div>
 
               <div className="flex gap-2">
-                {type === "career" ? (
+                {isCareer(item) ? (
                   <Button size="sm" className="flex-1" asChild>
                     <Link href={`/student/careers/${item.slug}`}>
                       View Details

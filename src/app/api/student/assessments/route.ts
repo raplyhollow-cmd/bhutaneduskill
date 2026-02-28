@@ -380,9 +380,9 @@ export const GET = createApiRoute(
           : null,
         results: assessment.results
           ? {
-              scores: (assessment.results as any)?.scores,
-              hollandCode: (assessment.results as any)?.hollandCode,
-              personalityType: (assessment.results as any)?.personalityType,
+              scores: (assessment.results as { scores?: unknown })?.scores,
+              hollandCode: (assessment.results as { hollandCode?: string })?.hollandCode,
+              personalityType: (assessment.results as { personalityType?: string })?.personalityType,
             }
           : null,
         createdAt: assessment.createdAt,

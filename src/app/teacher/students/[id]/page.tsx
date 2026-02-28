@@ -85,30 +85,39 @@ async function getStudentData(studentId: string, teacherUserId: string) {
   const student = studentRecords[0] as StudentData;
 
   // Get teacher's classes
-  const teacherClasses = await db.query.classes.findMany({
-    where: eq(classes.teacherId, teacherUserId),
-    columns: { id: true },
-  });
+  const teacherClasses = await db
+    .select({ id: classes.id })
+    .from(classes)
+    .where(eq(classes.teacherId, teacherUserId));
 
   const teacherClassIds = teacherClasses.map((c) => c.id);
 
   // Check if student is enrolled in teacher's classes
-  const enrollmentRecords = await db.query.enrollments.findMany({
-    where: and(
-      eq(enrollments.studentId, studentId),
-      eq(enrollments.status, "active")
-    ),
-    with: {
-      class: true,
-    },
-  });
+  const enrollmentRecords = await db
+    .select({
+      id: enrollments.id,
+      studentId: enrollments.studentId,
+      classId: enrollments.classId,
+      rollNumber: enrollments.rollNumber,
+      status: enrollments.status,
+      enrollmentDate: enrollments.enrollmentDate,
+      // Class fields
+      className: classes.name,
+      classGrade: classes.grade,
+      classSection: classes.section,
+    })
+    .from(enrollments)
+    .innerJoin(classes, eq(enrollments.classId, classes.id))
+    .where(
+      and(
+        eq(enrollments.studentId, studentId),
+        eq(enrollments.status, "active")
+      )
+    );
 
   // Filter to only teacher's classes and transform to ClassEnrollment
-  // Note: e.class might be an array due to Drizzle typing, handle both cases
   const validEnrollments = enrollmentRecords.filter((e) => {
-    if (!e.class) return false;
-    const classArray = Array.isArray(e.class) ? e.class : [e.class];
-    return classArray.some((c: { id: string }) => c.id && teacherClassIds.includes(c.id));
+    return teacherClassIds.includes(e.classId);
   });
 
   if (validEnrollments.length === 0) {
@@ -116,29 +125,30 @@ async function getStudentData(studentId: string, teacherUserId: string) {
   }
 
   const classEnrollments: ClassEnrollment[] = validEnrollments.map((e) => {
-    const classArray = Array.isArray(e.class) ? e.class : [e.class];
-    const cls = classArray[0] as { id: string; name: string; grade: number; section: string };
     return {
       id: e.id,
-      className: cls.name,
-      grade: cls.grade,
-      section: cls.section,
+      className: e.className,
+      grade: e.classGrade,
+      section: e.classSection,
       rollNumber: e.rollNumber,
       enrollmentDate: e.enrollmentDate,
     };
   });
 
-  const classInfo = (() => {
-    const classArray = Array.isArray(validEnrollments[0].class) ? validEnrollments[0].class : [validEnrollments[0].class];
-    return classArray[0] as { id: string; name: string; grade: number; section: string };
-  })();
+  const classInfo = {
+    id: validEnrollments[0].classId,
+    name: validEnrollments[0].className,
+    grade: validEnrollments[0].classGrade,
+    section: validEnrollments[0].classSection,
+  };
 
   // Get attendance data
-  const attendanceRecords = await db.query.attendance.findMany({
-    where: eq(attendance.studentId, studentId),
-    orderBy: [desc(attendance.date)],
-    limit: 30,
-  });
+  const attendanceRecords = await db
+    .select()
+    .from(attendance)
+    .where(eq(attendance.studentId, studentId))
+    .orderBy(desc(attendance.date))
+    .limit(30);
 
   const presentDays = attendanceRecords.filter((a) => a.status === "present").length;
   const absentDays = attendanceRecords.filter((a) => a.status === "absent").length;
@@ -148,21 +158,31 @@ async function getStudentData(studentId: string, teacherUserId: string) {
     : null;
 
   // Get homework submissions
-  const hwSubmissions = await db.query.homeworkSubmissions.findMany({
-    where: eq(homeworkSubmissions.studentId, studentId),
-    with: {
-      homework: true,
-    },
-  });
+  const hwSubmissions = await db
+    .select({
+      id: homeworkSubmissions.id,
+      studentId: homeworkSubmissions.studentId,
+      homeworkId: homeworkSubmissions.homeworkId,
+      status: homeworkSubmissions.status,
+      submittedAt: homeworkSubmissions.submittedAt,
+      gradedAt: homeworkSubmissions.gradedAt,
+      score: homeworkSubmissions.score,
+      feedback: homeworkSubmissions.feedback,
+      content: homeworkSubmissions.content,
+      // Homework fields
+      homeworkTitle: homework.title,
+      homeworkDueDate: homework.dueDate,
+    })
+    .from(homeworkSubmissions)
+    .innerJoin(homework, eq(homeworkSubmissions.homeworkId, homework.id))
+    .where(eq(homeworkSubmissions.studentId, studentId));
 
   const submittedCount = hwSubmissions.filter((h) => h.status === "submitted").length;
   const gradedCount = hwSubmissions.filter((h) => h.status === "graded").length;
   const pendingCount = hwSubmissions.filter((h) => h.status === "draft").length;
   const lateSubmissions = hwSubmissions.filter((h) => {
-    if (!h.submittedAt || !h.homework) return false;
-    const homeworkArray = Array.isArray(h.homework) ? h.homework : [h.homework];
-    const hw = homeworkArray[0] as { dueDate?: string | Date } | undefined;
-    return hw?.dueDate && new Date(h.submittedAt) > new Date(hw.dueDate);
+    if (!h.submittedAt || !h.homeworkDueDate) return false;
+    return new Date(h.submittedAt) > new Date(h.homeworkDueDate);
   }).length;
 
   // Get parent info
@@ -640,11 +660,8 @@ export default async function TeacherStudentDetailPage({ params }: PageProps) {
                   <h3 className="font-semibold text-gray-900 mb-3">Recent Submissions</h3>
                   <div className="space-y-2">
                     {homework.recentSubmissions.map((sub, index: number) => {
-                      // Extract homework title - homework can be an array or single object
-                      const homeworkData = sub.homework;
-                      const homeworkArray = Array.isArray(homeworkData) ? homeworkData : homeworkData ? [homeworkData] : [];
-                      const firstHomework = homeworkArray[0] as { title?: string } | undefined;
-                      const homeworkTitle = firstHomework?.title || "Homework";
+                      // Homework title is now directly available from the join
+                      const homeworkTitle = sub.homeworkTitle || "Homework";
 
                       return (
                         <div

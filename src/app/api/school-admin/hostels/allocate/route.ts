@@ -25,6 +25,42 @@ interface RoomAllocationResult {
   previousOccupancy: number;
   newOccupancy: number;
   capacity: number;
+  rooms?: Array<{
+    id: string;
+    roomNumber: string;
+    capacity: number;
+    occupied: number;
+    available: number;
+    isFull: boolean;
+  }>;
+}
+
+interface HostelAllocationReportData {
+  buildings: Array<{
+    id: string;
+    name: string;
+    type: string;
+    capacity: number;
+    occupied: number;
+    available: number;
+    occupancyRate: number;
+    rooms: Array<{
+      id: string;
+      roomNumber: string;
+      capacity: number;
+      occupied: number;
+      available: number;
+      isFull: boolean;
+    }>;
+  }>;
+  summary: {
+    totalHostels: number;
+    totalRooms: number;
+    totalCapacity: number;
+    totalOccupied: number;
+    totalAvailable: number;
+    overallOccupancyRate: number;
+  };
 }
 
 // ============================================================================
@@ -77,9 +113,12 @@ export const POST = createApiRoute(
         throw new Error("Room does not belong to your school");
       }
 
-      if (roomDetails.occupiedBeds >= roomDetails.capacity) {
+      const currentOccupied = Number(roomDetails.occupiedBeds);
+      const roomCapacity = Number(roomDetails.capacity);
+
+      if (currentOccupied >= roomCapacity) {
         throw new Error(
-          `Room ${roomDetails.roomNumber} is at full capacity (${roomDetails.capacity} beds)`
+          `Room ${roomDetails.roomNumber} is at full capacity (${roomCapacity} beds)`
         );
       }
 
@@ -136,7 +175,7 @@ export const POST = createApiRoute(
       const [updatedRoom] = await tx
         .update(hostelRooms)
         .set({
-          occupiedBeds: roomDetails.occupiedBeds + 1,
+          occupiedBeds: currentOccupied + 1,
           updatedAt: new Date(),
         })
         .where(eq(hostelRooms.id, roomId))
@@ -145,9 +184,9 @@ export const POST = createApiRoute(
       return {
         roomNumber: roomDetails.roomNumber,
         hostelName: roomDetails.hostelName,
-        previousOccupancy: roomDetails.occupiedBeds,
-        newOccupancy: updatedRoom.occupiedBeds,
-        capacity: roomDetails.capacity,
+        previousOccupancy: currentOccupied,
+        newOccupancy: Number(updatedRoom.occupiedBeds),
+        capacity: roomCapacity,
       };
     });
 
@@ -159,13 +198,10 @@ export const POST = createApiRoute(
       result,
     });
 
-    return successResponse(
-      {
-        success: true,
-        ...result,
-      } satisfies RoomAllocationResult,
-      `Student allocated to room ${result.roomNumber} in ${result.hostelName}`
-    );
+    return successResponse({
+      success: true,
+      ...result,
+    } satisfies RoomAllocationResult);
   },
   ["school-admin", "admin"]
 );
@@ -193,7 +229,7 @@ export const GET = createApiRoute(
 
     if (buildings.length === 0) {
       return successResponse({
-        hostels: [],
+        buildings: [],
         summary: {
           totalHostels: 0,
           totalRooms: 0,
@@ -202,28 +238,8 @@ export const GET = createApiRoute(
           totalAvailable: 0,
           overallOccupancyRate: 0,
         },
-      } satisfies HostelAllocationReportData);
+      });
     }
-
-    type HostelAllocationReportData = {
-      buildings: Array<{
-        id: string;
-        name: string;
-        type: string;
-        capacity: number;
-        occupied: number;
-        available: number;
-        occupancyRate: number;
-      }>;
-      summary: {
-        totalHostels: number;
-        totalRooms: number;
-        totalCapacity: number;
-        totalOccupied: number;
-        totalAvailable: number;
-        overallOccupancyRate: number;
-      };
-    };
 
     const buildingIds = buildings.map((b) => b.id);
     const allRooms = await db
@@ -233,8 +249,8 @@ export const GET = createApiRoute(
 
     const report = buildings.map((building) => {
       const buildingRooms = allRooms.filter((r) => r.hostelId === building.id);
-      const hostelCapacity = buildingRooms.reduce((sum, r) => sum + r.capacity, 0);
-      const hostelOccupied = buildingRooms.reduce((sum, r) => sum + r.occupiedBeds, 0);
+      const hostelCapacity = buildingRooms.reduce((sum, r) => sum + Number(r.capacity), 0);
+      const hostelOccupied = buildingRooms.reduce((sum, r) => sum + Number(r.occupiedBeds), 0);
       const occupancyRate = hostelCapacity > 0 ? Math.round((hostelOccupied / hostelCapacity) * 100) : 0;
 
       return {
@@ -248,10 +264,10 @@ export const GET = createApiRoute(
         rooms: buildingRooms.map((room) => ({
           id: room.id,
           roomNumber: room.roomNumber,
-          capacity: room.capacity,
-          occupied: room.occupiedBeds,
-          available: room.capacity - room.occupiedBeds,
-          isFull: room.occupiedBeds >= room.capacity,
+          capacity: Number(room.capacity),
+          occupied: Number(room.occupiedBeds),
+          available: Number(room.capacity) - Number(room.occupiedBeds),
+          isFull: Number(room.occupiedBeds) >= Number(room.capacity),
         })),
       };
     });
@@ -260,7 +276,7 @@ export const GET = createApiRoute(
     const totalOccupied = report.reduce((sum, h) => sum + h.occupied, 0);
 
     return successResponse({
-      hostels: report,
+      buildings: report,
       summary: {
         totalHostels: buildings.length,
         totalRooms: allRooms.length,
@@ -269,7 +285,7 @@ export const GET = createApiRoute(
         totalAvailable: totalCapacity - totalOccupied,
         overallOccupancyRate: totalCapacity > 0 ? Math.round((totalOccupied / totalCapacity) * 100) : 0,
       },
-    } satisfies HostelAllocationReportData);
+    });
   },
   ["school-admin", "admin"]
 );
@@ -340,10 +356,7 @@ export const DELETE = createApiRoute(
       deallocatedBy: userId,
     });
 
-    return successResponse(
-      { success: true },
-      `Student removed from room successfully`
-    );
+    return successResponse({ success: true });
   },
   ["school-admin", "admin"]
 );

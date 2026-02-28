@@ -828,7 +828,7 @@ export default function MinistryNotificationsPage() {
                     </label>
                     <select
                       value={formData.type}
-                      onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
+                      onChange={(e) => setFormData({ ...formData, type: e.target.value as "info" | "warning" | "urgent" | "success" })}
                       className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none bg-white"
                     >
                       <option value="info">Info</option>
@@ -844,7 +844,7 @@ export default function MinistryNotificationsPage() {
                     </label>
                     <select
                       value={formData.priority}
-                      onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
+                      onChange={(e) => setFormData({ ...formData, priority: e.target.value as "normal" | "high" | "critical" })}
                       className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none bg-white"
                     >
                       <option value="normal">Normal</option>
@@ -869,7 +869,7 @@ export default function MinistryNotificationsPage() {
                       <button
                         key={option.value}
                         type="button"
-                        onClick={() => setFormData({ ...formData, scope: option.value as any })}
+                        onClick={() => setFormData({ ...formData, scope: option.value as "all" | "districts" | "schools" | "roles" })}
                         className={`flex items-center gap-2 px-4 py-3 rounded-lg border-2 text-left transition-all ${
                           formData.scope === option.value
                             ? "border-purple-500 bg-purple-50 text-purple-700"

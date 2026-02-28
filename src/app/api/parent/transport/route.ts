@@ -79,16 +79,49 @@ export const GET = createApiRoute(
     // Get transport allocations for all children
     const childrenWithTransport = await Promise.all(
       children.map(async (child) => {
-        const allocation = await db.query.transportAllocations.findFirst({
-          where: and(
-            eq(transportAllocations.studentId, child.id),
-            eq(transportAllocations.isActive, true)
-          ),
-          with: {
-            route: true,
-            vehicle: true,
-          },
-        });
+        const [allocation] = await db
+          .select({
+            id: transportAllocations.id,
+            studentId: transportAllocations.studentId,
+            routeId: transportAllocations.routeId,
+            vehicleId: transportAllocations.vehicleId,
+            pickupPoint: transportAllocations.pickupPoint,
+            dropPoint: transportAllocations.dropPoint,
+            stopName: transportAllocations.stopName,
+            pickupTime: transportAllocations.pickupTime,
+            dropTime: transportAllocations.dropTime,
+            fee: transportAllocations.fee,
+            isPaid: transportAllocations.isPaid,
+            isActive: transportAllocations.isActive,
+            route: {
+              id: transportRoutes.id,
+              routeNumber: transportRoutes.routeNumber,
+              name: transportRoutes.name,
+              routeName: transportRoutes.routeName,
+              startLocation: transportRoutes.startLocation,
+              endLocation: transportRoutes.endLocation,
+              fee: transportRoutes.fee,
+              stops: transportRoutes.stops,
+            },
+            vehicle: {
+              id: vehicles.id,
+              registrationNumber: vehicles.registrationNumber,
+              vehicleType: vehicles.vehicleType,
+              capacity: vehicles.capacity,
+              driverName: vehicles.driverName,
+              driverPhone: vehicles.driverPhone,
+            },
+          })
+          .from(transportAllocations)
+          .leftJoin(transportRoutes, eq(transportAllocations.routeId, transportRoutes.id))
+          .leftJoin(vehicles, eq(transportAllocations.vehicleId, vehicles.id))
+          .where(
+            and(
+              eq(transportAllocations.studentId, child.id),
+              eq(transportAllocations.isActive, true)
+            )
+          )
+          .limit(1);
 
         if (!allocation) {
           return {
@@ -99,14 +132,7 @@ export const GET = createApiRoute(
 
         // Get driver info from vehicle
         let driver: { id: string; firstName: string; lastName: string; phone?: string } | null = null;
-        const vehicleData = allocation.vehicle as unknown as {
-          id: string;
-          registrationNumber: string;
-          vehicleType: string;
-          capacity: number;
-          driverName?: string;
-          driverPhone?: string;
-        } | null;
+        const vehicleData = allocation.vehicle;
 
         if (vehicleData?.driverName) {
           const nameParts = vehicleData.driverName.split(" ");
@@ -118,20 +144,7 @@ export const GET = createApiRoute(
           };
         }
 
-        const routeData = allocation.route as unknown as {
-          id: string;
-          routeNumber: string;
-          name: string;
-          routeName?: string;
-          startLocation: string;
-          endLocation: string;
-          fee: number;
-          stops?: Array<{
-            name: string;
-            location: { lat: string; lng: string };
-            time: string;
-          }>;
-        } | null;
+        const routeData = allocation.route;
 
         return {
           ...child,

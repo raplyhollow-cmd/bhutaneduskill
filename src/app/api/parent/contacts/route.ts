@@ -19,7 +19,7 @@ import { successResponse } from "@/lib/api/response-helpers";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { users, classes, enrollments, subjects, parents, parentToStudent } from "@/lib/db/schema";
-import { eq, or, like, and, inArray } from "drizzle-orm";
+import { eq, or, like, and, inArray, sql } from "drizzle-orm";
 
 // ============================================================================
 // TYPES
@@ -42,9 +42,8 @@ interface TeacherContact {
 // GET - Fetch contacts (teachers, admins) for parent
 // ============================================================================
 
-export const GET = createApiRoute({
-  allowedRoles: ['parent'],
-  handler: async (req: NextRequest, auth) => {
+export const GET = createApiRoute(
+  async (req: NextRequest, auth) => {
     const { userId } = auth;
     const searchParams = req.nextUrl.searchParams;
     const search = searchParams.get("search") || "";
@@ -124,7 +123,7 @@ export const GET = createApiRoute({
           like(users.name, searchTerm),
           like(users.firstName, searchTerm),
           like(users.lastName, searchTerm),
-          like(users.email as any, searchTerm)
+          like(sql<string>`COALESCE(${users.email}, '')`, searchTerm)
         )!
       );
     }
@@ -162,5 +161,6 @@ export const GET = createApiRoute({
     logger.info("Contacts fetched successfully", { userId, count: formattedContacts.length });
 
     return successResponse({ contacts: formattedContacts });
-  }
-});
+  },
+  ['parent']
+);

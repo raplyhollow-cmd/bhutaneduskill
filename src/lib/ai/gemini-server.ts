@@ -34,25 +34,12 @@ const generationConfig = {
   maxOutputTokens: 2048,
 };
 
-// Safety settings configuration for Gemini SDK
-const safetySettings = [
-  {
-    category: "HARM_CATEGORY_HARASSMENT",
-    threshold: "BLOCK_MEDIUM_AND_ABOVE",
-  },
-  {
-    category: "HARM_CATEGORY_HATE_SPEECH",
-    threshold: "BLOCK_MEDIUM_AND_ABOVE",
-  },
-  {
-    category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-    threshold: "BLOCK_MEDIUM_AND_ABOVE",
-  },
-  {
-    category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-    threshold: "BLOCK_MEDIUM_AND_ABOVE",
-  },
-] as const;
+// Type for model initialization options
+interface ModelOptions {
+  model: string;
+  generationConfig: typeof generationConfig;
+  systemInstruction?: string;
+}
 
 // ============================================================================
 // TYPES
@@ -125,11 +112,10 @@ export async function chatWithGemini(
 
   try {
     const model = client.getGenerativeModel({
-      model: "gemini-2.5-flash", // Use latest available model
+      model: "gemini-2.5-flash",
       generationConfig,
-      safetySettings,
       systemInstruction: systemPrompt || undefined,
-    });
+    } as ModelOptions);
 
     const result = await model.generateContent(prompt);
     const response = result.response;
@@ -163,11 +149,10 @@ export async function chatWithGeminiWithHistory(
 
   try {
     const model = client.getGenerativeModel({
-      model: "gemini-2.5-flash", // Use latest available model
+      model: "gemini-2.5-flash",
       generationConfig,
-      safetySettings,
       systemInstruction: systemPrompt || undefined,
-    });
+    } as ModelOptions);
 
     // Start a chat session with history
     const chat = model.startChat({
@@ -322,11 +307,10 @@ export async function chatWithCareerCoachFromServer(
 
   try {
     const model = client.getGenerativeModel({
-      model: "gemini-2.5-flash", // Use latest available model
+      model: "gemini-2.5-flash",
       generationConfig,
-      safetySettings,
       systemInstruction: CAREER_COACH_SYSTEM,
-    });
+    } as ModelOptions);
 
     // Build the prompt with context
     const contextStr = buildCareerCoachContext(context);

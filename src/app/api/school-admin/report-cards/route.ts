@@ -1,10 +1,13 @@
 /**
  * REPORT CARDS API
  * Generate and manage student report cards
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse } from "@/lib/api/response-helpers";
 import { logger } from "@/lib/logger";
 import {
   aggregateReportCardData,
@@ -18,13 +21,9 @@ import type { ReportCard } from "@/lib/db/schema";
  * GET /api/school-admin/report-cards
  * Get report cards for a class or student
  */
-export async function GET(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["school_admin", "admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId } = auth;
 
     const { searchParams } = new URL(req.url);
     const classId = searchParams.get("classId");
@@ -36,46 +35,34 @@ export async function GET(req: NextRequest) {
       // Get student's report cards
       const reportCards = await getStudentReportCards(studentId);
       logger.info("Fetched student report cards", { userId, studentId });
-      return NextResponse.json({ success: true, data: reportCards });
+      return successResponse(reportCards);
     }
 
     if (classId && term && academicYear) {
       // Get class report cards for a term
       const reportCards = await getClassReportCards(classId, term, academicYear);
       logger.info("Fetched class report cards", { userId, classId, term });
-      return NextResponse.json({ success: true, data: reportCards });
+      return successResponse(reportCards);
     }
 
-    return NextResponse.json({
-      error: "Missing required parameters. Provide studentId or (classId, term, academicYear)",
-    }, { status: 400 });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/report-cards", method: "GET" });
-    return NextResponse.json({
-      error: "Failed to fetch report cards",
-    }, { status: 500 });
-  }
-}
+    return badRequestResponse("Missing required parameters. Provide studentId or (classId, term, academicYear)");
+  },
+  ["school-admin", "admin"]
+);
 
 /**
  * POST /api/school-admin/report-cards
  * Generate a new report card
  */
-export async function POST(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["school_admin", "admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const POST = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId } = auth;
 
     const body = await req.json();
     const { studentId, examId } = body;
 
     if (!studentId || !examId) {
-      return NextResponse.json({
-        error: "Missing required fields: studentId, examId",
-      }, { status: 400 });
+      return badRequestResponse("Missing required fields: studentId, examId");
     }
 
     // Aggregate report card data
@@ -86,17 +73,10 @@ export async function POST(req: NextRequest) {
 
     logger.info("Report card created", { userId, studentId, examId, reportCardId: reportCard.id });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        reportCard,
-        reportCardData,
-      },
+    return successResponse({
+      reportCard,
+      reportCardData,
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/report-cards", method: "POST" });
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : "Failed to generate report card",
-    }, { status: 500 });
-  }
-}
+  },
+  ["school-admin", "admin"]
+);

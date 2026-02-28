@@ -3,8 +3,8 @@
  * Generate and manage ID cards for students, teachers, and staff
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import { users, schools } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -16,13 +16,9 @@ import type { IDCardData } from "@/lib/id-cards/generator";
  * GET /api/school-admin/id-cards
  * Get list of users for ID card generation
  */
-export async function GET(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["school_admin", "admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId } = auth;
 
     const { searchParams } = new URL(req.url);
     const userType = searchParams.get("userType") || "student";
@@ -36,7 +32,7 @@ export async function GET(req: NextRequest) {
       .limit(1);
 
     if (!requester?.schoolId) {
-      return NextResponse.json({ error: "School not found" }, { status: 404 });
+      return { error: "School not found" };
     }
 
     // Build query conditions
@@ -73,33 +69,27 @@ export async function GET(req: NextRequest) {
 
     logger.info("Fetched users for ID cards", { userId, userType, count: userList.length });
 
-    return NextResponse.json({
+    return {
       success: true,
       data: { users: userList, schoolId: requester.schoolId },
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/id-cards", method: "GET" });
-    return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
-  }
-}
+    };
+  },
+  ["school-admin", "admin"]
+);
 
 /**
  * POST /api/school-admin/id-cards/generate
  * Generate ID card PDF for a user
  */
-export async function POST(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["school_admin", "admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const POST = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId } = auth;
 
     const body = await req.json();
     const { targetUserId } = body;
 
     if (!targetUserId) {
-      return NextResponse.json({ error: "User ID is required" }, { status: 400 });
+      return { error: "User ID is required" };
     }
 
     // Get user details
@@ -110,7 +100,7 @@ export async function POST(req: NextRequest) {
       .limit(1);
 
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return { error: "User not found" };
     }
 
     // Get school details
@@ -121,7 +111,7 @@ export async function POST(req: NextRequest) {
       .limit(1);
 
     if (!school) {
-      return NextResponse.json({ error: "School not found" }, { status: 404 });
+      return { error: "School not found" };
     }
 
     // Prepare ID card data
@@ -159,17 +149,13 @@ export async function POST(req: NextRequest) {
 
     logger.info("ID card generated", { userId, targetUserId });
 
-    return NextResponse.json({
+    return {
       success: true,
       data: {
         pdf: `data:application/pdf;base64,${base64}`,
         filename: `IDCard_${user.name.replace(/\s+/g, "_")}.pdf`,
       },
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/id-cards", method: "POST" });
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : "Failed to generate ID card",
-    }, { status: 500 });
-  }
-}
+    };
+  },
+  ["school-admin", "admin"]
+);

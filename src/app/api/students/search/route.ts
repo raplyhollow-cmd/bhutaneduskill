@@ -3,33 +3,34 @@
  *
  * Allows counselors and teachers to search for students
  * Used in the counselor resources sharing functionality
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
-import { or, like, and, eq } from "drizzle-orm";
+import { or, like, and, eq, sql } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+import { successResponse } from "@/lib/api/response-helpers";
 
+// ============================================================================
 // GET /api/students/search - Search for students by name or email
-export async function GET(request: NextRequest) {
-  const authResult = await requireAuth(['admin', 'counselor', 'teacher', 'school-admin']);
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
+// ============================================================================
 
-  const { userId } = authResult;
-  const searchParams = request.nextUrl.searchParams;
-  const query = searchParams.get("q") || "";
-  const limit = Math.min(parseInt(searchParams.get("limit") || "20"), 50);
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
+    const searchParams = request.nextUrl.searchParams;
+    const query = searchParams.get("q") || "";
+    const limit = Math.min(parseInt(searchParams.get("limit") || "20"), 50);
 
-  // Minimum query length to prevent returning all students
-  if (query.length < 2) {
-    return NextResponse.json({ students: [] });
-  }
+    // Minimum query length to prevent returning all students
+    if (query.length < 2) {
+      return successResponse({ students: [] });
+    }
 
-  try {
     const searchTerm = `%${query}%`;
 
     // Search students by name or email
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
             like(users.name, searchTerm),
             like(users.firstName, searchTerm),
             like(users.lastName, searchTerm),
-            like(users.email as any, searchTerm)
+            sql`${users.email} LIKE ${searchTerm}`
           )!
         )
       )
@@ -64,16 +65,14 @@ export async function GET(request: NextRequest) {
       searchedBy: userId,
     });
 
-    return NextResponse.json({
-      students: students.map((student) => ({
-        id: student.id,
-        name: student.name || `${student.firstName || ""} ${student.lastName || ""}`.trim(),
-        email: student.email || "",
-        classGrade: student.classGrade || null,
-      })),
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/students/search", method: "GET" });
-    return NextResponse.json({ error: "Failed to search students", students: [] }, { status: 500 });
-  }
-}
+    const transformedStudents = students.map((student) => ({
+      id: student.id,
+      name: student.name || `${student.firstName || ""} ${student.lastName || ""}`.trim(),
+      email: student.email || "",
+      classGrade: student.classGrade || null,
+    }));
+
+    return successResponse({ students: transformedStudents });
+  },
+  ['admin', 'counselor', 'teacher', 'school-admin']
+);

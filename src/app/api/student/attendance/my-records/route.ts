@@ -1,18 +1,18 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { attendance, users } from "@/lib/db/schema";
 import { eq, and, desc, gte, lte } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
 
-// GET /api/student/attendance/my-records - Get own attendance records
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['student']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId, user } = authResult;
+/**
+ * GET /api/student/attendance/my-records - Get own attendance records
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId, user } = auth;
 
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get("startDate");
@@ -28,11 +28,13 @@ export async function GET(request: NextRequest) {
       conditions.push(lte(attendance.date, endDate));
     }
 
-    const records = await db.query.attendance.findMany({
-      where: and(...conditions),
-      orderBy: [desc(attendance.date)],
-      limit,
-    });
+    // Use db.select instead of db.query (neon-http compatible)
+    const records = await db
+      .select()
+      .from(attendance)
+      .where(and(...conditions))
+      .orderBy(desc(attendance.date))
+      .limit(limit);
 
     // Calculate statistics
     const stats = {
@@ -47,9 +49,7 @@ export async function GET(request: NextRequest) {
         : 0,
     };
 
-    return NextResponse.json({ records, stats });
-  } catch (error) {
-    logger.error("Attendance records fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch records" }, { status: 500 });
-  }
-}
+    return { records, stats };
+  },
+  ["student"]
+);

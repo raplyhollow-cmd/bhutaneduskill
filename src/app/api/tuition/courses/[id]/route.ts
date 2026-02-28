@@ -1,6 +1,6 @@
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
 import { tuitionCourses, users, tutors } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -46,91 +46,71 @@ const courseUpdateSchema = z.object({
 });
 
 // GET /api/tuition/courses/[id] - Get single course
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
+export const GET = createApiRoute<{ id: string }>(
+  async (request: NextRequest, auth, context) => {
+    const { id } = await context!.params!;
 
-    const { id } = await params;
-
-    const course = await db.query.tuitionCourses.findFirst({
-      where: eq(tuitionCourses.id, id),
-    });
+    const course = await db.select().from(tuitionCourses).where(eq(tuitionCourses.id, id)).limit(1).then(r => r[0]);
 
     if (!course) {
-      return NextResponse.json({ error: "Course not found" }, { status: 404 });
+      return { error: "Course not found", status: 404 };
     }
 
     // Get tutor info
     let tutorInfo: { name: string; id: string } | null = null;
     if (course.tutorId) {
-      const tutor = await db.query.tutors.findFirst({
-        where: eq(tutors.userId, course.tutorId),
-        with: {
-          user: true,
-        },
-      });
+      const [tutor] = await db
+        .select({
+          id: tutors.id,
+          userId: tutors.userId,
+          userFirstName: users.firstName,
+          userLastName: users.lastName,
+        })
+        .from(tutors)
+        .innerJoin(users, eq(tutors.userId, users.id))
+        .where(eq(tutors.userId, course.tutorId))
+        .limit(1);
 
       if (tutor) {
-        const userArray = tutor.user as unknown as { id: string; firstName: string | null; lastName: string | null }[] | undefined;
-        const user = userArray?.[0];
         tutorInfo = {
           id: tutor.id,
-          name: user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Tutor" : "Tutor",
+          name: `${tutor.userFirstName || ""} ${tutor.userLastName || ""}`.trim() || "Tutor",
         };
       }
     }
 
-    return NextResponse.json({
+    return {
       course: {
         ...course,
         tutorName: tutorInfo?.name,
         tutorDisplayId: tutorInfo?.id,
       },
-    });
-  } catch (error) {
-    logger.error("Course fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch course" }, { status: 500 });
-  }
-}
+    };
+  },
+  ['admin', 'school-admin', 'teacher']
+);
 
 // PATCH /api/tuition/courses/[id] - Update course
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { user: currentUser } = authResult;
+export const PATCH = createApiRoute<{ id: string }>(
+  async (request: NextRequest, auth, context) => {
+    const { user: currentUser } = auth;
 
-    const { id } = await params;
+    const { id } = await context!.params!;
     const body = await request.json();
 
     // Check if course exists
-    const existing = await db.query.tuitionCourses.findFirst({
-      where: eq(tuitionCourses.id, id),
-    });
+    const existing = await db.select().from(tuitionCourses).where(eq(tuitionCourses.id, id)).limit(1).then(r => r[0]);
 
     if (!existing) {
-      return NextResponse.json({ error: "Course not found" }, { status: 404 });
+      return { error: "Course not found", status: 404 };
     }
 
     // If updating tutor, verify tutor exists
     if (body.tutorId) {
-      const tutor = await db.query.tutors.findFirst({
-        where: eq(tutors.id, body.tutorId),
-      });
+      const tutor = await db.select().from(tutors).where(eq(tutors.id, body.tutorId)).limit(1).then(r => r[0]);
 
       if (!tutor) {
-        return NextResponse.json({ error: "Invalid tutor" }, { status: 400 });
+        return { error: "Invalid tutor", status: 400 };
       }
     }
 
@@ -168,41 +148,27 @@ export async function PATCH(
       .where(eq(tuitionCourses.id, id))
       .returning();
 
-    return NextResponse.json({ course: updated });
-  } catch (error) {
-    logger.error("Course update error:", error);
-    return NextResponse.json({ error: "Failed to update course" }, { status: 500 });
-  }
-}
+    return { course: updated };
+  },
+  ['admin', 'school-admin', 'teacher']
+);
 
 // DELETE /api/tuition/courses/[id] - Delete course
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { id } = await params;
+export const DELETE = createApiRoute<{ id: string }>(
+  async (request: NextRequest, auth, context) => {
+    const { id } = await context!.params!;
 
     // Check if course exists
-    const existing = await db.query.tuitionCourses.findFirst({
-      where: eq(tuitionCourses.id, id),
-    });
+    const existing = await db.select().from(tuitionCourses).where(eq(tuitionCourses.id, id)).limit(1).then(r => r[0]);
 
     if (!existing) {
-      return NextResponse.json({ error: "Course not found" }, { status: 404 });
+      return { error: "Course not found", status: 404 };
     }
 
     // Delete course (cascade will delete enrollments)
     await db.delete(tuitionCourses).where(eq(tuitionCourses.id, id));
 
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    logger.error("Course deletion error:", error);
-    return NextResponse.json({ error: "Failed to delete course" }, { status: 500 });
-  }
-}
+    return { success: true };
+  },
+  ['admin', 'school-admin']
+);

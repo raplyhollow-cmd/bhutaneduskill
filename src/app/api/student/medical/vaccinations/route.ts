@@ -1,21 +1,18 @@
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { vaccinationRecords } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 /**
  * GET /api/student/medical/vaccinations - Get vaccination records
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['student', 'parent', 'school-admin', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { user, userId } = authResult;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user, userId } = auth;
     const { searchParams } = new URL(request.url);
 
     let targetStudentId = userId;
@@ -27,17 +24,16 @@ export async function GET(request: NextRequest) {
       if (studentId) targetStudentId = studentId;
     }
 
-    const vaccinations = await db.query.vaccinationRecords.findMany({
-      where: eq(vaccinationRecords.studentId, targetStudentId),
-      orderBy: [desc(vaccinationRecords.administrationDate)],
-    });
+    const vaccinations = await db
+      .select()
+      .from(vaccinationRecords)
+      .where(eq(vaccinationRecords.studentId, targetStudentId))
+      .orderBy(desc(vaccinationRecords.administrationDate));
 
-    return NextResponse.json({
+    return {
       success: true,
       data: { vaccinations },
-    });
-  } catch (error) {
-    logger.error("Vaccination records fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch vaccination records" }, { status: 500 });
-  }
-}
+    };
+  },
+  ["student", "parent", "school-admin", "admin"]
+);

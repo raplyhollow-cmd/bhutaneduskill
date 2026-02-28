@@ -6,12 +6,9 @@ import { useUser } from "@clerk/nextjs";
 /**
  * UNIFIED AI ASSISTANT
  *
- * DISABLED: The AI assistant was causing hooks mismatch errors due to lazy loading
- * and conditional rendering. This component is temporarily disabled to fix the
- * "Rendered more hooks than during the previous render" error.
- *
- * TODO: Re-implement with a consistent render pattern that doesn't use lazy loading
- * or conditional returns that change the component tree structure.
+ * A stub component that logs user role information.
+ * The full AI assistant implementation is pending re-architecture
+ * to avoid React hooks ordering issues with lazy loading.
  */
 export function UnifiedAIAssistant() {
   const { isLoaded, isSignedIn } = useUser();
@@ -44,6 +41,7 @@ export function UnifiedAIAssistant() {
       });
   }, [isLoaded, isSignedIn]);
 
-  // Always render null consistently - no hooks mismatch
+  // This component currently renders nothing
+  // TODO: Re-implement AI assistant with proper architecture
   return null;
 }

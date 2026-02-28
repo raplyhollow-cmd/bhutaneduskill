@@ -65,12 +65,13 @@ export async function requestPayout() {
     const { eq, and } = await import("drizzle-orm");
 
     // Get all pending earnings
-    const pendingEarnings = await db.query.tutorEarnings.findMany({
-      where: and(
+    const pendingEarnings = await db
+      .select()
+      .from(tutorEarnings)
+      .where(and(
         eq(tutorEarnings.tutorId, tutorId),
         eq(tutorEarnings.payoutStatus, "pending")
-      ),
-    });
+      ));
 
     if (pendingEarnings.length === 0) {
       return { success: false, error: "No pending earnings to payout" };

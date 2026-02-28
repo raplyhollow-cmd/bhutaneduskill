@@ -1,66 +1,34 @@
-import { NextRequest, NextResponse } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
-import { schools, invoices, users } from "@/lib/db/schema";
+import { schools, invoices } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
-import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
 import { nanoid } from "nanoid";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
 
 // GET /api/admin/schools/[id]/invoices - Get all invoices for a school
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const authResult = await requireAuth(['admin']);
-  if ('error' in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } as ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
+export const GET = createApiRoute<{ id: string }>(
+  async (req, auth, context) => {
+    const { userId: adminId } = auth;
+    const { id: schoolId } = await (context?.params || Promise.resolve({ id: "" }));
 
-  const { userId: adminId } = authResult;
-  const { id: schoolId } = await params;
-
-  try {
     const schoolInvoices = await db
       .select()
       .from(invoices)
       .where(eq(invoices.schoolId, schoolId))
       .orderBy(desc(invoices.createdAt));
 
-    return NextResponse.json({
-      data: schoolInvoices,
-    } satisfies ApiSuccess<typeof schoolInvoices>);
-
-  } catch (error) {
-    logger.apiError(error, { route: `/api/admin/schools/${schoolId}/invoices`, method: 'GET', adminId });
-    return NextResponse.json(
-      { error: 'Failed to fetch invoices', status: 500 } as ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return { data: schoolInvoices };
+  },
+  ["admin"]
+);
 
 // POST /api/admin/schools/[id]/invoices - Generate a new invoice
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const authResult = await requireAuth(['admin']);
-  if ('error' in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } as ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
+export const POST = createApiRoute<{ id: string }>(
+  async (req, auth, context) => {
+    const { userId: adminId } = auth;
+    const { id: schoolId } = await (context?.params || Promise.resolve({ id: "" }));
 
-  const { userId: adminId } = authResult;
-  const { id: schoolId } = await params;
-
-  try {
-    const body = await request.json();
+    const body = await req.json();
     const { billingPeriodStart, billingPeriodEnd } = body;
 
     // Get school details
@@ -71,10 +39,7 @@ export async function POST(
       .limit(1);
 
     if (!school) {
-      return NextResponse.json(
-        { error: 'School not found', status: 404 } as ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: 'School not found', status: 404 };
     }
 
     // Generate invoice number
@@ -133,15 +98,7 @@ export async function POST(
       createdBy: adminId,
     });
 
-    return NextResponse.json({
-      data: invoice,
-    } satisfies ApiSuccess<typeof invoice>);
-
-  } catch (error) {
-    logger.apiError(error, { route: `/api/admin/schools/${schoolId}/invoices`, method: 'POST', adminId });
-    return NextResponse.json(
-      { error: 'Failed to generate invoice', status: 500 } as ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return { data: invoice };
+  },
+  ["admin"]
+);

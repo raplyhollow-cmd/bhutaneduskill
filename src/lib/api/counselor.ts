@@ -124,10 +124,12 @@ export async function getCurrentCounselorId() {
   const { userId } = authResult;  // Database userId
 
   // Get counselor record for this user
-  const counselor = await db.query.users.findFirst({
-    where: eq(users.id, userId),
-    columns: { id: true },
-  });
+  const counselor = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1)
+    .then(rows => rows[0] || null);
 
   return counselor?.id || null;
 }
@@ -143,13 +145,13 @@ export async function getCounselorStudents(counselorId: string | null): Promise<
 
   try {
     // Get school assignments for this counselor
-    const assignments = await db.query.counselorAssignments.findMany({
-      where: and(
+    const assignments = await db
+      .select({ schoolId: counselorAssignments.schoolId })
+      .from(counselorAssignments)
+      .where(and(
         eq(counselorAssignments.counselorId, counselorId),
         eq(counselorAssignments.isActive, true)
-      ),
-      columns: { schoolId: true },
-    });
+      ));
 
     const schoolIds = assignments.map((a) => a.schoolId);
 
@@ -158,44 +160,48 @@ export async function getCounselorStudents(counselorId: string | null): Promise<
     }
 
     // Get all students from assigned schools
-    const allStudents = await db.query.users.findMany({
-      where: and(
+    const allStudents = await db
+      .select()
+      .from(users)
+      .where(and(
         eq(users.type, "student"),
         sql`${users.schoolId} IN ${sql.placeholder("schoolIds")}`
-      ),
-      with: {
-        school: true,
-      },
-    });
+      ));
 
     // Get assessment data for each student
     const studentsWithData = await Promise.all(
       allStudents.map(async (student) => {
         // Get assessments
-        const studentAssessments = await db.query.assessments.findMany({
-          where: eq(assessments.userId, student.id),
-          columns: { status: true, type: true },
-        });
+        const studentAssessments = await db
+          .select({ status: assessments.status, type: assessments.type })
+          .from(assessments)
+          .where(eq(assessments.userId, student.id));
 
         const completedAssessments = studentAssessments.filter((a) => a.status === "completed").length;
         const inProgressAssessments = studentAssessments.some((a) => a.status === "in_progress");
 
         // Get career plan
-        const careerPlan = await db.query.careerPlans.findFirst({
-          where: eq(careerPlans.userId, student.id),
-          columns: { status: true, targetCareer: true },
-        });
+        const careerPlan = await db
+          .select({
+            status: careerPlans.status,
+            targetCareer: careerPlans.targetCareer,
+          })
+          .from(careerPlans)
+          .where(eq(careerPlans.userId, student.id))
+          .limit(1)
+          .then(rows => rows[0] || null);
 
         // Get attendance rate (last 30 days)
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-        const recentAttendance = await db.query.attendance.findMany({
-          where: and(
+        const recentAttendance = await db
+          .select()
+          .from(attendance)
+          .where(and(
             eq(attendance.studentId, student.id),
             gte(attendance.date, thirtyDaysAgo.toISOString().split("T")[0])
-          ),
-        });
+          ));
 
         const presentDays = recentAttendance.filter((a) => a.status === "present").length;
         const attendanceRate = recentAttendance.length > 0
@@ -211,8 +217,18 @@ export async function getCounselorStudents(counselorId: string | null): Promise<
         // Format last session (placeholder for now)
         const lastSession = "Not available";
 
-        const studentWithSchool = student as UserWithSchool;
-        const schoolName = studentWithSchool.school?.[0]?.name || null;
+        // Get school name if needed
+        let schoolName: string | null = null;
+        if (student.schoolId) {
+          const schoolData = await db
+            .select({ name: schools.name })
+            .from(schools)
+            .where(eq(schools.id, student.schoolId))
+            .limit(1)
+            .then(rows => rows[0] || null);
+          schoolName = schoolData?.name || null;
+        }
+
         return {
           id: student.id,
           name: `${student.firstName} ${student.lastName || ""}`.trim(),
@@ -248,12 +264,12 @@ export async function getCounselorStudents(counselorId: string | null): Promise<
 }
 
 export async function getStudentById(studentId: string) {
-  return await db.query.users.findFirst({
-    where: eq(users.id, studentId),
-    with: {
-      school: true,
-    },
-  });
+  return await db
+    .select()
+    .from(users)
+    .where(eq(users.id, studentId))
+    .limit(1)
+    .then(rows => rows[0] || null);
 }
 
 // ============================================================================
@@ -280,21 +296,26 @@ export async function getCounselorNotes(
       conditions.push(eq(counselorNotes.studentId, filters.studentId));
     }
 
-    const notes = await db.query.counselorNotes.findMany({
-      where: conditions.length === 1 ? conditions[0] : and(...conditions),
-      orderBy: [desc(counselorNotes.createdAt)],
-    });
+    const notes = await db
+      .select()
+      .from(counselorNotes)
+      .where(conditions.length === 1 ? conditions[0] : and(...conditions))
+      .orderBy(desc(counselorNotes.createdAt));
 
     // Enrich notes with student data
     const enrichedNotes = await Promise.all(
       notes.map(async (note) => {
-        const student = await db.query.users.findFirst({
-          where: eq(users.id, note.studentId),
-          columns: { firstName: true, lastName: true, classGrade: true },
-          with: {
-            school: true,
-          },
-        });
+        const student = await db
+          .select({
+            firstName: users.firstName,
+            lastName: users.lastName,
+            classGrade: users.classGrade,
+            schoolId: users.schoolId,
+          })
+          .from(users)
+          .where(eq(users.id, note.studentId))
+          .limit(1)
+          .then(rows => rows[0] || null);
 
         // Parse note for category and tags (stored as JSON or parsed from note text)
         let category = "general";
@@ -319,8 +340,18 @@ export async function getCounselorNotes(
           // Use defaults
         }
 
-        const studentWithSchool = student as UserWithSchool | undefined;
-        const schoolName = studentWithSchool?.school?.[0]?.name || null;
+        // Get school name for student if available
+        let schoolName: string | null = null;
+        if (student?.schoolId) {
+          const schoolData = await db
+            .select({ name: schools.name })
+            .from(schools)
+            .where(eq(schools.id, student.schoolId))
+            .limit(1)
+            .then(rows => rows[0] || null);
+          schoolName = schoolData?.name || null;
+        }
+
         return {
           id: note.id,
           counselorId: note.counselorId,
@@ -499,9 +530,10 @@ export async function getCounselorStats(counselorId: string | null) {
 
   const students = await getCounselorStudents(counselorId);
 
-  const notes = await db.query.counselorNotes.findMany({
-    where: eq(counselorNotes.counselorId, counselorId),
-  });
+  const notes = await db
+    .select()
+    .from(counselorNotes)
+    .where(eq(counselorNotes.counselorId, counselorId));
 
   return {
     totalStudents: students.length,

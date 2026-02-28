@@ -295,10 +295,11 @@ export function AutoSaveForm<T extends Record<string, unknown> = Record<string, 
       const allInputs = form.querySelectorAll('input, select, textarea')
       allInputs.forEach((input) => {
         // Only add listener if not already added
-        if (!(input as any).__autoSaveListener) {
+        const trackedInput = input as { __autoSaveListener?: boolean }
+        if (!trackedInput.__autoSaveListener) {
           input.addEventListener('input', handleInputChange)
           input.addEventListener('change', handleInputChange)
-          ;(input as any).__autoSaveListener = true
+          trackedInput.__autoSaveListener = true
         }
       })
     })
@@ -309,7 +310,8 @@ export function AutoSaveForm<T extends Record<string, unknown> = Record<string, 
     inputs.forEach((input) => {
       input.addEventListener('input', handleInputChange)
       input.addEventListener('change', handleInputChange)
-      ;(input as any).__autoSaveListener = true
+      const trackedInput = input as { __autoSaveListener?: boolean }
+      trackedInput.__autoSaveListener = true
     })
 
     return () => {

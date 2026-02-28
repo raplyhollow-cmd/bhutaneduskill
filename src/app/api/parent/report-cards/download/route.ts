@@ -4,31 +4,30 @@
  * SECURITY: FERPA COMPLIANCE
  * - Uses parent_to_student join table for verification
  * - Only allows download of verified children's report cards
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
 import { reportCards, users, parents, parentToStudent } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { aggregateReportCardData } from "@/lib/report-cards/aggregator";
 import { generateReportCardPDF } from "@/lib/report-cards/pdf-generator";
+import { createApiRoute } from "@/lib/api/route-handler";
 
-export async function POST(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["parent"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const POST = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId } = auth;
     const body = await req.json();
     const { reportCardId } = body;
 
     if (!reportCardId) {
-      return NextResponse.json({
+      return {
         success: false,
         error: "Report card ID is required",
-      }, { status: 400 });
+        status: 400,
+      };
     }
 
     // Fetch report card
@@ -39,10 +38,11 @@ export async function POST(req: NextRequest) {
       .limit(1);
 
     if (!reportCard) {
-      return NextResponse.json({
+      return {
         success: false,
         error: "Report card not found",
-      }, { status: 404 });
+        status: 404,
+      };
     }
 
     // FERPA COMPLIANCE: Get parent record first
@@ -54,10 +54,11 @@ export async function POST(req: NextRequest) {
 
     if (!parentRecord) {
       logger.warn("No parent record found for user", { userId });
-      return NextResponse.json({
+      return {
         success: false,
         error: "Parent record not found",
-      }, { status: 403 });
+        status: 403,
+      };
     }
 
     // FERPA COMPLIANCE: Verify parent-child relationship via parent_to_student join table
@@ -79,10 +80,11 @@ export async function POST(req: NextRequest) {
         reportCardId,
         route: "/api/parent/report-cards/download",
       });
-      return NextResponse.json({
+      return {
         success: false,
         error: "Access denied",
-      }, { status: 403 });
+        status: 403,
+      };
     }
 
     // Generate PDF
@@ -98,18 +100,13 @@ export async function POST(req: NextRequest) {
 
     logger.info("Parent downloaded report card", { userId, reportCardId });
 
-    return NextResponse.json({
+    return {
       success: true,
       data: {
         pdf: `data:application/pdf;base64,${base64}`,
         filename: `ReportCard_${reportCard.studentName}_${reportCard.term}_${reportCard.academicYear}.pdf`,
       },
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/parent/report-cards/download", method: "POST" });
-    return NextResponse.json({
-      success: false,
-      error: "Failed to download report card",
-    }, { status: 500 });
-  }
-}
+    };
+  },
+  ["parent"]
+);

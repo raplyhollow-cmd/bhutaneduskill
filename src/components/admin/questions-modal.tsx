@@ -100,7 +100,17 @@ export function QuestionsModal({ open, onClose, assessmentType, onSuccess }: Que
     setIsLoading(true);
     try {
       const data = await getAssessmentQuestions(assessmentType.id);
-      setQuestions(data);
+      // Map database question to component Question type
+      setQuestions(data.map((q: any) => ({
+        id: q.id,
+        questionText: q.questionText,
+        questionData: q.questionData as QuestionData | undefined,
+        options: q.options,
+        correctAnswer: q.correctAnswer,
+        points: q.points,
+        order: q.order,
+        isActive: q.isActive,
+      })));
     } catch (error) {
       logger.error("Failed to fetch questions:", error);
     } finally {

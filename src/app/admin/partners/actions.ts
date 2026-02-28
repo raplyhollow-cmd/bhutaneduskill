@@ -107,9 +107,11 @@ export async function getPartnerById(id: string): Promise<PartnerWithDetails> {
   const { userId } = authResult;
 
   try {
-    const partner = await db.query.partners.findFirst({
-      where: eq(partners.id, id),
-    });
+    const [partner] = await db
+      .select()
+      .from(partners)
+      .where(eq(partners.id, id))
+      .limit(1);
 
     if (!partner) {
       throw new Error("Partner not found");
@@ -473,9 +475,11 @@ export async function getPartnerPortalUsers(partnerId: string) {
 
   try {
     // Get partner info
-    const partner = await db.query.partners.findFirst({
-      where: eq(partners.id, partnerId),
-    });
+    const [partner] = await db
+      .select()
+      .from(partners)
+      .where(eq(partners.id, partnerId))
+      .limit(1);
 
     if (!partner) {
       throw new Error("Partner not found");
@@ -526,18 +530,22 @@ export async function grantPartnerPortalAccess(
 
   try {
     // Get partner info
-    const partner = await db.query.partners.findFirst({
-      where: eq(partners.id, partnerId),
-    });
+    const [partner] = await db
+      .select()
+      .from(partners)
+      .where(eq(partners.id, partnerId))
+      .limit(1);
 
     if (!partner) {
       throw new Error("Partner not found");
     }
 
     // Check if user already exists
-    const existingUser = await db.query.users.findFirst({
-      where: eq(users.email, userData.email),
-    });
+    const [existingUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, userData.email))
+      .limit(1);
 
     if (existingUser) {
       throw new Error("User with this email already exists");

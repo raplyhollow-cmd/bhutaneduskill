@@ -1,18 +1,16 @@
 /**
  * STUDENT CERTIFICATE API
  * Fetch module completion data and certificate information
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { moduleProgress, learningModules, users, schools } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-
-interface Params {
-  params: Promise<{ id: string }>;
-}
+import { createApiRoute } from "@/lib/api/route-handler";
 
 /**
  * Generate certificate number
@@ -36,18 +34,10 @@ function calculateGrade(score: number): string {
 }
 
 // GET /api/student/modules/[id]/certificate
-export async function GET(request: NextRequest, { params }: Params) {
-  try {
-    const authResult = await requireAuth(["student"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-    const { userId } = authResult;
-
-    const { id: moduleId } = await params;
+export const GET = createApiRoute<{ id: string }>(
+  async (request: NextRequest, auth, context) => {
+    const { userId } = auth;
+    const { id: moduleId } = await context!.params!;
 
     // Fetch module progress with related data
     const progressData = await db
@@ -95,10 +85,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       .limit(1);
 
     if (!progressData || progressData.length === 0) {
-      return NextResponse.json(
-        { error: "Not enrolled in this module" },
-        { status: 404 }
-      );
+      return { error: "Not enrolled in this module", status: 404 };
     }
 
     const progress = progressData[0];
@@ -107,21 +94,20 @@ export async function GET(request: NextRequest, { params }: Params) {
     const isEligibleForCertificate = progress.isCompleted === true || progress.progress === 100;
 
     if (!isEligibleForCertificate) {
-      return NextResponse.json(
-        { error: "Module not completed yet", isEligible: false },
-        { status: 400 }
-      );
+      return { error: "Module not completed yet", isEligible: false, status: 400 };
     }
 
-    // Fetch teacher name if teacherId exists
+    // Fetch teacher name if teacherId exists using db.select (neon-http compatible)
     let instructorName: string | undefined;
     if (progress.teacherId) {
-      const teacher = await db.query.users.findFirst({
-        where: eq(users.id, progress.teacherId),
-        columns: {
-          name: true,
-        },
-      });
+      const teacherResult = await db
+        .select({
+          name: users.name,
+        })
+        .from(users)
+        .where(eq(users.id, progress.teacherId))
+        .limit(1);
+      const teacher = teacherResult[0];
       instructorName = teacher?.name;
     }
 
@@ -186,12 +172,7 @@ export async function GET(request: NextRequest, { params }: Params) {
       certificateNumber,
     });
 
-    return NextResponse.json({ success: true, data });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/student/modules/[id]/certificate", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch certificate data" },
-      { status: 500 }
-    );
-  }
-}
+    return { success: true, data };
+  },
+  ["student"]
+);

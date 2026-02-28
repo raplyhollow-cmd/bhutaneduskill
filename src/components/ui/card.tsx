@@ -85,8 +85,9 @@ function Card({ className, asChild, children, variant = "default", size = "defau
   const tokenStyles = getCardStyles(variant, size)
 
   if (asChild) {
-    const child = React.Children.only(children) as React.ReactElement & { props?: { className?: string } };
+    const child = React.Children.only(children) as React.ReactElement & { props?: { className?: string; style?: React.CSSProperties } };
     const childClassName = child.props?.className || "";
+    const childStyle = child.props?.style || {};
     return React.cloneElement(child, {
       className: cn(
         cardVariants({ variant, size }),
@@ -95,7 +96,7 @@ function Card({ className, asChild, children, variant = "default", size = "defau
         className,
         childClassName
       ),
-      style: { ...tokenStyles, ...style as React.CSSProperties },
+      style: { ...tokenStyles, ...childStyle, ...(style as React.CSSProperties) },
       ...props
     });
   }

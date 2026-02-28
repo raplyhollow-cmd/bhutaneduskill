@@ -3,33 +3,27 @@
  * Handles per-school inventory settings and configuration
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { inventorySettings } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { logger } from "@/lib/logger";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 // ============================================================================
 // GET /api/inventory/settings - Get inventory settings for school
 // ============================================================================
 
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { user, userId } = authResult;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user, userId } = auth;
 
     // Get settings for user's school
-    let settings = await db.query.inventorySettings.findFirst({
-      where: eq(inventorySettings.schoolId, user.schoolId || ""),
-    });
+    let [settings] = await db
+      .select()
+      .from(inventorySettings)
+      .where(eq(inventorySettings.schoolId, user.schoolId || ""))
+      .limit(1);
 
     // If settings don't exist, create default settings
     if (!settings) {
@@ -65,18 +59,10 @@ export async function GET(request: NextRequest) {
 
     logger.info("Fetched inventory settings", { userId, schoolId: user.schoolId });
 
-    return NextResponse.json({
-      data: settings,
-      message: "Settings fetched successfully",
-    } satisfies ApiSuccess<typeof settings>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/inventory/settings", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch settings", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return { settings };
+  },
+  ['admin']
+);
 
 // ============================================================================
 // PATCH /api/inventory/settings - Update inventory settings
@@ -99,23 +85,18 @@ interface UpdateSettingsInput {
   alertEmails?: string[];
 }
 
-export async function PATCH(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { user, userId } = authResult;
+export const PATCH = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user, userId } = auth;
 
     const data: UpdateSettingsInput = await request.json();
 
     // Get existing settings
-    let settings = await db.query.inventorySettings.findFirst({
-      where: eq(inventorySettings.schoolId, user.schoolId || ""),
-    });
+    let [settings] = await db
+      .select()
+      .from(inventorySettings)
+      .where(eq(inventorySettings.schoolId, user.schoolId || ""))
+      .limit(1);
 
     // If settings don't exist, create them first
     if (!settings) {
@@ -185,15 +166,7 @@ export async function PATCH(request: NextRequest) {
 
     logger.info("Updated inventory settings", { userId, settingsId: settings.id });
 
-    return NextResponse.json({
-      data: updatedSettings,
-      message: "Settings updated successfully",
-    } satisfies ApiSuccess<typeof updatedSettings>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/inventory/settings", method: "PATCH" });
-    return NextResponse.json(
-      { error: "Failed to update settings", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return { settings: updatedSettings };
+  },
+  ['admin']
+);

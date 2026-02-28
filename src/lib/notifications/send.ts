@@ -109,8 +109,8 @@ export async function notifyHomeworkDue(options: {
   dueDate: Date;
   actionUrl?: string;
 }): Promise<SendNotificationResult> {
-  const dueDateStr = dueDate.toLocaleDateString();
-  const isUrgent = dueDate.getTime() - Date.now() < 86400000; // Due within 24 hours
+  const dueDateStr = options.dueDate.toLocaleDateString();
+  const isUrgent = options.dueDate.getTime() - Date.now() < 86400000; // Due within 24 hours
 
   return sendNotification({
     userId: options.studentId,
@@ -133,7 +133,7 @@ export async function notifyAssessmentPosted(options: {
   dueDate: Date;
   actionUrl?: string;
 }): Promise<SendNotificationResult> {
-  const dueDateStr = dueDate.toLocaleDateString();
+  const dueDateStr = options.dueDate.toLocaleDateString();
 
   return sendNotification({
     userIds: options.studentIds,
@@ -448,9 +448,12 @@ export async function shouldSendNotification(
   type: NotificationType
 ): Promise<boolean> {
   try {
-    const userSettings = await db.query.userNotificationSettings.findFirst({
-      where: eq(userNotificationSettings.userId, userId),
-    });
+    const userSettings = await db
+      .select()
+      .from(userNotificationSettings)
+      .where(eq(userNotificationSettings.userId, userId))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!userSettings) {
       return true; // Default to sending if no settings

@@ -233,7 +233,7 @@ export default function StudentMedicalPage() {
       )}
 
       {/* Main Content */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "visits" | "vaccinations" | "allergies")}>
         <TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-3">
           <TabsTrigger value="visits">Visit History</TabsTrigger>
           <TabsTrigger value="vaccinations">Vaccinations</TabsTrigger>

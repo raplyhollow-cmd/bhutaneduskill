@@ -1,14 +1,17 @@
 /**
  * Asset Maintenance API
  * Handles asset maintenance schedules and records
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { assetMaintenance, inventoryItems, inventoryVendors } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse, notFoundResponse } from "@/lib/api/response-helpers";
 import type { ApiSuccess, ApiErrorResponse, Pagination } from "@/types";
 
 interface PaginatedData<T> {
@@ -16,22 +19,44 @@ interface PaginatedData<T> {
   pagination: Pagination;
 }
 
+interface CreateMaintenanceInput {
+  itemId: string;
+  itemName: string;
+  maintenanceType: string;
+  description: string;
+  scheduledDate?: string;
+  estimatedCost?: number;
+  vendorId?: string;
+  vendorName?: string;
+  performedBy?: string;
+}
+
+interface UpdateMaintenanceInput {
+  id: string;
+  scheduledDate?: string;
+  completedDate?: string;
+  nextMaintenanceDate?: string;
+  actualCost?: number;
+  status?: string;
+  workPerformed?: string;
+  partsReplaced?: Array<{
+    partName: string;
+    partNumber: string;
+    quantity: number;
+    cost: number;
+  }>;
+  reportUrls?: string[];
+  invoiceUrls?: string[];
+}
+
 // ============================================================================
 // GET /api/inventory/maintenance - List maintenance records
 // ============================================================================
 
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { user, userId } = authResult;
-
-    const { searchParams } = new URL(request.url);
+export const GET = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { user, userId } = auth;
+    const { searchParams } = new URL(req.url);
     const page = Math.max(1, Number(searchParams.get("page")) || 1);
     const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 20));
     const status = searchParams.get("status") || "";
@@ -117,68 +142,37 @@ export async function GET(request: NextRequest) {
 
     logger.info("Fetched maintenance records", { userId, count: records.length });
 
-    return NextResponse.json({
-      data: {
-        items: recordsWithDetails,
-        pagination,
-      },
-    } satisfies ApiSuccess<PaginatedData<typeof recordsWithDetails[0]>>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/inventory/maintenance", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch maintenance records", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return successResponse({
+      items: recordsWithDetails,
+      pagination,
+    } satisfies PaginatedData<typeof recordsWithDetails[0]>);
+  },
+  ["admin"]
+);
 
 // ============================================================================
 // POST /api/inventory/maintenance - Create maintenance record
 // ============================================================================
 
-interface CreateMaintenanceInput {
-  itemId: string;
-  itemName: string;
-  maintenanceType: string;
-  description: string;
-  scheduledDate?: string;
-  estimatedCost?: number;
-  vendorId?: string;
-  vendorName?: string;
-  performedBy?: string;
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { user, userId } = authResult;
-
-    const data: CreateMaintenanceInput = await request.json();
+export const POST = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { user, userId } = auth;
+    const data: CreateMaintenanceInput = await req.json();
 
     // Validate required fields
     if (!data.itemId || !data.maintenanceType || !data.description) {
-      return NextResponse.json(
-        { error: "Missing required fields: itemId, maintenanceType, description", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("Missing required fields: itemId, maintenanceType, description");
     }
 
     // Check if item exists
-    const item = await db.query.inventoryItems.findFirst({
-      where: eq(inventoryItems.id, data.itemId),
-    });
+    const [item] = await db
+      .select()
+      .from(inventoryItems)
+      .where(eq(inventoryItems.id, data.itemId))
+      .limit(1);
 
     if (!item) {
-      return NextResponse.json(
-        { error: "Item not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return notFoundResponse("Item");
     }
 
     const now = new Date();
@@ -187,9 +181,11 @@ export async function POST(request: NextRequest) {
     // If vendor provided, fetch vendor name
     let vendorName = data.vendorName;
     if (data.vendorId && !vendorName) {
-      const vendor = await db.query.inventoryVendors.findFirst({
-        where: eq(inventoryVendors.id, data.vendorId),
-      });
+      const [vendor] = await db
+        .select()
+        .from(inventoryVendors)
+        .where(eq(inventoryVendors.id, data.vendorId))
+        .limit(1);
       vendorName = vendor?.name;
     }
 
@@ -225,71 +221,36 @@ export async function POST(request: NextRequest) {
 
     logger.info("Created maintenance record", { userId, maintenanceId, itemId: data.itemId });
 
-    return NextResponse.json({
-      data: newMaintenance,
+    return successResponse({
+      maintenance: newMaintenance,
       message: "Maintenance record created successfully",
-    } satisfies ApiSuccess<typeof newMaintenance>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/inventory/maintenance", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to create maintenance record", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    });
+  },
+  ["admin"]
+);
 
 // ============================================================================
 // PATCH /api/inventory/maintenance - Update maintenance record
 // ============================================================================
 
-interface UpdateMaintenanceInput {
-  id: string;
-  scheduledDate?: string;
-  completedDate?: string;
-  nextMaintenanceDate?: string;
-  actualCost?: number;
-  status?: string;
-  workPerformed?: string;
-  partsReplaced?: Array<{
-    partName: string;
-    partNumber: string;
-    quantity: number;
-    cost: number;
-  }>;
-  reportUrls?: string[];
-  invoiceUrls?: string[];
-}
-
-export async function PATCH(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { userId } = authResult;
-
-    const data: UpdateMaintenanceInput = await request.json();
+export const PATCH = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId } = auth;
+    const data: UpdateMaintenanceInput = await req.json();
 
     if (!data.id) {
-      return NextResponse.json(
-        { error: "Maintenance ID is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("Maintenance ID is required");
     }
 
     // Check if record exists
-    const existingRecord = await db.query.assetMaintenance.findFirst({
-      where: eq(assetMaintenance.id, data.id),
-    });
+    const [existingRecord] = await db
+      .select()
+      .from(assetMaintenance)
+      .where(eq(assetMaintenance.id, data.id))
+      .limit(1);
 
     if (!existingRecord) {
-      return NextResponse.json(
-        { error: "Maintenance record not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return notFoundResponse("Maintenance record");
     }
 
     const now = new Date();
@@ -335,76 +296,49 @@ export async function PATCH(request: NextRequest) {
 
     logger.info("Updated maintenance record", { userId, maintenanceId: data.id });
 
-    return NextResponse.json({
-      data: updatedRecord,
+    return successResponse({
+      maintenance: updatedRecord,
       message: "Maintenance record updated successfully",
-    } satisfies ApiSuccess<typeof updatedRecord>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/inventory/maintenance", method: "PATCH" });
-    return NextResponse.json(
-      { error: "Failed to update maintenance record", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    });
+  },
+  ["admin"]
+);
 
 // ============================================================================
 // DELETE /api/inventory/maintenance - Delete maintenance record
 // ============================================================================
 
-export async function DELETE(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { userId } = authResult;
-
-    const { searchParams } = new URL(request.url);
+export const DELETE = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId } = auth;
+    const { searchParams } = new URL(req.url);
     const maintenanceId = searchParams.get("id");
 
     if (!maintenanceId) {
-      return NextResponse.json(
-        { error: "Maintenance ID is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("Maintenance ID is required");
     }
 
     // Check if record exists
-    const existingRecord = await db.query.assetMaintenance.findFirst({
-      where: eq(assetMaintenance.id, maintenanceId),
-    });
+    const [existingRecord] = await db
+      .select()
+      .from(assetMaintenance)
+      .where(eq(assetMaintenance.id, maintenanceId))
+      .limit(1);
 
     if (!existingRecord) {
-      return NextResponse.json(
-        { error: "Maintenance record not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return notFoundResponse("Maintenance record");
     }
 
     // Only allow deletion of scheduled records
     if (existingRecord.status !== "scheduled") {
-      return NextResponse.json(
-        { error: "Cannot delete completed maintenance records", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return errorResponse("Cannot delete completed maintenance records", 400);
     }
 
     await db.delete(assetMaintenance).where(eq(assetMaintenance.id, maintenanceId));
 
     logger.info("Deleted maintenance record", { userId, maintenanceId });
 
-    return NextResponse.json({
-      data: { message: "Maintenance record deleted successfully" },
-    } satisfies ApiSuccess<{ message: string }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/inventory/maintenance", method: "DELETE" });
-    return NextResponse.json(
-      { error: "Failed to delete maintenance record", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return successResponse({ message: "Maintenance record deleted successfully" });
+  },
+  ["admin"]
+);

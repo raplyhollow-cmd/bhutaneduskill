@@ -143,9 +143,16 @@ export function GradingPanel({
     try {
       const results = gradeHomework(
         questions.map((q) => ({
-          ...q,
+          id: q.id,
+          type: q.type as "multiple_choice" | "true_false" | "fill_blank" | "short_answer" | "essay" | "numeric" | "math_expression" | "match_following",
+          question: q.question,
+          options: q.options,
           correctAnswer: q.correctAnswer,
-        })) as any,
+          points: q.points,
+          tolerance: q.tolerance,
+          keywords: q.keywords,
+          explanation: q.explanation,
+        })),
         submission.answers,
         submission.metadata
       );
@@ -618,7 +625,7 @@ export function GradingPanel({
                           onSave={async (feedback) => saveFeedback(currentQuestion.id, feedback)}
                           onChange={(feedback) => updateFeedback(currentQuestion.id, feedback)}
                           placeholder="Click to add feedback for the student..."
-                          className="max-w-lg"
+                          inputClassName="max-w-lg"
                           editLabel="Edit feedback"
                         />
                       </div>

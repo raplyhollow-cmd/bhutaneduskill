@@ -1,26 +1,20 @@
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
 import { studentFees, users, feeStructures } from "@/lib/db/schema";
-import { eq, and, lte, desc } from "drizzle-orm";
+import { eq, and, lte, desc, sql } from "drizzle-orm";
 
 // GET /api/school-admin/fees/defaulters - List fee defaulters
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { user } = authResult;
+export const GET = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { user } = auth;
 
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(req.url);
     const overdueOnly = searchParams.get("overdueOnly") === "true";
 
-    const currentUser = user;
-
     let conditions = [
-      eq(studentFees.schoolId, currentUser.schoolId),
+      eq(studentFees.schoolId, user.schoolId),
     ];
 
     // Add overdue condition if requested
@@ -30,15 +24,19 @@ export async function GET(request: NextRequest) {
     }
 
     // Get pending/partial fee records
-    const defaulters = await db.query.studentFees.findMany({
-      where: and(...conditions, eq(studentFees.schoolId, currentUser.schoolId)),
-    });
+    const defaulters = await db
+      .select()
+      .from(studentFees)
+      .where(and(...conditions, eq(studentFees.schoolId, user.schoolId)));
 
     // Get student names separately
     const studentIds = [...new Set(defaulters.map((df) => df.studentId))];
-    const studentRecords = studentIds.length > 0 ? await db.query.users.findMany({
-      where: eq(users.id, studentIds[0]), // Get first student - will need proper IN clause
-    }) : [];
+    const studentRecords = studentIds.length > 0
+      ? await db
+          .select()
+          .from(users)
+          .where(sql`${users.id} = ANY(${studentIds})`)
+      : [];
 
     // Create a map for quick lookup
     const studentMap = new Map(studentRecords.map((s) => [s.id, s]));
@@ -68,9 +66,7 @@ export async function GET(request: NextRequest) {
       overdueCount: defaulterList.filter(d => d.overdueDays > 0).length,
     };
 
-    return NextResponse.json({ defaulters: defaulterList, summary });
-  } catch (error: unknown) {
-    logger.error("Defaulters fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch defaulters" }, { status: 500 });
-  }
-}
+    return { defaulters: defaulterList, summary };
+  },
+  ["admin", "school-admin"]
+);

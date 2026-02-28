@@ -6,7 +6,8 @@ import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, errorResponse } from "@/lib/api/response-helpers";
 import { logger } from "@/lib/logger";
 import { gradeHomework } from "@/lib/auto-grading";
-import type { HomeworkQuestionWithAnswer, StudentHomeworkData, DraftAnswer } from "@/types";
+import { requirePermission } from "@/lib/rbac";
+import type { HomeworkQuestionWithAnswer, StudentHomeworkData, DraftAnswer, HomeworkContent } from "@/types";
 
 /**
  * Gradable question for auto-grading
@@ -39,33 +40,56 @@ interface GradingResult {
  */
 interface HomeworkWithTeacher {
   id: string;
-  teacherId: string;
+  classId?: string;
+  subjectId?: string;
+  teacherId?: string;
   title: string;
-  isPublished: boolean;
+  description?: string;
+  subject?: string;
+  isPublished?: boolean;
   dueDate: Date | string;
-  questions?: GradableQuestion[];
+  questions?: GradableQuestion[] | unknown[];
+  maxScore?: number;
+  allowLateSubmission?: boolean;
+  content?: Record<string, unknown>;
   [key: string]: unknown;
 }
 
 /**
- * Submission data structure
+ * Homework submission record from database
  */
-interface SubmissionData {
+interface HomeworkSubmissionRecord {
+  id: string;
   homeworkId: string;
   studentId: string;
-  answers: Record<string, unknown>;
-  attachments: unknown[];
-  textAnswers: Record<string, string>;
-  isLate: boolean;
-  submittedAt: Date;
   status: string;
-  score?: number;
-  maxScore?: number;
-  percentage?: number;
-  gradedBy?: string;
-  gradedAt?: Date;
-  feedback?: string;
-  questionFeedback?: unknown[];
+  content?: HomeworkContent;
+  score?: number | null;
+  feedback?: string | null;
+  submittedAt?: Date | string | null;
+  gradedAt?: Date | string | null;
+  isLate?: boolean;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  [key: string]: unknown;
+}
+
+/**
+ * Submission data structure (matches DB schema)
+ */
+interface SubmissionDataDB {
+  homeworkId: string;
+  studentId: string;
+  submittedAt: Date;
+  content: HomeworkContent;
+  gradedAt: Date;
+  score: number;
+  feedback: string;
+  status: string;
+  isLate: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  [key: string]: unknown;
 }
 
 // GET /api/student/homework/[id] - Get homework details
@@ -79,32 +103,34 @@ export const GET = createApiRoute(
       const permCheck = await requirePermission(userId, "homework.read");
       if (permCheck) return permCheck;
 
-      const homeworkData = await db.query.homework.findFirst({
-        where: eq(homework.id, id),
-        with: {
-          class: true,
-          subject: true,
-          teacher: {
-            columns: {
-              id: true,
-              firstName: true,
-              lastName: true,
-            },
-          },
-        },
-      });
+      // Use db.select() instead of db.query
+      const homeworkRecords = await db
+        .select()
+        .from(homework)
+        .where(eq(homework.id, id))
+        .limit(1);
+
+      if (!homeworkRecords || homeworkRecords.length === 0) {
+        return errorResponse("Homework not found", 404);
+      }
+
+      const homeworkData = homeworkRecords[0] as HomeworkWithTeacher;
 
       if (!homeworkData) {
         return errorResponse("Homework not found", 404);
       }
 
       // Get existing submission if any
-      const submission = await db.query.homeworkSubmissions.findFirst({
-        where: and(
+      const submissionRecords = await db
+        .select()
+        .from(homeworkSubmissions)
+        .where(and(
           eq(homeworkSubmissions.homeworkId, id),
           eq(homeworkSubmissions.studentId, currentUser.id)
-        ),
-      });
+        ))
+        .limit(1);
+
+      const submission = submissionRecords[0];
 
       return successResponse({
         homework: homeworkData,
@@ -134,19 +160,19 @@ export const POST = createApiRoute(
       const { answers, attachments, textAnswers, integrityMetadata } = body;
 
       // Get homework details using db.select() instead of db.query
-      const homeworkData = await db
+      const hwData = await db
         .select()
         .from(homework)
         .where(eq(homework.id, id))
-        .limit(1) as HomeworkWithTeacher[] | null;
+        .limit(1);
 
-      if (!homeworkData || homeworkData.length === 0) {
+      if (!hwData || hwData.length === 0) {
         return errorResponse("Homework not found", 404);
       }
 
-      const homework = homeworkData[0];
+      const hwRecord = hwData[0] as HomeworkWithTeacher;
 
-      if (!homework.isPublished) {
+      if (!hwRecord.isPublished) {
         return errorResponse("Homework is not published", 400);
       }
 
@@ -165,15 +191,15 @@ export const POST = createApiRoute(
       }
 
       const now = new Date();
-      const dueDate = new Date(homework.dueDate);
+      const dueDate = new Date(hwRecord.dueDate);
       const isLate = now > dueDate;
 
       // Auto-grade if questions exist (filter out unsupported question types)
       let gradingResult: GradingResult | null = null;
-      if (homework.questions && homework.questions.length > 0) {
+      if (hwRecord.questions && hwRecord.questions.length > 0) {
         // Only grade questions with supported types
         const supportedTypes = ["multiple_choice", "true_false", "fill_blank", "short_answer", "essay", "numeric", "math_expression", "match_following"];
-        const gradableQuestions = homework.questions
+        const gradableQuestions = hwRecord.questions
           .filter((q: { type: string }) => supportedTypes.includes(q.type))
           .map((q: GradableQuestion) => ({
             id: q.id,
@@ -189,7 +215,7 @@ export const POST = createApiRoute(
 
         if (gradableQuestions.length > 0) {
           gradingResult = gradeHomework(
-            gradableQuestions,
+            gradableQuestions as any[],
             answers || [],
             integrityMetadata
           ) as GradingResult;
@@ -197,38 +223,39 @@ export const POST = createApiRoute(
       }
 
       // Prepare submission data
-      const submissionData: SubmissionData = {
-        homeworkId: id,
-        studentId: currentUser.id,
+      // Prepare submission content
+      const content: HomeworkContent = {
         answers: answers || {},
         attachments: attachments || [],
-        textAnswers,
-        isLate,
-        submittedAt: now,
-        status: "submitted",
+        textAnswers: textAnswers || {},
+        integrityMetadata,
       };
 
-      // Add grading results if available
+      // Add grading results to content if available
       if (gradingResult) {
-        submissionData.score = gradingResult.totalScore;
-        submissionData.maxScore = gradingResult.maxScore;
-        submissionData.percentage = gradingResult.percentage;
-
-        // If no manual review needed, auto-grade
-        if (!gradingResult.needsReview) {
-          submissionData.status = "graded";
-          submissionData.gradedBy = homework.teacherId;
-          submissionData.gradedAt = now;
-          submissionData.feedback = "Auto-graded";
-          submissionData.questionFeedback = gradingResult.results;
-        }
+        (content as Record<string, unknown>).questionFeedback = gradingResult.results;
+        (content as Record<string, unknown>).gradingResult = gradingResult;
       }
+
+      const submissionData: SubmissionDataDB = {
+        homeworkId: id,
+        studentId: currentUser.id,
+        submittedAt: now,
+        content,
+        gradedAt: now,
+        score: gradingResult?.totalScore || 0,
+        feedback: gradingResult && !gradingResult.needsReview ? "Auto-graded" : "",
+        status: gradingResult && !gradingResult.needsReview ? "graded" : "submitted",
+        isLate,
+        createdAt: now,
+        updatedAt: now,
+      };
 
       if (existingSubmission.length > 0) {
         // Update existing draft
         const [updated] = await db
           .update(homeworkSubmissions)
-          .set(submissionData)
+          .set(submissionData as Record<string, unknown>)
           .where(eq(homeworkSubmissions.id, existingSubmission[0].id))
           .returning();
 
@@ -239,9 +266,17 @@ export const POST = createApiRoute(
           .insert(homeworkSubmissions)
           .values({
             id: `sub_${Date.now()}`,
-            ...submissionData,
-            createdAt: now,
-            updatedAt: now,
+            homeworkId: submissionData.homeworkId,
+            studentId: submissionData.studentId,
+            submittedAt: submissionData.submittedAt,
+            content: submissionData.content,
+            gradedAt: submissionData.gradedAt,
+            score: submissionData.score,
+            feedback: submissionData.feedback,
+            status: submissionData.status,
+            isLate: submissionData.isLate,
+            createdAt: submissionData.createdAt,
+            updatedAt: submissionData.updatedAt,
           })
           .returning();
 
@@ -283,22 +318,28 @@ export const PUT = createApiRoute(
         return errorResponse("No draft found", 404);
       }
 
-      const submission = existingSubmission[0];
+      const submission = existingSubmission[0] as HomeworkSubmissionRecord;
 
       if (submission.status !== "draft") {
         return errorResponse("Cannot update submitted homework", 400);
       }
 
+      const existingContent = (submission.content as HomeworkContent) || {};
+      const updatedContent: HomeworkContent = {
+        ...existingContent,
+        answers: answers || existingContent.answers || {},
+        attachments: attachments || existingContent.attachments || [],
+        textAnswers: textAnswers || existingContent.textAnswers || {},
+      };
+
       const updatedData = {
-        answers: answers || (submission.answers as Record<string, unknown>),
-        attachments: attachments || (submission.attachments as unknown[]),
-        textAnswers: textAnswers || (submission.textAnswers as Record<string, string>),
+        content: updatedContent,
         updatedAt: new Date(),
       };
 
       const [updated] = await db
         .update(homeworkSubmissions)
-        .set(updatedData)
+        .set(updatedData as Record<string, unknown>)
         .where(eq(homeworkSubmissions.id, submission.id))
         .returning();
 

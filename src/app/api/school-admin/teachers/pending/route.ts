@@ -1,9 +1,19 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+/**
+ * SCHOOL ADMIN TEACHERS PENDING API
+ *
+ * GET - Fetch pending teachers for the school admin's school
+ * POST - Approve or reject a teacher application
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users, teacherApplications } from "@/lib/db/schema";
 import { eq, and, desc, or, notInArray } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse } from "@/lib/api/response-helpers";
 
 /**
  * GET - Fetch pending teachers for the school admin's school
@@ -11,24 +21,12 @@ import { logger } from "@/lib/logger";
  * 1. Teachers with pending teacher applications
  * 2. Teachers with pending_enrollment or pending_approval status (even without application record)
  */
-export async function GET(req: Request) {
-  try {
-    const authResult = await requireAuth(['school-admin']);
-
-    if ('error' in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: 401 }
-      );
-    }
-
-    const { userId, user } = authResult;
+export const GET = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId, user } = auth;
 
     if (!user.schoolId) {
-      return NextResponse.json(
-        { error: "No school associated with your account" },
-        { status: 400 }
-      );
+      return errorResponse("No school associated with your account", 400);
     }
 
     // First, get all teacher applications for this school
@@ -133,49 +131,27 @@ export async function GET(req: Request) {
       total: allPendingTeachers.length,
     });
 
-    return NextResponse.json({
-      data: { applications: allPendingTeachers },
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/teachers/pending", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch applications" },
-      { status: 500 }
-    );
-  }
-}
+    return successResponse({ applications: allPendingTeachers });
+  },
+  ['school-admin']
+);
 
 /**
  * POST - Approve or reject a teacher application
  */
-export async function POST(req: Request) {
-  try {
-    const authResult = await requireAuth(['school-admin']);
-
-    if ('error' in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: 401 }
-      );
-    }
-
-    const { userId, user } = authResult;
+export const POST = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId, user } = auth;
 
     if (!user.schoolId) {
-      return NextResponse.json(
-        { error: "No school associated with your account" },
-        { status: 400 }
-      );
+      return errorResponse("No school associated with your account", 400);
     }
 
     const body = await req.json();
     const { action, applicationId, reason } = body;
 
     if (!action || !applicationId) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
+      return badRequestResponse("Missing required fields");
     }
 
     const now = new Date();
@@ -196,10 +172,7 @@ export async function POST(req: Request) {
       if (application) {
         // This is a real application - update it
         if (application.status !== "pending") {
-          return NextResponse.json(
-            { error: "Application has already been processed" },
-            { status: 400 }
-          );
+          return errorResponse("Application has already been processed", 400);
         }
 
         await db
@@ -251,24 +224,16 @@ export async function POST(req: Request) {
         });
       }
 
-      return NextResponse.json({
-        data: { message: "Teacher application approved successfully" },
-      });
+      return successResponse({ message: "Teacher application approved successfully" });
     } else if (action === "reject") {
       if (!reason || !reason.trim()) {
-        return NextResponse.json(
-          { error: "Rejection reason is required" },
-          { status: 400 }
-        );
+        return badRequestResponse("Rejection reason is required");
       }
 
       if (application) {
         // This is a real application - update it
         if (application.status !== "pending") {
-          return NextResponse.json(
-            { error: "Application has already been processed" },
-            { status: 400 }
-          );
+          return errorResponse("Application has already been processed", 400);
         }
 
         await db
@@ -322,20 +287,10 @@ export async function POST(req: Request) {
         });
       }
 
-      return NextResponse.json({
-        data: { message: "Teacher application rejected" },
-      });
+      return successResponse({ message: "Teacher application rejected" });
     } else {
-      return NextResponse.json(
-        { error: "Invalid action" },
-        { status: 400 }
-      );
+      return badRequestResponse("Invalid action");
     }
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/teachers/pending", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to process application" },
-      { status: 500 }
-    );
-  }
-}
+  },
+['school-admin']
+);

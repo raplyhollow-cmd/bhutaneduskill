@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createApiRoute } from "@/lib/api/route-handler";
+import { requireAuth } from "@/lib/auth-utils";
 import { chatWithGemini } from "@/lib/ai/gemini-server";
 import { RUB_PREDICTOR_SYSTEM } from "@/lib/ai/prompts";
 import { safeTrackAIInteraction, AI_FEATURE_IDS } from "@/lib/ai/track-interaction";
@@ -154,7 +155,7 @@ export interface SubjectMarks {
   [key: string]: number | undefined;
 }
 
-export interface RUBPredictorRequest {
+export interface RUBPredictorRequest extends Record<string, unknown> {
   class10Marks?: SubjectMarks;
   class12Marks?: SubjectMarks;
   subjectCombination?: string;
@@ -203,12 +204,11 @@ export interface RUBPredictorResponse {
 // POST - Predict RUB Admission
 // ============================================================================
 
-export const POST = createApiRoute<RUBPredictorRequest, RUBPredictorResponse>(
-  async (request) => {
-    const auth = await requireAuth([]);
+export const POST = createApiRoute(
+  async (req, auth) => {
     const { userId } = auth;
 
-    const body = await request.json() as RUBPredictorRequest;
+    const body = await req.json() as RUBPredictorRequest;
     const requestData = body;
 
     const {
@@ -529,24 +529,29 @@ function generateDefaultRecommendations(predictions: CollegePrediction[], aggreg
 // GET - Check availability
 // ============================================================================
 
-export async function GET() {
-  return NextResponse.json({
-    available: true,
-    feature: "AI RUB Admission Predictor",
-    description: "ML-powered admission predictions for Royal University of Bhutan colleges",
-    requiresAuth: true,
-    inputFields: [
-      "class10Marks",
-      "class12Marks",
-      "subjectCombination",
-      "preferredPrograms",
-      "stream",
-    ],
-    colleges: RUB_COLLEGES.map((c) => ({
-      code: c.code,
-      name: c.name,
-      programs: c.programs.length,
-      minAggregate: c.minAggregate,
-    })),
-  });
-}
+export const GET = createApiRoute(
+  async () => {
+    return {
+      data: {
+        available: true,
+        feature: "AI RUB Admission Predictor",
+        description: "ML-powered admission predictions for Royal University of Bhutan colleges",
+        requiresAuth: true,
+        inputFields: [
+          "class10Marks",
+          "class12Marks",
+          "subjectCombination",
+          "preferredPrograms",
+          "stream",
+        ],
+        colleges: RUB_COLLEGES.map((c) => ({
+          code: c.code,
+          name: c.name,
+          programs: c.programs.length,
+          minAggregate: c.minAggregate,
+        })),
+      }
+    };
+  },
+  []
+);

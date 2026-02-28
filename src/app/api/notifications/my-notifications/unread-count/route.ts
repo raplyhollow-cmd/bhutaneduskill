@@ -3,24 +3,22 @@
  *
  * GET /api/notifications/my-notifications/unread-count - Get unread notification count
  *
- * This is a lightweight endpoint for polling notification badge counts
+ * This is a lightweight endpoint for polling notification badge counts.
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { notificationDeliveries, notifications } from "@/lib/db/schema";
 import { eq, and, or, sql } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse } from "@/lib/api/response-helpers";
 
-export async function GET(request: NextRequest) {
-  const authResult = await requireAuth();
-  if ("error" in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
 
-  const { userId } = authResult;
-
-  try {
     // Get total unread count
     const result = await db
       .select({ count: sql<number>`count(*)::int` })
@@ -55,17 +53,10 @@ export async function GET(request: NextRequest) {
 
     const urgentCount = highPriorityResult[0]?.count || 0;
 
-    return NextResponse.json({
-      data: {
-        unreadCount,
-        urgentCount,
-      },
+    return successResponse({
+      unreadCount,
+      urgentCount,
     });
-  } catch (error: unknown) {
-    const errMsg = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json(
-      { error: "Failed to fetch unread count", details: errMsg },
-      { status: 500 }
-    );
-  }
-}
+  },
+  [] // Any authenticated user can get their unread count
+);

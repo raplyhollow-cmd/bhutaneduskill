@@ -14,8 +14,8 @@
 
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { users, parents, parentToStudent, enrollments, attendance, homework, homeworkSubmissions } from "@/lib/db/schema";
-import { eq, and, desc, inArray } from "drizzle-orm";
+import { users, parents, parentToStudent, enrollments, attendance, homework, homeworkSubmissions, classes } from "@/lib/db/schema";
+import { eq, and, desc, inArray, asc } from "drizzle-orm";
 import { createApiRoute, getAuth } from "@/lib/api/route-handler";
 import { successResponse, errorResponse } from "@/lib/api/response-helpers";
 import { logger } from "@/lib/logger";
@@ -75,10 +75,10 @@ export const GET = createApiRoute(
     logger.info("Fetching children for parent", { route: "/api/parent/children", userId });
 
     // Get parent record for this user
-    const parentRecords = await db.query.parents.findMany({
-      where: eq(parents.userId, userId),
-      columns: { id: true },
-    });
+    const parentRecords = await db
+      .select({ id: parents.id })
+      .from(parents)
+      .where(eq(parents.userId, userId));
 
     if (parentRecords.length === 0) {
       logger.warn("No parent record found for user", { userId });
@@ -88,9 +88,7 @@ export const GET = createApiRoute(
     const parentId = parentRecords[0].id;
 
     // Get all parent-student relationships
-    const relationships = await db.query.parentToStudent.findMany({
-      where: eq(parentToStudent.parentId, parentId),
-    });
+    const relationships = await db.select().from(parentToStudent).where(eq(parentToStudent.parentId, parentId));
 
     if (relationships.length === 0) {
       logger.info("No children linked to parent", { parentId });
@@ -111,22 +109,22 @@ export const GET = createApiRoute(
     );
 
     // Get all students via user table - these are the children linked to this parent
-    const linkedChildren = await db.query.users.findMany({
-      where: and(
+    const linkedChildren = await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profilePicture: users.profilePicture,
+        classGrade: users.classGrade,
+        section: users.section,
+        dateOfBirth: users.dateOfBirth,
+        schoolId: users.schoolId,
+      })
+      .from(users)
+      .where(and(
         eq(users.type, "student"),
         inArray(users.id, studentIds)
-      ),
-      columns: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        profilePicture: true,
-        classGrade: true,
-        section: true,
-        dateOfBirth: true,
-        schoolId: true,
-      },
-    });
+      ));
 
     if (linkedChildren.length === 0) {
       return successResponse({ children: [] });
@@ -141,33 +139,45 @@ export const GET = createApiRoute(
         };
 
         // Get current enrollment/class
-        const enrollmentRecords = await db.query.enrollments.findMany({
-          where: and(
+        const enrollmentRecords = await db
+          .select()
+          .from(enrollments)
+          .where(and(
             eq(enrollments.studentId, child.id),
             eq(enrollments.status, "active")
-          ),
-          with: {
-            class: true,
-          },
-          orderBy: [desc(enrollments.createdAt)],
-          limit: 1,
-        });
+          ))
+          .orderBy(desc(enrollments.createdAt))
+          .limit(1);
 
         const currentEnrollment = enrollmentRecords[0];
-        const currentClassData = currentEnrollment?.class?.[0];
+        // Note: we can't use the `with` clause anymore, so we need to fetch class separately if needed
+        // For now, we'll use the classId from enrollment
+        const currentClassId = currentEnrollment?.classId || null;
+
+        // Get class data separately if needed
+        let currentClassData = null;
+        if (currentClassId) {
+          const classResult = await db
+            .select()
+            .from(classes)
+            .where(eq(classes.id, currentClassId))
+            .limit(1);
+          currentClassData = classResult[0] || null;
+        }
 
         // Get attendance summary (last 30 days)
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
         const attendanceRecords = currentClassData
-          ? await db.query.attendance.findMany({
-              where: and(
-                eq(attendance.studentId, child.id),
-                eq(attendance.classId, currentClassData.id)
-              ),
-              limit: 30,
-            })
+          ? await db
+            .select()
+            .from(attendance)
+            .where(and(
+              eq(attendance.studentId, child.id),
+              eq(attendance.classId, currentClassData.id)
+            ))
+            .limit(30)
           : [];
 
         const presentDays = attendanceRecords.filter((a) => a.status === "present").length;
@@ -179,18 +189,17 @@ export const GET = createApiRoute(
 
         // Get homework status
         const homeworkRecords = currentClassData
-          ? await db.query.homework.findMany({
-              where: eq(homework.classId, currentClassData.id),
-              orderBy: [desc(homework.dueDate)],
-              limit: 10,
-            })
+          ? await db
+            .select()
+            .from(homework)
+            .where(eq(homework.classId, currentClassData.id))
+            .orderBy(desc(homework.dueDate))
+            .limit(10)
           : [];
 
         const homeworkWithStatus = await Promise.all(
           homeworkRecords.map(async (hw) => {
-            const submission = await db.query.homeworkSubmissions.findFirst({
-              where: eq(homeworkSubmissions.homeworkId, hw.id),
-            });
+            const submission = await db.select().from(homeworkSubmissions).where(eq(homeworkSubmissions.homeworkId, hw.id)).limit(1).then(r => r[0]);
 
             const now = new Date();
             const dueDate = new Date(hw.dueDate);

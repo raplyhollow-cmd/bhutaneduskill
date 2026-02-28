@@ -188,8 +188,8 @@ export function usePushNotification(
       const auth = pushSubscription.getKey("auth");
 
       if (keys && auth) {
-        subscriptionData.keys.p256dh = btoa(String.fromCharCode(...new Uint8Array(keys)));
-        subscriptionData.keys.auth = btoa(String.fromCharCode(...new Uint8Array(auth)));
+        subscriptionData.keys.p256dh = btoa(String.fromCharCode(...Array.from(new Uint8Array(keys))));
+        subscriptionData.keys.auth = btoa(String.fromCharCode(...Array.from(new Uint8Array(auth))));
       }
 
       setSubscription(subscriptionData);
@@ -290,7 +290,7 @@ export function usePushNotification(
       // Subscribe to push
       const pushSubscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource,
       });
 
       // Extract subscription data
@@ -306,8 +306,8 @@ export function usePushNotification(
       const auth = pushSubscription.getKey("auth");
 
       if (keys && auth) {
-        subscriptionData.keys.p256dh = btoa(String.fromCharCode(...new Uint8Array(keys)));
-        subscriptionData.keys.auth = btoa(String.fromCharCode(...new Uint8Array(auth)));
+        subscriptionData.keys.p256dh = btoa(String.fromCharCode(...Array.from(new Uint8Array(keys))));
+        subscriptionData.keys.auth = btoa(String.fromCharCode(...Array.from(new Uint8Array(auth))));
       }
 
       // Send subscription to server
@@ -421,12 +421,12 @@ export function usePushNotification(
 
     // Some browsers fire this event when permission changes
     if ("onpermissionchange" in Notification) {
-      (Notification as any).addEventListener("permissionchange", handlePermissionChange);
+      (Notification as unknown as EventTarget).addEventListener("permissionchange", handlePermissionChange);
     }
 
     return () => {
       if ("onpermissionchange" in Notification) {
-        (Notification as any).removeEventListener("permissionchange", handlePermissionChange);
+        (Notification as unknown as EventTarget).removeEventListener("permissionchange", handlePermissionChange);
       }
     };
   }, [isSupported, checkPermission, getCurrentSubscription]);

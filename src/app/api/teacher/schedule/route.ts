@@ -17,7 +17,7 @@ import { createApiRoute, getAuth } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { timetableEntries, classes, subjects, rooms, timePeriods, users, schoolEvents } from "@/lib/db/schema";
-import { eq, and, asc, or } from "drizzle-orm";
+import { eq, and, asc, or, desc } from "drizzle-orm";
 import type { ApiSuccess } from "@/types";
 import { successResponse } from "@/lib/api/response-helpers";
 
@@ -221,16 +221,16 @@ export const GET = createApiRoute(
     }> = [];
 
     if (schoolId) {
-      const periodsData = await db.query.timePeriods.findMany({
-        where: eq(timePeriods.schoolId, schoolId),
-        columns: {
-          startTime: true,
-          endTime: true,
-          name: true,
-          type: true,
-          isActive: true,
-        },
-      });
+      const periodsData = await db
+        .select({
+          startTime: timePeriods.startTime,
+          endTime: timePeriods.endTime,
+          name: timePeriods.name,
+          type: timePeriods.type,
+          isActive: timePeriods.isActive,
+        })
+        .from(timePeriods)
+        .where(eq(timePeriods.schoolId, schoolId));
 
       breakPeriods = periodsData
         .filter((p) => p.type === "break" || p.type === "lunch")
@@ -256,24 +256,24 @@ export const GET = createApiRoute(
     }> = [];
 
     if (schoolId) {
-      const events = await db.query.schoolEvents.findMany({
-        where: and(
+      const events = await db
+        .select({
+          id: schoolEvents.id,
+          title: schoolEvents.title,
+          description: schoolEvents.description,
+          eventType: schoolEvents.eventType,
+          startDate: schoolEvents.startDate,
+          endDate: schoolEvents.endDate,
+          location: schoolEvents.location,
+        })
+        .from(schoolEvents)
+        .where(and(
           eq(schoolEvents.schoolId, schoolId),
           or(
             eq(schoolEvents.status, "upcoming"),
             eq(schoolEvents.status, "ongoing")
           )
-        ),
-        columns: {
-          id: true,
-          title: true,
-          description: true,
-          eventType: true,
-          startDate: true,
-          endDate: true,
-          location: true,
-        },
-      });
+        ));
 
       schoolEventsData = events
         .filter((e) => e.startDate >= startDateStr && e.startDate <= endDateStr)

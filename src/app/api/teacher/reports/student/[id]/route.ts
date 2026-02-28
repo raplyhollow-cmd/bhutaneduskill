@@ -3,33 +3,30 @@
  *
  * GET /api/teacher/reports/student/:id - Generate student snapshot report
  * GET /api/teacher/reports/student/:id/pdf - Generate PDF report (placeholder)
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users, classes, enrollments } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { generateStudentSnapshot, generateBatchSnapshots } from "@/lib/reports/student-snapshot";
+import { createApiRoute } from "@/lib/api/route-handler";
 
-interface RouteContext {
-  params: Promise<{ id: string }>;
+interface TeacherReportStudentParams extends Record<string, unknown> {
+  id: string;
 }
 
 /**
  * GET - Generate student snapshot report
  */
-export async function GET(request: NextRequest, context: RouteContext) {
-  const authResult = await requireAuth(['teacher', 'admin', 'school-admin']);
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
+export const GET = createApiRoute<TeacherReportStudentParams>(
+  async (request: NextRequest, auth, context) => {
+    const { userId, user: currentUser } = auth;
+    const { id } = await context!.params!;
 
-  const { userId, user: currentUser } = authResult;
-  const { id } = await context.params;
-
-  try {
     // Get student
     const [student] = await db
       .select()
@@ -38,10 +35,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       .limit(1);
 
     if (!student || student.type !== 'student') {
-      return NextResponse.json(
-        { error: "Student not found" },
-        { status: 404 }
-      );
+      return { error: "Student not found", status: 404 };
     }
 
     // If teacher, verify student is in their class
@@ -56,10 +50,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         .limit(1);
 
       if (!enrollment) {
-        return NextResponse.json(
-          { error: "Student enrollment not found" },
-          { status: 404 }
-        );
+        return { error: "Student enrollment not found", status: 404 };
       }
 
       const [classRecord] = await db
@@ -69,10 +60,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         .limit(1);
 
       if (!classRecord || classRecord.teacherId !== userId) {
-        return NextResponse.json(
-          { error: "You can only generate reports for your students" },
-          { status: 403 }
-        );
+        return { error: "You can only generate reports for your students", status: 403 };
       }
     }
 
@@ -89,10 +77,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
     });
 
     if (!snapshot) {
-      return NextResponse.json(
-        { error: "Failed to generate student report" },
-        { status: 500 }
-      );
+      return { error: "Failed to generate student report", status: 500 };
     }
 
     logger.info("Student report generated", {
@@ -101,15 +86,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
       reportType: "snapshot",
     });
 
-    return NextResponse.json({
+    return {
       success: true,
       data: snapshot,
-    });
-  } catch (error) {
-    logger.apiError(error, { route: `/api/teacher/reports/student/${id}`, method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to generate student report" },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ['teacher', 'admin', 'school-admin']
+);

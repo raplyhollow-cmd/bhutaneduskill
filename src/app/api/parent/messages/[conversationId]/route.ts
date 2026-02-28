@@ -19,15 +19,16 @@ import { logger } from "@/lib/logger";
 // ============================================================================
 
 export const GET = createApiRoute(
-  async (request: NextRequest, context?: { params?: Promise<{ conversationId: string }> }) => {
+  async (request: NextRequest, _context?: unknown) => {
     const auth = getAuth(request);
     if (!auth) {
       return errorResponse("Unauthorized", 401);
     }
 
     const { userId } = auth;
-    const params = await context?.params;
-    const conversationId = params?.conversationId;
+    // Extract conversationId from URL
+    const urlParts = request.url.split('/');
+    const conversationId = urlParts[urlParts.length - 1];
 
     if (!conversationId) {
       return errorResponse("Conversation ID required", 400);

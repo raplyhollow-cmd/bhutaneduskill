@@ -112,9 +112,11 @@ type UserParams = { userId: string };
 // GET /api/admin/users/[userId] - Get user details
 // ============================================================================
 
-export const GET = createApiRoute<never, UserDetails, UserParams>(
-  async (_request, { userId: adminId }, context) => {
-    const { userId } = await context!.params!;
+export const GET = createApiRoute(
+  async (req, auth, context) => {
+    const { userId: adminId } = auth;
+    const params = await context?.params || Promise.resolve({ userId: '' });
+    const { userId } = await params as { userId: string };
 
     const userResult = await db
       .select({
@@ -246,9 +248,11 @@ export const GET = createApiRoute<never, UserDetails, UserParams>(
 // PATCH /api/admin/users/[userId] - Update user
 // ============================================================================
 
-export const PATCH = createApiRoute<UpdateUserRequest, any, UserParams>(
-  async (request, { userId: adminId }, context) => {
-    const { userId } = await context!.params!;
+export const PATCH = createApiRoute(
+  async (req, auth, context) => {
+    const { userId: adminId } = auth;
+    const params = await context?.params || Promise.resolve({ userId: '' });
+    const { userId } = await params as { userId: string };
     const body: UpdateUserRequest = await req.json();
 
     // Check if user exists
@@ -392,7 +396,7 @@ export const PATCH = createApiRoute<UpdateUserRequest, any, UserParams>(
       { email: user.email, type: user.type, role: user.role, name: user.name },
       { email: updatedUser.email, type: updatedUser.type, role: updatedUser.role, name: updatedUser.name },
       adminId,
-      request
+      req
     );
 
     // Return updated user without sensitive fields
@@ -411,9 +415,11 @@ export const PATCH = createApiRoute<UpdateUserRequest, any, UserParams>(
 // DELETE /api/admin/users/[userId] - Delete user
 // ============================================================================
 
-export const DELETE = createApiRoute<never, null | { success: boolean; message: string }, UserParams>(
-  async (request, { userId: adminId }, context) => {
-    const { userId } = await context!.params!;
+export const DELETE = createApiRoute(
+  async (req, auth, context) => {
+    const { userId: adminId } = auth;
+    const params = await context?.params || Promise.resolve({ userId: '' });
+    const { userId } = await params as { userId: string };
     const { searchParams } = new URL(req.url);
     const hardDelete = searchParams.get('hard') !== 'false'; // Default to hard delete unless explicitly false
 
@@ -454,7 +460,7 @@ export const DELETE = createApiRoute<never, null | { success: boolean; message: 
         { email: user.email, type: user.type, role: user.role, name: user.name },
         adminId,
         true,
-        request
+        req
       );
 
       return NextResponse.json({
@@ -480,7 +486,7 @@ export const DELETE = createApiRoute<never, null | { success: boolean; message: 
         { email: user.email, type: user.type, role: user.role, name: user.name },
         adminId,
         false,
-        request
+        req
       );
 
       return NextResponse.json({

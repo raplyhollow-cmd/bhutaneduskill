@@ -6,7 +6,8 @@
  * DELETE /api/billing/invoices/[invoiceId] - Void/delete invoice
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
 import {
   invoices,
@@ -14,7 +15,6 @@ import {
   paymentTransactions,
 } from "@/lib/db/schema";
 import { eq, desc, and } from "drizzle-orm";
-import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
 
@@ -65,27 +65,15 @@ interface UpdateInvoiceRequest {
   refundReason?: string;
 }
 
-type RouteContext = {
-  params: Promise<{ invoiceId: string }>;
-};
-
 // ============================================================================
 // GET /api/billing/invoices/[invoiceId] - Get invoice details
 // ============================================================================
 
-export async function GET(request: NextRequest, context: RouteContext) {
-  const authResult = await requireAuth(["admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } as ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
+export const GET = createApiRoute<{ invoiceId: string }>(
+  async (req, auth, context) => {
+    const { userId } = auth;
+    const { invoiceId } = await context!.params!;
 
-  const { userId } = authResult;
-  const { invoiceId } = await context.params;
-
-  try {
     // Fetch invoice with related data
     const invoiceData = await db
       .select({
@@ -121,10 +109,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       .limit(1);
 
     if (invoiceData.length === 0) {
-      return NextResponse.json(
-        { error: "Invoice not found", status: 404 } as ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "Invoice not found", status: 404 };
     }
 
     const inv = invoiceData[0];
@@ -160,45 +145,20 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     logger.info("Invoice details fetched", { userId, invoiceId });
 
-    return NextResponse.json({
-      data: invoiceDetail,
-    } satisfies ApiSuccess<InvoiceDetail>);
-
-  } catch (error) {
-    logger.apiError(error, {
-      route: `/api/billing/invoices/${invoiceId}`,
-      method: "GET",
-      userId,
-    });
-    return NextResponse.json(
-      {
-        error: "Failed to fetch invoice details",
-        status: 500,
-        details: error instanceof Error ? error.message : undefined,
-      } as ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return { data: invoiceDetail };
+  },
+  ["admin"]
+);
 
 // ============================================================================
 // PATCH /api/billing/invoices/[invoiceId] - Update invoice
 // ============================================================================
 
-export async function PATCH(request: NextRequest, context: RouteContext) {
-  const authResult = await requireAuth(["admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } as ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
-
-  const { userId } = authResult;
-  const { invoiceId } = await context.params;
-
-  try {
-    const body: UpdateInvoiceRequest = await request.json();
+export const PATCH = createApiRoute<{ invoiceId: string }>(
+  async (req, auth, context) => {
+    const { userId } = auth;
+    const { invoiceId } = await context!.params!;
+    const body: UpdateInvoiceRequest = await req.json();
     const { action } = body;
 
     // Verify invoice exists
@@ -209,10 +169,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       .limit(1);
 
     if (existing.length === 0) {
-      return NextResponse.json(
-        { error: "Invoice not found", status: 404 } as ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "Invoice not found", status: 404 };
     }
 
     const invoice = existing[0];
@@ -242,10 +199,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           updatedBy: userId,
         });
 
-        return NextResponse.json({
+        return {
           data: { message: "Invoice marked as paid successfully" },
           message: "Invoice paid",
-        } satisfies ApiSuccess<{ message: string }>);
+        };
       }
 
       case "mark_pending": {
@@ -263,10 +220,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           updatedBy: userId,
         });
 
-        return NextResponse.json({
+        return {
           data: { message: "Invoice status changed to pending" },
           message: "Invoice pending",
-        } satisfies ApiSuccess<{ message: string }>);
+        };
       }
 
       case "mark_overdue": {
@@ -283,18 +240,18 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           updatedBy: userId,
         });
 
-        return NextResponse.json({
+        return {
           data: { message: "Invoice marked as overdue" },
           message: "Invoice overdue",
-        } satisfies ApiSuccess<{ message: string }>);
+        };
       }
 
       case "void": {
         if (invoice.status === "paid") {
-          return NextResponse.json(
-            { error: "Cannot void a paid invoice. Use refund action instead.", status: 400 } as ApiErrorResponse,
-            { status: 400 }
-          );
+          return {
+            error: "Cannot void a paid invoice. Use refund action instead.",
+            status: 400,
+          };
         }
 
         await db
@@ -312,10 +269,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           reason: body.notes,
         });
 
-        return NextResponse.json({
+        return {
           data: { message: "Invoice voided successfully" },
           message: "Invoice voided",
-        } satisfies ApiSuccess<{ message: string }>);
+        };
       }
 
       case "send_reminder": {
@@ -330,10 +287,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           sentBy: userId,
         });
 
-        return NextResponse.json({
+        return {
           data: { message: "Payment reminder sent successfully" },
           message: "Reminder sent",
-        } satisfies ApiSuccess<{ message: string }>);
+        };
       }
 
       case "record_payment": {
@@ -370,7 +327,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           recordedBy: userId,
         });
 
-        return NextResponse.json({
+        return {
           data: {
             message: isFullyPaid
               ? "Payment recorded and invoice marked as paid"
@@ -379,15 +336,15 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             remainingAmount: totalAmount - amount,
           },
           message: "Payment recorded",
-        } satisfies ApiSuccess<{ message: string; isFullyPaid: boolean; remainingAmount: number }>);
+        };
       }
 
       case "refund": {
         if (invoice.status !== "paid") {
-          return NextResponse.json(
-            { error: "Can only refund paid invoices", status: 400 } as ApiErrorResponse,
-            { status: 400 }
-          );
+          return {
+            error: "Can only refund paid invoices",
+            status: 400,
+          };
         }
 
         // Convert decimal amounts to numbers for calculation
@@ -397,10 +354,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         const refundReason = body.refundReason || "No reason provided";
 
         if (refundAmount > totalAmount - currentRefundAmount) {
-          return NextResponse.json(
-            { error: "Refund amount exceeds available balance", status: 400 } as ApiErrorResponse,
-            { status: 400 }
-          );
+          return {
+            error: "Refund amount exceeds available balance",
+            status: 400,
+          };
         }
 
         // Create refund transaction ID
@@ -431,7 +388,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           processedBy: userId,
         });
 
-        return NextResponse.json({
+        return {
           data: {
             message: isFullyRefunded ? "Invoice fully refunded" : "Partial refund processed",
             refundAmount: newRefundAmount,
@@ -439,7 +396,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             isFullyRefunded,
           },
           message: "Refund processed",
-        } satisfies ApiSuccess<{ message: string; refundAmount: number; remainingAmount: number; isFullyRefunded: boolean }>);
+        };
       }
 
       default: {
@@ -483,53 +440,28 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
             updatedBy: userId,
           });
 
-          return NextResponse.json({
+          return {
             data: { message: "Invoice updated successfully" },
             message: "Invoice updated",
-          } satisfies ApiSuccess<{ message: string }>);
+          };
         }
 
-        return NextResponse.json(
-          { error: "No valid action provided", status: 400 } as ApiErrorResponse,
-          { status: 400 }
-        );
+        return { error: "No valid action provided", status: 400 };
       }
     }
-
-  } catch (error) {
-    logger.apiError(error, {
-      route: `/api/billing/invoices/${invoiceId}`,
-      method: "PATCH",
-      userId,
-    });
-    return NextResponse.json(
-      {
-        error: "Failed to update invoice",
-        status: 500,
-        details: error instanceof Error ? error.message : undefined,
-      } as ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+  },
+  ["admin"]
+);
 
 // ============================================================================
 // DELETE /api/billing/invoices/[invoiceId] - Delete/void invoice
 // ============================================================================
 
-export async function DELETE(request: NextRequest, context: RouteContext) {
-  const authResult = await requireAuth(["admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } as ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
+export const DELETE = createApiRoute<{ invoiceId: string }>(
+  async (req, auth, context) => {
+    const { userId } = auth;
+    const { invoiceId } = await context!.params!;
 
-  const { userId } = authResult;
-  const { invoiceId } = await context.params;
-
-  try {
     // Verify invoice exists
     const existing = await db
       .select()
@@ -538,20 +470,17 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       .limit(1);
 
     if (existing.length === 0) {
-      return NextResponse.json(
-        { error: "Invoice not found", status: 404 } as ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "Invoice not found", status: 404 };
     }
 
     const invoice = existing[0];
 
     // Don't allow deletion of paid invoices
     if (invoice.status === "paid") {
-      return NextResponse.json(
-        { error: "Cannot delete a paid invoice. Void it first if needed.", status: 400 } as ApiErrorResponse,
-        { status: 400 }
-      );
+      return {
+        error: "Cannot delete a paid invoice. Void it first if needed.",
+        status: 400,
+      };
     }
 
     // Mark as cancelled instead of deleting
@@ -568,24 +497,10 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       deletedBy: userId,
     });
 
-    return NextResponse.json({
+    return {
       data: { message: "Invoice cancelled successfully" },
       message: "Invoice cancelled",
-    } satisfies ApiSuccess<{ message: string }>);
-
-  } catch (error) {
-    logger.apiError(error, {
-      route: `/api/billing/invoices/${invoiceId}`,
-      method: "DELETE",
-      userId,
-    });
-    return NextResponse.json(
-      {
-        error: "Failed to cancel invoice",
-        status: 500,
-        details: error instanceof Error ? error.message : undefined,
-      } as ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);

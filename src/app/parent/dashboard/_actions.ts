@@ -3,7 +3,7 @@
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { users, attendance, homeworkSubmissions, examResultsEnhanced, studentFees, careerMatches, classes } from "@/lib/db/schema";
-import { eq, and, desc, gte, sql, inArray } from "drizzle-orm";
+import { eq, and, desc, gte, sql, inArray, asc } from "drizzle-orm";
 import { requireAuth } from "@/lib/auth-utils";
 
 // ============================================================================
@@ -59,9 +59,7 @@ export async function getParentDashboardData(): Promise<ParentDashboardData | nu
 
     // Get children linked to this parent
     // Students have a parentId field that references their parent user
-    const children = await db.query.users.findMany({
-      where: eq(users.parentId, currentUser.id),
-    });
+    const children = await db.select().from(users).where(eq(users.parentId, currentUser.id));
 
     if (children.length === 0) {
       return {
@@ -82,12 +80,13 @@ export async function getParentDashboardData(): Promise<ParentDashboardData | nu
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split("T")[0];
 
-    const attendanceData = await db.query.attendance.findMany({
-      where: and(
+    const attendanceData = await db
+      .select()
+      .from(attendance)
+      .where(and(
         sql`${attendance.studentId} IN ${sql.raw(`('${childIds.join("','")}'`)}`,
         gte(attendance.date, thirtyDaysAgoStr)
-      ),
-    });
+      ));
 
     // Group attendance by child
     const attendanceByChild = new Map<string, { present: number; total: number }>();
@@ -103,9 +102,10 @@ export async function getParentDashboardData(): Promise<ParentDashboardData | nu
     }
 
     // Get homework counts for all children (from homework submissions)
-    const homeworkData = await db.query.homeworkSubmissions.findMany({
-      where: sql`${homeworkSubmissions.studentId} IN ${sql.raw(`('${childIds.join("','")}'`)}`,
-    });
+    const homeworkData = await db
+      .select()
+      .from(homeworkSubmissions)
+      .where(sql`${homeworkSubmissions.studentId} IN ${sql.raw(`('${childIds.join("','")}'`)}`);
 
     // Group homework by child
     const homeworkByChild = new Map<string, number>();
@@ -116,11 +116,12 @@ export async function getParentDashboardData(): Promise<ParentDashboardData | nu
     }
 
     // Get recent grades for all children
-    const gradesData = await db.query.examResultsEnhanced.findMany({
-      where: sql`${examResultsEnhanced.userId} IN ${sql.raw(`('${childIds.join("','")}'`)}`,
-      orderBy: [desc(examResultsEnhanced.examDate)],
-      limit: 50,
-    });
+    const gradesData = await db
+      .select()
+      .from(examResultsEnhanced)
+      .where(sql`${examResultsEnhanced.userId} IN ${sql.raw(`('${childIds.join("','")}'`)}`)
+      .orderBy(desc(examResultsEnhanced.examDate))
+      .limit(50);
 
     // Group grades by child
     const gradesByChild = new Map<string, typeof gradesData>();
@@ -132,10 +133,11 @@ export async function getParentDashboardData(): Promise<ParentDashboardData | nu
     }
 
     // Get career interests for all children
-    const careerMatchesData = await db.query.careerMatches.findMany({
-      where: sql`${careerMatches.studentId} IN ${sql.raw(`('${childIds.join("','")}'`)}`,
-      orderBy: [desc(careerMatches.matchScore)],
-    });
+    const careerMatchesData = await db
+      .select()
+      .from(careerMatches)
+      .where(sql`${careerMatches.studentId} IN ${sql.raw(`('${childIds.join("','")}'`)}`)
+      .orderBy(desc(careerMatches.matchScore));
 
     // Group career interests by child
     const careersByChild = new Map<string, string[]>();
@@ -149,9 +151,10 @@ export async function getParentDashboardData(): Promise<ParentDashboardData | nu
     }
 
     // Get fee data for all children
-    const studentFeesData = await db.query.studentFees.findMany({
-      where: sql`${studentFees.studentId} IN ${sql.raw(`('${childIds.join("','")}'`)}`,
-    });
+    const studentFeesData = await db
+      .select()
+      .from(studentFees)
+      .where(sql`${studentFees.studentId} IN ${sql.raw(`('${childIds.join("','")}'`)}`);
 
     // Group fees by child
     const feesByChild = new Map<string, { amountPaid: number; amountPending: number }>();

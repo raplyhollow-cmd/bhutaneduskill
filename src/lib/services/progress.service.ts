@@ -143,18 +143,18 @@ export async function calculateStudentProgress(
     }
 
     // Get all homework submissions for the student
-    const submissionsQuery = db.query.homeworkSubmissions.findMany({
-      where: eq(homeworkSubmissions.studentId, userId),
-    });
-
-    const submissions = await submissionsQuery;
+    const submissions = await db
+      .select()
+      .from(homeworkSubmissions)
+      .where(eq(homeworkSubmissions.studentId, userId));
 
     // Get homework details for submission filtering
     const homeworkIds = submissions.map((s) => s.homeworkId);
     const homeworkItems = homeworkIds.length > 0
-      ? await db.query.homework.findMany({
-          where: sql`${homework.id} = ANY(${homeworkIds})`,
-        })
+      ? await db
+          .select()
+          .from(homework)
+          .where(sql`${homework.id} = ANY(${homeworkIds})`)
       : [];
 
     const homeworkMap = new Map(homeworkItems.map((hw) => [hw.id, hw]));
@@ -213,19 +213,20 @@ export async function calculateStudentProgress(
       : 0;
 
     // Overall grade average (from exam results)
-    const examResults = await db.query.examResultsEnhanced.findMany({
-      where: eq(examResultsEnhanced.studentId, userId),
-      orderBy: [desc(examResultsEnhanced.examYear)],
-      limit: 10,
-    });
+    const examResults = await db
+      .select()
+      .from(examResultsEnhanced)
+      .where(eq(examResultsEnhanced.studentId, userId))
+      .orderBy(desc(examResultsEnhanced.examYear))
+      .limit(10);
 
     const overallGradeAverage = examResults.length > 0
       ? Math.round(
           examResults.reduce((sum, r) => {
             const overallPercentage =
-              (r as any).overallPercentage ||
-              (r as any).percentage ||
-              (r as any).totalPercentage ||
+              ("overallPercentage" in r && typeof r.overallPercentage === "number") ? r.overallPercentage :
+              ("percentage" in r && typeof r.percentage === "number") ? r.percentage :
+              ("totalPercentage" in r && typeof r.totalPercentage === "number") ? r.totalPercentage :
               0;
             return sum + overallPercentage;
           }, 0) / examResults.length
@@ -449,12 +450,15 @@ export async function getLearningTrends(
       const periodLabel = `${Math.floor(i * 7)} days ago`;
 
       // Get submissions in this period
-      const periodSubmissions = await db.query.homeworkSubmissions.findMany({
-        where: and(
-          eq(homeworkSubmissions.studentId, userId),
-          gte(homeworkSubmissions.submittedAt, periodStart)
-        ),
-      });
+      const periodSubmissions = await db
+        .select()
+        .from(homeworkSubmissions)
+        .where(
+          and(
+            eq(homeworkSubmissions.studentId, userId),
+            gte(homeworkSubmissions.submittedAt, periodStart)
+          )
+        );
 
       const completedCount = periodSubmissions.filter(
         (s) => s.status !== "pending"
@@ -484,12 +488,15 @@ export async function getLearningTrends(
           : 0;
 
       // Get attendance for this period
-      const attendanceRecords = await db.query.attendance.findMany({
-        where: and(
-          eq(attendance.studentId, userId),
-          gte(attendance.date, periodStart.toISOString().split("T")[0]!)
-        ),
-      });
+      const attendanceRecords = await db
+        .select()
+        .from(attendance)
+        .where(
+          and(
+            eq(attendance.studentId, userId),
+            gte(attendance.date, periodStart.toISOString().split("T")[0]!)
+          )
+        );
 
       const presentCount =
         attendanceRecords.filter(
@@ -533,10 +540,11 @@ export async function getHomeworkSubmissionStats(
   userId: string
 ): Promise<HomeworkSubmissionStats> {
   try {
-    const submissions = await db.query.homeworkSubmissions.findMany({
-      where: eq(homeworkSubmissions.studentId, userId),
-      orderBy: [desc(homeworkSubmissions.submittedAt)],
-    });
+    const submissions = await db
+      .select()
+      .from(homeworkSubmissions)
+      .where(eq(homeworkSubmissions.studentId, userId))
+      .orderBy(desc(homeworkSubmissions.submittedAt));
 
     const totalSubmissions = submissions.length;
     const onTimeSubmissions = submissions.filter((s) => !s.isLate).length;
@@ -564,9 +572,10 @@ export async function getHomeworkSubmissionStats(
     const homeworkIds = submissions.slice(0, 10).map((s) => s.homeworkId);
     const homeworkItems =
       homeworkIds.length > 0
-        ? await db.query.homework.findMany({
-            where: sql`${homework.id} = ANY(${homeworkIds})`,
-          })
+        ? await db
+            .select()
+            .from(homework)
+            .where(sql`${homework.id} = ANY(${homeworkIds})`)
         : [];
 
     const homeworkMap = new Map(homeworkItems.map((hw) => [hw.id, hw]));
@@ -615,16 +624,18 @@ export async function generateProgressReport(
 ): Promise<ProgressReport> {
   try {
     // Get student info
-    const student = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        classGrade: true,
-        section: true,
-      },
-    });
+    const student = await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        classGrade: users.classGrade,
+        section: users.section,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!student) {
       throw new Error("Student not found");

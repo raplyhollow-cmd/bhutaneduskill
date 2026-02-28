@@ -148,7 +148,7 @@ export default function ParentChildrenPage() {
             school: child.currentClass ? "Yangchenphug HSS" : "Not enrolled", // Default school name
             profilePicture: child.profilePicture,
             dateOfBirth: (() => {
-              const dob = (child as any).dateOfBirth;
+              const dob = (child as ParentChild & { dateOfBirth?: Date | string | unknown }).dateOfBirth;
               if (!dob) return undefined;
               if (dob instanceof Date) return dob.toISOString();
               if (typeof dob === "string") return dob;

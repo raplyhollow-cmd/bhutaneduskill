@@ -6,7 +6,7 @@ import { logger } from "@/lib/logger";
 import { eq, inArray } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { createApiRoute } from "@/lib/api/route-handler";
-import type { AuthContext } from "@/lib/auth-utils";
+import type { AuthContext } from "@/lib/api/route-handler";
 
 interface RejectBatchRequest {
   userIds: string[];

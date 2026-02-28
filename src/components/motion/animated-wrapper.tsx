@@ -20,8 +20,8 @@
 
 "use client";
 
-import { motion, HTMLMotionProps, Variant, Transition } from "framer-motion";
-import { forwardRef } from "react";
+import { motion, HTMLMotionProps, Variant, Transition, MotionStyle, Variants } from "framer-motion";
+import { forwardRef, type ReactNode } from "react";
 import { prefersReducedMotion } from "@/lib/motion/tokens";
 import {
   fadeVariants,
@@ -44,6 +44,10 @@ export type AnimatedWrapperVariant =
   | "none";
 
 export interface AnimatedWrapperProps extends Omit<HTMLMotionProps<"div">, "variants"> {
+  /**
+   * Custom style prop that accepts MotionValue types
+   */
+  style?: React.CSSProperties & MotionStyle;
   /**
    * Animation variant to use
    * @default "fadeUp"
@@ -86,7 +90,7 @@ export interface AnimatedWrapperProps extends Omit<HTMLMotionProps<"div">, "vari
 // VARIANT MAPS
 // ============================================================================
 
-const variantMap: Record<AnimatedWrapperVariant, Variant> = {
+const variantMap: Record<AnimatedWrapperVariant, Variants> = {
   fade: fadeVariants,
   fadeUp: fadeInUp,
   fadeScale: {
@@ -126,7 +130,7 @@ export const AnimatedWrapper = forwardRef<HTMLDivElement, AnimatedWrapperProps>(
   ) => {
     // Respect reduced motion preference
     if (prefersReducedMotion() || disabled) {
-      return <div ref={ref} className={className} {...props}>{children}</div>;
+      return <div ref={ref} className={className}>{children as ReactNode}</div>;
     }
 
     const variants = variantMap[variant];
@@ -148,7 +152,7 @@ export const AnimatedWrapper = forwardRef<HTMLDivElement, AnimatedWrapperProps>(
         ref={ref}
         className={className}
         layout={layout}
-        variants={variants}
+        variants={variants as Variants}
         initial={initial ?? "hidden"}
         animate={animate ?? "visible"}
         exit={exit ?? "hidden"}
@@ -156,7 +160,7 @@ export const AnimatedWrapper = forwardRef<HTMLDivElement, AnimatedWrapperProps>(
         {...props}
       >
         {variant === "stagger" ? (
-          <motion.div variants={staggerItem}>{children}</motion.div>
+          <motion.div variants={staggerItem as Variants}>{children}</motion.div>
         ) : (
           children
         )}

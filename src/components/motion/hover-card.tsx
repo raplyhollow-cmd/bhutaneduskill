@@ -17,7 +17,7 @@
 
 "use client";
 
-import { motion, HTMLMotionProps } from "framer-motion";
+import { motion, HTMLMotionProps, Transition, TargetAndTransition } from "framer-motion";
 import { forwardRef, ReactNode } from "react";
 import { prefersReducedMotion, scale } from "@/lib/motion/tokens";
 import { cn } from "@/lib/utils";
@@ -76,10 +76,13 @@ export interface HoverCardProps extends Omit<HTMLMotionProps<"div">, "whileHover
 // HOVER VARIANTS
 // ============================================================================
 
-const hoverVariants: Record<
-  HoverCardVariant,
-  { whileHover?: object; whileTap?: object; transition?: object }
-> = {
+interface VariantConfig {
+  whileHover?: TargetAndTransition;
+  whileTap?: TargetAndTransition;
+  transition?: Transition;
+}
+
+const hoverVariants: Record<HoverCardVariant, VariantConfig> = {
   scale: {
     whileHover: prefersReducedMotion()
       ? undefined

@@ -1,57 +1,56 @@
-import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
+/**
+ * SCHOOLS [id] API
+ *
+ * Handles individual school operations (get, update, delete)
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
 import { schools, users, classes, feePayments, studentFees, counselorResources, attendance, leaveRequests, leaveBalances } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { requireAuth } from "@/lib/auth-utils";
 import { requirePermission } from "@/lib/rbac";
+import { logger } from "@/lib/logger";
+import { successResponse, errorResponse, notFoundResponse } from "@/lib/api/response-helpers";
 
+// ============================================================================
 // GET /api/schools/[id] - Get single school
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
+// ============================================================================
 
-    const authResult = await requireAuth();
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const GET = createApiRoute<{ id: string }>(
+  async (request: NextRequest, auth, context) => {
+    const { id } = await context!.params!;
+    const { userId } = auth;
 
     // Check schools.read permission
     const permCheck = await requirePermission(userId, "schools.read");
     if (permCheck) return permCheck;
 
-    const school = await db.query.schools.findFirst({
-      where: eq(schools.id, id),
-    });
+    const [school] = await db
+      .select()
+      .from(schools)
+      .where(eq(schools.id, id))
+      .limit(1);
 
     if (!school) {
-      return NextResponse.json({ error: "School not found" }, { status: 404 });
+      return notFoundResponse("School");
     }
 
-    return NextResponse.json({ school });
-  } catch (error) {
-    logger.error("School fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch school" }, { status: 500 });
-  }
-}
+    return successResponse({ school });
+  },
+  [] // Permission check is done inside
+);
 
+// ============================================================================
 // PUT /api/schools/[id] - Update school
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
+// ============================================================================
 
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const PUT = createApiRoute<{ id: string }>(
+  async (request: NextRequest, auth, context) => {
+    const { id } = await context!.params!;
+    const { userId } = auth;
 
     // Check schools.update permission - platform admins have all permissions
     const permCheck = await requirePermission(userId, "schools.update");
@@ -60,7 +59,7 @@ export async function PUT(
     const body = await request.json();
 
     // Only update fields that exist in the schools schema
-    const updateData: Record<string, any> = {};
+    const updateData: Record<string, unknown> = {};
     if (body.name !== undefined) updateData.name = body.name;
     if (body.code !== undefined) updateData.code = body.code;
     if (body.schoolType !== undefined) updateData.schoolType = body.schoolType;
@@ -84,29 +83,22 @@ export async function PUT(
       .returning();
 
     if (!updatedSchool) {
-      return NextResponse.json({ error: "School not found" }, { status: 404 });
+      return notFoundResponse("School");
     }
 
-    return NextResponse.json({ school: updatedSchool });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/schools/[id]", method: "PUT" });
-    return NextResponse.json({ error: "Failed to update school" }, { status: 500 });
-  }
-}
+    return successResponse({ school: updatedSchool });
+  },
+  ['admin'] // Only admins can update schools
+);
 
+// ============================================================================
 // DELETE /api/schools/[id] - Delete school
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
+// ============================================================================
 
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const DELETE = createApiRoute<{ id: string }>(
+  async (request: NextRequest, auth, context) => {
+    const { id } = await context!.params!;
+    const { userId } = auth;
 
     // Check schools.delete permission
     const permCheck = await requirePermission(userId, "schools.delete");
@@ -138,9 +130,7 @@ export async function DELETE(
 
     logger.info("School deleted successfully", { route: "/api/schools/[id]", method: "DELETE", schoolId: id, userId });
 
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    logger.error("School delete error:", error);
-    return NextResponse.json({ error: "Failed to delete school" }, { status: 500 });
-  }
-}
+    return successResponse({ success: true });
+  },
+  ['admin'] // Only admins can delete schools
+);

@@ -36,6 +36,9 @@ export interface SITREPData {
     newTeachers: number;
     churnedSchools: number;
     growthPercentage: number;
+    totalSchools: number;
+    totalStudents: number;
+    totalTeachers: number;
   };
   revenue: {
     mrr: number; // Monthly Recurring Revenue
@@ -50,6 +53,7 @@ export interface SITREPData {
     topCareer: string;
     topCareerTrend: "up" | "down" | "stable";
     activeNow: number;
+    topCareers?: Array<{ career: string; count: number }>;
   };
   anomalies: ReturnType<typeof detectAllAnomalies> extends Promise<infer T> ? T : never;
   summary: string;
@@ -338,7 +342,7 @@ async function gatherActivityData(yesterdayStr: string) {
     aiConsultations: Number(aiTodayResult?.count || 0),
     assessmentsCompleted: Number(assessmentsTodayResult?.count || 0),
     topCareer,
-    topCareerTrend: "up" as const, // TODO: Calculate from historical data
+    topCareerTrend: "up" as "up" | "down" | "stable", // TODO: Calculate from historical data
     activeNow,
     topCareers: topCareers.map((c) => ({
       career: c.career,
@@ -492,13 +496,33 @@ interface SITREPDatabaseRecord {
   aiGeneratedSummary: string;
 }
 function parseExistingSITREP(record: SITREPDatabaseRecord): SITREPData {
+  const growthData = record.growthData as any;
+  const activityData = record.activityData as any;
+
   return {
     reportDate: record.reportDate,
     timestamp: record.createdAt,
-    healthStatus: record.healthStatus,
-    growth: record.growthData,
-    revenue: record.revenueData,
-    activity: record.activityData,
+    healthStatus: record.healthStatus as "critical" | "healthy" | "degraded",
+    growth: {
+      newSchools: growthData?.newSchools || 0,
+      newUsers: growthData?.newUsers || 0,
+      newStudents: growthData?.newStudents || 0,
+      newTeachers: growthData?.newTeachers || 0,
+      churnedSchools: growthData?.churnedSchools || 0,
+      growthPercentage: growthData?.growthPercentage || 0,
+      totalSchools: growthData?.totalSchools || 0,
+      totalStudents: growthData?.totalStudents || 0,
+      totalTeachers: growthData?.totalTeachers || 0,
+    },
+    revenue: record.revenueData as SITREPData["revenue"],
+    activity: {
+      aiConsultations: activityData?.aiConsultations || 0,
+      assessmentsCompleted: activityData?.assessmentsCompleted || 0,
+      topCareer: activityData?.topCareer || "N/A",
+      topCareerTrend: activityData?.topCareerTrend || "stable",
+      activeNow: activityData?.activeNow || 0,
+      topCareers: activityData?.topCareers || [],
+    },
     anomalies: {
       anomalies: [],
       summary: {
@@ -511,10 +535,18 @@ function parseExistingSITREP(record: SITREPDatabaseRecord): SITREPData {
       timestamp: record.createdAt,
     },
     summary: record.aiGeneratedSummary || generateBasicSummary({
-      growth: record.growthData,
-      revenue: record.revenueData,
-      activity: record.activityData,
-      anomalies: { summary: { total: record.anomalyCount } },
+      growth: {
+        ...growthData,
+        totalSchools: growthData?.totalSchools || 0,
+        totalStudents: growthData?.totalStudents || 0,
+        totalTeachers: growthData?.totalTeachers || 0,
+      },
+      revenue: record.revenueData as SITREPData["revenue"],
+      activity: {
+        ...activityData,
+        topCareers: activityData?.topCareers || [],
+      },
+      anomalies: { summary: { total: record.anomalyCount } } as SITREPData["anomalies"],
       healthStatus: record.healthStatus,
     }),
   };

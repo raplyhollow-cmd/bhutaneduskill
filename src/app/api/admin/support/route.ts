@@ -1,25 +1,17 @@
-import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { supportTickets, users, schools } from "@/lib/db/schema";
 import { logger } from "@/lib/logger";
 import { eq, and, desc, sql, count, or } from "drizzle-orm";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import type { ApiSuccess } from "@/types";
 import { nanoid } from "nanoid";
-import { NextResponse } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 // ============================================================================
 // GET - List all support tickets with filtering
 // ============================================================================
-export async function GET(req: Request) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: 401 } satisfies ApiErrorResponse,
-        { status: 401 }
-      );
-    }
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (req: Request, auth) => {
+    const { userId } = auth;
 
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
@@ -146,31 +138,19 @@ export async function GET(req: Request) {
         totalPages: Math.ceil(totalCount / limit),
       },
     };
-    return NextResponse.json({
+    return {
       data: responseData,
-    } satisfies ApiSuccess<typeof responseData>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/support", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch support tickets", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    } satisfies ApiSuccess<typeof responseData>;
+  },
+  ["admin"]
+);
 
 // ============================================================================
 // POST - Create a new support ticket
 // ============================================================================
-export async function POST(req: Request) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: 401 } satisfies ApiErrorResponse,
-        { status: 401 }
-      );
-    }
-    const { userId } = authResult;
+export const POST = createApiRoute(
+  async (req: Request, auth) => {
+    const { userId } = auth;
 
     const body = await req.json();
     const {
@@ -187,28 +167,19 @@ export async function POST(req: Request) {
 
     // Validate required fields
     if (!subject || !description || !category || !createdById || !createdByRole) {
-      return NextResponse.json(
-        { error: "Missing required fields", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "Missing required fields", status: 400 };
     }
 
     // Validate category
     const validCategories = ["bug", "feature_request", "question", "billing", "technical", "account"];
     if (!validCategories.includes(category)) {
-      return NextResponse.json(
-        { error: "Invalid category", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "Invalid category", status: 400 };
     }
 
     // Validate priority
     const validPriorities = ["critical", "high", "medium", "low"];
     if (!validPriorities.includes(priority)) {
-      return NextResponse.json(
-        { error: "Invalid priority", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "Invalid priority", status: 400 };
     }
 
     // Generate ticket number
@@ -245,14 +216,9 @@ export async function POST(req: Request) {
 
     logger.info("Support ticket created", { route: "/api/admin/support", userId, ticketId });
 
-    return NextResponse.json({
+    return {
       data: newTicket,
-    } satisfies ApiSuccess<typeof newTicket>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/support", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to create support ticket", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    } satisfies ApiSuccess<typeof newTicket>;
+  },
+  ["admin"]
+);

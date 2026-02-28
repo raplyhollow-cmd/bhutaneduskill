@@ -75,10 +75,12 @@ export async function getCurrentTeacherId() {
   const { userId } = authResult;  // Database userId
 
   // Get tutor record for this teacher
-  const tutor = await db.query.tutors.findFirst({
-    where: eq(tutors.userId, userId),
-    columns: { id: true },
-  });
+  const tutor = await db
+    .select({ id: tutors.id })
+    .from(tutors)
+    .where(eq(tutors.userId, userId))
+    .limit(1)
+    .then(rows => rows[0] || null);
 
   return tutor?.id || null;
 }
@@ -153,10 +155,11 @@ export async function getTeacherEarnings(tutorId: string | null) {
   });
 
   // Get all earnings for this tutor
-  const allEarnings = await db.query.tutorEarnings.findMany({
-    where: eq(tutorEarnings.tutorId, tutorId),
-    orderBy: [desc(tutorEarnings.earnedAt)],
-  });
+  const allEarnings = await db
+    .select()
+    .from(tutorEarnings)
+    .where(eq(tutorEarnings.tutorId, tutorId))
+    .orderBy(desc(tutorEarnings.earnedAt));
 
   // Calculate totals
   const totalEarnings = allEarnings.reduce((sum, e) => sum + (e.amount || 0), 0);
@@ -217,55 +220,57 @@ export async function getTeacherEarnings(tutorId: string | null) {
       if (earningData.sourceType === "course") {
         type = "course_sale";
         // Get course details
-        const course = await db.query.tuitionCourses.findFirst({
-          where: eq(tuitionCourses.id, earningData.sourceId || ""),
-          columns: { title: true },
-        });
+        const course = await db
+          .select({ title: tuitionCourses.title })
+          .from(tuitionCourses)
+          .where(eq(tuitionCourses.id, earningData.sourceId || ""))
+          .limit(1)
+          .then(rows => rows[0] || null);
         title = course?.title || "Course Sale";
 
         // Get student info from enrollment
         if (earningData.enrollmentId) {
-          const enrollment = await db.query.tuitionEnrollments.findFirst({
-            where: eq(tuitionEnrollments.id, earningData.enrollmentId),
-            with: {
-              student: true,
-            },
-          });
-          const studentArray = enrollment?.student as unknown as {
-            firstName: string | null;
-            lastName: string | null;
-          }[] | undefined;
-          const student = studentArray?.[0];
-          if (student) {
-            studentName = `${student.firstName} ${student.lastName || ""}`.trim();
+          // Use direct select to get enrollment data without relations
+          const enrollment = await db
+            .select({
+              studentId: tuitionEnrollments.studentId,
+            })
+            .from(tuitionEnrollments)
+            .where(eq(tuitionEnrollments.id, earningData.enrollmentId))
+            .limit(1)
+            .then(rows => rows[0] || null);
+
+          if (enrollment?.studentId) {
+            // Get student details
+            const student = await db
+              .select({
+                firstName: users.firstName,
+                lastName: users.lastName,
+              })
+              .from(users)
+              .where(eq(users.id, enrollment.studentId))
+              .limit(1)
+              .then(rows => rows[0] || null);
+            if (student) {
+              studentName = `${student.firstName} ${student.lastName || ""}`.trim();
+            }
           }
         }
       } else if (earningData.sourceType === "live_session") {
         type = "live_session";
         // Get session details
-        const session = await db.query.liveSessions.findFirst({
-          where: eq(liveSessions.id, earningData.sourceId || ""),
-          columns: { title: true, subject: true },
-        });
+        const session = await db
+          .select({
+            title: liveSessions.title,
+            subject: liveSessions.subject,
+          })
+          .from(liveSessions)
+          .where(eq(liveSessions.id, earningData.sourceId || ""))
+          .limit(1)
+          .then(rows => rows[0] || null);
         title = session?.title || `${session?.subject || ""} Live Session`;
-
-        // For live sessions, student would be from the session
-        if (earningData.sourceId) {
-          const session = await db.query.liveSessions.findFirst({
-            where: eq(liveSessions.id, earningData.sourceId),
-            with: {
-              student: true,
-            },
-          });
-          const studentArray = session?.student as unknown as {
-            firstName: string | null;
-            lastName: string | null;
-          }[] | undefined;
-          const student = studentArray?.[0];
-          if (student) {
-            studentName = `${student.firstName} ${student.lastName || ""}`.trim();
-          }
-        }
+        // Live sessions don't have direct student reference - earning is from course enrollments
+        studentName = "Course Students";
       } else {
         type = "payout";
         title = `Payout - ${new Date(earning.earnedAt || new Date()).toLocaleDateString("en-US", { month: "long", year: "numeric" })}`;
@@ -293,10 +298,11 @@ export async function getTeacherEarnings(tutorId: string | null) {
   );
 
   // Get course statistics
-  const courses = await db.query.tuitionCourses.findMany({
-    where: eq(tuitionCourses.tutorId, tutorId),
-    orderBy: [desc(tuitionCourses.createdAt)],
-  });
+  const courses = await db
+    .select()
+    .from(tuitionCourses)
+    .where(eq(tuitionCourses.tutorId, tutorId))
+    .orderBy(desc(tuitionCourses.createdAt));
 
   const courseStats: CourseStatsData[] = await Promise.all(
     courses.map(async (course) => {
@@ -308,21 +314,23 @@ export async function getTeacherEarnings(tutorId: string | null) {
         .where(eq(tuitionEnrollments.courseId, course.id));
 
       // Get average rating from reviews
-      const reviews = await db.query.tutorReviews.findMany({
-        where: eq(tutorReviews.tutorId, tutorId),
-      });
+      const reviews = await db
+        .select()
+        .from(tutorReviews)
+        .where(eq(tutorReviews.tutorId, tutorId));
 
       const avgRating = reviews.length > 0
         ? reviews.reduce((sum, r) => sum + (r.rating || 0), 0) / reviews.length
         : 0;
 
       // Calculate completion rate (students who completed the course)
-      const completedEnrollments = await db.query.tuitionEnrollments.findMany({
-        where: and(
+      const completedEnrollments = await db
+        .select()
+        .from(tuitionEnrollments)
+        .where(and(
           eq(tuitionEnrollments.courseId, course.id),
           sql`${tuitionEnrollments.completedAt} IS NOT NULL`
-        ),
-      });
+        ));
 
       const completionRate = enrollmentResult.count > 0
         ? Math.round((completedEnrollments.length / enrollmentResult.count) * 100)
@@ -331,12 +339,13 @@ export async function getTeacherEarnings(tutorId: string | null) {
       // For live sessions, get sessions completed
       let sessionsCompleted = 0;
       if (courseData.type === "online_live") {
-        const sessions = await db.query.liveSessions.findMany({
-          where: and(
+        const sessions = await db
+          .select()
+          .from(liveSessions)
+          .where(and(
             eq(liveSessions.courseId, course.id),
             eq(liveSessions.status, "completed")
-          ),
-        });
+          ));
         sessionsCompleted = sessions.length;
       }
 

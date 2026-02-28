@@ -6,6 +6,8 @@
  */
 
 import { pgTable, text, integer, timestamp, boolean, index, pgEnum } from "drizzle-orm/pg-core";
+import { users } from "./schema";
+import { schools } from "./schema";
 
 /**
  * Chat status enum
@@ -22,12 +24,12 @@ export const parentTeacherConversations = pgTable("parent_teacher_conversations"
   id: text("id").primaryKey(),
 
   // Participants
-  parentId: text("parent_id").notNull().references(() => /* users */ "users".id, { onDelete: "cascade" }),
-  teacherId: text("teacher_id").notNull().references(() => /* users */ "users".id, { onDelete: "cascade" }),
-  studentId: text("student_id").notNull().references(() => /* users */ "users".id, { onDelete: "cascade" }),
+  parentId: text("parent_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  teacherId: text("teacher_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  studentId: text("student_id").notNull().references(() => users.id, { onDelete: "cascade" }),
 
   // School context
-  schoolId: text("school_id").notNull().references(() => /* schools */ "schools".id, { onDelete: "cascade" }),
+  schoolId: text("school_id").notNull().references(() => schools.id, { onDelete: "cascade" }),
 
   // Conversation metadata
   subject: text("subject"), // Optional subject line for the conversation
@@ -71,7 +73,7 @@ export const parentTeacherMessages = pgTable("parent_teacher_messages", {
   conversationId: text("conversation_id").notNull().references(() => parentTeacherConversations.id, { onDelete: "cascade" }),
 
   // Sender information
-  senderId: text("sender_id").notNull().references(() => /* users */ "users".id, { onDelete: "cascade" }),
+  senderId: text("sender_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   senderRole: text("sender_role").notNull(), // "parent" | "teacher"
 
   // Message content

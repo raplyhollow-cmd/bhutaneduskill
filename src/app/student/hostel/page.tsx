@@ -155,7 +155,7 @@ export default function StudentHostelPage() {
     late: 0,
   });
   const [complaints, setComplaints] = useState<HostelComplaint[]>([]);
-  const [rules, setRules] = useState<any[]>([]);
+  const [rules, setRules] = useState<Array<{ id: string; title: string; description: string; category?: string }>>([]);
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);

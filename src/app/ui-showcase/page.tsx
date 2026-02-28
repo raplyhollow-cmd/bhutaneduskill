@@ -237,13 +237,13 @@ export default function UIShowcasePage() {
                   <VStack gap={16}>
                     <Label>Auto-fit Grid (min-width: 200px)</Label>
                     <div className="rounded-lg border p-4">
-                      <ListGrid gap={16}>
+                      <div className="grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-4">
                         {Array.from({ length: 8 }).map((_, i) => (
                           <div key={i} className="rounded-md bg-primary/10 p-4 text-center">
                             Card {i + 1}
                           </div>
                         ))}
-                      </ListGrid>
+                      </div>
                     </div>
                   </VStack>
 
@@ -348,14 +348,14 @@ export default function UIShowcasePage() {
                         </TightStack>
                       </div>
                       <div className="flex-1 rounded-lg border p-4">
-                        <Label className="text-xs text-muted-foreground">NormalStack (16px)</Label>
-                        <NormalStack className="mt-2">
+                        <Label className="text-xs text-muted-foreground">VStack (16px)</Label>
+                        <VStack className="mt-2">
                           {Array.from({ length: 3 }).map((_, i) => (
                             <div key={i} className="rounded bg-primary/10 px-3 py-2 text-sm">
                               Item {i + 1}
                             </div>
                           ))}
-                        </NormalStack>
+                        </VStack>
                       </div>
                       <div className="flex-1 rounded-lg border p-4">
                         <Label className="text-xs text-muted-foreground">LooseStack (24px)</Label>
@@ -435,7 +435,7 @@ export default function UIShowcasePage() {
                       {["start", "center", "end", "stretch"].map((align) => (
                         <div key={align} className="rounded-lg border p-4">
                           <Label className="text-xs text-muted-foreground">align="{align}"</Label>
-                          <Stack gap={8} align={align as any} className="mt-2">
+                          <Stack gap={8} align={align as "start" | "center" | "end" | "stretch" | "baseline"} className="mt-2">
                             <div className="w-24 rounded bg-primary/10 px-3 py-2 text-sm">
                               {align === "stretch" ? "Stretched item" : "Item 1"}
                             </div>
@@ -556,7 +556,7 @@ export default function UIShowcasePage() {
                       {["start", "center", "end", "space-between"].map((justify) => (
                         <div key={justify} className="rounded-lg border p-4">
                           <Label className="text-xs text-muted-foreground">justify="{justify}"</Label>
-                          <Cluster gap={12} justify={justify as any} className="mt-2">
+                          <Cluster gap={"md" as any} justify={justify as "start" | "center" | "end" | "space-between"} className="mt-2">
                             {Array.from({ length: 3 }).map((_, i) => (
                               <div
                                 key={i}

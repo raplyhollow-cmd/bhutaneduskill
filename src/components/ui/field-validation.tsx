@@ -69,6 +69,10 @@ export interface UseFieldValidationOptions {
   validateOnChange?: boolean
 }
 
+export type UseFieldValidationOptionsRequired = Required<Omit<UseFieldValidationOptions, 'validate'>> & {
+  validate?: (value: string) => string | null | Promise<string | null>
+};
+
 export interface ValidatedInputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "size"> {
   field: ReturnType<typeof useFieldValidation>
@@ -104,7 +108,7 @@ export function useFieldValidation({
   const [error, setError] = React.useState<string | null>(null)
   const [status, setStatus] = React.useState<ValidationStatus>("idle")
   const [touched, setTouched] = React.useState(false)
-  const debounceTimerRef = React.useRef<NodeJS.Timeout>()
+  const debounceTimerRef = React.useRef<NodeJS.Timeout | null>(null)
 
   const performValidation = React.useCallback(
     async (val: string): Promise<string | null> => {
@@ -348,6 +352,9 @@ export function ValidatedTextarea({
         <textarea
           id={textareaId}
           rows={rows}
+          value={field.value}
+          onChange={field.props.onChange as (e: React.ChangeEvent<any>) => void}
+          onBlur={field.props.onBlur}
           aria-invalid={hasError}
           aria-describedby={cn(
             hasError && errorId,
@@ -364,8 +371,7 @@ export function ValidatedTextarea({
                 : "border-gray-300 text-gray-900 placeholder-gray-400 focus:border-purple-500 dark:border-gray-600",
             className
           )}
-          {...field.props}
-          {...textareaProps}
+          {...(textareaProps as React.TextareaHTMLAttributes<HTMLTextAreaElement>)}
         />
       </div>
 

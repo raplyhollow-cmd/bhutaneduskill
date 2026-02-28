@@ -9,10 +9,11 @@
  * - "Extend trial for ABC School by 7 days"
  *
  * All commands require explicit confirmation before execution.
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { schools, users, invoices, notifications, anomalyAlerts } from "@/lib/db/schema";
@@ -20,6 +21,7 @@ import { eq, and, sql } from "drizzle-orm";
 import { chatWithGemini } from "@/lib/ai/gemini-server";
 import { nanoid } from "nanoid";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 // ============================================================================
 // TYPES
@@ -616,25 +618,14 @@ async function executeResolveAnomaly(parameters: CommandParameters, userId: stri
 // API ROUTE
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
     const body: CommandExecuteRequest = await request.json();
     const { command, context } = body;
 
     if (!command || typeof command !== "string") {
-      return NextResponse.json(
-        { error: "Command is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "Command is required", status: 400 };
     }
 
     logger.info("Admin command received", { userId, command: command.substring(0, 100) });
@@ -644,63 +635,38 @@ export async function POST(request: NextRequest) {
 
     // Check confidence level
     if (parsed.confidence < 0.7) {
-      return NextResponse.json({
+      return {
         success: false,
         requiresConfirmation: true,
         parsed,
         message: `I'm not entirely sure what you mean. ${parsed.explanation}`,
-      });
+      };
     }
 
     // Phase 2: Return parsed command for confirmation
     // Admin must explicitly confirm before execution
-    return NextResponse.json({
+    return {
       success: true,
       requiresConfirmation: true,
       parsed,
       explanation: parsed.explanation,
       message: `Ready to execute: ${parsed.action} on ${parsed.entityName || "target"}. Please confirm.`,
-    });
-
-  } catch (error) {
-    logger.apiError(error, {
-      route: "/api/admin/command/execute",
-      method: "POST",
-    });
-
-    return NextResponse.json(
-      {
-        error: "Failed to process command",
-        status: 500,
-        details: process.env.NODE_ENV === "development" ? String(error) : undefined,
-      } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);
 
 /**
  * CONFIRM endpoint - Execute after user confirms
  */
-export async function PUT(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const PUT = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
     const body = await request.json();
     const { parsed } = body;
 
     if (!parsed || !parsed.action) {
-      return NextResponse.json(
-        { error: "Parsed command is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "Parsed command is required", status: 400 };
     }
 
     logger.info("Executing confirmed command", { userId, action: parsed.action });
@@ -708,24 +674,10 @@ export async function PUT(request: NextRequest) {
     // Execute the command
     const result = await executeCommand(parsed, userId);
 
-    return NextResponse.json({
+    return {
       success: result.success,
       data: result,
-    });
-
-  } catch (error) {
-    logger.apiError(error, {
-      route: "/api/admin/command/execute",
-      method: "PUT",
-    });
-
-    return NextResponse.json(
-      {
-        error: "Failed to execute command",
-        status: 500,
-        details: process.env.NODE_ENV === "development" ? String(error) : undefined,
-      } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);

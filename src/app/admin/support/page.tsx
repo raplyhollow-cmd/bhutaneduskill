@@ -285,7 +285,7 @@ export default function AdminSupportPage() {
 
   const handleQuickStatusChange = async (ticketId: string, newStatus: string) => {
     try {
-      const result = await updateSupportTicket(ticketId, { status: newStatus as any });
+      const result = await updateSupportTicket(ticketId, { status: newStatus as "open" | "in_progress" | "waiting" | "resolved" | "closed" });
       if (result.error) {
         alert(result.error);
       } else {

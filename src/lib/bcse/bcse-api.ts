@@ -157,7 +157,7 @@ export class BCSEApiClient {
         success: true,
         registrationNumber: response.registrationNumber as string,
         indexNumber: response.indexNumber as string,
-        status: response.status as string,
+        status: response.status as "pending" | "approved" | "rejected",
         message: response.message as string,
       };
     } catch (error) {
@@ -187,9 +187,9 @@ export class BCSEApiClient {
 
       return {
         success: true,
-        submitted: response.submitted || 0,
-        failed: response.failed || 0,
-        results: response.results || [],
+        submitted: (response.submitted as number) || 0,
+        failed: (response.failed as number) || 0,
+        results: (response.results as Array<{ index: number; success: boolean; error?: string }>) || [],
       };
     } catch (error) {
       return {
@@ -225,7 +225,7 @@ export class BCSEApiClient {
 
       return {
         success: true,
-        result: response as BCSEExamResult,
+        result: response as unknown as BCSEExamResult,
       };
     } catch (error) {
       return {
@@ -254,7 +254,7 @@ export class BCSEApiClient {
 
       return {
         success: true,
-        results: response.results || [],
+        results: (response.results as BCSEExamResult[]) || [],
       };
     } catch (error) {
       return {
@@ -279,7 +279,7 @@ export class BCSEApiClient {
 
       return {
         success: true,
-        subjects: response.subjects || [],
+        subjects: (response.subjects as BCSESubjectInfo[]) || [],
       };
     } catch (error) {
       return {
@@ -310,7 +310,7 @@ export class BCSEApiClient {
 
       return {
         success: true,
-        combinations: response.combinations || [],
+        combinations: (response.combinations as Array<{ subjects: string[]; combinationCode: string }>) || [],
       };
     } catch (error) {
       return {

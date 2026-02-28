@@ -1,36 +1,31 @@
-import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
-import { db } from "@/lib/db";
-import { announcements, users } from "@/lib/db/schema";
-import { eq, and, desc, or, sql, count } from "drizzle-orm";
-
-// ============================================================================
-// ANNOUNCEMENTS API
-// ============================================================================
-
 /**
- * GET /api/communication/announcements
+ * Announcements API
  *
- * Fetch announcements for the current user
- * Query params:
- * - schoolId: filter by school
- * - isPublished: filter by published status
- * - isPinned: filter by pinned status
- * - priority: filter by priority (low, normal, high, urgent)
- * - limit: max number of results
- * - offset: pagination offset
+ * GET /api/communication/announcements - Fetch announcements
+ * POST /api/communication/announcements - Create new announcement
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
-export async function GET(request: NextRequest) {
-  // Auth: admin, school-admin, teacher can read announcements
-  const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
-  const { userId, user } = authResult;
 
-  try {
-    const { searchParams } = new URL(request.url);
+import { NextRequest } from "next/server";
+import { logger } from "@/lib/logger";
+import { db } from "@/lib/db";
+import { announcements, users, type announcements as AnnouncementsTable } from "@/lib/db/schema";
+import { eq, and, desc, or, sql, count } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, badRequestResponse, notFoundResponse } from "@/lib/api/response-helpers";
+
+// Type for announcement insert data
+type AnnouncementInsert = typeof AnnouncementsTable.$inferInsert;
+
+// ============================================================================
+// GET /api/communication/announcements
+// ============================================================================
+
+export const GET = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId, user } = auth;
+    const { searchParams } = new URL(req.url);
     const schoolId = searchParams.get("schoolId");
     const isPublished = searchParams.get("isPublished") === "true" ? true : searchParams.get("isPublished") === "false" ? false : undefined;
     const isPinned = searchParams.get("isPinned") === "true" ? true : searchParams.get("isPinned") === "false" ? false : undefined;
@@ -46,12 +41,12 @@ export async function GET(request: NextRequest) {
       .limit(1);
 
     if (!userInfo) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return notFoundResponse("User");
     }
 
     const effectiveSchoolId = schoolId || userInfo.schoolId;
     if (!effectiveSchoolId) {
-      return NextResponse.json({ announcements: [], total: 0 });
+      return successResponse({ announcements: [], total: 0 });
     }
 
     // Build conditions
@@ -117,59 +112,28 @@ export async function GET(request: NextRequest) {
       .limit(limit)
       .offset(offset);
 
-    return NextResponse.json({
+    return successResponse({
       announcements: results,
       total,
       limit,
       offset,
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch announcements", announcements: [], total: 0 },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin', 'school-admin', 'teacher']
+);
 
-/**
- * POST /api/communication/announcements
- *
- * Create a new announcement
- *
- * Body:
- * - title: string
- * - content: string
- * - excerpt?: string
- * - targetAudience: "all" | "students" | "teachers" | "parents" | "staff" | "counselor"
- * - targetGradeLevel?: string
- * - targetClassIds?: string[]
- * - targetUserIds?: string[]
- * - priority?: "low" | "normal" | "high" | "urgent"
- * - category?: string
- * - publishDate?: string
- * - expiryDate?: string
- * - isPublished?: boolean
- * - isPinned?: boolean
- * - attachments?: Array<{ name, url, type, size }>
- */
-export async function POST(request: NextRequest) {
-  // Auth: admin, school-admin, teacher can create announcements
-  const authResult = await requireAuth(['admin', 'school-admin', 'teacher']);
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
-  const { userId } = authResult;
+// ============================================================================
+// POST /api/communication/announcements
+// ============================================================================
 
-  try {
-    const body = await request.json();
+export const POST = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId } = auth;
+    const body = await req.json();
 
     // Validate required fields
     if (!body.title || !body.content) {
-      return NextResponse.json(
-        { error: "Title and content are required" },
-        { status: 400 }
-      );
+      return badRequestResponse("Title and content are required");
     }
 
     // Get user info
@@ -180,7 +144,7 @@ export async function POST(request: NextRequest) {
       .limit(1);
 
     if (!userInfo || !userInfo.schoolId) {
-      return NextResponse.json({ error: "School not found" }, { status: 404 });
+      return notFoundResponse("School");
     }
 
     const authorName = `${userInfo.firstName} ${userInfo.lastName || ""}`.trim();
@@ -191,38 +155,35 @@ export async function POST(request: NextRequest) {
       .values({
         id: `ann_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
         schoolId: userInfo.schoolId,
-        tenantId: "", // Will be set by trigger or default
+        classId: null,
         authorId: userId,
         authorName,
-        authorRole: userInfo.role || "school_admin",
+        authorRole: userInfo.role || "school-admin",
         title: body.title,
         content: body.content,
-        excerpt: body.excerpt || null,
+        excerpt: body.excerpt || "",
         targetAudience: body.targetAudience || "all",
-        targetGradeLevel: body.targetGradeLevel || null,
+        targetGradeLevel: body.targetGradeLevel || "",
         targetClassIds: body.targetClassIds || null,
         targetUserIds: body.targetUserIds || null,
         priority: body.priority || "normal",
         category: body.category || "general",
-        isPublished: !!body.isPublished,
         isPinned: !!body.isPinned,
-        isArchived: false,
-        attachments: body.attachments || null,
-        publishDate: body.publishDate || null,
-        expiryDate: body.expiryDate || null,
+        isPublished: !!body.isPublished,
         viewCount: 0,
+        isArchived: false,
+        attachments: body.attachments || [],
+        publishDate: body.publishDate ? new Date(body.publishDate).toISOString() : new Date().toISOString(),
+        expiryDate: body.expiryDate ? new Date(body.expiryDate).toISOString() : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        publishedAt: body.isPublished ? now : new Date(0),
         createdAt: now,
         updatedAt: now,
-        publishedAt: body.isPublished ? now : null,
-      } as any)
+      } satisfies AnnouncementInsert)
       .returning();
 
-    return NextResponse.json({ success: true, announcement }, { status: 201 });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "POST" });
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to create announcement" },
-      { status: 500 }
-    );
-  }
-}
+    logger.info("Announcement created", { userId, announcementId: announcement.id });
+
+    return successResponse({ announcement }, 201);
+  },
+  ['admin', 'school-admin', 'teacher']
+);

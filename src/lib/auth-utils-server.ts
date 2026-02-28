@@ -93,7 +93,7 @@ export async function requireAuthServer(allowedRoles?: string[]): Promise<AuthRe
     }
   }
 
-  return { user, userId: user.id };
+  return { user: user as DbUser, userId: user.id };
 }
 
 /**

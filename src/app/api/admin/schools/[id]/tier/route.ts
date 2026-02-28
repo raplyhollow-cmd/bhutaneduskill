@@ -1,36 +1,20 @@
-import { NextRequest, NextResponse } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
 import { schools } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
 
 // PATCH /api/admin/schools/[id]/tier - Update school subscription tier
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const authResult = await requireAuth(['admin']);
-  if ('error' in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } as ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
+export const PATCH = createApiRoute<{ id: string }>(
+  async (req, auth, context) => {
+    const { userId: adminId } = auth;
+    const { id: schoolId } = await (context?.params || Promise.resolve({ id: "" }));
 
-  const { userId: adminId } = authResult;
-  const { id: schoolId } = await params;
-
-  try {
-    const body = await request.json();
+    const body = await req.json();
     const { tier } = body;
 
     if (!tier || !['basic', 'standard', 'premium'].includes(tier)) {
-      return NextResponse.json(
-        { error: 'Invalid tier. Must be basic, standard, or premium', status: 400 } as ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: 'Invalid tier. Must be basic, standard, or premium', status: 400 };
     }
 
     // Get current school
@@ -41,10 +25,7 @@ export async function PATCH(
       .limit(1);
 
     if (!currentSchool) {
-      return NextResponse.json(
-        { error: 'School not found', status: 404 } as ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: 'School not found', status: 404 };
     }
 
     // Update maxStudents based on tier
@@ -75,16 +56,10 @@ export async function PATCH(
       updatedBy: adminId,
     });
 
-    return NextResponse.json({
+    return {
       data: updatedSchool,
       message: `School tier updated to ${tier}`,
-    } satisfies ApiSuccess<typeof updatedSchool>);
-
-  } catch (error) {
-    logger.apiError(error, { route: `/api/admin/schools/${schoolId}/tier`, method: 'PATCH', adminId });
-    return NextResponse.json(
-      { error: 'Failed to update tier', status: 500 } as ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);

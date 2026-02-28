@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toast Test</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 40px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        .btn-warning {
+            background: #ffc107;
+            color: #212529;
+        }
+        .btn-info {
+            background: #17a2b8;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>Toast Notification System Test</h1>
+
+    <div class="test-section">
+        <h2>Success Toasts</h2>
+        <button class="btn-success" onclick="showSuccessToast()">Show Success Toast</button>
+        <button class="btn-success" onclick="showSuccessWithDetails()">Show Success with Details</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Error Toasts</h2>
+        <button class="btn-danger" onclick="showErrorToast()">Show Error Toast</button>
+        <button class="btn-danger" onclick="showErrorWithDetails()">Show Error with Details</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Warning Toasts</h2>
+        <button class="btn-warning" onclick="showWarningToast()">Show Warning Toast</button>
+        <button class="btn-warning" onclick="showWarningWithDetails()">Show Warning with Details</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Info Toasts</h2>
+        <button class="btn-info" onclick="showInfoToast()">Show Info Toast</button>
+        <button class="btn-info" onclick="showInfoWithDetails()">Show Info with Details</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Loading Toast</h2>
+        <button class="btn-primary" onclick="showLoadingToast()">Show Loading Toast</button>
+        <button class="btn-success" onclick="dismissLastToast()">Dismiss Last Toast</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Multiple Toasts Test</h2>
+        <button class="btn-primary" onclick="showMultipleToasts()">Show 5 Toasts</button>
+        <button class="btn-warning" onclick="showStackedToasts()">Show Stacked Toasts</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Form Validation Test</h2>
+        <form onsubmit="handleFormSubmit(event)">
+            <input type="text" id="testInput" placeholder="Type something">
+            <button type="submit" class="btn-primary">Submit (empty will show error)</button>
+        </form>
+    </div>
+
+    <script>
+        // Mock toast functionality for testing
+        let toastCount = 0;
+
+        function showToast(options) {
+            toastCount++;
+            const id = `toast-${toastCount}-${Date.now()}`;
+            const toastContainer = document.getElementById('toast-container') || createToastContainer();
+
+            const toastEl = document.createElement('div');
+            toastEl.id = id;
+            toastEl.className = `toast toast-${options.variant || 'default'}`;
+            toastEl.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${getToastBgColor(options.variant || 'default')};
+                color: white;
+                padding: 16px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                max-width: 360px;
+                min-height: 44px;
+                cursor: pointer;
+                z-index: 1000;
+                animation: slideIn 0.3s ease-out;
+            `;
+
+            const icon = getToastIcon(options.variant || 'default');
+            toastEl.innerHTML = `
+                <div style="display: flex; align-items: flex-start; gap: 12px;">
+                    <div style="flex-shrink: 0; width: 20px; height: 20px;">
+                        ${icon}
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        ${options.title ? `<div style="font-weight: 600; font-size: 14px; margin-bottom: 4px;">${options.title}</div>` : ''}
+                        ${options.description ? `<div style="font-size: 14px; opacity: 0.9; line-height: 1.4;">${options.description}</div>` : ''}
+                    </div>
+                    <button onclick="dismissToast('${id}')" style="background: none; border: none; color: white; cursor: pointer; padding: 4px;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            `;
+
+            toastContainer.appendChild(toastEl);
+
+            // Auto dismiss after 5 seconds (unless loading)
+            if (options.variant !== 'loading') {
+                setTimeout(() => dismissToast(id), 5000);
+            }
+
+            // Add click to dismiss
+            toastEl.onclick = () => dismissToast(id);
+
+            return id;
+        }
+
+        function dismissToast(id) {
+            const toast = document.getElementById(id);
+            if (toast) {
+                toast.style.animation = 'slideOut 0.3s ease-in forwards';
+                setTimeout(() => toast.remove(), 300);
+            }
+        }
+
+        function createToastContainer() {
+            const container = document.createElement('div');
+            container.id = 'toast-container';
+            container.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                z-index: 9999;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            `;
+            document.body.appendChild(container);
+            return container;
+        }
+
+        function getToastBgColor(variant) {
+            switch (variant) {
+                case 'success': return 'linear-gradient(135deg, rgb(49, 200, 84) 0%, rgb(42, 159, 68) 100%)';
+                case 'error': return 'linear-gradient(135deg, rgb(247, 61, 61) 0%, rgb(220, 38, 38) 100%)';
+                case 'warning': return 'linear-gradient(135deg, rgb(253, 114, 36) 0%, rgb(245, 101, 101) 100%)';
+                case 'info': return 'linear-gradient(135deg, rgb(48, 127, 246) 0%, rgb(37, 99, 235) 100%)';
+                case 'loading': return 'linear-gradient(135deg, rgb(132, 107, 255) 0%, rgb(139, 92, 246) 100%)';
+                default: return 'linear-gradient(135deg, rgb(107, 114, 128) 0%, rgb(75, 85, 99) 100%)';
+            }
+        }
+
+        function getToastIcon(variant) {
+            switch (variant) {
+                case 'success':
+                    return `<svg viewBox="0 0 24 24" fill="none" style="color: #31c854;">
+                        <path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>`;
+                case 'error':
+                    return `<svg viewBox="0 0 24 24" fill="none" style="color: #f73d3d;">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                        <line x1="15" y1="9" x2="9" y2="15" stroke="currentColor" stroke-width="2"/>
+                        <line x1="9" y1="9" x2="15" y2="15" stroke="currentColor" stroke-width="2"/>
+                    </svg>`;
+                case 'warning':
+                    return `<svg viewBox="0 0 24 24" fill="none" style="color: #fd7224;">
+                        <path d="M12 9v6m0-6h.01m-6.01 6h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z" stroke="currentColor" stroke-width="2"/>
+                    </svg>`;
+                case 'info':
+                    return `<svg viewBox="0 0 24 24" fill="none" style="color: #307ff6;">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" fill="currentColor"/>
+                    </svg>`;
+                case 'loading':
+                    return `<svg viewBox="0 0 24 24" fill="none" style="color: #846bff;">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" stroke-dasharray="31.416" stroke-dashoffset="31.416">
+                            <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="1s" repeatCount="indefinite"/>
+                        </circle>
+                    </svg>`;
+                default:
+                    return `<svg viewBox="0 0 24 24" fill="none" style="color: #90909d;">
+                        <path d="M13 16h-1v-4h1m0-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="2"/>
+                    </svg>`;
+            }
+        }
+
+        // Test functions
+        function showSuccessToast() {
+            showToast({
+                variant: 'success',
+                title: 'Success!',
+                description: 'Operation completed successfully.'
+            });
+        }
+
+        function showSuccessWithDetails() {
+            showToast({
+                variant: 'success',
+                title: 'Profile Updated',
+                description: 'Your profile information has been saved successfully.'
+            });
+        }
+
+        function showErrorToast() {
+            showToast({
+                variant: 'error',
+                title: 'Error',
+                description: 'Something went wrong. Please try again.'
+            });
+        }
+
+        function showErrorWithDetails() {
+            showToast({
+                variant: 'error',
+                title: 'Validation Failed',
+                description: 'Please check the form fields for errors.'
+            });
+        }
+
+        function showWarningToast() {
+            showToast({
+                variant: 'warning',
+                title: 'Warning',
+                description: 'This action cannot be undone.'
+            });
+        }
+
+        function showWarningWithDetails() {
+            showToast({
+                variant: 'warning',
+                title: 'Unsaved Changes',
+                description: 'You have unsaved changes. Save them before leaving?'
+            });
+        }
+
+        function showInfoToast() {
+            showToast({
+                variant: 'info',
+                title: 'Info',
+                description: 'This is an informational message.'
+            });
+        }
+
+        function showInfoWithDetails() {
+            showToast({
+                variant: 'info',
+                title: 'New Feature',
+                description: 'Check out our latest feature in the dashboard.'
+            });
+        }
+
+        function showLoadingToast() {
+            const id = showToast({
+                variant: 'loading',
+                title: 'Loading...',
+                description: 'Please wait while we process your request.'
+            });
+
+            // Simulate loading completion
+            setTimeout(() => {
+                dismissToast(id);
+                showToast({
+                    variant: 'success',
+                    title: 'Complete',
+                    description: 'Process completed successfully.'
+                });
+            }, 3000);
+        }
+
+        function dismissLastToast() {
+            const toasts = document.querySelectorAll('.toast');
+            if (toasts.length > 0) {
+                const lastToast = toasts[toasts.length - 1];
+                dismissToast(lastToast.id);
+            }
+        }
+
+        function showMultipleToasts() {
+            showToast({ variant: 'success', title: 'Toast 1' });
+            setTimeout(() => showToast({ variant: 'info', title: 'Toast 2' }), 200);
+            setTimeout(() => showToast({ variant: 'warning', title: 'Toast 3' }), 400);
+            setTimeout(() => showToast({ variant: 'error', title: 'Toast 4' }), 600);
+            setTimeout(() => showToast({ variant: 'success', title: 'Toast 5' }), 800);
+        }
+
+        function showStackedToasts() {
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => {
+                    showToast({
+                        variant: ['success', 'info', 'warning', 'error', 'success'][i],
+                        title: `Stacked Toast ${i + 1}`,
+                        description: `This is toast number ${i + 1} in the stack.`
+                    });
+                }, i * 100);
+            }
+        }
+
+        function handleFormSubmit(event) {
+            event.preventDefault();
+            const input = document.getElementById('testInput');
+
+            if (!input.value.trim()) {
+                showToast({
+                    variant: 'error',
+                    title: 'Validation Error',
+                    description: 'This field is required. Please enter a value.'
+                });
+                return;
+            }
+
+            showToast({
+                variant: 'success',
+                title: 'Form Submitted',
+                description: `Thank you! You submitted: "${input.value}"`
+            });
+        }
+
+        // Add CSS animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from {
+                    transform: translateX(400px);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+
+            @keyframes slideOut {
+                from {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateX(400px);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>

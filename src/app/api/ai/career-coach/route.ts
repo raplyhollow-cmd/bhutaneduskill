@@ -62,38 +62,28 @@ export const POST = createApiRoute(
 
     // Query 1: Get user profile for personalization
     const userProfile = await safeQuery(
-      () => db.query.users.findFirst({
-        where: eq(users.id, userId),
-      }),
+      () => db.select().from(users).where(eq(users.id, userId)).limit(1).then(rows => rows[0] || null),
       null,
       "user profile"
     );
 
     // Query 2: Get RIASEC assessment results
     const riasecResult = await safeQuery(
-      () => db.query.riasecResults.findFirst({
-        where: eq(riasecResults.userId, userId),
-        orderBy: desc(riasecResults.createdAt),
-      }),
+      () => db.select().from(riasecResults).where(eq(riasecResults.userId, userId)).orderBy(desc(riasecResults.createdAt)).limit(1).then(rows => rows[0] || null),
       null,
       "RIASEC results"
     );
 
     // Query 3: Get MBTI assessment results
     const mbtiResult = await safeQuery(
-      () => db.query.mbtiResults.findFirst({
-        where: eq(mbtiResults.userId, userId),
-        orderBy: desc(mbtiResults.createdAt),
-      }),
+      () => db.select().from(mbtiResults).where(eq(mbtiResults.userId, userId)).orderBy(desc(mbtiResults.createdAt)).limit(1).then(rows => rows[0] || null),
       null,
       "MBTI results"
     );
 
     // Query 4: Get user assessments
     const userAssessments = await safeQuery(
-      () => db.query.assessments.findMany({
-        where: eq(assessments.userId, userId),
-      }),
+      () => db.select().from(assessments).where(eq(assessments.userId, userId)),
       [],
       "user assessments"
     );
@@ -104,11 +94,7 @@ export const POST = createApiRoute(
     let matches: typeof careerMatches.$inferSelect[] = [];
     if (assessmentIds.length > 0) {
       matches = await safeQuery(
-        () => db.query.careerMatches.findMany({
-            where: inArray(careerMatches.assessmentId, assessmentIds),
-            orderBy: desc(careerMatches.matchScore),
-            limit: 10, // Increased limit to get more career options
-          }),
+        () => db.select().from(careerMatches).where(inArray(careerMatches.assessmentId, assessmentIds)).orderBy(desc(careerMatches.matchScore)).limit(10),
         [],
         "career matches"
       );
@@ -116,9 +102,7 @@ export const POST = createApiRoute(
 
     // Query 6: Get career plan
     const careerPlan = await safeQuery(
-      () => db.query.careerPlans.findFirst({
-        where: eq(careerPlans.userId, userId),
-      }),
+      () => db.select().from(careerPlans).where(eq(careerPlans.userId, userId)).limit(1).then(rows => rows[0] || null),
       null,
       "career plan"
     );
@@ -129,7 +113,7 @@ export const POST = createApiRoute(
       journalEntries?: Array<{ date: string; title?: string; mood?: string; entry: string }>;
     }
     const journalEntries = await safeQuery(
-      () => {
+      async () => {
         const settings = (userProfile?.settings as UserSettings | null) || {};
         return settings.journalEntries || [];
       },
@@ -163,8 +147,12 @@ export const POST = createApiRoute(
     if (!hollandCode) {
       const riasecAssessment = userAssessments.find((a) => a.type === "riasec" && a.status === "completed");
       if (riasecAssessment && riasecAssessment.results) {
-        const results = riasecAssessment.results as Record<string, unknown> | null;
-        hollandCode = (results?.hollandCode as string) || (results?.results as Record<string, unknown>)?.hollandCode?.[0] as string || null;
+        const results = riasecAssessment.results as unknown;
+        const resultRecord = results as Record<string, unknown> | null;
+        const nestedResults = resultRecord?.results as unknown;
+        const nestedRecord = nestedResults as Record<string, unknown> | undefined;
+        const hollandArray = nestedRecord?.hollandCode as unknown[] | undefined;
+        hollandCode = (resultRecord?.hollandCode as string | undefined) || (hollandArray?.[0] as string | undefined) || null;
       }
     }
 
@@ -191,14 +179,15 @@ export const POST = createApiRoute(
     }
 
     // Extract MBTI type from multiple sources (in priority order)
-    let mbtiType = (mbtiResult as any)?.personalityType || null;
+    let mbtiType = mbtiResult?.personalityType || null;
 
     // Fallback 1: Try assessments.results JSON
     if (!mbtiType) {
       const mbtiAssessment = userAssessments.find((a) => a.type === "mbti" && a.status === "completed");
       if (mbtiAssessment && mbtiAssessment.results) {
-        const results = mbtiAssessment.results as Record<string, unknown> | null;
-        mbtiType = (results?.personalityType as string) || (results?.mbtiType as string) || null;
+        const results = mbtiAssessment.results as unknown;
+        const resultRecord = results as Record<string, unknown> | null;
+        mbtiType = (resultRecord?.personalityType as string | undefined) || (resultRecord?.mbtiType as string | undefined) || null;
       }
     }
 
@@ -315,11 +304,16 @@ function extractCareerNames(message: string): string[] {
 // GET - Check AI availability
 // ============================================================================
 
-export async function GET() {
-  return NextResponse.json({
-    available: true,
-    feature: "AI Career Coach",
-    description: "24/7 personalized career guidance chatbot",
-    requiresAuth: true,
-  });
-}
+export const GET = createApiRoute(
+  async () => {
+    return {
+      data: {
+        available: true,
+        feature: "AI Career Coach",
+        description: "24/7 personalized career guidance chatbot",
+        requiresAuth: true,
+      }
+    };
+  },
+  []
+);

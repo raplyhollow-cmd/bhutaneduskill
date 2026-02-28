@@ -8,13 +8,13 @@
  * to the school admin's own school based on their user.schoolId.
  */
 
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createApiRoute, getAuth } from "@/lib/api/route-handler";
 import { successResponse, badRequestResponse, notFoundResponse, errorResponse } from "@/lib/api/response-helpers";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { schools, users, students, studentFees } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 interface GenerateFeesRequest {
@@ -50,15 +50,17 @@ export const POST = createApiRoute(
     }
 
     // Validate school exists
-    const school = await db.query.schools.findFirst({
-      where: eq(schools.id, schoolId),
-      columns: {
-        id: true,
-        name: true,
-        type: true,
-        schoolType: true,
-      },
-    });
+    const school = await db
+      .select({
+        id: schools.id,
+        name: schools.name,
+        type: schools.type,
+        schoolType: schools.schoolType,
+      })
+      .from(schools)
+      .where(eq(schools.id, schoolId))
+      .limit(1)
+      .then(rows => rows[0]);
 
     if (!school) {
       return notFoundResponse("School not found");
@@ -73,16 +75,16 @@ export const POST = createApiRoute(
     });
 
     // Get all active students for this school
-    const studentRecords = await db.query.students.findMany({
-      where: and(
+    const studentRecords = await db
+      .select({
+        id: students.id,
+        userId: students.userId,
+      })
+      .from(students)
+      .where(and(
         eq(students.schoolId, schoolId),
         eq(students.status, "active")
-      ),
-      columns: {
-        id: true,
-        userId: true,
-      },
-    });
+      ));
 
     if (studentRecords.length === 0) {
       return successResponse({
@@ -95,16 +97,18 @@ export const POST = createApiRoute(
     // Get user IDs for students
     const studentUserIds = studentRecords.map(s => s.userId);
 
-    // Fetch user details
-    const studentUsers = await db.query.users.findMany({
-      where: eq(users.id, studentUserIds[0]), // Batch query optimization needed
-      columns: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        name: true,
-      },
-    });
+    // Fetch user details - using IN clause for batch lookup
+    const studentUsers = studentUserIds.length > 0
+      ? await db
+          .select({
+            id: users.id,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            name: users.name,
+          })
+          .from(users)
+          .where(sql`${users.id} = ANY(${studentUserIds})`)
+      : [];
 
     const userMap = new Map(studentUsers.map(u => [u.id, u]));
 
@@ -219,39 +223,43 @@ export const GET = createApiRoute(
     const schoolId = user.schoolId;
 
     // Get school data
-    const school = await db.query.schools.findFirst({
-      where: eq(schools.id, schoolId),
-      columns: {
-        id: true,
-        name: true,
-        type: true,
-        schoolType: true,
-        currentSessionYear: true,
-        feeGenerationDate: true,
-        feeGenerationStatus: true,
-      },
-    });
+    const school = await db
+      .select({
+        id: schools.id,
+        name: schools.name,
+        type: schools.type,
+        schoolType: schools.schoolType,
+        currentSessionYear: schools.currentSessionYear,
+        feeGenerationDate: schools.feeGenerationDate,
+        feeGenerationStatus: schools.feeGenerationStatus,
+      })
+      .from(schools)
+      .where(eq(schools.id, schoolId))
+      .limit(1)
+      .then(rows => rows[0]);
 
     if (!school) {
       return notFoundResponse("School not found");
     }
 
     // Count active students
-    const studentRecords = await db.query.students.findMany({
-      where: and(
+    const studentRecords = await db
+      .select()
+      .from(students)
+      .where(and(
         eq(students.schoolId, schoolId),
         eq(students.status, "active")
-      ),
-    });
+      ));
 
     // Get fee summary for current session
     const existingFees = school.currentSessionYear
-      ? await db.query.studentFees.findMany({
-          where: and(
+      ? await db
+          .select()
+          .from(studentFees)
+          .where(and(
             eq(studentFees.schoolId, schoolId),
             eq(studentFees.year, parseInt(school.currentSessionYear))
-          ),
-        })
+          ))
       : [];
 
     const totalGenerated = existingFees.length;

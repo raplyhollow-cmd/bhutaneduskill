@@ -3,39 +3,68 @@
  *
  * PUT /api/admin/knowledge/drafts/:id/approve - Approve and import knowledge
  * DELETE /api/admin/knowledge/drafts/:id - Reject draft
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { knowledgeDrafts, rubRequirements, nationalScholarships } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { createApiRoute } from "@/lib/api/route-handler";
+import type { NewRubRequirement, NewNationalScholarship } from "@/lib/db/schema";
 
 interface ApproveRequest {
   reviewNotes?: string;
 }
 
+// Type for structured data items in knowledge drafts
+type StructuredDataItem = Record<string, unknown>;
+
+// Type for rub requirement items - matching schema expectations
+interface RubRequirementItem {
+  collegeId?: string;
+  collegeName?: string;
+  programName: string;
+  educationLevel?: string;
+  requiredSubjects?: Array<{
+    subject: string;
+    minimumGrade: string;
+    minimumPercentage: number;
+  }>;
+  aggregateRequirements?: {
+    minimumPercentage?: number;
+    subjectsToConsider?: string[];
+    englishRequired?: boolean;
+    dzongkhaRequired?: boolean;
+  };
+  additionalRequirements?: string;
+  duration?: number | string;
+}
+
+// Type for scholarship items
+interface ScholarshipItem {
+  name: string;
+  provider?: string;
+  type?: string;
+  educationLevel?: string;
+  eligibilityCriteria?: Record<string, unknown>;
+  benefits?: Record<string, unknown>;
+  applicationDeadline?: string;
+  applicationUrl?: string;
+  documentsRequired?: string[];
+}
+
 /**
  * Approve draft and import into main tables
  */
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status },
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const PUT = createApiRoute<{ id: string }>(
+  async (request: NextRequest, auth, { params }) => {
+    const { id } = await params;
+    const { userId } = auth;
     const body: ApproveRequest = await request.json();
 
     // Get draft
@@ -46,20 +75,14 @@ export async function PUT(
       .limit(1);
 
     if (!draft) {
-      return NextResponse.json(
-        { error: "Draft not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "Draft not found", status: 404 };
     }
 
     if (draft.status !== "pending") {
-      return NextResponse.json(
-        { error: `Draft already ${draft.status}`, status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: `Draft already ${draft.status}`, status: 400 };
     }
 
-    const structuredData = draft.structuredData as any[];
+    const structuredData = (draft.structuredData || []) as StructuredDataItem[];
     let importedCount = 0;
 
     // Import based on source type
@@ -68,20 +91,39 @@ export async function PUT(
       case "college":
         // Import into rub_requirements table
         for (const item of structuredData) {
-          await db.insert(rubRequirements).values({
+          // Generate a college ID from college name if not provided
+          const collegeId = item.collegeId as string | undefined ||
+            (item.collegeName as string | undefined)?.toLowerCase().replace(/\s+/g, "-") ||
+            nanoid();
+
+          // Ensure duration is a string
+          const durationValue = (item.duration as number | string | undefined)?.toString() || "4 years";
+
+          const requirementData: NewRubRequirement = {
             id: nanoid(),
-            collegeId: item.collegeName?.toLowerCase().replace(/\s+/g, "-") || nanoid(),
-            programName: item.programName,
-            educationLevel: item.educationLevel || "undergraduate",
-            requiredSubjects: item.requiredSubjects || [],
-            aggregateRequirements: item.aggregateRequirements || {},
-            additionalRequirements: item.additionalRequirements,
-            duration: item.duration,
+            collegeId,
+            programName: item.programName as string,
+            educationLevel: (item.educationLevel as string) || "undergraduate",
+            requiredSubjects: (item.requiredSubjects as Array<{
+              subject: string;
+              minimumGrade: string;
+              minimumPercentage: number;
+            }> | undefined) || [],
+            aggregateRequirements: (item.aggregateRequirements as {
+              minimumPercentage?: number;
+              subjectsToConsider?: string[];
+              englishRequired?: boolean;
+              dzongkhaRequired?: boolean;
+            } | undefined) || {},
+            additionalRequirements: item.additionalRequirements as string | undefined,
+            duration: durationValue,
             isActive: true,
             sourceDraftId: draft.id,
             createdAt: new Date(),
             updatedAt: new Date(),
-          });
+          };
+
+          await db.insert(rubRequirements).values(requirementData);
           importedCount++;
         }
         break;
@@ -89,31 +131,41 @@ export async function PUT(
       case "scholarship":
         // Import into national_scholarships table
         for (const item of structuredData) {
-          await db.insert(nationalScholarships).values({
+          // Normalize benefits to match schema requirements
+          const rawBenefits = item.benefits as Record<string, unknown> | undefined;
+          const normalizedBenefits = {
+            covers: Array.isArray(rawBenefits?.covers)
+              ? rawBenefits.covers as string[]
+              : (Array.isArray(rawBenefits) ? rawBenefits as string[] : ["tuition"]),
+            amount: typeof rawBenefits?.amount === "number" ? rawBenefits.amount : undefined,
+            currency: typeof rawBenefits?.currency === "string" ? rawBenefits.currency : undefined,
+            notes: typeof rawBenefits?.notes === "string" ? rawBenefits.notes : undefined,
+          };
+
+          const scholarshipData: NewNationalScholarship = {
             id: nanoid(),
-            name: item.name,
-            provider: item.provider,
-            type: item.type,
-            educationLevel: item.educationLevel || "undergraduate",
-            eligibilityCriteria: item.eligibilityCriteria || {},
-            benefits: item.benefits || {},
-            applicationDeadline: item.applicationDeadline,
-            applicationUrl: item.applicationUrl,
-            documentsRequired: item.documentsRequired || [],
+            name: item.name as string,
+            provider: (item.provider as string) || "",
+            type: (item.type as string) || "merit",
+            educationLevel: (item.educationLevel as string) || "undergraduate",
+            eligibilityCriteria: (item.eligibilityCriteria as Record<string, unknown>) || {},
+            benefits: normalizedBenefits,
+            applicationDeadline: item.applicationDeadline as string | undefined,
+            applicationUrl: item.applicationUrl as string | undefined,
+            documentsRequired: (item.documentsRequired as string[] | undefined) || [],
             isActive: true,
             sourceDraftId: draft.id,
             createdAt: new Date(),
             updatedAt: new Date(),
-          });
+          };
+
+          await db.insert(nationalScholarships).values(scholarshipData);
           importedCount++;
         }
         break;
 
       default:
-        return NextResponse.json(
-          { error: `Unknown source type: ${draft.sourceType}`, status: 400 } satisfies ApiErrorResponse,
-          { status: 400 }
-        );
+        return { error: `Unknown source type: ${draft.sourceType}`, status: 400 };
     }
 
     // Update draft status
@@ -134,49 +186,24 @@ export async function PUT(
       importedCount,
     });
 
-    return NextResponse.json({
+    return {
       data: {
         draftId: id,
         importedCount,
         sourceType: draft.sourceType,
       },
-    } satisfies ApiSuccess<{ draftId: string; importedCount: number; sourceType: string }>);
-
-  } catch (error) {
-    logger.apiError(error, {
-      route: `/api/admin/knowledge/drafts/${id}/approve`,
-      method: "PUT",
-    });
-
-    return NextResponse.json(
-      {
-        error: "Failed to approve draft",
-        status: 500,
-        details: process.env.NODE_ENV === "development" ? String(error) : undefined,
-      } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);
 
 /**
  * Reject draft
  */
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const DELETE = createApiRoute<{ id: string }>(
+  async (request: NextRequest, auth, { params }) => {
+    const { id } = await params;
+    const { userId } = auth;
     const body = await request.json();
     const { reviewNotes } = body;
 
@@ -187,19 +214,12 @@ export async function DELETE(
       .where(eq(knowledgeDrafts.id, id))
       .limit(1);
 
-
     if (!draft) {
-      return NextResponse.json(
-        { error: "Draft not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "Draft not found", status: 404 };
     }
 
     if (draft.status !== "pending") {
-      return NextResponse.json(
-        { error: `Draft already ${draft.status}`, status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: `Draft already ${draft.status}`, status: 400 };
     }
 
     // Update draft status to rejected
@@ -220,26 +240,12 @@ export async function DELETE(
       reviewNotes,
     });
 
-    return NextResponse.json({
+    return {
       data: {
         draftId: id,
         status: "rejected",
       },
-    } satisfies ApiSuccess<{ draftId: string; status: string }>);
-
-  } catch (error) {
-    logger.apiError(error, {
-      route: `/api/admin/knowledge/drafts/${id}`,
-      method: "DELETE",
-    });
-
-    return NextResponse.json(
-      {
-        error: "Failed to reject draft",
-        status: 500,
-        details: process.env.NODE_ENV === "development" ? String(error) : undefined,
-      } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);

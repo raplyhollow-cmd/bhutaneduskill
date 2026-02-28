@@ -5,6 +5,9 @@
  *
  * Uses AI to analyze personal statements and essays, providing
  * constructive feedback on content, grammar, and style.
+ *
+ * NOTE: This route has custom error handling for API key errors with fallback generation.
+ * It cannot be migrated to createApiRoute until the wrapper supports custom error handlers.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -233,9 +236,9 @@ function buildReviewerPrompt(data: EssayReviewerRequest): string {
   parts.push(`**Current Word Count:** ${wordCount} words`);
 
   if (data.wordLimit && wordCount > data.wordLimit) {
-    parts.push(`⚠️ This essay is ${wordCount - data.wordLimit} words over the limit.`);
+    parts.push(`This essay is ${wordCount - data.wordLimit} words over the limit.`);
   } else if (data.wordLimit && wordCount < data.wordLimit * 0.8) {
-    parts.push(`⚠️ This essay is ${data.wordLimit - wordCount} words under the limit. Consider expanding.`);
+    parts.push(`This essay is ${data.wordLimit - wordCount} words under the limit. Consider expanding.`);
   }
 
   parts.push("\n**ESSAY TEXT:**");
@@ -545,24 +548,29 @@ function generateFallbackReview(data: EssayReviewerRequest): EssayReviewResponse
 // GET - Check availability
 // ============================================================================
 
-export async function GET() {
-  return NextResponse.json({
-    available: true,
-    feature: "AI Essay Reviewer",
-    description: "Get constructive feedback on your college application essays",
-    requiresAuth: true,
-    promptTypes: [
-      "personal-statement",
-      "specific-question",
-      "supplemental-essay",
-      "scholarship-essay",
-      "common-app",
-      "general",
-    ],
-    limits: {
-      minLength: 50,
-      maxLength: 15000,
-      maxWordCount: 3000,
-    },
-  });
-}
+export const GET = createApiRoute(
+  async () => {
+    return {
+      available: true,
+      feature: "AI Essay Reviewer",
+      description: "Get constructive feedback on your college application essays",
+      requiresAuth: true,
+      promptTypes: [
+        "personal-statement",
+        "specific-question",
+        "supplemental-essay",
+        "scholarship-essay",
+        "common-app",
+        "general",
+      ],
+      limits: {
+        minLength: 50,
+        maxLength: 15000,
+        maxWordCount: 3000,
+      },
+    };
+  },
+  [] as UserType[]
+);
+
+import { createApiRoute, type UserType } from "@/lib/api/route-handler";

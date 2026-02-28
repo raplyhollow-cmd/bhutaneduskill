@@ -1,9 +1,20 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+/**
+ * SCHOOL ADMIN CLASS SUBJECT TEACHERS API
+ *
+ * GET /api/school-admin/classes/[id]/subject-teachers - Get subject-teacher assignments
+ * POST /api/school-admin/classes/[id]/subject-teachers - Assign teacher to subject
+ * DELETE /api/school-admin/classes/[id]/subject-teachers - Remove teacher assignment
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { classes, users, subjects, teacherAssignments } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse, notFoundResponse, createdResponse } from "@/lib/api/response-helpers";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
 
 /**
@@ -12,27 +23,13 @@ import type { ApiSuccess, ApiErrorResponse } from "@/types";
  * Get all subject-teacher assignments for a class
  * Returns: subjects with assigned teachers, and available teachers
  */
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(['school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { user } = authResult;
+export const GET = createApiRoute(
+  async (req: NextRequest, auth, { params }: { params: Promise<{ id: string }> }) => {
+    const { user } = auth;
     const { id: classId } = await params;
 
     if (!user.schoolId) {
-      return NextResponse.json(
-        { error: "No school associated with your account", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return errorResponse("No school associated with your account", 400);
     }
 
     // Verify class exists and belongs to school
@@ -43,10 +40,7 @@ export async function GET(
       .limit(1);
 
     if (!classInfo) {
-      return NextResponse.json(
-        { error: "Class not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return notFoundResponse("Class");
     }
 
     // Get subjects for this grade
@@ -138,22 +132,14 @@ export async function GET(
       allTeachers: typeof allTeachers;
     };
 
-    return NextResponse.json({
-      data: {
-        classInfo,
-        subjectsWithTeachers,
-        allTeachers,
-      }
-    } satisfies ApiSuccess<SubjectTeachersResponse>);
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/classes/[id]/subject-teachers", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch subject-teacher assignments", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return successResponse({
+      classInfo,
+      subjectsWithTeachers,
+      allTeachers,
+    });
+  },
+  ['school-admin']
+);
 
 /**
  * POST /api/school-admin/classes/[id]/subject-teachers
@@ -161,37 +147,20 @@ export async function GET(
  * Assign a teacher to a subject for a specific class
  * Body: { teacherId, subjectId, role?, isPrimary?, periodsPerWeek? }
  */
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(['school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId, user } = authResult;
+export const POST = createApiRoute(
+  async (req: NextRequest, auth, { params }: { params: Promise<{ id: string }> }) => {
+    const { userId, user } = auth;
     const { id: classId } = await params;
     const body = await req.json();
 
     if (!user.schoolId) {
-      return NextResponse.json(
-        { error: "No school associated with your account", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return errorResponse("No school associated with your account", 400);
     }
 
     const { teacherId, subjectId, role = "subject_teacher", isPrimary = false, periodsPerWeek } = body;
 
     if (!teacherId || !subjectId) {
-      return NextResponse.json(
-        { error: "Teacher ID and Subject ID are required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("Teacher ID and Subject ID are required");
     }
 
     // Verify class exists
@@ -202,10 +171,7 @@ export async function POST(
       .limit(1);
 
     if (!classInfo) {
-      return NextResponse.json(
-        { error: "Class not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return notFoundResponse("Class");
     }
 
     // Verify teacher exists
@@ -216,10 +182,7 @@ export async function POST(
       .limit(1);
 
     if (!teacher || teacher.type !== "teacher") {
-      return NextResponse.json(
-        { error: "Teacher not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return notFoundResponse("Teacher");
     }
 
     // Verify subject exists
@@ -230,10 +193,7 @@ export async function POST(
       .limit(1);
 
     if (!subject) {
-      return NextResponse.json(
-        { error: "Subject not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return notFoundResponse("Subject");
     }
 
     // Check if assignment already exists
@@ -250,10 +210,7 @@ export async function POST(
       .limit(1);
 
     if (existing) {
-      return NextResponse.json(
-        { error: "This teacher is already assigned to this subject for this class", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("This teacher is already assigned to this subject for this class");
     }
 
     // Get current academic year
@@ -268,7 +225,7 @@ export async function POST(
     const assignmentId = `ta-${nanoid()}`;
 
     // Create teacher assignment
-    const [assignment] = await db
+    const assignmentResult = await db
       .insert(teacherAssignments)
       .values({
         id: assignmentId,
@@ -283,6 +240,8 @@ export async function POST(
         updatedAt: new Date(),
       })
       .returning();
+
+    const assignment = assignmentResult[0];
 
     logger.info("Teacher assigned to subject for class", {
       route: "/api/school-admin/classes/[id]/subject-teachers",
@@ -299,22 +258,14 @@ export async function POST(
       subject: typeof subject;
     };
 
-    return NextResponse.json({
-      data: {
-        assignment,
-        teacher,
-        subject,
-      }
-    } satisfies ApiSuccess<AssignmentResponse>);
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/classes/[id]/subject-teachers", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to assign teacher to subject", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return successResponse({
+      assignment,
+      teacher,
+      subject,
+    });
+  },
+  ['school-admin']
+);
 
 /**
  * DELETE /api/school-admin/classes/[id]/subject-teachers
@@ -322,37 +273,20 @@ export async function POST(
  * Remove a teacher assignment from a class subject
  * Body: { teacherId, subjectId }
  */
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(['school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { user } = authResult;
+export const DELETE = createApiRoute(
+  async (req: NextRequest, auth, { params }: { params: Promise<{ id: string }> }) => {
+    const { user } = auth;
     const { id: classId } = await params;
     const body = await req.json();
 
     if (!user.schoolId) {
-      return NextResponse.json(
-        { error: "No school associated with your account", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return errorResponse("No school associated with your account", 400);
     }
 
     const { teacherId, subjectId } = body;
 
     if (!teacherId || !subjectId) {
-      return NextResponse.json(
-        { error: "Teacher ID and Subject ID are required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("Teacher ID and Subject ID are required");
     }
 
     // Verify class exists
@@ -363,10 +297,7 @@ export async function DELETE(
       .limit(1);
 
     if (!classInfo) {
-      return NextResponse.json(
-        { error: "Class not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return notFoundResponse("Class");
     }
 
     // Delete the assignment (soft delete)
@@ -393,15 +324,7 @@ export async function DELETE(
       message: string;
     };
 
-    return NextResponse.json({
-      data: { message: "Teacher unassigned successfully" }
-    } satisfies ApiSuccess<DeleteResponse>);
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/classes/[id]/subject-teachers", method: "DELETE" });
-    return NextResponse.json(
-      { error: "Failed to unassign teacher", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return successResponse({ message: "Teacher unassigned successfully" });
+  },
+  ['school-admin']
+);

@@ -1,0 +1,177 @@
+src/app/api/notifications/my-notifications/route.ts(61,23): error TS2769: No overload matches this call.
+  Overload 1 of 3, '(left: PgColumn<{ name: "type"; tableName: "notifications"; dataType: "string"; columnType: "PgEnumColumn"; data: "grade" | "announcement" | "alert" | "reminder" | "system" | "welcome" | "homework" | "attendance"; ... 9 more ...; generated: undefined; }, {}, {}>, right: SQLWrapper | ... 7 more ... | "attendance"): SQL<...>', gave the following error.
+    Argument of type 'string' is not assignable to parameter of type 'SQLWrapper | "grade" | "announcement" | "alert" | "reminder" | "system" | "welcome" | "homework" | "attendance"'.
+  Overload 2 of 3, '(left: Aliased<string>, right: string | SQLWrapper): SQL<unknown>', gave the following error.
+    Argument of type 'PgColumn<{ name: "type"; tableName: "notifications"; dataType: "string"; columnType: "PgEnumColumn"; data: "grade" | "announcement" | "alert" | "reminder" | "system" | "welcome" | "homework" | "attendance"; ... 9 more ...; generated: undefined; }, {}, {}>' is not assignable to parameter of type 'Aliased<string>'.
+      Type 'PgColumn<{ name: "type"; tableName: "notifications"; dataType: "string"; columnType: "PgEnumColumn"; data: "grade" | "announcement" | "alert" | "reminder" | "system" | "welcome" | "homework" | "attendance"; ... 9 more ...; generated: undefined; }, {}, {}>' is missing the following properties from type 'Aliased<string>': sql, fieldAlias
+  Overload 3 of 3, '(left: never, right: unknown): SQL<unknown>', gave the following error.
+    Argument of type 'PgColumn<{ name: "type"; tableName: "notifications"; dataType: "string"; columnType: "PgEnumColumn"; data: "grade" | "announcement" | "alert" | "reminder" | "system" | "welcome" | "homework" | "attendance"; ... 9 more ...; generated: undefined; }, {}, {}>' is not assignable to parameter of type 'never'.
+src/app/api/payments/rma/initiate/route.ts(110,7): error TS2322: Type '"check" | "cash" | "online" | "bank_transfer" | "upi"' is not assignable to type 'RMAMethod'.
+  Type '"check"' is not assignable to type 'RMAMethod'.
+src/app/api/push/notifications/route.ts(42,23): error TS2769: No overload matches this call.
+  Overload 1 of 3, '(left: PgColumn<{ name: "status"; tableName: "push_notifications"; dataType: "string"; columnType: "PgEnumColumn"; data: "pending" | "failed" | "sent" | "delivered"; driverParam: string; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>, right: SQLWrapper | ... 3 more ... | "delivered"): SQL<...>', gave the following error.
+    Argument of type 'string' is not assignable to parameter of type 'SQLWrapper | "pending" | "failed" | "sent" | "delivered"'.
+  Overload 2 of 3, '(left: Aliased<string>, right: string | SQLWrapper): SQL<unknown>', gave the following error.
+    Argument of type 'PgColumn<{ name: "status"; tableName: "push_notifications"; dataType: "string"; columnType: "PgEnumColumn"; data: "pending" | "failed" | "sent" | "delivered"; driverParam: string; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>' is not assignable to parameter of type 'Aliased<string>'.
+      Type 'PgColumn<{ name: "status"; tableName: "push_notifications"; dataType: "string"; columnType: "PgEnumColumn"; data: "pending" | "failed" | "sent" | "delivered"; driverParam: string; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>' is missing the following properties from type 'Aliased<string>': sql, fieldAlias
+  Overload 3 of 3, '(left: never, right: unknown): SQL<unknown>', gave the following error.
+    Argument of type 'PgColumn<{ name: "status"; tableName: "push_notifications"; dataType: "string"; columnType: "PgEnumColumn"; data: "pending" | "failed" | "sent" | "delivered"; driverParam: string; notNull: true; ... 7 more ...; generated: undefined; }, {}, {}>' is not assignable to parameter of type 'never'.
+src/app/api/push/notifications/route.ts(46,23): error TS2769: No overload matches this call.
+  Overload 1 of 3, '(left: PgColumn<{ name: "type"; tableName: "push_notifications"; dataType: "string"; columnType: "PgEnumColumn"; data: "fee" | "message" | "grade" | "announcement" | "alert" | "reminder" | "homework" | "attendance" | "timetable" | "exam"; ... 9 more ...; generated: undefined; }, {}, {}>, right: SQLWrapper | ... 9 more ... | "exam"): SQL<...>', gave the following error.
+    Argument of type 'string' is not assignable to parameter of type 'SQLWrapper | "fee" | "message" | "grade" | "announcement" | "alert" | "reminder" | "homework" | "attendance" | "timetable" | "exam"'.
+  Overload 2 of 3, '(left: Aliased<string>, right: string | SQLWrapper): SQL<unknown>', gave the following error.
+    Argument of type 'PgColumn<{ name: "type"; tableName: "push_notifications"; dataType: "string"; columnType: "PgEnumColumn"; data: "fee" | "message" | "grade" | "announcement" | "alert" | "reminder" | "homework" | "attendance" | "timetable" | "exam"; ... 9 more ...; generated: undefined; }, {}, {}>' is not assignable to parameter of type 'Aliased<string>'.
+      Type 'PgColumn<{ name: "type"; tableName: "push_notifications"; dataType: "string"; columnType: "PgEnumColumn"; data: "fee" | "message" | "grade" | "announcement" | "alert" | "reminder" | "homework" | "attendance" | "timetable" | "exam"; ... 9 more ...; generated: undefined; }, {}, {}>' is missing the following properties from type 'Aliased<string>': sql, fieldAlias
+  Overload 3 of 3, '(left: never, right: unknown): SQL<unknown>', gave the following error.
+    Argument of type 'PgColumn<{ name: "type"; tableName: "push_notifications"; dataType: "string"; columnType: "PgEnumColumn"; data: "fee" | "message" | "grade" | "announcement" | "alert" | "reminder" | "homework" | "attendance" | "timetable" | "exam"; ... 9 more ...; generated: undefined; }, {}, {}>' is not assignable to parameter of type 'never'.
+src/app/api/school-admin/curriculum-assign/route.ts(113,7): error TS2353: Object literal may only specify known properties, and 'count' does not exist in type 'ApiSuccess<{ message: string; count: number; summary: Record<string, number>; }>'.
+src/app/api/school-admin/curriculum-assign/route.ts(177,30): error TS2353: Object literal may only specify known properties, and 'assignments' does not exist in type 'ApiSuccess<{ assignments: { classId: string; className: string; grade: string; section: string; teacherId: string; teacherName: any; academicYear: string; }[]; }>'.
+src/app/api/school-admin/data-export/route.ts(36,7): error TS2322: Type '"attendance" | "all" | "students" | "teachers" | "assessments" | "fees"' is not assignable to type 'ExportDataType'.
+  Type '"assessments"' is not assignable to type 'ExportDataType'.
+src/app/api/school-admin/reject-application/route.ts(75,7): error TS2554: Expected 2 arguments, but got 3.
+src/app/api/school-admin/settings/bell-schedules/[id]/route.ts(93,12): error TS2345: Argument of type '{ updatedAt: Date; isActive?: boolean; name?: string; periods?: unknown; }' is not assignable to parameter of type '{ id?: string | SQL<unknown> | PgColumn<ColumnBaseConfig<ColumnDataType, string>, {}, {}>; name?: string | SQL<unknown> | PgColumn<ColumnBaseConfig<ColumnDataType, string>, {}, {}>; ... 4 more ...; periods?: SQL<...> | ... 1 more ... | { ...; }[]; }'.
+  Types of property 'periods' are incompatible.
+    Type 'unknown' is not assignable to type 'SQL<unknown> | PgColumn<ColumnBaseConfig<ColumnDataType, string>, {}, {}> | { periodNumber: number; name: string; startTime: string; endTime: string; type: "class" | ... 1 more ... | "lunch"; }[]'.
+src/app/api/schools/route.ts(189,37): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(value: { id: string | SQL<unknown> | Placeholder<string, any>; name: string | SQL<unknown> | Placeholder<string, any>; code: string | SQL<unknown> | Placeholder<string, any>; ... 39 more ...; feeGenerationStatus?: string | ... 1 more ... | Placeholder<...>; }): PgInsertBase<...>', gave the following error.
+    Argument of type 'SchoolCreateData' is not assignable to parameter of type '{ id: string | SQL<unknown> | Placeholder<string, any>; name: string | SQL<unknown> | Placeholder<string, any>; code: string | SQL<unknown> | Placeholder<string, any>; ... 39 more ...; feeGenerationStatus?: string | ... 1 more ... | Placeholder<...>; }'.
+      Types of property 'facilities' are incompatible.
+        Type 'string' is not assignable to type 'string[] | SQL<unknown> | Placeholder<string, any>'.
+  Overload 2 of 2, '(values: { id: string | SQL<unknown> | Placeholder<string, any>; name: string | SQL<unknown> | Placeholder<string, any>; code: string | SQL<unknown> | Placeholder<string, any>; ... 39 more ...; feeGenerationStatus?: string | ... 1 more ... | Placeholder<...>; }[]): PgInsertBase<...>', gave the following error.
+    Argument of type 'SchoolCreateData' is not assignable to parameter of type '{ id: string | SQL<unknown> | Placeholder<string, any>; name: string | SQL<unknown> | Placeholder<string, any>; code: string | SQL<unknown> | Placeholder<string, any>; ... 39 more ...; feeGenerationStatus?: string | ... 1 more ... | Placeholder<...>; }[]'.
+      Type 'SchoolCreateData' is missing the following properties from type '{ id: string | SQL<unknown> | Placeholder<string, any>; name: string | SQL<unknown> | Placeholder<string, any>; code: string | SQL<unknown> | Placeholder<string, any>; ... 39 more ...; feeGenerationStatus?: string | ... 1 more ... | Placeholder<...>; }[]': length, pop, push, concat, and 35 more.
+src/app/api/student/career-coach/route.ts(276,12): error TS2352: Conversion of type 'CareerCoachResponse' to type 'Record<string, unknown>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Index signature for type 'string' is missing in type 'CareerCoachResponse'.
+src/app/api/student/marks-summary/route.ts(202,12): error TS2352: Conversion of type 'MarksSummary' to type 'Record<string, unknown>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Index signature for type 'string' is missing in type 'MarksSummary'.
+src/app/api/student/modules/[id]/complete/route.ts(46,36): error TS2344: Type 'ModuleCompletionParams' does not satisfy the constraint 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'ModuleCompletionParams'.
+src/app/api/student/modules/[id]/recommendations/route.ts(20,35): error TS2344: Type 'ModuleRecommendationsParams' does not satisfy the constraint 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'ModuleRecommendationsParams'.
+src/app/api/student/roadmap/route.ts(111,3): error TS2345: Argument of type '(request: NextRequest, auth: AuthContext) => Promise<StudentRoadmap | { error: string; status: number; }>' is not assignable to parameter of type '(req: AuthenticatedRequest & { params?: Promise<{}>; }, auth: AuthContext, context?: { params?: Promise<{}>; }) => Promise<Record<string, unknown> | Response | NextResponse<...>>'.
+  Type 'Promise<StudentRoadmap | { error: string; status: number; }>' is not assignable to type 'Promise<Record<string, unknown> | Response | NextResponse<unknown>>'.
+    Type 'StudentRoadmap | { error: string; status: number; }' is not assignable to type 'Record<string, unknown> | Response | NextResponse<unknown>'.
+      Type 'StudentRoadmap' is not assignable to type 'Record<string, unknown> | Response | NextResponse<unknown>'.
+        Type 'StudentRoadmap' is not assignable to type 'Record<string, unknown>'.
+          Index signature for type 'string' is missing in type 'StudentRoadmap'.
+src/app/api/teacher/homework/[id]/submissions/[submissionId]/route.ts(160,9): error TS2345: Argument of type '{ id: string; type: string; question: string; options: string[]; correctAnswer: string | string[]; points: number; tolerance: number; keywords: string[]; explanation: string; }[]' is not assignable to parameter of type 'Question[]'.
+  Type '{ id: string; type: string; question: string; options: string[]; correctAnswer: string | string[]; points: number; tolerance: number; keywords: string[]; explanation: string; }' is not assignable to type 'Question'.
+    Types of property 'type' are incompatible.
+      Type 'string' is not assignable to type '"numeric" | "multiple_choice" | "true_false" | "fill_blank" | "short_answer" | "essay" | "math_expression" | "match_following"'.
+src/app/api/teacher/homework/[id]/submissions/route.ts(98,33): error TS2339: Property 'attachments' does not exist on type 'SubmissionContent'.
+src/app/api/teacher/lessons/[id]/route.ts(169,12): error TS2345: Argument of type 'LessonUpdateData' is not assignable to parameter of type '{ id?: string | SQL<unknown> | PgColumn<ColumnBaseConfig<ColumnDataType, string>, {}, {}>; createdAt?: Date | SQL<unknown> | PgColumn<...>; ... 16 more ...; homeworkAssigned?: string | ... 1 more ... | PgColumn<...>; }'.
+  Types of property 'homeworkAssigned' are incompatible.
+    Type 'boolean' is not assignable to type 'string | SQL<unknown> | PgColumn<ColumnBaseConfig<ColumnDataType, string>, {}, {}>'.
+src/app/api/teacher/modules/route.ts(217,15): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(value: { duration: number | SQL<unknown> | Placeholder<string, any>; id: string | SQL<unknown> | Placeholder<string, any>; description: string | SQL<unknown> | Placeholder<...>; ... 17 more ...; prerequisites?: string[] | ... 1 more ... | Placeholder<...>; }): PgInsertBase<...>', gave the following error.
+    Argument of type 'LearningModuleInsertValues' is not assignable to parameter of type '{ duration: number | SQL<unknown> | Placeholder<string, any>; id: string | SQL<unknown> | Placeholder<string, any>; description: string | SQL<unknown> | Placeholder<...>; ... 17 more ...; prerequisites?: string[] | ... 1 more ... | Placeholder<...>; }'.
+      Types of property 'content' are incompatible.
+        Type 'ModuleContentData' is not assignable to type 'SQL<unknown> | LearningModuleContent | Placeholder<string, any>'.
+          Type 'ModuleContentData' is not assignable to type 'LearningModuleContent'.
+            Types of property 'lessons' are incompatible.
+              Type 'ModuleLesson[]' is not assignable to type '{ id: string; title: string; duration: number; videoUrl?: string; content?: string; resources?: { name: string; url: string; }[]; }[]'.
+                Property 'duration' is missing in type 'ModuleLesson' but required in type '{ id: string; title: string; duration: number; videoUrl?: string; content?: string; resources?: { name: string; url: string; }[]; }'.
+  Overload 2 of 2, '(values: { duration: number | SQL<unknown> | Placeholder<string, any>; id: string | SQL<unknown> | Placeholder<string, any>; description: string | SQL<unknown> | Placeholder<...>; ... 17 more ...; prerequisites?: string[] | ... 1 more ... | Placeholder<...>; }[]): PgInsertBase<...>', gave the following error.
+    Argument of type 'LearningModuleInsertValues' is not assignable to parameter of type '{ duration: number | SQL<unknown> | Placeholder<string, any>; id: string | SQL<unknown> | Placeholder<string, any>; description: string | SQL<unknown> | Placeholder<...>; ... 17 more ...; prerequisites?: string[] | ... 1 more ... | Placeholder<...>; }[]'.
+      Type 'LearningModuleInsertValues' is missing the following properties from type '{ duration: number | SQL<unknown> | Placeholder<string, any>; id: string | SQL<unknown> | Placeholder<string, any>; description: string | SQL<unknown> | Placeholder<...>; ... 17 more ...; prerequisites?: string[] | ... 1 more ... | Placeholder<...>; }[]': length, pop, push, concat, and 35 more.
+src/app/api/teacher/payslips/[id]/pdf/route.ts(55,35): error TS2344: Type 'PayslipPDFParams' does not satisfy the constraint 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'PayslipPDFParams'.
+src/app/api/teacher/payslips/[id]/pdf/route.ts(71,27): error TS2352: Conversion of type '{ id: string; schoolId: string; employeeId: string; attendanceId: string; payrollMonth: number; payrollYear: number; payrollRunId: string; employeeName: string; employeeCode: string; designation: string; ... 36 more ...; updatedAt: Date; }' to type 'PayslipRecord' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type '{ id: string; schoolId: string; employeeId: string; attendanceId: string; payrollMonth: number; payrollYear: number; payrollRunId: string; employeeName: string; employeeCode: string; designation: string; ... 36 more ...; updatedAt: Date; }' is missing the following properties from type 'PayslipRecord': teacherId, payrollId, netSalary
+src/app/api/teacher/payslips/[id]/pdf/route.ts(87,7): error TS2345: Argument of type 'PayslipRecord' is not assignable to parameter of type 'PayslipRecord & { payrollMonth: number; payrollYear: number; teacherName: string; employeeId?: string; designation?: string; department?: string; basicSalary: number; allowances: { ...; }[]; deductions: { ...; }[]; netSalary: number; paymentDate?: string; }'.
+  Type 'PayslipRecord' is not assignable to type '{ payrollMonth: number; payrollYear: number; teacherName: string; employeeId?: string; designation?: string; department?: string; basicSalary: number; allowances: { name: string; amount: number; }[]; deductions: { ...; }[]; netSalary: number; paymentDate?: string; }'.
+    Property 'payrollMonth' is optional in type 'PayslipRecord' but required in type '{ payrollMonth: number; payrollYear: number; teacherName: string; employeeId?: string; designation?: string; department?: string; basicSalary: number; allowances: { name: string; amount: number; }[]; deductions: { ...; }[]; netSalary: number; paymentDate?: string; }'.
+src/app/api/teacher/reports/student/[id]/route.ts(25,35): error TS2344: Type 'TeacherReportStudentParams' does not satisfy the constraint 'Record<string, unknown>'.
+  Index signature for type 'string' is missing in type 'TeacherReportStudentParams'.
+src/app/api/transport/route.ts(483,63): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(value: { id: string | SQL<unknown> | Placeholder<string, any>; createdAt: Date | SQL<unknown> | Placeholder<string, any>; updatedAt: Date | SQL<...> | Placeholder<...>; ... 23 more ...; fee?: number | ... 1 more ... | Placeholder<...>; }): PgInsertBase<...>', gave the following error.
+    Argument of type 'TransportRouteInsert' is not assignable to parameter of type '{ id: string | SQL<unknown> | Placeholder<string, any>; createdAt: Date | SQL<unknown> | Placeholder<string, any>; updatedAt: Date | SQL<unknown> | Placeholder<...>; ... 23 more ...; fee?: number | ... 1 more ... | Placeholder<...>; }'.
+      Types of property 'stops' are incompatible.
+        Type 'unknown[]' is not assignable to type 'SQL<unknown> | { id: string; name: string; location: { latitude: number; longitude: number; }; time: string; order: number; morningPickup: boolean; afternoonDrop: boolean; }[] | Placeholder<string, any>'.
+          Type 'unknown[]' is not assignable to type '{ id: string; name: string; location: { latitude: number; longitude: number; }; time: string; order: number; morningPickup: boolean; afternoonDrop: boolean; }[]'.
+            Type '{}' is missing the following properties from type '{ id: string; name: string; location: { latitude: number; longitude: number; }; time: string; order: number; morningPickup: boolean; afternoonDrop: boolean; }': id, name, location, time, and 3 more.
+  Overload 2 of 2, '(values: { id: string | SQL<unknown> | Placeholder<string, any>; createdAt: Date | SQL<unknown> | Placeholder<string, any>; updatedAt: Date | SQL<...> | Placeholder<...>; ... 23 more ...; fee?: number | ... 1 more ... | Placeholder<...>; }[]): PgInsertBase<...>', gave the following error.
+    Argument of type 'TransportRouteInsert' is not assignable to parameter of type '{ id: string | SQL<unknown> | Placeholder<string, any>; createdAt: Date | SQL<unknown> | Placeholder<string, any>; updatedAt: Date | SQL<unknown> | Placeholder<...>; ... 23 more ...; fee?: number | ... 1 more ... | Placeholder<...>; }[]'.
+      Type 'TransportRouteInsert' is missing the following properties from type '{ id: string | SQL<unknown> | Placeholder<string, any>; createdAt: Date | SQL<unknown> | Placeholder<string, any>; updatedAt: Date | SQL<unknown> | Placeholder<...>; ... 23 more ...; fee?: number | ... 1 more ... | Placeholder<...>; }[]': length, pop, push, concat, and 35 more.
+src/app/api/transport/routes/route.ts(308,8): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(value: { id: string | SQL<unknown> | Placeholder<string, any>; createdAt: Date | SQL<unknown> | Placeholder<string, any>; updatedAt: Date | SQL<...> | Placeholder<...>; ... 23 more ...; fee?: number | ... 1 more ... | Placeholder<...>; }): PgInsertBase<...>', gave the following error.
+    Type 'ProcessedRouteStop[]' is not assignable to type 'SQL<unknown> | { id: string; name: string; location: { latitude: number; longitude: number; }; time: string; order: number; morningPickup: boolean; afternoonDrop: boolean; }[] | Placeholder<string, any>'.
+      Type 'ProcessedRouteStop[]' is not assignable to type '{ id: string; name: string; location: { latitude: number; longitude: number; }; time: string; order: number; morningPickup: boolean; afternoonDrop: boolean; }[]'.
+        Type 'ProcessedRouteStop' is missing the following properties from type '{ id: string; name: string; location: { latitude: number; longitude: number; }; time: string; order: number; morningPickup: boolean; afternoonDrop: boolean; }': id, morningPickup, afternoonDrop
+  Overload 2 of 2, '(values: { id: string | SQL<unknown> | Placeholder<string, any>; createdAt: Date | SQL<unknown> | Placeholder<string, any>; updatedAt: Date | SQL<...> | Placeholder<...>; ... 23 more ...; fee?: number | ... 1 more ... | Placeholder<...>; }[]): PgInsertBase<...>', gave the following error.
+    Object literal may only specify known properties, and 'id' does not exist in type '{ id: string | SQL<unknown> | Placeholder<string, any>; createdAt: Date | SQL<unknown> | Placeholder<string, any>; updatedAt: Date | SQL<unknown> | Placeholder<...>; ... 23 more ...; fee?: number | ... 1 more ... | Placeholder<...>; }[]'.
+src/app/counselor/wellness-compass/page.tsx(277,57): error TS2339: Property 'classGrade' does not exist on type '{ id: string; name: string; firstName?: string; lastName?: string; }'.
+src/app/school-admin/fees/fee-client.tsx(56,42): error TS2304: Cannot find name 'FeeStructure'.
+src/app/school-admin/fees/fee-client.tsx(57,44): error TS2304: Cannot find name 'StudentFee'.
+src/app/school-admin/fees/fee-client.tsx(58,38): error TS2304: Cannot find name 'Payment'.
+src/app/ui-showcase/page.tsx(559,36): error TS2322: Type 'string' is not assignable to type 'GapToken'.
+src/components/admin/questions-modal.tsx(103,20): error TS2345: Argument of type '{ isActive: boolean; id: string; assessmentTypeId: string; questionText: string; questionData: Record<string, unknown>; options: string[]; correctAnswer: string; points: number; order: number; createdAt: Date; updatedAt: Date; }[]' is not assignable to parameter of type 'SetStateAction<Question[]>'.
+  Type '{ isActive: boolean; id: string; assessmentTypeId: string; questionText: string; questionData: Record<string, unknown>; options: string[]; correctAnswer: string; points: number; order: number; createdAt: Date; updatedAt: Date; }[]' is not assignable to type 'Question[]'.
+    Type '{ isActive: boolean; id: string; assessmentTypeId: string; questionText: string; questionData: Record<string, unknown>; options: string[]; correctAnswer: string; points: number; order: number; createdAt: Date; updatedAt: Date; }' is not assignable to type 'Question'.
+      Types of property 'questionData' are incompatible.
+        Type 'Record<string, unknown>' is not assignable to type 'QuestionData'.
+          'string' index signatures are incompatible.
+            Type 'unknown' is not assignable to type 'string | number | string[]'.
+src/components/layouts/empty-state.tsx(139,8): error TS2322: Type '{ children: Element[]; defaultChecked?: boolean; defaultValue?: string | number | readonly string[]; suppressContentEditableWarning?: boolean; suppressHydrationWarning?: boolean; accessKey?: string; ... 276 more ...; animate: string; }' is not assignable to type 'Omit<HTMLMotionProps<"div">, "ref">'.
+  Types of property 'onDrag' are incompatible.
+    Type 'DragEventHandler<HTMLDivElement>' is not assignable to type '(event: PointerEvent | MouseEvent | TouchEvent, info: PanInfo) => void'.
+      Types of parameters 'event' and 'event' are incompatible.
+        Type 'PointerEvent | MouseEvent | TouchEvent' is not assignable to type 'DragEvent<HTMLDivElement>'.
+          Type 'PointerEvent' is missing the following properties from type 'DragEvent<HTMLDivElement>': dataTransfer, nativeEvent, isDefaultPrevented, isPropagationStopped, persist
+src/components/layouts/sidebar-layout.tsx(319,9): error TS2322: Type 'RefObject<HTMLAnchorElement | HTMLButtonElement>' is not assignable to type 'Ref<HTMLAnchorElement> & Ref<HTMLButtonElement>'.
+  Type 'RefObject<HTMLAnchorElement | HTMLButtonElement>' is not assignable to type '((instance: HTMLAnchorElement) => void | (() => VoidOrUndefinedOnly)) & RefObject<HTMLButtonElement>'.
+    Type 'RefObject<HTMLAnchorElement | HTMLButtonElement>' is not assignable to type '(instance: HTMLAnchorElement) => void | (() => VoidOrUndefinedOnly)'.
+      Type 'RefObject<HTMLAnchorElement | HTMLButtonElement>' provides no match for the signature '(instance: HTMLAnchorElement): void | (() => VoidOrUndefinedOnly)'.
+src/components/motion/pressable.tsx(169,9): error TS2322: Type 'WhileTapOptions' is not assignable to type 'VariantLabels | TargetAndTransition'.
+  Type 'WhileTapOptions' is not assignable to type 'TargetAndTransition'.
+    Type 'WhileTapOptions' is not assignable to type 'MakeKeyframes<MakeCustomValueType<TargetProperties>>'.
+      Index signature for type '`--${string}`' is missing in type 'WhileTapOptions'.
+src/components/motion/pressable.tsx(170,9): error TS2322: Type 'WhileHoverOptions' is not assignable to type 'VariantLabels | TargetAndTransition'.
+  Type 'WhileHoverOptions' is not assignable to type 'TargetAndTransition'.
+    Type 'WhileHoverOptions' is not assignable to type 'MakeKeyframes<MakeCustomValueType<TargetProperties>>'.
+      Index signature for type '`--${string}`' is missing in type 'WhileHoverOptions'.
+src/components/motion/pressable.tsx(237,7): error TS2322: Type 'WhileTapOptions' is not assignable to type 'VariantLabels | TargetAndTransition'.
+  Type 'WhileTapOptions' is not assignable to type 'TargetAndTransition'.
+    Type 'WhileTapOptions' is not assignable to type 'MakeKeyframes<MakeCustomValueType<TargetProperties>>'.
+      Index signature for type '`--${string}`' is missing in type 'WhileTapOptions'.
+src/components/motion/pressable.tsx(238,7): error TS2322: Type 'WhileHoverOptions' is not assignable to type 'VariantLabels | TargetAndTransition'.
+  Type 'WhileHoverOptions' is not assignable to type 'TargetAndTransition'.
+    Type 'WhileHoverOptions' is not assignable to type 'MakeKeyframes<MakeCustomValueType<TargetProperties>>'.
+      Index signature for type '`--${string}`' is missing in type 'WhileHoverOptions'.
+src/components/motion/progress-indicator.tsx(121,9): error TS2322: Type 'CSSProperties | MotionStyle' is not assignable to type 'CSSProperties'.
+  Type 'MotionStyle' is not assignable to type 'Properties<string | number, string & {}>'.
+    Types of property 'accentColor' are incompatible.
+      Type 'CustomValueType | MotionValue<number> | MotionValue<string> | MotionValue<any> | AccentColor' is not assignable to type 'AccentColor'.
+        Type 'CustomValueType' is not assignable to type 'AccentColor'.
+src/components/motion/progress-indicator.tsx(171,9): error TS2322: Type 'CSSProperties | MotionStyle' is not assignable to type 'CSSProperties'.
+  Type 'MotionStyle' is not assignable to type 'Properties<string | number, string & {}>'.
+    Types of property 'accentColor' are incompatible.
+      Type 'CustomValueType | MotionValue<number> | MotionValue<string> | MotionValue<any> | AccentColor' is not assignable to type 'AccentColor'.
+        Type 'CustomValueType' is not assignable to type 'AccentColor'.
+src/components/motion/progress-indicator.tsx(241,11): error TS2322: Type 'CSSProperties | MotionStyle' is not assignable to type 'CSSProperties'.
+  Type 'MotionStyle' is not assignable to type 'Properties<string | number, string & {}>'.
+    Types of property 'accentColor' are incompatible.
+      Type 'CustomValueType | MotionValue<number> | MotionValue<string> | MotionValue<any> | AccentColor' is not assignable to type 'AccentColor'.
+        Type 'CustomValueType' is not assignable to type 'AccentColor'.
+src/components/motion/progress-indicator.tsx(256,9): error TS2322: Type 'CSSProperties | MotionStyle' is not assignable to type 'CSSProperties'.
+  Type 'MotionStyle' is not assignable to type 'Properties<string | number, string & {}>'.
+    Types of property 'accentColor' are incompatible.
+      Type 'CustomValueType | MotionValue<number> | MotionValue<string> | MotionValue<any> | AccentColor' is not assignable to type 'AccentColor'.
+        Type 'CustomValueType' is not assignable to type 'AccentColor'.
+src/components/ui/field-validation.tsx(356,21): error TS2352: Conversion of type '(e: React.ChangeEvent<HTMLInputElement>) => void' to type '(e: ChangeEvent<HTMLTextAreaElement, Element>) => void' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Types of parameters 'e' and 'e' are incompatible.
+    Type 'ChangeEvent<HTMLTextAreaElement, Element>' is not comparable to type 'ChangeEvent<HTMLInputElement, Element>'.
+      Type 'HTMLTextAreaElement' is missing the following properties from type 'HTMLInputElement': accept, align, alt, capture, and 29 more.
+src/components/ui/mobile-card.tsx(65,9): error TS2322: Type 'RefObject<HTMLDivElement>' is not assignable to type 'Ref<HTMLAnchorElement> & (Ref<HTMLButtonElement> & Ref<HTMLDivElement>)'.
+  Type 'RefObject<HTMLDivElement>' is not assignable to type '((instance: HTMLAnchorElement) => void | (() => VoidOrUndefinedOnly)) & RefObject<HTMLButtonElement> & RefObject<...>'.
+    Type 'RefObject<HTMLDivElement>' is not assignable to type '(instance: HTMLAnchorElement) => void | (() => VoidOrUndefinedOnly)'.
+      Type 'RefObject<HTMLDivElement>' provides no match for the signature '(instance: HTMLAnchorElement): void | (() => VoidOrUndefinedOnly)'.
+src/components/ui/toaster/animations.tsx(315,5): error TS2322: Type '[number, number, number]' is not assignable to type 'number'.
+src/lib/bcse/importer.ts(228,44): error TS2352: Conversion of type 'BCSEResultImportRow' to type 'Record<string, unknown>' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Index signature for type 'string' is missing in type 'BCSEResultImportRow'.
+src/lib/db/migrate.ts(17,19): error TS2345: Argument of type 'MigratableDatabase' is not assignable to parameter of type 'LibSQLDatabase<Record<string, unknown>>'.
+  Type 'MigratableDatabase' is missing the following properties from type 'LibSQLDatabase<Record<string, unknown>>': batch, resultKind, _, query, and 14 more.
+src/lib/id-cards/qr-generator.ts(32,42): error TS2312: An interface can only extend an object type or intersection of object types with statically known members.
+src/lib/id-cards/qr-generator.ts(166,5): error TS2353: Object literal may only specify known properties, and 'format' does not exist in type 'BarcodeOptionsWithText'.
+src/lib/sentinel/sitrep-generator.ts(514,7): error TS2739: Type '{ newSchools: number; newUsers: number; newStudents: number; newTeachers: number; churnedSchools: number; growthPercentage: number; }' is missing the following properties from type '{ newSchools: number; newUsers: number; newStudents: number; newTeachers: number; churnedSchools: number; totalSchools: number; totalStudents: number; totalTeachers: number; growthPercentage: number; }': totalSchools, totalStudents, totalTeachers
+src/lib/sentinel/sitrep-generator.ts(516,7): error TS2741: Property 'topCareers' is missing in type '{ aiConsultations: number; assessmentsCompleted: number; topCareer: string; topCareerTrend: "stable" | "up" | "down"; activeNow: number; }' but required in type '{ aiConsultations: number; assessmentsCompleted: number; topCareer: string; topCareerTrend: "up"; activeNow: number; topCareers: { career: string; count: number; }[]; }'.

@@ -7,11 +7,11 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { partners, partnerCommissions } from "@/lib/db/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 // ============================================================================
@@ -83,33 +83,29 @@ function validateCommissionInput(data: CreateCommissionInput): { valid: boolean;
 // GET - Get Partner Commissions
 // ============================================================================
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ partnerId: string }> }
-) {
-  const authResult = await requireAuth(["admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status },
-      { status: authResult.status }
-    );
-  }
-
-  try {
+export const GET = createApiRoute(
+  async (
+    request: NextRequest,
+    auth,
+    { params }: { params: Promise<{ partnerId: string }> }
+  ) => {
     const { partnerId } = await params;
     const { searchParams } = new URL(request.url);
 
     if (!partnerId) {
-      return NextResponse.json({ error: "Partner ID is required" }, { status: 400 });
+      return { error: "Partner ID is required", status: 400 };
     }
 
     // Verify partner exists
-    const partner = await db.query.partners.findFirst({
-      where: eq(partners.id, partnerId),
-    });
+    const partnerResult = await db
+      .select()
+      .from(partners)
+      .where(eq(partners.id, partnerId))
+      .limit(1);
+    const partner = partnerResult[0];
 
     if (!partner) {
-      return NextResponse.json({ error: "Partner not found" }, { status: 404 });
+      return { error: "Partner not found", status: 404 };
     }
 
     // Get status filter
@@ -141,13 +137,12 @@ export async function GET(
       .reduce((sum, c) => sum + c.amount, 0);
 
     logger.info("Partner commissions fetched", {
-      userId: authResult.userId,
+      userId: auth.userId,
       partnerId,
       count: commissionsData.length,
     });
 
-    return NextResponse.json({
-      success: true,
+    return {
       data: commissionsData,
       meta: {
         total: commissionsData.length,
@@ -156,46 +151,37 @@ export async function GET(
         pendingAmount,
         overdueAmount,
       },
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/partners/[partnerId]/commissions", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch commissions", details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);
 
 // ============================================================================
 // POST - Create Commission Record
 // ============================================================================
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ partnerId: string }> }
-) {
-  const authResult = await requireAuth(["admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status },
-      { status: authResult.status }
-    );
-  }
-
-  try {
+export const POST = createApiRoute(
+  async (
+    request: NextRequest,
+    auth,
+    { params }: { params: Promise<{ partnerId: string }> }
+  ) => {
     const { partnerId } = await params;
 
     if (!partnerId) {
-      return NextResponse.json({ error: "Partner ID is required" }, { status: 400 });
+      return { error: "Partner ID is required", status: 400 };
     }
 
     // Verify partner exists
-    const partner = await db.query.partners.findFirst({
-      where: eq(partners.id, partnerId),
-    });
+    const partnerResult = await db
+      .select()
+      .from(partners)
+      .where(eq(partners.id, partnerId))
+      .limit(1);
+    const partner = partnerResult[0];
 
     if (!partner) {
-      return NextResponse.json({ error: "Partner not found" }, { status: 404 });
+      return { error: "Partner not found", status: 404 };
     }
 
     const body = await request.json();
@@ -203,10 +189,11 @@ export async function POST(
     // Validate input
     const validation = validateCommissionInput(body);
     if (!validation.valid) {
-      return NextResponse.json(
-        { error: "Validation failed", details: validation.errors },
-        { status: 400 }
-      );
+      return {
+        error: "Validation failed",
+        details: validation.errors,
+        status: 400,
+      };
     }
 
     // Generate commission ID
@@ -232,26 +219,17 @@ export async function POST(
       .returning();
 
     logger.info("Commission created", {
-      userId: authResult.userId,
+      userId: auth.userId,
       partnerId,
       commissionId,
       amount: body.amount,
       period: body.period,
     });
 
-    return NextResponse.json(
-      {
-        success: true,
-        data: newCommission,
-        message: "Commission record created",
-      },
-      { status: 201 }
-    );
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/partners/[partnerId]/commissions", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to create commission", details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
-  }
-}
+    return {
+      data: newCommission,
+      message: "Commission record created",
+    };
+  },
+  ["admin"]
+);

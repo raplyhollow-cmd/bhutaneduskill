@@ -4,6 +4,12 @@ import { db } from "./index";
 import { promises as fs } from "fs";
 import path from "path";
 
+// Extended type for database connection with migration support
+type MigratableDatabase = {
+  connection: unknown;
+  dialect: "libsql" | "postgresql" | "mysql" | "better-sqlite";
+};
+
 export async function runMigrations() {
   logger.debug("Running migrations...");
 

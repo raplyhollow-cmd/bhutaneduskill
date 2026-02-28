@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import { STUDY_ABROAD_REQUIREMENTS } from "@/lib/tenant";
 import { db } from "@/lib/db";
@@ -359,12 +359,13 @@ function filterPrograms(programs: StudyAbroadProgram[], filters: {
  * Get user's study abroad stats from database
  */
 async function getUserStudyAbroadStats(userId: string): Promise<UserStudyAbroadStats> {
-  const user = await db.query.users.findFirst({
-    where: eq(users.id, userId),
-    columns: {
-      metadata: true,
-    },
-  });
+  const userResult = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  const user = userResult[0];
 
   // Parse metadata for study abroad stats
   const metadata = user?.metadata as Record<string, unknown> | null;
@@ -391,17 +392,9 @@ async function getUserStudyAbroadStats(userId: string): Promise<UserStudyAbroadS
  * - course: Filter by course name
  * - duration: Filter by duration (e.g., "3 years", "4 years")
  */
-export async function GET(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(['student', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId, user } = authResult;
+export const GET = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId, user } = auth;
 
     // Get query parameters
     const searchParams = req.nextUrl.searchParams;
@@ -411,10 +404,7 @@ export async function GET(req: NextRequest) {
 
     // Validate country parameter
     if (country && !(country in STUDY_ABROAD_REQUIREMENTS)) {
-      return NextResponse.json(
-        { error: "Invalid country parameter", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "Invalid country parameter", status: 400 };
     }
 
     // Get user's study abroad stats
@@ -447,7 +437,7 @@ export async function GET(req: NextRequest) {
       programsCount: programs.length,
     });
 
-    return NextResponse.json({
+    return {
       data: {
         programs,
         readinessScores,
@@ -456,22 +446,10 @@ export async function GET(req: NextRequest) {
         requirements: STUDY_ABROAD_REQUIREMENTS,
         applications: userApplications,
       },
-    } satisfies ApiSuccess<{
-      programs: StudyAbroadProgram[];
-      readinessScores: Record<string, number>;
-      averageScore: number;
-      userStats: UserStudyAbroadStats;
-      requirements: typeof STUDY_ABROAD_REQUIREMENTS;
-      applications: StudyAbroadApplication[];
-    }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/study-abroad", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch study abroad programs", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ['student', 'admin']
+);
 
 /**
  * POST /api/study-abroad
@@ -479,34 +457,20 @@ export async function GET(req: NextRequest) {
  * - programId: ID of the program to apply for
  * - documents: Object tracking which documents are ready
  */
-export async function POST(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(['student', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const POST = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId } = auth;
     const body = await req.json();
     const { programId, documents } = body as CreateApplicationRequestBody;
 
     if (!programId) {
-      return NextResponse.json(
-        { error: "Program ID is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "Program ID is required", status: 400 };
     }
 
     // Find the program
     const program = STUDY_ABROAD_PROGRAMS.find((p) => p.id === programId);
     if (!program) {
-      return NextResponse.json(
-        { error: "Program not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "Program not found", status: 404 };
     }
 
     // Check if user already has an application for this program
@@ -514,10 +478,7 @@ export async function POST(req: NextRequest) {
     const existingApplication = userApplications.find((app) => app.programId === programId);
 
     if (existingApplication) {
-      return NextResponse.json(
-        { error: "Application already exists for this program", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "Application already exists for this program", status: 400 };
     }
 
     // Create new application
@@ -549,18 +510,13 @@ export async function POST(req: NextRequest) {
       programId,
     });
 
-    return NextResponse.json({
+    return {
       data: newApplication,
       message: "Application created successfully. Complete your documents to submit.",
-    } satisfies ApiSuccess<StudyAbroadApplication>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/study-abroad", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to create application", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ['student', 'admin']
+);
 
 /**
  * PATCH /api/study-abroad
@@ -569,25 +525,14 @@ export async function POST(req: NextRequest) {
  * - status: New status (optional)
  * - documents: Updated document status (optional)
  */
-export async function PATCH(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(['student', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const PATCH = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId } = auth;
     const body = await req.json();
     const { applicationId, status, documents } = body as UpdateApplicationRequestBody;
 
     if (!applicationId) {
-      return NextResponse.json(
-        { error: "Application ID is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "Application ID is required", status: 400 };
     }
 
     // Get user's applications
@@ -595,10 +540,7 @@ export async function PATCH(req: NextRequest) {
     const applicationIndex = userApplications.findIndex((app) => app.id === applicationId);
 
     if (applicationIndex === -1) {
-      return NextResponse.json(
-        { error: "Application not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "Application not found", status: 404 };
     }
 
     // Update application
@@ -630,34 +572,21 @@ export async function PATCH(req: NextRequest) {
       status,
     });
 
-    return NextResponse.json({
+    return {
       data: application,
       message: "Application updated successfully",
-    } satisfies ApiSuccess<StudyAbroadApplication>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/study-abroad", method: "PATCH" });
-    return NextResponse.json(
-      { error: "Failed to update application", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ['student', 'admin']
+);
 
 /**
  * PUT /api/study-abroad/stats
  * Update user's study abroad stats
  */
-export async function PUT(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(['student', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const PUT = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId } = auth;
     const body = await req.json();
     const { hasIELTS, ieltsScore, hasSAT, satScore, gpa, hasRecommendations, hasPortfolio } = body as {
       hasIELTS?: boolean;
@@ -692,7 +621,7 @@ export async function PUT(req: NextRequest) {
       userId,
     });
 
-    return NextResponse.json({
+    return {
       data: {
         hasIELTS,
         ieltsScore,
@@ -703,12 +632,7 @@ export async function PUT(req: NextRequest) {
         hasPortfolio,
       },
       message: "Study abroad stats updated successfully",
-    } satisfies ApiSuccess<UserStudyAbroadStats>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/study-abroad", method: "PUT" });
-    return NextResponse.json(
-      { error: "Failed to update study abroad stats", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ['student', 'admin']
+);

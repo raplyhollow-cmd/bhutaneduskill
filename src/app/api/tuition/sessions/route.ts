@@ -11,7 +11,7 @@ import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { liveSessions, tutors, users } from "@/lib/db/schema";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, sql, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { createApiRoute, getAuth } from "@/lib/api/route-handler";
 import { successResponse, errorResponse, badRequestResponse, notFoundResponse, createdResponse } from "@/lib/api/response-helpers";
@@ -74,17 +74,20 @@ export const GET = createApiRoute(
       const tutorMap = new Map(tutorsResult.map(t => [t.id, t]));
 
       // Get user info for each tutor
-      const userIds = tutorsResult.map(t => t.userId).filter(Boolean);
-      const usersResult = userIds.length > 0
-        ? await db
-            .select({
-              id: users.id,
-              firstName: users.firstName,
-              lastName: users.lastName,
-              profilePicture: users.profilePicture,
-            })
-            .where(eq(users.id, userIds[0])) // Simplified
-        : [];
+      const userIds = tutorsResult.map(t => t.userId).filter((id): id is string => id !== null && id !== undefined);
+      let usersResult: Array<{ id: string; firstName: string | null; lastName: string | null; profilePicture: string | null }> = [];
+      if (userIds.length > 0) {
+        // Fetch all matching users at once using inArray
+        usersResult = await db
+          .select({
+            id: users.id,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            profilePicture: users.profilePicture,
+          })
+          .from(users)
+          .where(inArray(users.id, userIds));
+      }
 
       const userMap = new Map(usersResult.map(u => [u.id, u]));
 

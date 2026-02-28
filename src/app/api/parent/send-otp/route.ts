@@ -1,10 +1,9 @@
-import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { users, students } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 // OTP storage (in production, use Redis or database)
 const otpStore = new Map<string, { code: string; expiresAt: Date; phone?: string; email?: string }>();
@@ -14,26 +13,17 @@ function generateOTP(): string {
 }
 
 // POST /api/parent/send-otp - Send OTP for child linking verification
-export async function POST(req: Request) {
-  try {
-    const authResult = await requireAuth(["parent"]);
-    if ("error" in authResult) {
-      return Response.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+//
+// MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+export const POST = createApiRoute(
+  async (req: Request, auth) => {
+    const { userId } = auth;
 
     const body = await req.json();
     const { studentId, method = "sms" } = body;
 
     if (!studentId) {
-      return Response.json(
-        { error: "Student ID is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "Student ID is required", status: 400 };
     }
 
     // Get parent user info
@@ -48,10 +38,7 @@ export async function POST(req: Request) {
       .limit(1);
 
     if (parentUsers.length === 0) {
-      return Response.json(
-        { error: "Parent not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "Parent not found", status: 404 };
     }
 
     const parent = parentUsers[0];
@@ -67,10 +54,7 @@ export async function POST(req: Request) {
       .limit(1);
 
     if (studentRecords.length === 0) {
-      return Response.json(
-        { error: "Student not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "Student not found", status: 404 };
     }
 
     // Generate OTP
@@ -108,17 +92,10 @@ export async function POST(req: Request) {
       method,
     });
 
-    return Response.json({
-      data: {
-        message: `OTP sent via ${method === "sms" ? "SMS" : "email"}`,
-        expiresAt: expiresAt.toISOString(),
-      },
-    } satisfies ApiSuccess<{ message: string; expiresAt: string }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/parent/send-otp", method: "POST" });
-    return Response.json(
-      { error: "Failed to send OTP", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return {
+      message: `OTP sent via ${method === "sms" ? "SMS" : "email"}`,
+      expiresAt: expiresAt.toISOString(),
+    };
+  },
+  ["parent"]
+);

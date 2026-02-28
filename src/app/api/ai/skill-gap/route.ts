@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createApiRoute } from "@/lib/api/route-handler";
+import { requireAuth } from "@/lib/auth-utils";
 import { chatWithGemini } from "@/lib/ai/gemini-server";
 import { SKILL_GAP_SYSTEM } from "@/lib/ai/prompts";
 import { safeTrackAIInteraction, AI_FEATURE_IDS } from "@/lib/ai/track-interaction";
@@ -18,7 +19,7 @@ import type { ApiSuccess } from "@/types";
 // TYPES
 // ============================================================================
 
-export interface SkillGapRequest {
+export interface SkillGapRequest extends Record<string, unknown> {
   targetCareer: string;
   currentSkills?: string[];
   completedSubjects?: string[];
@@ -60,12 +61,11 @@ export interface SkillGapResponse {
 // POST - Analyze Skill Gaps
 // ============================================================================
 
-export const POST = createApiRoute<SkillGapRequest, SkillGapResponse>(
-  async (request) => {
-    const auth = await requireAuth([]);
+export const POST = createApiRoute(
+  async (req, auth) => {
     const { userId } = auth;
 
-    const body = await request.json() as SkillGapRequest;
+    const body = await req.json() as SkillGapRequest;
     const requestData = body;
 
     const {
@@ -415,17 +415,22 @@ function parseResource(resourceStr: string): LearningResource {
 // GET - Check availability
 // ============================================================================
 
-export async function GET() {
-  return NextResponse.json({
-    available: true,
-    feature: "AI Skill Gap Analyzer",
-    description: "Compare your current skills against career requirements",
-    requiresAuth: true,
-    inputFields: [
-      "targetCareer",
-      "currentSkills",
-      "completedSubjects",
-      "assessmentResults",
-    ],
-  });
-}
+export const GET = createApiRoute(
+  async () => {
+    return {
+      data: {
+        available: true,
+        feature: "AI Skill Gap Analyzer",
+        description: "Compare your current skills against career requirements",
+        requiresAuth: true,
+        inputFields: [
+          "targetCareer",
+          "currentSkills",
+          "completedSubjects",
+          "assessmentResults",
+        ],
+      }
+    };
+  },
+  []
+);

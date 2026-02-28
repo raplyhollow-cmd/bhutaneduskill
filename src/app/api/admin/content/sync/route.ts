@@ -7,7 +7,7 @@ import { eq } from "drizzle-orm";
 
 // GET /api/admin/content/sync - Get sync status
 export const GET = createApiRoute(
-  async (_request, { userId }) => {
+  async (_request, auth) => {
     // Using select instead of query (neon-http driver)
     const sources = await db
       .select()
@@ -19,8 +19,8 @@ export const GET = createApiRoute(
 );
 
 // POST /api/admin/content/sync - Trigger sync
-export const POST = createApiRoute<{ source: string }, { success: boolean; message: string }>(
-  async (request, { userId }) => {
+export const POST = createApiRoute(
+  async (request, auth) => {
     const body = await request.json();
     const { source } = body; // "ipedx", "onet", "rub"
 

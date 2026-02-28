@@ -65,14 +65,16 @@ export const HomeworkRepository = {
   async findByStudentId(studentId: string): Promise<Homework[]> {
     try {
       // First, get the student's classes
-      const student = await db.query.users.findFirst({
-        where: eq(users.id, studentId),
-        columns: {
-          classGrade: true,
-          section: true,
-          schoolId: true,
-        },
-      });
+      const student = await db
+        .select({
+          classGrade: users.classGrade,
+          section: users.section,
+          schoolId: users.schoolId,
+        })
+        .from(users)
+        .where(eq(users.id, studentId))
+        .limit(1)
+        .then(rows => rows[0] || null);
 
       if (!student) {
         return [];

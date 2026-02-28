@@ -136,9 +136,11 @@ async function getVerificationCode(requestId: string, providedCode?: string): Pr
 
   // Look up the verification request to get the code
   // In production, store the code in the verification request or tenant record
-  const verificationRequest = await db.query.verificationRequests.findFirst({
-    where: eq(verificationRequests.id, requestId),
-  });
+  const [verificationRequest] = await db
+    .select()
+    .from(verificationRequests)
+    .where(eq(verificationRequests.id, requestId))
+    .limit(1);
 
   // For now, we need to pass the code in the request
   // In production, store it securely in the database when request is created
@@ -167,9 +169,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Get verification request
-    const verificationRequest = await db.query.verificationRequests.findFirst({
-      where: eq(verificationRequests.id, body.requestId),
-    });
+    const [verificationRequest] = await db
+      .select()
+      .from(verificationRequests)
+      .where(eq(verificationRequests.id, body.requestId))
+      .limit(1);
 
     if (!verificationRequest) {
       return NextResponse.json(
@@ -349,9 +353,11 @@ export async function GET(req: NextRequest) {
     }
 
     // Get verification request
-    const verificationRequest = await db.query.verificationRequests.findFirst({
-      where: eq(verificationRequests.id, requestId),
-    });
+    const [verificationRequest] = await db
+      .select()
+      .from(verificationRequests)
+      .where(eq(verificationRequests.id, requestId))
+      .limit(1);
 
     if (!verificationRequest) {
       return NextResponse.json(

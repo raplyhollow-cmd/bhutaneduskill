@@ -5,17 +5,20 @@
  * - Substitute teacher selection in leave requests
  * - General teacher directory
  *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ *
  * Endpoints:
  * - GET: List all teachers (accessible by teachers, students, admins)
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { requireAuth } from "@/lib/auth-utils";
-import { logger } from "@/lib/logger";
 import { users } from "@/lib/db/schema";
 import { eq, and, desc, like, or } from "drizzle-orm";
 import { parseJsonArray } from "@/lib/db/json-helpers";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse } from "@/lib/api/response-helpers";
+import { logger } from "@/lib/logger";
 
 interface TeacherResponse {
   id: string;
@@ -27,35 +30,29 @@ interface TeacherResponse {
   subjects: string[];
 }
 
-/**
- * GET /api/teachers
- * List all teachers for substitute selection
- */
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['teacher', 'student', 'admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-    const { user } = authResult;
+// ============================================================================
+// GET /api/teachers
+// ============================================================================
+
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user } = auth;
 
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search");
     const subject = searchParams.get("subject");
 
     // Get school ID from current user (for school scope)
-    const currentUserData = await db.query.users.findFirst({
-      where: eq(users.id, user.id),
-      columns: { schoolId: true },
-    });
+    const currentUserData = await db
+      .select({ schoolId: users.schoolId })
+      .from(users)
+      .where(eq(users.id, user.id))
+      .limit(1);
 
-    const schoolId = currentUserData?.schoolId;
+    const schoolId = currentUserData[0]?.schoolId;
 
     // Build conditions
-    const conditions = [
+    const conditions: ReturnType<typeof eq>[] = [
       eq(users.type, "teacher"),
     ];
 
@@ -73,10 +70,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch teachers
-    const teachersList = await db.query.users.findMany({
-      where: and(...conditions),
-      orderBy: [desc(users.createdAt)],
-    });
+    const teachersList = await db
+      .select()
+      .from(users)
+      .where(and(...conditions))
+      .orderBy(desc(users.createdAt));
 
     // Transform for frontend
     const teachers: TeacherResponse[] = teachersList.map((teacher) => {
@@ -108,12 +106,7 @@ export async function GET(request: NextRequest) {
       count: teachers.length,
     });
 
-    return NextResponse.json({ teachers });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/teachers", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch teachers" },
-      { status: 500 }
-    );
-  }
-}
+    return successResponse({ teachers });
+  },
+  ['teacher', 'student', 'admin', 'school-admin']
+);

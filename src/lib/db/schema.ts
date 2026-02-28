@@ -2,7 +2,7 @@ import { pgTable, text, integer, boolean, timestamp, json, jsonb, index, decimal
 import { relations, sql, eq, and, or, desc, like, inArray } from "drizzle-orm";
 import { rubColleges, rubScholarships } from "./rub-schema";
 import { tenants } from "./tenancy-schema";
-import type { CounselorContent, LearningModuleContent, HomeworkContent } from "@/types";
+import type { CounselorContent, LearningModuleContent, HomeworkContent, QuestionData } from "@/types";
 
 // Re-export tables from separate schema files
 export {
@@ -488,19 +488,6 @@ export const schools = pgTable("schools", {
 
 export type School = typeof schools.$inferSelect;
 
-/*
- * RELATIONS DISABLED to avoid circular reference issues
- * schoolsRelations
- * 
- *   users: many(users),
- *   books: many(books),
- *   libraryMembers: many(libraryMembers),
- *   reservations: many(libraryReservations),
- *   digitalResources: many(digitalResources),
- *   invoices: many(invoices),
- * }
- */
-
 // ============================================================================
 // SCHOOL INVOICES TABLE
 // ============================================================================
@@ -564,17 +551,6 @@ export const invoices = pgTable("invoices", {
 
 export type Invoice = typeof invoices.$inferSelect;
 
-/*
- * RELATIONS DISABLED to avoid circular reference issues
- * invoicesRelations
- * 
- *   school: one(schools, {
- *     fields: [invoices.schoolId],
- *     references: [schools.id],
- *   }),
- * }
- */
-
 // ============================================================================
 // STUDENTS TABLE
 // ============================================================================
@@ -611,21 +587,6 @@ export const students = pgTable("students", {
 
 export type Student = typeof students.$inferSelect;
 
-/*
- * RELATIONS DISABLED to avoid circular reference issues
- * studentsRelations
- * 
- *   user: one(users, {
- *     fields: [students.userId],
- *     references: [users.id],
- *   }),
- *   school: one(schools, {
- *     fields: [students.schoolId],
- *     references: [schools.id],
- *   }),
- * }
- */
-
 // ============================================================================
 // TEACHERS TABLE
 // ============================================================================
@@ -655,21 +616,6 @@ export const teachers = pgTable("teachers", {
 
 export type Teacher = typeof teachers.$inferSelect;
 
-/*
- * RELATIONS DISABLED to avoid circular reference issues
- * teachersRelations
- * 
- *   user: one(users, {
- *     fields: [teachers.userId],
- *     references: [users.id],
- *   }),
- *   school: one(schools, {
- *     fields: [teachers.schoolId],
- *     references: [schools.id],
- *   }),
- * }
- */
-
 // ============================================================================
 // PARENTS TABLE
 // ============================================================================
@@ -693,18 +639,6 @@ export const parents = pgTable("parents", {
 
 export type Parent = typeof parents.$inferSelect;
 
-/*
- * RELATIONS DISABLED to avoid circular reference issues
- * parentsRelations
- * 
- *   user: one(users, {
- *     fields: [parents.userId],
- *     references: [users.id],
- *   }),
- *   studentRelationships: many(parentToStudent),
- * }
- */
-
 // ============================================================================
 // PARENT TO STUDENT JOIN TABLE
 // ============================================================================
@@ -726,21 +660,6 @@ export const parentToStudent = pgTable("parent_to_student", {
 }));
 
 export type ParentToStudent = typeof parentToStudent.$inferSelect;
-
-/*
- * RELATIONS DISABLED to avoid circular reference issues
- * parentToStudentRelations
- * 
- *   parent: one(parents, {
- *     fields: [parentToStudent.parentId],
- *     references: [parents.id],
- *   }),
- *   student: one(students, {
- *     fields: [parentToStudent.studentId],
- *     references: [students.id],
- *   }),
- * }
- */
 
 // ============================================================================
 // LIBRARY BOOKS TABLE
@@ -781,18 +700,6 @@ export const libraryBooks = pgTable("library_books", {
 
 export type LibraryBook = typeof libraryBooks.$inferSelect;
 
-/*
- * RELATIONS DISABLED to avoid circular reference issues
- * libraryBooksRelations
- * 
- *   school: one(schools, {
- *     fields: [libraryBooks.schoolId],
- *     references: [schools.id],
- *   }),
- *   circulation: many(libraryCirculation),
- * }
- */
-
 // ============================================================================
 // LIBRARY MEMBERS TABLE
 // ============================================================================
@@ -825,21 +732,6 @@ export const libraryMembers = pgTable("library_members", {
 }));
 
 export type LibraryMember = typeof libraryMembers.$inferSelect;
-
-/*
- * RELATIONS DISABLED to avoid circular reference issues
- * libraryMembersRelations
- * 
- *   school: one(schools, {
- *     fields: [libraryMembers.schoolId],
- *     references: [schools.id],
- *   }),
- *   user: one(users, {
- *     fields: [libraryMembers.userId],
- *     references: [users.id],
- *   }),
- * }
- */
 
 // ============================================================================
 // LIBRARY CIRCULATION TABLE
@@ -875,25 +767,6 @@ export const libraryCirculation = pgTable("library_circulation", {
 }));
 
 export type LibraryCirculation = typeof libraryCirculation.$inferSelect;
-
-/*
- * RELATIONS DISABLED to avoid circular reference issues
- * libraryCirculationRelations
- * 
- *   book: one(libraryBooks, {
- *     fields: [libraryCirculation.bookId],
- *     references: [libraryBooks.id],
- *   }),
- *   member: one(libraryMembers, {
- *     fields: [libraryCirculation.memberId],
- *     references: [libraryMembers.id],
- *   }),
- *   school: one(schools, {
- *     fields: [libraryCirculation.schoolId],
- *     references: [schools.id],
- *   }),
- * }
- */
 
 // ============================================================================
 // STUDENT PORTFOLIOS TABLE
@@ -934,21 +807,6 @@ export const studentPortfolios = pgTable("student_portfolios", {
 }));
 
 export type StudentPortfolio = typeof studentPortfolios.$inferSelect;
-
-/*
- * RELATIONS DISABLED to avoid circular reference issues
- * studentPortfoliosRelations
- * 
- *   student: one(users, {
- *     fields: [studentPortfolios.studentId],
- *     references: [users.id],
- *   }),
- *   school: one(schools, {
- *     fields: [studentPortfolios.schoolId],
- *     references: [schools.id],
- *   }),
- * }
- */
 
 // ============================================================================
 // SCHOOL SETTINGS TABLE
@@ -1206,7 +1064,7 @@ export const assessmentQuestions = pgTable("assessment_questions", {
   id: text("id").primaryKey(),
   assessmentTypeId: text("assessment_type_id").references(() => assessmentTypes.id, { onDelete: "cascade" }),
   questionText: text("question_text").notNull(),
-  questionData: json("question_data").$type<QuestionData>(),
+  questionData: json("question_data").$type<Record<string, unknown>>(),
   options: json("options").$type<string[]>(),
   correctAnswer: text("correct_answer").notNull(),
   points: integer("points").notNull(),
@@ -3980,216 +3838,3 @@ export const medicalReferrals = pgTable("medical_referrals", {
 
 export type MedicalReferral = typeof medicalReferrals.$inferSelect;
 export type NewMedicalReferral = typeof medicalReferrals.$inferInsert;
-
-// ============================================================================
-// ALL TABLE RELATIONSHIPS
-// ============================================================================
-// All relations are defined at the end to ensure all referenced tables exist
-
-// Users relations
-// NOTE: Self-referential 'parent' relation removed due to circular reference issues
-// with Drizzle's query API. Use explicit joins instead for parent-child queries.
-/*
- * RELATIONS DISABLED to avoid circular reference issues
- * usersRelations
- * 
- *   school: one(schools, {
- *     fields: [users.schoolId],
- *     references: [schools.id],
- *   }),
- *   circulationAsBorrower: many(circulation),
- *   circulationAsStudent: many(circulation),
- *   libraryMembers: many(libraryMembers),
- *   reservations: many(libraryReservations),
- * }
- */
-
-// Student applications relations
-/*
- * RELATIONS DISABLED to avoid circular reference issues
- * studentApplicationsRelations
- * 
- *   student: one(users, {
- *     fields: [studentApplications.studentId],
- *     references: [users.id],
- *   }),
- *   school: one(schools, {
- *     fields: [studentApplications.schoolId],
- *     references: [schools.id],
- *   }),
- *   reviewer: one(users, {
- *     fields: [studentApplications.reviewedBy],
- *     references: [users.id],
- *   }),
- * }
- */
-
-// School admin applications relations
-/*
- * RELATIONS DISABLED to avoid circular reference issues
- * schoolAdminApplicationsRelations
- * 
- *   user: one(users, {
- *     fields: [schoolAdminApplications.userId],
- *     references: [users.id],
- *   }),
- *   school: one(schools, {
- *     fields: [schoolAdminApplications.schoolId],
- *     references: [schools.id],
- *   }),
- *   reviewer: one(users, {
- *     fields: [schoolAdminApplications.reviewedBy],
- *     references: [users.id],
- *   }),
- *   paymentVerifier: one(users, {
- *     fields: [schoolAdminApplications.paymentVerifiedBy],
- *     references: [users.id],
- *   }),
- * }
- */
-
-// Teacher applications relations
-/*
- * RELATIONS DISABLED to avoid circular reference issues
- * teacherApplicationsRelations
- * 
- *   user: one(users, {
- *     fields: [teacherApplications.userId],
- *     references: [users.id],
- *   }),
- *   school: one(schools, {
- *     fields: [teacherApplications.schoolId],
- *     references: [schools.id],
- *   }),
- *   reviewer: one(users, {
- *     fields: [teacherApplications.reviewedBy],
- *     references: [users.id],
- *   }),
- * }
- */
-
-// Departments relations
-/*
- * RELATIONS DISABLED to avoid circular reference issues
- * departmentsRelations
- * 
- *   school: one(schools, {
- *     fields: [departments.schoolId],
- *     references: [schools.id],
- *   }),
- *   head: one(users, {
- *     fields: [departments.headOfDepartment],
- *     references: [users.id],
- *   }),
- * }
- */
-
-// Books relations
-/*
- * RELATIONS DISABLED to avoid circular reference issues
- * booksRelations
- * 
- *   school: one(schools, {
- *     fields: [books.schoolId],
- *     references: [schools.id],
- *   }),
- *   circulation: many(circulation),
- *   reservations: many(libraryReservations),
- * }
- */
-
-// Library relations
-/*
- * RELATIONS DISABLED to avoid circular reference issues
- * circulationRelations
- * 
- *   book: one(books, {
- *     fields: [circulation.bookId],
- *     references: [books.id],
- *   }),
- *   borrower: one(users, {
- *     fields: [circulation.borrowerId],
- *     references: [users.id],
- *   }),
- *   student: one(users, {
- *     fields: [circulation.studentId],
- *     references: [users.id],
- *   }),
- * }
- */
-
-
-/*
- * RELATIONS DISABLED to avoid circular reference issues
- * libraryReservationsRelations
- * 
- *   book: one(books, {
- *     fields: [libraryReservations.bookId],
- *     references: [books.id],
- *   }),
- *   user: one(users, {
- *     fields: [libraryReservations.userId],
- *     references: [users.id],
- *   }),
- *   school: one(schools, {
- *     fields: [libraryReservations.schoolId],
- *     references: [schools.id],
- *   }),
- * }
- */
-
-// Digital resources relations
-/*
- * RELATIONS DISABLED to avoid circular reference issues
- * digitalResourcesRelations
- * 
- *   school: one(schools, {
- *     fields: [digitalResources.schoolId],
- *     references: [schools.id],
- *   }),
- * }
- */
-
-// ============================================================================
-// COUNSELOR PORTAL RELATIONS
-// ============================================================================
-
-// Red Flags relations
-/*
- * RELATIONS DISABLED to avoid circular reference issues
- * redFlagsRelations
- * 
- *   student: one(users, {
- *     fields: [redFlags.studentId],
- *     references: [users.id],
- *   }),
- *   counselor: one(users, {
- *     fields: [redFlags.counselorId],
- *     references: [users.id],
- *   }),
- *   school: one(schools, {
- *     fields: [redFlags.schoolId],
- *     references: [schools.id],
- *   }),
- *   reviewer: one(users, {
- *     fields: [redFlags.reviewedBy],
- *     references: [users.id],
- *   }),
- * }
- */
-
-// Career Approvals relations
-/*
- * RELATIONS DISABLED to avoid circular reference issues
- * careerApprovalsRelations
- * 
- *   student: one(users, {
- *     fields: [careerApprovals.studentId],
- *     references: [users.id],
- *   }),
- *   counselor: one(users, {
- *     fields: [careerApprovals.counselorId],
- *     references: [users.id],
- *   }),
- * }
- */

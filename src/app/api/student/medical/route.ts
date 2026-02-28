@@ -1,26 +1,29 @@
-import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
-import { db } from "@/lib/db";
-import { medicalRecords, vaccinationRecords, studentAllergies, users } from "@/lib/db/schema";
-import { eq, and, desc } from "drizzle-orm";
-
 /**
+ * Student Medical Records API
+ *
  * GET /api/student/medical - Get student's medical records summary
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  *
  * Returns:
  * - Recent medical visits
  * - Vaccination records
  * - Known allergies/conditions
  */
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['student', 'parent', 'school-admin', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
 
-    const { user, userId } = authResult;
+import { logger } from "@/lib/logger";
+import { NextRequest } from "next/server";
+import { db } from "@/lib/db";
+import { medicalRecords, vaccinationRecords, studentAllergies, users } from "@/lib/db/schema";
+import { eq, and, desc } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
+
+/**
+ * GET /api/student/medical - Get student's medical records summary
+ */
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user, userId } = auth;
     const { searchParams } = new URL(request.url);
 
     // Determine which student's records to fetch
@@ -29,10 +32,13 @@ export async function GET(request: NextRequest) {
       // Parents can view their children's records
       const childId = searchParams.get('studentId');
       if (childId) {
-        // Verify the child belongs to this parent
-        const child = await db.query.users.findFirst({
-          where: and(eq(users.id, childId), eq(users.parentId, userId)),
-        });
+        // Verify the child belongs to this parent using db.select (neon-http compatible)
+        const childResult = await db
+          .select()
+          .from(users)
+          .where(and(eq(users.id, childId), eq(users.parentId, userId)))
+          .limit(1);
+        const child = childResult[0];
         if (child) {
           targetStudentId = childId;
         }
@@ -45,25 +51,28 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Fetch medical records
-    const medicalHistory = await db.query.medicalRecords.findMany({
-      where: eq(medicalRecords.studentId, targetStudentId),
-      orderBy: [desc(medicalRecords.visitDate)],
-      limit: 20,
-    });
+    // Fetch medical records using db.select (neon-http compatible)
+    const medicalHistory = await db
+      .select()
+      .from(medicalRecords)
+      .where(eq(medicalRecords.studentId, targetStudentId))
+      .orderBy(desc(medicalRecords.visitDate))
+      .limit(20);
 
-    // Fetch vaccination records
-    const vaccinations = await db.query.vaccinationRecords.findMany({
-      where: eq(vaccinationRecords.studentId, targetStudentId),
-      orderBy: [desc(vaccinationRecords.administrationDate)],
-    });
+    // Fetch vaccination records using db.select (neon-http compatible)
+    const vaccinations = await db
+      .select()
+      .from(vaccinationRecords)
+      .where(eq(vaccinationRecords.studentId, targetStudentId))
+      .orderBy(desc(vaccinationRecords.administrationDate));
 
-    // Fetch allergies and conditions
-    const allergies = await db.query.studentAllergies.findMany({
-      where: and(eq(studentAllergies.studentId, targetStudentId), eq(studentAllergies.isActive, true)),
-    });
+    // Fetch allergies and conditions using db.select (neon-http compatible)
+    const allergies = await db
+      .select()
+      .from(studentAllergies)
+      .where(and(eq(studentAllergies.studentId, targetStudentId), eq(studentAllergies.isActive, true)));
 
-    return NextResponse.json({
+    return {
       success: true,
       data: {
         studentId: targetStudentId,
@@ -78,9 +87,7 @@ export async function GET(request: NextRequest) {
           chronicConditions: allergies.filter(a => a.conditionType !== null).length,
         },
       },
-    });
-  } catch (error) {
-    logger.error("Student medical records fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch medical records" }, { status: 500 });
-  }
-}
+    };
+  },
+  ['student', 'parent', 'school-admin', 'admin']
+);

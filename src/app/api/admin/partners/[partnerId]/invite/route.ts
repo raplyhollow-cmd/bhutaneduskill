@@ -7,7 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { partners, users } from "@/lib/db/schema";
@@ -60,32 +60,28 @@ function validateInviteInput(data: InviteUserInput): { valid: boolean; errors: s
 // POST - Invite User to Partner Portal
 // ============================================================================
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ partnerId: string }> }
-) {
-  const authResult = await requireAuth(["admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status },
-      { status: authResult.status }
-    );
-  }
-
-  try {
+export const POST = createApiRoute(
+  async (
+    request: NextRequest,
+    auth,
+    { params }: { params: Promise<{ partnerId: string }> }
+  ) => {
     const { partnerId } = await params;
 
     if (!partnerId) {
-      return NextResponse.json({ error: "Partner ID is required" }, { status: 400 });
+      return { error: "Partner ID is required", status: 400 };
     }
 
     // Verify partner exists
-    const partner = await db.query.partners.findFirst({
-      where: eq(partners.id, partnerId),
-    });
+    const partnerResult = await db
+      .select()
+      .from(partners)
+      .where(eq(partners.id, partnerId))
+      .limit(1);
+    const partner = partnerResult[0];
 
     if (!partner) {
-      return NextResponse.json({ error: "Partner not found" }, { status: 404 });
+      return { error: "Partner not found", status: 404 };
     }
 
     const body = await request.json();
@@ -93,24 +89,28 @@ export async function POST(
     // Validate input
     const validation = validateInviteInput(body);
     if (!validation.valid) {
-      return NextResponse.json(
-        { error: "Validation failed", details: validation.errors },
-        { status: 400 }
-      );
+      return {
+        error: "Validation failed",
+        details: validation.errors,
+        status: 400,
+      };
     }
 
     const { email, firstName, lastName } = body as InviteUserInput;
 
     // Check if user with this email already exists
-    const existingUser = await db.query.users.findFirst({
-      where: eq(users.email, email.toLowerCase()),
-    });
+    const existingUserResult = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email.toLowerCase()))
+      .limit(1);
+    const existingUser = existingUserResult[0];
 
     if (existingUser) {
-      return NextResponse.json(
-        { error: "A user with this email already exists" },
-        { status: 409 }
-      );
+      return {
+        error: "A user with this email already exists",
+        status: 409,
+      };
     }
 
     // Create partner portal user
@@ -137,43 +137,36 @@ export async function POST(
       });
 
     // Fetch the created user
-    const newUserResult = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-    });
+    const newUserCheckResult = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
 
-    if (!newUserResult) {
+    if (!newUserCheckResult[0]) {
       throw new Error("Failed to create user");
     }
 
-    const newUser = newUserResult;
+    const newUser = newUserCheckResult[0];
 
     logger.info("Partner portal invitation sent", {
-      userId: authResult.userId,
+      userId: auth.userId,
       partnerId,
       invitedUserEmail: email,
       invitedUserId: userId,
     });
 
-    return NextResponse.json(
-      {
-        success: true,
-        data: {
-          id: newUser.id,
-          email: newUser.email,
-          name: newUser.name,
-          partnerId: partnerId,
-          status: "pending",
-          invitedAt: now,
-        },
-        message: "Invitation sent successfully. The user will receive an email with instructions.",
+    return {
+      data: {
+        id: newUser.id,
+        email: newUser.email,
+        name: newUser.name,
+        partnerId: partnerId,
+        status: "pending",
+        invitedAt: now,
       },
-      { status: 201 }
-    );
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/partners/[partnerId]/invite", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to send invitation", details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
-  }
-}
+      message: "Invitation sent successfully. The user will receive an email with instructions.",
+    };
+  },
+  ["admin"]
+);

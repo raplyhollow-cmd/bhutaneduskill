@@ -154,7 +154,7 @@ export default function EventsPage() {
     setFormData({
       title: event.title,
       description: event.description,
-      eventType: event.eventType as any,
+      eventType: event.eventType as "academic" | "sports" | "cultural" | "holiday" | "exam" | "meeting" | "other",
       startDate: event.startDate,
       endDate: event.endDate,
       startTime: "09:00",
@@ -163,7 +163,7 @@ export default function EventsPage() {
       location: event.location,
       targetAudience: event.targetAudience,
       requiresRegistration: event.requiresRegistration || false,
-      status: event.status as any,
+      status: event.status as "upcoming" | "ongoing" | "completed" | "cancelled" | "draft",
     });
     setShowModal(true);
   }
@@ -331,7 +331,7 @@ export default function EventsPage() {
                   <select
                     required
                     value={formData.eventType}
-                    onChange={(e) => setFormData({ ...formData, eventType: e.target.value as any })}
+                    onChange={(e) => setFormData({ ...formData, eventType: e.target.value as "academic" | "sports" | "cultural" | "holiday" | "exam" | "meeting" | "other" })}
                     className="w-full px-3 py-2 border rounded-lg"
                   >
                     <option value="academic">Academic</option>
@@ -347,7 +347,7 @@ export default function EventsPage() {
                   <label className="block text-sm font-medium mb-1">Status</label>
                   <select
                     value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value as "upcoming" | "ongoing" | "completed" | "cancelled" | "draft" })}
                     className="w-full px-3 py-2 border rounded-lg"
                   >
                     <option value="upcoming">Upcoming</option>

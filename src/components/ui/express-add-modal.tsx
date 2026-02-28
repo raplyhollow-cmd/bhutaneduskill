@@ -220,7 +220,7 @@ export function ExpressAddModal({
         setValue("")
         onClose()
       } else {
-        const errorMsg = result.error || errorMessage
+        const errorMsg = ("error" in result && result.error) || errorMessage
         setError(errorMsg)
         showError({ title: errorMsg })
       }
@@ -500,7 +500,9 @@ export function useQuickAdd(config: QuickAddConfig, onSubmit: QuickAddSubmitFn) 
         success({ title: config.successMessage || "Added successfully!", duration: 2000 })
         close()
       } else {
-        showError({ title: result.error || "Failed to add" })
+        // Type guard: check if error property exists
+        const errorMessage = (result as { success: false; error: string }).error
+        showError({ title: errorMessage || "Failed to add" })
       }
     }
   }

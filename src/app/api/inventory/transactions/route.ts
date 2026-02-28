@@ -3,8 +3,7 @@
  * Handles stock movement transactions (issue, return, transfer, adjustments)
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import {
   inventoryItems,
@@ -13,29 +12,17 @@ import {
   inventoryCategories,
   users,
 } from "@/lib/db/schema";
-import { eq, and, desc, sql, gt } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { logger } from "@/lib/logger";
-import type { ApiSuccess, ApiErrorResponse, Pagination } from "@/types";
-
-interface PaginatedData<T> {
-  items: T[];
-  pagination: Pagination;
-}
+import { createApiRoute } from "@/lib/api/route-handler";
 
 // ============================================================================
 // GET /api/inventory/transactions - List inventory transactions
 // ============================================================================
 
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { user, userId } = authResult;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user, userId } = auth;
 
     const { searchParams } = new URL(request.url);
     const page = Math.max(1, Number(searchParams.get("page")) || 1);
@@ -118,7 +105,7 @@ export async function GET(request: NextRequest) {
       performedByName: userMap.get(transaction.performedBy || "") || "Unknown",
     }));
 
-    const pagination: Pagination = {
+    const pagination = {
       page,
       limit,
       total,
@@ -127,20 +114,13 @@ export async function GET(request: NextRequest) {
 
     logger.info("Fetched inventory transactions", { userId, count: transactions.length });
 
-    return NextResponse.json({
-      data: {
-        items: transactionsWithDetails,
-        pagination,
-      },
-    } satisfies ApiSuccess<PaginatedData<typeof transactionsWithDetails[0]>>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/inventory/transactions", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch transactions", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return {
+      items: transactionsWithDetails,
+      pagination,
+    };
+  },
+  ['admin']
+);
 
 // ============================================================================
 // POST /api/inventory/transactions - Create transaction (issue/return/adjust)
@@ -159,28 +139,18 @@ interface CreateTransactionInput {
   documentUrls?: string[];
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { user, userId } = authResult;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user, userId } = auth;
 
     const data: CreateTransactionInput = await request.json();
 
     // Validate required fields
     if (!data.itemId || !data.transactionType || data.quantity === undefined) {
-      return NextResponse.json(
-        {
-          error: "Missing required fields: itemId, transactionType, quantity",
-          status: 400,
-        } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return {
+        error: "Missing required fields: itemId, transactionType, quantity",
+        status: 400
+      };
     }
 
     // Valid transaction types
@@ -198,22 +168,21 @@ export async function POST(request: NextRequest) {
     ];
 
     if (!validTypes.includes(data.transactionType)) {
-      return NextResponse.json(
-        { error: `Invalid transaction type. Must be one of: ${validTypes.join(", ")}`, status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return {
+        error: `Invalid transaction type. Must be one of: ${validTypes.join(", ")}`,
+        status: 400
+      };
     }
 
     // Get current item
-    const item = await db.query.inventoryItems.findFirst({
-      where: eq(inventoryItems.id, data.itemId),
-    });
+    const [item] = await db
+      .select()
+      .from(inventoryItems)
+      .where(eq(inventoryItems.id, data.itemId))
+      .limit(1);
 
     if (!item) {
-      return NextResponse.json(
-        { error: "Item not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "Item not found", status: 404 };
     }
 
     // Calculate quantity change (positive for incoming, negative for outgoing)
@@ -228,13 +197,10 @@ export async function POST(request: NextRequest) {
     // Check if sufficient stock for outgoing transactions
     const newQuantity = item.quantity + quantityChange;
     if (newQuantity < 0) {
-      return NextResponse.json(
-        {
-          error: `Insufficient stock. Current: ${item.quantity}, Requested: ${Math.abs(quantityChange)}`,
-          status: 400,
-        } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return {
+        error: `Insufficient stock. Current: ${item.quantity}, Requested: ${Math.abs(quantityChange)}`,
+        status: 400
+      };
     }
 
     const now = new Date();
@@ -277,22 +243,26 @@ export async function POST(request: NextRequest) {
       .where(eq(inventoryItems.id, data.itemId));
 
     // Check if low stock alert needed
-    const category = await db.query.inventoryCategories.findFirst({
-      where: eq(inventoryCategories.id, item.categoryId),
-    });
+    const [category] = await db
+      .select()
+      .from(inventoryCategories)
+      .where(eq(inventoryCategories.id, item.categoryId))
+      .limit(1);
 
     const minimumStock = item.minimumStock ?? category?.alertThreshold ?? 10;
     const isLowStock = newQuantity <= minimumStock;
 
     if (isLowStock) {
       // Check if alert already exists and is active
-      const existingAlert = await db.query.inventoryAlerts.findFirst({
-        where: and(
+      const [existingAlert] = await db
+        .select()
+        .from(inventoryAlerts)
+        .where(and(
           eq(inventoryAlerts.itemId, data.itemId),
           eq(inventoryAlerts.alertType, "low_stock"),
           eq(inventoryAlerts.status, "active")
-        ),
-      });
+        ))
+        .limit(1);
 
       if (!existingAlert) {
         await db.insert(inventoryAlerts).values({
@@ -319,41 +289,11 @@ export async function POST(request: NextRequest) {
       quantityChange,
     });
 
-    return NextResponse.json({
-      data: {
-        transaction: newTransaction,
-        newQuantity,
-        lowStockAlert: isLowStock,
-      },
-      message: "Transaction recorded successfully",
-    } satisfies ApiSuccess<{
-      transaction: typeof newTransaction;
-      newQuantity: number;
-      lowStockAlert: boolean;
-    }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/inventory/transactions", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to create transaction", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
-
-// ============================================================================
-// POST /api/inventory/transactions/bulk-issue - Bulk issue items
-// ============================================================================
-
-interface BulkIssueInput {
-  items: Array<{
-    itemId: string;
-    quantity: number;
-    reason?: string;
-  }>;
-  issuedTo: string;
-  issuedToName: string;
-  issuedToType: string;
-  expectedReturnDate?: string;
-  notes?: string;
-}
-
+    return {
+      transaction: newTransaction,
+      newQuantity,
+      lowStockAlert: isLowStock,
+    };
+  },
+  ['admin']
+);

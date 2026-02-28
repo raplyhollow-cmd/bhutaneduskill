@@ -61,7 +61,7 @@ export function usePortalAuth(portalType: string): PortalAuthState {
         const status = profileData?.profile?.onboardingStatus;
         const blockedStatuses = ["restricted", "rejected", "pending_approval", "pending_enrollment"] as const;
 
-        if (status && blockedStatuses.includes(status as any)) {
+        if (status && blockedStatuses.includes(status as typeof blockedStatuses[number])) {
           logger.info("User blocked by onboarding status", { status, portalType });
           // Map pending_enrollment to pending-approval page
           const redirectPage = status === "pending_enrollment" ? "pending-approval" : status.replace('_', '-');

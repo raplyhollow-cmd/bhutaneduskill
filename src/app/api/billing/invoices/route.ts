@@ -1,4 +1,3 @@
-import { logger } from "@/lib/logger";
 /**
  * BILLING - INVOICES API
  *
@@ -8,21 +7,15 @@ import { logger } from "@/lib/logger";
  * GET /api/billing/invoices?stats=true - Get invoice statistics
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
 import { invoices, schools } from "@/lib/db/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
-export async function GET(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
-
+export const GET = createApiRoute(
+  async (req, auth) => {
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
     const schoolId = searchParams.get("schoolId");
@@ -71,8 +64,7 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      return NextResponse.json({
-        success: true,
+      return {
         data: {
           totalCount: invoiceStats[0]?.totalCount || 0,
           pendingCount: (invoiceStats[0]?.sentCount || 0) + (invoiceStats[0]?.draftCount || 0),
@@ -82,7 +74,7 @@ export async function GET(req: NextRequest) {
           pendingAmount,
           paidAmount,
         },
-      });
+      };
     }
 
     // Build query conditions
@@ -153,41 +145,27 @@ export async function GET(req: NextRequest) {
       .from(invoices)
       .where(whereClause);
 
-    return NextResponse.json({
-      success: true,
+    return {
       data: formattedData,
       pagination: {
         page,
         limit,
         total: totalCount[0]?.count || 0,
       },
-    });
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : "Failed to fetch invoices";
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json(
-      { success: false, error: errorMessage },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);
 
-export async function POST(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const POST = createApiRoute(
+  async (req, auth) => {
+    const { userId } = auth;
     const body = await req.json();
 
     const { schoolId, amount, taxAmount = 0, discountAmount = 0, dueDays = 30, notes, subscriptionTier = "standard", billingPeriodStart, billingPeriodEnd } = body;
 
     if (!schoolId || !amount) {
-      return NextResponse.json(
-        { success: false, error: "schoolId and amount are required" },
-        { status: 400 }
-      );
+      return { error: "schoolId and amount are required", status: 400 };
     }
 
     // Verify school exists
@@ -198,10 +176,7 @@ export async function POST(req: NextRequest) {
       .limit(1);
 
     if (school.length === 0) {
-      return NextResponse.json(
-        { success: false, error: "School not found" },
-        { status: 404 }
-      );
+      return { error: "School not found", status: 404 };
     }
 
     const now = new Date();
@@ -252,37 +227,23 @@ export async function POST(req: NextRequest) {
       .where(eq(invoices.id, invoiceId))
       .limit(1);
 
-    return NextResponse.json({
-      success: true,
+    return {
       data: created[0],
       message: "Invoice generated successfully",
-    });
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : "Failed to create invoice";
-    logger.apiError(error, { route: "/", method: "POST" });
-    return NextResponse.json(
-      { success: false, error: errorMessage },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);
 
-export async function PATCH(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const PATCH = createApiRoute(
+  async (req, auth) => {
+    const { userId } = auth;
     const body = await req.json();
 
     const { invoiceId, action, status, paymentMethod, paymentReference } = body;
 
     if (!invoiceId) {
-      return NextResponse.json(
-        { success: false, error: "invoiceId is required" },
-        { status: 400 }
-      );
+      return { error: "invoiceId is required", status: 400 };
     }
 
     // Handle specific actions
@@ -298,10 +259,9 @@ export async function PATCH(req: NextRequest) {
         })
         .where(eq(invoices.id, invoiceId));
 
-      return NextResponse.json({
-        success: true,
+      return {
         message: "Invoice marked as paid",
-      });
+      };
     }
 
     if (action === "mark_overdue") {
@@ -313,18 +273,16 @@ export async function PATCH(req: NextRequest) {
         })
         .where(eq(invoices.id, invoiceId));
 
-      return NextResponse.json({
-        success: true,
+      return {
         message: "Invoice marked as overdue",
-      });
+      };
     }
 
     if (action === "send_reminder") {
       // In a real implementation, this would send an email
-      return NextResponse.json({
-        success: true,
+      return {
         message: "Payment reminder sent successfully",
-      });
+      };
     }
 
     // Generic status update
@@ -340,41 +298,24 @@ export async function PATCH(req: NextRequest) {
         })
         .where(eq(invoices.id, invoiceId));
 
-      return NextResponse.json({
-        success: true,
+      return {
         message: `Invoice status updated to ${status}`,
-      });
+      };
     }
 
-    return NextResponse.json(
-      { success: false, error: "No valid action provided" },
-      { status: 400 }
-    );
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : "Failed to update invoice";
-    logger.apiError(error, { route: "/", method: "PATCH" });
-    return NextResponse.json(
-      { success: false, error: errorMessage },
-      { status: 500 }
-    );
-  }
-}
+    return { error: "No valid action provided", status: 400 };
+  },
+  ["admin"]
+);
 
-export async function DELETE(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const DELETE = createApiRoute(
+  async (req, auth) => {
+    const { userId } = auth;
     const { searchParams } = new URL(req.url);
     const invoiceId = searchParams.get("invoiceId");
 
     if (!invoiceId) {
-      return NextResponse.json(
-        { success: false, error: "invoiceId is required" },
-        { status: 400 }
-      );
+      return { error: "invoiceId is required", status: 400 };
     }
 
     await db
@@ -385,16 +326,9 @@ export async function DELETE(req: NextRequest) {
       })
       .where(eq(invoices.id, invoiceId));
 
-    return NextResponse.json({
-      success: true,
+    return {
       message: "Invoice cancelled successfully",
-    });
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : "Failed to cancel invoice";
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json(
-      { success: false, error: errorMessage },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);

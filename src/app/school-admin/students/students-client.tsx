@@ -118,7 +118,7 @@ export function StudentsClient({
   };
 
   // Quick add student handler - creates student with minimal info
-  const handleQuickAddStudent = async (name: string) => {
+  const handleQuickAddStudent = async (name: string): Promise<{ success: true; data?: unknown } | { success: false; error: string }> => {
     try {
       const [firstName, ...lastNameParts] = name.trim().split(" ");
       const lastName = lastNameParts.join(" ") || "";

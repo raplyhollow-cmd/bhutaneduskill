@@ -6,7 +6,7 @@
  * DELETE /api/teacher/lessons/:id - Delete a lesson plan
  */
 
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { lessonPlans, syllabusProgress } from "@/lib/db/lesson-plan-schema";
 import { eq, and } from "drizzle-orm";
@@ -33,13 +33,13 @@ export const GET = createApiRoute(
     const { id } = await context!.params;
 
     // Get lesson details
-    const lesson = await db.query.lessonPlans.findFirst({
-      where: eq(lessonPlans.id, id),
-      with: {
-        class: true,
-        subject: true,
-      },
-    });
+    const lessonResult = await db
+      .select()
+      .from(lessonPlans)
+      .where(eq(lessonPlans.id, id))
+      .limit(1);
+
+    const lesson = lessonResult[0] || null;
 
     if (!lesson) {
       return NextResponse.json({ error: "Lesson plan not found" }, { status: 404 });
@@ -83,9 +83,13 @@ export const PATCH = createApiRoute(
     const { id } = await context!.params;
 
     // Verify lesson exists and belongs to teacher
-    const existingLesson = await db.query.lessonPlans.findFirst({
-      where: eq(lessonPlans.id, id),
-    });
+    const existingLessonResult = await db
+      .select()
+      .from(lessonPlans)
+      .where(eq(lessonPlans.id, id))
+      .limit(1);
+
+    const existingLesson = existingLessonResult[0] || null;
 
     if (!existingLesson) {
       return NextResponse.json({ error: "Lesson plan not found" }, { status: 404 });
@@ -123,7 +127,7 @@ export const PATCH = createApiRoute(
       scheduledDate?: string;
       duration?: number;
       notes?: string;
-      homeworkAssigned?: boolean;
+      homeworkAssigned?: string;
       status?: string;
       completedAt?: Date;
       coveragePercentage?: number;
@@ -142,7 +146,7 @@ export const PATCH = createApiRoute(
     if (scheduledDate !== undefined) updateData.scheduledDate = scheduledDate;
     if (duration !== undefined) updateData.duration = duration;
     if (notes !== undefined) updateData.notes = notes;
-    if (homeworkAssigned !== undefined) updateData.homeworkAssigned = homeworkAssigned;
+    if (homeworkAssigned !== undefined) updateData.homeworkAssigned = String(homeworkAssigned);
 
     // Handle status changes
     let newStatus = status;
@@ -168,13 +172,17 @@ export const PATCH = createApiRoute(
 
     // Update syllabus progress if status changed to completed
     if (newStatus === 'completed' && existingLesson.status !== 'completed') {
-      const progressRecord = await db.query.syllabusProgress.findFirst({
-        where: and(
+      const progressRecordResult = await db
+        .select()
+        .from(syllabusProgress)
+        .where(and(
           eq(syllabusProgress.classId, existingLesson.classId),
           eq(syllabusProgress.teacherId, userId),
           eq(syllabusProgress.subjectId, existingLesson.subjectId || ''),
-        ),
-      });
+        ))
+        .limit(1);
+
+      const progressRecord = progressRecordResult[0] || null;
 
       if (progressRecord) {
         const newCompletedCount = (progressRecord.completedChapters || 0) + 1;
@@ -225,9 +233,13 @@ export const DELETE = createApiRoute(
     const { id } = await context!.params;
 
     // Verify lesson exists and belongs to teacher
-    const existingLesson = await db.query.lessonPlans.findFirst({
-      where: eq(lessonPlans.id, id),
-    });
+    const existingLessonResult = await db
+      .select()
+      .from(lessonPlans)
+      .where(eq(lessonPlans.id, id))
+      .limit(1);
+
+    const existingLesson = existingLessonResult[0] || null;
 
     if (!existingLesson) {
       return NextResponse.json({ error: "Lesson plan not found" }, { status: 404 });
@@ -241,13 +253,17 @@ export const DELETE = createApiRoute(
     await db.delete(lessonPlans).where(eq(lessonPlans.id, id));
 
     // Update syllabus progress
-    const progressRecord = await db.query.syllabusProgress.findFirst({
-      where: and(
+    const progressRecordResult = await db
+      .select()
+      .from(syllabusProgress)
+      .where(and(
         eq(syllabusProgress.classId, existingLesson.classId),
         eq(syllabusProgress.teacherId, userId),
         eq(syllabusProgress.subjectId, existingLesson.subjectId || ''),
-      ),
-    });
+      ))
+      .limit(1);
+
+    const progressRecord = progressRecordResult[0] || null;
 
     if (progressRecord && progressRecord.totalChapters > 0) {
       const newTotal = Math.max(0, (progressRecord.totalChapters || 0) - 1);

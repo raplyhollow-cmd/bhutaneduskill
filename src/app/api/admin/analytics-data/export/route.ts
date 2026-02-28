@@ -5,12 +5,14 @@
  * GET /api/admin/analytics-data/export?format=csv|json|pdf
  *
  * Protected: Requires 'admin' role
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 // Import the analytics data types - defined locally since we can't import from route
 interface SchoolEngagementMetrics {
@@ -121,24 +123,10 @@ interface ExportRequest {
 // API Handler
 // ============================================================================
 
-export async function GET(req: Request) {
-  const startTime = Date.now();
-
-  try {
-    // Authentication check
-    const authResult = await requireAuth(['admin']);
-    if ('error' in authResult) {
-      logger.security("unauthorized_access_attempt", {
-        route: "/api/admin/analytics-data/export",
-        method: "GET",
-      });
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (req, auth) => {
+    const startTime = Date.now();
+    const { userId } = auth;
 
     // Parse query parameters
     const url = new URL(req.url);
@@ -176,32 +164,23 @@ export async function GET(req: Request) {
       filteredData = data;
     }
 
-    // Export based on format
+    // Export based on format - return NextResponse directly
     switch (format) {
       case "csv":
-        return exportAsCSV(filteredData);
+        return exportAsCSV(filteredData) as NextResponse;
 
       case "json":
-        return exportAsJSON(filteredData);
+        return exportAsJSON(filteredData) as NextResponse;
 
       case "pdf":
-        return exportAsPDF(filteredData);
+        return exportAsPDF(filteredData) as NextResponse;
 
       default:
-        return NextResponse.json(
-          { error: "Invalid format. Use: csv, json, or pdf", status: 400 } satisfies ApiErrorResponse,
-          { status: 400 }
-        );
+        return { error: "Invalid format. Use: csv, json, or pdf", status: 400 };
     }
-
-  } catch (error: unknown) {
-    logger.apiError(error, { route: "/api/admin/analytics-data/export", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to export analytics data", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin']
+);
 
 // ============================================================================
 // Export Functions

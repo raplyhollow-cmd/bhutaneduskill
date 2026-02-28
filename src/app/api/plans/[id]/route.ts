@@ -1,74 +1,50 @@
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
 import { users, careerPlans } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 // GET /api/plans/[id] - Get single career plan
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
+export const GET = createApiRoute<{ id: string }>(
+  async (request: NextRequest, auth, context) => {
+    const { user } = auth;
+    const { id } = await context!.params!;
 
-    const authResult = await requireAuth(['student', 'counselor', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const user = authResult.user;
-
-    const plan = await db.query.careerPlans.findFirst({
-      where: eq(careerPlans.id, id),
-    });
+    const [plan] = await db.select().from(careerPlans).where(eq(careerPlans.id, id)).limit(1);
 
     if (!plan) {
-      return NextResponse.json({ error: "Plan not found" }, { status: 404 });
+      return { error: "Plan not found", status: 404 };
     }
 
     // Check ownership - counselors and admins can view any plan
     if (user.type !== 'admin' && user.type !== 'counselor' && plan.userId !== user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return { error: "Forbidden", status: 403 };
     }
 
-    return NextResponse.json({ plan });
-  } catch (error) {
-    logger.error("Career plan fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch plan" }, { status: 500 });
-  }
-}
+    return { plan };
+  },
+  ['student', 'counselor', 'admin']
+);
 
 // PUT /api/plans/[id] - Update career plan
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
+export const PUT = createApiRoute<{ id: string }>(
+  async (request: NextRequest, auth, context) => {
+    const { user } = auth;
 
-    const authResult = await requireAuth(['student', 'counselor', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const user = authResult.user;
-
+    const { id } = await context!.params!;
     const body = await request.json();
     const { targetCareer, currentPhase, shortTermGoals, longTermGoals, actionSteps, milestones, status } = body;
 
-    const existingPlan = await db.query.careerPlans.findFirst({
-      where: eq(careerPlans.id, id),
-    });
+    const [existingPlan] = await db.select().from(careerPlans).where(eq(careerPlans.id, id)).limit(1);
 
     if (!existingPlan) {
-      return NextResponse.json({ error: "Plan not found" }, { status: 404 });
+      return { error: "Plan not found", status: 404 };
     }
 
     // Check ownership - counselors and admins can update any plan
     if (user.type !== 'admin' && user.type !== 'counselor' && existingPlan.userId !== user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return { error: "Forbidden", status: 403 };
     }
 
     const [updatedPlan] = await db
@@ -85,46 +61,32 @@ export async function PUT(
       .where(eq(careerPlans.id, id))
       .returning();
 
-    return NextResponse.json({ plan: updatedPlan });
-  } catch (error) {
-    logger.error("Career plan update error:", error);
-    return NextResponse.json({ error: "Failed to update plan" }, { status: 500 });
-  }
-}
+    return { plan: updatedPlan };
+  },
+  ['student', 'counselor', 'admin']
+);
 
 // DELETE /api/plans/[id] - Delete career plan
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
+export const DELETE = createApiRoute<{ id: string }>(
+  async (request: NextRequest, auth, context) => {
+    const { user } = auth;
 
-    const authResult = await requireAuth(['student', 'counselor', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
+    const { id } = await context!.params!;
 
-    const user = authResult.user;
-
-    const existingPlan = await db.query.careerPlans.findFirst({
-      where: eq(careerPlans.id, id),
-    });
+    const [existingPlan] = await db.select().from(careerPlans).where(eq(careerPlans.id, id)).limit(1);
 
     if (!existingPlan) {
-      return NextResponse.json({ error: "Plan not found" }, { status: 404 });
+      return { error: "Plan not found", status: 404 };
     }
 
     // Check ownership - counselors and admins can delete any plan
     if (user.type !== 'admin' && user.type !== 'counselor' && existingPlan.userId !== user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return { error: "Forbidden", status: 403 };
     }
 
     await db.delete(careerPlans).where(eq(careerPlans.id, id));
 
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    logger.error("Career plan delete error:", error);
-    return NextResponse.json({ error: "Failed to delete plan" }, { status: 500 });
-  }
-}
+    return { success: true };
+  },
+  ['student', 'counselor', 'admin']
+);

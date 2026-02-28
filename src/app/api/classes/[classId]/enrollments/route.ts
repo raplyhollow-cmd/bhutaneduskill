@@ -46,17 +46,35 @@ export const GET = createApiRoute(
       return errorResponse("Forbidden", 403);
     }
 
-    // Get all enrollments for this class
+    // Get all enrollments for this class with student details using manual join
     const enrollmentRecords = await db
-      .select()
+      .select({
+        // Enrollment fields
+        id: enrollments.id,
+        studentId: enrollments.studentId,
+        classId: enrollments.classId,
+        academicYear: enrollments.academicYear,
+        enrollmentDate: enrollments.enrollmentDate,
+        status: enrollments.status,
+        rollNumber: enrollments.rollNumber,
+        section: enrollments.section,
+        createdAt: enrollments.createdAt,
+        updatedAt: enrollments.updatedAt,
+        // Student fields
+        studentUserId: users.id,
+        studentName: users.name,
+        studentFirstName: users.firstName,
+        studentLastName: users.lastName,
+        studentEmail: users.email,
+        studentClerkUserId: users.clerkUserId,
+        studentType: users.type,
+      })
       .from(enrollments)
+      .leftJoin(users, eq(enrollments.studentId, users.id))
       .where(and(
         eq(enrollments.classId, classId),
         eq(enrollments.status, 'active')
       ))
-      .with({
-        student: true,
-      })
       .orderBy(desc(enrollments.createdAt));
 
     // Transform the response to include student details
@@ -81,7 +99,29 @@ export const GET = createApiRoute(
         type: string;
       } | null;
     }
-    const enrollmentsWithStudents = enrollmentRecords.map((enrollment): EnrollmentWithStudent => ({
+
+    // Type for the raw enrollment record from the database query
+    type RawEnrollmentRecord = {
+      id: string;
+      studentId: string;
+      classId: string;
+      academicYear: string;
+      enrollmentDate: string;
+      status: string;
+      rollNumber: string | null;
+      section: string | null;
+      createdAt: Date;
+      updatedAt: Date;
+      studentUserId: string;
+      studentName: string | null;
+      studentFirstName: string | null;
+      studentLastName: string | null;
+      studentEmail: string | null;
+      studentClerkUserId: string;
+      studentType: string;
+    };
+
+    const enrollmentsWithStudents = enrollmentRecords.map((enrollment: RawEnrollmentRecord): EnrollmentWithStudent => ({
       id: enrollment.id,
       studentId: enrollment.studentId,
       classId: enrollment.classId,
@@ -92,14 +132,14 @@ export const GET = createApiRoute(
       section: enrollment.section,
       createdAt: enrollment.createdAt,
       updatedAt: enrollment.updatedAt,
-      student: enrollment.student ? {
-        id: enrollment.student.id,
-        name: enrollment.student.name,
-        firstName: enrollment.student.firstName,
-        lastName: enrollment.student.lastName,
-        email: enrollment.student.email,
-        clerkUserId: enrollment.student.clerkUserId,
-        type: enrollment.student.type,
+      student: enrollment.studentId ? {
+        id: enrollment.studentId,
+        name: enrollment.studentName || '',
+        firstName: enrollment.studentFirstName,
+        lastName: enrollment.studentLastName,
+        email: enrollment.studentEmail,
+        clerkUserId: enrollment.studentClerkUserId,
+        type: enrollment.studentType,
       } : null,
     }));
 

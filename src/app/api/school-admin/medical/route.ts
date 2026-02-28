@@ -4,9 +4,9 @@ import { createApiRoute, getAuth } from "@/lib/api/route-handler";
 import { successResponse, errorResponse, badRequestResponse } from "@/lib/api/response-helpers";
 import { db } from "@/lib/db";
 import { medicalRecords, medicalReferrals, users, studentAllergies, vaccinationRecords, medicineInventory, medicineTransactions } from "@/lib/db/schema";
-import { eq, and, desc, gte, lte, sql, Sql } from "drizzle-orm";
+import { eq, and, desc, gte, lte, sql } from "drizzle-orm";
 
-type DrizzleCondition = Sql<boolean> | ReturnType<typeof eq> | ReturnType<typeof gte> | ReturnType<typeof lte>;
+type DrizzleCondition = ReturnType<typeof eq> | ReturnType<typeof and> | ReturnType<typeof gte> | ReturnType<typeof lte>;
 
 /**
  * GET /api/school-admin/medical - Get infirmary dashboard statistics
@@ -30,40 +30,77 @@ export const GET = createApiRoute(
     }
 
     // Get recent medical visits
-    const recentVisits = await db.query.medicalRecords.findMany({
-      where: dateConditions.length > 0
+    const recentVisits = await db
+      .select({
+        id: medicalRecords.id,
+        studentId: medicalRecords.studentId,
+        schoolId: medicalRecords.schoolId,
+        visitDate: medicalRecords.visitDate,
+        visitType: medicalRecords.visitType,
+        chiefComplaint: medicalRecords.chiefComplaint,
+        symptoms: medicalRecords.symptoms,
+        temperature: medicalRecords.temperature,
+        bloodPressure: medicalRecords.bloodPressure,
+        pulseRate: medicalRecords.pulseRate,
+        respiratoryRate: medicalRecords.respiratoryRate,
+        weight: medicalRecords.weight,
+        height: medicalRecords.height,
+        oxygenSaturation: medicalRecords.oxygenSaturation,
+        diagnosis: medicalRecords.diagnosis,
+        treatment: medicalRecords.treatment,
+        medicationsPrescribed: medicalRecords.medicationsPrescribed,
+        notes: medicalRecords.notes,
+        followUpDate: medicalRecords.followUpDate,
+        isEmergency: medicalRecords.isEmergency,
+        parentNotified: medicalRecords.parentNotified,
+        dischargeCondition: medicalRecords.dischargeCondition,
+        dischargeTime: medicalRecords.dischargeTime,
+        status: medicalRecords.status,
+        visitedBy: medicalRecords.visitedBy,
+        createdAt: medicalRecords.createdAt,
+        updatedAt: medicalRecords.updatedAt,
+      })
+      .from(medicalRecords)
+      .where(dateConditions.length > 0
         ? and(eq(medicalRecords.schoolId, schoolId), ...dateConditions)
-        : eq(medicalRecords.schoolId, schoolId),
-      with: {
-        student: true,
-      },
-      orderBy: [desc(medicalRecords.visitDate)],
-      limit: 20,
-    });
+        : eq(medicalRecords.schoolId, schoolId))
+      .orderBy(desc(medicalRecords.visitDate))
+      .limit(20);
 
     // Get students with known allergies
-    const studentsWithAllergies = await db.query.studentAllergies.findMany({
-      where: and(eq(studentAllergies.schoolId, schoolId), eq(studentAllergies.isActive, true)),
-      with: {
-        student: true,
-      },
-    });
+    const studentsWithAllergies = await db
+      .select({
+        id: studentAllergies.id,
+        studentId: studentAllergies.studentId,
+        schoolId: studentAllergies.schoolId,
+        allergenName: studentAllergies.allergenName,
+        allergenType: studentAllergies.allergenType,
+        severity: studentAllergies.severity,
+        reaction: studentAllergies.reaction,
+        isActive: studentAllergies.isActive,
+        createdAt: studentAllergies.createdAt,
+        updatedAt: studentAllergies.updatedAt,
+      })
+      .from(studentAllergies)
+      .where(and(eq(studentAllergies.schoolId, schoolId), eq(studentAllergies.isActive, true)));
 
     // Get medicines with low stock
-    const lowStockMedicines = await db.query.medicineInventory.findMany({
-      where: and(
+    const lowStockMedicines = await db
+      .select()
+      .from(medicineInventory)
+      .where(and(
         eq(medicineInventory.schoolId, schoolId),
         sql`${medicineInventory.currentStock} <= ${medicineInventory.minimumStock}`
-      ),
-    });
+      ));
 
     // Get pending referrals count
-    const pendingReferrals = await db.query.medicalReferrals.findMany({
-      where: and(
+    const pendingReferrals = await db
+      .select()
+      .from(medicalReferrals)
+      .where(and(
         eq(medicalReferrals.schoolId, schoolId),
         eq(medicalReferrals.status, 'pending')
-      ),
-    });
+      ));
 
     // Calculate statistics
     const stats = {

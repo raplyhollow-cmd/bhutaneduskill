@@ -11,11 +11,11 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { partners } from "@/lib/db/schema";
-import { eq, inArray, and, or } from "drizzle-orm";
+import { eq, inArray, and, or, sql } from "drizzle-orm";
 
 // ============================================================================
 // TYPES
@@ -123,34 +123,29 @@ async function getPartnersForBatch(partnerIds?: string[], filters?: BatchRequest
 
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-  return db.query.partners.findMany({
-    where: whereClause,
-  });
+  const result = await db
+    .select()
+    .from(partners)
+    .where(whereClause || sql`1=1`);
+  return result;
 }
 
 // ============================================================================
 // POST - Batch Operations
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  const authResult = await requireAuth(["admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status },
-      { status: authResult.status }
-    );
-  }
-
-  try {
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
     const body = await request.json();
 
     // Validate request
     const validation = validateBatchRequest(body);
     if (!validation.valid) {
-      return NextResponse.json(
-        { error: "Validation failed", details: validation.errors },
-        { status: 400 }
-      );
+      return {
+        error: "Validation failed",
+        details: validation.errors,
+        status: 400,
+      };
     }
 
     const { operation, partnerIds, filters } = body as BatchRequest;
@@ -159,10 +154,10 @@ export async function POST(request: NextRequest) {
     const targetPartners = await getPartnersForBatch(partnerIds, filters);
 
     if (targetPartners.length === 0) {
-      return NextResponse.json(
-        { error: "No partners found matching the criteria" },
-        { status: 404 }
-      );
+      return {
+        error: "No partners found matching the criteria",
+        status: 404,
+      };
     }
 
     const targetPartnerIds = targetPartners.map((p) => p.id);
@@ -189,15 +184,15 @@ export async function POST(request: NextRequest) {
         results.succeeded = targetPartnerIds.length;
 
         logger.info("Batch activate partners", {
-          userId: authResult.userId,
+          userId: auth.userId,
           count: targetPartnerIds.length,
         });
 
-        return NextResponse.json({
+        return {
           success: true,
           message: `Activated ${targetPartnerIds.length} partner(s)`,
           data: results,
-        });
+        };
 
       case "deactivate":
         // Set status to "inactive" for all selected partners
@@ -213,15 +208,15 @@ export async function POST(request: NextRequest) {
         results.succeeded = targetPartnerIds.length;
 
         logger.info("Batch deactivate partners", {
-          userId: authResult.userId,
+          userId: auth.userId,
           count: targetPartnerIds.length,
         });
 
-        return NextResponse.json({
+        return {
           success: true,
           message: `Deactivated ${targetPartnerIds.length} partner(s)`,
           data: results,
-        });
+        };
 
       case "delete":
         // Soft delete: set status to "inactive" for all selected partners
@@ -237,15 +232,15 @@ export async function POST(request: NextRequest) {
         results.succeeded = targetPartnerIds.length;
 
         logger.info("Batch delete partners (soft delete)", {
-          userId: authResult.userId,
+          userId: auth.userId,
           count: targetPartnerIds.length,
         });
 
-        return NextResponse.json({
+        return {
           success: true,
           message: `Deleted ${targetPartnerIds.length} partner(s)`,
           data: results,
-        });
+        };
 
       case "export":
         // Generate CSV export
@@ -270,7 +265,7 @@ export async function POST(request: NextRequest) {
         const csv = arrayToCSV(exportData);
 
         logger.info("Partners export generated", {
-          userId: authResult.userId,
+          userId: auth.userId,
           count: exportData.length,
         });
 
@@ -284,37 +279,23 @@ export async function POST(request: NextRequest) {
         });
 
       default:
-        return NextResponse.json(
-          { error: "Invalid operation" },
-          { status: 400 }
-        );
+        return {
+          error: "Invalid operation",
+          status: 400,
+        };
     }
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/partners/batch", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to process batch operation", details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ["admin"]
+);
 
 // ============================================================================
 // GET - Get Batch Operation Status/Info
 // ============================================================================
 
-export async function GET(request: NextRequest) {
-  const authResult = await requireAuth(["admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status },
-      { status: authResult.status }
-    );
-  }
-
-  try {
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
     // Return available batch operations and their descriptions
-    return NextResponse.json({
-      success: true,
+    return {
       data: {
         operations: [
           {
@@ -343,12 +324,7 @@ export async function GET(request: NextRequest) {
           maxBatchSize: 100,
         },
       },
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/partners/batch", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to get batch operations info", details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);

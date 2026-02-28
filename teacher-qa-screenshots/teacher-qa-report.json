@@ -1,0 +1,260 @@
+{
+  "timestamp": "2026-02-26T15:33:50.304Z",
+  "summary": {
+    "totalPages": 12,
+    "authRequired": 2,
+    "errors": 10,
+    "avgLoadTime": 1543
+  },
+  "pages": [
+    {
+      "path": "/teacher/dashboard",
+      "name": "Dashboard",
+      "status": "ERROR",
+      "loadTime": 0,
+      "finalUrl": "",
+      "redirectCount": 0,
+      "responseStatus": 0,
+      "issues": [
+        "Exception: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/teacher/dashboard\", waiting until \"commit\"\u001b[22m\n"
+      ],
+      "authRequired": false,
+      "screenshot": ""
+    },
+    {
+      "path": "/teacher/classes",
+      "name": "Classes",
+      "status": "ERROR",
+      "loadTime": 0,
+      "finalUrl": "",
+      "redirectCount": 0,
+      "responseStatus": 0,
+      "issues": [
+        "Exception: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/teacher/classes\", waiting until \"commit\"\u001b[22m\n"
+      ],
+      "authRequired": false,
+      "screenshot": ""
+    },
+    {
+      "path": "/teacher/students",
+      "name": "Students",
+      "status": "AUTH_REQUIRED",
+      "loadTime": 9741,
+      "finalUrl": "http://localhost:3000/sign-in",
+      "redirectCount": 13,
+      "responseStatus": 200,
+      "issues": [
+        "Redirects to: http://localhost:3000/sign-in"
+      ],
+      "authRequired": true,
+      "screenshot": "D:\\VS STUDIO PROJECT\\bhutaneduskill\\teacher-qa-screenshots\\teacher-students.png",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)",
+        "Page Error: \nClerk: The <SignIn/> component is not configured correctly. The most likely reasons for this error are:\n\n1. The \"/sign-in\" route is not a catch-all route.\nIt is recommended to convert this route to a catch-all route, eg: \"/sign-in/[[...rest]]/page.tsx\". Alternatively, you can update the <SignIn/> component to use hash-based routing by setting the \"routing\" prop to \"hash\".\n\n2. The <SignIn/> component is mounted in a catch-all route, but all routes under \"/sign-in\" are protected by the middleware.\nTo resolve this, ensure that the middleware does not protect the catch-all route or any of its children. If you are using the \"createRouteMatcher\" helper, consider adding \"(.*)\" to the end of the route pattern, eg: \"/sign-in(.*)\". For more information, see: https://clerk.com/docs/reference/nextjs/clerk-middleware#create-route-matcher\n"
+      ]
+    },
+    {
+      "path": "/teacher/homework",
+      "name": "Homework",
+      "status": "ERROR",
+      "loadTime": 0,
+      "finalUrl": "",
+      "redirectCount": 0,
+      "responseStatus": 0,
+      "issues": [
+        "Exception: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/teacher/homework\", waiting until \"commit\"\u001b[22m\n"
+      ],
+      "authRequired": false,
+      "screenshot": ""
+    },
+    {
+      "path": "/teacher/assessments",
+      "name": "Assessments",
+      "status": "ERROR",
+      "loadTime": 0,
+      "finalUrl": "",
+      "redirectCount": 0,
+      "responseStatus": 0,
+      "issues": [
+        "Exception: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/teacher/assessments\", waiting until \"commit\"\u001b[22m\n"
+      ],
+      "authRequired": false,
+      "screenshot": ""
+    },
+    {
+      "path": "/teacher/attendance",
+      "name": "Attendance",
+      "status": "ERROR",
+      "loadTime": 0,
+      "finalUrl": "",
+      "redirectCount": 0,
+      "responseStatus": 0,
+      "issues": [
+        "Exception: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/teacher/attendance\", waiting until \"commit\"\u001b[22m\n"
+      ],
+      "authRequired": false,
+      "screenshot": ""
+    },
+    {
+      "path": "/teacher/learning",
+      "name": "Learning",
+      "status": "ERROR",
+      "loadTime": 0,
+      "finalUrl": "",
+      "redirectCount": 0,
+      "responseStatus": 0,
+      "issues": [
+        "Exception: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/teacher/learning\", waiting until \"commit\"\u001b[22m\n"
+      ],
+      "authRequired": false,
+      "screenshot": ""
+    },
+    {
+      "path": "/teacher/live-sessions",
+      "name": "Live Sessions",
+      "status": "AUTH_REQUIRED",
+      "loadTime": 8774,
+      "finalUrl": "http://localhost:3000/teacher/live-sessions",
+      "redirectCount": 0,
+      "responseStatus": 404,
+      "issues": [
+        "Redirects to: http://localhost:3000/teacher/live-sessions"
+      ],
+      "authRequired": true,
+      "screenshot": "D:\\VS STUDIO PROJECT\\bhutaneduskill\\teacher-qa-screenshots\\teacher-live-sessions.png",
+      "consoleErrors": [
+        "Failed to load resource: the server responded with a status of 404 (Not Found)"
+      ]
+    },
+    {
+      "path": "/teacher/schedule",
+      "name": "Schedule",
+      "status": "ERROR",
+      "loadTime": 0,
+      "finalUrl": "",
+      "redirectCount": 0,
+      "responseStatus": 0,
+      "issues": [
+        "Exception: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/teacher/schedule\", waiting until \"commit\"\u001b[22m\n"
+      ],
+      "authRequired": false,
+      "screenshot": ""
+    },
+    {
+      "path": "/teacher/timetable",
+      "name": "Timetable",
+      "status": "ERROR",
+      "loadTime": 0,
+      "finalUrl": "",
+      "redirectCount": 0,
+      "responseStatus": 0,
+      "issues": [
+        "Exception: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/teacher/timetable\", waiting until \"commit\"\u001b[22m\n"
+      ],
+      "authRequired": false,
+      "screenshot": ""
+    },
+    {
+      "path": "/teacher/reports",
+      "name": "Reports",
+      "status": "ERROR",
+      "loadTime": 0,
+      "finalUrl": "",
+      "redirectCount": 0,
+      "responseStatus": 0,
+      "issues": [
+        "Exception: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/teacher/reports\", waiting until \"commit\"\u001b[22m\n"
+      ],
+      "authRequired": false,
+      "screenshot": ""
+    },
+    {
+      "path": "/teacher/earnings",
+      "name": "Earnings",
+      "status": "ERROR",
+      "loadTime": 0,
+      "finalUrl": "",
+      "redirectCount": 0,
+      "responseStatus": 0,
+      "issues": [
+        "Exception: page.goto: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/teacher/earnings\", waiting until \"commit\"\u001b[22m\n"
+      ],
+      "authRequired": false,
+      "screenshot": ""
+    }
+  ],
+  "apis": [
+    {
+      "endpoint": "/api/auth/set-role",
+      "status": 0,
+      "statusText": "ERROR",
+      "error": "page.goto: Timeout 5000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/api/auth/set-role\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    },
+    {
+      "endpoint": "/api/user/profile",
+      "status": 0,
+      "statusText": "ERROR",
+      "error": "page.goto: Timeout 5000ms exceeded.\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/api/user/profile\", waiting until \"domcontentloaded\"\u001b[22m\n"
+    }
+  ],
+  "files": {
+    "pages": [
+      "page.tsx",
+      "assessments\\page.tsx",
+      "attendance\\page.tsx",
+      "classes\\page.tsx",
+      "dashboard\\page.tsx",
+      "earnings\\page.tsx",
+      "homework\\page.tsx",
+      "learning\\page.tsx",
+      "leave\\page.tsx",
+      "live-sessions\\page.tsx",
+      "messages\\page.tsx",
+      "my-classes\\page.tsx",
+      "payslips\\page.tsx",
+      "reports\\page.tsx",
+      "schedule\\page.tsx",
+      "students\\page.tsx",
+      "timetable\\page.tsx",
+      "homework\\create\\page.tsx",
+      "learning\\create\\page.tsx",
+      "students\\[id]\\page.tsx",
+      "homework\\[id]\\grade\\page.tsx"
+    ],
+    "components": [
+      "layout.tsx",
+      "teacher-layout-client.tsx",
+      "dashboard\\ai-insights-wrapper.tsx",
+      "dashboard\\teacher-quick-actions.tsx",
+      "earnings\\earnings-client.tsx"
+    ],
+    "apis": [
+      "attendance\\route.ts",
+      "behavior\\route.ts",
+      "dashboard\\route.ts",
+      "homework\\route.ts",
+      "lessons\\route.ts",
+      "live-sessions\\route.ts",
+      "messages\\route.ts",
+      "modules\\route.ts",
+      "my-assignments\\route.ts",
+      "payslips\\route.ts",
+      "profile\\route.ts",
+      "reports\\route.ts",
+      "resources\\route.ts",
+      "schedule\\route.ts",
+      "students\\route.ts",
+      "timetable\\route.ts",
+      "attendance\\history\\route.ts",
+      "homework\\[id]\\route.ts",
+      "lessons\\[id]\\route.ts",
+      "messages\\[conversationId]\\route.ts",
+      "modules\\[id]\\route.ts",
+      "attendance\\[classId]\\[date]\\route.ts",
+      "homework\\[id]\\submissions\\route.ts",
+      "payslips\\[id]\\pdf\\route.ts",
+      "reports\\student\\[id]\\route.ts",
+      "homework\\[id]\\submissions\\[submissionId]\\route.ts"
+    ]
+  }
+}

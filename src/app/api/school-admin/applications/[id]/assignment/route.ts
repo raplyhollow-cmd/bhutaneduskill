@@ -1,11 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users, classes, departments, teacherAssignments } from "@/lib/db/schema";
-import { requireAuth } from "@/lib/auth-utils";
 import { requirePermission } from "@/lib/rbac";
 import { logger } from "@/lib/logger";
 import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { createApiRoute } from "@/lib/api/route-handler";
 import type { ApiSuccess, ApiErrorResponse, UserEntity } from "@/types";
 
 interface AssignmentRequest {
@@ -23,25 +23,13 @@ interface AssignmentResponse {
 }
 
 // PATCH /api/school-admin/applications/[id]/assignment - Update user assignments
-export async function PATCH(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(['school-admin', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { userId, user } = authResult;
-
-    const params = await context.params;
+export const PATCH = createApiRoute<{ id: string }, AssignmentResponse>(
+  async (req, { user }, context) => {
+    const params = await context!.params;
     const targetUserId = params.id;
 
     // Check permission for managing teachers
-    const permCheck = await requirePermission(userId, 'teachers.approve');
+    const permCheck = await requirePermission(user.id, 'teachers.approve');
     if (permCheck) return permCheck;
 
     // Get the target user
@@ -52,47 +40,32 @@ export async function PATCH(
       .limit(1);
 
     if (targetUsers.length === 0) {
-      return NextResponse.json(
-        { error: "User not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "User not found", status: 404 };
     }
 
     const targetUser = targetUsers[0];
 
     // Verify target user is a teacher
     if (targetUser.type !== 'teacher') {
-      return NextResponse.json(
-        { error: "Assignments can only be made for teachers", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "Assignments can only be made for teachers", status: 400 };
     }
 
     // Check school access (unless platform admin)
     const schoolId = user.type === 'admin' ? targetUser.schoolId : user.schoolId;
     if (user.type !== 'admin' && targetUser.schoolId !== user.schoolId) {
-      return NextResponse.json(
-        { error: "Access denied to this user", status: 403 } satisfies ApiErrorResponse,
-        { status: 403 }
-      );
+      return { error: "Access denied to this user", status: 403 };
     }
 
     if (!schoolId) {
-      return NextResponse.json(
-        { error: "School ID not found", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "School ID not found", status: 400 };
     }
 
-    const body: AssignmentRequest = await request.json();
+    const body: AssignmentRequest = await req.json();
     const { departmentId, classIds = [] } = body;
 
     // Validate at least one assignment is provided
     if (!departmentId && (!classIds || classIds.length === 0)) {
-      return NextResponse.json(
-        { error: "At least one of departmentId or classIds must be provided", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "At least one of departmentId or classIds must be provided", status: 400 };
     }
 
     const result: AssignmentResponse['assignments'] = {};
@@ -100,18 +73,17 @@ export async function PATCH(
     // Handle department assignment
     if (departmentId) {
       // Verify department belongs to the school
-      const dept = await db.query.departments.findFirst({
-        where: and(
+      const [dept] = await db
+      .select()
+      .from(departments)
+      .where(and(
           eq(departments.id, departmentId),
           eq(departments.schoolId, schoolId)
-        )
-      });
+        ))
+      .limit(1);
 
       if (!dept) {
-        return NextResponse.json(
-          { error: "Department not found or access denied", status: 404 } satisfies ApiErrorResponse,
-          { status: 404 }
-        );
+        return { error: "Department not found or access denied", status: 404 };
       }
 
       // Update user's department
@@ -128,7 +100,7 @@ export async function PATCH(
       logger.info("Teacher department assigned", {
         teacherId: targetUserId,
         departmentId: dept.id,
-        assignedBy: userId
+        assignedBy: user.id
       });
     }
 
@@ -149,13 +121,10 @@ export async function PATCH(
       const invalidClassIds = classIds.filter(id => !validClassIds.has(id));
 
       if (invalidClassIds.length > 0) {
-        return NextResponse.json(
-          {
-            error: `Invalid class IDs: ${invalidClassIds.join(', ')}`,
-            status: 400
-          } satisfies ApiErrorResponse,
-          { status: 400 }
-        );
+        return {
+          error: `Invalid class IDs: ${invalidClassIds.join(', ')}`,
+          status: 400
+        };
       }
 
       // Remove existing assignments for this teacher in the current academic year
@@ -193,76 +162,57 @@ export async function PATCH(
       logger.info("Teacher class assignments updated", {
         teacherId: targetUserId,
         classIds,
-        assignedBy: userId
+        assignedBy: user.id
       });
     }
 
     // Get updated user
-    const updatedUser = await db.query.users.findFirst({
-      where: eq(users.id, targetUserId),
-      columns: {
-        id: true,
-        clerkUserId: true,
-        type: true,
-        name: true,
-        email: true,
-        schoolId: true,
-        department: true,
-        createdAt: true,
-        updatedAt: true,
-      }
-    });
+    const [updatedUser] = await db
+      .select({
+        id: users.id,
+        clerkUserId: users.clerkUserId,
+        type: users.type,
+        name: users.name,
+        email: users.email,
+        schoolId: users.schoolId,
+        department: users.department,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+      })
+      .from(users)
+      .where(eq(users.id, targetUserId))
+      .limit(1);
 
     if (!updatedUser) {
-      return NextResponse.json(
-        { error: "Failed to retrieve updated user", status: 500 } satisfies ApiErrorResponse,
-        { status: 500 }
-      );
+      return { error: "Failed to retrieve updated user", status: 500 };
     }
 
     logger.info("User assignment updated successfully", {
       targetUserId,
-      assignedBy: userId,
+      assignedBy: user.id,
       assignments: result
     });
 
-    return NextResponse.json({
+    return {
       data: {
         success: true,
         user: updatedUser as UserEntity,
         assignments: result
       } as AssignmentResponse
-    } satisfies ApiSuccess<AssignmentResponse>);
+    };
 
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/applications/[id]/assignment", method: "PATCH" });
-    return NextResponse.json(
-      { error: "Failed to update assignment", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['school-admin', 'admin']
+);
 
 // GET /api/school-admin/applications/[id]/assignment - Get user assignments
-export async function GET(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(['school-admin', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { userId, user } = authResult;
-
-    const params = await context.params;
+export const GET = createApiRoute<{ id: string }>(
+  async (req, { user }, context) => {
+    const params = await context!.params;
     const targetUserId = params.id;
 
     // Check permission
-    const permCheck = await requirePermission(userId, 'teachers.view');
+    const permCheck = await requirePermission(user.id, 'teachers.view');
     if (permCheck) return permCheck;
 
     // Get the target user
@@ -273,28 +223,25 @@ export async function GET(
       .limit(1);
 
     if (targetUsers.length === 0) {
-      return NextResponse.json(
-        { error: "User not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "User not found", status: 404 };
     }
 
     const targetUser = targetUsers[0];
 
     // Check school access (unless platform admin)
     if (user.type !== 'admin' && targetUser.schoolId !== user.schoolId) {
-      return NextResponse.json(
-        { error: "Access denied to this user", status: 403 } satisfies ApiErrorResponse,
-        { status: 403 }
-      );
+      return { error: "Access denied to this user", status: 403 };
     }
 
     // Get department info if assigned
     let department = null;
     if (targetUser.department) {
-      const dept = await db.query.departments.findFirst({
-        where: eq(departments.name, targetUser.department)
-      });
+      const deptResult = await db
+        .select()
+        .from(departments)
+        .where(eq(departments.name, targetUser.department))
+        .limit(1);
+      const dept = deptResult[0];
       if (dept) {
         department = { id: dept.id, name: dept.name, code: dept.code };
       }
@@ -302,19 +249,23 @@ export async function GET(
 
     // Get class assignments
     const currentYear = new Date().getFullYear().toString();
-    const assignments = await db.query.teacherAssignments.findMany({
-      where: and(
+    const assignments = await db
+      .select()
+      .from(teacherAssignments)
+      .where(and(
         eq(teacherAssignments.teacherId, targetUserId),
         eq(teacherAssignments.academicYear, currentYear),
         eq(teacherAssignments.isActive, true)
-      )
-    });
+      ));
 
     const assignedClasses = [];
     for (const assignment of assignments) {
-      const cls = await db.query.classes.findFirst({
-        where: eq(classes.id, assignment.classId)
-      });
+      const clsResult = await db
+        .select()
+        .from(classes)
+        .where(eq(classes.id, assignment.classId))
+        .limit(1);
+      const cls = clsResult[0];
       if (cls) {
         assignedClasses.push({
           id: cls.id,
@@ -327,7 +278,7 @@ export async function GET(
       }
     }
 
-    return NextResponse.json({
+    return {
       data: {
         success: true,
         user: {
@@ -342,32 +293,7 @@ export async function GET(
           classes: assignedClasses
         }
       }
-    } satisfies ApiSuccess<{
-      success: true;
-      user: {
-        id: string;
-        name: string;
-        email: string;
-        type: string;
-        department: string | null;
-      };
-      assignments: {
-        department: { id: string; name: string; code: string } | null;
-        classes: Array<{
-          id: string;
-          name: string;
-          grade: number;
-          section: string;
-          role: string;
-          isPrimary: boolean;
-        }>;
-      };
-    }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/applications/[id]/assignment", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to get assignments", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ['school-admin', 'admin']
+);

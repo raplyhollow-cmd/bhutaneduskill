@@ -41,18 +41,40 @@ export const GET = createApiRoute(
       return errorResponse("Class not found", 404);
     }
 
-    // Get all teacher assignments for this class
+    // Get all teacher assignments for this class with teacher and subject details using manual joins
     const assignmentRecords = await db
-      .select()
+      .select({
+        // Assignment fields
+        id: teacherAssignments.id,
+        teacherId: teacherAssignments.teacherId,
+        classId: teacherAssignments.classId,
+        subjectId: teacherAssignments.subjectId,
+        academicYear: teacherAssignments.academicYear,
+        role: teacherAssignments.role,
+        isPrimary: teacherAssignments.isPrimary,
+        isActive: teacherAssignments.isActive,
+        createdAt: teacherAssignments.createdAt,
+        updatedAt: teacherAssignments.updatedAt,
+        // Teacher fields
+        teacherUserId: users.id,
+        teacherName: users.name,
+        teacherFirstName: users.firstName,
+        teacherLastName: users.lastName,
+        teacherEmail: users.email,
+        teacherEmployeeId: users.employeeId,
+        teacherType: users.type,
+        // Subject fields
+        subjectIdRef: subjects.id,
+        subjectName: subjects.name,
+        subjectCode: subjects.code,
+      })
       .from(teacherAssignments)
+      .leftJoin(users, eq(teacherAssignments.teacherId, users.id))
+      .leftJoin(subjects, eq(teacherAssignments.subjectId, subjects.id))
       .where(and(
         eq(teacherAssignments.classId, classId),
         eq(teacherAssignments.isActive, true)
       ))
-      .with({
-        teacher: true,
-        subject: true,
-      })
       .orderBy(desc(teacherAssignments.createdAt));
 
     // Transform the response to include teacher and subject details
@@ -60,7 +82,7 @@ export const GET = createApiRoute(
       id: string;
       teacherId: string;
       classId: string;
-      subjectId: string;
+      subjectId: string | null;
       academicYear: string;
       role: string;
       isPrimary: boolean;
@@ -70,9 +92,9 @@ export const GET = createApiRoute(
       teacher: {
         id: string;
         name: string;
-        firstName: string | null;
-        lastName: string | null;
-        email: string | null;
+        firstName: string;
+        lastName: string;
+        email: string;
         employeeId: string | null;
         type: string;
       } | null;
@@ -82,7 +104,32 @@ export const GET = createApiRoute(
         code: string;
       } | null;
     }
-    const assignmentsWithDetails = assignmentRecords.map((assignment): AssignmentWithDetails => ({
+
+    // Type for the raw assignment record from the database query
+    type RawAssignmentRecord = {
+      id: string;
+      teacherId: string;
+      classId: string;
+      subjectId: string | null;
+      academicYear: string;
+      role: string;
+      isPrimary: boolean;
+      isActive: boolean;
+      createdAt: Date;
+      updatedAt: Date;
+      teacherUserId: string;
+      teacherName: string | null;
+      teacherFirstName: string | null;
+      teacherLastName: string | null;
+      teacherEmail: string | null;
+      teacherEmployeeId: string | null;
+      teacherType: string;
+      subjectIdRef: string;
+      subjectName: string | null;
+      subjectCode: string | null;
+    };
+
+    const assignmentsWithDetails = assignmentRecords.map((assignment: RawAssignmentRecord): AssignmentWithDetails => ({
       id: assignment.id,
       teacherId: assignment.teacherId,
       classId: assignment.classId,
@@ -93,19 +140,19 @@ export const GET = createApiRoute(
       isActive: assignment.isActive,
       createdAt: assignment.createdAt,
       updatedAt: assignment.updatedAt,
-      teacher: assignment.teacher ? {
-        id: assignment.teacher.id,
-        name: assignment.teacher.name,
-        firstName: assignment.teacher.firstName,
-        lastName: assignment.teacher.lastName,
-        email: assignment.teacher.email,
-        employeeId: assignment.teacher.employeeId,
-        type: assignment.teacher.type,
+      teacher: assignment.teacherUserId ? {
+        id: assignment.teacherUserId,
+        name: assignment.teacherName || '',
+        firstName: assignment.teacherFirstName || '',
+        lastName: assignment.teacherLastName || '',
+        email: assignment.teacherEmail || '',
+        employeeId: assignment.teacherEmployeeId,
+        type: assignment.teacherType,
       } : null,
-      subject: assignment.subject ? {
-        id: assignment.subject.id,
-        name: assignment.subject.name,
-        code: assignment.subject.code,
+      subject: assignment.subjectIdRef ? {
+        id: assignment.subjectIdRef,
+        name: assignment.subjectName || '',
+        code: assignment.subjectCode || '',
       } : null,
     }));
 

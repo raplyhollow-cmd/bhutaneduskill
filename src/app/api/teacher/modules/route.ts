@@ -3,7 +3,7 @@
  * CRUD operations for learning modules created by teachers
  */
 
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 import { db } from "@/lib/db";
 import { learningModules, users, moduleProgress } from "@/lib/db/schema";
@@ -12,6 +12,7 @@ import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, errorResponse } from "@/lib/api/response-helpers";
 import { logger } from "@/lib/logger";
 import { z } from "zod";
+import type { LearningModuleContent } from "@/types";
 
 // ============================================================================
 // TYPES
@@ -32,6 +33,7 @@ interface ModuleLesson {
   id: string;
   title: string;
   description?: string;
+  duration?: number;
   contents: ModuleContent[];
   order: number;
 }
@@ -41,6 +43,45 @@ interface ModuleContentData {
   objectives?: string[];
   prerequisites?: string[];
   tags?: string[];
+}
+
+// Type that matches the database schema's LearningModuleContent
+interface DbLearningModuleContent {
+  lessons: Array<{
+    id: string;
+    title: string;
+    duration: number;
+    videoUrl?: string;
+    content?: string;
+    resources?: Array<{ name: string; url: string }>;
+  }>;
+  objectives?: string[];
+  prerequisites?: string[];
+}
+
+// Type for learning module insert values
+interface LearningModuleInsertValues {
+  id: string;
+  title: string;
+  description: string;
+  subjectId?: string;
+  classId?: string;
+  teacherId: string;
+  category: string;
+  level: string;
+  duration: number;
+  content: ModuleContentData;
+  thumbnail: string;
+  isPublic: boolean;
+  isPremium: boolean;
+  isPublished: boolean;
+  price: number;
+  tags?: string[];
+  objectives?: string[];
+  prerequisites?: string[];
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // ============================================================================
@@ -62,6 +103,7 @@ const moduleLessonSchema: z.ZodType<ModuleLesson> = z.object({
   id: z.string(),
   title: z.string().min(1),
   description: z.string().optional(),
+  duration: z.number().default(0),
   contents: z.array(moduleContentSchema),
   order: z.number(),
 });
@@ -102,28 +144,22 @@ export const GET = createApiRoute(
     const category = searchParams.get("category");
 
     // Get modules with stats
-    const modules = await db.query.learningModules.findMany({
-      where: eq(learningModules.teacherId, userId),
-      with: {
-        subject: {
-          columns: {
-            id: true,
-            name: true,
-          },
-        },
-      },
-      orderBy: [desc(learningModules.createdAt)],
-    });
+    const modules = await db
+      .select()
+      .from(learningModules)
+      .where(eq(learningModules.teacherId, userId))
+      .orderBy(desc(learningModules.createdAt));
 
     // Get enrollment stats for each module individually
     const enrichedModules = await Promise.all(
       modules.map(async (m) => {
-        const enrollments = await db.query.moduleProgress.findMany({
-          where: eq(moduleProgress.moduleId, m.id),
-        });
+        const enrollments = await db
+          .select()
+          .from(moduleProgress)
+          .where(eq(moduleProgress.moduleId, m.id));
 
         const completedCount = enrollments.filter((e) => e.isCompleted).length;
-        const content = m.content as ModuleContentData | null;
+        const content = m.content as unknown as ModuleContentData | null;
         const lessonsCount = content?.lessons?.length || 0;
 
         return {
@@ -205,7 +241,22 @@ export const POST = createApiRoute(
         category: data.category,
         level: data.level,
         duration,
-        content: data.content,
+        content: {
+          lessons: data.content?.lessons?.map(l => ({
+            id: l.id,
+            title: l.title,
+            duration: l.duration || 0,
+            videoUrl: l.contents?.find(c => c.type === "video")?.url,
+            content: l.contents?.find(c => c.type === "text")?.content,
+            resources: l.contents?.filter(c => c.type === "document" || c.type === "link").map(c => ({
+              name: c.title || c.url || "",
+              url: c.url || c.fileUrl || "",
+            })),
+          })) || [],
+          objectives: data.content?.objectives,
+          prerequisites: data.content?.prerequisites,
+          tags: data.content?.tags,
+        } as LearningModuleContent & { [key: string]: unknown },
         thumbnail: data.thumbnail || "/images/default-module-thumbnail.png",
         isPublic: data.isPublic,
         isPremium: data.isPremium,
@@ -217,7 +268,7 @@ export const POST = createApiRoute(
         isActive: true,
         createdAt: now,
         updatedAt: now,
-      } as any)
+      })
       .returning();
 
     logger.info("Learning module created", { moduleId, userId, title: data.title });

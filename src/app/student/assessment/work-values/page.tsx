@@ -67,7 +67,7 @@ export default function WorkValuesPage() {
                 label={WORK_VALUES[key as keyof typeof WORK_VALUES].name}
                 description={WORK_VALUES[key as keyof typeof WORK_VALUES].description}
                 score={score}
-                isHighest={result.topValues.includes(key as any)}
+                isHighest={result.topValues.includes(key as keyof typeof WORK_VALUES)}
               />
             ))}
           </CardContent>

@@ -1,28 +1,28 @@
-import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
+/**
+ * SCHOOLS VERIFY CODE API
+ *
+ * POST /api/schools/verify-code - Verify a school code during setup wizard
+ *
+ * Requires authentication but open to all authenticated users (setup flow)
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { schools } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { badRequestResponse, notFoundResponse } from "@/lib/api/response-helpers";
+import { logger } from "@/lib/logger";
 
-/**
- * POST /api/schools/verify-code
- * Verify a school code during setup wizard
- * Requires authentication but open to all authenticated users (setup flow)
- */
-export async function POST(request: NextRequest) {
-  try {
-    // Require authentication (any role - this is for setup wizard)
-    const authResult = await requireAuth();
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
+export const POST = createApiRoute(
+  async (request: NextRequest) => {
     const body = await request.json();
     const { code } = body;
 
     if (!code) {
-      return NextResponse.json({ error: "School code is required" }, { status: 400 });
+      return badRequestResponse("School code is required");
     }
 
     const schoolRecords = await db
@@ -32,12 +32,10 @@ export async function POST(request: NextRequest) {
       .limit(1);
 
     if (schoolRecords.length === 0) {
-      return NextResponse.json({ error: "Invalid school code" }, { status: 404 });
+      return notFoundResponse("Invalid school code");
     }
 
-    return NextResponse.json({ school: schoolRecords[0] });
-  } catch (error) {
-    logger.error("School code verification error:", error);
-    return NextResponse.json({ error: "Verification failed" }, { status: 500 });
-  }
-}
+    return { school: schoolRecords[0] };
+  },
+  [] // Open to all authenticated users
+);

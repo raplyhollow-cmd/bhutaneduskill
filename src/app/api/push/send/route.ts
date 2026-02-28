@@ -5,12 +5,15 @@
  *
  * This endpoint allows teachers, school admins, and platform admins to send
  * push notifications to students, parents, and other users.
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { sendPushNotification, sendBulkPushNotifications } from "@/lib/push/push-sender";
 import { logger } from "@/lib/logger";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse, forbiddenResponse } from "@/lib/api/response-helpers";
 
 // ============================================================================
 // TYPES
@@ -38,32 +41,20 @@ interface SendPushNotificationRequest {
 // POST - Send Push Notification
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  const authResult = await requireAuth();
-  if ("error" in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
-
-  const { userId, user } = authResult;
-
-  try {
-    const body: SendPushNotificationRequest = await request.json();
+export const POST = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId, user } = auth;
+    const body: SendPushNotificationRequest = await req.json();
 
     // Validate required fields
     if (!body.userIds || !body.type || !body.title || !body.body) {
-      return NextResponse.json(
-        { error: "Missing required fields: userIds, type, title, body" },
-        { status: 400 }
-      );
+      return badRequestResponse("Missing required fields: userIds, type, title, body");
     }
 
     // Check authorization - only teachers, school admins, and platform admins can send
-    const allowedRoles = ["teacher", "school_admin", "admin", "counselor"];
+    const allowedRoles = ["teacher", "school-admin", "admin", "counselor"];
     if (!allowedRoles.includes(user.type)) {
-      return NextResponse.json(
-        { error: "You don't have permission to send push notifications" },
-        { status: 403 }
-      );
+      return forbiddenResponse("You don't have permission to send push notifications");
     }
 
     // Normalize userIds to array
@@ -93,10 +84,7 @@ export async function POST(request: NextRequest) {
       });
 
       if (!result.success) {
-        return NextResponse.json(
-          { error: result.error || "Failed to send notification" },
-          { status: 400 }
-        );
+        return errorResponse(result.error || "Failed to send notification", 400);
       }
 
       logger.info("Push notification sent", {
@@ -105,17 +93,14 @@ export async function POST(request: NextRequest) {
         targetUserId: targetUserIds[0],
       });
 
-      return NextResponse.json({
-        success: true,
-        data: {
-          notificationId: result.notificationId,
-          recipients: 1,
-        },
+      return successResponse({
+        notificationId: result.notificationId,
+        recipients: 1,
       });
     }
 
     // Bulk notification
-    const bulkResult = await sendBulkPushNotifications(targetUserIds, payload as any);
+    const bulkResult = await sendBulkPushNotifications(targetUserIds, payload);
 
     logger.info("Bulk push notifications sent", {
       senderId: userId,
@@ -123,22 +108,10 @@ export async function POST(request: NextRequest) {
       failed: bulkResult.failed,
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        recipients: bulkResult.success,
-        failed: bulkResult.failed,
-      },
+    return successResponse({
+      recipients: bulkResult.success,
+      failed: bulkResult.failed,
     });
-  } catch (error: unknown) {
-    logger.apiError(error, {
-      route: "/api/push/send",
-      method: "POST",
-      userId,
-    });
-    return NextResponse.json(
-      { error: "Failed to send push notification", details: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ["teacher", "school-admin", "admin", "counselor"]
+);

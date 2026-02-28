@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { users, classes, attendance, enrollments } from "@/lib/db/schema";
 import { eq, and, desc, gte, lte, sql, SQL } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 /**
  * GET /api/teacher/attendance/history
@@ -16,14 +16,8 @@ import { eq, and, desc, gte, lte, sql, SQL } from "drizzle-orm";
  *
  * Returns attendance history with optional student summaries
  */
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['teacher']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId, user } = authResult;
-
+export const GET = createApiRoute(
+  async (request) => {
     const { searchParams } = new URL(request.url);
     const classId = searchParams.get("classId");
     const startDate = searchParams.get("startDate");
@@ -34,12 +28,23 @@ export async function GET(request: NextRequest) {
     // If summary requested, return per-student statistics
     if (summary && classId) {
       // Get all students in the class
-      const classEnrollments = await db.query.enrollments.findMany({
-        where: eq(enrollments.classId, classId),
-        with: {
-          student: true,
-        },
-      });
+      const classEnrollments = await db
+        .select({
+          id: enrollments.id,
+          studentId: enrollments.studentId,
+          classId: enrollments.classId,
+          status: enrollments.status,
+          enrollmentDate: enrollments.enrollmentDate,
+          student: {
+            id: users.id,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            name: users.name,
+          },
+        })
+        .from(enrollments)
+        .leftJoin(users, eq(enrollments.studentId, users.id))
+        .where(eq(enrollments.classId, classId));
 
       const studentIds = classEnrollments.map((e) => e.studentId);
 
@@ -60,21 +65,22 @@ export async function GET(request: NextRequest) {
           ]
         : dateConditions;
 
-      const records = await db.query.attendance.findMany({
-        where: whereConditions.length > 0 ? and(...whereConditions) : undefined,
-        orderBy: [desc(attendance.date)],
-        limit: limit > 500 ? 500 : limit,
-      });
+      const records = await db
+        .select()
+        .from(attendance)
+        .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+        .orderBy(desc(attendance.date))
+        .limit(limit > 500 ? 500 : limit);
 
       // Get student details separately
-      const studentDetails = await db.query.users.findMany({
-        where: eq(users.id, sql`ANY(${studentIds})`),
-        columns: {
-          id: true,
-          name: true,
-          rollNumber: true,
-        },
-      });
+      const studentDetails = await db
+        .select({
+          id: users.id,
+          name: users.name,
+          rollNumber: users.rollNumber,
+        })
+        .from(users)
+        .where(eq(users.id, sql`ANY(${studentIds})`));
 
       const studentMap = new Map(studentDetails.map(s => [s.id, s]));
 
@@ -140,7 +146,7 @@ export async function GET(request: NextRequest) {
         .sort((a, b) => b.date.localeCompare(a.date))
         .slice(0, 30); // Last 30 days
 
-      return NextResponse.json({
+      return {
         classId,
         students: studentSummaries,
         dailyData,
@@ -152,7 +158,7 @@ export async function GET(request: NextRequest) {
           criticalCount: studentSummaries.filter((s) => s.alertLevel === "critical").length,
           warningCount: studentSummaries.filter((s) => s.alertLevel === "warning").length,
         },
-      });
+      };
     }
 
     // Default: return raw attendance records with student info
@@ -170,24 +176,33 @@ export async function GET(request: NextRequest) {
       whereConditions.push(lte(attendance.date, endDate));
     }
 
-    const records = await db.query.attendance.findMany({
-      where: whereConditions.length > 0 ? and(...whereConditions) : undefined,
-      with: {
-        student: true,
-      },
-      orderBy: [desc(attendance.date)],
-      limit,
-    });
+    const records = await db
+      .select({
+        id: attendance.id,
+        studentId: attendance.studentId,
+        classId: attendance.classId,
+        date: attendance.date,
+        status: attendance.status,
+        notes: attendance.notes,
+        recordedBy: attendance.recordedBy,
+        createdAt: attendance.createdAt,
+        student: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          name: users.name,
+        },
+      })
+      .from(attendance)
+      .leftJoin(users, eq(attendance.studentId, users.id))
+      .where(whereConditions.length > 0 ? and(...whereConditions) : undefined)
+      .orderBy(desc(attendance.date))
+      .limit(limit);
 
-    return NextResponse.json({
+    return {
       records,
       count: records.length,
-    });
-  } catch (error) {
-    logger.error("Attendance history fetch error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch attendance history" },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ['teacher']
+);

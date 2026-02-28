@@ -1,102 +1,98 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+/**
+ * EXAM RESULTS [id] API
+ *
+ * Handles individual exam result operations (get, update, delete, verify)
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
 import { users, examResults } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { canAccessSchool } from "@/lib/db/tenant";
 import { logger } from "@/lib/logger";
+import { successResponse, errorResponse, forbiddenResponse, notFoundResponse } from "@/lib/api/response-helpers";
 
+// ============================================================================
 // GET /api/results/[id] - Get single exam result
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  let id: string | undefined;
-  try {
-    const resolvedParams = await params;
-    id = resolvedParams.id;
+// ============================================================================
 
-    const authResult = await requireAuth(['student', 'teacher', 'admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
+export const GET = createApiRoute<{ id: string }>(
+  async (request: NextRequest, auth, context) => {
+    const { id } = await context!.params!;
+    const currentUser = auth.user;
 
-    const currentUser = authResult.user;
-
-    const result = await db.query.examResults.findFirst({
-      where: eq(examResults.id, id),
-    });
+    const [result] = await db
+      .select()
+      .from(examResults)
+      .where(eq(examResults.id, id))
+      .limit(1);
 
     if (!result) {
-      return NextResponse.json({ error: "Result not found" }, { status: 404 });
+      return notFoundResponse("Result");
     }
 
     // Get the user to check school access
-    const resultUser = await db.query.users.findFirst({
-      where: eq(users.id, result.userId),
-    });
+    const [resultUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, result.userId))
+      .limit(1);
 
     // Check access permissions
     if (result.userId !== currentUser.id) {
       // Counselors, teachers, and admins can view other students' results
       if (!["counselor", "teacher", "admin"].includes(currentUser.type)) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        return forbiddenResponse("Access denied");
       }
 
       // Verify school access
-      if (resultUser && !canAccessSchool(currentUser, resultUser.schoolId || "")) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      if (resultUser?.schoolId && !canAccessSchool({ type: currentUser.type, schoolId: currentUser.schoolId }, resultUser.schoolId)) {
+        return forbiddenResponse("Access denied");
       }
     }
 
-    return NextResponse.json({ result });
-  } catch (error: unknown) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    logger.error(error, { route: "/api/results/[id]", method: "GET", id });
-    return NextResponse.json({ error: "Failed to fetch result" }, { status: 500 });
-  }
-}
+    return successResponse({ result });
+  },
+  ['student', 'teacher', 'admin', 'school-admin']
+);
 
+// ============================================================================
 // PUT /api/results/[id] - Update exam result
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  let id: string | undefined;
-  try {
-    const resolvedParams = await params;
-    id = resolvedParams.id;
+// ============================================================================
 
-    const authResult = await requireAuth(['teacher', 'admin', 'school-admin', 'counselor']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
+export const PUT = createApiRoute<{ id: string }>(
+  async (request: NextRequest, auth, context) => {
+    const { id } = await context!.params!;
+    const currentUser = auth.user;
 
-    const currentUser = authResult.user;
-
-    const existingResult = await db.query.examResults.findFirst({
-      where: eq(examResults.id, id),
-    });
+    const [existingResult] = await db
+      .select()
+      .from(examResults)
+      .where(eq(examResults.id, id))
+      .limit(1);
 
     if (!existingResult) {
-      return NextResponse.json({ error: "Result not found" }, { status: 404 });
+      return notFoundResponse("Result");
     }
 
     // Get the user to check school access
-    const resultUser = await db.query.users.findFirst({
-      where: eq(users.id, existingResult.userId),
-    });
+    const [resultUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, existingResult.userId))
+      .limit(1);
 
     // Check permissions - only counselor, teacher, and admin can edit
     if (!["counselor", "teacher", "admin"].includes(currentUser.type)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return forbiddenResponse("Access denied");
     }
 
     // Verify school access
-    if (resultUser && !canAccessSchool(currentUser, resultUser.schoolId || "")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (resultUser?.schoolId && !canAccessSchool({ type: currentUser.type, schoolId: currentUser.schoolId }, resultUser.schoolId)) {
+      return forbiddenResponse("Access denied");
     }
 
     const body = await request.json();
@@ -126,106 +122,92 @@ export async function PUT(
       .where(eq(examResults.id, id))
       .returning();
 
-    return NextResponse.json({ success: true, result: updatedResult });
-  } catch (error: unknown) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    logger.error(error, { route: "/api/results/[id]", method: "PUT", id });
-    return NextResponse.json({ error: "Failed to update result" }, { status: 500 });
-  }
-}
+    logger.info("Exam result updated", { resultId: id, userId: auth.userId });
 
+    return successResponse({ success: true, result: updatedResult });
+  },
+  ['teacher', 'admin', 'school-admin', 'counselor']
+);
+
+// ============================================================================
 // DELETE /api/results/[id] - Delete exam result
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  let id: string | undefined;
-  try {
-    const resolvedParams = await params;
-    id = resolvedParams.id;
+// ============================================================================
 
-    const authResult = await requireAuth(['admin', 'counselor']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
+export const DELETE = createApiRoute<{ id: string }>(
+  async (request: NextRequest, auth, context) => {
+    const { id } = await context!.params!;
+    const currentUser = auth.user;
 
-    const currentUser = authResult.user;
-
-    const existingResult = await db.query.examResults.findFirst({
-      where: eq(examResults.id, id),
-    });
+    const [existingResult] = await db
+      .select()
+      .from(examResults)
+      .where(eq(examResults.id, id))
+      .limit(1);
 
     if (!existingResult) {
-      return NextResponse.json({ error: "Result not found" }, { status: 404 });
+      return notFoundResponse("Result");
     }
 
     // Get the user to check school access
-    const resultUser = await db.query.users.findFirst({
-      where: eq(users.id, existingResult.userId),
-    });
+    const [resultUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, existingResult.userId))
+      .limit(1);
 
     // Check permissions - only admin and counselor can delete
     if (!["admin", "counselor"].includes(currentUser.type)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return forbiddenResponse("Access denied");
     }
 
     // Verify school access
-    if (resultUser && !canAccessSchool(currentUser, resultUser.schoolId || "")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (resultUser?.schoolId && !canAccessSchool({ type: currentUser.type, schoolId: currentUser.schoolId }, resultUser.schoolId)) {
+      return forbiddenResponse("Access denied");
     }
 
     await db.delete(examResults).where(eq(examResults.id, id));
 
-    return NextResponse.json({ success: true });
-  } catch (error: unknown) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    logger.error(error, { route: "/api/results/[id]", method: "DELETE", id });
-    return NextResponse.json({ error: "Failed to delete result" }, { status: 500 });
-  }
-}
+    logger.info("Exam result deleted", { resultId: id, userId: auth.userId });
 
-// PATCH /api/results/[id]/verify - Verify exam result
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  let id: string | undefined;
-  try {
-    const resolvedParams = await params;
-    id = resolvedParams.id;
+    return successResponse({ success: true });
+  },
+  ['admin', 'counselor']
+);
 
-    const authResult = await requireAuth(['admin', 'counselor']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
+// ============================================================================
+// PATCH /api/results/[id] - Verify exam result
+// ============================================================================
 
-    const currentUser = authResult.user;
+export const PATCH = createApiRoute<{ id: string }>(
+  async (request: NextRequest, auth, context) => {
+    const { id } = await context!.params!;
+    const currentUser = auth.user;
 
-    const existingResult = await db.query.examResults.findFirst({
-      where: eq(examResults.id, id),
-    });
+    const [existingResult] = await db
+      .select()
+      .from(examResults)
+      .where(eq(examResults.id, id))
+      .limit(1);
 
     if (!existingResult) {
-      return NextResponse.json({ error: "Result not found" }, { status: 404 });
+      return notFoundResponse("Result");
     }
 
     // Get the user to check school access
-    const resultUser = await db.query.users.findFirst({
-      where: eq(users.id, existingResult.userId),
-    });
+    const [resultUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, existingResult.userId))
+      .limit(1);
 
     // Only counselors and admins can verify results
     if (!["counselor", "admin"].includes(currentUser.type)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return forbiddenResponse("Access denied");
     }
 
     // Verify school access
-    if (resultUser && !canAccessSchool(currentUser, resultUser.schoolId || "")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (resultUser?.schoolId && !canAccessSchool({ type: currentUser.type, schoolId: currentUser.schoolId }, resultUser.schoolId)) {
+      return forbiddenResponse("Access denied");
     }
 
     const [updatedResult] = await db
@@ -236,12 +218,9 @@ export async function PATCH(
       .where(eq(examResults.id, id))
       .returning();
 
-    return NextResponse.json({ success: true, result: updatedResult });
-  } catch (error: unknown) {
-    if (error instanceof Error && error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    logger.error(error, { route: "/api/results/[id]", method: "PATCH", id });
-    return NextResponse.json({ error: "Failed to verify result" }, { status: 500 });
-  }
-}
+    logger.info("Exam result verified", { resultId: id, userId: auth.userId });
+
+    return successResponse({ success: true, result: updatedResult });
+  },
+  ['admin', 'counselor']
+);

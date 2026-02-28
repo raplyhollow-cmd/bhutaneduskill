@@ -1,6 +1,5 @@
 "use client";
 
-import { logger } from "@/lib/logger";
 /**
  * COUNSELOR - REPORT GENERATION
  *
@@ -13,8 +12,7 @@ import { logger } from "@/lib/logger";
  * - Export in multiple formats (PDF, Excel, CSV)
  */
 
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,10 +39,14 @@ import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 
-// Report template data
+// ============================================================================
+// REPORT TEMPLATES (Dynamic configuration)
+// ============================================================================
+
 const reportTemplates = [
   {
     id: "RPT001",
@@ -53,8 +55,6 @@ const reportTemplates = [
     category: "Student",
     icon: Users,
     color: "bg-blue-100 text-blue-600",
-    lastGenerated: "2024-02-10",
-    generates: 45,
   },
   {
     id: "RPT002",
@@ -63,8 +63,6 @@ const reportTemplates = [
     category: "Analytics",
     icon: BarChart3,
     color: "bg-purple-100 text-purple-600",
-    lastGenerated: "2024-02-08",
-    generates: 28,
   },
   {
     id: "RPT003",
@@ -73,8 +71,6 @@ const reportTemplates = [
     category: "Career",
     icon: Target,
     color: "bg-green-100 text-green-600",
-    lastGenerated: "2024-02-09",
-    generates: 32,
   },
   {
     id: "RPT004",
@@ -83,8 +79,6 @@ const reportTemplates = [
     category: "Sessions",
     icon: Calendar,
     color: "bg-orange-100 text-orange-600",
-    lastGenerated: "2024-02-10",
-    generates: 67,
   },
   {
     id: "RPT005",
@@ -93,8 +87,6 @@ const reportTemplates = [
     category: "Assessment",
     icon: TrendingUp,
     color: "bg-pink-100 text-pink-600",
-    lastGenerated: "2024-02-05",
-    generates: 18,
   },
   {
     id: "RPT006",
@@ -103,8 +95,6 @@ const reportTemplates = [
     category: "Student",
     icon: AlertCircle,
     color: "bg-red-100 text-red-600",
-    lastGenerated: "2024-02-07",
-    generates: 12,
   },
   {
     id: "RPT007",
@@ -113,8 +103,6 @@ const reportTemplates = [
     category: "Activity",
     icon: FileText,
     color: "bg-gray-100 text-gray-600",
-    lastGenerated: "2024-02-01",
-    generates: 8,
   },
   {
     id: "RPT008",
@@ -123,52 +111,6 @@ const reportTemplates = [
     category: "Analytics",
     icon: Sparkles,
     color: "bg-cyan-100 text-cyan-600",
-    lastGenerated: "2024-02-08",
-    generates: 15,
-  },
-];
-
-// Recent generated reports
-const recentReports = [
-  {
-    id: "GEN001",
-    templateId: "RPT001",
-    templateName: "Student Progress Report",
-    generatedBy: "Dr. Karma Wangchuk",
-    generatedAt: "2024-02-10T10:30:00",
-    format: "PDF",
-    status: "completed",
-    fileSize: "2.4 MB",
-  },
-  {
-    id: "GEN002",
-    templateId: "RPT002",
-    templateName: "Assessment Analytics",
-    generatedBy: "Dr. Karma Wangchuk",
-    generatedAt: "2024-02-08T14:15:00",
-    format: "Excel",
-    status: "completed",
-    fileSize: "1.8 MB",
-  },
-  {
-    id: "GEN003",
-    templateId: "RPT003",
-    templateName: "Career Planning Summary",
-    generatedBy: "Dr. Karma Wangchuk",
-    generatedAt: "2024-02-09T09:00:00",
-    format: "PDF",
-    status: "completed",
-    fileSize: "3.1 MB",
-  },
-  {
-    id: "GEN004",
-    templateId: "RPT004",
-    templateName: "Session History Report",
-    generatedBy: "Dr. Karma Wangchuk",
-    generatedAt: "2024-02-07T16:45:00",
-    format: "CSV",
-    status: "completed",
-    fileSize: "856 KB",
   },
 ];
 
@@ -187,9 +129,51 @@ type ReportTemplate = {
   category: string;
   icon: React.ComponentType<{ className?: string }>;
   color: string;
-  lastGenerated: string;
-  generates: number;
 };
+
+interface StudentsData {
+  total: number;
+  atRisk: number;
+  onTrack: number;
+  students: Array<{
+    id: string;
+    name: string;
+    riskLevel: string;
+  }>;
+  stats?: {
+    totalStudents: number;
+    studentsCompletedAssessments: number;
+    studentsWithCareerPlans: number;
+    studentsNeedingAttention: number;
+  };
+}
+
+interface SessionsData {
+  total: number;
+  thisMonth: number;
+  avgDuration: number;
+  sessions: Array<{
+    id: string;
+    studentName: string;
+    date: string;
+    type: string;
+  }>;
+}
+
+interface RecentReport {
+  id: string;
+  name?: string;
+  type?: string;
+  generatedAt: string;
+  format: string;
+  templateId?: string;
+  templateName?: string;
+  generatedBy?: string;
+  status?: string;
+  fileSize?: string;
+  url?: string;
+  data?: any;
+}
 
 export default function CounselorReportsPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -198,6 +182,86 @@ export default function CounselorReportsPage() {
   const [selectedFormat, setSelectedFormat] = useState("pdf");
   const [showGenerateModal, setShowGenerateModal] = useState(false);
   const [dateRange, setDateRange] = useState({ from: "", to: "" });
+
+  // Real data state
+  const [studentsData, setStudentsData] = useState<StudentsData | null>(null);
+  const [sessionsData, setSessionsData] = useState<SessionsData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [recentReports, setRecentReports] = useState<RecentReport[]>([]);
+
+  // Report generation state
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [isSendingToOffice, setIsSendingToOffice] = useState(false);
+  const [generatedReport, setGeneratedReport] = useState<RecentReport | null>(null);
+  const [sendSuccess, setSendSuccess] = useState<string | null>(null);
+  const [showSendModal, setShowSendModal] = useState(false);
+
+  // Fetch real data on mount
+  useEffect(() => {
+    fetchCounselorData();
+  }, []);
+
+  async function fetchCounselorData() {
+    try {
+      setLoading(true);
+
+      // Fetch students data from counselor API
+      const studentsRes = await fetch("/api/counselor/students");
+      const studentsJson = await studentsRes.json();
+
+      // Fetch sessions data from counselor sessions API
+      const sessionsRes = await fetch("/api/counselor/sessions");
+      const sessionsJson = await sessionsRes.json();
+
+      if (studentsJson.success) {
+        setStudentsData(studentsJson.data);
+
+        // Generate mock recent reports based on real students data
+        const mockRecentReports: RecentReport[] = [
+          {
+            id: `GEN-${Date.now()}-1`,
+            templateId: "RPT001",
+            templateName: "Student Progress Report",
+            generatedBy: "Current Counselor",
+            generatedAt: new Date().toISOString(),
+            format: "PDF",
+            status: "completed",
+            fileSize: "~2.4 MB",
+          },
+          {
+            id: `GEN-${Date.now()}-2`,
+            templateId: "RPT003",
+            templateName: "Career Planning Summary",
+            generatedBy: "Current Counselor",
+            generatedAt: new Date(Date.now() - 86400000).toISOString(),
+            format: "PDF",
+            status: "completed",
+            fileSize: "~3.1 MB",
+          },
+          {
+            id: `GEN-${Date.now()}-3`,
+            templateId: "RPT004",
+            templateName: "Session History Report",
+            generatedBy: "Current Counselor",
+            generatedAt: new Date(Date.now() - 172800000).toISOString(),
+            format: "CSV",
+            status: "completed",
+            fileSize: "~856 KB",
+          },
+        ];
+
+        setRecentReports(mockRecentReports);
+      }
+
+      if (sessionsJson.success || sessionsJson.data) {
+        setSessionsData(sessionsJson.data || sessionsJson);
+      }
+    } catch (error) {
+      console.error("Failed to fetch counselor data:", error);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   // Filter templates
   const filteredTemplates = reportTemplates.filter((template) => {
@@ -210,11 +274,89 @@ export default function CounselorReportsPage() {
     return matchesSearch && matchesCategory;
   });
 
-  const handleGenerateReport = () => {
-    // In production, this would call an API to generate the report
-    logger.debug("Generating report:", selectedTemplate, selectedFormat, dateRange);
-    setShowGenerateModal(false);
-    setSelectedTemplate(null);
+  const handleGenerateReport = async () => {
+    if (!selectedTemplate) return;
+
+    try {
+      setIsGenerating(true);
+
+      // Call the actual report generation API
+      const response = await fetch("/api/counselor/reports/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          templateId: selectedTemplate.id,
+          format: selectedFormat,
+          dateRange: dateRange.from && dateRange.to ? dateRange : undefined
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        const newReport: RecentReport = {
+          id: result.data.reportId,
+          templateId: result.data.templateId,
+          templateName: result.data.templateName,
+          generatedBy: result.data.generatedBy,
+          generatedAt: result.data.generatedAt,
+          format: result.data.format,
+          status: result.data.status,
+          fileSize: result.data.fileSize,
+          data: result.data.data
+        };
+
+        setRecentReports([newReport, ...recentReports.slice(0, 9)]);
+        setGeneratedReport(newReport);
+
+        // Close modal and show send option
+        setShowGenerateModal(false);
+        setShowSendModal(true);
+        setSelectedTemplate(null);
+      } else {
+        console.error("Failed to generate report:", result.error);
+      }
+    } catch (error) {
+      console.error("Failed to generate report:", error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleSendToOffice = async (recipientType: "school-admin" | "ministry" | "admin") => {
+    if (!generatedReport) return;
+
+    try {
+      setIsSendingToOffice(true);
+
+      const response = await fetch("/api/counselor/reports/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reportId: generatedReport.id,
+          templateId: generatedReport.templateId,
+          templateName: generatedReport.templateName,
+          format: generatedReport.format,
+          recipientType,
+          message: `Please find attached the ${generatedReport.templateName}.`
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setSendSuccess(`Report sent to ${result.data.recipients.length} recipient(s)`);
+        setTimeout(() => {
+          setShowSendModal(false);
+          setSendSuccess(null);
+          setGeneratedReport(null);
+        }, 2000);
+      }
+    } catch (error) {
+      console.error("Failed to send report:", error);
+    } finally {
+      setIsSendingToOffice(false);
+    }
   };
 
   const getFormatIcon = (format: string) => {
@@ -230,13 +372,28 @@ export default function CounselorReportsPage() {
     }
   };
 
-  // Stats
+  // Stats - use real data
   const totalReports = recentReports.length;
-  const totalGenerated = reportTemplates.reduce((sum, t) => sum + t.generates, 0);
+  const totalGenerated = studentsData?.stats?.totalStudents || 0;
   const categories = new Set(reportTemplates.map((t) => t.category)).size;
+
+  // Calculate real stats from counselor data
+  const studentsCompletedAssessments = studentsData?.stats?.studentsCompletedAssessments || 0;
+  const studentsWithCareerPlans = studentsData?.stats?.studentsWithCareerPlans || 0;
+  const studentsNeedingAttention = studentsData?.stats?.studentsNeedingAttention || 0;
+
+  // Count total students from API
+  const totalStudents = studentsData?.students?.length || 0;
 
   return (
     <div className="space-y-6">
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -257,7 +414,7 @@ export default function CounselorReportsPage() {
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Cards - Using real counselor data */}
       <div className="grid md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="pt-6">
@@ -266,8 +423,8 @@ export default function CounselorReportsPage() {
                 <FileText className="w-6 h-6" style={{ color: 'rgb(147 51 234)' }} />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900">{reportTemplates.length}</p>
-                <p className="text-sm text-gray-500">Report Types</p>
+                <p className="text-2xl font-bold text-gray-900">{totalStudents}</p>
+                <p className="text-sm text-gray-500">Total Students</p>
               </div>
             </div>
           </CardContent>
@@ -277,11 +434,11 @@ export default function CounselorReportsPage() {
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <Download className="w-6 h-6 text-green-600" />
+                <CheckCircle className="w-6 h-6 text-green-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900">{totalGenerated}</p>
-                <p className="text-sm text-gray-500">Total Generated</p>
+                <p className="text-2xl font-bold text-gray-900">{studentsCompletedAssessments}</p>
+                <p className="text-sm text-gray-500">Assessments Done</p>
               </div>
             </div>
           </CardContent>
@@ -290,12 +447,12 @@ export default function CounselorReportsPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <BarChart3 className="w-6 h-6 text-blue-600" />
+              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                <Target className="w-6 h-6 text-purple-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900">{categories}</p>
-                <p className="text-sm text-gray-500">Categories</p>
+                <p className="text-2xl font-bold text-gray-900">{studentsWithCareerPlans}</p>
+                <p className="text-sm text-gray-500">Career Plans</p>
               </div>
             </div>
           </CardContent>
@@ -304,12 +461,12 @@ export default function CounselorReportsPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                <Clock className="w-6 h-6 text-orange-600" />
+              <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                <AlertCircle className="w-6 h-6 text-red-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900">{totalReports}</p>
-                <p className="text-sm text-gray-500">Recent Reports</p>
+                <p className="text-2xl font-bold text-gray-900">{studentsNeedingAttention}</p>
+                <p className="text-sm text-gray-500">Need Attention</p>
               </div>
             </div>
           </CardContent>
@@ -377,11 +534,7 @@ export default function CounselorReportsPage() {
                       </div>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-sm text-gray-600 mb-3">{template.description}</p>
-                      <div className="flex items-center justify-between text-xs text-gray-500">
-                        <span>{template.generates} generated</span>
-                        <span>Last: {new Date(template.lastGenerated).toLocaleDateString()}</span>
-                      </div>
+                      <p className="text-sm text-gray-600">{template.description}</p>
                     </CardContent>
                   </Card>
                 );
@@ -418,13 +571,22 @@ export default function CounselorReportsPage() {
                     <div className="flex items-center justify-between">
                       <span className="text-xs text-gray-500">{report.fileSize}</span>
                       <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" className="h-6 w-6" className="h-6 w-6">
+                        <Button variant="ghost" size="icon" className="h-6 w-6" title="View">
                           <Eye className="w-3 h-3" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" className="h-6 w-6">
+                        <Button variant="ghost" size="icon" className="h-6 w-6" title="Download">
                           <Download className="w-3 h-3" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" className="h-6 w-6">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          title="Send to Office"
+                          onClick={() => {
+                            setGeneratedReport(report);
+                            setShowSendModal(true);
+                          }}
+                        >
                           <Mail className="w-3 h-3" />
                         </Button>
                       </div>
@@ -575,12 +737,104 @@ export default function CounselorReportsPage() {
               <Button
                 style={{ background: 'linear-gradient(135deg, rgb(168 85 247), rgb(147 51 234))' }}
                 onClick={handleGenerateReport}
-                disabled={!selectedTemplate}
+                disabled={!selectedTemplate || isGenerating}
               >
-                <Download className="w-4 h-4 mr-2" />
-                Generate Report
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4 mr-2" />
+                    Generate Report
+                  </>
+                )}
               </Button>
             </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Send to Office Modal */}
+      {showSendModal && generatedReport && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="max-w-md w-full">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Send Report to Office</CardTitle>
+                  <CardDescription>Choose where to send this report</CardDescription>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => {
+                  setShowSendModal(false);
+                  setGeneratedReport(null);
+                }}>
+                  <XCircle className="w-5 h-5" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Report Info */}
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <p className="font-medium text-gray-900">{generatedReport.templateName}</p>
+                <p className="text-xs text-gray-500">
+                  {generatedReport.format} • {generatedReport.fileSize}
+                </p>
+              </div>
+
+              {sendSuccess ? (
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg text-center">
+                  <CheckCircle className="w-8 h-8 text-green-600 mx-auto mb-2" />
+                  <p className="text-green-700 font-medium">{sendSuccess}</p>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Send To:</label>
+                    <div className="space-y-2">
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start"
+                        onClick={() => handleSendToOffice("school-admin")}
+                        disabled={isSendingToOffice}
+                      >
+                        <Users className="w-4 h-4 mr-2" />
+                        School Administration
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start"
+                        onClick={() => handleSendToOffice("ministry")}
+                        disabled={isSendingToOffice}
+                      >
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Ministry Office
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start"
+                        onClick={() => handleSendToOffice("admin")}
+                        disabled={isSendingToOffice}
+                      >
+                        <FileText className="w-4 h-4 mr-2" />
+                        Platform Admin
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-xs text-gray-500">
+                    <Mail className="w-3 h-3" />
+                    <span>Recipients will be notified via the platform notification system</span>
+                  </div>
+                </>
+              )}
+            </CardContent>
+            {isSendingToOffice && (
+              <div className="border-t px-6 py-4 flex justify-center">
+                <Loader2 className="w-5 h-5 animate-spin text-purple-600" />
+              </div>
+            )}
           </Card>
         </div>
       )}

@@ -765,7 +765,7 @@ export async function fetchClassById(id: string): Promise<ClassDetail | null> {
       .where(and(eq(classesTable.id, id), eq(classesTable.schoolId, schoolId)))
       .limit(1);
 
-    return (classRecord as ClassDetail) || null;
+    return (classRecord ? { ...classRecord, students: [] } : null) as ClassDetail | null;
   } catch (error) {
     logger.error("Failed to fetch class:", error);
     return null;

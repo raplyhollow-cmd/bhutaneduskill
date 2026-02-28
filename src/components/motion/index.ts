@@ -61,7 +61,7 @@ export {
 
 export type {
   PressableProps,
-  PressableVariant,
+  PressableEffect,
 } from "./pressable";
 
 // ============================================================================

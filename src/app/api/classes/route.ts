@@ -10,22 +10,24 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { classes, users, schools } from "@/lib/db/schema";
-import { eq, and, desc, inArray } from "drizzle-orm";
+import { eq, and, desc, inArray, type SQL } from "drizzle-orm";
 import { createApiRoute, getAuth } from "@/lib/api/route-handler";
 import { successResponse, errorResponse, createdResponse, badRequestResponse } from "@/lib/api/response-helpers";
+
+interface CreateClassInput {
+  name: string;
+  grade: number;
+  section: string;
+  academicYear?: string;
+  roomNumber?: string;
+  capacity?: number;
+  teacherId?: string;
+  schoolId?: string;
+}
 
 // ============================================================================
 // GET /api/classes - Get classes
 // ============================================================================
-
-/**
- * Drizzle where condition type
- */
-type WhereCondition = {
-  field: string;
-  operator: string;
-  value: unknown;
-} | ReturnType<typeof eq>;
 
 export const GET = createApiRoute(
   async (request: NextRequest, auth) => {
@@ -36,7 +38,8 @@ export const GET = createApiRoute(
     const teacherId = searchParams.get("teacherId");
     const academicYear = searchParams.get("academicYear");
 
-    const conditions: WhereCondition[] = [];
+    // Build conditions array using SQL type
+    const conditions: SQL[] = [];
     if (schoolId) {
       conditions.push(eq(classes.schoolId, schoolId));
     }
@@ -52,8 +55,9 @@ export const GET = createApiRoute(
       conditions.push(eq(classes.teacherId, userId));
     }
 
+    // Build where clause: single condition or and() for multiple
     const whereClause = conditions.length > 0
-      ? conditions.length === 1 ? conditions[0] : and(...conditions)
+      ? conditions.length === 1 ? conditions[0]! : and(...conditions)
       : undefined;
 
     // Get base class data
@@ -114,30 +118,38 @@ export const GET = createApiRoute(
 export const POST = createApiRoute(
   async (request: NextRequest, auth) => {
     const { user: currentUser } = auth;
-    const body = await request.json();
-    const { name, grade, section, academicYear, students } = body;
+    const body = await request.json() as CreateClassInput;
+    const { name, grade, section, academicYear, roomNumber, capacity, teacherId, schoolId } = body;
 
-    if (!name || !grade) {
+    if (!name || grade === undefined) {
       return badRequestResponse("Name and grade are required");
     }
 
-    const teacherId = body.teacherId || currentUser.id;
-    const schoolId = body.schoolId || currentUser.schoolId;
+    const finalTeacherId = teacherId || currentUser.id;
+    const finalSchoolId = schoolId || currentUser.schoolId || "";
+    const finalSection = section || "";
+    const finalRoomNumber = roomNumber || "";
+    const finalCapacity = capacity ?? 30;
+    const finalAcademicYear = academicYear || new Date().getFullYear().toString();
 
     const [newClass] = await db
       .insert(classes)
       .values({
         id: `class_${Date.now()}`,
-        schoolId,
-        teacherId,
+        schoolId: finalSchoolId,
+        teacherId: finalTeacherId,
         name,
-        grade,
-        section,
-        academicYear,
-        students: students || [],
+        grade: typeof grade === 'string' ? parseInt(grade, 10) : grade,
+        section: finalSection,
+        roomNumber: finalRoomNumber,
+        capacity: finalCapacity,
+        homeroomTeacherName: "",
+        classTeacherName: "",
+        academicYear: finalAcademicYear,
+        isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
-      } as any)
+      })
       .returning();
 
     return createdResponse({ class: newClass });

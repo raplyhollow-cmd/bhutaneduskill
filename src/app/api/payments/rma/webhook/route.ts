@@ -69,9 +69,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Find payment record
-    const payment = await db.query.feePayments.findFirst({
-      where: eq(feePayments.transactionId, transaction_id),
-    });
+    const [payment] = await db
+      .select()
+      .from(feePayments)
+      .where(eq(feePayments.transactionId, transaction_id))
+      .limit(1);
 
     if (!payment) {
       logger.warn("Payment not found for webhook", { transactionId: transaction_id });
@@ -97,9 +99,11 @@ export async function POST(request: NextRequest) {
         .where(eq(feePayments.id, payment.id));
 
       // Update student fee
-      const studentFee = await db.query.studentFees.findFirst({
-        where: eq(studentFees.id, payment.studentFeeId),
-      });
+      const [studentFee] = await db
+        .select()
+        .from(studentFees)
+        .where(eq(studentFees.id, payment.studentFeeId))
+        .limit(1);
 
       if (studentFee) {
         const newAmountPaid = (studentFee.amountPaid || 0) + (paymentStatus.paidAmount || payment.amount);

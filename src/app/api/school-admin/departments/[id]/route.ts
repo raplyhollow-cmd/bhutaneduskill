@@ -1,10 +1,24 @@
-import { NextRequest, NextResponse } from "next/server";
+/**
+ * SCHOOL ADMIN DEPARTMENTS BY ID API
+ *
+ * PATCH /api/school-admin/departments/[id] - Update department
+ * DELETE /api/school-admin/departments/[id] - Delete department
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { departments, subjects } from "@/lib/db/schema";
-import { requireAuth } from "@/lib/auth-utils";
 import { requirePermission } from "@/lib/rbac";
 import { logger } from "@/lib/logger";
 import { eq, and } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse, notFoundResponse, conflictResponse } from "@/lib/api/response-helpers";
+
+// ============================================================================
+// TYPES
+// ============================================================================
 
 interface DepartmentUpdateData {
   name?: string;
@@ -15,16 +29,9 @@ interface DepartmentUpdateData {
 }
 
 // PATCH /api/school-admin/departments/[id] - Update department
-export async function PATCH(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(["school-admin", "admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { user, userId } = authResult;
+export const PATCH = createApiRoute(
+  async (request: NextRequest, auth, context: { params: Promise<{ id: string }> }) => {
+    const { user, userId } = auth;
 
     const permCheck = await requirePermission(userId, "departments.manage");
     if (permCheck) return permCheck;
@@ -42,14 +49,14 @@ export async function PATCH(
       .limit(1);
 
     if (deptRecords.length === 0) {
-      return NextResponse.json({ error: "Department not found" }, { status: 404 });
+      return notFoundResponse("Department");
     }
 
     const department = deptRecords[0];
 
     // Check school access (unless platform admin)
     if (user.type !== "admin" && department.schoolId !== user.schoolId) {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 });
+      return errorResponse("Access denied", 403);
     }
 
     // Check if code is being changed and if new code already exists
@@ -61,7 +68,7 @@ export async function PATCH(
         .limit(1);
 
       if (existing.length > 0) {
-        return NextResponse.json({ error: "Department code already exists" }, { status: 400 });
+        return conflictResponse("Department code already exists");
       }
     }
 
@@ -82,24 +89,15 @@ export async function PATCH(
 
     logger.info("Department updated", { userId, departmentId });
 
-    return NextResponse.json({ department: updatedDepartment });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/departments/[id]", method: "PATCH" });
-    return NextResponse.json({ error: "Failed to update department" }, { status: 500 });
-  }
-}
+    return successResponse({ department: updatedDepartment });
+  },
+  ["school-admin", "admin"]
+);
 
 // DELETE /api/school-admin/departments/[id] - Delete department
-export async function DELETE(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(["school-admin", "admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { user, userId } = authResult;
+export const DELETE = createApiRoute(
+  async (request: NextRequest, auth, context: { params: Promise<{ id: string }> }) => {
+    const { user, userId } = auth;
 
     const permCheck = await requirePermission(userId, "departments.manage");
     if (permCheck) return permCheck;
@@ -115,14 +113,14 @@ export async function DELETE(
       .limit(1);
 
     if (deptRecords.length === 0) {
-      return NextResponse.json({ error: "Department not found" }, { status: 404 });
+      return notFoundResponse("Department");
     }
 
     const department = deptRecords[0];
 
     // Check school access (unless platform admin)
     if (user.type !== "admin" && department.schoolId !== user.schoolId) {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 });
+      return errorResponse("Access denied", 403);
     }
 
     // Delete associated subjects (they have departmentId foreign key)
@@ -133,12 +131,10 @@ export async function DELETE(
 
     logger.info("Department deleted", { userId, departmentId, name: department.name });
 
-    return NextResponse.json({
+    return successResponse({
       success: true,
       message: "Department deleted successfully",
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/departments/[id]", method: "DELETE" });
-    return NextResponse.json({ error: "Failed to delete department" }, { status: 500 });
-  }
-}
+  },
+  ["school-admin", "admin"]
+);

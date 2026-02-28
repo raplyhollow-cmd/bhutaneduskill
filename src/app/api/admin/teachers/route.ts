@@ -4,13 +4,13 @@
  * GET /api/admin/teachers - List all teachers with approval details
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users, teacherApplications, schools } from "@/lib/db/schema";
 import { eq, desc, and } from "drizzle-orm";
-import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import type { ApiSuccess } from "@/types";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 interface TeacherWithApprovalDetails {
   id: string;
@@ -37,18 +37,10 @@ interface TeacherWithApprovalDetails {
 /**
  * GET /api/admin/teachers - List all teachers with approval details
  */
-export async function GET(request: NextRequest) {
-  const authResult = await requireAuth(['admin']);
-  if ('error' in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } as ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
 
-  const { userId } = authResult;
-
-  try {
     // Fetch teachers with their application details
     // We need to join with teacherApplications to get approval info
     const teachers = await db
@@ -125,15 +117,9 @@ export async function GET(request: NextRequest) {
 
     logger.info("Teachers list fetched with approval details", { userId, count: formattedTeachers.length });
 
-    return NextResponse.json({
+    return {
       data: formattedTeachers,
-    } satisfies ApiSuccess<typeof formattedTeachers>);
-
-  } catch (error) {
-    logger.apiError(error, { route: '/api/admin/teachers', method: 'GET', userId });
-    return NextResponse.json(
-      { error: 'Failed to fetch teachers', status: 500, details: error instanceof Error ? error.message : undefined } as ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    } satisfies ApiSuccess<typeof formattedTeachers>;
+  },
+  ['admin']
+);

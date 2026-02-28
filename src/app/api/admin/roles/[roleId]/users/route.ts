@@ -1,4 +1,11 @@
 import { logger } from "@/lib/logger";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { nanoid } from "nanoid";
+import { db } from "@/lib/db";
+import { roles, userRoles, users } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
+import { requirePermission } from "@/lib/rbac";
+
 /**
  * RBAC ROLE USERS API
  *
@@ -7,34 +14,16 @@ import { logger } from "@/lib/logger";
  * DELETE /api/admin/roles/[roleId]/users - Remove role from user
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { nanoid } from "nanoid";
-import { db } from "@/lib/db";
-import { roles, userRoles, users } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
-import { requireAuth } from "@/lib/auth-utils";
-import { requirePermission } from "@/lib/rbac";
-
 // GET /api/admin/roles/[roleId]/users - Get users with this role
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ roleId: string }> }
-) {
-  const authResult = await requireAuth(["admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json(
-      { success: false, error: authResult.error },
-      { status: authResult.status }
-    );
-  }
+export const GET = createApiRoute<{ roleId: string }>(
+  async (req, auth, context) => {
+    const { userId } = auth;
 
-  const { userId } = authResult;
+    // Check RBAC permission for reading users
+    const permCheck = await requirePermission(userId, "users.read");
+    if (permCheck) return permCheck;
 
-  // Check RBAC permission for reading users
-  const permCheck = await requirePermission(userId, "users.read");
-  if (permCheck) return permCheck;
-
-  try {
+    const params = await context?.params || Promise.resolve({ roleId: "" });
     const { roleId } = await params;
 
     // Verify role exists
@@ -45,10 +34,7 @@ export async function GET(
       .limit(1);
 
     if (role.length === 0) {
-      return NextResponse.json(
-        { success: false, error: "Role not found" },
-        { status: 404 }
-      );
+      return { success: false, error: "Role not found" };
     }
 
     // Get all users with this role
@@ -67,52 +53,33 @@ export async function GET(
       .where(eq(userRoles.roleId, roleId))
       .orderBy(userRoles.createdAt);
 
-    return NextResponse.json({
+    return {
       success: true,
       data: {
         role: role[0],
         users: usersWithRole,
       },
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch role users" },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);
 
 // POST /api/admin/roles/[roleId]/users - Assign role to user
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ roleId: string }> }
-) {
-  const authResult = await requireAuth(["admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json(
-      { success: false, error: authResult.error },
-      { status: authResult.status }
-    );
-  }
+export const POST = createApiRoute<{ roleId: string }>(
+  async (req, auth, context) => {
+    const { userId } = auth;
 
-  const { userId } = authResult;
+    // Check RBAC permission for assigning roles
+    const permCheck = await requirePermission(userId, "users.assign-roles");
+    if (permCheck) return permCheck;
 
-  // Check RBAC permission for assigning roles
-  const permCheck = await requirePermission(userId, "users.assign-roles");
-  if (permCheck) return permCheck;
-
-  try {
+    const params = await context?.params || Promise.resolve({ roleId: "" });
     const { roleId } = await params;
-    const { userId } = await authResult;
-    const body = await request.json();
+    const body = await req.json();
     const { targetUserId, expiresAt } = body;
 
     if (!targetUserId) {
-      return NextResponse.json(
-        { success: false, error: "User ID is required" },
-        { status: 400 }
-      );
+      return { success: false, error: "User ID is required" };
     }
 
     // Verify role exists
@@ -123,10 +90,7 @@ export async function POST(
       .limit(1);
 
     if (role.length === 0) {
-      return NextResponse.json(
-        { success: false, error: "Role not found" },
-        { status: 404 }
-      );
+      return { success: false, error: "Role not found" };
     }
 
     // Verify user exists
@@ -137,10 +101,7 @@ export async function POST(
       .limit(1);
 
     if (user.length === 0) {
-      return NextResponse.json(
-        { success: false, error: "User not found" },
-        { status: 404 }
-      );
+      return { success: false, error: "User not found" };
     }
 
     // Check if already assigned
@@ -156,10 +117,7 @@ export async function POST(
       .limit(1);
 
     if (existing.length > 0) {
-      return NextResponse.json(
-        { success: false, error: "User already has this role" },
-        { status: 409 }
-      );
+      return { success: false, error: "User already has this role" };
     }
 
     await db.insert(userRoles).values({
@@ -171,48 +129,30 @@ export async function POST(
       createdAt: new Date(),
     });
 
-    return NextResponse.json({
+    return {
       success: true,
       message: "Role assigned to user successfully",
-    }, { status: 201 });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json(
-      { success: false, error: "Failed to assign role to user" },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);
 
 // DELETE /api/admin/roles/[roleId]/users - Remove role from user
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ roleId: string }> }
-) {
-  const authResult = await requireAuth(["admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json(
-      { success: false, error: authResult.error },
-      { status: authResult.status }
-    );
-  }
+export const DELETE = createApiRoute<{ roleId: string }>(
+  async (req, auth, context) => {
+    const { userId } = auth;
 
-  const { userId } = authResult;
+    // Check RBAC permission for assigning roles (includes removal)
+    const permCheck = await requirePermission(userId, "users.assign-roles");
+    if (permCheck) return permCheck;
 
-  // Check RBAC permission for assigning roles (includes removal)
-  const permCheck = await requirePermission(userId, "users.assign-roles");
-  if (permCheck) return permCheck;
-
-  try {
+    const params = await context?.params || Promise.resolve({ roleId: "" });
     const { roleId } = await params;
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(req.url);
     const targetUserId = searchParams.get("userId");
 
     if (!targetUserId) {
-      return NextResponse.json(
-        { success: false, error: "User ID is required" },
-        { status: 400 }
-      );
+      return { success: false, error: "User ID is required" };
     }
 
     // Verify role exists
@@ -223,18 +163,12 @@ export async function DELETE(
       .limit(1);
 
     if (role.length === 0) {
-      return NextResponse.json(
-        { success: false, error: "Role not found" },
-        { status: 404 }
-      );
+      return { success: false, error: "Role not found" };
     }
 
     // Check if system role
     if (role[0].isSystemRole) {
-      return NextResponse.json(
-        { success: false, error: "Cannot remove system roles from users" },
-        { status: 403 }
-      );
+      return { success: false, error: "Cannot remove system roles from users" };
     }
 
     await db
@@ -246,15 +180,10 @@ export async function DELETE(
         )
       );
 
-    return NextResponse.json({
+    return {
       success: true,
       message: "Role removed from user successfully",
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json(
-      { success: false, error: "Failed to remove role from user" },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);

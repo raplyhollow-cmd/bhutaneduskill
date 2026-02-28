@@ -1,25 +1,16 @@
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
-import { supportAgents, supportTickets, users } from "@/lib/db/schema";
+import { supportAgents, users } from "@/lib/db/schema";
 import { logger } from "@/lib/logger";
 import { eq, desc } from "drizzle-orm";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
 import { nanoid } from "nanoid";
-import { NextResponse } from "next/server";
 
 // ============================================================================
 // GET - List all support agents
 // ============================================================================
-export async function GET(req: Request) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: 401 } satisfies ApiErrorResponse,
-        { status: 401 }
-      );
-    }
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (req, auth) => {
+    const { userId } = auth;
 
     // Get all agents with their current ticket load
     const agents = await db
@@ -45,68 +36,42 @@ export async function GET(req: Request) {
 
     logger.info("Support agents fetched", { route: "/api/admin/support/agents", userId, count: agents.length });
 
-    return NextResponse.json({
-      data: agents,
-    } satisfies ApiSuccess<typeof agents>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/support/agents", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch support agents", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return { data: agents };
+  },
+  ["admin"]
+);
 
 // ============================================================================
 // POST - Create a new support agent
 // ============================================================================
-export async function POST(req: Request) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: 401 } satisfies ApiErrorResponse,
-        { status: 401 }
-      );
-    }
-    const { userId } = authResult;
+export const POST = createApiRoute(
+  async (req, auth) => {
+    const { userId } = auth;
 
     const body = await req.json();
     const { agentUserId, name, role = "agent", team = "Support", specialties, maxConcurrentTickets = 10 } = body;
 
     // Validate required fields
     if (!agentUserId || !name || !team) {
-      return NextResponse.json(
-        { error: "Missing required fields", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "Missing required fields", status: 400 };
     }
 
     // Validate role
     const validRoles = ["agent", "lead", "manager"];
     if (!validRoles.includes(role)) {
-      return NextResponse.json(
-        { error: "Invalid role", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "Invalid role", status: 400 };
     }
 
     // Check if user exists
     const userExists = await db.select().from(users).where(eq(users.id, agentUserId)).limit(1);
     if (!userExists.length) {
-      return NextResponse.json(
-        { error: "User not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "User not found", status: 404 };
     }
 
     // Check if agent already exists
     const existingAgent = await db.select().from(supportAgents).where(eq(supportAgents.userId, agentUserId)).limit(1);
     if (existingAgent.length) {
-      return NextResponse.json(
-        { error: "Agent already exists for this user", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "Agent already exists for this user", status: 400 };
     }
 
     const agentId = `agent-${nanoid()}`;
@@ -131,14 +96,7 @@ export async function POST(req: Request) {
 
     logger.info("Support agent created", { route: "/api/admin/support/agents", userId, agentId });
 
-    return NextResponse.json({
-      data: newAgent,
-    } satisfies ApiSuccess<typeof newAgent>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/support/agents", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to create support agent", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return { data: newAgent };
+  },
+  ["admin"]
+);

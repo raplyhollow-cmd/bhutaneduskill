@@ -8,16 +8,17 @@
  * - Get their notifications (unread first, then read)
  * - Mark notifications as read
  * - Filter by status, type
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { notifications, notificationDeliveries } from "@/lib/db/schema";
 import { eq, and, desc, or, sql } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { createApiRoute } from "@/lib/api/route-handler";
-import { successResponse, errorResponse, badRequestResponse, notFoundResponse } from "@/lib/api/response-helpers";
+import { successResponse, errorResponse, badRequestResponse } from "@/lib/api/response-helpers";
 
 // ============================================================================
 // GET - Get User Notifications
@@ -25,10 +26,10 @@ import { successResponse, errorResponse, badRequestResponse, notFoundResponse } 
 
 export const GET = createApiRoute(
   async (request: NextRequest, auth) => {
-    const { user, userId } = auth;
-  const { searchParams } = new URL(request.url);
+    const { userId } = auth;
 
-  try {
+    const { searchParams } = new URL(request.url);
+
     // Parse query parameters
     const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
     const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "20")));
@@ -57,7 +58,11 @@ export const GET = createApiRoute(
     // If status is "all" or not specified, include all except failed
 
     if (type) {
-      conditions.push(eq(notifications.type, type as any));
+      // Type assertion needed for enum column
+      const validTypes = ["grade", "announcement", "alert", "reminder", "system", "welcome", "homework", "attendance"] as const;
+      if (validTypes.includes(type as any)) {
+        conditions.push(eq(notifications.type, type as any));
+      }
     }
 
     const whereClause = and(...conditions);
@@ -176,8 +181,8 @@ export const GET = createApiRoute(
       createdAt: delivery.notification.createdAt,
     }));
 
-    return NextResponse.json({
-      data: transformedNotifications,
+    return successResponse({
+      notifications: transformedNotifications,
       unreadCount: unreadCount[0]?.count || 0,
       pagination: {
         page,
@@ -186,15 +191,7 @@ export const GET = createApiRoute(
         totalPages: Math.ceil(total / limit),
       },
     });
-  } catch (error: unknown) {
-    logger.apiError(error, {
-      route: "/api/notifications/my-notifications",
-      method: "GET",
-      userId,
-    });
-    return errorResponse("Failed to fetch notifications", 500);
-  }
-},
+  },
   [] // Any authenticated user can access their notifications
 );
 
@@ -212,7 +209,6 @@ export const POST = createApiRoute(
   async (request: NextRequest, auth) => {
     const { userId } = auth;
 
-  try {
     const body: MarkAsReadRequest = await request.json();
 
     const now = new Date();
@@ -220,7 +216,7 @@ export const POST = createApiRoute(
 
     if (body.markAll) {
       // Mark all unread notifications as read
-      const result = await db
+      await db
         .update(notificationDeliveries)
         .set({
           status: "read",
@@ -273,7 +269,7 @@ export const POST = createApiRoute(
       logger.info("Specific notifications marked as read", { userId, count: updatedCount });
     } else if (body.notificationId) {
       // Mark all deliveries for a specific notification as read
-      const result = await db
+      await db
         .update(notificationDeliveries)
         .set({
           status: "read",
@@ -307,32 +303,14 @@ export const POST = createApiRoute(
 
       logger.info("Notification marked as read", { userId, notificationId: body.notificationId });
     } else {
-      return NextResponse.json(
-        { error: "Must provide deliveryIds, notificationId, or markAll" },
-        { status: 400 }
-      );
+      return badRequestResponse("Must provide deliveryIds, notificationId, or markAll");
     }
 
-    return NextResponse.json({
+    return successResponse({
       message: `${updatedCount} notification(s) marked as read`,
-      data: {
-        updatedCount,
-        readAt: now,
-      },
+      updatedCount,
+      readAt: now,
     });
-  } catch (error: unknown) {
-    logger.apiError(error, {
-      route: "/api/notifications/my-notifications",
-      method: "POST",
-      userId,
-    });
-    return errorResponse("Failed to mark notifications as read", 500);
-  }
-},
+  },
   [] // Any authenticated user can mark their notifications as read
 );
-
-// ============================================================================
-// GET /unread-count - Get unread notification count
-// ============================================================================
-

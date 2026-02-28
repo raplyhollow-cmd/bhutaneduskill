@@ -4,13 +4,13 @@
  * Real-time vehicle location tracking and status
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users, vehicleTracking, vehicles, transportRoutes } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { logger } from "@/lib/logger";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 // Types for proper TypeScript safety - NO 'any'
 interface VehicleTrackingData {
@@ -94,63 +94,80 @@ interface TrackingUpdateBody {
 // GET - Fetch vehicle tracking data
 // ============================================================================
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ vehicleId: string }> }
-) {
-  try {
-    const authResult = await requireAuth();
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const GET = createApiRoute<{ vehicleId: string }>(
+  async (request: NextRequest, auth, context) => {
+    const { userId, user } = auth;
+    const params = await context?.params as { vehicleId?: string } | undefined;
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: { id: true, type: true, role: true, schoolId: true },
-    });
+    const currentUser = await db
+      .select({
+        id: users.id,
+        type: users.type,
+        role: users.role,
+        schoolId: users.schoolId,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return { error: "User not found", status: 404 };
     }
 
-    const { vehicleId } = await params;
+    const { vehicleId } = params || {};
+
+    if (!vehicleId) {
+      return { error: "Vehicle ID is required", status: 400 };
+    }
 
     // Get vehicle details
-    const vehicle = await db.query.vehicles.findFirst({
-      where: eq(vehicles.id, vehicleId),
-    }) as VehicleData | null;
+    const vehicle = await db
+      .select()
+      .from(vehicles)
+      .where(eq(vehicles.id, vehicleId))
+      .limit(1)
+      .then(rows => rows[0] || null) as VehicleData | null;
 
     if (!vehicle) {
-      return NextResponse.json({ error: "Vehicle not found" }, { status: 404 });
+      return { error: "Vehicle not found", status: 404 };
     }
 
     // Check user has access to this vehicle (same school)
     if (vehicle.schoolId !== currentUser.schoolId && currentUser.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return { error: "Forbidden", status: 403 };
     }
 
     // Get latest tracking data
-    const tracking = await db.query.vehicleTracking.findFirst({
-      where: eq(vehicleTracking.vehicleId, vehicleId),
-      orderBy: [desc(vehicleTracking.timestamp)],
-    }) as VehicleTrackingData | null;
+    const tracking = await db
+      .select()
+      .from(vehicleTracking)
+      .where(eq(vehicleTracking.vehicleId, vehicleId))
+      .orderBy(desc(vehicleTracking.timestamp))
+      .limit(1)
+      .then(rows => rows[0] || null) as VehicleTrackingData | null;
 
     // Get route info if available
     let route: RouteData | null = null;
     if (vehicle.assignedRouteId) {
-      const routeResult = await db.query.transportRoutes.findFirst({
-        where: eq(transportRoutes.id, vehicle.assignedRouteId),
-      });
+      const routeResult = await db
+        .select()
+        .from(transportRoutes)
+        .where(eq(transportRoutes.id, vehicle.assignedRouteId))
+        .limit(1)
+        .then(rows => rows[0] || null);
       route = routeResult ? routeResult as unknown as RouteData : null;
     } else if (vehicle.routeId) {
-      const routeResult = await db.query.transportRoutes.findFirst({
-        where: eq(transportRoutes.id, vehicle.routeId),
-      });
+      const routeResult = await db
+        .select()
+        .from(transportRoutes)
+        .where(eq(transportRoutes.id, vehicle.routeId))
+        .limit(1)
+        .then(rows => rows[0] || null);
       route = routeResult ? routeResult as unknown as RouteData : null;
     }
 
-    return NextResponse.json({
+    return {
       vehicle: {
         id: vehicle.id,
         vehicleNumber: vehicle.vehicleNumber || vehicle.registrationNumber,
@@ -191,41 +208,41 @@ export async function GET(
             lastUpdate: null,
             message: "No tracking data available",
           },
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/transport/tracking/[vehicleId]", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch vehicle tracking" },
-      { status: 500 }
-    );
+    };
   }
-}
+);
 
 // ============================================================================
 // POST - Update vehicle location (used by GPS devices/mobile apps)
 // ============================================================================
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ vehicleId: string }> }
-) {
-  try {
-    const authResult = await requireAuth();
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const POST = createApiRoute<{ vehicleId: string }>(
+  async (request: NextRequest, auth, context) => {
+    const { userId } = auth;
+    const params = await context?.params as { vehicleId?: string } | undefined;
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: { id: true, type: true, role: true, schoolId: true },
-    });
+    const currentUser = await db
+      .select({
+        id: users.id,
+        type: users.type,
+        role: users.role,
+        schoolId: users.schoolId,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return { error: "User not found", status: 404 };
     }
 
-    const { vehicleId } = await params;
+    const { vehicleId } = params || {};
+
+    if (!vehicleId) {
+      return { error: "Vehicle ID is required", status: 400 };
+    }
+
     const body: TrackingUpdateBody = await request.json();
     const {
       latitude,
@@ -240,19 +257,19 @@ export async function POST(
 
     // Validate required fields
     if (latitude === undefined || longitude === undefined) {
-      return NextResponse.json(
-        { error: "Missing required fields: latitude, longitude" },
-        { status: 400 }
-      );
+      return { error: "Missing required fields: latitude, longitude", status: 400 };
     }
 
     // Verify vehicle belongs to user's school
-    const vehicle = await db.query.vehicles.findFirst({
-      where: eq(vehicles.id, vehicleId),
-    });
+    const vehicle = await db
+      .select()
+      .from(vehicles)
+      .where(eq(vehicles.id, vehicleId))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!vehicle || (vehicle.schoolId !== currentUser.schoolId && currentUser.role !== "admin")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return { error: "Forbidden", status: 403 };
     }
 
     // Create new tracking record
@@ -288,15 +305,6 @@ export async function POST(
       updatedBy: userId,
     });
 
-    return NextResponse.json({
-      success: true,
-      tracking,
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/transport/tracking/[vehicleId]", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to update vehicle tracking" },
-      { status: 500 }
-    );
+    return { tracking };
   }
-}
+);

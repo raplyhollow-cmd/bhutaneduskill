@@ -181,7 +181,7 @@ export function AttendanceReports({
       </div>
 
       {/* Tabs */}
-      <Tabs value={selectedTab} onValueChange={(v) => setSelectedTab(v as any)}>
+      <Tabs value={selectedTab} onValueChange={(v) => setSelectedTab(v as "overview" | "students" | "alerts")}>
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="students">Student Details</TabsTrigger>

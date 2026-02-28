@@ -1,9 +1,8 @@
-import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { users, students, schools } from "@/lib/db/schema";
 import { eq, or, sql } from "drizzle-orm";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 interface StudentResult {
   id: string;
@@ -15,26 +14,15 @@ interface StudentResult {
 }
 
 // GET /api/parent/search-student - Search for student by CID or Index Number
-export async function GET(req: Request) {
-  try {
-    const authResult = await requireAuth(["parent"]);
-    if ("error" in authResult) {
-      return Response.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (req: Request, auth) => {
+    const { userId } = auth;
 
     const { searchParams } = new URL(req.url);
     const code = searchParams.get("code");
 
     if (!code) {
-      return Response.json(
-        { error: "Student code is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "Student code is required", status: 400 };
     }
 
     // Search for student by CID (using clerkUserId) or studentCode (index number)
@@ -62,10 +50,7 @@ export async function GET(req: Request) {
       .limit(10);
 
     if (matchingStudents.length === 0) {
-      return Response.json(
-        { error: "Student not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "Student not found", status: 404 };
     }
 
     const student: StudentResult = {
@@ -79,14 +64,7 @@ export async function GET(req: Request) {
 
     logger.info("Student found for parent linking", { studentId: student.id });
 
-    return Response.json({
-      data: { student },
-    } satisfies ApiSuccess<{ student: StudentResult }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/parent/search-student", method: "GET" });
-    return Response.json(
-      { error: "Student search failed", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return { data: student };
+  },
+  ["parent"]
+);

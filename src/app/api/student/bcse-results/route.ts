@@ -1,26 +1,24 @@
 /**
  * Student BCSE Results API
  * Students can view their BCSE examination results
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
 import { bcseResults, bcseRegistrations, users } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { db } from "@/lib/db";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 /**
  * GET /api/student/bcse-results
  * Get BCSE results for the authenticated student
  */
-export async function GET(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["student", "parent", "admin", "school_admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId, user } = authResult;
+export const GET = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId, user } = auth;
 
     const { searchParams } = new URL(req.url);
     const examType = searchParams.get("examType") as "BCSE_10" | "BCSE_12" | null;
@@ -50,7 +48,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Admin/school_admin can view any student's results
-    if (["admin", "school_admin"].includes(user?.type || "") && targetStudentId) {
+    if (["admin", "school-admin"].includes(user?.type || "") && targetStudentId) {
       studentId = targetStudentId;
     }
 
@@ -79,21 +77,16 @@ export async function GET(req: NextRequest) {
       count: results.length,
     });
 
-    return NextResponse.json({
+    return {
       success: true,
       data: {
         results,
         student: {
           id: userId,
-          name: user?.name,
+          name: `${user?.firstName || ""} ${user?.lastName || ""}`.trim() || undefined,
         },
       },
-    });
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/student/bcse-results", method: "GET" });
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : "Failed to fetch BCSE results",
-    }, { status: 500 });
-  }
-}
+    };
+  },
+  ["student", "parent", "admin", "school-admin"]
+);

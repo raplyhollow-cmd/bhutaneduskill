@@ -38,7 +38,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, Filter, X, Check, XCircle, ChevronDown, ChevronUp, Loader2, AlertCircle, GraduationCap, BookOpen } from "lucide-react";
+import { Search, Filter, X, Check, XCircle, ChevronDown, ChevronUp, Loader2, AlertCircle, GraduationCap, BookOpen, User, CheckCircle, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { portal, semantic, semanticGradients } from "@/styles/design-tokens";
 import { MultiSelect, type MultiSelectOption } from "@/components/ui/multi-select";
@@ -52,6 +52,19 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+
+// TODO: Import useDebouncedSave from hooks when available
+// import { useDebouncedSave } from "@/hooks/use-debounced-save";
+
+// Temporary placeholder for useDebouncedSave hook
+function useDebouncedSave<T>(_: { saveFn: (data: T) => Promise<void>; delay?: number; onSuccess?: () => void; onError?: (error: unknown) => void }) {
+  return {
+    debouncedSave: async (data: T) => {
+      console.warn("useDebouncedSave hook not implemented yet", data);
+    },
+    isSaving: false,
+  };
+}
 
 // =============================================================================
 // TYPES

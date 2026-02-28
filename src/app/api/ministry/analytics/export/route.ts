@@ -5,12 +5,14 @@
  * Exports ministry analytics data in various formats
  *
  * Protected: Requires 'ministry' or 'admin' role
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 // ============================================================================
 // TYPES
@@ -104,32 +106,19 @@ interface MinistryAnalyticsResponse {
 // GET HANDLER
 // ============================================================================
 
-export async function GET(req: NextRequest) {
-  try {
-    // Authenticate and authorize
-    const authResult = await requireAuth(["ministry", "admin"]);
-    if ("error" in authResult) {
-      logger.security("unauthorized_access_attempt", {
-        route: "/api/ministry/analytics/export",
-        method: "GET",
-      });
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } as ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
-
+export const GET = createApiRoute(
+  async (req: NextRequest) => {
     // Parse query parameters
     const url = new URL(req.url);
     const format = (url.searchParams.get("format") || "csv") as ExportFormat;
 
-    logger.info("Exporting ministry analytics", { userId, format });
+    logger.info("Exporting ministry analytics", { format });
 
     // Fetch analytics data from the main route
     const analyticsUrl = new URL("/api/ministry/analytics", req.url);
-    const analyticsResponse = await fetch(analyticsUrl.toString());
+    const analyticsResponse = await fetch(analyticsUrl.toString(), {
+      headers: req.headers,
+    });
 
     if (!analyticsResponse.ok) {
       throw new Error("Failed to fetch analytics data");
@@ -138,7 +127,7 @@ export async function GET(req: NextRequest) {
     const analyticsData = (await analyticsResponse.json()) as ApiSuccess<MinistryAnalyticsResponse>;
     const data = analyticsData.data;
 
-    // Export based on format
+    // Export based on format - return Response directly for file downloads
     switch (format) {
       case "csv":
         return exportAsCSV(data);
@@ -150,20 +139,11 @@ export async function GET(req: NextRequest) {
         return exportAsPDF(data);
 
       default:
-        return NextResponse.json(
-          { error: "Invalid format. Use: csv, json, or pdf", status: 400 } as ApiErrorResponse,
-          { status: 400 }
-        );
+        return { error: "Invalid format. Use: csv, json, or pdf", status: 400 };
     }
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/ministry/analytics/export", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to export analytics data", status: 500 } as ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+  },
+  ["ministry", "admin"]
+);
 
 // ============================================================================
 // EXPORT FUNCTIONS
@@ -172,10 +152,10 @@ export async function GET(req: NextRequest) {
 /**
  * Export data as JSON
  */
-function exportAsJSON(data: MinistryAnalyticsResponse): NextResponse {
+function exportAsJSON(data: MinistryAnalyticsResponse): Response {
   const filename = `ministry-analytics-${new Date().toISOString().slice(0, 10)}.json`;
 
-  return new NextResponse(JSON.stringify(data, null, 2), {
+  return new Response(JSON.stringify(data, null, 2), {
     headers: {
       "Content-Type": "application/json",
       "Content-Disposition": `attachment; filename="${filename}"`,
@@ -186,7 +166,7 @@ function exportAsJSON(data: MinistryAnalyticsResponse): NextResponse {
 /**
  * Export data as CSV
  */
-function exportAsCSV(data: MinistryAnalyticsResponse): NextResponse {
+function exportAsCSV(data: MinistryAnalyticsResponse): Response {
   const csvSections: string[] = [];
 
   // Add metadata header
@@ -271,7 +251,7 @@ function exportAsCSV(data: MinistryAnalyticsResponse): NextResponse {
   const csvContent = csvSections.join("\n");
   const filename = `ministry-analytics-${new Date().toISOString().slice(0, 10)}.csv`;
 
-  return new NextResponse(csvContent, {
+  return new Response(csvContent, {
     headers: {
       "Content-Type": "text/csv",
       "Content-Disposition": `attachment; filename="${filename}"`,
@@ -282,12 +262,12 @@ function exportAsCSV(data: MinistryAnalyticsResponse): NextResponse {
 /**
  * Export data as PDF (returns HTML for client-side PDF generation)
  */
-function exportAsPDF(data: MinistryAnalyticsResponse): NextResponse {
+function exportAsPDF(data: MinistryAnalyticsResponse): Response {
   const htmlContent = generatePDFHTML(data);
 
   const filename = `ministry-analytics-${new Date().toISOString().slice(0, 10)}.html`;
 
-  return new NextResponse(htmlContent, {
+  return new Response(htmlContent, {
     headers: {
       "Content-Type": "text/html",
       "Content-Disposition": `attachment; filename="${filename}"`,

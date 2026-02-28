@@ -9,7 +9,7 @@ import { db } from "@/lib/db";
 import { users, parents } from "@/lib/db/schema";
 import { parentTeacherConversations, parentTeacherMessages } from "@/lib/db/parent-teacher-chat-schema";
 import { eq, and, desc } from "drizzle-orm";
-import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, errorResponse, notFoundResponse } from "@/lib/api/response-helpers";
 import { logger } from "@/lib/logger";
 
@@ -18,12 +18,7 @@ import { logger } from "@/lib/logger";
 // ============================================================================
 
 export const GET = createApiRoute(
-  async (request: NextRequest, context?: { params?: Promise<{ conversationId: string }> }) => {
-    const auth = getAuth(request);
-    if (!auth) {
-      return errorResponse("Unauthorized", 401);
-    }
-
+  async (request: NextRequest, auth, context?: { params?: Promise<{ conversationId: string }> }) => {
     const { userId } = auth;
     const params = await context?.params;
     const conversationId = params?.conversationId;

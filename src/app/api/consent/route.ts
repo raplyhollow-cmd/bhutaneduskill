@@ -1,18 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { consentRecords, users } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 
 // GET /api/consent - Get consent records
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['parent', 'admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId, user } = authResult;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId, user } = auth;
 
     const { searchParams } = new URL(request.url);
     const userId_param = searchParams.get("userId");
@@ -41,33 +37,29 @@ export async function GET(request: NextRequest) {
 
     let records: typeof consentRecords.$inferSelect[];
     if (conditions.length > 0) {
-      records = await db.query.consentRecords.findMany({
-        where: conditions.length === 1 ? conditions[0] : and(...conditions),
-        orderBy: desc(consentRecords.createdAt),
-      });
+      records = await db
+        .select()
+        .from(consentRecords)
+        .where(conditions.length === 1 ? conditions[0] : and(...conditions))
+        .orderBy(desc(consentRecords.createdAt));
     } else if (user.type === "admin" || user.type === "counselor") {
-      records = await db.query.consentRecords.findMany({
-        orderBy: desc(consentRecords.createdAt),
-      });
+      records = await db
+        .select()
+        .from(consentRecords)
+        .orderBy(desc(consentRecords.createdAt));
     } else {
       records = [];
     }
 
-    return NextResponse.json({ records });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/consent", method: "GET" });
-    return NextResponse.json({ error: "Failed to fetch consent records" }, { status: 500 });
-  }
-}
+    return { records };
+  },
+  ['parent', 'admin', 'school-admin']
+);
 
 // POST /api/consent - Create consent request
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'counselor']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId, user } = authResult;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId, user } = auth;
 
     const body = await request.json();
     const { userId: targetUserId, parentId, type, consentText } = body;
@@ -75,22 +67,20 @@ export async function POST(request: NextRequest) {
     const [record] = await db
       .insert(consentRecords)
       .values({
-        ...({
-          id: `consent_${Date.now()}`,
-          consentText: consentText,
-        }),
+        id: `consent_${Date.now()}`,
         userId: targetUserId,
         parentId,
         type,
         status: "pending",
+        title: `${type} Consent Request`,
+        description: consentText || "",
         ipAddress: request.headers.get("x-forwarded-for") || "unknown",
         createdAt: new Date(),
-      } as any)
+        updatedAt: new Date(),
+      })
       .returning();
 
-    return NextResponse.json({ record }, { status: 201 });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/consent", method: "POST" });
-    return NextResponse.json({ error: "Failed to create consent request" }, { status: 500 });
-  }
-}
+    return { record, status: 201 };
+  },
+  ['admin', 'counselor']
+);

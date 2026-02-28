@@ -22,8 +22,9 @@ import { successResponse, errorResponse, badRequestResponse, createdResponse } f
 
 export const GET = createApiRoute(
   async (req, auth) => {
+    const { userId } = auth;
     try {
-      const { user, userId } = auth;
+      const { user } = auth;
       const { searchParams } = new URL(req.url);
       // Parse query parameters
       const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
@@ -42,20 +43,20 @@ export const GET = createApiRoute(
       const sortOrder = searchParams.get("sortOrder") || "desc";
 
       // Build where conditions
-      type QueryCondition = ReturnType<typeof eq> | ReturnType<typeof or>;
+      type QueryCondition = ReturnType<typeof eq> | ReturnType<typeof or> | ReturnType<typeof sql>;
       const conditions: QueryCondition[] = [];
 
       if (status) {
-        conditions.push(eq(notifications.status, status as string));
+        conditions.push(sql`${notifications.status} = ${status}`);
       }
       if (type) {
-        conditions.push(eq(notifications.type, type as string));
+        conditions.push(sql`${notifications.type} = ${type}`);
       }
       if (priority) {
-        conditions.push(eq(notifications.priority, priority as string));
+        conditions.push(sql`${notifications.priority} = ${priority}`);
       }
       if (targetAudience) {
-        conditions.push(eq(notifications.targetAudience, targetAudience as string));
+        conditions.push(sql`${notifications.targetAudience} = ${targetAudience}`);
       }
       if (search) {
         conditions.push(
@@ -268,7 +269,7 @@ export const POST = createApiRoute(
           const userCount = await db
             .select({ count: sql<number>`count(*)::int` })
             .from(users)
-            .where(eq(users.type, body.targetAudience === "school_admins" ? "school_admin" : body.targetAudience.slice(0, -1)));
+            .where(eq(users.type, body.targetAudience === "school_admins" ? "school-admin" : body.targetAudience.slice(0, -1)));
           estimatedRecipients = userCount[0]?.count || 0;
         }
       }
@@ -281,7 +282,7 @@ export const POST = createApiRoute(
 
       // Create notification
       const notificationId: string = `notif-${nanoid()}`;
-      const senderName: string = (user.name as string) ||
+      const senderName: string =
         ((user.firstName as string) && (user.lastName as string) ? `${user.firstName} ${user.lastName}` : "Admin");
       const senderRole: string = (user.type as string) || "admin";
 

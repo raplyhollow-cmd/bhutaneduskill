@@ -15,6 +15,14 @@ import { createApiRoute, getAuth } from "@/lib/api/route-handler";
 import { successResponse, errorResponse, badRequestResponse } from "@/lib/api/response-helpers";
 import { logger } from "@/lib/logger";
 
+// Type for user with optional settings field
+interface UserWithSettings {
+  id: string;
+  settings?: Record<string, unknown> | null;
+  classGrade?: number | null;
+  [key: string]: unknown;
+}
+
 // ============================================================================
 // GET /api/user/profile - Get user profile
 // ============================================================================
@@ -33,8 +41,8 @@ export const GET = createApiRoute(
     const transformedProfile = {
       ...user,
       // Safely access optional fields that may not be selected
-      bio: ((user as any).settings as Record<string, unknown> | null)?.bio as string || "",
-      grade: (user as any).classGrade ? `Class ${(user as any).classGrade}` : "",
+      bio: ((user as UserWithSettings).settings)?.bio as string || "",
+      grade: (user as UserWithSettings).classGrade ? `Class ${(user as UserWithSettings).classGrade}` : "",
     };
 
     return successResponse({ profile: transformedProfile, needsSetup: false });
@@ -89,7 +97,7 @@ export const POST = createApiRoute(
     if (Array.isArray(interests)) updateData.interests = interests;
     if (typeof goals === "string") updateData.goals = goals.trim();
     if (typeof bio === "string") {
-      const currentSettings = (user as any).settings || {};
+      const currentSettings = (user as UserWithSettings).settings || {};
       updateData.settings = { ...currentSettings, bio: bio.trim() };
     }
 

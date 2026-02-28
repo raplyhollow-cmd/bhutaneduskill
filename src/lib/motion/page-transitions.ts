@@ -314,7 +314,10 @@ export function supportsViewTransition(): boolean {
  */
 export function startViewTransition(callback: () => void | Promise<void>) {
   if (supportsViewTransition()) {
-    return (document as any).startViewTransition(callback);
+    type DocumentWithViewTransition = Document & {
+      startViewTransition: (cb: () => void | Promise<void>) => { finished: Promise<void> };
+    };
+    return (document as DocumentWithViewTransition).startViewTransition(callback);
   }
   // Fallback: just run the callback
   return callback();

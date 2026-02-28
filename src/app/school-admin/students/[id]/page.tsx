@@ -8,7 +8,7 @@
  */
 
 import { notFound } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
+import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { users, enrollments, classes, attendance, studentFees, feePayments, assessments, riasecResults, examResultsEnhanced, homeworkSubmissions, homework } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
@@ -60,10 +60,11 @@ interface StudentDetailPageProps {
 }
 
 async function getStudentData(studentId: string) {
-  const { userId } = await auth();
-  if (!userId) {
+  const authResult = await requireAuth(["school-admin", "admin"]);
+  if ("error" in authResult) {
     return null;
   }
+  const { userId } = authResult;
 
   // Get student basic info using db.select
   const studentResult = await db
@@ -137,19 +138,22 @@ async function getStudentData(studentId: string) {
 
   // Get payments for each fee
   const feeIds = feeRecords.map(f => f.id);
-  const paymentsMap = new Map<string, any[]>();
+  const paymentsMap = new Map<string, typeof feePayments.$inferSelect[]>();
 
   if (feeIds.length > 0) {
     const payments = await db
       .select()
       .from(feePayments)
-      .where(sql`${feePayments.feeId} = ANY(${feeIds})`);
+      .where(sql`${feePayments.studentFeeId} = ANY(${feeIds})`);
 
     payments.forEach(p => {
-      if (!paymentsMap.has(p.feeId)) {
-        paymentsMap.set(p.feeId, []);
+      const feeId = (p as { studentFeeId?: string }).studentFeeId;
+      if (feeId && !paymentsMap.has(feeId)) {
+        paymentsMap.set(feeId, []);
       }
-      paymentsMap.get(p.feeId)!.push(p);
+      if (feeId) {
+        paymentsMap.get(feeId)!.push(p);
+      }
     });
   }
 
@@ -183,9 +187,8 @@ async function getStudentData(studentId: string) {
       studentId: homeworkSubmissions.studentId,
       homeworkId: homeworkSubmissions.homeworkId,
       submittedAt: homeworkSubmissions.submittedAt,
-      grade: homeworkSubmissions.grade,
+      score: homeworkSubmissions.score,
       feedback: homeworkSubmissions.feedback,
-      homeworkId: homework.id,
       homeworkTitle: homework.title,
       homeworkDueDate: homework.dueDate,
     })
@@ -200,7 +203,7 @@ async function getStudentData(studentId: string) {
     studentId: s.studentId,
     homeworkId: s.homeworkId,
     submittedAt: s.submittedAt,
-    grade: s.grade,
+    score: s.score,
     feedback: s.feedback,
     homework: {
       id: s.homeworkId,
@@ -247,10 +250,11 @@ function LoadingSkeleton() {
 }
 
 export default async function StudentDetailPage({ params }: StudentDetailPageProps) {
-  const { userId } = await auth();
-  if (!userId) {
-    return <div>Please sign in to access this page.</div>;
+  const authResult = await requireAuth(["school-admin", "admin"]);
+  if ("error" in authResult) {
+    return <div>{authResult.error}</div>;
   }
+  const { userId } = authResult;
 
   const { id } = await params;
   const data = await getStudentData(id);
@@ -452,7 +456,7 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Class</p>
                     <p className="font-medium text-gray-900">
-                      Grade {enrollment.class?.grade} - Section {enrollment.class?.section}
+                      Grade {enrollment.class?.grade} - Section {enrollment.section || 'N/A'}
                     </p>
                   </div>
                   <div>
@@ -461,7 +465,7 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Academic Year</p>
-                    <p className="font-medium text-gray-900">{enrollment.schoolYear}</p>
+                    <p className="font-medium text-gray-900">{enrollment.academicYear}</p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Enrollment Status</p>
@@ -750,8 +754,8 @@ export default async function StudentDetailPage({ params }: StudentDetailPagePro
                         <p className="text-xs text-gray-500">{result.examYear}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-lg font-bold text-gray-900">{(result as any).overallPercentage}%</p>
-                        <p className="text-xs text-gray-500">{(result as any).division}</p>
+                        <p className="text-lg font-bold text-gray-900">{(result as { overallPercentage?: number }).overallPercentage ?? "N/A"}%</p>
+                        <p className="text-xs text-gray-500">{(result as { division?: string })?.division || "N/A"}</p>
                       </div>
                     </div>
                   ))}

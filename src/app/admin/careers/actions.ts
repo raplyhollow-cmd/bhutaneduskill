@@ -9,11 +9,14 @@
 
 
 import { db } from "@/lib/db";
-import { careers } from "@/lib/db/schema";
+import { careers, type Career } from "@/lib/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
+
+// Type for career insert data
+type CareerInsert = typeof careers.$inferInsert;
 
 /**
  * Get all careers from the database
@@ -54,9 +57,11 @@ export async function getCareerById(id: string) {
   const { userId } = authResult;
 
   try {
-    const career = await db.query.careers.findFirst({
-      where: eq(careers.id, id),
-    });
+    const [career] = await db
+      .select()
+      .from(careers)
+      .where(eq(careers.id, id))
+      .limit(1);
 
     if (!career) {
       throw new Error("Career not found");
@@ -119,7 +124,7 @@ export async function createCareer(data: {
         // Optional fields
         description: data.description || "",
         riasecCode: data.riasecCode || null,
-        hollandCodes: data.riasecScores || null,
+        hollandCodes: data.riasecScores ? Object.keys(data.riasecScores) : null,
         skills: data.skills || null,
         subjects: data.subjects || null,
         workEnvironment: data.workEnvironment || "office",
@@ -129,7 +134,7 @@ export async function createCareer(data: {
         isActive: true,
         createdAt: now,
         updatedAt: now,
-      } as any)
+      } satisfies CareerInsert)
       .returning();
 
     revalidatePath("/admin/careers");
@@ -170,23 +175,8 @@ export async function updateCareer(
   const { userId } = authResult;
 
   try {
-    type CareerUpdateData = {
-      updatedAt: Date;
-      name?: string;
-      slug?: string;
-      description?: string | null;
-      riasecCode?: string | null;
-      hollandCodes?: Record<string, number> | null;
-      skills?: string[] | null;
-      educationLevel?: string[] | null;
-      subjects?: string[] | null;
-      workEnvironment?: string | null;
-      typicalSalary?: string | null;
-      bhutanDemand?: string | null;
-      bhutanSpecific?: boolean;
-      isActive?: boolean;
-    };
-    const updateData: CareerUpdateData = {
+    // Build update data dynamically based on what's provided
+    const updateData: Partial<CareerInsert> = {
       updatedAt: new Date(),
     };
 
@@ -194,9 +184,12 @@ export async function updateCareer(
     if (data.slug) updateData.slug = data.slug;
     if (data.description !== undefined) updateData.description = data.description;
     if (data.riasecCode !== undefined) updateData.riasecCode = data.riasecCode;
-    if (data.riasecScores !== undefined) updateData.hollandCodes = data.riasecScores;
+    if (data.riasecScores !== undefined) updateData.hollandCodes = data.riasecScores ? Object.keys(data.riasecScores) : null;
     if (data.skills !== undefined) updateData.skills = data.skills;
-    if (data.educationPath !== undefined) updateData.educationLevel = data.educationPath;
+    if (data.educationPath !== undefined) {
+      // educationPath can be a string array, but educationLevel is a single string
+      updateData.educationLevel = Array.isArray(data.educationPath) ? data.educationPath[0] || "high_school" : "high_school";
+    }
     if (data.subjects !== undefined) updateData.subjects = data.subjects;
     if (data.workEnvironment !== undefined) updateData.workEnvironment = data.workEnvironment;
     if (data.salaryRange !== undefined) updateData.typicalSalary = data.salaryRange;

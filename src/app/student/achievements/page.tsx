@@ -467,7 +467,7 @@ export default function StudentAchievementsPage() {
                       {milestone.isUnlocked && (
                         <Badge className="bg-green-100 text-green-700 text-xs">Unlocked</Badge>
                       )}
-                      {index === currentLevel - 1 && !milestone.isUnlocked && (
+                      {index === studentProgress.currentLevel - 1 && !milestone.isUnlocked && (
                         <Badge className="bg-orange-100 text-orange-700 text-xs">Current</Badge>
                       )}
                     </div>

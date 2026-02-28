@@ -10,6 +10,8 @@
 
 "use client";
 
+import { logger } from "@/lib/logger";
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -127,7 +129,7 @@ export default function TeacherPayslipsPage() {
         });
       }
     } catch (error) {
-      console.error("Failed to fetch payslips:", error);
+      logger.error("Failed to fetch payslips:", error);
     } finally {
       setLoading(false);
     }

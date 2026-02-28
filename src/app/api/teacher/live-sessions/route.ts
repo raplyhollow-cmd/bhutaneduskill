@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { liveSessions, classes } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { z } from "zod";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 // ============================================================================
 // TYPES
@@ -133,17 +133,8 @@ function transformLiveSession(session: typeof liveSessions.$inferSelect): LiveSe
  * GET /api/teacher/live-sessions
  * List all live sessions for the teacher
  */
-export async function GET(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["teacher", "admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (req, { userId }) => {
     const { searchParams } = new URL(req.url);
 
     const status = searchParams.get("status") as LiveSessionStatus | null;
@@ -169,11 +160,12 @@ export async function GET(req: NextRequest) {
     }
 
     // Fetch sessions
-    const sessions = await db.query.liveSessions.findMany({
-      where: conditions.length > 0 ? and(...conditions) : undefined,
-      orderBy: [desc(liveSessions.scheduledStart)],
-      limit,
-    });
+    let sessions = await db.select().from(liveSessions);
+    if (conditions.length > 0) {
+      sessions = await db.select().from(liveSessions).where(and(...conditions)).orderBy(desc(liveSessions.scheduledStart)).limit(limit);
+    } else {
+      sessions = await db.select().from(liveSessions).orderBy(desc(liveSessions.scheduledStart)).limit(limit);
+    }
 
     // Transform sessions
     const transformedSessions = sessions.map(transformLiveSession);
@@ -183,7 +175,7 @@ export async function GET(req: NextRequest) {
       count: transformedSessions.length,
     });
 
-    return NextResponse.json({
+    return {
       success: true,
       data: {
         sessions: transformedSessions,
@@ -193,31 +185,17 @@ export async function GET(req: NextRequest) {
           total: transformedSessions.length,
         },
       },
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/teacher/live-sessions", method: "GET" });
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch live sessions" },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["teacher", "admin"]
+);
 
 /**
  * POST /api/teacher/live-sessions
  * Create a new live session
  */
-export async function POST(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["teacher", "admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const POST = createApiRoute(
+  async (req, { userId }) => {
     const body = await req.json();
 
     // Validate request body
@@ -264,75 +242,53 @@ export async function POST(req: NextRequest) {
     // Transform and return
     const transformedSession = transformLiveSession(newSession);
 
-    return NextResponse.json({
+    return {
       success: true,
       data: {
         session: transformedSession,
       },
-    }, { status: 201 });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { success: false, error: "Validation failed", details: error.issues },
-        { status: 400 }
-      );
-    }
-
-    logger.apiError(error, { route: "/api/teacher/live-sessions", method: "POST" });
-    return NextResponse.json(
-      { success: false, error: "Failed to create live session" },
-      { status: 500 }
-    );
-  }
-}
+      status: 201
+    };
+  },
+  ["teacher", "admin"]
+);
 
 /**
  * PATCH /api/teacher/live-sessions
  * Update an existing live session
  */
-export async function PATCH(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["teacher", "admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const PATCH = createApiRoute(
+  async (req, { userId }) => {
     const body = await req.json();
 
     const { sessionId, ...updateData } = body;
 
     if (!sessionId) {
-      return NextResponse.json(
-        { success: false, error: "sessionId is required" },
-        { status: 400 }
-      );
+      return {
+        error: "sessionId is required",
+        status: 400
+      };
     }
 
     // Validate update data
     const validatedData = updateLiveSessionSchema.parse(updateData);
 
     // Fetch existing session
-    const existingSession = await db.query.liveSessions.findFirst({
-      where: eq(liveSessions.id, sessionId),
-    });
+    const [existingSession] = await db.select().from(liveSessions).where(eq(liveSessions.id, sessionId)).limit(1);
 
     if (!existingSession) {
-      return NextResponse.json(
-        { success: false, error: "Session not found" },
-        { status: 404 }
-      );
+      return {
+        error: "Session not found",
+        status: 404
+      };
     }
 
     // Verify ownership (unless admin)
     if (existingSession.tutorId !== userId) {
-      return NextResponse.json(
-        { success: false, error: "You can only update your own sessions" },
-        { status: 403 }
-      );
+      return {
+        error: "You can only update your own sessions",
+        status: 403
+      };
     }
 
     // Prepare update values
@@ -358,7 +314,7 @@ export async function PATCH(req: NextRequest) {
 
     // Update session
     const [updatedSession] = await db.update(liveSessions)
-      .set(updateValues as any)
+      .set(updateValues)
       .where(eq(liveSessions.id, sessionId))
       .returning();
 
@@ -371,71 +327,48 @@ export async function PATCH(req: NextRequest) {
     // Transform and return
     const transformedSession = transformLiveSession(updatedSession);
 
-    return NextResponse.json({
+    return {
       success: true,
       data: {
         session: transformedSession,
       },
-    });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { success: false, error: "Validation failed", details: error.issues },
-        { status: 400 }
-      );
-    }
-
-    logger.apiError(error, { route: "/api/teacher/live-sessions", method: "PATCH" });
-    return NextResponse.json(
-      { success: false, error: "Failed to update live session" },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["teacher", "admin"]
+);
 
 /**
  * DELETE /api/teacher/live-sessions
  * Cancel/delete a live session
  */
-export async function DELETE(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["teacher", "admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const DELETE = createApiRoute(
+  async (req, { userId }) => {
     const { searchParams } = new URL(req.url);
     const sessionId = searchParams.get("sessionId");
 
     if (!sessionId) {
-      return NextResponse.json(
-        { success: false, error: "sessionId is required" },
-        { status: 400 }
-      );
+      return {
+        error: "sessionId is required",
+        status: 400
+      };
     }
 
     // Fetch existing session
-    const existingSession = await db.query.liveSessions.findFirst({
-      where: eq(liveSessions.id, sessionId),
-    });
+    const [existingSession] = await db.select().from(liveSessions).where(eq(liveSessions.id, sessionId)).limit(1);
 
     if (!existingSession) {
-      return NextResponse.json(
-        { success: false, error: "Session not found" },
-        { status: 404 }
-      );
+      return {
+        error: "Session not found",
+        status: 404
+      };
     }
 
     // Verify ownership (unless admin)
     if (existingSession.tutorId !== userId) {
-      return NextResponse.json(
-        { success: false, error: "You can only cancel your own sessions" },
-        { status: 403 }
-      );
+      return {
+        error: "You can only cancel your own sessions",
+        status: 403
+      };
     }
 
     // Cancel session by updating status
@@ -443,7 +376,7 @@ export async function DELETE(req: NextRequest) {
       .set({
         status: "cancelled",
         updatedAt: new Date(),
-      } as any)
+      })
       .where(eq(liveSessions.id, sessionId))
       .returning();
 
@@ -455,18 +388,13 @@ export async function DELETE(req: NextRequest) {
     // Transform and return
     const transformedSession = transformLiveSession(cancelledSession);
 
-    return NextResponse.json({
+    return {
       success: true,
       data: {
         session: transformedSession,
       },
       message: "Session cancelled successfully",
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/teacher/live-sessions", method: "DELETE" });
-    return NextResponse.json(
-      { success: false, error: "Failed to cancel live session" },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["teacher", "admin"]
+);

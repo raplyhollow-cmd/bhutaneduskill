@@ -13,6 +13,7 @@
 
 "use client";
 
+import { logger } from "@/lib/logger";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -260,7 +261,7 @@ export default function TeacherMessagesPage() {
         setThreads(data.data?.threads || []);
       }
     } catch (error) {
-      console.error("Failed to fetch threads:", error);
+      logger.error("Failed to fetch threads:", error);
     }
   }, []);
 
@@ -269,11 +270,11 @@ export default function TeacherMessagesPage() {
     try {
       const res = await fetch(`/api/teacher/messages/${conversationId}`);
       if (res.ok) {
-        const data: ConversationData = await res.json();
+        const data = await res.json() as { data?: { messages?: Message[] } };
         setMessages(data.data?.messages || []);
       }
     } catch (error) {
-      console.error("Failed to fetch messages:", error);
+      logger.error("Failed to fetch messages:", error);
     }
   }, []);
 
@@ -368,7 +369,7 @@ export default function TeacherMessagesPage() {
       await fetchMessages(selectedThread.conversationId);
       await fetchThreads();
     } catch (error) {
-      console.error("Failed to send message:", error);
+      logger.error("Failed to send message:", error);
     } finally {
       setIsSending(false);
     }

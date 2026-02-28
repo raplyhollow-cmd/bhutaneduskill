@@ -57,9 +57,11 @@ export async function getAssessmentTypeById(id: string) {
   const { userId } = authResult;
 
   try {
-    const assessmentType = await db.query.assessmentTypes.findFirst({
-      where: eq(assessmentTypes.id, id),
-    });
+    const [assessmentType] = await db
+      .select()
+      .from(assessmentTypes)
+      .where(eq(assessmentTypes.id, id))
+      .limit(1);
 
     if (!assessmentType) {
       throw new Error("Assessment type not found");
@@ -294,13 +296,11 @@ export async function getAssessmentById(id: string) {
   const { userId } = authResult;
 
   try {
-    const assessment = await db.query.assessments.findFirst({
-      where: eq(assessments.id, id),
-      with: {
-        class: true,
-        assessmentType: true,
-      },
-    });
+    const [assessment] = await db
+      .select()
+      .from(assessments)
+      .where(eq(assessments.id, id))
+      .limit(1);
 
     if (!assessment) {
       throw new Error("Assessment not found");

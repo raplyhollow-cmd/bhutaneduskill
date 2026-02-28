@@ -11,7 +11,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
 import { notifications, notificationDeliveries, users, userNotificationSettings } from "@/lib/db/schema";
 import { eq, and, inArray, sql } from "drizzle-orm";
@@ -27,50 +27,48 @@ interface SendNotificationRequest {
   sendEmail?: boolean; // Optional: whether to send email notifications
 }
 
-export async function POST(request: NextRequest) {
-  const authResult = await requireAuth(["admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
 
-  const { userId } = authResult;
-
-  try {
     const body: SendNotificationRequest = await request.json();
 
     if (!body.notificationId) {
-      return NextResponse.json(
-        { error: "Notification ID is required" },
-        { status: 400 }
-      );
+      return {
+        error: "Notification ID is required",
+        status: 400,
+      };
     }
 
     // Get notification
-    const notification = await db.query.notifications.findFirst({
-      where: eq(notifications.id, body.notificationId),
-    });
+    const notificationResult = await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.id, body.notificationId))
+      .limit(1);
+    const notification = notificationResult[0];
 
     if (!notification) {
-      return NextResponse.json(
-        { error: "Notification not found" },
-        { status: 404 }
-      );
+      return {
+        error: "Notification not found",
+        status: 404,
+      };
     }
 
     // Check if already sent
     if (notification.status === "sent" || notification.status === "sending") {
-      return NextResponse.json(
-        { error: "Notification has already been sent" },
-        { status: 400 }
-      );
+      return {
+        error: "Notification has already been sent",
+        status: 400,
+      };
     }
 
     // Check if scheduled for future
     if (notification.scheduledFor && new Date(notification.scheduledFor) > new Date()) {
-      return NextResponse.json(
-        { error: "Notification is scheduled for future delivery. Use PATCH to change the schedule." },
-        { status: 400 }
-      );
+      return {
+        error: "Notification is scheduled for future delivery. Use PATCH to change the schedule.",
+        status: 400,
+      };
     }
 
     // Mark as sending
@@ -101,10 +99,10 @@ export async function POST(request: NextRequest) {
           })
           .where(eq(notifications.id, body.notificationId));
 
-        return NextResponse.json(
-          { error: "No target users specified" },
-          { status: 400 }
-        );
+        return {
+          error: "No target users specified",
+          status: 400,
+        };
       }
 
       targetUsers = await db
@@ -120,16 +118,16 @@ export async function POST(request: NextRequest) {
         teachers: "teacher",
         parents: "parent",
         counselors: "counselor",
-        school_admins: "school_admin",
+        school_admins: "school-admin",
         admins: "admin",
       };
 
       const userType = userTypeMap[notification.targetAudience];
       if (!userType) {
-        return NextResponse.json(
-          { error: `Invalid target audience: ${notification.targetAudience}` },
-          { status: 400 }
-        );
+        return {
+          error: `Invalid target audience: ${notification.targetAudience}`,
+          status: 400,
+        };
       }
 
       targetUsers = await db
@@ -156,7 +154,7 @@ export async function POST(request: NextRequest) {
         })
         .where(eq(notifications.id, body.notificationId));
 
-      return NextResponse.json({
+      return {
         message: "Notification sent successfully (no recipients)",
         data: {
           notificationId: body.notificationId,
@@ -164,7 +162,7 @@ export async function POST(request: NextRequest) {
           deliveredCount: 0,
           skippedCount: 0,
         },
-      });
+      };
     }
 
     // Check user notification preferences
@@ -260,7 +258,7 @@ export async function POST(request: NextRequest) {
       sentBy: userId,
     });
 
-    return NextResponse.json({
+    return {
       message: "Notification sent successfully",
       data: {
         notificationId: body.notificationId,
@@ -270,37 +268,10 @@ export async function POST(request: NextRequest) {
         emailSent,
         deliveredUsers: deliveryRecords.filter((d) => d.status === "delivered").length,
       },
-    });
-  } catch (error: unknown) {
-    logger.apiError(error, {
-      route: "/api/admin/notifications/send",
-      method: "POST",
-      userId,
-    });
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-
-    // Try to mark notification as failed
-    try {
-      const body = await request.json().catch(() => ({}));
-      if (body.notificationId) {
-        await db
-          .update(notifications)
-          .set({
-            status: "failed",
-            updatedAt: new Date(),
-          })
-          .where(eq(notifications.id, body.notificationId));
-      }
-    } catch {
-      // Ignore errors during cleanup
-    }
-
-    return NextResponse.json(
-      { error: "Failed to send notification", details: errorMessage },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);
 
 // ============================================================================
 // Note: Batch send functionality moved to /api/admin/notifications/send/batch/route.ts

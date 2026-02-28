@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { assessments, users } from "@/lib/db/schema";
 import { eq, count, and } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { parseJsonArray } from "@/lib/db/json-helpers";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 /**
  * Student Onboarding Status API
@@ -19,14 +19,12 @@ import { parseJsonArray } from "@/lib/db/json-helpers";
  * - requiredAssessments: minimum required (default: 3)
  * - profileComplete: true if interests, goals, and grade are set
  * - canProceed: true if assessments complete AND profile is complete
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['student']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status || 401 });
-    }
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
 
     // Check assessment completion count
     const [completedCount] = await db
@@ -76,7 +74,7 @@ export async function GET(request: NextRequest) {
       profileComplete,
     });
 
-    return NextResponse.json({
+    return {
       isFirstTime,
       hasCompletedAssessments,
       completedAssessments: assessmentCount,
@@ -91,12 +89,7 @@ export async function GET(request: NextRequest) {
         learningStyles: assessmentCount >= 4,
         disc: assessmentCount >= 5,
       }
-    });
-  } catch (error) {
-    logger.error(error, { route: "/api/student/onboarding/status", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to check onboarding status" },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["student"]
+);

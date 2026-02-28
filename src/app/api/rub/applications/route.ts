@@ -1,58 +1,49 @@
 /**
- * RUB COLLEGE APPLICATIONS API
+ * RUB APPLICATIONS API
  *
  * Handles student applications to Royal University of Bhutan colleges
- * - GET: List applications (student's own or all for admins)
- * - POST: Submit a new application
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
-import { rubApplications, rubColleges, rubPrograms, rubScholarships, users } from "@/lib/db/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { rubApplications, rubColleges, rubPrograms, users } from "@/lib/db/schema";
+import { eq, and, desc, sql, asc } from "drizzle-orm";
 
-/**
- * GET /api/rub/applications
- *
- * Query parameters:
- * - action: "my-applications" (default) | "college-programs" | "statistics"
- * - collegeId: Filter programs by college (for college-programs action)
- * - programId: Get specific program (for college-programs action)
- * - status: Filter applications by status
- * - academicYear: Filter applications by academic year
- */
-export async function GET(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["student", "admin", "school-admin", "counselor"]);
+// ============================================================================
+// GET /api/rub/applications
+// ============================================================================
 
-    // Handle auth errors
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId, user } = authResult;
+export const GET = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId, user } = auth;
 
     const { searchParams } = new URL(req.url);
     const action = searchParams.get("action") || "my-applications";
 
     // Get current user details
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-      columns: { id: true, type: true, role: true, schoolId: true, name: true, phone: true, email: true, address: true, dateOfBirth: true },
-    });
+    const [currentUser] = await db
+      .select({
+        id: users.id,
+        type: users.type,
+        role: users.role,
+        schoolId: users.schoolId,
+        name: users.name,
+        phone: users.phone,
+        email: users.email,
+        address: users.address,
+        dateOfBirth: users.dateOfBirth,
+      })
+      .from(users)
+      .where(eq(users.clerkUserId, userId))
+      .limit(1);
 
     if (!currentUser) {
       logger.error("User not found in database", { userId, route: "/api/rub/applications" });
-      return NextResponse.json(
-        { error: "User not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "User not found", status: 404 };
     }
 
     // Students see their own applications; admins/school-admins see all from their school
@@ -65,7 +56,7 @@ export async function GET(req: NextRequest) {
       const status = searchParams.get("status");
       const academicYear = searchParams.get("academicYear");
 
-      const whereConditions: Array<ReturnType<typeof eq>> = [];
+      const whereConditions: ReturnType<typeof eq>[] = [];
 
       if (!canViewAll) {
         whereConditions.push(eq(rubApplications.studentId, currentUser.id));
@@ -113,9 +104,7 @@ export async function GET(req: NextRequest) {
         count: applications.length,
       });
 
-      return NextResponse.json({
-        data: applications,
-      } satisfies ApiSuccess<typeof applications>);
+      return { data: applications };
     }
 
     // Action: Get available RUB colleges and programs
@@ -123,168 +112,60 @@ export async function GET(req: NextRequest) {
       const collegeId = searchParams.get("collegeId");
       const programId = searchParams.get("programId");
 
-      // Get specific program
-      if (programId) {
-        const program = await db.query.rubPrograms.findFirst({
-          where: and(
-            eq(rubPrograms.id, programId),
-            eq(rubPrograms.isActive, true)
-          ),
-          with: {
-            college: true,
-          },
-        });
-
-        if (!program) {
-          return NextResponse.json(
-            { error: "Program not found", status: 404 } satisfies ApiErrorResponse,
-            { status: 404 }
-          );
-        }
-
-        return NextResponse.json({
-          data: {
-            college: program.college,
-            program: program,
-          },
-        } satisfies ApiSuccess<{ college: typeof program.college; program: typeof program }>);
-      }
-
-      // Get programs for a specific college
-      if (collegeId) {
-        const collegePrograms = await db.query.rubPrograms.findMany({
-          where: and(
-            eq(rubPrograms.collegeId, collegeId),
-            eq(rubPrograms.isActive, true)
-          ),
-          with: {
-            college: true,
-          },
-          orderBy: [rubPrograms.name],
-        });
-
-        return NextResponse.json({
-          data: collegePrograms,
-        } satisfies ApiSuccess<typeof collegePrograms>);
-      }
-
       // Return all active programs with colleges
-      const allPrograms = await db.query.rubPrograms.findMany({
-        where: eq(rubPrograms.isActive, true),
-        with: {
-          college: true,
-        },
-        orderBy: [rubPrograms.name],
-      });
-
-      return NextResponse.json({
-        data: allPrograms,
-      } satisfies ApiSuccess<typeof allPrograms>);
-    }
-
-    // Action: Get application statistics (admin/school-admin only)
-    if (action === "statistics") {
-      if (!canViewAll) {
-        return NextResponse.json(
-          { error: "Forbidden", status: 403 } satisfies ApiErrorResponse,
-          { status: 403 }
-        );
-      }
-
-      const academicYear = searchParams.get("academicYear") || new Date().getFullYear().toString();
-
-      const stats = await db
+      const allPrograms = await db
         .select({
-          total: sql<number>`COUNT(*)`,
-          draft: sql<number>`SUM(CASE WHEN status = 'draft' THEN 1 ELSE 0 END)`,
-          submitted: sql<number>`SUM(CASE WHEN status = 'submitted' THEN 1 ELSE 0 END)`,
-          underReview: sql<number>`SUM(CASE WHEN status = 'under_review' THEN 1 ELSE 0 END)`,
-          selected: sql<number>`SUM(CASE WHEN status = 'selected' THEN 1 ELSE 0 END)`,
-          rejected: sql<number>`SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END)`,
-          admitted: sql<number>`SUM(CASE WHEN status = 'admitted' THEN 1 ELSE 0 END)`,
+          id: rubPrograms.id,
+          collegeId: rubPrograms.collegeId,
+          name: rubPrograms.name,
+          code: rubPrograms.code,
+          duration: rubPrograms.duration,
+          totalSeats: rubPrograms.totalSeats,
+          minPercentage: rubPrograms.minPercentage,
+          description: rubPrograms.description,
+          isActive: rubPrograms.isActive,
+          college: {
+            id: rubColleges.id,
+            name: rubColleges.name,
+            code: rubColleges.code,
+            location: rubColleges.location,
+          },
         })
-        .from(rubApplications)
-        .where(
-          currentUser.schoolId
-            ? and(
-                eq(rubApplications.schoolId, currentUser.schoolId),
-                eq(rubApplications.academicYear, academicYear)
-              )
-            : eq(rubApplications.academicYear, academicYear)
-        );
+        .from(rubPrograms)
+        .leftJoin(rubColleges, eq(rubPrograms.collegeId, rubColleges.id))
+        .where(eq(rubPrograms.isActive, true))
+        .orderBy(rubPrograms.name);
 
-      logger.info("RUB statistics fetched", {
-        route: "/api/rub/applications",
-        userId,
-        academicYear,
-      });
-
-      return NextResponse.json({
-        data: stats[0],
-      } satisfies ApiSuccess<typeof stats[0]>);
+      return { data: allPrograms };
     }
 
-    return NextResponse.json(
-      { error: "Invalid action", status: 400 } satisfies ApiErrorResponse,
-      { status: 400 }
-    );
-  } catch (error) {
-    logger.apiError(error, { route: "/api/rub/applications", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch applications", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return { error: "Invalid action", status: 400 };
+  },
+  ['student', 'admin', 'school-admin', 'counselor']
+);
 
-/**
- * POST /api/rub/applications
- *
- * Create a new RUB college application
- *
- * Body:
- * - preferences: Array of college/program preferences (1-10)
- * - studentDetails: Personal information
- * - parentDetails: Parent/guardian information
- * - academicDetails: Exam results and marks
- * - documents: Uploaded document URLs
- * - scholarshipInfo: Scholarship application details (optional)
- * - submit: Boolean to submit application (vs draft)
- * - academicYear: Academic year for application
- */
-export async function POST(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["student"]);
+// ============================================================================
+// POST /api/rub/applications
+// ============================================================================
 
-    // Handle auth errors
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const POST = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId } = auth;
 
     // Get current user details
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-      columns: { id: true, type: true, schoolId: true, name: true, firstName: true, lastName: true, grade: true, phone: true, email: true, address: true, dateOfBirth: true },
-    });
+    const currentUser = await db
+      .select()
+      .from(users)
+      .where(eq(users.clerkUserId, userId))
+      .limit(1);
 
-    if (!currentUser) {
+    if (!currentUser[0]) {
       logger.error("User not found in database", { userId, route: "/api/rub/applications" });
-      return NextResponse.json(
-        { error: "User not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "User not found", status: 404 };
     }
 
-    if (!currentUser.schoolId) {
-      return NextResponse.json(
-        { error: "You must be linked to a school to submit an application", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+    if (!currentUser[0].schoolId) {
+      return { error: "You must be linked to a school to submit an application", status: 400 };
     }
 
     const body = await req.json();
@@ -293,40 +174,30 @@ export async function POST(req: NextRequest) {
     const { preferences, studentDetails, parentDetails, academicDetails, documents } = body;
 
     if (!preferences || !Array.isArray(preferences) || preferences.length === 0) {
-      return NextResponse.json(
-        { error: "At least one program preference is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "At least one program preference is required", status: 400 };
     }
 
     if (!studentDetails?.cidNumber) {
-      return NextResponse.json(
-        { error: "CID number is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "CID number is required", status: 400 };
     }
 
     if (!academicDetails?.examType || !academicDetails?.examYear) {
-      return NextResponse.json(
-        { error: "Exam details are required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "Exam details are required", status: 400 };
     }
 
     // Check for existing draft/submitted application for this academic year
     const academicYear = body.academicYear || new Date().getFullYear().toString();
-    const existingApplication = await db.query.rubApplications.findFirst({
-      where: and(
-        eq(rubApplications.studentId, currentUser.id),
+    const existingApplication = await db
+      .select()
+      .from(rubApplications)
+      .where(and(
+        eq(rubApplications.studentId, currentUser[0].id),
         eq(rubApplications.academicYear, academicYear)
-      ),
-    });
+      ))
+      .limit(1);
 
-    if (existingApplication && existingApplication.status !== "draft") {
-      return NextResponse.json(
-        { error: "You already have a submitted application for this academic year", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+    if (existingApplication[0] && existingApplication[0].status !== "draft") {
+      return { error: "You already have a submitted application for this academic year", status: 400 };
     }
 
     // Generate application number
@@ -340,21 +211,21 @@ export async function POST(req: NextRequest) {
 
     // Create or update application
     const applicationData = {
-      schoolId: currentUser.schoolId,
-      studentId: currentUser.id,
-      applicationNumber: existingApplication?.applicationNumber || applicationNumber,
+      schoolId: currentUser[0].schoolId,
+      studentId: currentUser[0].id,
+      applicationNumber: existingApplication[0]?.applicationNumber || applicationNumber,
       applicationYear,
       academicYear,
       preferences: preferences || [],
-      studentName: currentUser.name,
+      studentName: currentUser[0].name,
       cidNumber: studentDetails.cidNumber,
-      dateOfBirth: studentDetails.dateOfBirth || currentUser.dateOfBirth,
+      dateOfBirth: studentDetails.dateOfBirth || currentUser[0].dateOfBirth,
       gender: studentDetails.gender,
       bloodGroup: studentDetails.bloodGroup,
       photo: studentDetails.photo,
-      phone: studentDetails.phone || currentUser.phone,
-      email: studentDetails.email || currentUser.email,
-      presentAddress: studentDetails.presentAddress || currentUser.address,
+      phone: studentDetails.phone || currentUser[0].phone,
+      email: studentDetails.email || currentUser[0].email,
+      presentAddress: studentDetails.presentAddress || currentUser[0].address,
       permanentAddress: studentDetails.permanentAddress,
       dzongkhag: studentDetails.dzongkhag,
       gewog: studentDetails.gewog,
@@ -392,12 +263,12 @@ export async function POST(req: NextRequest) {
     };
 
     let application;
-    if (existingApplication) {
+    if (existingApplication[0]) {
       // Update existing draft
       const [updated] = await db
         .update(rubApplications)
         .set(applicationData)
-        .where(eq(rubApplications.id, existingApplication.id))
+        .where(eq(rubApplications.id, existingApplication[0].id))
         .returning();
       application = updated;
     } else {
@@ -421,14 +292,7 @@ export async function POST(req: NextRequest) {
       status: application.status,
     });
 
-    return NextResponse.json({
-      data: application,
-    } satisfies ApiSuccess<typeof application>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/rub/applications", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to create application", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return { data: application };
+  },
+  ['student']
+);

@@ -1,8 +1,7 @@
 "use client";
 
 import { logger } from "@/lib/logger";
-import { db } from "@/lib/db";
-import { classes } from "@/lib/db/schema";
+
 /**
  * TEACHER ATTENDANCE PAGE
  * Take and manage student attendance
@@ -16,7 +15,6 @@ import { classes } from "@/lib/db/schema";
 
 import { useState, useEffect, useMemo } from "react";
 import { PortalHeader } from "@/components/shared/portal-sidebar";
-import { eq } from "drizzle-orm";
 import { AttendanceTracker, Student, AttendanceRecord } from "@/components/attendance";
 import { AttendanceReports, AttendanceSummary, DailyAttendance, AttendanceAlert } from "@/components/attendance";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,6 +31,27 @@ interface ClassData {
   section: string;
   students: Student[];
   subject?: string;
+}
+
+// API response types for teacher attendance
+interface ApiClassResponse {
+  classId: string;
+  className?: string;
+  name?: string;
+  grade?: number;
+  section?: string;
+  subject?: string;
+  students?: ApiStudentResponse[];
+  id: string; // For use in the UI
+  studentsCount?: number; // For displaying student count
+}
+
+interface ApiStudentResponse {
+  id: string;
+  name: string;
+  rollNumber?: string;
+  classId: string;
+  section?: string;
 }
 
 interface AttendanceHistoryData {
@@ -59,7 +78,7 @@ export default function TeacherAttendancePage() {
 
   // Data state
   const [classes, setClasses] = useState<ClassData[]>([]);
-  const [originalClasses, setOriginalClasses] = useState<any[]>([]);
+  const [originalClasses, setOriginalClasses] = useState<ApiClassResponse[]>([]);
   const [selectedClass, setSelectedClass] = useState<ClassData | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
 
@@ -89,25 +108,20 @@ export default function TeacherAttendancePage() {
         const data = await response.json();
 
         // Transform API data to ClassData format
-        const classData: ClassData[] = await Promise.all(data.classes.map(async (cls: any) => {
-          const classInfo = await db.query.classes.findFirst({
-            where: eq(classes.id, cls.classId)
-          });
-
-          return {
-            id: cls.classId,
-            name: classInfo?.name || "",
-            grade: classInfo?.grade || 0,
-            section: classInfo?.section || "",
-            subject: cls.subject || "Class",
-            students: cls.students?.map((s: any) => ({
-              id: s.id,
-              name: s.name,
-              rollNumber: s.rollNumber || "",
-              classId: cls.classId,
-              section: classInfo?.section || "",
-            })) || [],
-          };
+        // API should return class info directly, use it from the response
+        const classData: ClassData[] = data.classes.map((cls: ApiClassResponse) => ({
+          id: cls.classId,
+          name: cls.className || cls.name || "",
+          grade: cls.grade || 0,
+          section: cls.section || "",
+          subject: cls.subject || "Class",
+          students: cls.students?.map((s: ApiStudentResponse) => ({
+            id: s.id,
+            name: s.name,
+            rollNumber: s.rollNumber || "",
+            classId: cls.classId,
+            section: cls.section || "",
+          })) || [],
         }));
 
         setClasses(classData);
@@ -702,7 +716,7 @@ export default function TeacherAttendancePage() {
 
         {!isLoading && !error && classes.length > 0 && (
           <div className="grid md:grid-cols-3 gap-4">
-            {originalClasses.map((cls: any) => (
+            {classes.map((cls: ClassData) => (
               <Card
                 key={cls.id}
                 className="hover:shadow-lg transition-shadow cursor-pointer"
@@ -723,7 +737,7 @@ export default function TeacherAttendancePage() {
                       <p className="text-sm text-muted-foreground">Grade {cls.grade} - {cls.section || "No Section"}</p>
                       <div className="flex items-center gap-2 mt-2 text-sm text-muted-foreground">
                         <Users className="w-4 h-4" />
-                        <span>{cls.studentsCount || 0} students</span>
+                        <span>{cls.students?.length || 0} students</span>
                       </div>
                     </div>
                   </div>

@@ -46,9 +46,11 @@ export async function updateTeacher(teacherId: string, data: {
     // Update name based on first and last name
     if (data.firstName !== undefined || data.lastName !== undefined) {
       // Get current teacher data to preserve unchanged values
-      const currentTeacher = await db.query.users.findFirst({
-        where: and(eq(users.id, teacherId), eq(users.type, "teacher"))
-      });
+      const [currentTeacher] = await db
+        .select()
+        .from(users)
+        .where(and(eq(users.id, teacherId), eq(users.type, "teacher")))
+        .limit(1);
 
       const firstName = data.firstName || currentTeacher?.firstName || '';
       const lastName = data.lastName || currentTeacher?.lastName || '';

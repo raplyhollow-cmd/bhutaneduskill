@@ -1,9 +1,9 @@
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { examResultsEnhanced } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 /**
  * GET /api/student/results - Get student's exam results
@@ -12,16 +12,13 @@ import { eq, desc } from "drizzle-orm";
  * - All exam results for the student
  * - Subject-wise marks
  * - Aggregate results (total percentage, division, rank)
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
-export async function GET(request: NextRequest) {
-  const authResult = await requireAuth(['student', 'teacher', 'counselor', 'admin']);
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
 
-  const { userId } = authResult;
-
-  try {
     // Get exam results - use select() instead of query since examResultsEnhanced has no relations defined
     // Try both studentId and userId fields since the schema has both
     const results = await db
@@ -37,7 +34,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!results || results.length === 0) {
-      return NextResponse.json({ results: [], summary: null });
+      return { results: [], summary: null };
     }
 
     // Calculate aggregate summary
@@ -76,12 +73,7 @@ export async function GET(request: NextRequest) {
       } : null,
     };
 
-    return NextResponse.json({ results, summary });
-  } catch (error) {
-    logger.error("Student results fetch error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch results", results: [], summary: null },
-      { status: 500 }
-    );
-  }
-}
+    return { results, summary };
+  },
+  ["student", "teacher", "counselor", "admin"]
+);

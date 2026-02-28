@@ -9,11 +9,14 @@
 
 
 import { db } from "@/lib/db";
-import { colleges, scholarships, rubPrograms } from "@/lib/db/schema";
+import { colleges, scholarships, rubPrograms, type rubColleges } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
+
+// Type for college insert/update data
+type CollegeInsert = typeof rubColleges.$inferInsert;
 
 // ============================================================================
 // COLLEGES
@@ -61,9 +64,11 @@ export async function getCollegeById(id: string) {
   const { userId } = authResult;
 
   try {
-    const college = await db.query.colleges.findFirst({
-      where: eq(colleges.id, id),
-    });
+    const [college] = await db
+      .select()
+      .from(colleges)
+      .where(eq(colleges.id, id))
+      .limit(1);
 
     if (!college) {
       throw new Error("College not found");
@@ -195,27 +200,8 @@ export async function updateCollege(
   const { userId } = authResult;
 
   try {
-    type CollegeUpdateData = {
-      updatedAt: Date;
-      name?: string;
-      code?: string;
-      type?: string;
-      dzongkhag?: string;
-      location?: string;
-      latitude?: number | null;
-      longitude?: number | null;
-      website?: string | null;
-      email?: string | null;
-      phone?: string | null;
-      programs?: string[];
-      hasHostel?: boolean;
-      hasLibrary?: boolean | null;
-      hasLab?: boolean;
-      hasSports?: boolean;
-      description?: string | null;
-      isActive?: boolean;
-    };
-    const updateData: CollegeUpdateData = {
+    // Build update data dynamically based on what's provided
+    const updateData: Record<string, unknown> = {
       updatedAt: new Date(),
     };
 
@@ -229,7 +215,7 @@ export async function updateCollege(
     if (data.website !== undefined) updateData.website = data.website;
     if (data.email !== undefined) updateData.email = data.email;
     if (data.phone !== undefined) updateData.phone = data.phone;
-    if (data.programs !== undefined) updateData.programs = data.programs;
+    if (data.programs !== undefined) updateData.programs = data.programs.map(p => JSON.stringify(p));
     if (data.hasHostel !== undefined) updateData.hasHostel = !!data.hasHostel;
     if (data.hasLibrary !== undefined) updateData.hasLibrary = data.hasLibrary;
     if (data.hasLab !== undefined) updateData.hasLab = !!data.hasLab;
@@ -239,7 +225,7 @@ export async function updateCollege(
 
     const [updatedCollege] = await db
       .update(colleges)
-      .set(updateData)
+      .set(updateData as Partial<typeof rubColleges.$inferInsert>)
       .where(eq(colleges.id, id))
       .returning();
 
@@ -340,9 +326,11 @@ export async function getScholarshipById(id: string) {
   const { userId } = authResult;
 
   try {
-    const scholarship = await db.query.scholarships.findFirst({
-      where: eq(scholarships.id, id),
-    });
+    const [scholarship] = await db
+      .select()
+      .from(scholarships)
+      .where(eq(scholarships.id, id))
+      .limit(1);
 
     if (!scholarship) {
       throw new Error("Scholarship not found");
@@ -624,9 +612,11 @@ export async function getRUBProgramById(id: string) {
   const { userId } = authResult;
 
   try {
-    const program = await db.query.rubPrograms.findFirst({
-      where: eq(rubPrograms.id, id),
-    });
+    const [program] = await db
+      .select()
+      .from(rubPrograms)
+      .where(eq(rubPrograms.id, id))
+      .limit(1);
 
     if (!program) {
       throw new Error("RUB Program not found");

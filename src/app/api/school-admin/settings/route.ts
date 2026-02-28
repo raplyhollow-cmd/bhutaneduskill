@@ -1,10 +1,21 @@
+/**
+ * SCHOOL ADMIN SETTINGS API
+ *
+ * GET /api/school-admin/settings - Fetch all settings for the school
+ * POST /api/school-admin/settings - Create or update school settings
+ * PUT /api/school-admin/settings - Create academic years, grade configs, bell schedules
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { schools, schoolSettings, academicYears, gradeConfigurations, bellSchedules } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { z } from "zod";
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse } from "@/lib/api/response-helpers";
 
 // ============================================================================
 // VALIDATION SCHEMAS
@@ -108,18 +119,7 @@ const DEFAULT_SETTINGS_VALUES = {
 } as const;
 
 /**
- * Type for settings values with all required fields
- */
-type CompleteSettingsValues = typeof DEFAULT_SETTINGS_VALUES & {
-  id: string;
-  schoolId: string;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
-/**
  * Normalize validated settings data for database operations
- * Converts undefined optional strings to empty strings and adds defaults for missing fields
  */
 function normalizeSettings<T extends Record<string, unknown>>(
   data: T,
@@ -127,12 +127,10 @@ function normalizeSettings<T extends Record<string, unknown>>(
 ): Record<string, unknown> {
   const result: Record<string, unknown> = {};
 
-  // Start with defaults if requested (they will be overridden by data)
   if (includeDefaults) {
     Object.assign(result, DEFAULT_SETTINGS_VALUES);
   }
 
-  // Add data values, converting undefined to empty string
   for (const [key, value] of Object.entries(data)) {
     if (value === undefined) {
       result[key] = "";
@@ -187,52 +185,53 @@ const bellScheduleSchema = z.object({
 // GET - Fetch all settings for the school
 // ============================================================================
 
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['school-admin', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { user } = authResult;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user } = auth;
 
     if (!user.schoolId) {
-      return NextResponse.json({ error: "School not found for user" }, { status: 404 });
+      return errorResponse("School not found for user", 404);
     }
 
     const { searchParams } = new URL(request.url);
     const section = searchParams.get("section"); // "general", "academic", "fees", etc.
 
     // Fetch school info
-    const school = await db.query.schools.findFirst({
-      where: eq(schools.id, user.schoolId),
-    });
+    const [school] = await db
+      .select()
+      .from(schools)
+      .where(eq(schools.id, user.schoolId))
+      .limit(1);
 
     if (!school) {
-      return NextResponse.json({ error: "School not found" }, { status: 404 });
+      return errorResponse("School not found", 404);
     }
 
     // Fetch school settings
-    const settings = await db.query.schoolSettings.findFirst({
-      where: eq(schoolSettings.schoolId, user.schoolId),
-    });
+    const [settings] = await db
+      .select()
+      .from(schoolSettings)
+      .where(eq(schoolSettings.schoolId, user.schoolId))
+      .limit(1);
 
     // Fetch related data
     const [academicYearData, gradeConfigData, bellScheduleData] = await Promise.all([
-      db.query.academicYears.findMany({
-        where: eq(academicYears.schoolId, user.schoolId),
-        orderBy: (academicYears, { desc }) => [desc(academicYears.createdAt)],
-      }),
-      db.query.gradeConfigurations.findFirst({
-        where: eq(gradeConfigurations.schoolId, user.schoolId),
-      }),
-      db.query.bellSchedules.findMany({
-        where: eq(bellSchedules.schoolId, user.schoolId),
-      }),
+      db.select()
+        .from(academicYears)
+        .where(eq(academicYears.schoolId, user.schoolId))
+        .orderBy(desc(academicYears.createdAt)),
+      db.select()
+        .from(gradeConfigurations)
+        .where(eq(gradeConfigurations.schoolId, user.schoolId))
+        .limit(1),
+      db.select()
+        .from(bellSchedules)
+        .where(eq(bellSchedules.schoolId, user.schoolId)),
     ]);
 
     // Return specific section if requested
     if (section === "general") {
-      return NextResponse.json({
+      return successResponse({
         school: {
           name: school.name,
           code: school.code,
@@ -256,7 +255,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (section === "academic") {
-      return NextResponse.json({
+      return successResponse({
         settings: settings ? {
           academicYearStart: settings.academicYearStart,
           academicYearEnd: settings.academicYearEnd,
@@ -272,33 +271,27 @@ export async function GET(request: NextRequest) {
     }
 
     // Return all data
-    return NextResponse.json({
+    return successResponse({
       school,
       settings,
       academicYears: academicYearData,
       gradeConfiguration: gradeConfigData,
       bellSchedules: bellScheduleData,
     });
-  } catch (error) {
-    logger.error("School settings fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch school settings" }, { status: 500 });
-  }
-}
+  },
+  ['school-admin', 'admin']
+);
 
 // ============================================================================
 // POST - Create or update school settings
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['school-admin', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { user } = authResult;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user } = auth;
 
     if (!user.schoolId) {
-      return NextResponse.json({ error: "School not found for user" }, { status: 404 });
+      return errorResponse("School not found for user", 404);
     }
 
     const body = await request.json();
@@ -331,9 +324,11 @@ export async function POST(request: NextRequest) {
         .where(eq(schools.id, user.schoolId));
 
       // Update or create settings
-      const existing = await db.query.schoolSettings.findFirst({
-        where: eq(schoolSettings.schoolId, user.schoolId),
-      });
+      const [existing] = await db
+        .select()
+        .from(schoolSettings)
+        .where(eq(schoolSettings.schoolId, user.schoolId))
+        .limit(1);
 
       if (existing) {
         const [updated] = await db.update(schoolSettings)
@@ -343,20 +338,19 @@ export async function POST(request: NextRequest) {
           })
           .where(eq(schoolSettings.id, existing.id))
           .returning();
-        return NextResponse.json({ settings: updated });
+        return successResponse({ settings: updated });
       } else {
         const [created] = await db.insert(schoolSettings)
           .values({
             id: `settings_${Date.now()}`,
             schoolId: user.schoolId,
-            // Merge validated data with defaults (validated data takes precedence)
             ...DEFAULT_SETTINGS_VALUES,
             ...normalizeSettings(validatedData),
             createdAt: new Date(),
             updatedAt: new Date(),
           })
           .returning();
-        return NextResponse.json({ settings: created }, { status: 201 });
+        return successResponse({ settings: created }, 201);
       }
     }
 
@@ -370,9 +364,11 @@ export async function POST(request: NextRequest) {
         workingDays: true,
       }).parse(data);
 
-      const existing = await db.query.schoolSettings.findFirst({
-        where: eq(schoolSettings.schoolId, user.schoolId),
-      });
+      const [existing] = await db
+        .select()
+        .from(schoolSettings)
+        .where(eq(schoolSettings.schoolId, user.schoolId))
+        .limit(1);
 
       if (existing) {
         const normalizedData = normalizeSettings(validatedData);
@@ -383,7 +379,7 @@ export async function POST(request: NextRequest) {
           })
           .where(eq(schoolSettings.id, existing.id))
           .returning();
-        return NextResponse.json({ settings: updated });
+        return successResponse({ settings: updated });
       } else {
         const normalizedData = normalizeSettings(validatedData, true);
         const [created] = await db.insert(schoolSettings)
@@ -395,188 +391,18 @@ export async function POST(request: NextRequest) {
             updatedAt: new Date(),
           })
           .returning();
-        return NextResponse.json({ settings: created }, { status: 201 });
-      }
-    }
-
-    if (section === "fees") {
-      const validatedData = schoolSettingsSchema.pick({
-        currency: true,
-        lateFeeEnabled: true,
-        lateFeeAmount: true,
-        lateFeeAfter: true,
-        discountEnabled: true,
-      }).parse(data);
-
-      const existing = await db.query.schoolSettings.findFirst({
-        where: eq(schoolSettings.schoolId, user.schoolId),
-      });
-
-      if (existing) {
-        const normalizedData = normalizeSettings(validatedData);
-        const [updated] = await db.update(schoolSettings)
-          .set({
-            ...(normalizedData as typeof DEFAULT_SETTINGS_VALUES),
-            updatedAt: new Date(),
-          })
-          .where(eq(schoolSettings.id, existing.id))
-          .returning();
-        return NextResponse.json({ settings: updated });
-      } else {
-        const normalizedData = normalizeSettings(validatedData, true);
-        const [created] = await db.insert(schoolSettings)
-          .values({
-            id: `settings_${Date.now()}`,
-            schoolId: user.schoolId,
-            ...(normalizedData as typeof DEFAULT_SETTINGS_VALUES),
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          })
-          .returning();
-        return NextResponse.json({ settings: created }, { status: 201 });
-      }
-    }
-
-    if (section === "notifications") {
-      const validatedData = schoolSettingsSchema.pick({
-        emailNotifications: true,
-        smsNotifications: true,
-        attendanceAlerts: true,
-        feeReminders: true,
-        examResults: true,
-      }).parse(data);
-
-      const existing = await db.query.schoolSettings.findFirst({
-        where: eq(schoolSettings.schoolId, user.schoolId),
-      });
-
-      if (existing) {
-        const [updated] = await db.update(schoolSettings)
-          .set({
-            ...normalizeSettings(validatedData),
-            updatedAt: new Date(),
-          })
-          .where(eq(schoolSettings.id, existing.id))
-          .returning();
-        return NextResponse.json({ settings: updated });
-      } else {
-        const [created] = await db.insert(schoolSettings)
-          .values({
-            id: `settings_${Date.now()}`,
-            schoolId: user.schoolId,
-            ...normalizeSettings(validatedData, true),
-            // Timestamps are set below
-            schoolName: "",
-            schoolCode: "",
-            email: "",
-            phone: "",
-            address: "",
-            district: "",
-            website: "",
-            academicYearStart: "",
-            academicYearEnd: "",
-            currentTerm: "",
-            gradingSystem: "percentage",
-            passMark: "40",
-            workingDays: [],
-            currency: "BTN",
-            lateFeeEnabled: false,
-            lateFeeAmount: "0",
-            lateFeeAfter: "0",
-            discountEnabled: false,
-            paymentGateway: "rma",
-            emailService: "resend",
-            smsService: "bmobile",
-            twoFactorAuth: false,
-            sessionTimeout: "60",
-            ipRestriction: false,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          })
-          .returning();
-        return NextResponse.json({ settings: created }, { status: 201 });
-      }
-    }
-
-    if (section === "integrations") {
-      const validatedData = schoolSettingsSchema.pick({
-        paymentGateway: true,
-        emailService: true,
-        smsService: true,
-      }).parse(data);
-
-      const existing = await db.query.schoolSettings.findFirst({
-        where: eq(schoolSettings.schoolId, user.schoolId),
-      });
-
-      if (existing) {
-        const normalizedData = normalizeSettings(validatedData);
-        const [updated] = await db.update(schoolSettings)
-          .set({
-            ...(normalizedData as typeof DEFAULT_SETTINGS_VALUES),
-            updatedAt: new Date(),
-          })
-          .where(eq(schoolSettings.id, existing.id))
-          .returning();
-        return NextResponse.json({ settings: updated });
-      } else {
-        const normalizedData = normalizeSettings(validatedData, true);
-        const [created] = await db.insert(schoolSettings)
-          .values({
-            id: `settings_${Date.now()}`,
-            schoolId: user.schoolId,
-            ...(normalizedData as typeof DEFAULT_SETTINGS_VALUES),
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          })
-          .returning();
-        return NextResponse.json({ settings: created }, { status: 201 });
-      }
-    }
-
-    if (section === "security") {
-      const validatedData = schoolSettingsSchema.pick({
-        twoFactorAuth: true,
-        sessionTimeout: true,
-        ipRestriction: true,
-        allowedIps: true,
-      }).parse(data);
-
-      const existing = await db.query.schoolSettings.findFirst({
-        where: eq(schoolSettings.schoolId, user.schoolId),
-      });
-
-      if (existing) {
-        const normalizedData = normalizeSettings(validatedData);
-        const [updated] = await db.update(schoolSettings)
-          .set({
-            ...(normalizedData as typeof DEFAULT_SETTINGS_VALUES),
-            updatedAt: new Date(),
-          })
-          .where(eq(schoolSettings.id, existing.id))
-          .returning();
-        return NextResponse.json({ settings: updated });
-      } else {
-        const normalizedData = normalizeSettings(validatedData, true);
-        const [created] = await db.insert(schoolSettings)
-          .values({
-            id: `settings_${Date.now()}`,
-            schoolId: user.schoolId,
-            ...(normalizedData as typeof DEFAULT_SETTINGS_VALUES),
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          })
-          .returning();
-        return NextResponse.json({ settings: created }, { status: 201 });
+        return successResponse({ settings: created }, 201);
       }
     }
 
     // Full settings update (all sections)
     const validatedData = schoolSettingsSchema.parse(data);
 
-    const existing = await db.query.schoolSettings.findFirst({
-      where: eq(schoolSettings.schoolId, user.schoolId),
-    });
+    const [existing] = await db
+      .select()
+      .from(schoolSettings)
+      .where(eq(schoolSettings.schoolId, user.schoolId))
+      .limit(1);
 
     if (existing) {
       const normalizedData = normalizeSettings(validatedData);
@@ -587,7 +413,7 @@ export async function POST(request: NextRequest) {
         })
         .where(eq(schoolSettings.id, existing.id))
         .returning();
-      return NextResponse.json({ settings: updated });
+      return successResponse({ settings: updated });
     } else {
       const normalizedData = normalizeSettings(validatedData, true);
       const [created] = await db.insert(schoolSettings)
@@ -599,38 +425,22 @@ export async function POST(request: NextRequest) {
           updatedAt: new Date(),
         })
         .returning();
-      return NextResponse.json({ settings: created }, { status: 201 });
+      return successResponse({ settings: created }, 201);
     }
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: "Validation failed", details: error.issues },
-        { status: 400 }
-      );
-    }
-    logger.error("School settings update error:", error);
-    return NextResponse.json(
-      { error: "Failed to update school settings" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['school-admin', 'admin']
+);
 
 // ============================================================================
-// ACADEMIC YEARS SUB-Routes
+// PUT - Create academic years, grade configs, bell schedules
 // ============================================================================
 
-// POST - Create academic year
-export async function PUT(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['school-admin', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { user } = authResult;
+export const PUT = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user } = auth;
 
     if (!user.schoolId) {
-      return NextResponse.json({ error: "School not found for user" }, { status: 404 });
+      return errorResponse("School not found for user", 404);
     }
 
     const body = await request.json();
@@ -656,7 +466,7 @@ export async function PUT(request: NextRequest) {
         })
         .returning();
 
-      return NextResponse.json({ academicYear: created }, { status: 201 });
+      return successResponse({ academicYear: created }, 201);
     }
 
     if (action === "create_grade_configuration") {
@@ -676,7 +486,7 @@ export async function PUT(request: NextRequest) {
         })
         .returning();
 
-      return NextResponse.json({ gradeConfiguration: created }, { status: 201 });
+      return successResponse({ gradeConfiguration: created }, 201);
     }
 
     if (action === "create_bell_schedule") {
@@ -699,21 +509,10 @@ export async function PUT(request: NextRequest) {
         })
         .returning();
 
-      return NextResponse.json({ bellSchedule: created }, { status: 201 });
+      return successResponse({ bellSchedule: created }, 201);
     }
 
-    return NextResponse.json({ error: "Invalid action" }, { status: 400 });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: "Validation failed", details: error.issues },
-        { status: 400 }
-      );
-    }
-    logger.error("School settings action error:", error);
-    return NextResponse.json(
-      { error: "Failed to perform action" },
-      { status: 500 }
-    );
-  }
-}
+    return badRequestResponse("Invalid action");
+  },
+  ['school-admin', 'admin']
+);

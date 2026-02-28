@@ -9,6 +9,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createApiRoute } from "@/lib/api/route-handler";
+import { requireAuth } from "@/lib/auth-utils";
 import { chatWithGemini } from "@/lib/ai/gemini-server";
 import { STUDY_PLANNER_SYSTEM } from "@/lib/ai/prompts";
 import { safeTrackAIInteraction, AI_FEATURE_IDS } from "@/lib/ai/track-interaction";
@@ -68,21 +69,11 @@ interface StudyPlanResponse {
 // POST - Generate Study Plan
 // ============================================================================
 
-export const POST = createApiRoute<{
-  classGrade: string;
-  subjects: string[];
-  availableHoursPerDay: number;
-  weakSubjects: string[];
-  strongSubjects: string[];
-  examDates?: string[];
-  goals?: string;
-  preferredStudyTime?: "morning" | "afternoon" | "evening" | "night";
-}, StudyPlanResponse>(
-  async (request) => {
-    const auth = await requireAuth(["student", "teacher", "parent"]);
+export const POST = createApiRoute<{}, StudyPlanResponse>(
+  async (req, auth) => {
     const { userId, user } = auth;
 
-    const body = await request.json() as StudyPlannerRequest;
+    const body = await req.json() as StudyPlannerRequest;
     const {
       classGrade,
       subjects,
@@ -140,7 +131,7 @@ export const POST = createApiRoute<{
       examDates,
       goals,
       preferredStudyTime,
-      userName: (user?.name as string) || "Student",
+      userName: "Student",
     });
 
     // Call Gemini AI
@@ -316,8 +307,9 @@ function sanitizeWeeklySchedule(
     if (daySchedule && Array.isArray(daySchedule)) {
       result[day as keyof WeeklySchedule] = daySchedule.filter((slot: unknown) => {
         const s = slot as { time?: unknown; subject?: unknown };
-        return s.time && s.subject && typeof s.subject === 'string' && subjects.some(subj =>
-          s.subject.toLowerCase().includes(subj.toLowerCase())
+        const subjectStr = typeof s.subject === 'string' ? s.subject : '';
+        return s.time && s.subject && subjects.some(subj =>
+          subjectStr.toLowerCase().includes(subj.toLowerCase())
         );
       });
     }
@@ -430,21 +422,26 @@ function formatTime(date: Date): string {
 // GET - Check Study Planner availability
 // ============================================================================
 
-export async function GET() {
-  return NextResponse.json({
-    available: true,
-    feature: "AI Study Planner",
-    description: "Generate personalized weekly study schedules based on your subjects and goals",
-    requiresAuth: true,
-    parameters: {
-      classGrade: "string (e.g., '11', '12')",
-      subjects: "array of strings",
-      availableHoursPerDay: "number (1-8 hours)",
-      weakSubjects: "array of strings",
-      strongSubjects: "array of strings",
-      examDates: "array of date strings (optional)",
-      goals: "string (optional)",
-      preferredStudyTime: "'morning' | 'afternoon' | 'evening' | 'night' (optional, default: 'evening')",
-    },
-  });
-}
+export const GET = createApiRoute(
+  async () => {
+    return {
+      data: {
+        available: true,
+        feature: "AI Study Planner",
+        description: "Generate personalized weekly study schedules based on your subjects and goals",
+        requiresAuth: true,
+        parameters: {
+          classGrade: "string (e.g., '11', '12')",
+          subjects: "array of strings",
+          availableHoursPerDay: "number (1-8 hours)",
+          weakSubjects: "array of strings",
+          strongSubjects: "array of strings",
+          examDates: "array of date strings (optional)",
+          goals: "string (optional)",
+          preferredStudyTime: "'morning' | 'afternoon' | 'evening' | 'night' (optional, default: 'evening')",
+        },
+      }
+    };
+  },
+  ["student", "teacher", "parent"]
+);

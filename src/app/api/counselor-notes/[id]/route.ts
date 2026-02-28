@@ -1,64 +1,71 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+/**
+ * COUNSELOR NOTES [id] API
+ *
+ * GET /api/counselor-notes/[id] - Get single note
+ * PUT /api/counselor-notes/[id] - Update note
+ * DELETE /api/counselor-notes/[id] - Delete note
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
+import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
-import { counselorNotes, users } from "@/lib/db/schema";
+import { counselorNotes } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 // GET /api/counselor-notes/[id] - Get single note
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const authResult = await requireAuth(['counselor', 'teacher', 'admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId, user } = authResult;
+export const GET = createApiRoute(
+  async (req: NextRequest, _auth, context) => {
+    const params = await context?.params as { id?: string } | undefined;
+    const id = params?.id;
 
-    const note = await db.query.counselorNotes.findFirst({
-      where: eq(counselorNotes.id, id),
-    });
+    if (!id) {
+      return { error: "Missing note ID", status: 400 };
+    }
+
+    const [note] = await db
+      .select()
+      .from(counselorNotes)
+      .where(eq(counselorNotes.id, id))
+      .limit(1);
 
     if (!note) {
-      return NextResponse.json({ error: "Note not found" }, { status: 404 });
+      return { error: "Note not found", status: 404 };
     }
 
-    return NextResponse.json({ note });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/counselor-notes/[id]", method: "GET" });
-    return NextResponse.json({ error: "Failed to fetch note" }, { status: 500 });
-  }
-}
+    return { note };
+  },
+  ['counselor', 'teacher', 'admin', 'school-admin']
+);
 
 // PUT /api/counselor-notes/[id] - Update note
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const authResult = await requireAuth(['counselor', 'teacher', 'admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const PUT = createApiRoute(
+  async (req: NextRequest, auth, context) => {
+    const { user } = auth;
+    const params = await context?.params as { id?: string } | undefined;
+    const id = params?.id;
+
+    if (!id) {
+      return { error: "Missing note ID", status: 400 };
     }
-    const { userId, user } = authResult;
 
-    const body = await request.json();
+    const body = await req.json();
 
-    const note = await db.query.counselorNotes.findFirst({
-      where: eq(counselorNotes.id, id),
-    });
+    const [note] = await db
+      .select()
+      .from(counselorNotes)
+      .where(eq(counselorNotes.id, id))
+      .limit(1);
 
     if (!note) {
-      return NextResponse.json({ error: "Note not found" }, { status: 404 });
+      return { error: "Note not found", status: 404 };
     }
 
     // Only the author can update
     if (note.counselorId !== user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return { error: "Forbidden", status: 403 };
     }
 
     const [updatedNote] = await db
@@ -67,44 +74,40 @@ export async function PUT(
       .where(eq(counselorNotes.id, id))
       .returning();
 
-    return NextResponse.json({ note: updatedNote });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/counselor-notes/[id]", method: "PUT" });
-    return NextResponse.json({ error: "Failed to update note" }, { status: 500 });
-  }
-}
+    return { note: updatedNote };
+  },
+  ['counselor', 'teacher', 'admin', 'school-admin']
+);
 
 // DELETE /api/counselor-notes/[id] - Delete note
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const authResult = await requireAuth(['counselor', 'teacher', 'admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId, user } = authResult;
+export const DELETE = createApiRoute(
+  async (req: NextRequest, auth, context) => {
+    const { user } = auth;
+    const params = await context?.params as { id?: string } | undefined;
+    const id = params?.id;
 
-    const note = await db.query.counselorNotes.findFirst({
-      where: eq(counselorNotes.id, id),
-    });
+    if (!id) {
+      return { error: "Missing note ID", status: 400 };
+    }
+
+    const [note] = await db
+      .select()
+      .from(counselorNotes)
+      .where(eq(counselorNotes.id, id))
+      .limit(1);
 
     if (!note) {
-      return NextResponse.json({ error: "Note not found" }, { status: 404 });
+      return { error: "Note not found", status: 404 };
     }
 
     // Only the author can delete
     if (note.counselorId !== user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return { error: "Forbidden", status: 403 };
     }
 
     await db.delete(counselorNotes).where(eq(counselorNotes.id, id));
 
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/counselor-notes/[id]", method: "DELETE" });
-    return NextResponse.json({ error: "Failed to delete note" }, { status: 500 });
-  }
-}
+    return { success: true };
+  },
+  ['counselor', 'teacher', 'admin', 'school-admin']
+);

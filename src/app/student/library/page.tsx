@@ -496,7 +496,7 @@ export default function StudentLibraryPage() {
       </div>
 
       {/* Main Content */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "browse" | "borrowed" | "reservations")}>
         <TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-3">
           <TabsTrigger value="browse">Browse Catalog</TabsTrigger>
           <TabsTrigger value="borrowed">

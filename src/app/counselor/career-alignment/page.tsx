@@ -112,9 +112,29 @@ export default function CareerAlignmentPage() {
   async function fetchStudents() {
     try {
       setIsLoading(true);
-      // In a real implementation, this would call an API
-      // For now, mock data
-      setStudents([]);
+      const response = await fetch('/api/counselor/students');
+      if (response.ok) {
+        const data = await response.json();
+        // Transform API response to match StudentCareerMatch interface
+        const students = (data.data.students || []).map((student: {
+          id: string;
+          name: string;
+          grade?: string;
+          school?: string;
+          gpa?: number;
+        }) => ({
+          id: student.id,
+          studentId: student.id,
+          studentName: student.name,
+          studentClass: student.grade || null,
+          schoolName: student.school || 'Unknown School',
+          careerMatches: [], // Would need to fetch from career matches API
+          hollandCode: undefined,
+          mbtiType: undefined,
+          avgMarks: student.gpa || undefined,
+        }));
+        setStudents(students);
+      }
     } catch (error) {
       console.error("Error fetching students:", error);
     } finally {
@@ -129,7 +149,7 @@ export default function CareerAlignmentPage() {
     }
   }
 
-  function selectCareer(career: { careerTitle: string; riasecCode?: string }) {
+  function selectCareer(career: { careerId: string; careerTitle: string; matchScore: number; matchReason: string; riasecCode?: string }) {
     setSelectedCareer(career);
     setApprovalData({
       ...approvalData,

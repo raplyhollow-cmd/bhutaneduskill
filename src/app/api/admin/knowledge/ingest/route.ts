@@ -12,8 +12,8 @@
  * Uses Gemini AI to parse and structure the data.
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { knowledgeDrafts, rubRequirements, nationalScholarships } from "@/lib/db/schema";
@@ -301,32 +301,18 @@ async function parseGenericContent(content: string, sourceType: string): Promise
 // API ROUTE
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
-    const body: KnowledgeIngestRequest = await request.json();
+export const POST = createApiRoute(
+  async (req, auth) => {
+    const { userId } = auth;
+    const body: KnowledgeIngestRequest = await req.json();
     const { sourceType, content, url, sourceName } = body;
 
     if (!sourceType) {
-      return NextResponse.json(
-        { error: "sourceType is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "sourceType is required", status: 400 } satisfies ApiErrorResponse;
     }
 
     if (!content && !url) {
-      return NextResponse.json(
-        { error: "Either content or url is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "Either content or url is required", status: 400 } satisfies ApiErrorResponse;
     }
 
     logger.info("Knowledge ingestion requested", { userId, sourceType, url, hasContent: !!content });
@@ -376,7 +362,7 @@ export async function POST(request: NextRequest) {
       confidence: parseResult.confidence,
     });
 
-    return NextResponse.json({
+    return {
       data: {
         draftId,
         confidenceScore: parseResult.confidence,
@@ -384,59 +370,24 @@ export async function POST(request: NextRequest) {
         structuredData: parseResult.data,
         preview: parseResult.preview,
       } satisfies IngestResult,
-    } satisfies ApiSuccess<IngestResult>);
-
-  } catch (error) {
-    logger.apiError(error, {
-      route: "/api/admin/knowledge/ingest",
-      method: "POST",
-    });
-
-    return NextResponse.json(
-      {
-        error: "Failed to ingest knowledge",
-        status: 500,
-        details: process.env.NODE_ENV === "development" ? String(error) : undefined,
-      } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    } satisfies ApiSuccess<IngestResult>;
+  },
+  ["admin"]
+);
 
 /**
  * GET /api/admin/knowledge/drafts - List all drafts
  */
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-
+export const GET = createApiRoute(
+  async (req, auth) => {
     const drafts = await db
       .select()
       .from(knowledgeDrafts)
       .orderBy(knowledgeDrafts.createdAt);
 
-    return NextResponse.json({
+    return {
       data: drafts,
-    } satisfies ApiSuccess<typeof drafts>);
-
-  } catch (error) {
-    logger.apiError(error, {
-      route: "/api/admin/knowledge/ingest",
-      method: "GET",
-    });
-
-    return NextResponse.json(
-      {
-        error: "Failed to fetch drafts",
-        status: 500,
-      } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    } satisfies ApiSuccess<typeof drafts>;
+  },
+  ["admin"]
+);

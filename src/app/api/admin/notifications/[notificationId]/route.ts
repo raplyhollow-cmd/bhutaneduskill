@@ -7,7 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
 import { notifications, notificationDeliveries, users } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
@@ -21,29 +21,24 @@ interface RouteContext {
 // GET - Get Single Notification
 // ============================================================================
 
-export async function GET(
-  request: NextRequest,
-  { params }: RouteContext
-) {
-  const authResult = await requireAuth(["admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
+export const GET = createApiRoute(
+  async (
+    request: NextRequest,
+    auth,
+    { params }: RouteContext
+  ) => {
+    const { notificationId } = await params;
 
-  const { userId } = authResult;
-  const { notificationId } = await params;
-
-  try {
     // Get notification
-    const notification = await db.query.notifications.findFirst({
-      where: eq(notifications.id, notificationId),
-    });
+    const notificationResult = await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.id, notificationId))
+      .limit(1);
+    const notification = notificationResult[0];
 
     if (!notification) {
-      return NextResponse.json(
-        { error: "Notification not found" },
-        { status: 404 }
-      );
+      return { error: "Notification not found", status: 404 };
     }
 
     // Get delivery statistics
@@ -91,26 +86,16 @@ export async function GET(
       .orderBy(desc(notificationDeliveries.createdAt))
       .limit(20);
 
-    return NextResponse.json({
+    return {
       data: {
         ...notification,
         deliveryStats: stats,
         recentDeliveries,
       },
-    });
-  } catch (error: unknown) {
-    logger.apiError(error, {
-      route: `/api/admin/notifications/${notificationId}`,
-      method: "GET",
-      userId,
-    });
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json(
-      { error: "Failed to fetch notification", details: errorMessage },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);
 
 // ============================================================================
 // PATCH - Update Notification
@@ -133,37 +118,32 @@ interface UpdateNotificationRequest {
   status?: "draft" | "scheduled" | "cancelled";
 }
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: RouteContext
-) {
-  const authResult = await requireAuth(["admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
+export const PATCH = createApiRoute(
+  async (
+    request: NextRequest,
+    auth,
+    { params }: RouteContext
+  ) => {
+    const { notificationId } = await params;
 
-  const { userId } = authResult;
-  const { notificationId } = await params;
-
-  try {
     // Check if notification exists
-    const existing = await db.query.notifications.findFirst({
-      where: eq(notifications.id, notificationId),
-    });
+    const existingResult = await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.id, notificationId))
+      .limit(1);
+    const existing = existingResult[0];
 
     if (!existing) {
-      return NextResponse.json(
-        { error: "Notification not found" },
-        { status: 404 }
-      );
+      return { error: "Notification not found", status: 404 };
     }
 
     // Cannot update sent notifications
     if (existing.status === "sent" || existing.status === "sending") {
-      return NextResponse.json(
-        { error: "Cannot update a notification that has already been sent" },
-        { status: 400 }
-      );
+      return {
+        error: "Cannot update a notification that has already been sent",
+        status: 400,
+      };
     }
 
     const body: UpdateNotificationRequest = await request.json();
@@ -188,10 +168,7 @@ export async function PATCH(
     if (body.scheduledFor !== undefined) {
       const scheduledDate = new Date(body.scheduledFor);
       if (isNaN(scheduledDate.getTime())) {
-        return NextResponse.json(
-          { error: "Invalid scheduledFor date format" },
-          { status: 400 }
-        );
+        return { error: "Invalid scheduledFor date format", status: 400 };
       }
       updateData.scheduledFor = scheduledDate;
     }
@@ -199,10 +176,7 @@ export async function PATCH(
     if (body.expiresAt !== undefined) {
       const expiresDate = new Date(body.expiresAt);
       if (isNaN(expiresDate.getTime())) {
-        return NextResponse.json(
-          { error: "Invalid expiresAt date format" },
-          { status: 400 }
-        );
+        return { error: "Invalid expiresAt date format", status: 400 };
       }
       updateData.expiresAt = expiresDate;
     }
@@ -219,10 +193,10 @@ export async function PATCH(
       };
 
       if (!validTransitions[existing.status]?.includes(body.status)) {
-        return NextResponse.json(
-          { error: `Cannot transition from ${existing.status} to ${body.status}` },
-          { status: 400 }
-        );
+        return {
+          error: `Cannot transition from ${existing.status} to ${body.status}`,
+          status: 400,
+        };
       }
 
       updateData.status = body.status;
@@ -237,63 +211,48 @@ export async function PATCH(
 
     logger.info("Notification updated", {
       notificationId,
-      userId,
+      userId: auth.userId,
       changes: Object.keys(body),
     });
 
-    return NextResponse.json({
+    return {
       data: updated[0],
       message: "Notification updated successfully",
-    });
-  } catch (error: unknown) {
-    logger.apiError(error, {
-      route: `/api/admin/notifications/${notificationId}`,
-      method: "PATCH",
-      userId,
-    });
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json(
-      { error: "Failed to update notification", details: errorMessage },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);
 
 // ============================================================================
 // DELETE - Delete Notification
 // ============================================================================
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: RouteContext
-) {
-  const authResult = await requireAuth(["admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
+export const DELETE = createApiRoute(
+  async (
+    request: NextRequest,
+    auth,
+    { params }: RouteContext
+  ) => {
+    const { notificationId } = await params;
 
-  const { userId } = authResult;
-  const { notificationId } = await params;
-
-  try {
     // Check if notification exists
-    const existing = await db.query.notifications.findFirst({
-      where: eq(notifications.id, notificationId),
-    });
+    const existingResult = await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.id, notificationId))
+      .limit(1);
+    const existing = existingResult[0];
 
     if (!existing) {
-      return NextResponse.json(
-        { error: "Notification not found" },
-        { status: 404 }
-      );
+      return { error: "Notification not found", status: 404 };
     }
 
     // Cannot delete sent notifications (only cancel)
     if (existing.status === "sent" || existing.status === "sending") {
-      return NextResponse.json(
-        { error: "Cannot delete a notification that has already been sent. Use PATCH to cancel it." },
-        { status: 400 }
-      );
+      return {
+        error: "Cannot delete a notification that has already been sent. Use PATCH to cancel it.",
+        status: 400,
+      };
     }
 
     // Delete notification (cascade will delete deliveries)
@@ -303,22 +262,12 @@ export async function DELETE(
 
     logger.info("Notification deleted", {
       notificationId,
-      userId,
+      userId: auth.userId,
     });
 
-    return NextResponse.json({
+    return {
       message: "Notification deleted successfully",
-    });
-  } catch (error: unknown) {
-    logger.apiError(error, {
-      route: `/api/admin/notifications/${notificationId}`,
-      method: "DELETE",
-      userId,
-    });
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    return NextResponse.json(
-      { error: "Failed to delete notification", details: errorMessage },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);

@@ -194,9 +194,11 @@ export async function POST(req: NextRequest) {
 
     // Check if school with same name already exists
     // Note: governmentId is stored in settings JSON, so check by name instead
-    const existingTenant = await db.query.tenants.findFirst({
-      where: eq(tenants.name, body.schoolName),
-    });
+    const [existingTenant] = await db
+      .select()
+      .from(tenants)
+      .where(eq(tenants.name, body.schoolName))
+      .limit(1);
 
     if (existingTenant) {
       // Try to check if governmentId in settings matches
@@ -443,9 +445,11 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const verificationRequest = await db.query.verificationRequests.findFirst({
-      where: eq(verificationRequests.id, requestId),
-    });
+    const [verificationRequest] = await db
+      .select()
+      .from(verificationRequests)
+      .where(eq(verificationRequests.id, requestId))
+      .limit(1);
 
     if (!verificationRequest) {
       return NextResponse.json(
@@ -470,7 +474,7 @@ export async function GET(req: NextRequest) {
     const response = {
       data: {
         requestId: verificationRequest.id,
-        status: verificationRequest.status as any,
+        status: verificationRequest.status as "pending" | "under_review" | "approved",
         verified: tenant?.isActive === true || tenantSettings.status === "verified" || tenantSettings.status === "active",
         verificationMethod: verificationRequest.type,
         submittedAt: verificationRequest.submittedAt.toISOString(),
@@ -508,9 +512,11 @@ export async function PATCH(req: NextRequest) {
     }
 
     // Get verification request
-    const verificationRequest = await db.query.verificationRequests.findFirst({
-      where: eq(verificationRequests.id, requestId),
-    });
+    const [verificationRequest] = await db
+      .select()
+      .from(verificationRequests)
+      .where(eq(verificationRequests.id, requestId))
+      .limit(1);
 
     if (!verificationRequest) {
       return NextResponse.json(
@@ -528,8 +534,14 @@ export async function PATCH(req: NextRequest) {
     }
 
     // Add new document to array
-    const updatedDocuments = [
-      ...(verificationRequest.documents as any[]),
+    type VerificationDocument = {
+      type: string;
+      url: string;
+      name: string;
+      size?: number;
+    };
+    const updatedDocuments: VerificationDocument[] = [
+      ...(verificationRequest.documents as VerificationDocument[]),
       {
         type: documentType,
         url: documentData,
@@ -541,7 +553,7 @@ export async function PATCH(req: NextRequest) {
     await db
       .update(verificationRequests)
       .set({
-        documents: updatedDocuments as any,
+        documents: updatedDocuments,
         updatedAt: new Date(),
       })
       .where(eq(verificationRequests.id, requestId));

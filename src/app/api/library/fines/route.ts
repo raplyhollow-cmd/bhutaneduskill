@@ -260,9 +260,12 @@ export const POST = createApiRoute(
 
     if (validatedData.circulationId) {
       // Pay fine for specific circulation record
-      const circulationRecord = await db.query.circulation.findFirst({
-        where: eq(circulation.id, validatedData.circulationId),
-      });
+      const circulationRecord = await db
+        .select()
+        .from(circulation)
+        .where(eq(circulation.id, validatedData.circulationId))
+        .limit(1)
+        .then(rows => rows[0] || null);
 
       if (!circulationRecord) {
         return notFoundResponse("Circulation record");
@@ -298,9 +301,12 @@ export const POST = createApiRoute(
       updatedCirculations.push(updatedCirculation);
 
       // Update member's fine due
-      const member = await db.query.libraryMembers.findFirst({
-        where: eq(libraryMembers.userId, circulationRecord.borrowerId),
-      });
+      const member = await db
+        .select()
+        .from(libraryMembers)
+        .where(eq(libraryMembers.userId, circulationRecord.borrowerId))
+        .limit(1)
+        .then(rows => rows[0] || null);
 
       if (member) {
         const currentFineDue = toNumber(member.fineDue);
@@ -318,9 +324,12 @@ export const POST = createApiRoute(
       }
     } else if (validatedData.memberId) {
       // Pay fines for member (all outstanding)
-      const member = await db.query.libraryMembers.findFirst({
-        where: eq(libraryMembers.id, validatedData.memberId),
-      });
+      const member = await db
+        .select()
+        .from(libraryMembers)
+        .where(eq(libraryMembers.id, validatedData.memberId))
+        .limit(1)
+        .then(rows => rows[0] || null);
 
       if (!member) {
         return notFoundResponse("Library member");
@@ -347,9 +356,10 @@ export const POST = createApiRoute(
 
       // Mark all circulation fines as paid if fully paid
       if (newFineDue === 0) {
-        const circulationRecords = await db.query.circulation.findMany({
-          where: eq(circulation.borrowerId, member.userId),
-        });
+        const circulationRecords = await db
+          .select()
+          .from(circulation)
+          .where(eq(circulation.borrowerId, member.userId));
 
         for (const record of circulationRecords) {
           if (record.fine > 0 && !record.finePaid) {
@@ -401,9 +411,12 @@ export const PATCH = createApiRoute(
     }
 
     // Get circulation record
-    const circulationRecord = await db.query.circulation.findFirst({
-      where: eq(circulation.id, circulationId),
-    });
+    const circulationRecord = await db
+      .select()
+      .from(circulation)
+      .where(eq(circulation.id, circulationId))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!circulationRecord) {
       return notFoundResponse("Circulation record");
@@ -427,9 +440,12 @@ export const PATCH = createApiRoute(
       .returning();
 
     // Update member's fine due
-    const member = await db.query.libraryMembers.findFirst({
-      where: eq(libraryMembers.userId, circulationRecord.borrowerId),
-    });
+    const member = await db
+      .select()
+      .from(libraryMembers)
+      .where(eq(libraryMembers.userId, circulationRecord.borrowerId))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (member) {
       const currentFineDue = toNumber(member.fineDue);

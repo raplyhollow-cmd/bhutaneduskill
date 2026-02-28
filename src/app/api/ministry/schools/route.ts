@@ -110,12 +110,13 @@ export const GET = createApiRoute(
     // Fetch schools with counts
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const schoolList = await db.query.schools.findMany({
-      where: whereClause,
-      limit,
-      offset,
-      orderBy: desc(schools.createdAt),
-    });
+    const schoolList = await db
+      .select()
+      .from(schools)
+      .where(whereClause)
+      .orderBy(desc(schools.createdAt))
+      .limit(limit)
+      .offset(offset);
 
     // OPTIMIZATION: Batch fetch student and teacher counts instead of N queries
     const schoolIds = schoolList.map((s) => s.id);

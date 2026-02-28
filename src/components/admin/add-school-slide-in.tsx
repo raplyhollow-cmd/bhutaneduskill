@@ -41,8 +41,10 @@ export function AddSchoolSlideIn({ isOpen, onClose, onSuccess }: AddSchoolSlideI
       // Auto-generate code preview when name or district changes
       if (field === "name" || field === "district") {
         const currentYear = new Date().getFullYear();
-        const nameCode = (field === "name" ? value : prev.name).substring(0, 3).toUpperCase();
-        const districtCode = (field === "district" ? value : prev.district).substring(0, 3).toUpperCase();
+        const nameValue = String(field === "name" ? value : prev.name);
+        const districtValue = String(field === "district" ? value : prev.district);
+        const nameCode = nameValue.substring(0, 3).toUpperCase();
+        const districtCode = districtValue.substring(0, 3).toUpperCase();
         setGeneratedCode(`${nameCode}-${districtCode}-${currentYear}`);
       }
 

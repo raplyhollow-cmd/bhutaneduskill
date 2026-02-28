@@ -290,11 +290,12 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
   // But NOT classes, homework, attendance, results (school-specific data)
   if (isPendingEnrollment) {
     // Get assessments (available to all students)
-    const studentAssessments = await db.query.assessments.findMany({
-      where: eq(assessments.userId, studentId),
-      orderBy: [desc(assessments.createdAt)],
-      limit: 20,
-    });
+    const studentAssessments = await db
+      .select()
+      .from(assessments)
+      .where(eq(assessments.userId, studentId))
+      .orderBy(desc(assessments.createdAt))
+      .limit(20);
 
     const completedAssessments = studentAssessments.filter((a) => a.status === "completed");
     const latestAssessment = completedAssessments[0] || null;
@@ -302,10 +303,13 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
     // Get career matches
     let hollandCode: string | null = null;
     if (latestAssessment && (latestAssessment as AssessmentWithExtras).type === "riasec") {
-      const riasecResult = await db.query.riasecResults.findFirst({
-        where: eq(riasecResults.userId, studentId),
-        orderBy: [desc(riasecResults.createdAt)],
-      });
+      const riasecResult = await db
+        .select()
+        .from(riasecResults)
+        .where(eq(riasecResults.userId, studentId))
+        .orderBy(desc(riasecResults.createdAt))
+        .limit(1)
+        .then(rows => rows[0] || null);
       hollandCode = riasecResult?.hollandCode || null;
     }
 
@@ -357,12 +361,15 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
   }
 
   // Get student's class enrollment
-  const enrollment = await db.query.enrollments.findFirst({
-    where: and(
+  const enrollment = await db
+    .select()
+    .from(enrollments)
+    .where(and(
       eq(enrollments.studentId, studentId),
       eq(enrollments.status, "active")
-    ),
-  });
+    ))
+    .limit(1)
+    .then(rows => rows[0] || null);
 
   const studentInfo: StudentInfo = {
     id: studentRecords[0].id,
@@ -392,14 +399,15 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
 
   if (studentClassIds.length > 0) {
     // Get all homework for student's classes
-    const allHomework = await db.query.homework.findMany({
-      where: and(
+    const allHomework = await db
+      .select()
+      .from(homework)
+      .where(and(
         inArray(homework.classId, studentClassIds),
         sql`${homework.isPublished} = true`
-      ),
-      orderBy: [desc(homework.dueDate)],
-      limit: 50,
-    });
+      ))
+      .orderBy(desc(homework.dueDate))
+      .limit(50);
 
     homeworkSummary.total = allHomework.length;
 
@@ -444,11 +452,12 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
   }
 
   // 3. Get assessment summary
-  const studentAssessments = await db.query.assessments.findMany({
-    where: eq(assessments.userId, studentId),
-    orderBy: [desc(assessments.createdAt)],
-    limit: 20,
-  });
+  const studentAssessments = await db
+    .select()
+    .from(assessments)
+    .where(eq(assessments.userId, studentId))
+    .orderBy(desc(assessments.createdAt))
+    .limit(20);
 
   const completedAssessments = studentAssessments.filter(a => a.status === "completed");
   const latestAssessment = completedAssessments[0] || null;
@@ -456,10 +465,13 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
   // Get RIASEC result for career matching
   let hollandCode: string | null = null;
   if (latestAssessment && (latestAssessment as AssessmentWithExtras).type === "riasec") {
-    const riasecResult = await db.query.riasecResults.findFirst({
-      where: eq(riasecResults.userId, studentId),
-      orderBy: [desc(riasecResults.createdAt)],
-    });
+    const riasecResult = await db
+      .select()
+      .from(riasecResults)
+      .where(eq(riasecResults.userId, studentId))
+      .orderBy(desc(riasecResults.createdAt))
+      .limit(1)
+      .then(rows => rows[0] || null);
     hollandCode = riasecResult?.hollandCode || null;
   }
 
@@ -478,12 +490,13 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split("T")[0];
 
-  const attendanceRecords = await db.query.attendance.findMany({
-    where: and(
+  const attendanceRecords = await db
+    .select()
+    .from(attendance)
+    .where(and(
       eq(attendance.studentId, studentId),
       gte(attendance.date, thirtyDaysAgoStr)
-    ),
-  });
+    ));
 
   const presentDays = attendanceRecords.filter(a => a.status === "present" || a.status === "late").length;
   const totalDays = attendanceRecords.length;
@@ -527,11 +540,12 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
   }
 
   // Add homework achievements
-  const recentSubmissions = await db.query.homeworkSubmissions.findMany({
-    where: eq(homeworkSubmissions.studentId, studentId),
-    orderBy: [desc(homeworkSubmissions.submittedAt)],
-    limit: 3,
-  });
+  const recentSubmissions = await db
+    .select()
+    .from(homeworkSubmissions)
+    .where(eq(homeworkSubmissions.studentId, studentId))
+    .orderBy(desc(homeworkSubmissions.submittedAt))
+    .limit(3);
 
   // OPTIMIZATION: Batch fetch all homework details at once
   const homeworkIds = recentSubmissions.map(s => s.homeworkId);
@@ -565,14 +579,15 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
   }
 
   // Add module completion achievements
-  const completedModules = await db.query.moduleProgress.findMany({
-    where: and(
+  const completedModules = await db
+    .select()
+    .from(moduleProgress)
+    .where(and(
       eq(moduleProgress.studentId, studentId),
       sql`${moduleProgress.completedAt} IS NOT NULL`
-    ),
-    orderBy: [desc(moduleProgress.completedAt)],
-    limit: 3,
-  });
+    ))
+    .orderBy(desc(moduleProgress.completedAt))
+    .limit(3);
 
   for (const progress of completedModules) {
     achievements.push({
@@ -593,15 +608,16 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
 
   // Homework deadlines
   if (studentClassIds.length > 0) {
-    const upcomingHomework = await db.query.homework.findMany({
-      where: and(
+    const upcomingHomework = await db
+      .select()
+      .from(homework)
+      .where(and(
         inArray(homework.classId, studentClassIds),
         gte(homework.dueDate, today.toISOString().split("T")[0]),
         sql`${homework.isPublished} = true`
-      ),
-      orderBy: [homework.dueDate],
-      limit: 5,
-    });
+      ))
+      .orderBy(homework.dueDate)
+      .limit(5);
 
     // OPTIMIZATION: Batch fetch all submissions for this student
     const homeworkIds = upcomingHomework.map(hw => hw.id);
@@ -644,12 +660,15 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
 
   // Fee deadlines
   if (schoolId) {
-    const feeData = await db.query.studentFees.findFirst({
-      where: and(
+    const feeData = await db
+      .select()
+      .from(studentFees)
+      .where(and(
         eq(studentFees.studentId, studentId),
         sql`${studentFees.amountPending} > 0`
-      ),
-    });
+      ))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (feeData?.dueDate) {
       const dueDate = new Date(feeData.dueDate);
@@ -709,9 +728,12 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
   let feeStatus: FeeStatus | null = null;
 
   if (schoolId) {
-    const studentFee = await db.query.studentFees.findFirst({
-      where: eq(studentFees.studentId, studentId),
-    });
+    const studentFee = await db
+      .select()
+      .from(studentFees)
+      .where(eq(studentFees.studentId, studentId))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (studentFee) {
       const feeWithExtras = studentFee as StudentFeeWithExtras;
@@ -833,12 +855,15 @@ export async function getStudentProgressData(): Promise<StudentProgressData> {
   const studentName = `${userRecord.firstName} ${userRecord.lastName || ""}`.trim();
 
   // Get enrollment for class info
-  const enrollment = await db.query.enrollments.findFirst({
-    where: and(
+  const enrollment = await db
+    .select()
+    .from(enrollments)
+    .where(and(
       eq(enrollments.studentId, studentId),
       eq(enrollments.status, "active")
-    ),
-  });
+    ))
+    .limit(1)
+    .then(rows => rows[0] || null);
 
   const studentInfo: StudentInfo = {
     id: studentRecords[0].id,
@@ -861,13 +886,14 @@ export async function getStudentProgressData(): Promise<StudentProgressData> {
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split("T")[0];
 
-  const attendanceRecords = await db.query.attendance.findMany({
-    where: and(
+  const attendanceRecords = await db
+    .select()
+    .from(attendance)
+    .where(and(
       eq(attendance.studentId, studentId),
       gte(attendance.date, thirtyDaysAgoStr)
-    ),
-    orderBy: [desc(attendance.date)],
-  });
+    ))
+    .orderBy(desc(attendance.date));
 
   const present = attendanceRecords.filter(a => a.status === "present").length;
   const absent = attendanceRecords.filter(a => a.status === "absent").length;
@@ -888,11 +914,12 @@ export async function getStudentProgressData(): Promise<StudentProgressData> {
   };
 
   // Get exam results
-  const examResultsData = await db.query.examResultsEnhanced.findMany({
-    where: eq(examResultsEnhanced.studentId, studentId),
-    orderBy: [desc(examResultsEnhanced.examYear)],
-    limit: 10,
-  });
+  const examResultsData = await db
+    .select()
+    .from(examResultsEnhanced)
+    .where(eq(examResultsEnhanced.studentId, studentId))
+    .orderBy(desc(examResultsEnhanced.examYear))
+    .limit(10);
 
   const examResults: ExamResult[] = examResultsData.map(result => {
     const resultData = result as {
@@ -931,19 +958,20 @@ export async function getStudentProgressData(): Promise<StudentProgressData> {
   const subjectsMap = new Map<string, SubjectPerformance>();
 
   if (enrollment?.classId) {
-    const classHomework = await db.query.homework.findMany({
-      where: eq(homework.classId, enrollment.classId),
-    });
+    const classHomework = await db
+      .select()
+      .from(homework)
+      .where(eq(homework.classId, enrollment.classId));
 
     // OPTIMIZATION: Batch fetch all submissions for this student and class homework
     const homeworkIds = classHomework.map(hw => hw.id);
-    let submissionsMap = new Map<string, { percentage: number | null }>();
+    let submissionsMap = new Map<string, { score: number | null }>();
 
     if (homeworkIds.length > 0) {
       const studentSubmissions = await db
         .select({
           homeworkId: homeworkSubmissions.homeworkId,
-          percentage: homeworkSubmissions.percentage,
+          score: homeworkSubmissions.score,
         })
         .from(homeworkSubmissions)
         .where(
@@ -954,7 +982,7 @@ export async function getStudentProgressData(): Promise<StudentProgressData> {
         );
 
       submissionsMap = new Map(
-        studentSubmissions.map(s => [s.homeworkId, { percentage: s.percentage }])
+        studentSubmissions.map(s => [s.homeworkId, { score: s.score }])
       );
     }
 
@@ -978,9 +1006,9 @@ export async function getStudentProgressData(): Promise<StudentProgressData> {
 
       if (submission) {
         subject.completedAssignments++;
-        if (submission.percentage) {
+        if (submission.score !== null) {
           subject.averageScore = Math.round(
-            (subject.averageScore * (subject.completedAssignments - 1) + submission.percentage) /
+            (subject.averageScore * (subject.completedAssignments - 1) + submission.score) /
             subject.completedAssignments
           );
         }
@@ -991,10 +1019,11 @@ export async function getStudentProgressData(): Promise<StudentProgressData> {
   const subjects = Array.from(subjectsMap.values());
 
   // Get learning progress
-  const learningProgressData = await db.query.moduleProgress.findMany({
-    where: eq(moduleProgress.studentId, studentId),
-    orderBy: [desc(moduleProgress.lastAccessedAt)],
-  });
+  const learningProgressData = await db
+    .select()
+    .from(moduleProgress)
+    .where(eq(moduleProgress.studentId, studentId))
+    .orderBy(desc(moduleProgress.lastAccessedAt));
 
   const learningProgress: LearningProgress[] = learningProgressData.map(p => {
     const pWithExtras = p as ModuleProgressWithExtras;
@@ -1055,26 +1084,30 @@ export async function getStudentHomework(options: {
   const { status = "all", limit = 50 } = options;
 
   // Get student's enrollment
-  const enrollment = await db.query.enrollments.findFirst({
-    where: and(
+  const enrollment = await db
+    .select()
+    .from(enrollments)
+    .where(and(
       eq(enrollments.studentId, studentId),
       eq(enrollments.status, "active")
-    ),
-  });
+    ))
+    .limit(1)
+    .then(rows => rows[0] || null);
 
   if (!enrollment) {
     return [];
   }
 
   // Get homework for student's class
-  const homeworkList = await db.query.homework.findMany({
-    where: and(
+  const homeworkList = await db
+    .select()
+    .from(homework)
+    .where(and(
       eq(homework.classId, enrollment.classId),
       sql`${homework.isPublished} = true`
-    ),
-    orderBy: [desc(homework.dueDate)],
-    limit,
-  });
+    ))
+    .orderBy(desc(homework.dueDate))
+    .limit(limit);
 
   const result: StudentHomeworkItem[] = [];
 
@@ -1160,10 +1193,11 @@ export async function getStudentTuitionCourses(): Promise<StudentTuitionCourse[]
 
   const { id: studentId } = authData;
 
-  const enrollments = await db.query.tuitionEnrollments.findMany({
-    where: eq(tuitionEnrollments.studentId, studentId),
-    orderBy: [desc(tuitionEnrollments.enrolledAt)],
-  });
+  const enrollments = await db
+    .select()
+    .from(tuitionEnrollments)
+    .where(eq(tuitionEnrollments.studentId, studentId))
+    .orderBy(desc(tuitionEnrollments.enrolledAt));
 
   return enrollments.map(e => {
     const eWithExtras = e as TuitionEnrollmentWithExtras;

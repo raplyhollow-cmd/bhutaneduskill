@@ -5,26 +5,17 @@
  * Refreshes every 10 seconds for live updates
  */
 
-import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { users, schools, assessments } from "@/lib/db/schema";
-import { count, eq, and, gte, sql } from "drizzle-orm";
-import { NextResponse } from "next/server";
+import { count, eq, and, sql } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 /**
  * GET - Real-time dashboard stats
  */
-export async function GET(req: Request) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { success: false, error: authResult.error },
-        { status: authResult.status === 401 ? 401 : 403 }
-      );
-    }
-
+export const GET = createApiRoute(
+  async (req: Request, auth) => {
     // Get counts for all entities
     const [schoolsResult, studentsResult, teachersResult, counselorsResult, assessmentsResult] =
       await Promise.all([
@@ -85,32 +76,18 @@ export async function GET(req: Request) {
         ? Math.round((stats.assessments / stats.students) * 100)
         : 0;
 
-    return NextResponse.json({
-      ...stats,
-      completionRate,
-      trends: {
-        schools: "+2 this month",
-        students: `+${stats.newStudentsThisMonth} this month`,
-        teachers: "+8 this month",
-        assessments: "+5% from last month",
+    return {
+      data: {
+        ...stats,
+        completionRate,
+        trends: {
+          schools: "+2 this month",
+          students: `+${stats.newStudentsThisMonth} this month`,
+          teachers: "+8 this month",
+          assessments: "+5% from last month",
+        },
       },
-    });
-  } catch (error) {
-    logger.error("Failed to fetch real-time stats:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to fetch stats",
-        // Return fallback values to prevent UI errors
-        schools: 0,
-        students: 0,
-        teachers: 0,
-        counselors: 0,
-        assessments: 0,
-        activeNow: 0,
-        completionRate: 0,
-      },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);

@@ -339,7 +339,7 @@ export function createHoverGlow(color: string, spread: number = 3) {
 /**
  * Combine multiple hover effects.
  */
-export function combineHover(...effects: Record<string, unknown>[]) {
+export function combineHover(...effects: Array<{ rest: Record<string, unknown>; hover: Record<string, unknown> }>) {
   return {
     rest: effects.reduce((acc, effect) => ({ ...acc, ...effect.rest }), {}),
     hover: effects.reduce(

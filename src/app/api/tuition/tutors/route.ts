@@ -1,6 +1,6 @@
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
 import { tutors, users, tuitionCategories } from "@/lib/db/schema";
 import { eq, desc, like, or } from "drizzle-orm";
@@ -74,13 +74,8 @@ const tutorSchema = z.object({
 });
 
 // GET /api/tuition/tutors - List all tutors
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
     const { searchParams } = new URL(request.url);
     const subject = searchParams.get("subject");
     const district = searchParams.get("district");
@@ -88,20 +83,32 @@ export async function GET(request: NextRequest) {
     const onlineOnly = searchParams.get("onlineOnly") === "true";
     const search = searchParams.get("search");
 
-    const allTutors = await db.query.tutors.findMany({
-      where: eq(tutors.isActive, true),
-      with: {
+    const allTutors = await db
+      .select({
+        id: tutors.id,
+        userId: tutors.userId,
+        bio: tutors.bio,
+        subjects: tutors.subjects,
+        gradeLevels: tutors.gradeLevels,
+        location: tutors.location,
+        hourlyRate: tutors.hourlyRate,
+        hourlyRateOnline: tutors.hourlyRateOnline,
+        averageRating: tutors.averageRating,
+        totalStudents: tutors.totalStudents,
+        isActive: tutors.isActive,
+        teachingMode: tutors.teachingMode,
+        createdAt: tutors.createdAt,
         user: {
-          columns: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            profilePicture: true,
-          },
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profilePicture: users.profilePicture,
         },
-      },
-      orderBy: [desc(tutors.createdAt)],
-    });
+      })
+      .from(tutors)
+      .leftJoin(users, eq(tutors.userId, users.id))
+      .where(eq(tutors.isActive, true))
+      .orderBy(desc(tutors.createdAt));
 
     // Filter results
     let filtered = allTutors;
@@ -146,7 +153,8 @@ export async function GET(request: NextRequest) {
             return false;
           }
         }
-        return (t.gradeLevels as any)?.includes?.(parseInt(gradeLevel));
+        const gradeLevelsArray = t.gradeLevels as number[] | undefined;
+        return gradeLevelsArray?.includes?.(parseInt(gradeLevel)) ?? false;
       });
     }
 
@@ -171,9 +179,7 @@ export async function GET(request: NextRequest) {
     if (search) {
       const searchLower = search.toLowerCase();
       filtered = filtered.filter((t) => {
-        // Extract user from relation array
-        const userArray = t.user as unknown as { firstName?: string | null; lastName?: string | null }[] | undefined;
-        const user = userArray?.[0];
+        const user = t.user;
         const subjects = t.subjects as unknown;
 
         return (
@@ -216,21 +222,15 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({ tutors: transformedTutors });
-  } catch (error: unknown) {
-    logger.error("Tutors fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch tutors" }, { status: 500 });
-  }
-}
+    return { tutors: transformedTutors };
+  },
+  ['admin', 'school-admin']
+);
 
 // POST /api/tuition/tutors - Register as tutor or add teacher as tutor
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['admin', 'school-admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId, user } = authResult;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId, user } = auth;
 
     const body = await request.json();
     const validatedData = tutorSchema.parse(body);
@@ -239,26 +239,29 @@ export async function POST(request: NextRequest) {
     const targetUserId = validatedData.teacherId || userId;
 
     // Check if already a tutor
-    const existing = await db.query.tutors.findFirst({
-      where: eq(tutors.userId, targetUserId),
-    });
+    const [existing] = await db
+      .select()
+      .from(tutors)
+      .where(eq(tutors.userId, targetUserId))
+      .limit(1);
 
     if (existing) {
-      return NextResponse.json({ error: "Already registered as a tutor" }, { status: 400 });
+      return { error: "Already registered as a tutor", status: 400 };
     }
 
     // Get user info for the target
-    const targetUser = await db.query.users.findFirst({
-      where: eq(users.id, targetUserId),
-      columns: {
-        id: true,
-        firstName: true,
-        lastName: true,
-      },
-    });
+    const [targetUser] = await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+      })
+      .from(users)
+      .where(eq(users.id, targetUserId))
+      .limit(1);
 
     if (!targetUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return { error: "User not found", status: 404 };
     }
 
     // Build availability array from form data
@@ -321,12 +324,7 @@ export async function POST(request: NextRequest) {
 
     const newTutor = Array.isArray(newTutorResult) ? newTutorResult[0] : newTutorResult;
 
-    return NextResponse.json({ tutor: newTutor }, { status: 201 });
-  } catch (error: unknown) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: "Validation failed", details: error.issues }, { status: 400 });
-    }
-    logger.error("Tutor registration error:", error);
-    return NextResponse.json({ error: "Failed to register tutor" }, { status: 500 });
-  }
-}
+    return { tutor: newTutor };
+  },
+  ['admin', 'school-admin']
+);

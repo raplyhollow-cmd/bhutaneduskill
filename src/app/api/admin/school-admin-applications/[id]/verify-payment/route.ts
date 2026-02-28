@@ -1,7 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
 import { schoolAdminApplications } from "@/lib/db/schema";
-import { requireAuth } from "@/lib/auth-utils";
 import { requirePermission } from "@/lib/rbac";
 import { logger } from "@/lib/logger";
 import { eq } from "drizzle-orm";
@@ -12,32 +11,22 @@ import { eq } from "drizzle-orm";
  * Verifies payment for a school admin application.
  * Platform admins must verify payment (check bank reference number) before approving applications.
  */
-export async function POST(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const POST = createApiRoute<{ id: string }>(
+  async (req, auth, context) => {
+    const { userId } = auth;
 
     // Check schools.approve permission
     const permCheck = await requirePermission(userId, "schools.approve");
     if (permCheck) return permCheck;
 
-    const params = await context.params;
-    const applicationId = params.id;
-    const body = await request.json();
+    const params = await context?.params || Promise.resolve({ id: "" });
+    const applicationId = (await params).id;
+    const body = await req.json();
     const { bankReferenceNumber, paymentAmount, paymentDate } = body;
 
     // Validate required fields
     if (!bankReferenceNumber || !paymentAmount) {
-      return NextResponse.json(
-        { error: "Bank reference number and payment amount are required" },
-        { status: 400 }
-      );
+      return { error: "Bank reference number and payment amount are required", status: 400 };
     }
 
     // Get the application
@@ -48,17 +37,14 @@ export async function POST(
       .limit(1);
 
     if (applications.length === 0) {
-      return NextResponse.json({ error: "Application not found" }, { status: 404 });
+      return { error: "Application not found", status: 404 };
     }
 
     const application = applications[0];
 
     // Check if already verified
     if (application.paymentStatus === "paid" && application.paymentVerifiedAt) {
-      return NextResponse.json(
-        { error: "Payment has already been verified" },
-        { status: 400 }
-      );
+      return { error: "Payment has already been verified", status: 400 };
     }
 
     // Update application with payment verification details
@@ -84,7 +70,7 @@ export async function POST(
       paymentAmount,
     });
 
-    return NextResponse.json({
+    return {
       success: true,
       message: "Payment verified successfully",
       data: {
@@ -93,38 +79,26 @@ export async function POST(
         paymentAmount,
         paymentVerifiedAt: new Date().toISOString(),
       },
-    });
-  } catch (error) {
-    logger.apiError(error, {
-      route: "/api/admin/school-admin-applications/[id]/verify-payment",
-      method: "POST",
-    });
-    return NextResponse.json({ error: "Failed to verify payment" }, { status: 500 });
-  }
-}
+    };
+  },
+  ["admin"]
+);
 
 /**
  * DELETE /api/admin/school-admin-applications/[id]/verify-payment
  *
  * Revokes payment verification (e.g., if verification was done in error).
  */
-export async function DELETE(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const DELETE = createApiRoute<{ id: string }>(
+  async (req, auth, context) => {
+    const { userId } = auth;
 
     // Check schools.approve permission
     const permCheck = await requirePermission(userId, "schools.approve");
     if (permCheck) return permCheck;
 
-    const params = await context.params;
-    const applicationId = params.id;
+    const params = await context?.params || Promise.resolve({ id: "" });
+    const applicationId = (await params).id;
 
     // Get the application
     const applications = await db
@@ -134,17 +108,14 @@ export async function DELETE(
       .limit(1);
 
     if (applications.length === 0) {
-      return NextResponse.json({ error: "Application not found" }, { status: 404 });
+      return { error: "Application not found", status: 404 };
     }
 
     const application = applications[0];
 
     // Cannot revoke verification if already approved
     if (application.status === "approved") {
-      return NextResponse.json(
-        { error: "Cannot revoke payment verification for approved application" },
-        { status: 400 }
-      );
+      return { error: "Cannot revoke payment verification for approved application", status: 400 };
     }
 
     // Revoke payment verification
@@ -164,15 +135,10 @@ export async function DELETE(
       revokedBy: userId,
     });
 
-    return NextResponse.json({
+    return {
       success: true,
       message: "Payment verification revoked",
-    });
-  } catch (error) {
-    logger.apiError(error, {
-      route: "/api/admin/school-admin-applications/[id]/verify-payment",
-      method: "DELETE",
-    });
-    return NextResponse.json({ error: "Failed to revoke payment verification" }, { status: 500 });
-  }
-}
+    };
+  },
+  ["admin"]
+);

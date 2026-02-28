@@ -84,7 +84,7 @@ export interface RoadmapStage {
   color: string;
 }
 
-export interface StudentRoadmap {
+export interface StudentRoadmap extends Record<string, unknown> {
   stages: RoadmapStage[];
   currentGrade: number;
   targetCareer?: string;

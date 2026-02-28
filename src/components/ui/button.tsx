@@ -33,6 +33,30 @@ import { semantic, radius, shadow, padding, portal } from "@/styles/design-token
  * - 6px border radius (rounded-md)
  */
 
+type ButtonVariant =
+  | "primary"
+  | "secondary"
+  | "ghost"
+  | "danger"
+  | "link"
+  | "student"
+  | "teacher"
+  | "parent"
+  | "counselor"
+  | "admin"
+  | "school-admin"
+  | "ministry"
+  | "ceramic"
+  | "ceramic-outline"
+  | "ceramic-ghost"
+  | "ceramic-warning"
+  | "ceramic-info"
+  | "ceramic-success"
+  | "ceramic-error"
+  | "default"
+  | "destructive"
+  | "outline";
+
 const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors duration-150 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-purple-500/20 focus-visible:ring-offset-2",
   {
@@ -60,11 +84,15 @@ const buttonVariants = cva(
         ceramic: "[background-color:var(--ceramic-brand)] [color:var(--ceramic-white)] hover:opacity-90",
         "ceramic-outline": "[border-color:var(--border-color-primary)] [background-color:transparent] [color:var(--ceramic-primary)] hover:[background-color:var(--ceramic-gray-100)]",
         "ceramic-ghost": "[background-color:transparent] [color:var(--ceramic-secondary)] hover:[background-color:var(--ceramic-gray-100)]",
+        "ceramic-warning": "[background-color:var(--ceramic-warning)] [color:var(--ceramic-white)] hover:opacity-90",
+        "ceramic-info": "[background-color:var(--ceramic-info)] [color:var(--ceramic-white)] hover:opacity-90",
+        "ceramic-success": "[background-color:var(--ceramic-success)] [color:var(--ceramic-white)] hover:opacity-90",
+        "ceramic-error": "[background-color:var(--ceramic-error)] [color:var(--ceramic-white)] hover:opacity-90",
         // Legacy variant names mapped to new ones
         default: "bg-purple-600 text-white hover:bg-purple-700",
         destructive: "bg-red-600 text-white hover:bg-red-700",
         outline: "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200",
-      },
+      } satisfies Record<ButtonVariant, string>,
       size: {
         sm: "h-9 px-3 text-xs",
         default: "h-10 px-4 text-sm",
@@ -135,10 +163,11 @@ function Button({
   children,
   disabled,
   ...props
-}: React.ComponentProps<"button"> &
+}: Omit<React.ComponentProps<"button">, "variant"> &
   VariantProps<typeof buttonVariants> & {
-    asChild?: boolean
-    loading?: boolean
+    variant?: ButtonVariant;
+    asChild?: boolean;
+    loading?: boolean;
   }) {
   const Comp = asChild ? Slot.Root : "button"
   const tokenStyles = getButtonStyles(variant, size)
@@ -174,4 +203,5 @@ function Button({
   )
 }
 
-export { Button, buttonVariants }
+export { Button, buttonVariants };
+export type { ButtonVariant };

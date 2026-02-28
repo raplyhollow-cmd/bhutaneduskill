@@ -5,6 +5,24 @@
  * For client-side tenant utilities, import from '@/lib/tenant-utils'
  */
 
+// Career type for the careers database
+export interface Career {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  riasecCode: string;
+  riasecScores: Record<string, number>;
+  skills: string[];
+  educationPath: string[];
+  subjects: string[];
+  workEnvironment: string;
+  salaryRange: string;
+  demandOutlook: string;
+  bhutanSpecific: boolean;
+  studyAbroad?: Record<string, string>;
+}
+
 // List of Bhutan school codes for validation
 export const BHUTAN_SCHOOL_CODES = [
   "PELKHIL",

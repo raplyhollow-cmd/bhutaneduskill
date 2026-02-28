@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { TutorProfileCard, CourseCard } from "@/components/tuition";
+import { TutorProfileCard, CourseCard, type TutorProfile, type TuitionCourse } from "@/components/tuition";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,52 +14,11 @@ import { Badge } from "@/components/ui/badge";
 import { Search, Filter, GraduationCap, BookOpen, Video, Loader2, AlertCircle } from "lucide-react";
 import { logger } from "@/lib/logger";
 
-interface Tutor {
-  id: string;
-  name: string;
-  avatar: string;
-  bio: string;
-  education: Array<{ degree: string; institution: string; year: string }>;
-  experience: number;
-  subjects: string[];
-  levels: Array<"class10" | "class12" | "university" | "professional">;
-  location: { city: string; area?: string };
-  isOnline: boolean;
-  languages: string[];
-  pricing: { hourlyRate: number; currency: string };
-  stats: { rating: number; reviewCount: number; studentCount: number; completedSessions: number };
-  availability: { type: "online" | "in-person" | "both" };
-  isVerified: boolean;
-}
-
-interface Course {
-  id: string;
-  title: string;
-  description: string;
-  thumbnailUrl: string;
-  category: string;
-  subject: string;
-  level: string[];
-  tutorId: string;
-  tutorName: string;
-  tutorRating: number;
-  pricing: { type: string; amount: number; currency: string; duration: string };
-  schedule: {
-    type: string;
-    startDate: string;
-    totalSessions: number;
-  };
-  enrollment: { current: number; max: number };
-  stats: { rating: number; reviewCount: number; completedBy: number };
-  features: string[];
-  isVerified: boolean;
-}
-
 export default function StudentTuitionPage() {
   const [activeTab, setActiveTab] = useState<"tutors" | "courses">("courses");
   const [searchQuery, setSearchQuery] = useState("");
-  const [tutors, setTutors] = useState<Tutor[]>([]);
-  const [courses, setCourses] = useState<Course[]>([]);
+  const [tutors, setTutors] = useState<TutorProfile[]>([]);
+  const [courses, setCourses] = useState<TuitionCourse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -228,7 +187,7 @@ export default function StudentTuitionPage() {
                   {filteredTutors.map((tutor) => (
                     <TutorProfileCard
                       key={tutor.id}
-                      tutor={tutor as any}
+                      tutor={tutor}
                       variant="detailed"
                       onViewProfile={handleViewProfile}
                       onBook={handleBook}
@@ -251,7 +210,7 @@ export default function StudentTuitionPage() {
                 filteredCourses.map((course) => (
                   <CourseCard
                     key={course.id}
-                    course={course as any}
+                    course={course}
                     variant="default"
                     onEnroll={handleEnroll}
                     onViewDetails={handleViewCourse}

@@ -3,33 +3,30 @@
  * Handles vendor and supplier management
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { inventoryVendors, inventoryCategories } from "@/lib/db/schema";
 import { eq, and, desc, sql, like, or } from "drizzle-orm";
 import { logger } from "@/lib/logger";
-import type { ApiSuccess, ApiErrorResponse, Pagination } from "@/types";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 interface PaginatedData<T> {
   items: T[];
-  pagination: Pagination;
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }
 
 // ============================================================================
 // GET /api/inventory/vendors - List vendors
 // ============================================================================
 
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { user, userId } = authResult;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user, userId } = auth;
 
     const { searchParams } = new URL(request.url);
     const page = Math.max(1, Number(searchParams.get("page")) || 1);
@@ -115,7 +112,7 @@ export async function GET(request: NextRequest) {
       categoryNames: (vendor.categoryIds || []).map((id) => categoryMap.get(id) || id),
     }));
 
-    const pagination: Pagination = {
+    const pagination = {
       page,
       limit,
       total,
@@ -124,20 +121,13 @@ export async function GET(request: NextRequest) {
 
     logger.info("Fetched inventory vendors", { userId, count: vendors.length });
 
-    return NextResponse.json({
-      data: {
-        items: vendorsWithDetails,
-        pagination,
-      },
-    } satisfies ApiSuccess<PaginatedData<typeof vendorsWithDetails[0]>>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/inventory/vendors", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch vendors", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return {
+      items: vendorsWithDetails,
+      pagination,
+    };
+  },
+  ['admin']
+);
 
 // ============================================================================
 // POST /api/inventory/vendors - Create new vendor
@@ -170,25 +160,15 @@ interface CreateVendorInput {
   notes?: string;
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { user, userId } = authResult;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user, userId } = auth;
 
     const data: CreateVendorInput = await request.json();
 
     // Validate required fields
     if (!data.name) {
-      return NextResponse.json(
-        { error: "Missing required field: name", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "Missing required field: name", status: 400 };
     }
 
     const now = new Date();
@@ -237,18 +217,10 @@ export async function POST(request: NextRequest) {
 
     logger.info("Created inventory vendor", { userId, vendorId });
 
-    return NextResponse.json({
-      data: newVendor,
-      message: "Vendor created successfully",
-    } satisfies ApiSuccess<typeof newVendor>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/inventory/vendors", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to create vendor", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return { vendor: newVendor };
+  },
+  ['admin']
+);
 
 // ============================================================================
 // PATCH /api/inventory/vendors - Update vendor
@@ -260,36 +232,25 @@ interface UpdateVendorInput extends Partial<CreateVendorInput> {
   isActive?: boolean;
 }
 
-export async function PATCH(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { userId } = authResult;
+export const PATCH = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
 
     const data: UpdateVendorInput = await request.json();
 
     if (!data.id) {
-      return NextResponse.json(
-        { error: "Vendor ID is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "Vendor ID is required", status: 400 };
     }
 
     // Check if vendor exists
-    const existingVendor = await db.query.inventoryVendors.findFirst({
-      where: eq(inventoryVendors.id, data.id),
-    });
+    const [existingVendor] = await db
+      .select()
+      .from(inventoryVendors)
+      .where(eq(inventoryVendors.id, data.id))
+      .limit(1);
 
     if (!existingVendor) {
-      return NextResponse.json(
-        { error: "Vendor not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "Vendor not found", status: 404 };
     }
 
     // Prepare update data
@@ -340,68 +301,42 @@ export async function PATCH(request: NextRequest) {
 
     logger.info("Updated inventory vendor", { userId, vendorId: data.id });
 
-    return NextResponse.json({
-      data: updatedVendor,
-      message: "Vendor updated successfully",
-    } satisfies ApiSuccess<typeof updatedVendor>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/inventory/vendors", method: "PATCH" });
-    return NextResponse.json(
-      { error: "Failed to update vendor", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return { vendor: updatedVendor };
+  },
+  ['admin']
+);
 
 // ============================================================================
 // DELETE /api/inventory/vendors - Delete vendor
 // ============================================================================
 
-export async function DELETE(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { userId } = authResult;
+export const DELETE = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
 
     const { searchParams } = new URL(request.url);
     const vendorId = searchParams.get("id");
 
     if (!vendorId) {
-      return NextResponse.json(
-        { error: "Vendor ID is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "Vendor ID is required", status: 400 };
     }
 
     // Check if vendor exists
-    const existingVendor = await db.query.inventoryVendors.findFirst({
-      where: eq(inventoryVendors.id, vendorId),
-    });
+    const [existingVendor] = await db
+      .select()
+      .from(inventoryVendors)
+      .where(eq(inventoryVendors.id, vendorId))
+      .limit(1);
 
     if (!existingVendor) {
-      return NextResponse.json(
-        { error: "Vendor not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "Vendor not found", status: 404 };
     }
 
     await db.delete(inventoryVendors).where(eq(inventoryVendors.id, vendorId));
 
     logger.info("Deleted inventory vendor", { userId, vendorId });
 
-    return NextResponse.json({
-      data: { message: "Vendor deleted successfully" },
-    } satisfies ApiSuccess<{ message: string }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/inventory/vendors", method: "DELETE" });
-    return NextResponse.json(
-      { error: "Failed to delete vendor", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return { message: "Vendor deleted successfully" };
+  },
+  ['admin']
+);

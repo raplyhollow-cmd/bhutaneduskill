@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
@@ -13,26 +13,15 @@ interface InterventionSuggestions {
 }
 
 // POST /api/counselor/intervention-suggestions - Get AI-powered intervention suggestions
-export async function POST(req: Request) {
-  try {
-    const authResult = await requireAuth(["counselor"]);
-    if ("error" in authResult) {
-      return Response.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const POST = createApiRoute(
+  async (req, auth) => {
+    const { userId } = auth;
 
     const body = await req.json();
     const { studentId, behavioralTags, notes, severity, interventionType } = body;
 
     if (!studentId) {
-      return Response.json(
-        { error: "Student ID is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "Student ID is required", status: 400 } satisfies ApiErrorResponse;
     }
 
     // Check if Gemini API is configured
@@ -62,9 +51,7 @@ export async function POST(req: Request) {
           },
         ],
       };
-      return Response.json({
-        data: { suggestions: mockSuggestions },
-      } satisfies ApiSuccess<{ suggestions: InterventionSuggestions }>);
+      return { data: { suggestions: mockSuggestions } } satisfies ApiSuccess<{ suggestions: InterventionSuggestions }>;
     }
 
     // Generate AI suggestions using Gemini
@@ -127,14 +114,7 @@ Respond in JSON format:
 
     logger.info("AI intervention suggestions generated", { studentId });
 
-    return Response.json({
-      data: { suggestions },
-    } satisfies ApiSuccess<{ suggestions: InterventionSuggestions }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/counselor/intervention-suggestions", method: "POST" });
-    return Response.json(
-      { error: "Failed to generate suggestions", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return { data: { suggestions } } satisfies ApiSuccess<{ suggestions: InterventionSuggestions }>;
+  },
+  ["counselor"]
+);

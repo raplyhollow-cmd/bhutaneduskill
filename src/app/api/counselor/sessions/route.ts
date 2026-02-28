@@ -34,11 +34,12 @@ export const GET = createApiRoute(
       : eq(counselingSessions.counselorId, user.id);
 
     // Get sessions using the correct field name: sessionDate
-    const sessions = await db.query.counselingSessions.findMany({
-      where: conditions,
-      orderBy: [desc(counselingSessions.sessionDate)],
-      limit,
-    });
+    const sessions = await db
+      .select()
+      .from(counselingSessions)
+      .where(conditions)
+      .orderBy(desc(counselingSessions.sessionDate))
+      .limit(limit);
 
     // Get statistics
     const now = new Date();
@@ -86,10 +87,10 @@ export const GET = createApiRoute(
     ]);
 
     // Calculate total hours (based on session duration from startTime/endTime)
-    const allSessions = await db.query.counselingSessions.findMany({
-      where: eq(counselingSessions.counselorId, user.id),
-      columns: { startTime: true, endTime: true },
-    });
+    const allSessions = await db
+      .select({ startTime: counselingSessions.startTime, endTime: counselingSessions.endTime })
+      .from(counselingSessions)
+      .where(eq(counselingSessions.counselorId, user.id));
 
     let totalHours = 0;
     for (const session of allSessions) {
@@ -146,9 +147,12 @@ export const POST = createApiRoute(
 
     // Verify student exists for individual sessions
     if (type === 'individual' && studentId) {
-      const student = await db.query.users.findFirst({
-        where: eq(users.id, studentId),
-      });
+      const student = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, studentId))
+        .limit(1)
+        .then(rows => rows[0] || null);
 
       if (!student || student.type !== 'student') {
         return notFoundResponse("Student");

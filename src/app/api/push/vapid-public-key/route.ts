@@ -6,33 +6,30 @@
  * This endpoint returns the VAPID public key needed for clients to subscribe
  * to push notifications. The key should be set in NEXT_PUBLIC_VAPID_PUBLIC_KEY
  * environment variable.
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse } from "@/lib/api/response-helpers";
 
 // ============================================================================
 // GET - VAPID Public Key
 // ============================================================================
 
-export async function GET() {
-  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+export const GET = createApiRoute(
+  async (req: NextRequest) => {
+    const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
-  if (!publicKey) {
-    return NextResponse.json(
-      {
-        error: "VAPID keys not configured",
-        message: "Please set NEXT_PUBLIC_VAPID_PUBLIC_KEY environment variable",
-      },
-      { status: 500 }
-    );
-  }
+    if (!publicKey) {
+      return errorResponse("VAPID keys not configured. Please set NEXT_PUBLIC_VAPID_PUBLIC_KEY environment variable", 500);
+    }
 
-  return NextResponse.json({
-    success: true,
-    data: {
+    return successResponse({
       publicKey,
       // Also return the application server URL for reference
-      applicationServerUrl: process.env.NEXT_PUBLIC_APP_URL || window?.location?.origin || "http://localhost:3003",
-    },
-  });
-}
+      applicationServerUrl: process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3003",
+    });
+  }
+);

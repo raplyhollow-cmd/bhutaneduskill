@@ -253,10 +253,10 @@ export function dbTemplateToConfig(template: ReportCardTemplate): ReportCardTemp
   return {
     name: template.name,
     description: template.description || "",
-    templateType: template.templateType as any,
+    templateType: template.templateType as "primary" | "middle" | "secondary" | "senior_secondary",
     layout: template.layout as ReportCardLayout,
     colors: template.colors as ReportCardColors,
-    customSections: template.customSections as any,
+    customSections: template.customSections as Array<{ title: string; content: string; position: "header" | "footer" | "left" | "right" }>,
     signatures: template.signatures as ReportCardSignatures,
   };
 }

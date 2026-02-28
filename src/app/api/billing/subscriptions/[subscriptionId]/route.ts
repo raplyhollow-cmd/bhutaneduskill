@@ -6,7 +6,8 @@
  * DELETE /api/billing/subscriptions/[subscriptionId] - Cancel subscription
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
 import {
   subscriptions,
@@ -16,7 +17,6 @@ import {
 } from "@/lib/db/schema";
 import { invoices } from "@/lib/db/billing-schema";
 import { eq, desc, and, count, sql } from "drizzle-orm";
-import { requireAuth } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
 
@@ -101,27 +101,15 @@ interface UpdateSubscriptionRequest {
   reason?: string;
 }
 
-type RouteContext = {
-  params: Promise<{ subscriptionId: string }>;
-};
-
 // ============================================================================
 // GET /api/billing/subscriptions/[subscriptionId] - Get subscription details
 // ============================================================================
 
-export async function GET(request: NextRequest, context: RouteContext) {
-  const authResult = await requireAuth(["admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } as ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
+export const GET = createApiRoute<{ subscriptionId: string }>(
+  async (req, auth, context) => {
+    const { userId } = auth;
+    const { subscriptionId } = await context!.params!;
 
-  const { userId } = authResult;
-  const { subscriptionId } = await context.params;
-
-  try {
     // Fetch subscription with tenant and plan details
     const subscriptionData = await db
       .select({
@@ -178,10 +166,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       .limit(1);
 
     if (subscriptionData.length === 0) {
-      return NextResponse.json(
-        { error: "Subscription not found", status: 404 } as ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "Subscription not found", status: 404 };
     }
 
     const sub = subscriptionData[0];
@@ -249,7 +234,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
             description: sub.planDescription || "",
             tier: sub.planTier || "",
             planType: sub.planType || "",
-            features: (sub.planFeatures as any) || undefined,
+            features: (sub.planFeatures as Array<{
+              name: string;
+              description: string;
+              included: boolean;
+              limit?: number;
+            }> | null) || undefined,
           }
         : undefined,
       billingSummary: {
@@ -265,45 +255,20 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     logger.info("Subscription details fetched", { userId, subscriptionId });
 
-    return NextResponse.json({
-      data: subscriptionDetail,
-    } satisfies ApiSuccess<SubscriptionDetail>);
-
-  } catch (error) {
-    logger.apiError(error, {
-      route: `/api/billing/subscriptions/${subscriptionId}`,
-      method: "GET",
-      userId,
-    });
-    return NextResponse.json(
-      {
-        error: "Failed to fetch subscription details",
-        status: 500,
-        details: error instanceof Error ? error.message : undefined,
-      } as ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return { data: subscriptionDetail };
+  },
+  ["admin"]
+);
 
 // ============================================================================
 // PATCH /api/billing/subscriptions/[subscriptionId] - Update subscription
 // ============================================================================
 
-export async function PATCH(request: NextRequest, context: RouteContext) {
-  const authResult = await requireAuth(["admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } as ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
-
-  const { userId } = authResult;
-  const { subscriptionId } = await context.params;
-
-  try {
-    const body: UpdateSubscriptionRequest = await request.json();
+export const PATCH = createApiRoute<{ subscriptionId: string }>(
+  async (req, auth, context) => {
+    const { userId } = auth;
+    const { subscriptionId } = await context!.params!;
+    const body: UpdateSubscriptionRequest = await req.json();
     const { action } = body;
 
     // Verify subscription exists
@@ -314,10 +279,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       .limit(1);
 
     if (existing.length === 0) {
-      return NextResponse.json(
-        { error: "Subscription not found", status: 404 } as ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "Subscription not found", status: 404 };
     }
 
     const subscription = existing[0];
@@ -326,10 +288,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     switch (action) {
       case "change_plan": {
         if (!body.newPlanId) {
-          return NextResponse.json(
-            { error: "newPlanId is required for change_plan action", status: 400 } as ApiErrorResponse,
-            { status: 400 }
-          );
+          return {
+            error: "newPlanId is required for change_plan action",
+            status: 400,
+          };
         }
 
         // Verify new plan exists
@@ -340,10 +302,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           .limit(1);
 
         if (newPlan.length === 0) {
-          return NextResponse.json(
-            { error: "New plan not found", status: 404 } as ApiErrorResponse,
-            { status: 404 }
-          );
+          return { error: "New plan not found", status: 404 };
         }
 
         // Calculate new pricing
@@ -378,10 +337,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           updatedBy: userId,
         });
 
-        return NextResponse.json({
+        return {
           data: { message: "Plan changed successfully" },
           message: "Plan changed successfully",
-        } satisfies ApiSuccess<{ message: string }>);
+        };
       }
 
       case "cancel": {
@@ -401,18 +360,18 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           reason: body.reason,
         });
 
-        return NextResponse.json({
+        return {
           data: { message: "Subscription will be cancelled at the end of the current period" },
           message: "Subscription cancellation scheduled",
-        } satisfies ApiSuccess<{ message: string }>);
+        };
       }
 
       case "reactivate": {
         if (subscription.status === "canceled") {
-          return NextResponse.json(
-            { error: "Cannot reactivate a canceled subscription", status: 400 } as ApiErrorResponse,
-            { status: 400 }
-          );
+          return {
+            error: "Cannot reactivate a canceled subscription",
+            status: 400,
+          };
         }
 
         await db
@@ -430,10 +389,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           updatedBy: userId,
         });
 
-        return NextResponse.json({
+        return {
           data: { message: "Subscription reactivated successfully" },
           message: "Subscription reactivated",
-        } satisfies ApiSuccess<{ message: string }>);
+        };
       }
 
       case "update_usage": {
@@ -456,10 +415,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           updatedBy: userId,
         });
 
-        return NextResponse.json({
+        return {
           data: { message: "Usage updated successfully" },
           message: "Usage updated",
-        } satisfies ApiSuccess<{ message: string }>);
+        };
       }
 
       case "update_payment": {
@@ -477,10 +436,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           updatedBy: userId,
         });
 
-        return NextResponse.json({
+        return {
           data: { message: "Payment method updated successfully" },
           message: "Payment method updated",
-        } satisfies ApiSuccess<{ message: string }>);
+        };
       }
 
       default: {
@@ -488,15 +447,12 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         const { action: _, ...updates } = body;
 
         // Only allow specific fields to be updated
-        const allowedUpdates: Record<string, any> = {};
+        const allowedUpdates: Record<string, unknown> = {};
         if (updates.autoRenew !== undefined) allowedUpdates.autoRenew = updates.autoRenew;
         if (updates.cancelAtPeriodEnd !== undefined) allowedUpdates.cancelAtPeriodEnd = updates.cancelAtPeriodEnd;
 
         if (Object.keys(allowedUpdates).length === 0) {
-          return NextResponse.json(
-            { error: "No valid fields to update", status: 400 } as ApiErrorResponse,
-            { status: 400 }
-          );
+          return { error: "No valid fields to update", status: 400 };
         }
 
         await db
@@ -513,47 +469,25 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
           updatedBy: userId,
         });
 
-        return NextResponse.json({
+        return {
           data: { message: "Subscription updated successfully" },
           message: "Subscription updated",
-        } satisfies ApiSuccess<{ message: string }>);
+        };
       }
     }
-
-  } catch (error) {
-    logger.apiError(error, {
-      route: `/api/billing/subscriptions/${subscriptionId}`,
-      method: "PATCH",
-      userId,
-    });
-    return NextResponse.json(
-      {
-        error: "Failed to update subscription",
-        status: 500,
-        details: error instanceof Error ? error.message : undefined,
-      } as ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+  },
+  ["admin"]
+);
 
 // ============================================================================
 // DELETE /api/billing/subscriptions/[subscriptionId] - Cancel subscription immediately
 // ============================================================================
 
-export async function DELETE(request: NextRequest, context: RouteContext) {
-  const authResult = await requireAuth(["admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } as ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
+export const DELETE = createApiRoute<{ subscriptionId: string }>(
+  async (req, auth, context) => {
+    const { userId } = auth;
+    const { subscriptionId } = await context!.params!;
 
-  const { userId } = authResult;
-  const { subscriptionId } = await context.params;
-
-  try {
     // Verify subscription exists
     const existing = await db
       .select()
@@ -562,10 +496,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       .limit(1);
 
     if (existing.length === 0) {
-      return NextResponse.json(
-        { error: "Subscription not found", status: 404 } as ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "Subscription not found", status: 404 };
     }
 
     // Immediately cancel the subscription
@@ -584,24 +515,10 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
       canceledBy: userId,
     });
 
-    return NextResponse.json({
+    return {
       data: { message: "Subscription canceled successfully" },
       message: "Subscription canceled",
-    } satisfies ApiSuccess<{ message: string }>);
-
-  } catch (error) {
-    logger.apiError(error, {
-      route: `/api/billing/subscriptions/${subscriptionId}`,
-      method: "DELETE",
-      userId,
-    });
-    return NextResponse.json(
-      {
-        error: "Failed to cancel subscription",
-        status: 500,
-        details: error instanceof Error ? error.message : undefined,
-      } as ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);

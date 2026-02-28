@@ -3,13 +3,14 @@
  * Fetch graded homework submission with detailed question-by-question feedback
  */
 
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { homework, homeworkSubmissions, subjects, users } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, errorResponse } from "@/lib/api/response-helpers";
 import { logger } from "@/lib/logger";
+import type { HomeworkContent } from "@/types";
 
 interface QuestionOption {
   id: string;
@@ -35,17 +36,6 @@ interface QuestionFeedback {
   feedback?: string;
   confidence?: number;
   reasoning?: string;
-}
-
-interface HomeworkContent {
-  answers?: Record<string, unknown>;
-  questionFeedback?: QuestionFeedback[];
-  integrityMetadata?: {
-    timeSpent: number;
-    tabSwitches: number;
-    copyPasteEvents: number;
-  };
-  gradedBy?: string;
 }
 
 interface Params {
@@ -108,7 +98,7 @@ export const GET = createApiRoute(
   async (request: NextRequest, auth, context?: { params: Promise<{ id: string }> }) => {
     const { userId } = auth;
 
-    const { id: homeworkId } = await params;
+    const { id: homeworkId } = await context!.params;
 
     // Fetch homework with submission and subject
     const submissionData = await db
@@ -165,14 +155,14 @@ export const GET = createApiRoute(
     }
 
     // Parse content for answers and feedback
-    const content = homeworkRecord.content as HomeworkContent;
+    const content = homeworkRecord.content as unknown as HomeworkContent;
 
     // Parse questions
-    const questions = (homeworkRecord.questions as HomeworkQuestion[]) || [];
+    const questions = (homeworkRecord.questions as unknown as HomeworkQuestion[]) || [];
 
     // Merge questions with feedback
     const questionsWithFeedback = questions.map((q: HomeworkQuestion) => {
-      const feedback = content.questionFeedback?.find((f: QuestionFeedback) => f.questionId === q.id);
+      const feedback = (content as { questionFeedback?: QuestionFeedback[] }).questionFeedback?.find((f: QuestionFeedback) => f.questionId === q.id);
       const studentAnswer = content.answers?.[q.id];
 
       return {
@@ -196,18 +186,19 @@ export const GET = createApiRoute(
     const grade = calculateGrade(percentage);
 
     // Get time spent from integrity metadata
-    const timeSpent = content.integrityMetadata?.timeSpent || 0;
+    const metadata = content.integrityMetadata as { timeSpent?: number } | undefined;
+    const timeSpent = metadata?.timeSpent || 0;
 
     // Fetch teacher name if gradedBy exists
     let teacherName: string | undefined;
-    if (content.gradedBy) {
-      const teacher = await db.query.users.findFirst({
-        where: eq(users.id, content.gradedBy),
-        columns: {
-          name: true,
-        },
-      });
-      teacherName = teacher?.name;
+    const gradedById = content.gradedBy as string | undefined;
+    if (gradedById) {
+      const teachers = await db
+        .select({ name: users.name })
+        .from(users)
+        .where(eq(users.id, gradedById))
+        .limit(1);
+      teacherName = teachers[0]?.name;
     }
 
     const data = {

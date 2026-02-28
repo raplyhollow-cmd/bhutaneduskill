@@ -4,14 +4,17 @@
  * POST /api/push/unsubscribe - Remove a push subscription
  *
  * This endpoint allows authenticated users to remove a device from push notifications.
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { pushSubscriptions } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, badRequestResponse } from "@/lib/api/response-helpers";
 
 // ============================================================================
 // TYPES
@@ -27,15 +30,10 @@ interface UnsubscribeRequest {
 // POST - Unsubscribe from Push Notifications
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  const authResult = await requireAuth();
-  if ("error" in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
 
-  const { userId } = authResult;
-
-  try {
     const body: UnsubscribeRequest = await request.json();
 
     if (body.all) {
@@ -50,11 +48,8 @@ export async function POST(request: NextRequest) {
 
       logger.info("Unsubscribed all devices", { userId });
 
-      return NextResponse.json({
-        success: true,
-        data: {
-          message: "Unsubscribed from all devices",
-        },
+      return successResponse({
+        message: "Unsubscribed from all devices",
       });
     }
 
@@ -75,11 +70,8 @@ export async function POST(request: NextRequest) {
 
       logger.info("Unsubscribed by subscription ID", { userId, subscriptionId: body.subscriptionId });
 
-      return NextResponse.json({
-        success: true,
-        data: {
-          message: "Subscription removed",
-        },
+      return successResponse({
+        message: "Subscription removed",
       });
     }
 
@@ -100,27 +92,12 @@ export async function POST(request: NextRequest) {
 
       logger.info("Unsubscribed by endpoint", { userId });
 
-      return NextResponse.json({
-        success: true,
-        data: {
-          message: "Subscription removed",
-        },
+      return successResponse({
+        message: "Subscription removed",
       });
     }
 
-    return NextResponse.json(
-      { error: "Must provide subscriptionId, endpoint, or all: true" },
-      { status: 400 }
-    );
-  } catch (error: unknown) {
-    logger.apiError(error, {
-      route: "/api/push/unsubscribe",
-      method: "POST",
-      userId,
-    });
-    return NextResponse.json(
-      { error: "Failed to unsubscribe", details: error instanceof Error ? error.message : "Unknown error" },
-      { status: 500 }
-    );
-  }
-}
+    return badRequestResponse("Must provide subscriptionId, endpoint, or all: true");
+  },
+  [] // Any authenticated user can unsubscribe
+);

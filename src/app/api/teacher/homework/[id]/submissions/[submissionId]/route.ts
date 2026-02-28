@@ -1,70 +1,85 @@
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { requirePermission } from "@/lib/rbac";
 import { db } from "@/lib/db";
-import { homework, homeworkSubmissions } from "@/lib/db/schema";
+import { homework, homeworkSubmissions, users } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
-import { gradeHomework, AutoGradingEngine } from "@/lib/auto-grading";
+import { gradeHomework } from "@/lib/auto-grading";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 interface Params {
   params: Promise<{ id: string; submissionId: string }>;
 }
 
 // GET /api/teacher/homework/[id]/submissions/[submissionId] - Get submission details
-export async function GET(request: NextRequest, { params }: Params) {
-  try {
-    const { id, submissionId } = await params;
-
-    const authResult = await requireAuth(['teacher', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { user: currentUser, userId } = authResult;
+export const GET = createApiRoute<{ id: string; submissionId: string }>(
+  async (request, { userId, user: currentUser }, context) => {
+    const params = await context!.params;
+    const id = params.id;
+    const submissionId = params.submissionId;
 
     // Check homework.read permission (for viewing submission details)
     const permCheck = await requirePermission(userId, "homework.read");
     if (permCheck) return permCheck;
 
     // Verify homework ownership
-    const homeworkData = await db.query.homework.findFirst({
-      where: eq(homework.id, id),
-    });
+    const [homeworkData] = await db
+      .select()
+      .from(homework)
+      .where(eq(homework.id, id))
+      .limit(1);
 
     if (!homeworkData || (homeworkData as { teacherId?: string }).teacherId !== currentUser.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return {
+        error: "Forbidden",
+        status: 403
+      };
     }
 
-    const submission = await db.query.homeworkSubmissions.findFirst({
-      where: eq(homeworkSubmissions.id, submissionId),
-      with: {
-        student: true,
-      },
-    });
+    const [submission] = await db
+      .select({
+        id: homeworkSubmissions.id,
+        homeworkId: homeworkSubmissions.homeworkId,
+        studentId: homeworkSubmissions.studentId,
+        content: homeworkSubmissions.content,
+        score: homeworkSubmissions.score,
+        feedback: homeworkSubmissions.feedback,
+        status: homeworkSubmissions.status,
+        submittedAt: homeworkSubmissions.submittedAt,
+        gradedAt: homeworkSubmissions.gradedAt,
+        isLate: homeworkSubmissions.isLate,
+        createdAt: homeworkSubmissions.createdAt,
+        updatedAt: homeworkSubmissions.updatedAt,
+        student: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          name: users.name,
+        },
+      })
+      .from(homeworkSubmissions)
+      .leftJoin(users, eq(homeworkSubmissions.studentId, users.id))
+      .where(eq(homeworkSubmissions.id, submissionId))
+      .limit(1);
 
-    if (!submission) {
-      return NextResponse.json({ error: "Submission not found" }, { status: 404 });
+    if (!submission[0]) {
+      return {
+        error: "Submission not found",
+        status: 404
+      };
     }
 
-    return NextResponse.json({ submission });
-  } catch (error) {
-    logger.error("Submission fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch submission" }, { status: 500 });
-  }
-}
+    return { submission: submission[0] };
+  },
+  ['teacher', 'admin']
+);
 
 // PUT /api/teacher/homework/[id]/submissions/[submissionId] - Grade submission
-export async function PUT(request: NextRequest, { params }: Params) {
-  try {
-    const { id, submissionId } = await params;
-
-    const authResult = await requireAuth(['teacher', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { user: currentUser, userId } = authResult;
+export const PUT = createApiRoute<{ id: string; submissionId: string }>(
+  async (request, { userId, user: currentUser }, context) => {
+    const params = await context!.params;
+    const id = params.id;
+    const submissionId = params.submissionId;
 
     // Check homework.update permission (for grading submissions)
     const permCheck = await requirePermission(userId, "homework.update");
@@ -74,36 +89,41 @@ export async function PUT(request: NextRequest, { params }: Params) {
     const { score, maxScore, feedback, questionFeedback, autoGrade } = body;
 
     // Verify homework ownership
-    const homeworkData = await db.query.homework.findFirst({
-      where: eq(homework.id, id),
-    });
+    const [homeworkData] = await db
+      .select()
+      .from(homework)
+      .where(eq(homework.id, id))
+      .limit(1);
 
     if (!homeworkData || (homeworkData as { teacherId?: string }).teacherId !== currentUser.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return {
+        error: "Forbidden",
+        status: 403
+      };
     }
 
-    const submission = await db.query.homeworkSubmissions.findFirst({
-      where: eq(homeworkSubmissions.id, submissionId),
-    });
+    const [submission] = await db
+      .select()
+      .from(homeworkSubmissions)
+      .where(eq(homeworkSubmissions.id, submissionId))
+      .limit(1);
 
-    if (!submission) {
-      return NextResponse.json({ error: "Submission not found" }, { status: 404 });
+    if (!submission[0]) {
+      return {
+        error: "Submission not found",
+        status: 404
+      };
     }
 
     // Prepare update data
     const updateData: {
       status: string;
-      gradedBy: string;
       gradedAt: Date;
       updatedAt: Date;
       score?: number;
-      maxScore?: number;
-      percentage?: number;
       feedback?: string;
-      questionFeedback?: unknown;
     } = {
       status: "graded",
-      gradedBy: currentUser.id,
       gradedAt: new Date(),
       updatedAt: new Date(),
     };
@@ -125,7 +145,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
         .filter((q) => supportedTypes.includes(q.type))
         .map((q) => ({
           id: q.id,
-          type: q.type,
+          type: q.type as "multiple_choice" | "true_false" | "fill_blank" | "short_answer" | "essay" | "numeric" | "math_expression" | "match_following",
           question: q.question,
           options: q.options,
           correctAnswer: q.correctAnswer,
@@ -135,26 +155,18 @@ export async function PUT(request: NextRequest, { params }: Params) {
           explanation: q.explanation,
         }));
 
-      const submissionAnswers = (submission as { answers?: unknown }).answers;
+      const submissionContent = (submission[0] as { content?: unknown }).content;
       const gradingResult = gradeHomework(
-        gradableQuestions.length > 0 ? (gradableQuestions as any) : [],
-        Array.isArray(submissionAnswers) ? submissionAnswers : [],
+        gradableQuestions.length > 0 ? gradableQuestions : [],
+        Array.isArray(submissionContent) ? submissionContent as Array<{ questionId: string; answer: string | string[] }> : [],
         undefined
       );
 
       updateData.score = gradingResult.totalScore;
-      updateData.maxScore = gradingResult.maxScore;
-      updateData.percentage = gradingResult.percentage;
-      updateData.questionFeedback = gradingResult.results;
     } else {
       // Manual grading
       if (score !== undefined) updateData.score = score;
-      if (maxScore !== undefined) updateData.maxScore = maxScore;
-      if (score !== undefined && maxScore !== undefined) {
-        updateData.percentage = Math.round((score / maxScore) * 100);
-      }
       if (feedback !== undefined) updateData.feedback = feedback;
-      if (questionFeedback !== undefined) updateData.questionFeedback = questionFeedback;
     }
 
     const [updated] = await db.update(homeworkSubmissions)
@@ -162,9 +174,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
       .where(eq(homeworkSubmissions.id, submissionId))
       .returning();
 
-    return NextResponse.json({ submission: updated });
-  } catch (error) {
-    logger.error("Grading error:", error);
-    return NextResponse.json({ error: "Failed to grade submission" }, { status: 500 });
-  }
-}
+    return { submission: updated };
+  },
+  ['teacher', 'admin']
+);

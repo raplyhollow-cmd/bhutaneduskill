@@ -49,9 +49,10 @@ export const GET = createApiRoute(
       }
 
       // Get all parent-student relationships
-      const relationships = await db.query.parentToStudent.findMany({
-        where: eq(parentToStudent.parentId, parentRecord.id),
-      });
+      const relationships = await db
+        .select()
+        .from(parentToStudent)
+        .where(eq(parentToStudent.parentId, parentRecord.id));
 
       if (relationships.length === 0) {
         return successResponse({
@@ -68,12 +69,13 @@ export const GET = createApiRoute(
       const studentIds = relationships.map((r) => r.studentId);
 
       // Get children linked to this parent
-      const children = await db.query.users.findMany({
-        where: and(
+      const children = await db
+        .select()
+        .from(users)
+        .where(and(
           eq(users.type, "student"),
           inArray(users.id, studentIds)
-        ),
-      });
+        ));
 
       const childIds = children.map((c) => c.id);
 
@@ -92,12 +94,13 @@ export const GET = createApiRoute(
       // Get attendance data for all children (last 30 days)
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const attendanceData = await db.query.attendance.findMany({
-        where: and(
+      const attendanceData = await db
+        .select()
+        .from(attendance)
+        .where(and(
           inArray(attendance.studentId, childIds),
           gte(attendance.date, thirtyDaysAgo.toISOString().split("T")[0])
-        ),
-      });
+        ));
 
       // Group attendance by child
       const attendanceByChild = new Map<string, { present: number; total: number }>();
@@ -113,9 +116,10 @@ export const GET = createApiRoute(
       }
 
       // Get homework counts for all children (from homework submissions)
-      const homeworkData = await db.query.homeworkSubmissions.findMany({
-        where: inArray(homeworkSubmissions.studentId, childIds),
-      });
+      const homeworkData = await db
+        .select()
+        .from(homeworkSubmissions)
+        .where(inArray(homeworkSubmissions.studentId, childIds));
 
       // Group homework by child
       const homeworkByChild = new Map<string, number>();
@@ -126,11 +130,12 @@ export const GET = createApiRoute(
       }
 
       // Get recent grades for all children
-      const gradesData = await db.query.examResultsEnhanced.findMany({
-        where: inArray(examResultsEnhanced.userId, childIds),
-        orderBy: [desc(examResultsEnhanced.examDate)],
-        limit: 50,
-      });
+      const gradesData = await db
+        .select()
+        .from(examResultsEnhanced)
+        .where(inArray(examResultsEnhanced.userId, childIds))
+        .orderBy(desc(examResultsEnhanced.examDate))
+        .limit(50);
 
       // Group grades by child
       const gradesByChild = new Map<string, typeof gradesData>();
@@ -142,10 +147,11 @@ export const GET = createApiRoute(
       }
 
       // Get career interests for all children
-      const careerMatchesData = await db.query.careerMatches.findMany({
-        where: inArray(careerMatches.studentId, childIds),
-        orderBy: [desc(careerMatches.matchScore)],
-      });
+      const careerMatchesData = await db
+        .select()
+        .from(careerMatches)
+        .where(inArray(careerMatches.studentId, childIds))
+        .orderBy(desc(careerMatches.matchScore));
 
       // Group career interests by child
       const careersByChild = new Map<string, string[]>();
@@ -160,9 +166,10 @@ export const GET = createApiRoute(
 
       // Get fee data for all children
       // Use studentFees table which has studentId directly
-      const studentFeesData = await db.query.studentFees.findMany({
-        where: inArray(studentFees.studentId, childIds),
-      });
+      const studentFeesData = await db
+        .select()
+        .from(studentFees)
+        .where(inArray(studentFees.studentId, childIds));
 
       // Group fees by child
       const feesByChild = new Map<string, { amountPaid: number; amountPending: number }>();

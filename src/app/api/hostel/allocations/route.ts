@@ -6,9 +6,9 @@ import { logger } from "@/lib/logger";
  * Handles allocation requests, approvals, room changes, and checkouts
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
-import { requireAuth } from "@/lib/auth-utils";
 import {
   users,
   hostelAllocations,
@@ -25,32 +25,24 @@ import type { ApiSuccess, ApiErrorResponse } from "@/types";
 // GET - Fetch allocations
 // ============================================================================
 
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin", "school-admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error } as ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: {
-        id: true,
-        type: true,
-        role: true,
-        schoolId: true,
-      },
-    });
+    const currentUser = await db
+      .select({
+        id: users.id,
+        type: users.type,
+        role: users.role,
+        schoolId: users.schoolId,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!currentUser) {
-      return NextResponse.json(
-        { error: "User not found", status: 404 } as ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "User not found", status: 404 };
     }
 
     const { searchParams } = new URL(request.url);
@@ -77,11 +69,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch allocations with room and hostel details
-    const allocations = await db.query.hostelAllocations.findMany({
-      where: and(...whereConditions),
-      orderBy: [desc(hostelAllocations.createdAt)],
-      limit: 100,
-    });
+    const allocations = await db
+      .select()
+      .from(hostelAllocations)
+      .where(and(...whereConditions))
+      .orderBy(desc(hostelAllocations.createdAt))
+      .limit(100);
 
     // Enrich with room and hostel details
     const enrichedAllocations = await Promise.all(
@@ -90,23 +83,30 @@ export async function GET(request: NextRequest) {
         let hostel = null;
 
         if (allocation.roomId) {
-          room = await db.query.hostelRooms.findFirst({
-            where: eq(hostelRooms.id, allocation.roomId),
-          });
+          const roomResult = await db
+            .select()
+            .from(hostelRooms)
+            .where(eq(hostelRooms.id, allocation.roomId))
+            .limit(1);
+          room = roomResult[0] || null;
         }
 
         if (allocation.hostelId) {
-          hostel = await db.query.hostelBuildings.findFirst({
-            where: eq(hostelBuildings.id, allocation.hostelId),
-          });
+          const hostelResult = await db
+            .select()
+            .from(hostelBuildings)
+            .where(eq(hostelBuildings.id, allocation.hostelId))
+            .limit(1);
+          hostel = hostelResult[0] || null;
         }
 
         // Get payment history
-        const payments = await db.query.hostelPayments.findMany({
-          where: eq(hostelPayments.allocationId, allocation.id),
-          orderBy: [desc(hostelPayments.paymentDate)],
-          limit: 5,
-        });
+        const payments = await db
+          .select()
+          .from(hostelPayments)
+          .where(eq(hostelPayments.allocationId, allocation.id))
+          .orderBy(desc(hostelPayments.paymentDate))
+          .limit(5);
 
         return {
           ...allocation,
@@ -129,51 +129,38 @@ export async function GET(request: NextRequest) {
         .reduce((sum, a) => sum + (a.feeOutstanding || 0), 0),
     };
 
-    return NextResponse.json({
+    return {
       data: {
         allocations: enrichedAllocations,
         stats,
       },
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch allocations", status: 500 } as ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin", "school-admin"]
+);
 
 // ============================================================================
 // POST - Create allocation
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin", "school-admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error } as ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { userId } = authResult;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      columns: {
-        id: true,
-        type: true,
-        role: true,
-        schoolId: true,
-      },
-    });
+    const currentUser = await db
+      .select({
+        id: users.id,
+        type: users.type,
+        role: users.role,
+        schoolId: users.schoolId,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!currentUser) {
-      return NextResponse.json(
-        { error: "User not found", status: 404 } as ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "User not found", status: 404 };
     }
 
     const body = await request.json();
@@ -193,68 +180,76 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Verify student exists
-    const student = await db.query.users.findFirst({
-      where: eq(users.id, studentId),
-      columns: { id: true, firstName: true, lastName: true, type: true },
-    });
+    const studentResult = await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        type: users.type,
+      })
+      .from(users)
+      .where(eq(users.id, studentId))
+      .limit(1);
+    const student = studentResult[0] || null;
 
     if (!student || student.type !== "student") {
-      return NextResponse.json(
-        { error: "Student not found", status: 404 } as ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "Student not found", status: 404 };
     }
 
     // Check for existing active allocation
-    const existingAllocation = await db.query.hostelAllocations.findFirst({
-      where: and(
-        eq(hostelAllocations.studentId, studentId),
-        eq(hostelAllocations.status, "active")
-      ),
-    });
+    const existingAllocationResult = await db
+      .select()
+      .from(hostelAllocations)
+      .where(
+        and(
+          eq(hostelAllocations.studentId, studentId),
+          eq(hostelAllocations.status, "active")
+        )
+      )
+      .limit(1);
+    const existingAllocation = existingAllocationResult[0] || null;
 
     if (existingAllocation) {
-      return NextResponse.json(
-        {
-          error: "Student already has an active hostel allocation",
-          status: 400,
-          details: { existingAllocation },
-        } as ApiErrorResponse,
-        { status: 400 }
-      );
+      return {
+        error: "Student already has an active hostel allocation",
+        status: 400,
+        details: { existingAllocation },
+      };
     }
 
     // Verify room exists and has capacity
     if (roomId) {
-      const room = await db.query.hostelRooms.findFirst({
-        where: eq(hostelRooms.id, roomId),
-      });
+      const roomResult = await db
+        .select()
+        .from(hostelRooms)
+        .where(eq(hostelRooms.id, roomId))
+        .limit(1);
+      const room = roomResult[0] || null;
 
       if (!room) {
-        return NextResponse.json(
-          { error: "Room not found" } as ApiErrorResponse,
-          { status: 404 }
-        );
+        return { error: "Room not found", status: 404 };
       }
 
       if ((room.occupiedBeds || 0) >= room.capacity) {
-        return NextResponse.json(
-          { error: "Room is at full capacity" } as ApiErrorResponse,
-          { status: 400 }
-        );
+        return { error: "Room is at full capacity", status: 400 };
       }
     }
 
     // Get fee structure if not provided
     let finalFeeAmount = feeAmount;
     if (!finalFeeAmount && roomType) {
-      const feeStructure = await db.query.hostelFees.findFirst({
-        where: and(
-          eq(hostelFees.schoolId, currentUser.schoolId || ""),
-          eq(hostelFees.academicYear, academicYear || new Date().getFullYear().toString()),
-          eq(hostelFees.roomType, roomType)
-        ),
-      });
+      const feeStructureResult = await db
+        .select()
+        .from(hostelFees)
+        .where(
+          and(
+            eq(hostelFees.schoolId, currentUser.schoolId || ""),
+            eq(hostelFees.academicYear, academicYear || new Date().getFullYear().toString()),
+            eq(hostelFees.roomType, roomType)
+          )
+        )
+        .limit(1);
+      const feeStructure = feeStructureResult[0] || null;
 
       finalFeeAmount =
         feeStructure?.semesterFee ||
@@ -306,54 +301,39 @@ export async function POST(request: NextRequest) {
         .where(eq(hostelRooms.id, roomId));
     }
 
-    return NextResponse.json({
+    return {
       success: true,
       allocation: allocation[0],
       message: "Hostel allocation created successfully",
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to create allocation", status: 500 } as ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin", "school-admin"]
+);
 
 // ============================================================================
 // PATCH - Update allocation
 // ============================================================================
 
-export async function PATCH(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin", "school-admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error } as ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { userId } = authResult;
+export const PATCH = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
 
     const body = await request.json();
     const { allocationId, action, ...updateData } = body;
 
     if (!allocationId) {
-      return NextResponse.json(
-        { error: "Allocation ID is required" } as ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "Allocation ID is required", status: 400 };
     }
 
-    const existingAllocation = await db.query.hostelAllocations.findFirst({
-      where: eq(hostelAllocations.id, allocationId),
-    });
+    const existingAllocationResult = await db
+      .select()
+      .from(hostelAllocations)
+      .where(eq(hostelAllocations.id, allocationId))
+      .limit(1);
+    const existingAllocation = existingAllocationResult[0] || null;
 
     if (!existingAllocation) {
-      return NextResponse.json(
-        { error: "Allocation not found" } as ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "Allocation not found", status: 404 };
     }
 
     // Handle different update actions
@@ -361,22 +341,19 @@ export async function PATCH(request: NextRequest) {
       const { roomId, bedNumber, hostelId } = updateData;
 
       // Verify room capacity
-      const room = await db.query.hostelRooms.findFirst({
-        where: eq(hostelRooms.id, roomId),
-      });
+      const roomResult = await db
+        .select()
+        .from(hostelRooms)
+        .where(eq(hostelRooms.id, roomId))
+        .limit(1);
+      const room = roomResult[0] || null;
 
       if (!room) {
-        return NextResponse.json(
-          { error: "Room not found" } as ApiErrorResponse,
-          { status: 404 }
-        );
+        return { error: "Room not found", status: 404 };
       }
 
       if ((room.occupiedBeds || 0) >= room.capacity) {
-        return NextResponse.json(
-          { error: "Room is at full capacity" } as ApiErrorResponse,
-          { status: 400 }
-        );
+        return { error: "Room is at full capacity", status: 400 };
       }
 
       // Update allocation
@@ -412,11 +389,11 @@ export async function PATCH(request: NextRequest) {
         })
         .where(eq(hostelRooms.id, roomId));
 
-      return NextResponse.json({
+      return {
         success: true,
         allocation: updated,
         message: "Room assigned successfully",
-      });
+      };
     }
 
     if (action === "checkout") {
@@ -446,33 +423,30 @@ export async function PATCH(request: NextRequest) {
           .where(eq(hostelRooms.id, existingAllocation.roomId));
       }
 
-      return NextResponse.json({
+      return {
         success: true,
         allocation: updated,
         message: "Student checked out successfully",
-      });
+      };
     }
 
     if (action === "change-room") {
       const { newRoomId, newBedNumber, reason } = updateData;
 
       // Verify new room has capacity
-      const newRoom = await db.query.hostelRooms.findFirst({
-        where: eq(hostelRooms.id, newRoomId),
-      });
+      const newRoomResult = await db
+        .select()
+        .from(hostelRooms)
+        .where(eq(hostelRooms.id, newRoomId))
+        .limit(1);
+      const newRoom = newRoomResult[0] || null;
 
       if (!newRoom) {
-        return NextResponse.json(
-          { error: "New room not found" } as ApiErrorResponse,
-          { status: 404 }
-        );
+        return { error: "New room not found", status: 404 };
       }
 
       if ((newRoom.occupiedBeds || 0) >= newRoom.capacity) {
-        return NextResponse.json(
-          { error: "New room is at full capacity" } as ApiErrorResponse,
-          { status: 400 }
-        );
+        return { error: "New room is at full capacity", status: 400 };
       }
 
       // Get old room for occupancy update
@@ -510,11 +484,11 @@ export async function PATCH(request: NextRequest) {
         })
         .where(eq(hostelRooms.id, newRoomId));
 
-      return NextResponse.json({
+      return {
         success: true,
         allocation: updated,
         message: "Room changed successfully",
-      });
+      };
     }
 
     if (action === "update-fee") {
@@ -535,11 +509,11 @@ export async function PATCH(request: NextRequest) {
         .where(eq(hostelAllocations.id, allocationId))
         .returning();
 
-      return NextResponse.json({
+      return {
         success: true,
         allocation: updated,
         message: "Fee information updated",
-      });
+      };
     }
 
     // Default update
@@ -552,53 +526,37 @@ export async function PATCH(request: NextRequest) {
       .where(eq(hostelAllocations.id, allocationId))
       .returning();
 
-    return NextResponse.json({
+    return {
       success: true,
       allocation: updated,
       message: "Allocation updated successfully",
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to update allocation", status: 500 } as ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin", "school-admin"]
+);
 
 // ============================================================================
 // DELETE - Remove allocation
 // ============================================================================
 
-export async function DELETE(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin", "school-admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error } as ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
+export const DELETE = createApiRoute(
+  async (request: NextRequest, auth) => {
     const { searchParams } = new URL(request.url);
     const allocationId = searchParams.get("id");
 
     if (!allocationId) {
-      return NextResponse.json(
-        { error: "Allocation ID is required" } as ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: "Allocation ID is required", status: 400 };
     }
 
-    const allocation = await db.query.hostelAllocations.findFirst({
-      where: eq(hostelAllocations.id, allocationId),
-    });
+    const allocationResult = await db
+      .select()
+      .from(hostelAllocations)
+      .where(eq(hostelAllocations.id, allocationId))
+      .limit(1);
+    const allocation = allocationResult[0] || null;
 
     if (!allocation) {
-      return NextResponse.json(
-        { error: "Allocation not found" } as ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "Allocation not found", status: 404 };
     }
 
     // Free up the room
@@ -615,18 +573,13 @@ export async function DELETE(request: NextRequest) {
     // Delete allocation
     await db.delete(hostelAllocations).where(eq(hostelAllocations.id, allocationId));
 
-    return NextResponse.json({
+    return {
       success: true,
       message: "Allocation deleted successfully",
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to delete allocation", status: 500 } as ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin", "school-admin"]
+);
 
 // ============================================================================
 // Helper Functions

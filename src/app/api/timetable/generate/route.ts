@@ -19,7 +19,7 @@ import {
   rooms,
   classSubjects,
 } from "@/lib/db/schema";
-import { eq, and, or, sql, inArray, ne } from "drizzle-orm";
+import { eq, and, or, sql, inArray, ne, desc, asc } from "drizzle-orm";
 import { nanoid } from "nanoid";
 
 // ============================================================================
@@ -134,12 +134,8 @@ export async function POST(req: NextRequest) {
     const targetClassIds = Array.isArray(classId) ? classId : classId ? [classId] : undefined;
 
     const classesToProcess = targetClassIds
-      ? await db.query.classes.findMany({
-          where: eq(classes.id, targetClassIds[0]),
-        })
-      : await db.query.classes.findMany({
-          where: eq(classes.schoolId, targetSchoolId),
-        });
+      ? await db.select().from(classes).where(eq(classes.id, targetClassIds[0]))
+      : await db.select().from(classes).where(eq(classes.schoolId, targetSchoolId));
 
     if (classesToProcess.length === 0) {
       return NextResponse.json(
@@ -152,10 +148,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Get time periods for the school
-    const periods = await db.query.timePeriods.findMany({
-      where: eq(timePeriods.schoolId, targetSchoolId),
-      orderBy: (timePeriods, { asc }) => [asc(timePeriods.order)],
-    });
+    const periods = await db.select()
+      .from(timePeriods)
+      .where(eq(timePeriods.schoolId, targetSchoolId))
+      .orderBy(asc(timePeriods.order));
 
     if (periods.length === 0) {
       return NextResponse.json(
@@ -168,9 +164,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Get available rooms
-    const availableRooms = await db.query.rooms.findMany({
-      where: eq(rooms.schoolId, targetSchoolId),
-    });
+    const availableRooms = await db.select()
+      .from(rooms)
+      .where(eq(rooms.schoolId, targetSchoolId));
 
     // Generate timetable
     const result = await generateTimetable({
@@ -181,6 +177,7 @@ export async function POST(req: NextRequest) {
       academicYear,
       skipConflicts,
       userId,
+      preview: false,
     });
 
     logger.info("Timetable generated successfully", {
@@ -242,21 +239,17 @@ export async function GET(req: NextRequest) {
 
     // Get preview data
     const classesToProcess = classId
-      ? await db.query.classes.findMany({
-          where: eq(classes.id, classId),
-        })
-      : await db.query.classes.findMany({
-          where: eq(classes.schoolId, schoolId),
-        });
+      ? await db.select().from(classes).where(eq(classes.id, classId))
+      : await db.select().from(classes).where(eq(classes.schoolId, schoolId));
 
-    const periods = await db.query.timePeriods.findMany({
-      where: eq(timePeriods.schoolId, schoolId),
-      orderBy: (timePeriods, { asc }) => [asc(timePeriods.order)],
-    });
+    const periods = await db.select()
+      .from(timePeriods)
+      .where(eq(timePeriods.schoolId, schoolId))
+      .orderBy(asc(timePeriods.order));
 
-    const availableRooms = await db.query.rooms.findMany({
-      where: eq(rooms.schoolId, schoolId),
-    });
+    const availableRooms = await db.select()
+      .from(rooms)
+      .where(eq(rooms.schoolId, schoolId));
 
     // Generate preview (without saving)
     const preview = await generateTimetable({

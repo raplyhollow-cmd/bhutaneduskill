@@ -1,16 +1,18 @@
-import { logger } from "@/lib/logger";
 /**
  * STUDENT SELF CHECK-IN API
  *
  * POST /api/student/attendance/check-in - Record attendance with geolocation/QR code
  * GET /api/student/attendance/check-in - Get today's check-in status
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
+import { logger } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { attendance, users, enrollments, schools } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
 
 /**
@@ -61,18 +63,9 @@ interface TodayStatusResponse {
 // POST - Record student check-in
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  try {
-    // Require authentication - students only
-    const authResult = await requireAuth(["student"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId, user } = authResult;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId, user } = auth;
 
     // Parse request body
     let body: CheckInRequest;
@@ -108,10 +101,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get student's school for location verification
-    const school = await db.query.schools.findFirst({
-      where: eq(schools.id, user.schoolId),
-    });
+    // Get student's school for location verification using db.select (neon-http compatible)
+    const schoolResult = await db
+      .select()
+      .from(schools)
+      .where(eq(schools.id, user.schoolId))
+      .limit(1);
+
+    const school = schoolResult[0];
 
     if (!school) {
       return NextResponse.json(
@@ -124,24 +121,35 @@ export async function POST(request: NextRequest) {
     let targetClassId = classId;
 
     if (!targetClassId) {
-      // Get student's active enrollment
-      const activeEnrollment = await db.query.enrollments.findFirst({
-        where: and(
-          eq(enrollments.studentId, userId),
-          eq(enrollments.status, "active")
-        ),
-      });
+      // Get student's active enrollment using db.select (neon-http compatible)
+      const activeEnrollmentResult = await db
+        .select()
+        .from(enrollments)
+        .where(
+          and(
+            eq(enrollments.studentId, userId),
+            eq(enrollments.status, "active")
+          )
+        )
+        .limit(1);
 
+      const activeEnrollment = activeEnrollmentResult[0];
       targetClassId = activeEnrollment?.classId;
     }
 
-    // Check for existing attendance record today
-    const existingAttendance = await db.query.attendance.findFirst({
-      where: and(
-        eq(attendance.studentId, userId),
-        eq(attendance.date, today)
-      ),
-    });
+    // Check for existing attendance record today using db.select (neon-http compatible)
+    const existingAttendanceResult = await db
+      .select()
+      .from(attendance)
+      .where(
+        and(
+          eq(attendance.studentId, userId),
+          eq(attendance.date, today)
+        )
+      )
+      .limit(1);
+
+    const existingAttendance = existingAttendanceResult[0];
 
     if (existingAttendance) {
       // Already checked in today - return existing record
@@ -214,46 +222,36 @@ export async function POST(request: NextRequest) {
         message: status === "late" ? "Checked in late" : "Checked in successfully",
       } satisfies CheckInResponse,
     } satisfies ApiSuccess<CheckInResponse>, { status: 201 });
-
-  } catch (error) {
-    logger.error("Check-in error:", error);
-    return NextResponse.json(
-      { error: "Failed to check in", status: 500, details: error instanceof Error ? error.message : String(error) } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+  },
+  ["student"]
+);
 
 // ============================================================================
 // GET - Get today's check-in status
 // ============================================================================
 
-export async function GET(request: NextRequest) {
-  try {
-    // Require authentication - students only
-    const authResult = await requireAuth(["student"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
 
     const today = new Date().toISOString().split("T")[0];
 
-    // Check for today's attendance record
-    const todayAttendance = await db.query.attendance.findFirst({
-      where: and(
-        eq(attendance.studentId, userId),
-        eq(attendance.date, today)
-      ),
-    });
+    // Check for today's attendance record using db.select (neon-http compatible)
+    const todayAttendanceResult = await db
+      .select()
+      .from(attendance)
+      .where(
+        and(
+          eq(attendance.studentId, userId),
+          eq(attendance.date, today)
+        )
+      )
+      .limit(1);
 
+    const todayAttendance = todayAttendanceResult[0];
     const hasCheckedIn = !!todayAttendance;
 
-    return NextResponse.json({
+    return {
       data: {
         hasCheckedIn,
         canCheckIn: !hasCheckedIn,
@@ -270,13 +268,7 @@ export async function GET(request: NextRequest) {
           ? "You have already checked in today"
           : "You can check in now",
       } satisfies TodayStatusResponse,
-    } satisfies ApiSuccess<TodayStatusResponse>);
-
-  } catch (error) {
-    logger.error("Check-in status error:", error);
-    return NextResponse.json(
-      { error: "Failed to get status", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    } satisfies ApiSuccess<TodayStatusResponse>;
+  },
+  ["student"]
+);

@@ -301,14 +301,16 @@ export const GET = createApiRoute(
         if (!report) {
           return NextResponse.json({ error: "Report not found" }, { status: 404 });
         }
-        if (!report.allowedRoles.includes(user.type)) {
+        const userType = (user as { type: string }).type;
+        if (!report.allowedRoles.includes(userType)) {
           return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
         return NextResponse.json({ report });
       }
 
       // Return all available reports for user's role
-      const userReports = availableReports.filter((r) => r.allowedRoles.includes(user.type));
+      const userType = (user as { type: string }).type;
+      const userReports = availableReports.filter((r) => r.allowedRoles.includes(userType));
       return successResponse({ reports: userReports });
     } catch (error: unknown) {
       if (error instanceof Error && error.message === "Unauthorized") {
@@ -342,7 +344,8 @@ export const POST = createApiRoute(
       if (!report) {
         return NextResponse.json({ error: "Report not found" }, { status: 404 });
       }
-      if (!report.allowedRoles.includes(user.type)) {
+      const userType = (user as { type: string }).type;
+      if (!report.allowedRoles.includes(userType)) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
 
@@ -371,7 +374,13 @@ export const POST = createApiRoute(
           break;
 
         case "my-progress":
-          reportData = await generateMyProgressReport(user);
+          reportData = await generateMyProgressReport({
+            id: userId,
+            name: user.firstName && user.lastName
+              ? `${user.firstName} ${user.lastName}`
+              : user.firstName || null,
+            grade: null, // grade is not in AuthContext user, needs to be fetched separately if needed
+          });
           break;
 
         default:
@@ -388,7 +397,9 @@ export const POST = createApiRoute(
             id: reportId,
             name: report.name,
             generatedAt: timestamp,
-            generatedBy: user.name,
+            generatedBy: user.firstName && user.lastName
+              ? `${user.firstName} ${user.lastName}`
+              : user.firstName || null,
             data: reportData,
           },
         });
@@ -435,34 +446,51 @@ export const POST = createApiRoute(
 // ============================================================================
 
 async function generateStudentProfileReport(userId: string, currentUser: { type: string; schoolId?: string | null }): Promise<StudentProfileData> {
-  const user = await db.query.users.findFirst({
-    where: eq(users.id, userId),
-  });
+  const userRecords = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  const user = userRecords[0];
 
   if (!user) {
     throw new Error("Student not found");
   }
 
   // Get assessment results
-  const allAssessments = await db.query.assessments.findMany({
-    where: eq(assessments.userId, userId),
-    orderBy: desc(assessments.completedAt),
-  });
+  const allAssessments = await db
+    .select()
+    .from(assessments)
+    .where(eq(assessments.userId, userId))
+    .orderBy(desc(assessments.completedAt));
 
-  const riasecResult = await db.query.riasecResults.findFirst({
-    where: eq(riasecResults.userId, userId),
-    orderBy: desc(riasecResults.createdAt),
-  }) as RiasecResult | null;
+  const riasecRecords = await db
+    .select()
+    .from(riasecResults)
+    .where(eq(riasecResults.userId, userId))
+    .orderBy(desc(riasecResults.createdAt))
+    .limit(1);
 
-  const mbtiResult = await db.query.mbtiResults.findFirst({
-    where: eq(mbtiResults.userId, userId),
-    orderBy: desc(mbtiResults.createdAt),
-  }) as MbtiResult | null;
+  const riasecResult = (riasecRecords[0] || null) as RiasecResult | null;
 
-  const discResult = await db.query.discResults.findFirst({
-    where: eq(discResults.userId, userId),
-    orderBy: desc(discResults.createdAt),
-  }) as DiscResult | null;
+  const mbtiRecords = await db
+    .select()
+    .from(mbtiResults)
+    .where(eq(mbtiResults.userId, userId))
+    .orderBy(desc(mbtiResults.createdAt))
+    .limit(1);
+
+  const mbtiResult = (mbtiRecords[0] || null) as MbtiResult | null;
+
+  const discRecords = await db
+    .select()
+    .from(discResults)
+    .where(eq(discResults.userId, userId))
+    .orderBy(desc(discResults.createdAt))
+    .limit(1);
+
+  const discResult = (discRecords[0] || null) as DiscResult | null;
 
   // Get career matches (need to join through assessments since careerMatches doesn't have userId)
   const careerMatchesData = await db
@@ -488,15 +516,20 @@ async function generateStudentProfileReport(userId: string, currentUser: { type:
     .limit(10);
 
   // Get career plan
-  const careerPlanData = await db.query.careerPlans.findFirst({
-    where: eq(careerPlans.userId, userId),
-  });
+  const careerPlanRecords = await db
+    .select()
+    .from(careerPlans)
+    .where(eq(careerPlans.userId, userId))
+    .limit(1);
+
+  const careerPlanData = careerPlanRecords[0] || null;
 
   // Get exam results
-  const examResultsData = await db.query.examResults.findMany({
-    where: eq(examResults.userId, userId),
-    orderBy: desc(examResults.examYear),
-  });
+  const examResultsData = await db
+    .select()
+    .from(examResults)
+    .where(eq(examResults.userId, userId))
+    .orderBy(desc(examResults.examYear));
 
   return {
     student: {
@@ -555,35 +588,57 @@ async function generateStudentProfileReport(userId: string, currentUser: { type:
 }
 
 async function generateClassSummaryReport(classId: string, currentUser: { type: string; schoolId?: string | null }): Promise<ClassSummaryData> {
-  const classData = await db.query.classes.findFirst({
-    where: eq(classes.id, classId),
-  });
+  const classRecords = await db
+    .select()
+    .from(classes)
+    .where(eq(classes.id, classId))
+    .limit(1);
 
-  if (!classData) {
+  if (!classRecords || classRecords.length === 0) {
     throw new Error("Class not found");
   }
 
-  const studentIds = classData.students || [];
+  const classData = classRecords[0];
+
+  // Get student enrollments for this class
+  const { enrollments } = await import("@/lib/db/schema");
+  const enrollmentRecords = await db
+    .select({ studentId: enrollments.studentId })
+    .from(enrollments)
+    .where(eq(enrollments.classId, classId));
+
+  const studentIds = enrollmentRecords.map(e => e.studentId);
 
   // Get all students in class
-  const classStudents = await db.query.users.findMany({
-    where: (users, { inArray }) => inArray(users.id, studentIds),
-  });
+  type ClassStudent = typeof users.$inferSelect;
+  let classStudents: ClassStudent[] = [];
+  if (studentIds.length > 0) {
+    classStudents = await db
+      .select()
+      .from(users)
+      .where(sql`id = ANY(${studentIds})`);
+  }
 
   // Get assessment completion for each student
   const studentSummaries = await Promise.all(
     classStudents.map(async (student) => {
-      const studentAssessments = await db.query.assessments.findMany({
-        where: eq(assessments.userId, student.id),
-      });
+      const studentAssessments = await db
+        .select()
+        .from(assessments)
+        .where(eq(assessments.userId, student.id));
 
-      const riasecResult = await db.query.riasecResults.findFirst({
-        where: eq(riasecResults.userId, student.id),
-      }) as RiasecResult | null;
+      const riasecRecords = await db
+        .select()
+        .from(riasecResults)
+        .where(eq(riasecResults.userId, student.id))
+        .limit(1);
 
-      const studentExamResults = await db.query.examResults.findMany({
-        where: eq(examResults.userId, student.id),
-      });
+      const riasecResult = (riasecRecords[0] || null) as RiasecResult | null;
+
+      const studentExamResults = await db
+        .select()
+        .from(examResults)
+        .where(eq(examResults.userId, student.id));
 
       return {
         id: student.id,
@@ -715,9 +770,10 @@ async function generateCareerOutcomesReport(parameters: { schoolId?: string; gra
 }
 
 async function generateSchoolPerformanceReport(parameters: Record<string, unknown>, currentUser: { type: string }): Promise<SchoolPerformanceData> {
-  const schools = await db.query.users.findMany({
-    where: (users, { isNotNull }) => isNotNull(users.schoolId),
-  });
+  const schools = await db
+    .select()
+    .from(users)
+    .where(sql`${users.schoolId} IS NOT NULL`);
 
   const schoolStats: Record<string, {
     schoolId: string;
@@ -739,9 +795,10 @@ async function generateSchoolPerformanceReport(parameters: Record<string, unknow
 
     schoolStats[schoolId].totalStudents++;
 
-    const userAssessments = await db.query.assessments.findMany({
-      where: eq(assessments.userId, user.id),
-    });
+    const userAssessments = await db
+      .select()
+      .from(assessments)
+      .where(eq(assessments.userId, user.id));
 
     schoolStats[schoolId].assessmentCompletions += userAssessments.filter(
       (a) => a.status === "completed"
@@ -758,14 +815,19 @@ async function generateSchoolPerformanceReport(parameters: Record<string, unknow
   };
 }
 
-async function generateMyProgressReport(user: { id: string; name: string | null; grade: number | null }): Promise<MyProgressData> {
-  const allAssessments = await db.query.assessments.findMany({
-    where: eq(assessments.userId, user.id),
-  });
+async function generateMyProgressReport(user: { id: string; name: string | null; grade: string | number | null }): Promise<MyProgressData> {
+  const allAssessments = await db
+    .select()
+    .from(assessments)
+    .where(eq(assessments.userId, user.id));
 
-  const riasecResult = await db.query.riasecResults.findFirst({
-    where: eq(riasecResults.userId, user.id),
-  }) as RiasecResult | null;
+  const riasecRecords = await db
+    .select()
+    .from(riasecResults)
+    .where(eq(riasecResults.userId, user.id))
+    .limit(1);
+
+  const riasecResult = (riasecRecords[0] || null) as RiasecResult | null;
 
   // Get career matches through join (careerMatches doesn't have userId)
   const careerMatchesData = await db
@@ -785,13 +847,18 @@ async function generateMyProgressReport(user: { id: string; name: string | null;
     .orderBy(desc(careerMatches.matchScore))
     .limit(5);
 
-  const careerPlan = await db.query.careerPlans.findFirst({
-    where: eq(careerPlans.userId, user.id),
-  });
+  const careerPlanRecords = await db
+    .select()
+    .from(careerPlans)
+    .where(eq(careerPlans.userId, user.id))
+    .limit(1);
 
-  const examResultsData = await db.query.examResults.findMany({
-    where: eq(examResults.userId, user.id),
-  });
+  const careerPlan = careerPlanRecords[0] || null;
+
+  const examResultsData = await db
+    .select()
+    .from(examResults)
+    .where(eq(examResults.userId, user.id));
 
   return {
     user: {

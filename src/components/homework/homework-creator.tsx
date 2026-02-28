@@ -434,7 +434,7 @@ export function HomeworkCreator({ onSave, onCancel, initialData, availableClasse
                 className="w-full border rounded-md px-3 py-2"
                 value={homework.showResults}
                 onChange={(e) =>
-                  setHomework({ ...homework, showResults: e.target.value as any })
+                  setHomework({ ...homework, showResults: e.target.value as "immediate" | "after_due" | "manual" })
                 }
               >
                 <option value="immediate">Immediately after submission</option>

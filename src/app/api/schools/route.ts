@@ -132,12 +132,23 @@ export const POST = createApiRoute(
       accreditationStatus: string;
       maxStudents: number;
       campusSize: string;
-      facilities: string;
+      facilities: string[];
+      board: string;
       principalName: string;
       principalPhone: string;
       principalEmail: string;
-      domain: string;
+      counselorName: string;
+      counselorEmail: string;
+      counselorPhone: string;
+      vicePrincipalName: string;
+      schoolType: string;
+      level: string;
+      contactEmail: string | null;
+      contactPhone: string | null;
+      domain?: string;
       isActive: boolean;
+      createdAt: Date;
+      updatedAt: Date;
     }
     const schoolData: SchoolCreateData = {
       id: schoolId,
@@ -157,7 +168,7 @@ export const POST = createApiRoute(
       accreditationStatus: "registered",
       maxStudents: maxStudents || 1000,
       campusSize: "10 acres",
-      facilities: "[]",
+      facilities: [],
       board: "BCSE",
       principalName: "TBD",
       principalEmail: contactEmail || `principal@${generatedCode.toLowerCase()}.bt`,
@@ -175,7 +186,7 @@ export const POST = createApiRoute(
       updatedAt: new Date(),
     };
 
-    await db.insert(schools).values(schoolData as any);
+    await db.insert(schools).values(schoolData);
 
     // Query the created school using db.select() instead of db.query
     const createdSchoolList = await db

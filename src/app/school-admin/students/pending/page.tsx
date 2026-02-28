@@ -300,7 +300,7 @@ export default function PendingStudentsPage() {
       </div>
 
       {/* Filter Tabs */}
-      <Tabs value={filter} onValueChange={(v) => setFilter(v as any)}>
+      <Tabs value={filter} onValueChange={(v) => setFilter(v as "all" | "pending" | "approved" | "rejected")}>
         <TabsList>
           <TabsTrigger value="all">
             All ({applications.length})

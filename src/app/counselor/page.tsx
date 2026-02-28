@@ -31,17 +31,47 @@ import {
 import Link from "next/link";
 import { AIInsightCard } from "@/components/ai/ai-insight-card";
 
+interface DashboardStats {
+  totalStudents: number;
+  activeSchools: number;
+  pendingReports: number;
+  assessmentsThisWeek: number;
+  aiCoachUsage: number;
+}
+
+interface RecentStudent {
+  id: string;
+  name: string;
+  grade: number;
+  riskLevel: string;
+  lastSession: string;
+  needsAttention?: boolean;
+  school?: string;
+  assessmentStatus?: string;
+  topCareer?: string;
+}
+
+interface SchoolPerformance {
+  schoolName: string;
+  name: string;
+  totalStudents: number;
+  students: number;
+  averageScore: number;
+  riskStudents: number;
+  completion: number;
+}
+
 // Client component - dynamic rendering is automatic
 export default function CounselorDashboardPage() {
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<DashboardStats>({
     totalStudents: 0,
     activeSchools: 0,
     pendingReports: 0,
     assessmentsThisWeek: 0,
     aiCoachUsage: 0,
   });
-  const [recentStudents, setRecentStudents] = useState<any[]>([]);
-  const [schoolPerformance, setSchoolPerformance] = useState<any[]>([]);
+  const [recentStudents, setRecentStudents] = useState<RecentStudent[]>([]);
+  const [schoolPerformance, setSchoolPerformance] = useState<SchoolPerformance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {

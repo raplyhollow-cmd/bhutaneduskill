@@ -90,13 +90,15 @@ export const GET = createApiRoute(
       }
 
       // Get child's current class for comparison
-      const childEnrollment = await db.query.enrollments.findFirst({
-        where: and(
+      const [childEnrollment] = await db
+        .select()
+        .from(enrollments)
+        .where(and(
           eq(enrollments.studentId, childId),
           eq(enrollments.status, "active")
-        ),
-        orderBy: [desc(enrollments.createdAt)],
-      });
+        ))
+        .orderBy(desc(enrollments.createdAt))
+        .limit(1);
 
       const classId = childEnrollment?.classId || null;
       const classGrade = childCheck.classGrade || null;
@@ -119,10 +121,11 @@ export const GET = createApiRoute(
       const [riasecData, mbtiData, discData, workValuesData, learningStylesData] = await Promise.all([
         // RIASEC Results
         (async () => {
-          const results = await db.query.riasecResults.findMany({
-            where: eq(riasecResults.userId, childId),
-            orderBy: [desc(riasecResults.createdAt)],
-          });
+          const results = await db
+            .select()
+            .from(riasecResults)
+            .where(eq(riasecResults.userId, childId))
+            .orderBy(desc(riasecResults.completedAt));
 
           // Get class averages
           let classAverage: { [key: string]: number } | null = null;
@@ -172,10 +175,11 @@ export const GET = createApiRoute(
 
         // MBTI Results
         (async () => {
-          const results = await db.query.mbtiResults.findMany({
-            where: eq(mbtiResults.userId, childId),
-            orderBy: [desc(mbtiResults.createdAt)],
-          });
+          const results = await db
+            .select()
+            .from(mbtiResults)
+            .where(eq(mbtiResults.userId, childId))
+            .orderBy(desc(mbtiResults.completedAt));
 
           // Get class distribution
           let classDistribution: { [key: string]: number } | null = null;
@@ -204,10 +208,11 @@ export const GET = createApiRoute(
 
         // DISC Results
         (async () => {
-          const results = await db.query.discResults.findMany({
-            where: eq(discResults.userId, childId),
-            orderBy: [desc(discResults.createdAt)],
-          });
+          const results = await db
+            .select()
+            .from(discResults)
+            .where(eq(discResults.userId, childId))
+            .orderBy(desc(discResults.completedAt));
 
           // Get class averages
           let classAverage: { d: number; i: number; s: number; c: number } | null = null;
@@ -248,10 +253,11 @@ export const GET = createApiRoute(
 
         // Work Values Results
         (async () => {
-          const results = await db.query.workValuesResults.findMany({
-            where: eq(workValuesResults.userId, childId),
-            orderBy: [desc(workValuesResults.createdAt)],
-          });
+          const results = await db
+            .select()
+            .from(workValuesResults)
+            .where(eq(workValuesResults.userId, childId))
+            .orderBy(desc(workValuesResults.completedAt));
 
           return {
             type: "work_values" as const,
@@ -262,10 +268,11 @@ export const GET = createApiRoute(
 
         // Learning Styles Results
         (async () => {
-          const results = await db.query.learningStylesResults.findMany({
-            where: eq(learningStylesResults.userId, childId),
-            orderBy: [desc(learningStylesResults.createdAt)],
-          });
+          const results = await db
+            .select()
+            .from(learningStylesResults)
+            .where(eq(learningStylesResults.userId, childId))
+            .orderBy(desc(learningStylesResults.completedAt));
 
           // Get class averages
           let classAverage: { visual: number; auditory: number; kinesthetic: number } | null = null;

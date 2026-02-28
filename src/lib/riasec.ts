@@ -125,10 +125,10 @@ export function matchCareers(
       return {
         career: {
           ...career,
-          slug: (career as any).slug || career.name.toLowerCase().replace(/\s+/g, "-"),
-        } as any,
+          slug: ("slug" in career ? career.slug : undefined) || career.name.toLowerCase().replace(/\s+/g, "-"),
+        },
         matchScore: Math.round(Math.min(alignmentScore, 100)),
-      };
+      } as CareerMatch;
     })
     .filter((match) => match.matchScore >= 40)
     .sort((a, b) => b.matchScore - a.matchScore)

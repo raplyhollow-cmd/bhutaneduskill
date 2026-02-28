@@ -99,7 +99,7 @@ export default function SchoolAdminSubjectsPage() {
   const loadSchoolSubjects = async () => {
     setIsLoading(true);
     const result = await fetchSubjects({ limit: 100 });
-    setSubjects(result.subjects as any[]);
+    setSubjects(result.subjects);
     setIsLoading(false);
   };
 

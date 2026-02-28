@@ -55,7 +55,7 @@ async function notifySchoolAdminsAboutNewTeacher(schoolId: string, teacher: type
       .select()
       .from(users)
       .where(eq(users.schoolId, schoolId))
-      .then((admins) => admins.filter((a) => a.type === "school_admin"));
+      .then((admins) => admins.filter((a) => a.type === "school-admin"));
 
     if (schoolAdmins.length === 0) {
       logger.warn("No school admins found to notify", { schoolId });

@@ -1,10 +1,11 @@
 /**
  * Inventory Procurement API
  * Handles purchase orders and procurement requests
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import {
   purchaseOrders,
@@ -14,6 +15,8 @@ import {
 } from "@/lib/db/schema";
 import { eq, and, desc, sql, like } from "drizzle-orm";
 import { logger } from "@/lib/logger";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse, notFoundResponse } from "@/lib/api/response-helpers";
 import type { ApiSuccess, ApiErrorResponse, Pagination } from "@/types";
 
 interface PaginatedData<T> {
@@ -21,22 +24,48 @@ interface PaginatedData<T> {
   pagination: Pagination;
 }
 
+interface PurchaseOrderItem {
+  itemId?: string;
+  itemName: string;
+  description?: string;
+  quantity: number;
+  unit: string;
+  unitPrice: number;
+  totalPrice: number;
+  tax?: number;
+}
+
+interface CreatePurchaseOrderInput {
+  vendorId: string;
+  expectedDeliveryDate?: string;
+  items: PurchaseOrderItem[];
+  paymentTerms?: string;
+  deliveryAddress?: string;
+  deliveryInstructions?: string;
+  notes?: string;
+  termsAndConditions?: string;
+}
+
+interface UpdatePurchaseOrderInput {
+  id: string;
+  expectedDeliveryDate?: string;
+  actualDeliveryDate?: string;
+  status?: string;
+  paymentStatus?: string;
+  amountPaid?: number;
+  approvedBy?: string;
+  approvalNotes?: string;
+  notes?: string;
+}
+
 // ============================================================================
 // GET /api/inventory/procurement - List purchase orders
 // ============================================================================
 
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { user, userId } = authResult;
-
-    const { searchParams } = new URL(request.url);
+export const GET = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { user, userId } = auth;
+    const { searchParams } = new URL(req.url);
     const page = Math.max(1, Number(searchParams.get("page")) || 1);
     const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 20));
     const status = searchParams.get("status") || "";
@@ -90,78 +119,37 @@ export async function GET(request: NextRequest) {
 
     logger.info("Fetched purchase orders", { userId, count: orders.length });
 
-    return NextResponse.json({
-      data: {
-        items: orders,
-        pagination,
-      },
-    } satisfies ApiSuccess<PaginatedData<typeof orders[0]>>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/inventory/procurement", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch purchase orders", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return successResponse({
+      items: orders,
+      pagination,
+    } satisfies PaginatedData<typeof orders[0]>);
+  },
+  ["admin"]
+);
 
 // ============================================================================
 // POST /api/inventory/procurement - Create purchase order
 // ============================================================================
 
-interface PurchaseOrderItem {
-  itemId?: string;
-  itemName: string;
-  description?: string;
-  quantity: number;
-  unit: string;
-  unitPrice: number;
-  totalPrice: number;
-  tax?: number;
-}
-
-interface CreatePurchaseOrderInput {
-  vendorId: string;
-  expectedDeliveryDate?: string;
-  items: PurchaseOrderItem[];
-  paymentTerms?: string;
-  deliveryAddress?: string;
-  deliveryInstructions?: string;
-  notes?: string;
-  termsAndConditions?: string;
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { user, userId } = authResult;
-
-    const data: CreatePurchaseOrderInput = await request.json();
+export const POST = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { user, userId } = auth;
+    const data: CreatePurchaseOrderInput = await req.json();
 
     // Validate required fields
     if (!data.vendorId || !data.items || data.items.length === 0) {
-      return NextResponse.json(
-        { error: "Missing required fields: vendorId, items", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("Missing required fields: vendorId, items");
     }
 
     // Validate vendor exists
-    const vendor = await db.query.inventoryVendors.findFirst({
-      where: eq(inventoryVendors.id, data.vendorId),
-    });
+    const [vendor] = await db
+      .select()
+      .from(inventoryVendors)
+      .where(eq(inventoryVendors.id, data.vendorId))
+      .limit(1);
 
     if (!vendor) {
-      return NextResponse.json(
-        { error: "Vendor not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return notFoundResponse("Vendor");
     }
 
     // Calculate totals
@@ -170,9 +158,11 @@ export async function POST(request: NextRequest) {
     const totalAmount = subtotal + taxAmount;
 
     // Generate PO number
-    const settings = await db.query.inventorySettings.findFirst({
-      where: eq(inventorySettings.schoolId, user.schoolId || ""),
-    });
+    const [settings] = await db
+      .select()
+      .from(inventorySettings)
+      .where(eq(inventorySettings.schoolId, user.schoolId || ""))
+      .limit(1);
 
     const prefix = settings?.purchaseOrderPrefix || "PO";
     const nextNumber = settings?.purchaseOrderNextNumber || 1;
@@ -231,65 +221,36 @@ export async function POST(request: NextRequest) {
 
     logger.info("Created purchase order", { userId, orderId, orderNumber });
 
-    return NextResponse.json({
-      data: newOrder,
+    return successResponse({
+      order: newOrder,
       message: "Purchase order created successfully",
-    } satisfies ApiSuccess<typeof newOrder>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/inventory/procurement", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to create purchase order", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    });
+  },
+  ["admin"]
+);
 
 // ============================================================================
 // PATCH /api/inventory/procurement - Update purchase order
 // ============================================================================
 
-interface UpdatePurchaseOrderInput {
-  id: string;
-  expectedDeliveryDate?: string;
-  actualDeliveryDate?: string;
-  status?: string;
-  paymentStatus?: string;
-  amountPaid?: number;
-  approvedBy?: string;
-  approvalNotes?: string;
-  notes?: string;
-}
-
-export async function PATCH(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-    const { userId } = authResult;
-
-    const data: UpdatePurchaseOrderInput = await request.json();
+export const PATCH = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId } = auth;
+    const data: UpdatePurchaseOrderInput = await req.json();
 
     if (!data.id) {
-      return NextResponse.json(
-        { error: "Purchase order ID is required", status: 400 } satisfies ApiErrorResponse,
-        { status: 400 }
-      );
+      return badRequestResponse("Purchase order ID is required");
     }
 
     // Check if PO exists
-    const existingOrder = await db.query.purchaseOrders.findFirst({
-      where: eq(purchaseOrders.id, data.id),
-    });
+    const [existingOrder] = await db
+      .select()
+      .from(purchaseOrders)
+      .where(eq(purchaseOrders.id, data.id))
+      .limit(1);
 
     if (!existingOrder) {
-      return NextResponse.json(
-        { error: "Purchase order not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return notFoundResponse("Purchase order");
     }
 
     const updateData: Record<string, unknown> = {
@@ -325,32 +286,10 @@ export async function PATCH(request: NextRequest) {
 
     logger.info("Updated purchase order", { userId, orderId: data.id });
 
-    return NextResponse.json({
-      data: updatedOrder,
+    return successResponse({
+      order: updatedOrder,
       message: "Purchase order updated successfully",
-    } satisfies ApiSuccess<typeof updatedOrder>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/inventory/procurement", method: "PATCH" });
-    return NextResponse.json(
-      { error: "Failed to update purchase order", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
-
-// ============================================================================
-// POST /api/inventory/procurement/receive - Receive items from PO
-// ============================================================================
-
-interface ReceiveItemsInput {
-  purchaseOrderId: string;
-  items: Array<{
-    itemId: string;
-    quantity: number;
-    condition?: string;
-    location?: string;
-  }>;
-  receivedDate?: string;
-  notes?: string;
-}
-
+    });
+  },
+  ["admin"]
+);

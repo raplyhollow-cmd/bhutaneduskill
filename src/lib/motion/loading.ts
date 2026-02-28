@@ -7,8 +7,35 @@
  * @see docs/design/motion-system.md
  */
 
-import { Variants, Transition } from "framer-motion";
+import type { Transition, MotionValue } from "framer-motion";
 import { prefersReducedMotion, getDuration, easing, opacity } from "./tokens";
+
+// ============================================================================
+// TYPE DEFINITIONS
+// ============================================================================
+
+interface VariantProps {
+  progress?: number;
+}
+
+// Fully permissive variant type to work with Framer Motion
+type VariantValue = {
+  opacity?: number | number[];
+  rotate?: number | number[];
+  scale?: number | number[];
+  x?: number | number[] | string;
+  y?: number | number[] | string;
+  width?: string | number;
+  pathLength?: number;
+  backgroundPosition?: string[];
+  transition?: Transition;
+  scaleX?: number;
+  [key: string]: unknown; // Allow any other properties
+};
+
+type AnimationVariants = {
+  [key: string]: VariantValue | ((props: VariantProps) => VariantValue);
+};
 
 // ============================================================================
 // SPINNER ANIMATIONS
@@ -18,7 +45,7 @@ import { prefersReducedMotion, getDuration, easing, opacity } from "./tokens";
  * Rotating spinner - classic loading indicator.
  * Size: 16-20px recommended for compact loading.
  */
-export const spinnerVariants: Variants = {
+export const spinnerVariants = {
   hidden: {
     opacity: 0,
     rotate: 0,
@@ -39,7 +66,7 @@ export const spinnerVariants: Variants = {
  * Pulsing spinner (no rotation).
  * Use for: subtle loading, alternate to rotation.
  */
-export const pulseSpinnerVariants: Variants = {
+export const pulseSpinnerVariants = {
   hidden: {
     opacity: 0.3,
     scale: 0.8,
@@ -59,7 +86,7 @@ export const pulseSpinnerVariants: Variants = {
 /**
  * Dots pulse (3-dot loading pattern).
  */
-export const dotsVariants: Variants = {
+export const dotsVariants = {
   container: {
     visible: {
       transition: {
@@ -93,7 +120,7 @@ export const dotsVariants: Variants = {
  * Subtle skeleton pulse (0.95 -> 1.0 opacity).
  * Use for: content placeholders, image loading.
  */
-export const skeletonVariants: Variants = {
+export const skeletonVariants = {
   pulse: {
     opacity: [0.95, 1, 0.95],
     transition: {
@@ -145,7 +172,7 @@ export const shimmerStyleDark = {
  * Horizontal progress bar.
  * Smooth fill from left to right.
  */
-export const progressBarVariants: Variants = {
+export const progressBarVariants = {
   hidden: {
     width: "0%",
   },
@@ -157,7 +184,7 @@ export const progressBarVariants: Variants = {
     },
   }),
   indeterminate: {
-    x: ["-100%", "100%"],
+    x: ["-100%", "100%"] as any,
     transition: {
       duration: 1.5,
       repeat: prefersReducedMotion() ? 0 : Infinity,
@@ -165,12 +192,12 @@ export const progressBarVariants: Variants = {
       ease: "linear",
     },
   },
-};
+} as const;
 
 /**
  * Continuous loading bar (like YouTube).
  */
-export const continuousProgressBarVariants: Variants = {
+export const continuousProgressBarVariants = {
   start: {
     x: "-100%",
   },
@@ -192,7 +219,7 @@ export const continuousProgressBarVariants: Variants = {
 /**
  * Circular progress spinner with stroke.
  */
-export const circularProgressVariants: Variants = {
+export const circularProgressVariants = {
   hidden: {
     pathLength: 0,
     rotate: -90,
@@ -216,7 +243,7 @@ export const circularProgressVariants: Variants = {
       ease: "linear",
     },
   },
-};
+} as const;
 
 // ============================================================================
 // WAVE LOADING
@@ -226,7 +253,7 @@ export const circularProgressVariants: Variants = {
  * Wave animation for multiple elements.
  * Use for: skeleton lists, repeated items.
  */
-export const waveVariants: Variants = {
+export const waveVariants = {
   container: {
     visible: {
       transition: {
@@ -259,7 +286,7 @@ export const waveVariants: Variants = {
 /**
  * Bouncing balls loading animation.
  */
-export const bounceVariants: Variants = {
+export const bounceVariants = {
   container: {
     visible: {
       transition: {
@@ -292,7 +319,7 @@ export const bounceVariants: Variants = {
 /**
  * Skeleton card with multiple elements.
  */
-export const cardSkeletonVariants: Variants = {
+export const cardSkeletonVariants = {
   pulse: {
     opacity: [0.96, 1, 0.96],
     transition: {
@@ -311,7 +338,7 @@ export const cardSkeletonVariants: Variants = {
 /**
  * Text line skeleton (for paragraphs).
  */
-export const textLineVariants: Variants = {
+export const textLineVariants = {
   pulse: {
     opacity: [0.5, 1, 0.5],
     transition: {
@@ -330,7 +357,7 @@ export const textLineVariants: Variants = {
 /**
  * Image placeholder animation.
  */
-export const imagePlaceholderVariants: Variants = {
+export const imagePlaceholderVariants = {
   loading: {
     opacity: 0.5,
     scale: 0.98,
@@ -356,7 +383,7 @@ export const imagePlaceholderVariants: Variants = {
 /**
  * Full-page or overlay loading state.
  */
-export const overlayVariants: Variants = {
+export const overlayVariants = {
   hidden: {
     opacity: 0,
   },
@@ -383,7 +410,7 @@ export const overlayVariants: Variants = {
 /**
  * Stagger reveal for loaded content.
  */
-export const staggerLoadVariants: Variants = {
+export const staggerLoadVariants = {
   container: {
     hidden: { opacity: 0 },
     visible: {
@@ -416,7 +443,7 @@ export const staggerLoadVariants: Variants = {
 /**
  * Typewriter cursor blink.
  */
-export const cursorVariants: Variants = {
+export const cursorVariants = {
   blinking: {
     opacity: [1, 0, 1],
     transition: {
@@ -453,7 +480,7 @@ export function createProgressVariants(
   from: number,
   to: number,
   duration: number = 400
-): Variants {
+): AnimationVariants {
   return {
     hidden: {
       scaleX: from,

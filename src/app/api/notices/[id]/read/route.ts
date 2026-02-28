@@ -11,7 +11,7 @@ import { notices, announcementReads } from "@/lib/db/schema";
 import { db } from "@/lib/db";
 import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
-import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, errorResponse, badRequestResponse, notFoundResponse } from "@/lib/api/response-helpers";
 
 /**
@@ -19,13 +19,10 @@ import { successResponse, errorResponse, badRequestResponse, notFoundResponse } 
  * Mark a notice as read by the current user
  */
 export const POST = createApiRoute(
-  async (request: NextRequest, context) => {
-    const auth = getAuth(request);
-    if (!auth) {
-      return errorResponse("Unauthorized", 401);
-    }
+  async (request: NextRequest, auth, context?: { params: Promise<{ id: string }> }) => {
     const { userId } = auth;
-    const { id } = await context!.params!;
+    const params = await context!.params;
+    const { id } = params;
 
     if (!id) {
       return badRequestResponse("Notice ID is required");

@@ -6,10 +6,11 @@
  *
  * Uses Google Gemini API to provide personalized career guidance
  * for Bhutanese students based on their assessment results.
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users, riasecResults, mbtiResults, workValuesResults, assessmentSubmissions } from "@/lib/db/schema";
 import { eq, desc, and } from "drizzle-orm";
@@ -19,6 +20,8 @@ import {
   type ChatMessage,
   type AIContext,
 } from "@/lib/ai/gemini-server";
+import type { UserSettings } from "@/types";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 // ============================================================================
 // TYPES
@@ -50,13 +53,9 @@ interface CareerCoachResponse {
 // GET /api/student/career-coach - Get conversation history and context
 // ============================================================================
 
-export async function GET(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["student"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status || 401 });
-    }
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (req: NextRequest, auth) => {
+    const { userId } = auth;
 
     // Get user profile
     const userProfiles = await db
@@ -72,12 +71,12 @@ export async function GET(req: NextRequest) {
       .limit(1);
 
     if (!userProfiles.length) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return { error: "User not found", status: 404 };
     }
 
     const user = userProfiles[0];
-    const settings = (user.settings as any) || {};
-    const careerConversations = settings.careerConversations || [];
+    const settings = (user.settings as UserSettings | null | undefined) || {};
+    const careerConversations = (settings.careerConversations as ChatMessage[] | undefined) || [];
 
     // Get latest assessment results for context
     const [riasecResult, mbtiResult, workValuesResult] = await Promise.all([
@@ -109,7 +108,7 @@ export async function GET(req: NextRequest) {
         and(eq(assessmentSubmissions.userId, userId), eq(assessmentSubmissions.status, "completed"))
       );
 
-    return NextResponse.json({
+    return {
       success: true,
       data: {
         conversationHistory: careerConversations,
@@ -122,30 +121,24 @@ export async function GET(req: NextRequest) {
           completedAssessments: completedAssessments.length,
         },
       },
-    });
-  } catch (error) {
-    logger.error(error, { route: "/api/student/career-coach", method: "GET" });
-    return NextResponse.json({ error: "Failed to fetch career coach data" }, { status: 500 });
-  }
-}
+    };
+  },
+  ["student"]
+);
 
 // ============================================================================
 // POST /api/student/career-coach - Send message to AI Career Coach
 // ============================================================================
 
-export async function POST(req: NextRequest) {
-  try {
-    const authResult = await requireAuth(["student"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status || 401 });
-    }
-    const { userId } = authResult;
+export const POST = createApiRoute(
+  async (req: NextRequest, auth): Promise<Record<string, unknown>> => {
+    const { userId } = auth;
 
     const body: CareerCoachRequest = await req.json();
     const { message, conversationHistory = [], saveConversation = true } = body;
 
     if (!message || typeof message !== "string") {
-      return NextResponse.json({ error: "Message is required" }, { status: 400 });
+      return { error: "Message is required", status: 400 };
     }
 
     // Rate limiting check (max 20 messages per hour)
@@ -160,12 +153,12 @@ export async function POST(req: NextRequest) {
       .limit(1);
 
     if (!userProfiles.length) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return { error: "User not found", status: 404 };
     }
 
     const user = userProfiles[0];
-    const settings = (user.settings as any) || {};
-    const careerCoachData = settings.careerCoach || {};
+    const settings = (user.settings as UserSettings | null | undefined) || {};
+    const careerCoachData = (settings.careerCoach as { messageTimestamps?: number[]; topCareer?: { title?: string; score?: number } } | undefined) || {};
     const now = Date.now();
     const hourAgo = now - 60 * 60 * 1000;
 
@@ -175,13 +168,11 @@ export async function POST(req: NextRequest) {
     );
 
     if (recentMessages.length >= 20) {
-      return NextResponse.json(
-        {
-          error: "Rate limit exceeded. Please wait before sending more messages.",
-          retryAfter: Math.ceil((recentMessages[0] - hourAgo) / 1000),
-        },
-        { status: 429 }
-      );
+      return {
+        error: "Rate limit exceeded. Please wait before sending more messages.",
+        retryAfter: Math.ceil((recentMessages[0] - hourAgo) / 1000),
+        status: 429,
+      };
     }
 
     // Get latest assessment results for AI context
@@ -213,8 +204,8 @@ export async function POST(req: NextRequest) {
     ]);
 
     // Get top career match if available
-    const topCareer = settings.topCareer?.title || null;
-    const topCareerScore = settings.topCareer?.score || null;
+    const topCareer = careerCoachData.topCareer?.title || null;
+    const topCareerScore = careerCoachData.topCareer?.score || null;
 
     // Build AI context
     const aiContext: AIContext = {
@@ -254,7 +245,7 @@ export async function POST(req: NextRequest) {
       // Keep only last 20 messages
       updatedConversationHistory = newHistory.slice(-20);
 
-      updatedSettings.careerConversations = updatedConversationHistory;
+      (updatedSettings as UserSettings).careerConversations = updatedConversationHistory;
     }
 
     // Save updated settings
@@ -282,12 +273,7 @@ export async function POST(req: NextRequest) {
       isFallback: aiResponse.fallback,
     });
 
-    return NextResponse.json(response);
-  } catch (error) {
-    logger.error(error, { route: "/api/student/career-coach", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to get career coach response. Please try again." },
-      { status: 500 }
-    );
-  }
-}
+    return response as unknown as Record<string, unknown>;
+  },
+  ["student"]
+);

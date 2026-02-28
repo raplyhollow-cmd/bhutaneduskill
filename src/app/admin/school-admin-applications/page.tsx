@@ -71,7 +71,7 @@ export default async function AdminSchoolAdminApplicationsPage() {
       LEFT JOIN users u ON saa.user_id = u.id
       LEFT JOIN schools s ON saa.school_id = s.id
       ORDER BY saa.applied_at DESC
-    `;
+    ` as SchoolAdminApplication[];
   } catch (error: unknown) {
     logger.error("Failed to fetch school admin applications", {
       error: error instanceof Error ? error.message : String(error),
@@ -88,7 +88,15 @@ export default async function AdminSchoolAdminApplicationsPage() {
 
   return (
     <SchoolAdminApplicationsClient
-      applications={applications}
+      applications={applications.map((app) => ({
+        ...app,
+        paymentAmount: app.paymentAmount ?? undefined,
+        paymentDate: app.paymentDate ? new Date(app.paymentDate) : null,
+        paymentVerifiedAt: null,
+        bankReferenceNumber: null,
+        appliedAt: app.appliedAt,
+        reviewedAt: app.reviewedAt ? new Date(app.reviewedAt) : null,
+      }))}
       pendingCount={pendingCount}
       approvedCount={approvedCount}
       rejectedCount={rejectedCount}

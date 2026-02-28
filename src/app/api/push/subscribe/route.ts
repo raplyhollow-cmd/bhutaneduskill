@@ -2,20 +2,22 @@
  * PUSH SUBSCRIPTION API
  *
  * POST /api/push/subscribe - Register or update a push subscription
+ * GET /api/push/subscribe - Get user's current subscriptions
  *
  * This endpoint allows authenticated users to register their device for push notifications.
  * The subscription object comes from the browser's PushSubscription API.
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { pushSubscriptions, pushNotificationSettings } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { logger } from "@/lib/logger";
 import { createApiRoute } from "@/lib/api/route-handler";
-import { successResponse, errorResponse, badRequestResponse, notFoundResponse } from "@/lib/api/response-helpers";
+import { successResponse, badRequestResponse } from "@/lib/api/response-helpers";
 
 // ============================================================================
 // TYPES
@@ -39,15 +41,11 @@ export const POST = createApiRoute(
   async (request: NextRequest, auth) => {
     const { userId } = auth;
 
-  try {
     const body: PushSubscriptionRequest = await request.json();
 
     // Validate required fields
     if (!body.endpoint || !body.keys?.p256dh || !body.keys?.auth) {
-      return NextResponse.json(
-        { error: "Missing required fields: endpoint, keys.p256dh, keys.auth" },
-        { status: 400 }
-      );
+      return badRequestResponse("Missing required fields: endpoint, keys.p256dh, keys.auth");
     }
 
     const now = new Date();
@@ -83,12 +81,9 @@ export const POST = createApiRoute(
         subscriptionId: existing[0].id,
       });
 
-      return NextResponse.json({
-        success: true,
-        data: {
-          id: existing[0].id,
-          message: "Subscription updated successfully",
-        },
+      return successResponse({
+        id: existing[0].id,
+        message: "Subscription updated successfully",
       });
     }
 
@@ -141,22 +136,11 @@ export const POST = createApiRoute(
       subscriptionId,
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        id: subscriptionId,
-        message: "Subscription created successfully",
-      },
+    return successResponse({
+      id: subscriptionId,
+      message: "Subscription created successfully",
     });
-  } catch (error: unknown) {
-    logger.apiError(error, {
-      route: "/api/push/subscribe",
-      method: "POST",
-      userId,
-    });
-    return errorResponse("Failed to register push subscription", 500);
-  }
-},
+  },
   [] // Any authenticated user can subscribe to push notifications
 );
 
@@ -168,7 +152,6 @@ export const GET = createApiRoute(
   async (request: NextRequest, auth) => {
     const { userId } = auth;
 
-  try {
     const subscriptions = await db
       .select({
         id: pushSubscriptions.id,
@@ -189,18 +172,7 @@ export const GET = createApiRoute(
       endpointDisplay: sub.endpoint.substring(0, 50) + "...",
     }));
 
-    return NextResponse.json({
-      success: true,
-      data: sanitized,
-    });
-  } catch (error: unknown) {
-    logger.apiError(error, {
-      route: "/api/push/subscribe",
-      method: "GET",
-      userId,
-    });
-    return errorResponse("Failed to fetch subscriptions", 500);
-  }
-},
+    return successResponse(sanitized);
+  },
   [] // Any authenticated user can view their subscriptions
 );

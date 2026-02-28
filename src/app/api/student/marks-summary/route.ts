@@ -9,14 +9,16 @@ import { logger } from "@/lib/logger";
  * - Trends from previous exam
  * - Overall grade and percentage
  * - Class rank (if available)
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users, examResultsEnhanced } from "@/lib/db/schema";
 import { eq, desc, and } from "drizzle-orm";
 import type { MarksSummary, ExamResult, SubjectPerformance, ExamTerm } from "@/types/student";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 // Cache response for 5 minutes
 export const revalidate = 300;
@@ -37,14 +39,9 @@ function calculateTrend(current: number, previous?: number): "up" | "down" | "st
   return diff > 0 ? "up" : "down";
 }
 
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["student"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (request: NextRequest, auth): Promise<Record<string, unknown>> => {
+    const { userId } = auth;
     const { searchParams } = new URL(request.url);
     const termParam = searchParams.get("term");
     const requestedTerm: ExamTerm = (termParam === "midterm" || termParam === "final" || termParam === "unit_test" || termParam === "board_exam")
@@ -52,29 +49,32 @@ export async function GET(request: NextRequest) {
       : "final";
 
     // Get student profile
-    const student = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-    });
+    const [student] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
 
-    if (!student) {
-      return NextResponse.json({ error: "Student not found" }, { status: 404 });
+    if (!student[0]) {
+      return { error: "Student not found", status: 404 };
     }
 
     // Get exam results
-    const results = await db.query.examResultsEnhanced.findMany({
-      where: eq(examResultsEnhanced.studentId, userId),
-      orderBy: [desc(examResultsEnhanced.examYear), desc(examResultsEnhanced.examDate)],
-      limit: 10,
-    });
+    const results = await db
+      .select()
+      .from(examResultsEnhanced)
+      .where(eq(examResultsEnhanced.studentId, userId))
+      .orderBy(desc(examResultsEnhanced.examYear), desc(examResultsEnhanced.examDate))
+      .limit(10);
 
     if (results.length === 0) {
-      return NextResponse.json({
+      return {
         currentExam: null,
         previousExam: null,
         availableTerms: ["midterm", "final", "unit_test", "board_exam"],
         selectedTerm: requestedTerm,
         hasData: false,
-      } satisfies MarksSummary);
+      } satisfies MarksSummary;
     }
 
     // Filter by requested exam type
@@ -199,17 +199,7 @@ export async function GET(request: NextRequest) {
       hasData: true,
     };
 
-    return NextResponse.json(response);
-  } catch (error: unknown) {
-    logger.apiError(error, { route: "/api/student/marks-summary", method: "GET" });
-
-    // Return empty result on error
-    return NextResponse.json({
-      currentExam: null,
-      previousExam: null,
-      availableTerms: ["midterm", "final", "unit_test", "board_exam"],
-      selectedTerm: "final",
-      hasData: false,
-    } satisfies MarksSummary);
-  }
-}
+    return response as unknown as Record<string, unknown>;
+  },
+  ["student"]
+);

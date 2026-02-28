@@ -11,7 +11,7 @@ import { logger } from "@/lib/logger";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
 import { books, users, circulation, libraryMembers, libraryReservations } from "@/lib/db/schema";
-import { eq, and, sql, desc } from "drizzle-orm";
+import { eq, and, sql, desc, asc } from "drizzle-orm";
 import { z } from "zod";
 import { createApiRoute, getAuth } from "@/lib/api/route-handler";
 import { successResponse, errorResponse, badRequestResponse, notFoundResponse } from "@/lib/api/response-helpers";
@@ -57,13 +57,18 @@ interface LibraryMembershipResult {
 }
 
 async function checkLibraryMembership(userId: string, schoolId: string): Promise<LibraryMembershipResult> {
-  const member = await db.query.libraryMembers.findFirst({
-    where: and(
-      eq(libraryMembers.userId, userId),
-      eq(libraryMembers.schoolId, schoolId),
-      eq(libraryMembers.membershipStatus, "active")
-    ),
-  });
+  const member = await db
+    .select()
+    .from(libraryMembers)
+    .where(
+      and(
+        eq(libraryMembers.userId, userId),
+        eq(libraryMembers.schoolId, schoolId),
+        eq(libraryMembers.membershipStatus, "active")
+      )
+    )
+    .limit(1)
+    .then(rows => rows[0] || null);
 
   if (!member) {
     return { valid: false, error: "No active library membership found" };
@@ -146,21 +151,40 @@ export const GET = createApiRoute(
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    const circulationRecords = await db.query.circulation.findMany({
-      where: whereClause,
-      with: {
-        book: true,
-        borrower: {
-          columns: {
-            id: true,
-            name: true,
-            type: true,
-            schoolId: true,
-          },
+    const circulationRecords = await db
+      .select({
+        id: circulation.id,
+        bookId: circulation.bookId,
+        borrowerId: circulation.borrowerId,
+        borrowDate: circulation.borrowDate,
+        dueDate: circulation.dueDate,
+        returnDate: circulation.returnDate,
+        status: circulation.status,
+        fine: circulation.fine,
+        finePaid: circulation.finePaid,
+        renewals: circulation.renewals,
+        maxRenewals: circulation.maxRenewals,
+        book: {
+          id: books.id,
+          title: books.title,
+          author: books.author,
+          isbn: books.isbn,
+          category: books.category,
+          coverImage: books.coverImage,
+          status: books.status,
         },
-      },
-      orderBy: [desc(circulation.borrowDate)],
-    });
+        borrower: {
+          id: users.id,
+          name: users.name,
+          type: users.type,
+          schoolId: users.schoolId,
+        },
+      })
+      .from(circulation)
+      .leftJoin(books, eq(circulation.bookId, books.id))
+      .leftJoin(users, eq(circulation.borrowerId, users.id))
+      .where(whereClause)
+      .orderBy(desc(circulation.borrowDate));
 
     // Calculate overdue status and fines for borrowed books
     const now = new Date();
@@ -183,7 +207,11 @@ export const GET = createApiRoute(
       : circulationWithCalcs.filter((r) => r.status !== "returned");
 
     return successResponse({
-      circulation: filteredRecords,
+      circulation: filteredRecords.map(r => ({
+        ...r,
+        book: r.book || null,
+        borrower: r.borrower || null,
+      })),
       stats: {
         total: circulationWithCalcs.length,
         borrowed: circulationWithCalcs.filter((r) => r.status === "borrowed").length,
@@ -215,9 +243,12 @@ export const POST = createApiRoute(
       }
 
       // Check book availability
-      const book = await db.query.books.findFirst({
-        where: eq(books.id, bookId),
-      });
+      const book = await db
+        .select()
+        .from(books)
+        .where(eq(books.id, bookId))
+        .limit(1)
+        .then(rows => rows[0] || null);
 
       if (!book) {
         return notFoundResponse("Book");
@@ -291,12 +322,34 @@ export const POST = createApiRoute(
       }
 
       // Get circulation record
-      const record = await db.query.circulation.findFirst({
-        where: eq(circulation.id, circulationId),
-        with: {
-          book: true,
-        },
-      });
+      const record = await db
+        .select({
+          id: circulation.id,
+          bookId: circulation.bookId,
+          borrowerId: circulation.borrowerId,
+          borrowDate: circulation.borrowDate,
+          dueDate: circulation.dueDate,
+          returnDate: circulation.returnDate,
+          status: circulation.status,
+          fine: circulation.fine,
+          finePaid: circulation.finePaid,
+          renewals: circulation.renewals,
+          maxRenewals: circulation.maxRenewals,
+          book: {
+            id: books.id,
+            title: books.title,
+            author: books.author,
+            isbn: books.isbn,
+            category: books.category,
+            coverImage: books.coverImage,
+            status: books.status,
+          },
+        })
+        .from(circulation)
+        .leftJoin(books, eq(circulation.bookId, books.id))
+        .where(eq(circulation.id, circulationId))
+        .limit(1)
+        .then(rows => rows[0] || null);
 
       if (!record) {
         return notFoundResponse("Circulation record");
@@ -359,12 +412,34 @@ export const POST = createApiRoute(
       }
 
       // Get circulation record
-      const record = await db.query.circulation.findFirst({
-        where: eq(circulation.id, circulationId),
-        with: {
-          book: true,
-        },
-      });
+      const record = await db
+        .select({
+          id: circulation.id,
+          bookId: circulation.bookId,
+          borrowerId: circulation.borrowerId,
+          borrowDate: circulation.borrowDate,
+          dueDate: circulation.dueDate,
+          returnDate: circulation.returnDate,
+          status: circulation.status,
+          fine: circulation.fine,
+          finePaid: circulation.finePaid,
+          renewals: circulation.renewals,
+          maxRenewals: circulation.maxRenewals,
+          book: {
+            id: books.id,
+            title: books.title,
+            author: books.author,
+            isbn: books.isbn,
+            category: books.category,
+            coverImage: books.coverImage,
+            status: books.status,
+          },
+        })
+        .from(circulation)
+        .leftJoin(books, eq(circulation.bookId, books.id))
+        .where(eq(circulation.id, circulationId))
+        .limit(1)
+        .then(rows => rows[0] || null);
 
       if (!record) {
         return notFoundResponse("Circulation record");
@@ -403,14 +478,17 @@ export const POST = createApiRoute(
         .where(eq(libraryMembers.userId, record.borrowerId));
 
       // Check if there are pending reservations for this book
-      const pendingReservations = await db.query.libraryReservations.findMany({
-        where: and(
-          eq(libraryReservations.bookId, record.bookId),
-          eq(libraryReservations.status, "pending")
-        ),
-        orderBy: [libraryReservations.priority, libraryReservations.reservationDate],
-        limit: 1,
-      });
+      const pendingReservations = await db
+        .select()
+        .from(libraryReservations)
+        .where(
+          and(
+            eq(libraryReservations.bookId, record.bookId),
+            eq(libraryReservations.status, "pending")
+          )
+        )
+        .orderBy(asc(libraryReservations.priority), asc(libraryReservations.reservationDate))
+        .limit(1);
 
       // Notify next reservation holder
       if (pendingReservations.length > 0) {

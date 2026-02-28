@@ -1,38 +1,30 @@
 /**
  * SINGLE REPORT CARD API
  * Fetch detailed report card by ID
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { reportCards } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
-
-type RouteContext = {
-  params: Promise<{ id: string }>;
-};
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, badRequestResponse, notFoundResponse } from "@/lib/api/response-helpers";
 
 /**
  * GET /api/school-admin/report-cards/:id
  * Get a single report card with full details
  */
-export async function GET(
-  req: NextRequest,
-  context: RouteContext
-) {
-  try {
-    const authResult = await requireAuth(["school_admin", "admin"]);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (req: NextRequest, auth, context: { params: Promise<{ id: string }> }) => {
+    const { userId } = auth;
 
     const { id } = await context.params;
 
     if (!id) {
-      return NextResponse.json({ error: "Report card ID is required" }, { status: 400 });
+      return badRequestResponse("Report card ID is required");
     }
 
     const [reportCard] = await db
@@ -42,19 +34,12 @@ export async function GET(
       .limit(1);
 
     if (!reportCard) {
-      return NextResponse.json({ error: "Report card not found" }, { status: 404 });
+      return notFoundResponse("Report card");
     }
 
     logger.info("Fetched report card details", { userId, reportCardId: id });
 
-    return NextResponse.json({
-      success: true,
-      data: reportCard,
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/report-cards/[id]", method: "GET" });
-    return NextResponse.json({
-      error: "Failed to fetch report card",
-    }, { status: 500 });
-  }
-}
+    return successResponse(reportCard);
+  },
+  ["school-admin", "admin"]
+);

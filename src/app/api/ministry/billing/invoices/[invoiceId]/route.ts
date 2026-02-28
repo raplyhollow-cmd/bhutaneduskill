@@ -6,10 +6,11 @@
  * This is a view-only feature - invoices are generated based on existing data
  *
  * Protected: Requires 'ministry' or 'admin' role
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import {
@@ -18,10 +19,15 @@ import {
 } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 // ============================================================================
 // TYPES
 // ============================================================================
+
+interface InvoiceParams extends Record<string, unknown> {
+  invoiceId: string;
+}
 
 interface InvoiceResponseData {
   id: string;
@@ -64,28 +70,11 @@ interface GeneratedInvoiceResponse {
 // GET HANDLER
 // ============================================================================
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ invoiceId: string }> }
-) {
-  const startTime = Date.now();
-
-  try {
-    // Authenticate and authorize
-    const authResult = await requireAuth(["ministry", "admin"]);
-    if ("error" in authResult) {
-      logger.security("unauthorized_invoice_download_attempt", {
-        route: "/api/ministry/billing/invoices/[invoiceId]",
-        method: "GET",
-      });
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
-    const { invoiceId } = await params;
+export const GET = createApiRoute<InvoiceParams>(
+  async (req: NextRequest, auth, context) => {
+    const startTime = Date.now();
+    const { userId } = auth;
+    const { invoiceId } = await context!.params;
 
     logger.info("Invoice PDF generation requested", {
       route: "/api/ministry/billing/invoices/[invoiceId]",
@@ -131,10 +120,7 @@ export async function GET(
       .limit(1);
 
     if (!invoiceData) {
-      return NextResponse.json(
-        { error: "Invoice not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "Invoice not found", status: 404 };
     }
 
     // Construct response - generate default line items since they don't exist in schema
@@ -183,12 +169,12 @@ export async function GET(
         hasExistingPdf: true,
       });
 
-      return NextResponse.json({
+      return {
         data: {
           invoice,
           printUrl: invoiceData.pdfUrl,
         } satisfies GeneratedInvoiceResponse,
-      } satisfies ApiSuccess<GeneratedInvoiceResponse>);
+      };
     }
 
     // Generate HTML invoice for printing
@@ -204,27 +190,16 @@ export async function GET(
       invoiceId,
     });
 
-    return NextResponse.json({
+    return {
       data: {
         invoice,
         htmlContent,
         printUrl,
       } satisfies GeneratedInvoiceResponse,
-    } satisfies ApiSuccess<GeneratedInvoiceResponse>);
-
-  } catch (error) {
-    logger.apiError(error, { route: "/api/ministry/billing/invoices/[invoiceId]", method: "GET" });
-
-    return NextResponse.json(
-      {
-        error: "Failed to generate invoice PDF",
-        status: 500,
-        details: process.env.NODE_ENV === "development" ? String(error) : undefined,
-      } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["ministry", "admin"]
+);
 
 // ============================================================================
 // HELPER FUNCTIONS

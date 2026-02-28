@@ -5,11 +5,10 @@
  * DELETE /api/school-admin/timetable/[id] - Delete timetable entry
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
-import { requireAuth } from "@/lib/auth-utils";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
+import type { ApiSuccess } from "@/types";
 import {
   users,
   classes,
@@ -18,6 +17,7 @@ import {
   rooms,
 } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 // ============================================================================
 // TYPES
@@ -39,33 +39,17 @@ interface UpdateTimetableEntryRequest {
 // PATCH - Update timetable entry
 // ============================================================================
 
-export async function PATCH(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(["school-admin", "admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
-    const { id } = await params;
+export const PATCH = createApiRoute(
+  async (req: NextRequest, auth, { params }: { params?: Promise<{ id: string }> }) => {
+    const { userId } = auth;
+    const { id } = await params!;
     const body = await req.json() as UpdateTimetableEntryRequest;
 
     // Check if entry exists
-    const existingEntry = await db.query.timetableEntries.findFirst({
-      where: eq(timetableEntries.id, id),
-    });
+    const existingEntry = await db.select().from(timetableEntries).where(eq(timetableEntries.id, id)).limit(1).then(r => r[0]);
 
     if (!existingEntry) {
-      return NextResponse.json(
-        { error: "Timetable entry not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "Timetable entry not found", status: 404 };
     }
 
     // Prepare update data
@@ -74,9 +58,7 @@ export async function PATCH(
     };
 
     if (body.subjectId) {
-      const subject = await db.query.subjects.findFirst({
-        where: eq(subjects.id, body.subjectId),
-      });
+      const subject = await db.select().from(subjects).where(eq(subjects.id, body.subjectId)).limit(1).then(r => r[0]);
       if (subject) {
         updateData.subjectId = body.subjectId;
         updateData.subjectName = subject.name;
@@ -84,9 +66,7 @@ export async function PATCH(
     }
 
     if (body.teacherId) {
-      const teacher = await db.query.users.findFirst({
-        where: eq(users.id, body.teacherId),
-      });
+      const teacher = await db.select().from(users).where(eq(users.id, body.teacherId)).limit(1).then(r => r[0]);
       if (teacher) {
         updateData.teacherId = body.teacherId;
         updateData.teacherName = { firstName: teacher.firstName || "", lastName: teacher.lastName || "" };
@@ -95,9 +75,7 @@ export async function PATCH(
 
     if (body.roomId !== undefined) {
       if (body.roomId) {
-        const room = await db.query.rooms.findFirst({
-          where: eq(rooms.id, body.roomId),
-        });
+        const room = await db.select().from(rooms).where(eq(rooms.id, body.roomId)).limit(1).then(r => r[0]);
         if (room) {
           updateData.roomId = body.roomId;
           updateData.roomName = { name: room.name, roomNumber: room.roomNumber || "" };
@@ -144,54 +122,29 @@ export async function PATCH(
       entryId: id,
     });
 
-    return NextResponse.json({
+    return {
       data: {
         message: "Timetable entry updated successfully",
       },
-    } satisfies ApiSuccess<{ message: string }>);
-  } catch (error) {
-    logger.apiError(error, {
-      route: "/api/school-admin/timetable/[id]",
-      method: "PATCH",
-    });
-
-    return NextResponse.json(
-      { error: "Failed to update timetable entry", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    } satisfies ApiSuccess<{ message: string }>;
+  },
+  ["school-admin", "admin"]
+);
 
 // ============================================================================
 // DELETE - Delete timetable entry
 // ============================================================================
 
-export async function DELETE(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(["school-admin", "admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
-    const { id } = await params;
+export const DELETE = createApiRoute(
+  async (req: NextRequest, auth, { params }: { params?: Promise<{ id: string }> }) => {
+    const { userId } = auth;
+    const { id } = await params!;
 
     // Check if entry exists
-    const existingEntry = await db.query.timetableEntries.findFirst({
-      where: eq(timetableEntries.id, id),
-    });
+    const existingEntry = await db.select().from(timetableEntries).where(eq(timetableEntries.id, id)).limit(1).then(r => r[0]);
 
     if (!existingEntry) {
-      return NextResponse.json(
-        { error: "Timetable entry not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "Timetable entry not found", status: 404 };
     }
 
     // Delete the entry
@@ -204,20 +157,11 @@ export async function DELETE(
       entryId: id,
     });
 
-    return NextResponse.json({
+    return {
       data: {
         message: "Timetable entry deleted successfully",
       },
-    } satisfies ApiSuccess<{ message: string }>);
-  } catch (error) {
-    logger.apiError(error, {
-      route: "/api/school-admin/timetable/[id]",
-      method: "DELETE",
-    });
-
-    return NextResponse.json(
-      { error: "Failed to delete timetable entry", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    } satisfies ApiSuccess<{ message: string }>;
+  },
+  ["school-admin", "admin"]
+);

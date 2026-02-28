@@ -73,7 +73,7 @@ export const PATCH = createApiRoute(
     // const permCheck = await requirePermission(userId, "schools.approve");
     // if (permCheck) return permCheck;
 
-    const params = await context.params;
+    const params = await context.params as { id: string };
     const applicationId = params.id;
     const body = await req.json();
 
@@ -91,21 +91,13 @@ export const PATCH = createApiRoute(
     const application = applications[0];
 
     // Build update object with proper typing
-    type ApplicationUpdateData = {
-      updatedAt: Date;
-      paymentStatus?: string;
-      paymentAmount?: number;
-      paymentDate?: string;
-      paymentMethod?: string;
-      paymentReference?: string;
-    };
-    const updateData: ApplicationUpdateData = {
+    const updateData: Record<string, unknown> = {
       updatedAt: new Date(),
     };
 
     if (body.paymentStatus) updateData.paymentStatus = body.paymentStatus;
     if (body.paymentAmount !== undefined) updateData.paymentAmount = body.paymentAmount;
-    if (body.paymentDate) updateData.paymentDate = body.paymentDate;
+    if (body.paymentDate) updateData.paymentDate = new Date(body.paymentDate);
     if (body.paymentMethod) updateData.paymentMethod = body.paymentMethod;
     if (body.paymentReference) updateData.paymentReference = body.paymentReference;
 

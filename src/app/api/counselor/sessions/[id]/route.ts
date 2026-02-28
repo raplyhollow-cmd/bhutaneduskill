@@ -5,8 +5,8 @@
  * DELETE /api/counselor/sessions/[id] - Cancel/delete session
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { counselingSessions, users } from "@/lib/db/schema";
@@ -17,40 +17,29 @@ import type { ApiSuccess, ApiErrorResponse } from "@/types";
 // PATCH - Update session
 // ============================================================================
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const authResult = await requireAuth(['counselor', 'admin']);
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error, status: authResult.status }, { status: authResult.status });
-  }
-
-  try {
-    const { user } = authResult;
-    const { id } = await params;
+export const PATCH = createApiRoute<{ id: string }>(
+  async (req, auth, context) => {
+    const { user } = auth;
+    const { id } = await (context?.params || {});
 
     // Check if session exists and user has access
-    const session = await db.query.counselingSessions.findFirst({
-      where: eq(counselingSessions.id, id),
-    });
+    const session = await db
+      .select()
+      .from(counselingSessions)
+      .where(eq(counselingSessions.id, id))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!session) {
-      return NextResponse.json(
-        { error: "Session not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "Session not found", status: 404 } satisfies ApiErrorResponse;
     }
 
     // Only the assigned counselor or admin can update
     if (user.type !== 'admin' && session.counselorId !== user.id) {
-      return NextResponse.json(
-        { error: "Forbidden: You can only update your own sessions", status: 403 } satisfies ApiErrorResponse,
-        { status: 403 }
-      );
+      return { error: "Forbidden: You can only update your own sessions", status: 403 } satisfies ApiErrorResponse;
     }
 
-    const body = await request.json();
+    const body = await req.json();
     const { status, notes, outcome, location, scheduledAt, duration } = body;
 
     // Build update object with only provided fields
@@ -77,53 +66,37 @@ export async function PATCH(
       changes: Object.keys(updateData),
     });
 
-    return NextResponse.json({
+    return {
       data: { session: updatedSession },
-    } satisfies ApiSuccess<{ session: typeof updatedSession }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/counselor/sessions/[id]", method: "PATCH" });
-    return NextResponse.json(
-      { error: "Failed to update session", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    } satisfies ApiSuccess<{ session: typeof updatedSession }>;
+  },
+  ['counselor', 'admin']
+);
 
 // ============================================================================
 // DELETE - Cancel session
 // ============================================================================
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const authResult = await requireAuth(['counselor', 'admin']);
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error, status: authResult.status }, { status: authResult.status });
-  }
-
-  try {
-    const { user } = authResult;
-    const { id } = await params;
+export const DELETE = createApiRoute<{ id: string }>(
+  async (req, auth, context) => {
+    const { user } = auth;
+    const { id } = await (context?.params || {});
 
     // Check if session exists and user has access
-    const session = await db.query.counselingSessions.findFirst({
-      where: eq(counselingSessions.id, id),
-    });
+    const session = await db
+      .select()
+      .from(counselingSessions)
+      .where(eq(counselingSessions.id, id))
+      .limit(1)
+      .then(rows => rows[0] || null);
 
     if (!session) {
-      return NextResponse.json(
-        { error: "Session not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "Session not found", status: 404 } satisfies ApiErrorResponse;
     }
 
     // Only the assigned counselor or admin can cancel
     if (user.type !== 'admin' && session.counselorId !== user.id) {
-      return NextResponse.json(
-        { error: "Forbidden: You can only cancel your own sessions", status: 403 } satisfies ApiErrorResponse,
-        { status: 403 }
-      );
+      return { error: "Forbidden: You can only cancel your own sessions", status: 403 } satisfies ApiErrorResponse;
     }
 
     // Update status to cancelled instead of deleting
@@ -140,14 +113,9 @@ export async function DELETE(
       sessionId: id,
     });
 
-    return NextResponse.json({
+    return {
       data: { session: cancelledSession },
-    } satisfies ApiSuccess<{ session: typeof cancelledSession }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/counselor/sessions/[id]", method: "DELETE" });
-    return NextResponse.json(
-      { error: "Failed to cancel session", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    } satisfies ApiSuccess<{ session: typeof cancelledSession }>;
+  },
+  ['counselor', 'admin']
+);

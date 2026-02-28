@@ -5,30 +5,20 @@
  * POST /api/admin/sitrep/regenerate - Force regenerate SITREP
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import { generateSITREP, getLatestSITREP } from "@/lib/sentinel/sitrep-generator";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
 
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
-
+export const GET = createApiRoute(
+  async (req: NextRequest) => {
     // Get query params
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(req.url);
     const force = searchParams.get("force") === "true";
     const useAI = searchParams.get("ai") === "true";
 
-    logger.info("SITREP requested", { userId, force, useAI });
+    logger.info("SITREP requested", { force, useAI });
 
     // Get or generate SITREP
     let sitrep;
@@ -53,42 +43,19 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
+    return {
       data: sitrep,
-    } satisfies ApiSuccess<typeof sitrep>);
+    } satisfies ApiSuccess<typeof sitrep>;
+  },
+  ["admin"]
+);
 
-  } catch (error) {
-    logger.apiError(error, {
-      route: "/api/admin/sitrep",
-      method: "GET",
-    });
-
-    return NextResponse.json(
-      {
-        error: "Failed to generate SITREP",
-        status: 500,
-        details: process.env.NODE_ENV === "development" ? String(error) : undefined,
-      } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
-    const body = await request.json();
+export const POST = createApiRoute(
+  async (req: NextRequest) => {
+    const body = await req.json();
     const useAI = body.useAI !== false; // Default to true
 
-    logger.info("SITREP regeneration requested", { userId, useAI });
+    logger.info("SITREP regeneration requested", { useAI });
 
     // Force regenerate SITREP
     const sitrep = await generateSITREP(undefined, {
@@ -96,23 +63,9 @@ export async function POST(request: NextRequest) {
       useAIForSummary: useAI,
     });
 
-    return NextResponse.json({
+    return {
       data: sitrep,
-    } satisfies ApiSuccess<typeof sitrep>);
-
-  } catch (error) {
-    logger.apiError(error, {
-      route: "/api/admin/sitrep",
-      method: "POST",
-    });
-
-    return NextResponse.json(
-      {
-        error: "Failed to regenerate SITREP",
-        status: 500,
-        details: process.env.NODE_ENV === "development" ? String(error) : undefined,
-      } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    } satisfies ApiSuccess<typeof sitrep>;
+  },
+  ["admin"]
+);

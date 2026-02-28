@@ -13,7 +13,12 @@ import { logger } from "@/lib/logger";
 
 // Stub web-push for now - package not installed
 // TODO: Install web-push package when implementing push notifications
-const webpush = {
+interface WebPushAPI {
+  sendNotification: (subscription: { endpoint: string; keys: { p256dh: string; auth: string } }, payload: string) => Promise<void>;
+  setVapidDetails: (subject: string, publicKey: string, privateKey: string) => void;
+}
+
+const webpush: WebPushAPI = {
   sendNotification: async (): Promise<void> => {
     // Stub implementation
   },
@@ -115,9 +120,11 @@ export async function sendPushNotification(payload: PushNotificationPayload): Pr
   // Configure web-push (idempotent)
   configureWebPush();
 
+  // Extract userId outside try block for error handling
+  const { userId } = payload;
+
   try {
     const {
-      userId,
       type,
       title,
       body,
@@ -192,10 +199,10 @@ export async function sendPushNotification(payload: PushNotificationPayload): Pr
         body,
         icon,
         badge,
-        data: data as any,
-        requireInteraction,
+        data: data || {},
+        requireInteraction: requireInteraction ?? false,
         tag,
-        vibrate: vibrate as any,
+        vibrate: vibrate || [],
         status: "pending",
         scheduledFor: scheduledFor,
         createdAt: new Date(),
@@ -232,10 +239,10 @@ export async function sendPushNotification(payload: PushNotificationPayload): Pr
       body,
       icon,
       badge,
-      data: data as any,
-      requireInteraction,
+      data: data || {},
+      requireInteraction: requireInteraction ?? false,
       tag,
-      vibrate: vibrate as any,
+      vibrate: vibrate || [],
       status: "sent",
       sentAt: new Date(),
       createdAt: new Date(),

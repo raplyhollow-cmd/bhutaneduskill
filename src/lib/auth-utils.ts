@@ -69,14 +69,16 @@ export async function getUserRole(clerkUserId: string): Promise<{
   }
 
   // Query database
-  const user = await db.query.users.findFirst({
-    where: eq(users.clerkUserId, clerkUserId),
-    columns: {
-      type: true,
-      schoolId: true,
-      tenantId: true,
-    },
-  });
+  const user = await db
+    .select({
+      type: users.type,
+      schoolId: users.schoolId,
+      tenantId: users.tenantId,
+    })
+    .from(users)
+    .where(eq(users.clerkUserId, clerkUserId))
+    .limit(1)
+    .then(rows => rows[0] || null);
 
   if (!user) {
     return null;
@@ -182,15 +184,17 @@ export async function canAccessUser(
   }
 
   // Get target user info
-  const targetUser = await db.query.users.findFirst({
-    where: eq(users.id, targetUserId),
-    columns: {
-      id: true,
-      clerkUserId: true,
-      schoolId: true,
-      type: true,
-    },
-  });
+  const targetUser = await db
+    .select({
+      id: users.id,
+      clerkUserId: users.clerkUserId,
+      schoolId: users.schoolId,
+      type: users.type,
+    })
+    .from(users)
+    .where(eq(users.id, targetUserId))
+    .limit(1)
+    .then(rows => rows[0] || null);
 
   if (!targetUser) {
     return false;
@@ -239,13 +243,27 @@ export async function verifyParentChildRelationship(
 ): Promise<boolean> {
   try {
     // Import tables here to avoid circular dependencies
-    const { parents, parentToStudent } = await import("@/lib/db/schema");
+    const { parents, parentToStudent, users } = await import("@/lib/db/schema");
+
+    // First get the user record from clerkUserId
+    const userRecords = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.clerkUserId, parentClerkUserId))
+      .limit(1);
+
+    if (userRecords.length === 0) {
+      logger.warn("User record not found for Clerk ID", { parentClerkUserId });
+      return false;
+    }
+
+    const userId = userRecords[0].id;
 
     // Get parent record for this user
     const parentRecords = await db
       .select({ id: parents.id })
       .from(parents)
-      .where(eq(parents.clerkUserId, parentClerkUserId))
+      .where(eq(parents.userId, userId))
       .limit(1);
 
     if (parentRecords.length === 0) {
@@ -293,13 +311,26 @@ export async function verifyParentChildRelationship(
  */
 export async function getVerifiedChildIds(parentClerkUserId: string): Promise<string[]> {
   try {
-    const { parents, parentToStudent } = await import("@/lib/db/schema");
+    const { parents, parentToStudent, users } = await import("@/lib/db/schema");
+
+    // First get the user record from clerkUserId
+    const userRecords = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.clerkUserId, parentClerkUserId))
+      .limit(1);
+
+    if (userRecords.length === 0) {
+      return [];
+    }
+
+    const userId = userRecords[0].id;
 
     // Get parent record
     const parentRecords = await db
       .select({ id: parents.id })
       .from(parents)
-      .where(eq(parents.clerkUserId, parentClerkUserId))
+      .where(eq(parents.userId, userId))
       .limit(1);
 
     if (parentRecords.length === 0) {
@@ -886,14 +917,16 @@ export async function verifySchoolActivation(user: User): Promise<{ error: strin
 
   // Fetch school to check status
   const { schools } = await import("@/lib/db/schema");
-  const school = await db.query.schools.findFirst({
-    where: eq(schools.id, user.schoolId),
-    columns: {
-      isActive: true,
-      subscriptionStatus: true,
-      setupComplete: true,
-    },
-  });
+  const school = await db
+    .select({
+      isActive: schools.isActive,
+      subscriptionStatus: schools.subscriptionStatus,
+      setupComplete: schools.setupComplete,
+    })
+    .from(schools)
+    .where(eq(schools.id, user.schoolId))
+    .limit(1)
+    .then(rows => rows[0] || null);
 
   if (!school) {
     return { error: "School not found" };

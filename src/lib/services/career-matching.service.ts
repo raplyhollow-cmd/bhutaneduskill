@@ -214,7 +214,7 @@ export async function getCareerMatches(
       whereCondition = and(
         whereCondition,
         eq(careerMatches.assessmentType, assessmentType)
-      ) as any;
+      );
     }
 
     const matches = await db
@@ -870,7 +870,7 @@ export async function deleteCareerMatches(
       whereCondition = and(
         whereCondition,
         eq(careerMatches.assessmentType, assessmentType)
-      ) as any;
+      );
     }
 
     await db.delete(careerMatches).where(whereCondition);

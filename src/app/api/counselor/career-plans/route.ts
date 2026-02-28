@@ -1,9 +1,9 @@
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { careerPlans, users, counselorAssignments, schools, careerMatches, assessments } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 /**
  * GET /api/counselor/career-plans
@@ -11,15 +11,8 @@ import { eq, and, desc, sql } from "drizzle-orm";
  * Get all career plans for students at counselor's assigned schools
  * Counselors can view career plans for students at their assigned schools
  */
-export async function GET(request: NextRequest) {
-  const authResult = await requireAuth(["counselor", "admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
-
-  const { userId, user } = authResult;
-
-  try {
+export const GET = createApiRoute(
+  async (request, { userId, user }) => {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status"); // completed, in_progress, not_started
 
@@ -28,13 +21,13 @@ export async function GET(request: NextRequest) {
 
     if (user.type === "counselor") {
       // Get school assignments for this counselor
-      const assignments = await db.query.counselorAssignments.findMany({
-        where: and(
+      const assignments = await db
+        .select({ schoolId: counselorAssignments.schoolId })
+        .from(counselorAssignments)
+        .where(and(
           eq(counselorAssignments.counselorId, userId),
           eq(counselorAssignments.isActive, true)
-        ),
-        columns: { schoolId: true },
-      });
+        ));
       targetSchoolIds = assignments.map((a) => a.schoolId);
     } else if (user.schoolId) {
       // Admin with a school ID
@@ -42,7 +35,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (targetSchoolIds.length === 0) {
-      return NextResponse.json({
+      return {
         plans: [],
         stats: {
           totalPlans: 0,
@@ -50,20 +43,20 @@ export async function GET(request: NextRequest) {
           inProgressPlans: 0,
           avgCompletion: 0,
         },
-      });
+      };
     }
 
     // Get all students from assigned schools
-    const schoolStudents = await db.query.users.findMany({
-      where: sql`${users.schoolId} IN ${sql.raw(`('${targetSchoolIds.join("','")}')`)}`,
-      columns: { id: true, firstName: true, lastName: true, name: true, classGrade: true, schoolId: true },
-    });
+    const schoolStudents = await db
+      .select({ id: users.id, firstName: users.firstName, lastName: users.lastName, name: users.name, classGrade: users.classGrade, schoolId: users.schoolId })
+      .from(users)
+      .where(sql`${users.schoolId} IN ${sql.raw(`('${targetSchoolIds.join("','")}')`)}`);
 
     const studentIds = schoolStudents.map(s => s.id);
     const studentMap = new Map(schoolStudents.map(s => [s.id, s]));
 
     if (studentIds.length === 0) {
-      return NextResponse.json({
+      return {
         plans: [],
         stats: {
           totalPlans: 0,
@@ -71,14 +64,14 @@ export async function GET(request: NextRequest) {
           inProgressPlans: 0,
           avgCompletion: 0,
         },
-      });
+      };
     }
 
     // Fetch school names
-    const schoolsData = await db.query.schools.findMany({
-      where: sql`${schools.id} IN ${sql.raw(`('${targetSchoolIds.join("','")}')`)}`,
-      columns: { id: true, name: true },
-    });
+    const schoolsData = await db
+      .select({ id: schools.id, name: schools.name })
+      .from(schools)
+      .where(sql`${schools.id} IN ${sql.raw(`('${targetSchoolIds.join("','")}')`)}`);
     const schoolMap = new Map(schoolsData.map(s => [s.id, s.name]));
 
     // Build conditions for career plans
@@ -98,9 +91,10 @@ export async function GET(request: NextRequest) {
       .orderBy(desc(careerPlans.updatedAt));
 
     // Get career matches for these students
-    const careerMatchesData = await db.query.careerMatches.findMany({
-      where: sql`${careerMatches.studentId} IN ${sql.raw(`('${studentIds.join("','")}')`)}`,
-    });
+    const careerMatchesData = await db
+      .select()
+      .from(careerMatches)
+      .where(sql`${careerMatches.studentId} IN ${sql.raw(`('${studentIds.join("','")}')`)}`);
 
     // Get top career per student
     const topCareersByStudent = new Map<string, typeof careerMatchesData[number]>();
@@ -123,16 +117,16 @@ export async function GET(request: NextRequest) {
         studentGrade: student?.classGrade || null,
         studentSchool: school || null,
         targetCareer: topCareer?.careerTitle || plan.targetCareer || null,
-        matchPercentage: topCareer?.matchScore || plan.matchScore || 0,
+        matchPercentage: topCareer?.matchScore || (plan as { matchScore?: number })?.matchScore || 0,
         status: plan.status,
-        completionPercentage: plan.completionPercentage || 0,
+        completionPercentage: (plan as { completionPercentage?: number })?.completionPercentage || 0,
         milestones: plan.milestones || [],
         shortTermGoals: plan.shortTermGoals || [],
         longTermGoals: plan.longTermGoals || [],
         counselorNotes: plan.notes || "",
         lastUpdated: plan.updatedAt?.toISOString() || new Date().toISOString(),
-        nextReview: plan.nextReviewDate || null,
-        riasecCode: plan.riasecCode || null,
+        nextReview: (plan as { nextReviewDate?: Date | string })?.nextReviewDate || null,
+        riasecCode: (plan as { riasecCode?: string })?.riasecCode || null,
       };
     });
 
@@ -144,7 +138,7 @@ export async function GET(request: NextRequest) {
       ? Math.round(plans.reduce((sum, p) => sum + p.completionPercentage, 0) / totalPlans)
       : 0;
 
-    return NextResponse.json({
+    return {
       plans,
       stats: {
         totalPlans,
@@ -152,12 +146,7 @@ export async function GET(request: NextRequest) {
         inProgressPlans,
         avgCompletion,
       },
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/counselor/career-plans", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch career plans", plans: [], stats: { totalPlans: 0, completedPlans: 0, inProgressPlans: 0, avgCompletion: 0 } },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["counselor", "admin"]
+);

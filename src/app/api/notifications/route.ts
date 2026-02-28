@@ -22,7 +22,7 @@ import {
   getUnreadCount,
   createNotification,
 } from "@/lib/services/notification.service";
-import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, errorResponse, badRequestResponse, notFoundResponse } from "@/lib/api/response-helpers";
 
 /**
@@ -37,11 +37,7 @@ import { successResponse, errorResponse, badRequestResponse, notFoundResponse } 
  * - unreadCount: boolean - Return only the unread count
  */
 export const GET = createApiRoute(
-  async (req: Request) => {
-    const auth = getAuth(req as NextRequest);
-    if (!auth) {
-      return errorResponse("Unauthorized", 401);
-    }
+  async (req: NextRequest, auth) => {
     const { userId } = auth;
 
     const { searchParams } = new URL(req.url);
@@ -80,11 +76,7 @@ export const GET = createApiRoute(
  * Requires admin role
  */
 export const POST = createApiRoute(
-  async (req: Request) => {
-    const auth = getAuth(req as NextRequest);
-    if (!auth) {
-      return errorResponse("Unauthorized", 401);
-    }
+  async (req: NextRequest, auth) => {
     const { userId, user } = auth;
 
     const body = await req.json();
@@ -104,7 +96,7 @@ export const POST = createApiRoute(
       targetUserIds: body.targetUserIds,
       targetSchoolIds: body.targetSchoolIds,
       senderId: userId,
-      senderName: user.name || `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Admin",
+      senderName: `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Admin",
       senderRole: user.type,
       actionUrl: body.actionUrl,
       actionLabel: body.actionLabel,
@@ -131,11 +123,7 @@ export const POST = createApiRoute(
  * Used to mark notifications as read or unread
  */
 export const PATCH = createApiRoute(
-  async (req: Request) => {
-    const auth = getAuth(req as NextRequest);
-    if (!auth) {
-      return errorResponse("Unauthorized", 401);
-    }
+  async (req: NextRequest, auth) => {
     const { userId } = auth;
 
     const body = await req.json();
@@ -176,11 +164,7 @@ export const PATCH = createApiRoute(
  * Delete a notification for the current user
  */
 export const DELETE = createApiRoute(
-  async (req: Request) => {
-    const auth = getAuth(req as NextRequest);
-    if (!auth) {
-      return errorResponse("Unauthorized", 401);
-    }
+  async (req: NextRequest, auth) => {
     const { userId } = auth;
 
     const { searchParams } = new URL(req.url);

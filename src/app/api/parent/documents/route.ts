@@ -69,28 +69,34 @@ export const GET = createApiRoute(
     }
 
     // Verify the child exists
-    const child = await db.query.users.findFirst({
-      where: and(
-        eq(users.id, childId),
-        eq(users.type, "student")
-      ),
-    });
+    const [child] = await db
+      .select()
+      .from(users)
+      .where(
+        and(
+          eq(users.id, childId),
+          eq(users.type, "student")
+        )
+      )
+      .limit(1);
 
     if (!child) {
       return notFoundResponse("Child");
     }
 
     // Get all files uploaded for this child (consent forms uploaded by parent)
-    const childFiles = await db.query.fileStorage.findMany({
-      where: eq(fileStorage.userId, childId),
-      orderBy: desc(fileStorage.createdAt),
-    });
+    const childFiles = await db
+      .select()
+      .from(fileStorage)
+      .where(eq(fileStorage.userId, childId))
+      .orderBy(desc(fileStorage.createdAt));
 
     // Get exam results as report cards
-    const examResultsData = await db.query.examResults.findMany({
-      where: eq(examResults.userId, childId),
-      orderBy: desc(examResults.createdAt),
-    });
+    const examResultsData = await db
+      .select()
+      .from(examResults)
+      .where(eq(examResults.userId, childId))
+      .orderBy(desc(examResults.createdAt));
 
     // Transform exam results into document format
     const reportCards = examResultsData.map((result) => ({
@@ -113,7 +119,7 @@ export const GET = createApiRoute(
       originalName: file.originalName,
       mimeType: file.mimeType,
       size: file.size,
-      category: (file.category as any) || "other",
+      category: (file.category as string | null | undefined) || "other",
       url: file.url,
       createdAt: file.createdAt.toISOString(),
       description: undefined,

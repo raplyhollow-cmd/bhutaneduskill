@@ -337,7 +337,7 @@ export default function InfirmaryDashboardPage() {
       </div>
 
       {/* Main Content */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "overview" | "visits" | "allergies" | "inventory")}>
         <TabsList className="grid w-full md:w-auto md:inline-grid grid-cols-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="visits">Recent Visits</TabsTrigger>

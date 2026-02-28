@@ -61,57 +61,67 @@ export const GET = createApiRoute(
       // School-admin can see all enrollments for their school
       const filterSchoolId = schoolId || currentUser.schoolId;
 
-      enrollments = await db.query.tuitionEnrollments.findMany({
-        with: {
-          student: true,
-          course: true,
-          tutor: {
-            with: {
-              user: true,
-            },
-          },
-        },
-        orderBy: [desc(tuitionEnrollments.enrollmentDate)],
-      });
+      const result = await db
+        .select()
+        .from(tuitionEnrollments)
+        .orderBy(desc(tuitionEnrollments.enrollmentDate));
+      enrollments = result.map((e): EnrollmentWithRelations => ({
+        id: e.id,
+        studentId: e.studentId,
+        courseId: e.courseId,
+        tutorId: e.tutorId,
+        status: e.status,
+        enrollmentDate: e.enrollmentDate,
+      }));
 
       // Filter by school if needed
       if (filterSchoolId) {
-        enrollments = enrollments.filter((e: typeof enrollments[0]) =>
+        enrollments = enrollments.filter((e: EnrollmentWithRelations) =>
           e.course?.schoolId === filterSchoolId
         );
       }
     } else if (type === "tutor" || currentUser.type === 'teacher') {
       // Get tutor's enrollments
-      const tutor = await db.query.tutors.findFirst({
-        where: eq(tutors.userId, currentUserId),
-      });
+      const tutorResult = await db
+        .select()
+        .from(tutors)
+        .where(eq(tutors.userId, currentUserId))
+        .limit(1);
+
+      const tutor = tutorResult[0];
 
       if (!tutor) {
         return notFoundResponse("Tutor profile");
       }
 
-      enrollments = await db.query.tuitionEnrollments.findMany({
-        where: eq(tuitionEnrollments.tutorId, tutor.id),
-        with: {
-          student: true,
-          course: true,
-        },
-        orderBy: [desc(tuitionEnrollments.enrollmentDate)],
-      });
+      const result2 = await db
+        .select()
+        .from(tuitionEnrollments)
+        .where(eq(tuitionEnrollments.tutorId, tutor.id))
+        .orderBy(desc(tuitionEnrollments.enrollmentDate));
+      enrollments = result2.map((e): EnrollmentWithRelations => ({
+        id: e.id,
+        studentId: e.studentId,
+        courseId: e.courseId,
+        tutorId: e.tutorId,
+        status: e.status,
+        enrollmentDate: e.enrollmentDate,
+      }));
     } else {
       // Get student's enrollments
-      enrollments = await db.query.tuitionEnrollments.findMany({
-        where: eq(tuitionEnrollments.studentId, currentUserId),
-        with: {
-          tutor: {
-            with: {
-              user: true,
-            },
-          },
-          course: true,
-        },
-        orderBy: [desc(tuitionEnrollments.enrollmentDate)],
-      });
+      const result3 = await db
+        .select()
+        .from(tuitionEnrollments)
+        .where(eq(tuitionEnrollments.studentId, currentUserId))
+        .orderBy(desc(tuitionEnrollments.enrollmentDate));
+      enrollments = result3.map((e): EnrollmentWithRelations => ({
+        id: e.id,
+        studentId: e.studentId,
+        courseId: e.courseId,
+        tutorId: e.tutorId,
+        status: e.status,
+        enrollmentDate: e.enrollmentDate,
+      }));
     }
 
     return successResponse({ enrollments });
@@ -133,9 +143,13 @@ export const POST = createApiRoute(
     const { courseId, paymentMethod, paymentId } = body;
 
     // Get course details
-    const course = await db.query.tuitionCourses.findFirst({
-      where: eq(tuitionCourses.id, courseId),
-    });
+    const courseResult = await db
+      .select()
+      .from(tuitionCourses)
+      .where(eq(tuitionCourses.id, courseId))
+      .limit(1);
+
+    const course = courseResult[0];
 
     if (!course) {
       return notFoundResponse("Course");
@@ -146,12 +160,16 @@ export const POST = createApiRoute(
     }
 
     // Check if already enrolled
-    const existing = await db.query.tuitionEnrollments.findFirst({
-      where: and(
+    const existingResult = await db
+      .select()
+      .from(tuitionEnrollments)
+      .where(and(
         eq(tuitionEnrollments.courseId, courseId),
         eq(tuitionEnrollments.studentId, currentUser.id)
-      ),
-    });
+      ))
+      .limit(1);
+
+    const existing = existingResult[0];
 
     if (existing) {
       return badRequestResponse("Already enrolled");

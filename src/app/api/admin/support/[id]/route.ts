@@ -1,29 +1,16 @@
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
 import { supportTickets, users, schools, supportTicketResponses } from "@/lib/db/schema";
 import { logger } from "@/lib/logger";
 import { eq, and, desc } from "drizzle-orm";
-import type { ApiSuccess, ApiErrorResponse } from "@/types";
-import { NextResponse } from "next/server";
 
 // ============================================================================
 // GET - Get a single support ticket with responses
 // ============================================================================
-export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: 401 } satisfies ApiErrorResponse,
-        { status: 401 }
-      );
-    }
-    const { userId } = authResult;
-
-    const { id: ticketId } = await params;
+export const GET = createApiRoute<{ id: string }>(
+  async (req, auth, context) => {
+    const { userId } = auth;
+    const { id: ticketId } = await (context?.params || Promise.resolve({ id: "" }));
 
     // Get ticket details
     const ticketResult = await db
@@ -64,10 +51,7 @@ export async function GET(
       .limit(1);
 
     if (!ticketResult.length) {
-      return NextResponse.json(
-        { error: "Ticket not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "Ticket not found", status: 404 };
     }
 
     const ticket = ticketResult[0];
@@ -81,37 +65,18 @@ export async function GET(
 
     logger.info("Support ticket fetched", { route: `/api/admin/support/${ticketId}`, userId, ticketId });
 
-    const responseData = { ticket, responses };
-    return NextResponse.json({
-      data: responseData,
-    } satisfies ApiSuccess<typeof responseData>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/support/[id]", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch support ticket", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return { data: { ticket, responses } };
+  },
+  ["admin"]
+);
 
 // ============================================================================
 // PATCH - Update a support ticket (status, assignment, etc.)
 // ============================================================================
-export async function PATCH(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: 401 } satisfies ApiErrorResponse,
-        { status: 401 }
-      );
-    }
-    const { userId } = authResult;
-
-    const { id: ticketId } = await params;
+export const PATCH = createApiRoute<{ id: string }>(
+  async (req, auth, context) => {
+    const { userId } = auth;
+    const { id: ticketId } = await (context?.params || Promise.resolve({ id: "" }));
     const body = await req.json();
     const {
       status,
@@ -131,10 +96,7 @@ export async function PATCH(
       .limit(1);
 
     if (!existingTicket.length) {
-      return NextResponse.json(
-        { error: "Ticket not found", status: 404 } satisfies ApiErrorResponse,
-        { status: 404 }
-      );
+      return { error: "Ticket not found", status: 404 };
     }
 
     // Build update object
@@ -145,10 +107,7 @@ export async function PATCH(
     if (status !== undefined) {
       const validStatuses = ["open", "in_progress", "waiting", "resolved", "closed"];
       if (!validStatuses.includes(status)) {
-        return NextResponse.json(
-          { error: "Invalid status", status: 400 } satisfies ApiErrorResponse,
-          { status: 400 }
-        );
+        return { error: "Invalid status", status: 400 };
       }
       updateData.status = status;
 
@@ -168,10 +127,7 @@ export async function PATCH(
     if (priority !== undefined) {
       const validPriorities = ["critical", "high", "medium", "low"];
       if (!validPriorities.includes(priority)) {
-        return NextResponse.json(
-          { error: "Invalid priority", status: 400 } satisfies ApiErrorResponse,
-          { status: 400 }
-        );
+        return { error: "Invalid priority", status: 400 };
       }
       updateData.priority = priority;
     }
@@ -199,36 +155,18 @@ export async function PATCH(
 
     logger.info("Support ticket updated", { route: `/api/admin/support/${ticketId}`, userId, ticketId, updateData });
 
-    return NextResponse.json({
-      data: updatedTicket,
-    } satisfies ApiSuccess<typeof updatedTicket>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/support/[id]", method: "PATCH" });
-    return NextResponse.json(
-      { error: "Failed to update support ticket", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return { data: updatedTicket };
+  },
+  ["admin"]
+);
 
 // ============================================================================
 // DELETE - Soft delete a support ticket
 // ============================================================================
-export async function DELETE(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error, status: 401 } satisfies ApiErrorResponse,
-        { status: 401 }
-      );
-    }
-    const { userId } = authResult;
-
-    const { id: ticketId } = await params;
+export const DELETE = createApiRoute<{ id: string }>(
+  async (req, auth, context) => {
+    const { userId } = auth;
+    const { id: ticketId } = await (context?.params || Promise.resolve({ id: "" }));
 
     // Soft delete by setting isActive to false
     await db
@@ -238,14 +176,7 @@ export async function DELETE(
 
     logger.info("Support ticket deleted", { route: `/api/admin/support/${ticketId}`, userId, ticketId });
 
-    return NextResponse.json({
-      data: { message: "Ticket deleted successfully" },
-    } satisfies ApiSuccess<{ message: string }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/support/[id]", method: "DELETE" });
-    return NextResponse.json(
-      { error: "Failed to delete support ticket", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    return { data: { message: "Ticket deleted successfully" } };
+  },
+  ["admin"]
+);

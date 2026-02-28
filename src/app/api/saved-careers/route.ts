@@ -14,6 +14,7 @@ import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { createApiRoute, getAuth } from "@/lib/api/route-handler";
 import { successResponse, errorResponse, notFoundResponse } from "@/lib/api/response-helpers";
+import type { UserSettings } from "@/types";
 
 // ============================================================================
 // GET /api/saved-careers - Get user's saved careers
@@ -35,7 +36,7 @@ export const GET = createApiRoute(
       .where(eq(users.id, userId))
       .limit(1);
 
-    const settings = (userProfile[0]?.settings as any) || {};
+    const settings = (userProfile[0]?.settings as UserSettings | null | undefined) || {};
     const savedCareers = settings.savedCareers || [];
 
     return successResponse({ savedCareers });
@@ -69,7 +70,7 @@ export const POST = createApiRoute(
       return notFoundResponse("User");
     }
 
-    const settings = (userProfile[0]?.settings as any) || {};
+    const settings = (userProfile[0]?.settings as UserSettings | null | undefined) || {};
     let savedCareers = settings.savedCareers || [];
 
     if (action === "save") {

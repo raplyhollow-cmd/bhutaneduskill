@@ -38,8 +38,8 @@ type UpdateSubjectRequest = z.infer<typeof updateSubjectSchema>;
 // ============================================================================
 
 export const GET = createApiRoute(
-  async (req, { params }: { params: Promise<{ id: string }> }) => {
-    const { id } = await params;
+  async (req, _auth, context) => {
+    const { id } = await (context?.params || Promise.resolve({ id: '' })) as { id: string };
 
     const [subject] = await db
       .select()
@@ -61,14 +61,9 @@ export const GET = createApiRoute(
 // ============================================================================
 
 export const PATCH = createApiRoute(
-  async (req, { params }: { params: Promise<{ id: string }> }) => {
-    const auth = getAuth(req);
-    if (!auth) {
-      return errorResponse("Unauthorized", 401);
-    }
-
+  async (req, auth, context) => {
     const { userId } = auth;
-    const { id } = await params;
+    const { id } = await (context?.params || Promise.resolve({ id: '' })) as { id: string };
 
     try {
       const body = await req.json();
@@ -148,14 +143,9 @@ export const PATCH = createApiRoute(
 // ============================================================================
 
 export const DELETE = createApiRoute(
-  async (req, { params }: { params: Promise<{ id: string }> }) => {
-    const auth = getAuth(req);
-    if (!auth) {
-      return errorResponse("Unauthorized", 401);
-    }
-
+  async (req, auth, context) => {
     const { userId } = auth;
-    const { id } = await params;
+    const { id } = await (context?.params || Promise.resolve({ id: '' })) as { id: string };
 
     // Check if subject exists and is global
     const [existing] = await db

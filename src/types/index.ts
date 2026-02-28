@@ -1,6 +1,30 @@
 // User Types
 export type UserType = "student" | "teacher" | "parent" | "admin";
 
+/**
+ * User settings JSON field type (from users.settings column)
+ */
+export interface UserSettings {
+  // Saved careers
+  savedCareers?: string[];
+  // Skills tracking
+  skills?: Record<string, number>;
+  // Career preferences
+  careerPreferences?: {
+    preferredFields?: string[];
+    workEnvironment?: string;
+    salaryRange?: string;
+  };
+  // Notification preferences
+  notifications?: {
+    email?: boolean;
+    push?: boolean;
+    sms?: boolean;
+  };
+  // Other settings can be added as needed
+  [key: string]: unknown;
+}
+
 export interface Class {
   id: string;
   name: string;
@@ -77,6 +101,18 @@ export interface DbAssessmentResult {
   gradedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
+  // Flattened properties from assessment join (for convenience)
+  title?: string;
+  description?: string;
+  type?: string;
+  dueDate?: string;
+  totalPoints?: number;
+  submission?: {
+    id: string;
+    status: string;
+    score?: number;
+    submittedAt?: Date;
+  };
   // Additional properties from joins
   assessment?: {
     id: string;
@@ -100,16 +136,17 @@ export interface DbAssessmentResult {
 export interface DbAssessmentTypeEntity {
   id: string;
   name: string;
-  slug: string;
-  type: AssessmentType;
+  description?: string;
+  slug?: string;
+  type?: AssessmentType;
   category: string;
-  targetAudience?: string[];
-  targetGrade?: number[];
+  targetAudience?: string | string[];
+  targetGrade?: number | number[];
   duration?: number;
   totalQuestions?: number;
   passingScore?: number;
   isActive: boolean;
-  tenantId: string;
+  tenantId?: string;
   createdAt: Date;
   updatedAt: Date;
 }

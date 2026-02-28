@@ -17,7 +17,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq, inArray, and } from "drizzle-orm";
-import { requireAuth, invalidateAllRoleCache } from "@/lib/auth-utils";
+import { invalidateAllRoleCache } from "@/lib/auth-utils";
 import { logger } from "@/lib/logger";
 import type { ApiSuccess, ApiErrorResponse } from "@/types";
 
@@ -72,26 +72,16 @@ interface BatchResponse {
 // POST /api/admin/users/batch - Perform bulk operations
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  const authResult = await requireAuth(['admin']);
-  if ('error' in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status } as ApiErrorResponse,
-      { status: authResult.status }
-    );
-  }
+import { createApiRoute } from "@/lib/api/route-handler";
 
-  const { userId: adminId } = authResult;
-
-  try {
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId: adminId } = auth;
     const body: BatchRequest = await request.json();
     const { operation, userIds, params } = body;
 
     if (!operation) {
-      return NextResponse.json(
-        { error: 'Operation is required', status: 400 } as ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: 'Operation is required', status: 400 };
     }
 
     // Handle export operation (doesn't require userIds)
@@ -101,19 +91,13 @@ export async function POST(request: NextRequest) {
 
     // For all other operations, userIds is required
     if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
-      return NextResponse.json(
-        { error: 'userIds array is required for this operation', status: 400 } as ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: 'userIds array is required for this operation', status: 400 };
     }
 
     // Limit batch size to prevent abuse
     const maxBatchSize = 100;
     if (userIds.length > maxBatchSize) {
-      return NextResponse.json(
-        { error: `Maximum batch size is ${maxBatchSize} users`, status: 400 } as ApiErrorResponse,
-        { status: 400 }
-      );
+      return { error: `Maximum batch size is ${maxBatchSize} users`, status: 400 };
     }
 
     // Route to appropriate handler
@@ -137,20 +121,11 @@ export async function POST(request: NextRequest) {
       case 'sendEmail':
         return await handleSendEmail(userIds, params?.emailSubject, params?.emailBody, adminId);
       default:
-        return NextResponse.json(
-          { error: `Unknown operation: ${operation}`, status: 400 } as ApiErrorResponse,
-          { status: 400 }
-        );
+        return { error: `Unknown operation: ${operation}`, status: 400 };
     }
-
-  } catch (error) {
-    logger.apiError(error, { route: '/api/admin/users/batch', method: 'POST', adminId });
-    return NextResponse.json(
-      { error: 'Failed to perform batch operation', status: 500, details: error instanceof Error ? error.message : undefined } as ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin']
+);
 
 // ============================================================================
 // OPERATION HANDLERS

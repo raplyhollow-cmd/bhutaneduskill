@@ -1,57 +1,74 @@
+/**
+ * FILE [id] API
+ *
+ * GET /api/files/[id] - Download file or get file metadata
+ * DELETE /api/files/[id] - Delete file
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { fileStorage, users } from "@/lib/db/schema";
+import { fileStorage } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { readFile } from "fs/promises";
 import { join } from "path";
-
-interface Params {
-  params: Promise<{ id: string }>;
-}
+import { createApiRoute } from "@/lib/api/route-handler";
+import { NextResponse } from "next/server";
 
 // GET /api/files/[id] - Download file or get file metadata
-export async function GET(request: NextRequest, { params }: Params) {
-  try {
-    // Authentication check with role-based access (parents can download their child's documents)
-    const authResult = await requireAuth(['admin', 'school-admin', 'teacher', 'student', 'parent']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
+export const GET = createApiRoute(
+  async (req: NextRequest, auth, context) => {
+    const { userId, user } = auth;
 
-    const { userId, user } = authResult;
-
-    const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(req.url);
     const download = searchParams.get("download") === "true";
 
-    const { id } = await params;
-    const file = await db.query.fileStorage.findFirst({
-      where: eq(fileStorage.id, id),
-    });
+    const params = await context?.params as { id?: string } | undefined;
+    const id = params?.id;
+
+    if (!id) {
+      return { error: "Missing file ID", status: 400 };
+    }
+
+    const [file] = await db
+      .select()
+      .from(fileStorage)
+      .where(eq(fileStorage.id, id))
+      .limit(1);
 
     if (!file) {
-      return NextResponse.json({ error: "File not found" }, { status: 404 });
+      return { error: "File not found", status: 404 };
     }
 
     // Check access permissions
     // Allow if: public, same school, or uploader
-    if (!file.isPublic && (file as any).schoolId !== user.schoolId && (file as any).uploadedBy !== userId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    type FileWithMetadata = typeof file & {
+      schoolId?: string;
+      uploadedBy?: string;
+      accessCount?: number;
+      storageType?: string;
+      storagePath?: string;
+    };
+    const fileWithMeta = file as FileWithMetadata;
+
+    if (!file.isPublic && fileWithMeta.schoolId !== user.schoolId && fileWithMeta.uploadedBy !== userId) {
+      return { error: "Forbidden", status: 403 };
     }
 
     // Increment access count
     await db.update(fileStorage)
-      .set({ accessCount: ((file as any).accessCount || 0) + 1 })
+      .set({ accessCount: (fileWithMeta.accessCount || 0) + 1 })
       .where(eq(fileStorage.id, id));
 
     // If just getting metadata, return it
     if (!download) {
-      return NextResponse.json({ file });
+      return { file };
     }
 
     // For local storage, read and return the file
-    if ((file as any).storageType === "local") {
+    if (fileWithMeta.storageType === "local") {
       const filePath = join(process.cwd(), "public", file.fileName.replace("/uploads/", "uploads/"));
       const fileContent = await readFile(filePath);
 
@@ -64,40 +81,42 @@ export async function GET(request: NextRequest, { params }: Params) {
     }
 
     // For external storage, redirect to URL
-    if ((file as any).storageType === "s3" || (file as any).storageType === "cloudflare_r2") {
-      return NextResponse.redirect((file as any).storagePath);
+    if (fileWithMeta.storageType === "s3" || fileWithMeta.storageType === "cloudflare_r2") {
+      return NextResponse.redirect(fileWithMeta.storagePath);
     }
 
-    return NextResponse.json({ error: "Cannot download this file type" }, { status: 400 });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json({ error: "Failed to download file" }, { status: 500 });
-  }
-}
+    return { error: "Cannot download this file type", status: 400 };
+  },
+  ['admin', 'school-admin', 'teacher', 'student', 'parent']
+);
 
 // DELETE /api/files/[id] - Delete file
-export async function DELETE(request: NextRequest, { params }: Params) {
-  try {
-    // Authentication check with role-based access (parents can download their child's documents)
-    const authResult = await requireAuth(['admin', 'school-admin', 'teacher', 'student', 'parent']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
+export const DELETE = createApiRoute(
+  async (req: NextRequest, auth, context) => {
+    const { userId, user } = auth;
+
+    const params = await context?.params as { id?: string } | undefined;
+    const id = params?.id;
+
+    if (!id) {
+      return { error: "Missing file ID", status: 400 };
     }
 
-    const { userId, user } = authResult;
-
-    const { id } = await params;
-    const file = await db.query.fileStorage.findFirst({
-      where: eq(fileStorage.id, id),
-    });
+    const [file] = await db
+      .select()
+      .from(fileStorage)
+      .where(eq(fileStorage.id, id))
+      .limit(1);
 
     if (!file) {
-      return NextResponse.json({ error: "File not found" }, { status: 404 });
+      return { error: "File not found", status: 404 };
     }
 
     // Only uploader or admin can delete
-    if ((file as any).uploadedBy !== userId && user.type !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    type FileWithUploader = typeof file & { uploadedBy?: string };
+    const fileWithUploader = file as FileWithUploader;
+    if (fileWithUploader.uploadedBy !== userId && user.type !== "admin") {
+      return { error: "Forbidden", status: 403 };
     }
 
     // Delete from database
@@ -106,9 +125,7 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     // For local files, you might want to delete the actual file too
     // This is optional depending on your requirements
 
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-    return NextResponse.json({ error: "Failed to delete file" }, { status: 500 });
-  }
-}
+    return { success: true };
+  },
+  ['admin', 'school-admin', 'teacher', 'student', 'parent']
+);

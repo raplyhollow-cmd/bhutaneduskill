@@ -1,6 +1,14 @@
+/**
+ * FILE UPLOAD API
+ *
+ * POST /api/files/upload - Upload file with security validations
+ * GET /api/files/upload - Get allowed file types and size limits
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
 import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { writeFile, mkdir, unlink } from "fs/promises";
 import { join } from "path";
 import { db } from "@/lib/db";
@@ -16,6 +24,8 @@ import {
 } from "@/lib/file-validation";
 import { checkRateLimitWithConfig, getClientIp, RateLimitPresets, type RateLimitCheckResult } from "@/lib/rate-limit";
 import { scanFile, getScanEngine } from "@/lib/security/virus-scan";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { NextResponse } from "next/server";
 
 /**
  * Enhanced file upload with security validations
@@ -25,15 +35,9 @@ import { scanFile, getScanEngine } from "@/lib/security/virus-scan";
  * - Rate limiting
  * - Virus scanning (mock/ClamAV/VirusTotal)
  */
-export async function POST(request: NextRequest) {
-  try {
-    // Authentication check with role-based access
-    const authResult = await requireAuth(['admin', 'school-admin', 'teacher', 'student']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { userId, user } = authResult;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId, user } = auth;
 
     // Rate limiting check using fileUpload preset
     const clientIp = getClientIp(request);
@@ -61,12 +65,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Get current user
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.clerkUserId, userId),
-    });
+    const [currentUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.clerkUserId, userId))
+      .limit(1);
 
     if (!currentUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return { error: "User not found", status: 404 };
     }
 
     // Parse form data
@@ -76,12 +82,12 @@ export async function POST(request: NextRequest) {
     const entityId = formData.get("entityId") as string;
 
     if (!file) {
-      return NextResponse.json({ error: "No file provided" }, { status: 400 });
+      return { error: "No file provided", status: 400 };
     }
 
     // Validate required parameters
     if (!entityType) {
-      return NextResponse.json({ error: "Entity type is required" }, { status: 400 });
+      return { error: "Entity type is required", status: 400 };
     }
 
     // Get file extension
@@ -91,10 +97,7 @@ export async function POST(request: NextRequest) {
     // Validate file size based on category
     const sizeValidation = validateFileSize(file.size, fileCategory);
     if (!sizeValidation.isValid) {
-      return NextResponse.json(
-        { error: sizeValidation.error },
-        { status: 400 }
-      );
+      return { error: sizeValidation.error, status: 400 };
     }
 
     // Convert file to buffer for magic number check
@@ -113,10 +116,7 @@ export async function POST(request: NextRequest) {
         error: magicNumberValidation.error,
       });
 
-      return NextResponse.json(
-        { error: magicNumberValidation.error || "File validation failed" },
-        { status: 400 }
-      );
+      return { error: magicNumberValidation.error || "File validation failed", status: 400 };
     }
 
     // Sanitize filename
@@ -204,39 +204,27 @@ export async function POST(request: NextRequest) {
       { file: fileRecord },
       { status: 201, headers }
     );
-  } catch (error) {
-    logger.apiError(error, { route: "/", method: "GET" });
-
-    // Clean up partial uploads if error occurred
-    // (implementation would depend on error stage)
-
-    return NextResponse.json(
-      { error: "Failed to upload file" },
-      { status: 500 }
-    );
-  }
-}
+  },
+  ['admin', 'school-admin', 'teacher', 'student']
+);
 
 /**
  * Get allowed file types and size limits
  */
-export async function GET() {
-  // Authentication check with role-based access
-  const authResult = await requireAuth(['admin', 'school-admin', 'teacher', 'student']);
-  if ('error' in authResult) {
-    return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-  }
-
-  return NextResponse.json({
-    allowedTypes: {
-      image: ['jpeg', 'png', 'gif', 'webp'],
-      document: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv'],
-      media: ['mp3', 'wav', 'ogg', 'mp4', 'avi', 'mov'],
-    },
-    maxSizes: {
-      image: '5MB',
-      document: '10MB',
-      media: '100MB',
-    },
-  });
-}
+export const GET = createApiRoute(
+  async () => {
+    return {
+      allowedTypes: {
+        image: ['jpeg', 'png', 'gif', 'webp'],
+        document: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv'],
+        media: ['mp3', 'wav', 'ogg', 'mp4', 'avi', 'mov'],
+      },
+      maxSizes: {
+        image: '5MB',
+        document: '10MB',
+        media: '100MB',
+      },
+    };
+  },
+  ['admin', 'school-admin', 'teacher', 'student']
+);

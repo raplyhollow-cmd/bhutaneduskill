@@ -76,10 +76,10 @@ export const GET = createApiRoute(
     logger.info("Fetching fees for parent's children", { route: "/api/parent/fees", userId });
 
   // Get parent record for this user
-  const parentRecords = await db.query.parents.findMany({
-    where: eq(parents.userId, userId),
-    columns: { id: true },
-  });
+  const parentRecords = await db
+    .select({ id: parents.id })
+    .from(parents)
+    .where(eq(parents.userId, userId));
 
   if (parentRecords.length === 0) {
     logger.warn("No parent record found for user", { userId });
@@ -98,9 +98,10 @@ export const GET = createApiRoute(
   const parentId = parentRecords[0].id;
 
   // Get all parent-student relationships
-  const relationships = await db.query.parentToStudent.findMany({
-    where: eq(parentToStudent.parentId, parentId),
-  });
+  const relationships = await db
+    .select()
+    .from(parentToStudent)
+    .where(eq(parentToStudent.parentId, parentId));
 
   if (relationships.length === 0) {
     logger.info("No children linked to parent", { parentId });
@@ -119,19 +120,19 @@ export const GET = createApiRoute(
   const studentIds = relationships.map((r) => r.studentId);
 
   // Get user data for all linked students
-  const linkedChildren = await db.query.users.findMany({
-    where: and(
+  const linkedChildren = await db
+    .select({
+      id: users.id,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      name: users.name,
+      schoolId: users.schoolId,
+    })
+    .from(users)
+    .where(and(
       eq(users.type, "student"),
       inArray(users.id, studentIds)
-    ),
-    columns: {
-      id: true,
-      firstName: true,
-      lastName: true,
-      name: true,
-      schoolId: true,
-    },
-  });
+    ));
 
   if (linkedChildren.length === 0) {
     return successResponse({
@@ -149,20 +150,21 @@ export const GET = createApiRoute(
   // Get school data for all children
   const schoolIds = linkedChildren.map((c) => c.schoolId).filter(Boolean) as string[];
   const schoolsData = schoolIds.length > 0
-    ? await db.query.schools.findMany({
-        where: inArray(schools.id, schoolIds),
-        columns: { id: true, name: true },
-      })
+    ? await db
+      .select({ id: schools.id, name: schools.name })
+      .from(schools)
+      .where(inArray(schools.id, schoolIds))
     : [];
 
   const schoolMap = new Map(schoolsData.map((s) => [s.id, s.name]));
 
   // Get all fees for all linked children
   const allFees = studentIds.length > 0
-    ? await db.query.studentFees.findMany({
-        where: inArray(studentFees.studentId, studentIds),
-        orderBy: [desc(studentFees.dueDate)],
-      })
+    ? await db
+      .select()
+      .from(studentFees)
+      .where(inArray(studentFees.studentId, studentIds))
+      .orderBy(desc(studentFees.dueDate))
     : [];
 
   // Group fees by child

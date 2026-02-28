@@ -5,7 +5,7 @@
  * Returns image data that can be printed or saved as PDF
  */
 
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { users, schools } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -45,15 +45,13 @@ export const GET = createApiRoute(
     }
     const { userId, user } = auth;
 
-    const currentUser = await db.query.users.findFirst({
-      where: eq(users.id, userId),
-      with: {
-        school: true,
-        parent: {
-          columns: { id: true, firstName: true, lastName: true, phone: true },
-        },
-      },
-    });
+    const currentUserResult = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    const currentUser = currentUserResult[0];
 
     if (!currentUser) {
       return notFoundResponse("User");
@@ -63,24 +61,39 @@ export const GET = createApiRoute(
     const targetUserId = searchParams.get("userId"); // Admin can generate for others
 
     // If admin requesting for specific user
-    const targetUser = targetUserId && currentUser.role === "admin"
-      ? await db.query.users.findFirst({
-          where: eq(users.id, targetUserId),
-          with: {
-            school: true,
-            parent: {
-              columns: { id: true, firstName: true, lastName: true, phone: true },
-            },
-          },
-        })
-      : currentUser;
+    let targetUser = currentUser;
+    if (targetUserId && currentUser.role === "admin") {
+      const targetResult = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, targetUserId))
+        .limit(1);
+      if (targetResult[0]) {
+        targetUser = targetResult[0];
+      }
+    }
 
     if (!targetUser) {
       return notFoundResponse("Target user");
     }
 
+    // Transform to UserWithRelations format
+    const userForCard: UserWithRelations = {
+      id: targetUser.id,
+      firstName: targetUser.firstName,
+      lastName: targetUser.lastName,
+      type: targetUser.type,
+      profilePicture: targetUser.profilePicture,
+      classGrade: targetUser.classGrade,
+      section: targetUser.section,
+      dateOfBirth: targetUser.dateOfBirth,
+      employeeId: targetUser.employeeId,
+      school: null, // Would need separate query with relations disabled
+      parent: null, // Would need separate query with relations disabled
+    };
+
     // Generate SVG ID Card
-    const svgIdCard = generateIdCardSVG(targetUser);
+    const svgIdCard = generateIdCardSVG(userForCard);
 
     // Convert to PNG
     const pngBuffer = await svgToPng(svgIdCard);

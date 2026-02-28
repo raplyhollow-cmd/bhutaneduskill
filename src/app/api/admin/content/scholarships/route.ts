@@ -58,8 +58,7 @@ function generateCode(name: string): string {
 // ============================================================================
 
 export const GET = createApiRoute(
-  async (request: NextRequest) => {
-    const auth = getAuth(request);
+  async (req: NextRequest, auth) => {
     if (!auth) {
       return errorResponse("Unauthorized", 401);
     }
@@ -67,7 +66,7 @@ export const GET = createApiRoute(
     const { userId } = auth;
 
     try {
-      const { searchParams } = new URL(request.url);
+      const { searchParams } = new URL(req.url);
       const category = searchParams.get("category");
       const active = searchParams.get("active") === "true";
 
@@ -114,8 +113,7 @@ export const GET = createApiRoute(
 // ============================================================================
 
 export const POST = createApiRoute(
-  async (request: NextRequest) => {
-    const auth = getAuth(request);
+  async (req: NextRequest, auth) => {
     if (!auth) {
       return errorResponse("Unauthorized", 401);
     }
@@ -123,7 +121,7 @@ export const POST = createApiRoute(
     const { userId } = auth;
 
     try {
-      const body = await request.json();
+      const body = await req.json();
       const validatedData = scholarshipSchema.parse(body);
 
       // Generate code if not provided
@@ -172,7 +170,7 @@ export const POST = createApiRoute(
           provider: newScholarship.provider,
         },
         userId,
-        request
+        req
       );
 
       return createdResponse({
@@ -195,8 +193,7 @@ export const POST = createApiRoute(
 // ============================================================================
 
 export const PUT = createApiRoute(
-  async (request: NextRequest) => {
-    const auth = getAuth(request);
+  async (req: NextRequest, auth) => {
     if (!auth) {
       return errorResponse("Unauthorized", 401);
     }
@@ -204,14 +201,14 @@ export const PUT = createApiRoute(
     const { userId } = auth;
 
     try {
-      const { searchParams } = new URL(request.url);
+      const { searchParams } = new URL(req.url);
       const id = searchParams.get("id");
 
       if (!id) {
         return badRequestResponse("Scholarship ID is required");
       }
 
-      const body = await request.json();
+      const body = await req.json();
       const validatedData = scholarshipSchema.partial().parse(body);
 
       // Check if scholarship exists using db.select()
@@ -272,7 +269,7 @@ export const PUT = createApiRoute(
         { name: existing.name, code: existing.code },
         { name: updatedScholarship.name, code: updatedScholarship.code },
         userId,
-        request
+        req
       );
 
       return successResponse({
@@ -295,8 +292,7 @@ export const PUT = createApiRoute(
 // ============================================================================
 
 export const DELETE = createApiRoute(
-  async (request: NextRequest) => {
-    const auth = getAuth(request);
+  async (req: NextRequest, auth) => {
     if (!auth) {
       return errorResponse("Unauthorized", 401);
     }
@@ -304,7 +300,7 @@ export const DELETE = createApiRoute(
     const { userId } = auth;
 
     try {
-      const { searchParams } = new URL(request.url);
+      const { searchParams } = new URL(req.url);
       const id = searchParams.get("id");
 
       if (!id) {
@@ -336,7 +332,7 @@ export const DELETE = createApiRoute(
         { name: existing.name, code: existing.code },
         undefined,
         userId,
-        request
+        req
       );
 
       return successResponse({

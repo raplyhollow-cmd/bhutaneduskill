@@ -11,11 +11,11 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { partners, partnerCommissions } from "@/lib/db/schema";
-import { eq, and, gte, lte, desc, count } from "drizzle-orm";
+import { eq, and, gte, lte, desc, count, sql } from "drizzle-orm";
 
 // Helper function to get date for N months ago
 function getDateMonthsAgo(months: number): Date {
@@ -30,32 +30,28 @@ function getMonthName(monthKey: string): string {
   return date.toLocaleDateString("en-US", { month: "short" });
 }
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ partnerId: string }> }
-) {
-  const authResult = await requireAuth(["admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status },
-      { status: authResult.status }
-    );
-  }
-
-  try {
+export const GET = createApiRoute(
+  async (
+    request: NextRequest,
+    auth,
+    { params }: { params: Promise<{ partnerId: string }> }
+  ) => {
     const { partnerId } = await params;
 
     if (!partnerId) {
-      return NextResponse.json({ error: "Partner ID is required" }, { status: 400 });
+      return { error: "Partner ID is required", status: 400 };
     }
 
     // Verify partner exists
-    const partner = await db.query.partners.findFirst({
-      where: eq(partners.id, partnerId),
-    });
+    const partnerResult = await db
+      .select()
+      .from(partners)
+      .where(eq(partners.id, partnerId))
+      .limit(1);
+    const partner = partnerResult[0];
 
     if (!partner) {
-      return NextResponse.json({ error: "Partner not found" }, { status: 404 });
+      return { error: "Partner not found", status: 404 };
     }
 
     const { searchParams } = new URL(request.url);
@@ -159,23 +155,17 @@ export async function GET(
     };
 
     logger.info("Partner analytics fetched", {
-      userId: authResult.userId,
+      userId: auth.userId,
       partnerId,
       timeRange,
     });
 
-    return NextResponse.json({
-      success: true,
+    return {
       data: analytics,
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/partners/[partnerId]/analytics", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch analytics", details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);
 
 /**
  * Generate top programs based on partner type

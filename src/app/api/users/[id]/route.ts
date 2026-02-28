@@ -1,66 +1,67 @@
-import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+/**
+ * USERS [id] API
+ *
+ * Handles individual user operations (get, update, delete)
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { requirePermission, requireAnyPermission } from "@/lib/rbac";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq } from "drizzle-orm";
+import { logger } from "@/lib/logger";
+import { successResponse, errorResponse, notFoundResponse } from "@/lib/api/response-helpers";
 
+// ============================================================================
 // GET /api/users/[id] - Get single user
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const authResult = await requireAuth(["admin", "school-admin", "counselor", "teacher", "student"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
+// ============================================================================
 
-    const { userId, user: currentUser } = authResult;
+export const GET = createApiRoute<{ id: string }>(
+  async (request: NextRequest, auth, context) => {
+    const { id } = await context!.params!;
+    const { userId, user: currentUser } = auth;
 
     // Check RBAC permission for reading users OR allow students to read their own profile
     const permCheck = await requireAnyPermission(userId, ["users.read", "users.read.own"]);
     if (permCheck) {
       // If no general permission, check if accessing own profile
-      const user = await db.query.users.findFirst({
-        where: eq(users.clerkUserId, userId),
-      });
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.clerkUserId, userId))
+        .limit(1);
 
-      if (!user || user.id !== id) {
+      if (!user[0] || user[0].id !== id) {
         return permCheck;
       }
     }
 
-    const targetUser = await db.query.users.findFirst({
-      where: eq(users.id, id),
-    });
+    const [targetUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, id))
+      .limit(1);
 
     if (!targetUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return notFoundResponse("User");
     }
 
-    return NextResponse.json({ user: targetUser });
-  } catch (error) {
-    logger.error("User fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch user" }, { status: 500 });
-  }
-}
+    return successResponse({ user: targetUser });
+  },
+  ['admin', 'school-admin', 'counselor', 'teacher', 'student']
+);
 
+// ============================================================================
 // DELETE /api/users/[id] - Delete user (admin only)
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const authResult = await requireAuth(["admin", "school-admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
+// ============================================================================
 
-    const { userId } = authResult;
+export const DELETE = createApiRoute<{ id: string }>(
+  async (request: NextRequest, auth, context) => {
+    const { id } = await context!.params!;
+    const { userId } = auth;
 
     // Check RBAC permission for deleting users
     const permCheck = await requirePermission(userId, "users.delete");
@@ -68,26 +69,21 @@ export async function DELETE(
 
     await db.delete(users).where(eq(users.id, id));
 
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    logger.error("User delete error:", error);
-    return NextResponse.json({ error: "Failed to delete user" }, { status: 500 });
-  }
-}
+    logger.info("User deleted successfully", { userId: id, deletedBy: userId });
 
+    return successResponse({ success: true });
+  },
+  ['admin', 'school-admin']
+);
+
+// ============================================================================
 // PATCH /api/users/[id] - Update user (admin/school-admin)
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const authResult = await requireAuth(["admin", "school-admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
+// ============================================================================
 
-    const { userId, user: currentUser } = authResult;
+export const PATCH = createApiRoute<{ id: string }>(
+  async (request: NextRequest, auth, context) => {
+    const { id } = await context!.params!;
+    const { userId, user: currentUser } = auth;
 
     // Check RBAC permission for updating users
     const permCheck = await requirePermission(userId, "users.update");
@@ -125,9 +121,7 @@ export async function PATCH(
 
     logger.info("User updated successfully", { userId: id, updatedBy: userId });
 
-    return NextResponse.json({ user: updated });
-  } catch (error) {
-    logger.error("User update error:", error);
-    return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
-  }
-}
+    return successResponse({ user: updated });
+  },
+  ['admin', 'school-admin']
+);

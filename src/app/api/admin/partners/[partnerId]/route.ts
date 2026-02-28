@@ -6,12 +6,11 @@
  * DELETE /api/admin/partners/[partnerId] - Delete partner (soft delete)
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { partners, schools } from "@/lib/db/schema";
-import { eq, and, isNull } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 // ============================================================================
 // TYPES
@@ -119,90 +118,66 @@ async function getPartnerById(partnerId: string) {
 // GET - Get Partner Details
 // ============================================================================
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ partnerId: string }> }
-) {
-  const authResult = await requireAuth(["admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status },
-      { status: authResult.status }
-    );
-  }
+export const GET = createApiRoute<{ partnerId: string }>(
+  async (req, auth, context) => {
+    const { userId } = auth;
 
-  try {
+    const params = await context?.params || Promise.resolve({ partnerId: "" });
     const { partnerId } = await params;
 
     if (!partnerId) {
-      return NextResponse.json({ error: "Partner ID is required" }, { status: 400 });
+      return { error: "Partner ID is required" };
     }
 
     const partnerData = await getPartnerById(partnerId);
 
     if (!partnerData || partnerData.length === 0) {
-      return NextResponse.json({ error: "Partner not found" }, { status: 404 });
+      return { error: "Partner not found" };
     }
 
-    logger.info("Partner details fetched", {
-      userId: authResult.userId,
-      partnerId,
-    });
+    logger.info("Partner details fetched", { userId, partnerId });
 
-    return NextResponse.json({
+    return {
       success: true,
       data: partnerData[0],
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/partners/[partnerId]", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch partner", details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);
 
 // ============================================================================
 // PATCH - Update Partner
 // ============================================================================
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ partnerId: string }> }
-) {
-  const authResult = await requireAuth(["admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status },
-      { status: authResult.status }
-    );
-  }
+export const PATCH = createApiRoute<{ partnerId: string }>(
+  async (req, auth, context) => {
+    const { userId } = auth;
 
-  try {
+    const params = await context?.params || Promise.resolve({ partnerId: "" });
     const { partnerId } = await params;
 
     if (!partnerId) {
-      return NextResponse.json({ error: "Partner ID is required" }, { status: 400 });
+      return { error: "Partner ID is required" };
     }
 
     // Check if partner exists
-    const existingPartner = await db.query.partners.findFirst({
-      where: eq(partners.id, partnerId),
-    });
+    const existingPartnerResult = await db
+      .select()
+      .from(partners)
+      .where(eq(partners.id, partnerId))
+      .limit(1);
+    const existingPartner = existingPartnerResult[0];
 
     if (!existingPartner) {
-      return NextResponse.json({ error: "Partner not found" }, { status: 404 });
+      return { error: "Partner not found" };
     }
 
-    const body = await request.json();
+    const body = await req.json();
 
     // Validate input
     const validation = validateUpdateInput(body);
     if (!validation.valid) {
-      return NextResponse.json(
-        { error: "Validation failed", details: validation.errors },
-        { status: 400 }
-      );
+      return { error: "Validation failed", details: validation.errors };
     }
 
     // Prepare update data
@@ -226,16 +201,15 @@ export async function PATCH(
 
     // Check if school exists (if provided)
     if (body.schoolId) {
-      const school = await db.query.schools.findFirst({
-        where: eq(schools.id, body.schoolId),
-        columns: { id: true },
-      });
+      const schoolResult = await db
+        .select({ id: schools.id })
+        .from(schools)
+        .where(eq(schools.id, body.schoolId))
+        .limit(1);
+      const school = schoolResult[0];
 
       if (!school) {
-        return NextResponse.json(
-          { error: "School not found" },
-          { status: 404 }
-        );
+        return { error: "School not found" };
       }
     }
 
@@ -249,55 +223,45 @@ export async function PATCH(
     const updatedPartner = await getPartnerById(partnerId);
 
     logger.info("Partner updated", {
-      userId: authResult.userId,
+      userId,
       partnerId,
       updatedFields: Object.keys(body),
     });
 
-    return NextResponse.json({
+    return {
       success: true,
       data: updatedPartner[0],
       message: "Partner updated successfully",
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/partners/[partnerId]", method: "PATCH" });
-    return NextResponse.json(
-      { error: "Failed to update partner", details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);
 
 // ============================================================================
 // DELETE - Delete Partner (Soft Delete)
 // ============================================================================
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ partnerId: string }> }
-) {
-  const authResult = await requireAuth(["admin"]);
-  if ("error" in authResult) {
-    return NextResponse.json(
-      { error: authResult.error, status: authResult.status },
-      { status: authResult.status }
-    );
-  }
+export const DELETE = createApiRoute<{ partnerId: string }>(
+  async (req, auth, context) => {
+    const { userId } = auth;
 
-  try {
+    const params = await context?.params || Promise.resolve({ partnerId: "" });
     const { partnerId } = await params;
 
     if (!partnerId) {
-      return NextResponse.json({ error: "Partner ID is required" }, { status: 400 });
+      return { error: "Partner ID is required" };
     }
 
     // Check if partner exists
-    const existingPartner = await db.query.partners.findFirst({
-      where: eq(partners.id, partnerId),
-    });
+    const existingPartnerResult = await db
+      .select()
+      .from(partners)
+      .where(eq(partners.id, partnerId))
+      .limit(1);
+    const existingPartner = existingPartnerResult[0];
 
     if (!existingPartner) {
-      return NextResponse.json({ error: "Partner not found" }, { status: 404 });
+      return { error: "Partner not found" };
     }
 
     // Soft delete by setting status to inactive
@@ -309,28 +273,20 @@ export async function DELETE(
       })
       .where(eq(partners.id, partnerId));
 
-    // For hard delete, uncomment below (use with caution)
-    // await db.delete(partners).where(eq(partners.id, partnerId));
-
     logger.info("Partner deleted (soft delete)", {
-      userId: authResult.userId,
+      userId,
       partnerId,
       partnerName: existingPartner.name,
     });
 
-    return NextResponse.json({
+    return {
       success: true,
       message: "Partner deleted successfully",
       data: {
         id: partnerId,
         deleted: true,
       },
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/admin/partners/[partnerId]", method: "DELETE" });
-    return NextResponse.json(
-      { error: "Failed to delete partner", details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["admin"]
+);

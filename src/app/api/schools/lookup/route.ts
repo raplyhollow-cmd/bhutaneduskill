@@ -1,19 +1,25 @@
-import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { schools } from "@/lib/db/schema";
-import { eq, sql } from "drizzle-orm";
-
 /**
- * GET /api/schools/lookup
- * Lookup schools by code or name
+ * SCHOOLS LOOKUP API
+ *
+ * GET /api/schools/lookup - Lookup schools by code or name
  *
  * NOTE: This endpoint is open (no auth required) because it's used during
  * the setup flow where users need to verify their school code before they
  * have an account or permissions. School codes are not sensitive information.
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
-export async function GET(request: NextRequest) {
-  try {
+
+import { NextRequest } from "next/server";
+import { db } from "@/lib/db";
+import { schools } from "@/lib/db/schema";
+import { eq, sql } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { badRequestResponse, notFoundResponse } from "@/lib/api/response-helpers";
+import { logger } from "@/lib/logger";
+
+export const GET = createApiRoute(
+  async (request: NextRequest) => {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get("code");
     const name = searchParams.get("name");
@@ -21,10 +27,7 @@ export async function GET(request: NextRequest) {
     logger.debug("[SCHOOL LOOKUP] code:", code, "name:", name);
 
     if (!code && !name) {
-      return NextResponse.json(
-        { error: "Missing code or name parameter" },
-        { status: 400 }
-      );
+      return badRequestResponse("Missing code or name parameter");
     }
 
     if (code) {
@@ -40,13 +43,10 @@ export async function GET(request: NextRequest) {
       const school = results[0];
 
       if (!school) {
-        return NextResponse.json(
-          { school: null, error: "School not found" },
-          { status: 404 }
-        );
+        return notFoundResponse("School");
       }
 
-      return NextResponse.json({ school });
+      return { school };
     }
 
     if (name) {
@@ -55,18 +55,10 @@ export async function GET(request: NextRequest) {
         sql`SELECT * FROM schools WHERE name LIKE ${'%' + name + '%'} LIMIT 10`
       );
 
-      return NextResponse.json({ schools: results.rows });
+      return { schools: results.rows };
     }
 
-    return NextResponse.json(
-      { error: "Invalid request" },
-      { status: 400 }
-    );
-  } catch (error) {
-    logger.error("Error looking up school:", error);
-    return NextResponse.json(
-      { error: "Failed to lookup school" },
-      { status: 500 }
-    );
-  }
-}
+    return badRequestResponse("Invalid request");
+  },
+  [] // Open endpoint - no auth required
+);

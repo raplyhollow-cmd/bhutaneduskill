@@ -418,7 +418,7 @@ export function PushNotificationSettings({ className }: PushNotificationSettings
                 <Button
                   size="sm"
                   onClick={handleSubscribe}
-                  disabled={!pushStatus.isSupported || pushStatus.isDenied}
+                  disabled={pushStatus.permission === "denied"}
                   style={{ background: "rgb(59, 130, 246)", color: "white" }}
                 >
                   <Bell className="w-4 h-4 mr-2" />

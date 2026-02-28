@@ -37,16 +37,29 @@ interface PageProps {
 export default async function SchoolAdminNoticesPage({
   searchParams,
 }: PageProps) {
-  const { userId } = await requireAuth(["school-admin"]);
+  const authResult = await requireAuth(["school-admin"]);
+
+  // Check for auth error
+  if ("error" in authResult) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center">
+          <p className="text-gray-500">{authResult.error}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const { userId } = authResult;
 
   // Get user's school
-  const [user] = await db
+  const [userRecord] = await db
     .select({ schoolId: users.schoolId })
     .from(users)
     .where(eq(users.id, userId))
     .limit(1);
 
-  if (!user?.schoolId) {
+  if (!userRecord?.schoolId) {
     return (
       <Card>
         <CardContent className="py-12 text-center">
@@ -56,21 +69,23 @@ export default async function SchoolAdminNoticesPage({
     );
   }
 
-  // Fetch notices and events in parallel
+  // Fetch notices and events in parallel using db.select (neon-http compatible)
   const [noticesList, eventsList] = await Promise.all([
-    db.query.notices.findMany({
-      where: and(
-        eq(notices.schoolId, user.schoolId),
+    db
+      .select()
+      .from(notices)
+      .where(and(
+        eq(notices.schoolId, userRecord.schoolId),
         eq(notices.isPublished, true)
-      ),
-      orderBy: [desc(notices.isPinned), desc(notices.createdAt)],
-      limit: 20,
-    }),
-    db.query.schoolEvents.findMany({
-      where: eq(schoolEvents.schoolId, user.schoolId),
-      orderBy: [desc(schoolEvents.startDate)],
-      limit: 10,
-    }),
+      ))
+      .orderBy(desc(notices.isPinned), desc(notices.createdAt))
+      .limit(20),
+    db
+      .select()
+      .from(schoolEvents)
+      .where(eq(schoolEvents.schoolId, userRecord.schoolId))
+      .orderBy(desc(schoolEvents.startDate))
+      .limit(10),
   ]);
 
   // Calculate stats
@@ -145,6 +160,7 @@ export default async function SchoolAdminNoticesPage({
                   initialNotices={noticesList.map((n) => ({
                     ...n,
                     createdAt: n.createdAt,
+                    priority: n.priority as "low" | "high" | "normal" | "urgent",
                   }))}
                   initialEvents={eventsList.map((e) => ({
                     ...e,
@@ -170,7 +186,7 @@ export default async function SchoolAdminNoticesPage({
               }
             >
               <AnnouncementCreator
-                schoolId={user.schoolId}
+                schoolId={userRecord.schoolId}
                 userType="school-admin"
                 onCreate={async (announcement) => {
                   "use server";

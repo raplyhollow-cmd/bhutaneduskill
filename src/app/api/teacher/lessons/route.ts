@@ -25,7 +25,6 @@ import type { ApiSuccess, ApiErrorResponse } from "@/types";
  * - limit: Number of records (default: 50)
  */
 export const GET = createApiRoute(
-  ['teacher', 'admin', 'school-admin'],
   async (request: AuthenticatedRequest, auth: AuthContext) => {
     const { userId, user: currentUser } = auth;
 
@@ -38,10 +37,11 @@ export const GET = createApiRoute(
     // Get teacher's classes
     let teacherClassIds: string[] = [];
     if (currentUser.type === 'teacher') {
-      const teacherClasses = await db.query.classes.findMany({
-        where: eq(classes.teacherId, userId),
-        columns: { id: true },
-      });
+      const teacherClasses = await db
+        .select({ id: classes.id })
+        .from(classes)
+        .where(eq(classes.teacherId, userId));
+
       teacherClassIds = teacherClasses.map((c) => c.id);
 
       if (teacherClassIds.length === 0) {
@@ -72,25 +72,33 @@ export const GET = createApiRoute(
     }
 
     // Fetch lesson plans
-    const plans = await db.query.lessonPlans.findMany({
-      where: conditions.length > 0 ? and(...conditions) : undefined,
-      orderBy: [desc(lessonPlans.scheduledDate)],
-      limit,
-    });
+    const plansResult = await db
+      .select()
+      .from(lessonPlans)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(lessonPlans.scheduledDate))
+      .limit(limit);
+
+    const plans = plansResult;
 
     // Enrich with class and teacher names
     const enrichedPlans = await Promise.all(
       plans.map(async (plan) => {
-        const [cls, teacher] = await Promise.all([
-          db.query.classes.findFirst({
-            where: eq(classes.id, plan.classId),
-            columns: { id: true, name: true, grade: true, section: true },
-          }),
-          db.query.users.findFirst({
-            where: eq(users.id, plan.teacherId),
-            columns: { id: true, firstName: true, lastName: true },
-          }),
+        const [clsResult, teacherResult] = await Promise.all([
+          db
+            .select({ id: classes.id, name: classes.name, grade: classes.grade, section: classes.section })
+            .from(classes)
+            .where(eq(classes.id, plan.classId))
+            .limit(1),
+          db
+            .select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+            .from(users)
+            .where(eq(users.id, plan.teacherId))
+            .limit(1),
         ]);
+
+        const cls = clsResult[0] || null;
+        const teacher = teacherResult[0] || null;
 
         return {
           ...plan,
@@ -109,14 +117,14 @@ export const GET = createApiRoute(
       data: enrichedPlans,
       count: enrichedPlans.length,
     }, 200);
-  }
+  },
+  ['teacher', 'admin', 'school-admin']
 );
 
 /**
  * POST - Create a new lesson plan
  */
 export const POST = createApiRoute(
-  ['teacher'],
   async (request: AuthenticatedRequest, auth: AuthContext) => {
     const { userId, user: currentUser } = auth;
 
@@ -142,9 +150,13 @@ export const POST = createApiRoute(
     }
 
     // Verify teacher teaches this class
-    const classRecord = await db.query.classes.findFirst({
-      where: eq(classes.id, classId),
-    });
+    const classRecordResult = await db
+      .select()
+      .from(classes)
+      .where(eq(classes.id, classId))
+      .limit(1);
+
+    const classRecord = classRecordResult[0] || null;
 
     if (!classRecord || classRecord.teacherId !== userId) {
       return errorResponse("You do not teach this class", 403);
@@ -175,13 +187,17 @@ export const POST = createApiRoute(
     }).returning();
 
     // Update or create syllabus progress
-    const existingProgress = await db.query.syllabusProgress.findFirst({
-      where: and(
+    const existingProgressResult = await db
+      .select()
+      .from(syllabusProgress)
+      .where(and(
         eq(syllabusProgress.classId, classId),
         eq(syllabusProgress.teacherId, userId),
         eq(syllabusProgress.subjectId, subjectId || ''),
-      ),
-    });
+      ))
+      .limit(1);
+
+    const existingProgress = existingProgressResult[0] || null;
 
     if (existingProgress) {
       // Update total chapters count
@@ -222,5 +238,6 @@ export const POST = createApiRoute(
         resources: resources || [],
       },
     }, 201);
-  }
+  },
+  ['teacher']
 );

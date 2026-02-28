@@ -1,5 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
@@ -7,6 +6,7 @@ import { db } from "@/lib/db";
 import { fileStorage, users, parents, parentToStudent } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { createApiRoute } from "@/lib/api/route-handler";
 
 /**
  * POST /api/parent/documents/upload - Upload consent form for child
@@ -17,14 +17,12 @@ import { nanoid } from "nanoid";
  *
  * Parents can upload signed consent forms for their children.
  * Supported formats: PDF, DOC, DOCX, JPG, PNG
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['parent']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId } = auth;
 
     // Parse form data
     const formData = await request.formData();
@@ -34,11 +32,11 @@ export async function POST(request: NextRequest) {
     const description = formData.get("description") as string;
 
     if (!file) {
-      return NextResponse.json({ error: "No file provided" }, { status: 400 });
+      return { error: "No file provided", status: 400 };
     }
 
     if (!entityId) {
-      return NextResponse.json({ error: "Child ID is required" }, { status: 400 });
+      return { error: "Child ID is required", status: 400 };
     }
 
     // FERPA COMPLIANCE: Get parent record first
@@ -50,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     if (!parentRecord) {
       logger.warn("No parent record found for user", { userId });
-      return NextResponse.json({ error: "Parent record not found" }, { status: 403 });
+      return { error: "Parent record not found", status: 403 };
     }
 
     // FERPA COMPLIANCE: Verify parent-child relationship via parent_to_student join table
@@ -71,19 +69,23 @@ export async function POST(request: NextRequest) {
         childId: entityId,
         route: "/api/parent/documents/upload",
       });
-      return NextResponse.json({ error: "Child not found or access denied" }, { status: 403 });
+      return { error: "Child not found or access denied", status: 403 };
     }
 
     // Verify the child exists
-    const child = await db.query.users.findFirst({
-      where: and(
-        eq(users.id, entityId),
-        eq(users.type, "student")
-      ),
-    });
+    const [child] = await db
+      .select()
+      .from(users)
+      .where(
+        and(
+          eq(users.id, entityId),
+          eq(users.type, "student")
+        )
+      )
+      .limit(1);
 
     if (!child) {
-      return NextResponse.json({ error: "Child not found" }, { status: 404 });
+      return { error: "Child not found", status: 404 };
     }
 
     // Get file extension
@@ -99,19 +101,13 @@ export async function POST(request: NextRequest) {
     ];
 
     if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json(
-        { error: "Invalid file type. Allowed: PDF, DOC, DOCX, JPG, PNG" },
-        { status: 400 }
-      );
+      return { error: "Invalid file type. Allowed: PDF, DOC, DOCX, JPG, PNG", status: 400 };
     }
 
     // Validate file size (10MB max)
     const maxSize = 10 * 1024 * 1024;
     if (file.size > maxSize) {
-      return NextResponse.json(
-        { error: "File too large. Maximum size is 10MB" },
-        { status: 400 }
-      );
+      return { error: "File too large. Maximum size is 10MB", status: 400 };
     }
 
     // Sanitize filename
@@ -152,22 +148,14 @@ export async function POST(request: NextRequest) {
       createdAt: new Date(),
     }).returning();
 
-    return NextResponse.json(
-      {
-        file: {
-          id: fileRecord.id,
-          url: fileRecord.url,
-          originalName: fileRecord.originalName,
-          category: fileRecord.category,
-        },
+    return {
+      file: {
+        id: fileRecord.id,
+        url: fileRecord.url,
+        originalName: fileRecord.originalName,
+        category: fileRecord.category,
       },
-      { status: 201 }
-    );
-  } catch (error) {
-    logger.apiError(error, { route: "/api/parent/documents/upload", method: "POST" });
-    return NextResponse.json(
-      { error: "Failed to upload file" },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["parent"]
+);

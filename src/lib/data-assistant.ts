@@ -150,10 +150,11 @@ export async function getPlatformStats(): Promise<PlatformStats> {
  * Get list of schools with student counts
  */
 export async function getSchoolStats(): Promise<SchoolStats[]> {
-  const schoolData = await db.query.schools.findMany({
-    orderBy: [desc(schools.createdAt)],
-    limit: 10,
-  });
+  const schoolData = await db
+    .select()
+    .from(schools)
+    .orderBy(desc(schools.createdAt))
+    .limit(10);
 
   const stats: SchoolStats[] = [];
 
@@ -171,9 +172,10 @@ export async function getSchoolStats(): Promise<SchoolStats[]> {
       .where(and(eq(users.schoolId, school.id), eq(users.type, "teacher")));
 
     // Calculate completion rate
-    const schoolAssessments = await db.query.assessments.findMany({
-      where: sql`${assessments.userId} IN (SELECT id FROM users WHERE ${users.schoolId} = ${school.id} AND ${users.type} = 'student')`,
-    });
+    const schoolAssessments = await db
+      .select()
+      .from(assessments)
+      .where(sql`${assessments.userId} IN (SELECT id FROM users WHERE ${users.schoolId} = ${school.id} AND ${users.type} = 'student')`);
 
     const studentsWithAssessments = new Set(schoolAssessments.map((a) => a.userId)).size;
     const studentCount = studentResult[0]?.count || 0;
@@ -197,15 +199,18 @@ export async function getSchoolStats(): Promise<SchoolStats[]> {
 export async function getActiveUsers(limit: number = 5): Promise<UserData[]> {
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 
-  const activeUsers = await db.query.users.findMany({
-    where: sql`${users.lastLogin} >= ${oneHourAgo.toISOString()}`,
-    orderBy: [desc(users.lastLogin)],
-    limit,
-  });
+  const activeUsers = await db
+    .select()
+    .from(users)
+    .where(sql`${users.lastLogin} >= ${oneHourAgo.toISOString()}`)
+    .orderBy(desc(users.lastLogin))
+    .limit(limit);
 
   // Fetch school names separately
   const userIds = activeUsers.map((u) => u.id);
-  const schoolData = await db.query.schools.findMany();
+  const schoolData = await db
+    .select()
+    .from(schools);
 
   const result: UserData[] = activeUsers.slice(0, limit).map((u) => {
     const school = schoolData.find((s) => s.id === u.schoolId);

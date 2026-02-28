@@ -1,23 +1,25 @@
-import { NextRequest, NextResponse } from "next/server";
+/**
+ * SCHOOL ADMIN APPLICATION APPROVE API
+ *
+ * POST /api/school-admin/applications/[id]/approve - Approve student/teacher application
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
+ */
+
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users, enrollments, classes } from "@/lib/db/schema";
-import { requireAuth } from "@/lib/auth-utils";
 import { requirePermission } from "@/lib/rbac";
 import { logger } from "@/lib/logger";
 import { eq, and, desc } from "drizzle-orm";
 import { nanoid } from "nanoid";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse, notFoundResponse, forbiddenResponse } from "@/lib/api/response-helpers";
 
 // POST /api/school-admin/applications/[id]/approve - Approve student/teacher application
-export async function POST(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(['school-admin', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId, user } = authResult;
+export const POST = createApiRoute(
+  async (request: NextRequest, auth, context: { params: Promise<{ id: string }> }) => {
+    const { userId, user } = auth;
 
     const params = await context.params;
     const applicantId = params.id;
@@ -37,19 +39,19 @@ export async function POST(
       .limit(1);
 
     if (applicants.length === 0) {
-      return NextResponse.json({ error: "Applicant not found" }, { status: 404 });
+      return notFoundResponse("Applicant");
     }
 
     const applicant = applicants[0];
 
     // Verify type matches
     if (applicant.type !== type) {
-      return NextResponse.json({ error: `Applicant is not a ${type}` }, { status: 400 });
+      return badRequestResponse(`Applicant is not a ${type}`);
     }
 
     // Check school access (unless platform admin)
     if (user.type !== 'admin' && applicant.schoolId !== user.schoolId) {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 });
+      return forbiddenResponse("Access denied");
     }
 
     // Update user to approved
@@ -119,27 +121,18 @@ export async function POST(
       approvedBy: userId,
     });
 
-    return NextResponse.json({
+    return successResponse({
       success: true,
       message: `${type === 'student' ? 'Student' : 'Teacher'} application approved successfully`,
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/applications/[id]/approve", method: "POST" });
-    return NextResponse.json({ error: "Failed to approve application" }, { status: 500 });
-  }
-}
+  },
+  ['school-admin', 'admin']
+);
 
-// POST /api/school-admin/applications/[id]/reject - Reject student/teacher application
-export async function PATCH(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(['school-admin', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId, user } = authResult;
+// PATCH /api/school-admin/applications/[id]/reject - Reject student/teacher application
+export const PATCH = createApiRoute(
+  async (request: NextRequest, auth, context: { params: Promise<{ id: string }> }) => {
+    const { userId, user } = auth;
 
     const params = await context.params;
     const applicantId = params.id;
@@ -159,19 +152,19 @@ export async function PATCH(
       .limit(1);
 
     if (applicants.length === 0) {
-      return NextResponse.json({ error: "Applicant not found" }, { status: 404 });
+      return notFoundResponse("Applicant");
     }
 
     const applicant = applicants[0];
 
     // Verify type matches
     if (applicant.type !== type) {
-      return NextResponse.json({ error: `Applicant is not a ${type}` }, { status: 400 });
+      return badRequestResponse(`Applicant is not a ${type}`);
     }
 
     // Check school access (unless platform admin)
     if (user.type !== 'admin' && applicant.schoolId !== user.schoolId) {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 });
+      return forbiddenResponse("Access denied");
     }
 
     // Delete the user (effectively rejecting them)
@@ -185,27 +178,18 @@ export async function PATCH(
       reason,
     });
 
-    return NextResponse.json({
+    return successResponse({
       success: true,
       message: `${type === 'student' ? 'Student' : 'Teacher'} application rejected`,
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/applications/[id]/approve", method: "PATCH" });
-    return NextResponse.json({ error: "Failed to reject application" }, { status: 500 });
-  }
-}
+  },
+  ['school-admin', 'admin']
+);
 
 // Separate route for rejection to be clearer
-export async function DELETE(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(['school-admin', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId, user } = authResult;
+export const DELETE = createApiRoute(
+  async (request: NextRequest, auth, context: { params: Promise<{ id: string }> }) => {
+    const { userId, user } = auth;
 
     const params = await context.params;
     const applicantId = params.id;
@@ -214,7 +198,7 @@ export async function DELETE(
     const reason = searchParams.get('reason');
 
     if (!type) {
-      return NextResponse.json({ error: "Type parameter required" }, { status: 400 });
+      return badRequestResponse("Type parameter required");
     }
 
     // Check permission
@@ -230,19 +214,19 @@ export async function DELETE(
       .limit(1);
 
     if (applicants.length === 0) {
-      return NextResponse.json({ error: "Applicant not found" }, { status: 404 });
+      return notFoundResponse("Applicant");
     }
 
     const applicant = applicants[0];
 
     // Verify type matches
     if (applicant.type !== type) {
-      return NextResponse.json({ error: `Applicant is not a ${type}` }, { status: 400 });
+      return badRequestResponse(`Applicant is not a ${type}`);
     }
 
     // Check school access (unless platform admin)
     if (user.type !== 'admin' && applicant.schoolId !== user.schoolId) {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 });
+      return forbiddenResponse("Access denied");
     }
 
     // Delete the user (effectively rejecting them)
@@ -255,12 +239,10 @@ export async function DELETE(
       reason,
     });
 
-    return NextResponse.json({
+    return successResponse({
       success: true,
       message: `${type === 'student' ? 'Student' : 'Teacher'} application rejected`,
     });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/school-admin/applications/[id]/approve", method: "DELETE" });
-    return NextResponse.json({ error: "Failed to reject application" }, { status: 500 });
-  }
-}
+  },
+  ['school-admin', 'admin']
+);

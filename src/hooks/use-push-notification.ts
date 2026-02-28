@@ -224,7 +224,7 @@ export function usePushNotification(
 
       // Auto-subscribe if permission granted
       if (result === "granted" && autoSubscribe) {
-        await subscribe();
+        await subscribeToPush();
       }
 
       return result as NotificationPermission;
@@ -235,7 +235,7 @@ export function usePushNotification(
     } finally {
       setIsLoading(false);
     }
-  }, [isSupported, permission, autoSubscribe, subscribe, onPermissionChange]);
+  }, [isSupported, permission, autoSubscribe, onPermissionChange]);
 
   /**
    * Subscribe to push notifications
@@ -271,7 +271,7 @@ export function usePushNotification(
       // Subscribe to push
       const pushSubscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: convertedVapidKey,
+        applicationServerKey: convertedVapidKey as BufferSource,
       });
 
       setSubscription(pushSubscription);

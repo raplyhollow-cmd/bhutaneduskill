@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     // Import based on type
     if (type === "students") {
-      for (const row of data as any[]) {
+      for (const row of data as Array<Record<string, unknown>>) {
         try {
           await db.insert(users).values({
             id: nanoid(),
@@ -56,13 +56,13 @@ export async function POST(request: NextRequest) {
             schoolId: dbUser.schoolId,
             type: "student",
             role: "student",
-            firstName: row.firstName || row["First Name"] || "",
-            lastName: row.lastName || row["Last Name"] || "",
-            email: row.email || row.Email || null,
-            phone: row.phone || row.Phone || null,
-            dateOfBirth: row.dateOfBirth || row["Date of Birth"] || null,
-            classGrade: row.classGrade || row["Class"] || parseInt(row.grade || row.Grade || "0"),
-            section: row.section || row.Section || null,
+            firstName: String(row.firstName || row["First Name"] || ""),
+            lastName: String(row.lastName || row["Last Name"] || ""),
+            email: row.email || row.Email ? String(row.email || row.Email) : null,
+            phone: row.phone || row.Phone ? String(row.phone || row.Phone) : null,
+            dateOfBirth: row.dateOfBirth || row["Date of Birth"] ? new Date(String(row.dateOfBirth || row["Date of Birth"])) : null,
+            classGrade: row.classGrade || row["Class"] ? Number(row.classGrade || row["Class"] || row.grade || row.Grade || 0) : 0,
+            section: row.section || row.Section ? String(row.section || row.Section) : null,
             parentId: null, // Will be linked later
             createdAt: new Date(),
           });
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
         }
       }
     } else if (type === "teachers") {
-      for (const row of data as any[]) {
+      for (const row of data as Array<Record<string, unknown>>) {
         try {
           await db.insert(users).values({
             id: nanoid(),
@@ -81,12 +81,12 @@ export async function POST(request: NextRequest) {
             schoolId: dbUser.schoolId,
             type: "teacher",
             role: "teacher",
-            firstName: row.firstName || row["First Name"] || "",
-            lastName: row.lastName || row["Last Name"] || "",
-            email: row.email || row.Email || null,
-            phone: row.phone || row.Phone || null,
-            employeeId: row.employeeId || row["Employee ID"] || null,
-            subjects: row.subjects || row.Subjects ? JSON.parse(row.subjects || row.Subjects) : [],
+            firstName: String(row.firstName || row["First Name"] || ""),
+            lastName: String(row.lastName || row["Last Name"] || ""),
+            email: row.email || row.Email ? String(row.email || row.Email) : null,
+            phone: row.phone || row.Phone ? String(row.phone || row.Phone) : null,
+            employeeId: row.employeeId || row["Employee ID"] ? String(row.employeeId || row["Employee ID"]) : null,
+            subjects: row.subjects || row.Subjects ? JSON.parse(String(row.subjects || row.Subjects)) : [],
             createdAt: new Date(),
           });
           imported++;

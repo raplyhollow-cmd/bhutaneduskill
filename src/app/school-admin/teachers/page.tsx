@@ -76,7 +76,7 @@ export default function SchoolAdminTeachersPage() {
   };
 
   // Quick add teacher handler - creates with minimal info
-  const handleQuickAddTeacher = async (name: string) => {
+  const handleQuickAddTeacher = async (name: string): Promise<{ success: true; data?: unknown } | { success: false; error: string }> => {
     try {
       const [firstName, ...lastNameParts] = name.trim().split(" ");
       const lastName = lastNameParts.join(" ") || "";
@@ -100,7 +100,7 @@ export default function SchoolAdminTeachersPage() {
         return { success: true };
       } else {
         const data = await response.json();
-        return { success: false, error: data.error || "Failed to add teacher" };
+        return { success: false, error: (data.error as string) || "Failed to add teacher" };
       }
     } catch (error) {
       return { success: false, error: "Network error. Please try again." };

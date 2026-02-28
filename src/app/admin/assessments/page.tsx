@@ -173,8 +173,8 @@ export default function AdminAssessmentsPage() {
     setTypesLoading(true);
     try {
       const data = await getAssessmentTypes();
-      setAssessmentTypes(data);
-      setFilteredTypes(data);
+      setAssessmentTypes(data as AssessmentType[]);
+      setFilteredTypes(data as AssessmentType[]);
     } catch (error) {
       logger.error("Failed to fetch assessment types:", error);
     } finally {
@@ -957,7 +957,18 @@ export default function AdminAssessmentsPage() {
           fetchAssessmentTypes();
           fetchStats();
         }}
-        assessmentType={editingType}
+        assessmentType={editingType ? {
+          id: editingType.id,
+          name: editingType.name || "",
+          description: editingType.description || "",
+          category: editingType.category || "aptitude",
+          targetAudience: typeof editingType.targetAudience === "string" ? editingType.targetAudience : "all",
+          targetGrade: typeof editingType.targetGrade === "number" ? editingType.targetGrade : Array.isArray(editingType.targetGrade) ? editingType.targetGrade[0] || 0 : 0,
+          duration: editingType.duration,
+          totalQuestions: editingType.totalQuestions,
+          passingScore: editingType.passingScore,
+          isActive: editingType.isActive,
+        } : null}
       />
 
       {/* Questions Modal */}

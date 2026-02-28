@@ -1013,8 +1013,9 @@ export type ZIndex = keyof typeof zIndex;
  * Get a color value from the semantic palette
  */
 export function getColor(color: SemanticColor, shade: number = 500): string {
-  const palette = semantic[color] as any;
-  return palette[shade] || palette.DEFAULT || palette;
+  const palette = semantic[color] as Record<number | string, string>;
+  const result = palette[shade] || palette.DEFAULT || palette;
+  return typeof result === 'string' ? result : palette.DEFAULT;
 }
 
 /**

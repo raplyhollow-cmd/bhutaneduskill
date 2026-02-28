@@ -57,12 +57,12 @@ const MobileCard = React.forwardRef<HTMLDivElement, MobileCardProps>(
   ) => {
     const Component = href ? "a" : onClick ? "button" : "div";
     const baseProps = href
-      ? { href, onClick: undefined as any }
-      : { onClick, href: undefined as any };
+      ? { href, onClick: undefined }
+      : { onClick, href: undefined };
 
     return (
       <Component
-        ref={ref as any}
+        ref={ref as React.RefObject<HTMLDivElement>}
         className={cn(
           // Base styles
           "group relative flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-4",
@@ -75,8 +75,8 @@ const MobileCard = React.forwardRef<HTMLDivElement, MobileCardProps>(
           gradient && "bg-gradient-to-br from-orange-50 to-red-50 border-orange-100",
           className
         )}
-        {...baseProps}
-        {...(props as any)}
+        {...(baseProps as any)}
+        {...(props as React.HTMLAttributes<HTMLDivElement>)}
       >
         {/* Badge */}
         {badge && (

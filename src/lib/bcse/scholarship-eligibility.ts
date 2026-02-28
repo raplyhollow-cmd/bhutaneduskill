@@ -42,6 +42,27 @@ export interface AcademicProfile {
   totalMarks: number;
 }
 
+interface BCSEScholarship {
+  code: string;
+  name: string;
+  provider: string;
+  eligibilityCriteria: {
+    minPercentage: number;
+    requireDivision: string | null;
+    subjects: string[];
+    minSubjectPercentage?: number;
+  };
+  coverage: {
+    tuition: boolean;
+    hostel: boolean;
+    books: boolean;
+    living: boolean;
+  };
+  requiresIncomeVerification?: boolean;
+  maxAnnualIncome?: number;
+  recommendedFields?: string[];
+}
+
 // ============================================================================
 // SCHOLARSHIP DEFINITIONS
 // ============================================================================

@@ -52,9 +52,10 @@ export const GET = createApiRoute(
 
     const currentUser = user;
 
-    const structures = await db.query.feeStructures.findMany({
-      orderBy: [desc(feeStructures.createdAt)],
-    });
+    const structures = await db
+      .select()
+      .from(feeStructures)
+      .orderBy(desc(feeStructures.createdAt));
 
     return successResponse({ structures });
   },

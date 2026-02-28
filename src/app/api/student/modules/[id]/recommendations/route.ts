@@ -1,59 +1,53 @@
 /**
  * STUDENT MODULE RECOMMENDATIONS API
  * Suggest next modules based on completed module's category and level
+ *
+ * MIGRATED: Now uses createApiRoute wrapper for auth/error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { moduleProgress, learningModules } from "@/lib/db/schema";
 import { eq, and, or, sql, desc, inArray } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
 
-interface Params {
-  params: Promise<{ id: string }>;
+interface ModuleRecommendationsParams extends Record<string, unknown> {
+  id: string;
 }
 
 // GET /api/student/modules/[id]/recommendations
-export async function GET(request: NextRequest, { params }: Params) {
-  try {
-    const authResult = await requireAuth(["student"]);
-    if ("error" in authResult) {
-      return NextResponse.json(
-        { error: authResult.error },
-        { status: authResult.status }
-      );
-    }
-    const { userId } = authResult;
+export const GET = createApiRoute<ModuleRecommendationsParams>(
+  async (request: NextRequest, auth, context) => {
+    const { userId } = auth;
+    const { id: completedModuleId } = await context!.params!;
 
-    const { id: completedModuleId } = await params;
+    // Get the completed module's info using db.select (neon-http compatible)
+    const completedModuleResult = await db
+      .select({
+        id: learningModules.id,
+        category: learningModules.category,
+        level: learningModules.level,
+        subjectId: learningModules.subjectId,
+        teacherId: learningModules.teacherId,
+      })
+      .from(learningModules)
+      .where(eq(learningModules.id, completedModuleId))
+      .limit(1);
 
-    // Get the completed module's info
-    const completedModule = await db.query.learningModules.findFirst({
-      where: eq(learningModules.id, completedModuleId),
-      columns: {
-        id: true,
-        category: true,
-        level: true,
-        subjectId: true,
-        teacherId: true,
-      },
-    });
+    const completedModule = completedModuleResult[0];
 
     if (!completedModule) {
-      return NextResponse.json(
-        { error: "Module not found" },
-        { status: 404 }
-      );
+      return { error: "Module not found", status: 404 };
     }
 
-    // Get student's enrolled modules to exclude
-    const enrolledModules = await db.query.moduleProgress.findMany({
-      where: eq(moduleProgress.studentId, userId),
-      columns: {
-        moduleId: true,
-      },
-    });
+    // Get student's enrolled modules to exclude using db.select (neon-http compatible)
+    const enrolledModules = await db
+      .select({
+        moduleId: moduleProgress.moduleId,
+      })
+      .from(moduleProgress)
+      .where(eq(moduleProgress.studentId, userId));
 
     const enrolledModuleIds = enrolledModules.map((m) => m.moduleId);
 
@@ -125,15 +119,10 @@ export async function GET(request: NextRequest, { params }: Params) {
       count: recommendations.length,
     });
 
-    return NextResponse.json({
+    return {
       success: true,
       data: recommendations,
-    });
-  } catch (error) {
-    logger.apiError(error, { route: "/api/student/modules/[id]/recommendations", method: "GET" });
-    return NextResponse.json(
-      { error: "Failed to fetch recommendations" },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["student"]
+);

@@ -1,22 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import { neon } from "@neondatabase/serverless";
 
 // POST /api/admin/school-admin-applications/[id]/approve - Approve school admin application
-export async function POST(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const POST = createApiRoute<{ id: string }>(
+  async (req, auth, context) => {
+    const { userId } = auth;
 
-    const params = await context.params;
-    const applicationId = params.id;
+    const params = await context?.params || Promise.resolve({ id: "" });
+    const applicationId = (await params).id;
 
     const sql = neon(process.env.DATABASE_URL!);
 
@@ -29,13 +21,13 @@ export async function POST(
     `;
 
     if (applications.length === 0) {
-      return NextResponse.json({ error: "Application not found" }, { status: 404 });
+      return { error: "Application not found", status: 404 };
     }
 
     const application = applications[0];
 
     if (application.status !== "pending_approval") {
-      return NextResponse.json({ error: "Application already processed" }, { status: 400 });
+      return { error: "Application already processed", status: 400 };
     }
 
     // Update application status using raw SQL
@@ -95,38 +87,22 @@ export async function POST(
       reviewedBy: userId,
     });
 
-    return NextResponse.json({
+    return {
       success: true,
       message: "School admin application approved successfully",
-    });
-  } catch (error) {
-    console.error("Approve error details:", error);
-    logger.apiError(error, {
-      route: "/api/admin/school-admin-applications/[id]/approve",
-      method: "POST",
-    });
-    return NextResponse.json({
-      error: "Failed to approve application",
-      details: error instanceof Error ? error.message : String(error)
-    }, { status: 500 });
-  }
-}
+    };
+  },
+  ["admin"]
+);
 
 // PATCH /api/admin/school-admin-applications/[id]/reject - Reject school admin application
-export async function PATCH(
-  request: NextRequest,
-  context: { params: Promise<{ id: string }> }
-) {
-  try {
-    const authResult = await requireAuth(["admin"]);
-    if ("error" in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-    const { userId } = authResult;
+export const PATCH = createApiRoute<{ id: string }>(
+  async (req, auth, context) => {
+    const { userId } = auth;
 
-    const params = await context.params;
-    const applicationId = params.id;
-    const body = await request.json();
+    const params = await context?.params || Promise.resolve({ id: "" });
+    const applicationId = (await params).id;
+    const body = await req.json();
     const { rejectionReason } = body;
 
     const sql = neon(process.env.DATABASE_URL!);
@@ -140,13 +116,13 @@ export async function PATCH(
     `;
 
     if (applications.length === 0) {
-      return NextResponse.json({ error: "Application not found" }, { status: 404 });
+      return { error: "Application not found", status: 404 };
     }
 
     const application = applications[0];
 
     if (application.status !== "pending_approval") {
-      return NextResponse.json({ error: "Application already processed" }, { status: 400 });
+      return { error: "Application already processed", status: 400 };
     }
 
     // Update application status
@@ -167,15 +143,10 @@ export async function PATCH(
       reviewedBy: userId,
     });
 
-    return NextResponse.json({
+    return {
       success: true,
       message: "School admin application rejected",
-    });
-  } catch (error) {
-    logger.apiError(error, {
-      route: "/api/admin/school-admin-applications/[id]/approve",
-      method: "PATCH",
-    });
-    return NextResponse.json({ error: "Failed to reject application" }, { status: 500 });
-  }
-}
+    };
+  },
+  ["admin"]
+);

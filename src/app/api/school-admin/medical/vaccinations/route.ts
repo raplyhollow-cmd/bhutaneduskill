@@ -1,24 +1,43 @@
-import { logger } from "@/lib/logger";
-import { NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth-utils";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { vaccinationRecords } from "@/lib/db/schema";
+import { vaccinationRecords, users } from "@/lib/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { logger } from "@/lib/logger";
 
 type VaccinationCondition = ReturnType<typeof eq> | ReturnType<typeof sql>;
+
+interface VaccinationsResponse {
+  vaccinations: unknown[];
+}
+
+interface VaccinationResponse {
+  vaccination: unknown;
+}
+
+interface VaccinationRequest {
+  studentId: string;
+  vaccineName: string;
+  vaccineType: string;
+  manufacturer?: string;
+  batchNumber?: string;
+  lotNumber?: string;
+  administrationDate: string;
+  administrationSite?: string;
+  doseNumber?: number;
+  requiresFollowUp?: boolean;
+  nextDoseDue?: string;
+  certificateNumber?: string;
+  isSchoolProvided?: boolean;
+  notes?: string;
+}
 
 /**
  * GET /api/school-admin/medical/vaccinations - Get vaccination records
  */
-export async function GET(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['school-admin', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { user } = authResult;
-    const { searchParams } = new URL(request.url);
+export const GET = createApiRoute<{}, VaccinationsResponse>(
+  async (req, { user }) => {
+    const { searchParams } = new URL(req.url);
 
     const studentId = searchParams.get('studentId');
     const vaccineType = searchParams.get('vaccineType');
@@ -37,36 +56,50 @@ export async function GET(request: NextRequest) {
       whereConditions.push(sql`${vaccinationRecords.nextDoseDue} > ${today}`);
     }
 
-    const vaccinations = await db.query.vaccinationRecords.findMany({
-      where: whereConditions.length > 1 ? and(...whereConditions) : whereConditions[0],
-      with: {
-        student: true,
-      },
-      orderBy: [desc(vaccinationRecords.administrationDate)],
-    });
+    const vaccinations = await db
+      .select({
+        id: vaccinationRecords.id,
+        studentId: vaccinationRecords.studentId,
+        schoolId: vaccinationRecords.schoolId,
+        vaccineName: vaccinationRecords.vaccineName,
+        vaccineType: vaccinationRecords.vaccineType,
+        manufacturer: vaccinationRecords.manufacturer,
+        batchNumber: vaccinationRecords.batchNumber,
+        lotNumber: vaccinationRecords.lotNumber,
+        administrationDate: vaccinationRecords.administrationDate,
+        administrationSite: vaccinationRecords.administrationSite,
+        doseNumber: vaccinationRecords.doseNumber,
+        requiresFollowUp: vaccinationRecords.requiresFollowUp,
+        nextDoseDue: vaccinationRecords.nextDoseDue,
+        certificateNumber: vaccinationRecords.certificateNumber,
+        certificateIssued: vaccinationRecords.certificateIssued,
+        isSchoolProvided: vaccinationRecords.isSchoolProvided,
+        administeredBy: vaccinationRecords.administeredBy,
+        recordedBy: vaccinationRecords.recordedBy,
+        notes: vaccinationRecords.notes,
+        createdAt: vaccinationRecords.createdAt,
+        updatedAt: vaccinationRecords.updatedAt,
+        // Student info
+        studentFirstName: users.firstName,
+        studentLastName: users.lastName,
+        studentName: users.name,
+      })
+      .from(vaccinationRecords)
+      .innerJoin(users, eq(vaccinationRecords.studentId, users.id))
+      .where(whereConditions.length > 1 ? and(...whereConditions) : whereConditions[0])
+      .orderBy(desc(vaccinationRecords.administrationDate));
 
-    return NextResponse.json({
-      success: true,
-      data: { vaccinations },
-    });
-  } catch (error) {
-    logger.error("Vaccination records fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch vaccination records" }, { status: 500 });
-  }
-}
+    return { data: { vaccinations } };
+  },
+  ['school-admin', 'admin']
+);
 
 /**
  * POST /api/school-admin/medical/vaccinations - Add vaccination record
  */
-export async function POST(request: NextRequest) {
-  try {
-    const authResult = await requireAuth(['school-admin', 'admin']);
-    if ('error' in authResult) {
-      return NextResponse.json({ error: authResult.error }, { status: authResult.status });
-    }
-
-    const { user, userId } = authResult;
-    const body = await request.json();
+export const POST = createApiRoute<{}, VaccinationResponse>(
+  async (req, { user, userId }) => {
+    const body: VaccinationRequest = await req.json();
 
     const {
       studentId,
@@ -86,7 +119,7 @@ export async function POST(request: NextRequest) {
     } = body;
 
     if (!studentId || !vaccineName || !vaccineType || !administrationDate) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+      return { error: "Missing required fields", status: 400 };
     }
 
     const vaccinationId = `vax-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
@@ -117,12 +150,7 @@ export async function POST(request: NextRequest) {
 
     logger.info("Vaccination record added", { vaccinationId, studentId, schoolId: user.schoolId });
 
-    return NextResponse.json({
-      success: true,
-      data: { vaccination: newVaccination },
-    });
-  } catch (error) {
-    logger.error("Vaccination record creation error:", error);
-    return NextResponse.json({ error: "Failed to add vaccination record" }, { status: 500 });
-  }
-}
+    return { data: { vaccination: newVaccination } };
+  },
+  ['school-admin', 'admin']
+);

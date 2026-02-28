@@ -28,8 +28,19 @@ import { Switch } from "@/components/ui/switch";
 import { Loader2, Sparkles, Send, X } from "lucide-react";
 import { useToast } from "@/components/ui/toaster";
 
+interface Announcement {
+  id: string;
+  title: string;
+  content: string;
+  priority: "low" | "normal" | "high" | "urgent";
+  targetAudience: string;
+  category: string;
+  isPinned: boolean;
+  schoolId?: string;
+}
+
 interface AnnouncementCreatorProps {
-  onCreate?: (announcement: any) => void;
+  onCreate?: (announcement: Announcement) => void;
   onCancel?: () => void;
   schoolId?: string;
   userType?: string;

@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/auth-utils";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { logger } from "@/lib/logger";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { RED_FLAG_ANALYZER_SYSTEM } from "@/lib/ai/prompts";
@@ -26,17 +26,9 @@ const THRESHOLDS = {
  * Automated scanner that detects at-risk students using AI pattern analysis
  * Scans behavior logs, attendance, and academic performance
  */
-export async function POST(req: Request) {
-  try {
-    const authResult = await requireAuth(["counselor", "admin"]);
-    if ("error" in authResult) {
-      return Response.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const POST = createApiRoute(
+  async (req, auth) => {
+    const { userId } = auth;
     const body = await req.json();
     const { schoolId, forceRescan = false } = body;
 
@@ -44,18 +36,15 @@ export async function POST(req: Request) {
     let schoolsToScan = schoolId ? [schoolId] : [];
     if (!schoolId) {
       // For counselors, get their assigned schools
-      const assignments = await db.query.counselorAssignments.findMany({
-        where: eq(counselorAssignments.counselorId, userId),
-        columns: { schoolId: true },
-      });
+      const assignments = await db
+        .select({ schoolId: counselorAssignments.schoolId })
+        .from(counselorAssignments)
+        .where(eq(counselorAssignments.counselorId, userId));
       schoolsToScan = assignments.map((a) => a.schoolId);
     }
 
     if (schoolsToScan.length === 0) {
-      return Response.json({
-        error: "No schools assigned to scan",
-        status: 400,
-      } satisfies ApiErrorResponse);
+      return { error: "No schools assigned to scan", status: 400 } satisfies ApiErrorResponse;
     }
 
     // Scan for red flags
@@ -65,10 +54,10 @@ export async function POST(req: Request) {
 
     for (const scanSchoolId of schoolsToScan) {
       // Get students from this school
-      const schoolStudents = await db.query.students.findMany({
-        where: eq(students.schoolId, scanSchoolId),
-        columns: { userId: true },
-      });
+      const schoolStudents = await db
+        .select({ userId: students.userId })
+        .from(students)
+        .where(eq(students.schoolId, scanSchoolId));
 
       const studentIds = schoolStudents.map((s) => s.userId);
 
@@ -78,13 +67,16 @@ export async function POST(req: Request) {
       for (const studentId of studentIds) {
         // Skip if recently flagged (unless forceRescan)
         if (!forceRescan) {
-          const existingFlag = await db.query.redFlags.findFirst({
-            where: and(
+          const existingFlag = await db
+            .select()
+            .from(redFlags)
+            .where(and(
               eq(redFlags.studentId, studentId),
               eq(redFlags.status, "flagged"),
               gte(redFlags.createdAt, cutoffDate)
-            ),
-          });
+            ))
+            .limit(1)
+            .then(rows => rows[0] || null);
           if (existingFlag) continue;
         }
 
@@ -97,6 +89,9 @@ export async function POST(req: Request) {
         if (!hasRedFlag) continue;
 
         // Use AI to analyze pattern and determine severity
+        // Skip if student not found or no data to analyze
+        if (!studentData.student) continue;
+
         const aiAnalysis = await analyzeWithAI(studentData);
 
         if (!aiAnalysis) continue;
@@ -114,23 +109,27 @@ export async function POST(req: Request) {
           aiRecommendation: aiAnalysis.aiRecommendation,
           gnhPrinciple: aiAnalysis.gnhPrinciple,
           behaviorLogIds: studentData.behaviorLogIds,
-          attendanceData: studentData.attendanceData,
-          academicData: studentData.academicData,
+          attendanceData: studentData.attendanceData || undefined,
+          academicData: studentData.academicData || undefined,
           status: "flagged",
           createdAt: new Date(),
           updatedAt: new Date(),
-        });
+        } as typeof redFlags.$inferInsert);
 
         // Get student and school info for response
-        const student = await db.query.users.findFirst({
-          where: eq(users.id, studentData.student.id),
-          columns: { id: true, firstName: true, lastName: true },
-        });
+        const student = await db
+          .select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+          .from(users)
+          .where(eq(users.id, studentData.student.id))
+          .limit(1)
+          .then(rows => rows[0] || null);
 
-        const school = await db.query.schools.findFirst({
-          where: eq(schools.id, scanSchoolId),
-          columns: { id: true, name: true },
-        });
+        const school = await db
+          .select({ id: schools.id, name: schools.name })
+          .from(schools)
+          .where(eq(schools.id, scanSchoolId))
+          .limit(1)
+          .then(rows => rows[0] || null);
 
         results.push({
           flagId,
@@ -150,7 +149,7 @@ export async function POST(req: Request) {
       flagsFound: results.length,
     });
 
-    return Response.json({
+    return {
       data: {
         scanned: schoolsToScan.length,
         flagsFound: results.length,
@@ -160,28 +159,50 @@ export async function POST(req: Request) {
       scanned: number;
       flagsFound: number;
       flags: unknown[];
-    }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/counselor/red-flags/scan", method: "POST" });
-    return Response.json(
-      { error: "Failed to scan for red flags", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    }>;
+  },
+  ["counselor", "admin"]
+);
 
 /**
  * Collect all relevant data for a student
  */
-async function collectStudentData(studentId: string, schoolId: string, cutoffDate: Date) {
+async function collectStudentData(studentId: string, schoolId: string, cutoffDate: Date): Promise<{
+  student: { id: string; firstName?: string; lastName?: string; classGrade?: number } | null;
+  behaviorLogIds: string[];
+  behaviorLogs: {
+    total: number;
+    highSeverity: number;
+    recent?: Array<{ category: string; severity: string; description: string }>;
+  };
+  attendanceData: {
+    rate: number;
+    lates: number;
+    absences: number;
+    period: string;
+  } | null;
+  academicData: {
+    avgMarks: number;
+    failingSubjects: string[];
+    trend: "declining" | "stable" | "improving";
+  } | null;
+}> {
   // Get student info
-  const student = await db.query.users.findFirst({
-    where: eq(users.id, studentId),
-    columns: { id: true, firstName: true, lastName: true, classGrade: true },
-  });
+  const student = await db
+    .select({ id: users.id, firstName: users.firstName, lastName: users.lastName, classGrade: users.classGrade })
+    .from(users)
+    .where(eq(users.id, studentId))
+    .limit(1)
+    .then(rows => rows[0] || null);
 
   if (!student) {
-    return { student: { id: studentId }, behaviorLogIds: [], attendanceData: null, academicData: null };
+    return {
+      student: null,
+      behaviorLogIds: [],
+      behaviorLogs: { total: 0, highSeverity: 0, recent: [] },
+      attendanceData: null,
+      academicData: null
+    };
   }
 
   // Get behavior logs from teacher_behavior_logs
@@ -208,14 +229,16 @@ async function collectStudentData(studentId: string, schoolId: string, cutoffDat
       AND date >= ${cutoffDate.toISOString().split('T')[0]}
   `);
 
-  const attendanceRow = attendanceResult.rows[0] as {
+  const attendanceRow = (attendanceResult.rows[0] || { present: "0", late: "0", absent: "0", total: "0" }) as {
     present: string;
     late: string;
     absent: string;
     total: string;
   };
-  const attendanceRate = attendanceRow.total > 0
-    ? Math.round((attendanceRow.present / attendanceRow.total) * 100)
+  const totalPresent = parseInt(attendanceRow.present) || 0;
+  const totalSessions = parseInt(attendanceRow.total) || 0;
+  const attendanceRate = totalSessions > 0
+    ? Math.round((totalPresent / totalSessions) * 100)
     : 0;
 
   const attendanceData = {
@@ -233,14 +256,16 @@ async function collectStudentData(studentId: string, schoolId: string, cutoffDat
     GROUP BY subject
   `);
 
-  const grades = gradesResult.rows as Array<{ avg_marks: string; subject: string }>;
-  const avgMarks = grades.length > 0
-    ? Math.round(grades.reduce((sum, g) => sum + parseFloat(g.avg_marks || 0), 0) / grades.length)
+  const grades = gradesResult.rows as Array<{ avg_marks: string | null; subject: string | null }>;
+  const validGrades = grades.filter(g => g.avg_marks !== null && g.avg_marks !== undefined);
+  const avgMarks = validGrades.length > 0
+    ? Math.round(validGrades.reduce((sum, g) => sum + parseFloat(g.avg_marks!), 0) / validGrades.length)
     : 0;
 
   const failingSubjects = grades
-    .filter((g) => parseFloat(g.avg_marks || 0) < THRESHOLDS.avgMarks)
-    .map((g) => g.subject);
+    .filter((g) => g.avg_marks !== null && g.avg_marks !== undefined && parseFloat(g.avg_marks) < THRESHOLDS.avgMarks)
+    .map((g) => g.subject)
+    .filter((subject): subject is string => subject !== null && subject !== undefined);
 
   const academicData = {
     avgMarks,
@@ -302,10 +327,14 @@ function checkRedFlagThresholds(data: {
  * Analyze student data with AI to determine severity and recommendations
  */
 async function analyzeWithAI(studentData: {
-  student: { firstName?: string; lastName?: string; classGrade?: number };
-  behaviorLogs: { total: number; highSeverity: number };
-  attendanceData?: { rate: number; lates: number; absences: number };
-  academicData?: { avgMarks: number; failingSubjects?: string[] };
+  student: { id: string; firstName?: string; lastName?: string; classGrade?: number };
+  behaviorLogs: {
+    total: number;
+    highSeverity: number;
+    recent?: Array<{ category: string; severity: string; description: string }>;
+  };
+  attendanceData?: { rate: number; lates: number; absences: number } | null;
+  academicData?: { avgMarks: number; failingSubjects?: string[] } | null;
 }) {
   if (!GEMINI_API_KEY) {
     // Fallback: Simple rule-based analysis
@@ -449,17 +478,9 @@ function fallbackAnalysis(data: {
  *
  * Get scan status and recent results
  */
-export async function GET(req: Request) {
-  try {
-    const authResult = await requireAuth(["counselor", "admin"]);
-    if ("error" in authResult) {
-      return Response.json(
-        { error: authResult.error, status: authResult.status } satisfies ApiErrorResponse,
-        { status: authResult.status }
-      );
-    }
-
-    const { userId } = authResult;
+export const GET = createApiRoute(
+  async (req, auth) => {
+    const { userId } = auth;
     const { searchParams } = new URL(req.url);
     const schoolId = searchParams.get("schoolId");
 
@@ -468,10 +489,10 @@ export async function GET(req: Request) {
     if (schoolId) {
       counselorSchools = [schoolId];
     } else {
-      const assignments = await db.query.counselorAssignments.findMany({
-        where: eq(counselorAssignments.counselorId, userId),
-        columns: { schoolId: true },
-      });
+      const assignments = await db
+        .select({ schoolId: counselorAssignments.schoolId })
+        .from(counselorAssignments)
+        .where(eq(counselorAssignments.counselorId, userId));
       counselorSchools = assignments.map((a) => a.schoolId);
     }
 
@@ -501,7 +522,7 @@ export async function GET(req: Request) {
       .orderBy(desc(redFlags.createdAt))
       .limit(50);
 
-    return Response.json({
+    return {
       data: {
         flags,
         count: flags.length,
@@ -509,12 +530,7 @@ export async function GET(req: Request) {
     } satisfies ApiSuccess<{
       flags: unknown[];
       count: number;
-    }>);
-  } catch (error) {
-    logger.apiError(error, { route: "/api/counselor/red-flags/scan", method: "GET" });
-    return Response.json(
-      { error: "Failed to fetch red flags", status: 500 } satisfies ApiErrorResponse,
-      { status: 500 }
-    );
-  }
-}
+    }>;
+  },
+  ["counselor", "admin"]
+);
