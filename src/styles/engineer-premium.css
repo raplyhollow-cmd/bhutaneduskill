@@ -1,0 +1,480 @@
+/* ============================================
+   ENGINEER PREMIUM DESIGN UTILITIES
+   Vercel/Clerk-Inspired Precision UI
+   ============================================
+
+   Based on: docs/design/ultra-premium-redesign.md
+
+   Usage: Import in globals.css after @import "tailwindcss"
+   Add: @import "../styles/engineer-premium.css";
+
+   Or copy contents into globals.css directly.
+   ============================================ */
+
+/* ============================================
+   1. MILLED BORDER SHADOW UTILITIES
+   Vercel's signature dual-layer "milled" effect
+   ============================================ */
+
+@theme inline {
+  /* Milled border - dual-layer: inner highlight + outer shadow */
+  --shadow-milled: 0 0 0 1px rgba(255, 255, 255, 0.8) inset, 0 1px 2px rgba(0, 0, 0, 0.05);
+
+  /* Milled border hover - stronger lift */
+  --shadow-milled-hover: 0 0 0 1px rgba(255, 255, 255, 0.9) inset, 0 4px 12px rgba(0, 0, 0, 0.08);
+
+  /* Milled deep - for modals/dialogs */
+  --shadow-milled-deep: 0 0 0 1px rgba(255, 255, 255, 0.8) inset, 0 8px 32px rgba(0, 0, 0, 0.12);
+
+  /* Milled card - balanced elevation */
+  --shadow-milled-card: 0 0 0 1px rgba(255, 255, 255, 0.8) inset, 0 2px 8px rgba(0, 0, 0, 0.06);
+
+  /* Portal-colored glows */
+  --shadow-glow-orange: 0 4px 24px rgba(249, 115, 22, 0.15);
+  --shadow-glow-blue: 0 4px 24px rgba(59, 130, 246, 0.15);
+  --shadow-glow-purple: 0 4px 24px rgba(139, 92, 246, 0.15);
+  --shadow-glow-pink: 0 4px 24px rgba(236, 72, 153, 0.15);
+  --shadow-glow-teal: 0 4px 24px rgba(20, 184, 166, 0.15);
+  --shadow-glow-gray: 0 4px 24px rgba(107, 114, 128, 0.15);
+}
+
+/* Utility classes for milled shadows */
+.shadow-milled { box-shadow: var(--shadow-milled); }
+.shadow-milled-hover { box-shadow: var(--shadow-milled-hover); }
+.shadow-milled-deep { box-shadow: var(--shadow-milled-deep); }
+.shadow-milled-card { box-shadow: var(--shadow-milled-card); }
+
+/* Hover variants */
+.hover\:shadow-milled-hover:hover { box-shadow: var(--shadow-milled-hover); }
+
+/* Portal glow utilities */
+.shadow-glow-orange { box-shadow: var(--shadow-glow-orange); }
+.shadow-glow-blue { box-shadow: var(--shadow-glow-blue); }
+.shadow-glow-purple { box-shadow: var(--shadow-glow-purple); }
+.shadow-glow-pink { box-shadow: var(--shadow-glow-pink); }
+.shadow-glow-teal { box-shadow: var(--shadow-glow-teal); }
+.shadow-glow-gray { box-shadow: var(--shadow-glow-gray); }
+
+/* ============================================
+   2. PRECISE GRAY SCALING (Vercel/Clerk Style)
+   Using exact #000, #666, #888 instead of Tailwind defaults
+   ============================================ */
+
+:root {
+  /* Primary - Pure black for headings */
+  --text-ep-primary: #000000;
+  --text-ep-primary-rgb: 0 0 0;
+
+  /* Secondary - Medium gray for body */
+  --text-ep-secondary: #666666;
+  --text-ep-secondary-rgb: 102 102 102;
+
+  /* Tertiary - Light gray for labels */
+  --text-ep-tertiary: #888888;
+  --text-ep-tertiary-rgb: 136 136 136;
+
+  /* Muted - Subtle/disabled text */
+  --text-ep-muted: #a0a0a0;
+  --text-ep-muted-rgb: 160 160 160;
+
+  /* Border grays */
+  --border-ep-subtle: rgba(0, 0, 0, 0.08);
+  --border-ep-default: rgba(0, 0, 0, 0.12);
+  --border-ep-strong: rgba(0, 0, 0, 0.16);
+}
+
+/* Dark mode variants */
+.dark {
+  --text-ep-primary: #ffffff;
+  --text-ep-primary-rgb: 255 255 255;
+  --text-ep-secondary: #a0a0a0;
+  --text-ep-secondary-rgb: 160 160 160;
+  --text-ep-tertiary: #666666;
+  --text-ep-tertiary-rgb: 102 102 102;
+  --border-ep-subtle: rgba(255, 255, 255, 0.08);
+  --border-ep-default: rgba(255, 255, 255, 0.12);
+  --border-ep-strong: rgba(255, 255, 255, 0.16);
+}
+
+/* Text color utilities */
+.text-ep-primary { color: var(--text-ep-primary); }
+.text-ep-secondary { color: var(--text-ep-secondary); }
+.text-ep-tertiary { color: var(--text-ep-tertiary); }
+.text-ep-muted { color: var(--text-ep-muted); }
+
+/* Border color utilities */
+.border-ep-subtle { border-color: var(--border-ep-subtle); }
+.border-ep-default { border-color: var(--border-ep-default); }
+.border-ep-strong { border-color: var(--border-ep-strong); }
+
+/* ============================================
+   3. ENGINEER PREMIUM SPACING
+   Responsive: 24px desktop, 16px mobile
+   ============================================ */
+
+@theme inline {
+  /* Card padding - responsive */
+  --padding-ep-card-mobile: 1rem;      /* 16px */
+  --padding-ep-card-desktop: 1.5rem;   /* 24px */
+
+  /* Section padding */
+  --padding-ep-section-mobile: 1.5rem; /* 24px */
+  --padding-ep-section-desktop: 2.5rem; /* 40px */
+
+  /* Compact padding */
+  --padding-ep-compact: 0.75rem;       /* 12px */
+  --padding-ep-comfortable: 1rem;      /* 16px */
+}
+
+/* Responsive padding utilities */
+.p-ep-card { padding: var(--padding-ep-card-mobile); }
+@media (min-width: 768px) {
+  .p-ep-card { padding: var(--padding-ep-card-desktop); }
+}
+
+.p-ep-section { padding: var(--padding-ep-section-mobile); }
+@media (min-width: 768px) {
+  .p-ep-section { padding: var(--padding-ep-section-desktop); }
+}
+
+.p-ep-compact { padding: var(--padding-ep-compact); }
+.p-ep-comfortable { padding: var(--padding-ep-comfortable); }
+
+/* ============================================
+   4. ENGINEER PREMIUM BORDER RADIUS
+   Consistent 8px cards, 6px buttons
+   ============================================ */
+
+@theme inline {
+  --radius-ep-button: 0.375rem;   /* 6px */
+  --radius-ep-card: 0.5rem;       /* 8px */
+  --radius-ep-input: 0.375rem;    /* 6px */
+}
+
+.rounded-ep-button { border-radius: var(--radius-ep-button); }
+.rounded-ep-card { border-radius: var(--radius-ep-card); }
+.rounded-ep-input { border-radius: var(--radius-ep-input); }
+
+/* Square brackets utility (commonly used for exact pixels) */
+.rounded-\[6px\] { border-radius: 6px; }
+.rounded-\[8px\] { border-radius: 8px; }
+
+/* ============================================
+   5. 150MS SNAPPY ANIMATIONS
+   Vercel-style instant feedback
+   ============================================ */
+
+@theme inline {
+  /* 150ms snappy transition */
+  --transition-ep-snappy: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* 150ms spring for micro-interactions */
+  --transition-ep-spring: 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.transition-ep-snappy {
+  transition: all var(--transition-ep-snappy);
+}
+
+.transition-ep-spring {
+  transition: all var(--transition-ep-spring);
+}
+
+/* Specific property transitions with 150ms */
+.transition-opacity-ep {
+  transition-property: opacity;
+  transition-duration: var(--transition-ep-snappy);
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.transition-transform-ep {
+  transition-property: transform;
+  transition-duration: var(--transition-ep-snappy);
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.transition-colors-ep {
+  transition-property: color, background-color, border-color;
+  transition-duration: var(--transition-ep-snappy);
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.transition-shadow-ep {
+  transition-property: box-shadow;
+  transition-duration: var(--transition-ep-snappy);
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================
+   6. ENGINEER PREMIUM COMPONENT BASES
+   Pre-configured component styles
+   ============================================ */
+
+/* EP Card Base */
+.ep-card {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--border-ep-subtle);
+  box-shadow: var(--shadow-milled);
+  border-radius: var(--radius-ep-card);
+  padding: var(--padding-ep-card-mobile);
+  transition: all var(--transition-ep-snappy);
+}
+
+@media (min-width: 768px) {
+  .ep-card {
+    padding: var(--padding-ep-card-desktop);
+  }
+}
+
+.ep-card:hover {
+  box-shadow: var(--shadow-milled-hover);
+  transform: translateY(-0.5px);
+}
+
+/* EP Button Base (Primary - Portal Gradient) */
+.ep-button-primary {
+  background: linear-gradient(135deg, var(--color-primary) 0%, rgb(var(--color-primary) / 0.8) 100%);
+  color: white;
+  font-weight: 500;
+  padding: 0.625rem 1.25rem;
+  border-radius: var(--radius-ep-button);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  transition: all var(--transition-ep-snappy);
+}
+
+.ep-button-primary:hover {
+  box-shadow: 0 2px 8px rgba(var(--color-primary-rgb, 132 107 255), 0.2);
+  transform: translateY(-0.5px);
+}
+
+.ep-button-primary:active {
+  transform: translateY(0);
+}
+
+/* EP Button Base (Secondary - Monochrome) */
+.ep-button-secondary {
+  background: white;
+  border: 1px solid var(--border-ep-default);
+  color: var(--text-ep-primary);
+  padding: 0.625rem 1.25rem;
+  border-radius: var(--radius-ep-button);
+  box-shadow: var(--shadow-milled);
+  transition: all var(--transition-ep-snappy);
+}
+
+.ep-button-secondary:hover {
+  background: rgb(var(--text-ep-secondary-rgb, 102 102 102) / 0.05);
+  box-shadow: var(--shadow-milled-hover);
+}
+
+/* EP Input Base */
+.ep-input {
+  background: white;
+  border: 1px solid var(--border-ep-default);
+  border-radius: var(--radius-ep-input);
+  padding: 0.625rem 0.75rem;
+  color: var(--text-ep-primary);
+  transition: all var(--transition-ep-snappy);
+}
+
+.ep-input:focus {
+  border-color: var(--border-ep-strong);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.8) inset, 0 0 0 2px rgba(0, 0, 0, 0.1);
+  outline: none;
+}
+
+.ep-input:focus-visible {
+  ring: 2px solid rgba(0, 0, 0, 0.1);
+}
+
+/* ============================================
+   7. PORTAL GRADIENT UTILITIES
+   Preserved portal identity gradients
+   ============================================ */
+
+:root {
+  --gradient-student: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  --gradient-teacher: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  --gradient-parent: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+  --gradient-counselor: linear-gradient(135deg, #a855f7 0%, #9333ea 100%);
+  --gradient-admin: linear-gradient(135deg, #ec4899 0%, #db2777 100%);
+  --gradient-school-admin: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  --gradient-ministry: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+}
+
+.bg-gradient-student { background: var(--gradient-student); }
+.bg-gradient-teacher { background: var(--gradient-teacher); }
+.bg-gradient-parent { background: var(--gradient-parent); }
+.bg-gradient-counselor { background: var(--gradient-counselor); }
+.bg-gradient-admin { background: var(--gradient-admin); }
+.bg-gradient-school-admin { background: var(--gradient-school-admin); }
+.bg-gradient-ministry { background: var(--gradient-ministry); }
+
+/* Text gradient utilities (accent only) */
+.text-gradient-student {
+  background: var(--gradient-student);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ============================================
+   8. UTILITY COMBINATIONS
+   Common patterns for quick use
+   ============================================ */
+
+/* Milled card with hover */
+.ep-milled-card {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--border-ep-subtle);
+  box-shadow: var(--shadow-milled);
+  border-radius: var(--radius-ep-card);
+  padding: var(--padding-ep-card-mobile);
+  transition: all var(--transition-ep-snappy);
+}
+
+@media (min-width: 768px) {
+  .ep-milled-card {
+    padding: var(--padding-ep-card-desktop);
+  }
+}
+
+.ep-milled-card:hover {
+  box-shadow: var(--shadow-milled-hover);
+  transform: translateY(-0.5px);
+}
+
+/* Clean nav item (Vercel-style) */
+.ep-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-ep-button);
+  color: var(--text-ep-secondary);
+  transition: all var(--transition-ep-snappy);
+}
+
+.ep-nav-item:hover {
+  background: rgba(var(--text-ep-secondary-rgb, 102 102 102) / 0.05);
+  color: var(--text-ep-primary);
+}
+
+.ep-nav-item.active {
+  color: var(--text-ep-primary);
+  background: rgba(var(--text-ep-secondary-rgb, 102 102 102) / 0.08);
+}
+
+/* Active indicator (left border) */
+.ep-nav-item.active {
+  position: relative;
+}
+
+.ep-nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 1rem;
+  background: var(--text-ep-primary);
+  border-radius: 0 9999px;
+}
+
+/* KBD utility (for keyboard hints) */
+.ep-kbd {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  background: rgb(var(--text-ep-secondary-rgb, 102 102 102) / 0.08);
+  border: 1px solid var(--border-ep-default);
+  border-radius: 0.25rem;
+  font-size: 0.75rem; /* 12px */
+  font-weight: 500;
+  color: var(--text-ep-tertiary);
+}
+
+/* ============================================
+   9. DARK MODE SUPPORT
+   All utilities work in dark mode
+   ============================================ */
+
+.dark .ep-card {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.dark .ep-button-secondary {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.dark .ep-button-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dark .ep-input {
+  background: rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: var(--text-ep-primary);
+}
+
+.dark .ep-input:focus {
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1) inset, 0 0 0 2px rgba(255, 255, 255, 0.1);
+}
+
+.dark .ep-nav-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dark .ep-nav-item.active {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.dark .ep-kbd {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* ============================================
+   USAGE EXAMPLES
+
+   <!-- Card with milled border -->
+   <div class="ep-card">
+     Content here
+   </div>
+
+   <!-- Primary button with portal gradient -->
+   <button class="ep-button-primary bg-gradient-student">
+     Click me
+   </button>
+
+   <!-- Secondary button -->
+   <button class="ep-button-secondary">
+     Cancel
+   </button>
+
+   <!-- Input with floating label -->
+   <input class="ep-input" placeholder="Label" />
+
+   <!-- Nav item -->
+   <a class="ep-nav-item">
+     <Icon /> Label
+   </a>
+
+   <!-- Keyboard hint -->
+   <kbd class="ep-kbd">⌘K</kbd>
+
+   <!-- Custom shadow with hover -->
+   <div class="shadow-milled hover:shadow-milled-hover">
+     Content
+   </div>
+
+   <!-- Text color -->
+   <p class="text-ep-primary">Heading</p>
+   <p class="text-ep-secondary">Body text</p>
+   <p class="text-ep-tertiary">Label</p>
+   ============================================ */

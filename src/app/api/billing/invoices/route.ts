@@ -27,15 +27,30 @@ export const GET = createApiRoute(
 
     // If requesting stats only
     if (stats) {
-      const invoiceStats = await db
-        .select({
-          totalCount: sql<number>`COUNT(*)`,
-          sentCount: sql<number>`COUNT(*) FILTER (WHERE ${invoices.status} = 'sent')`,
-          draftCount: sql<number>`COUNT(*) FILTER (WHERE ${invoices.status} = 'draft')`,
-          paidCount: sql<number>`COUNT(*) FILTER (WHERE ${invoices.status} = 'paid')`,
-          overdueCount: sql<number>`COUNT(*) FILTER (WHERE ${invoices.status} = 'overdue')`,
-        })
+      // Use separate queries for neon-http compatibility
+      const [totalCountResult] = await db
+        .select({ count: sql<number>`COUNT(*)::int` })
         .from(invoices);
+
+      const [sentCountResult] = await db
+        .select({ count: sql<number>`COUNT(*)::int` })
+        .from(invoices)
+        .where(eq(invoices.status, 'sent'));
+
+      const [draftCountResult] = await db
+        .select({ count: sql<number>`COUNT(*)::int` })
+        .from(invoices)
+        .where(eq(invoices.status, 'draft'));
+
+      const [paidCountResult] = await db
+        .select({ count: sql<number>`COUNT(*)::int` })
+        .from(invoices)
+        .where(eq(invoices.status, 'paid'));
+
+      const [overdueCountResult] = await db
+        .select({ count: sql<number>`COUNT(*)::int` })
+        .from(invoices)
+        .where(eq(invoices.status, 'overdue'));
 
       // Sum amounts manually due to decimal type
       const allInvoices = await db
@@ -66,10 +81,10 @@ export const GET = createApiRoute(
 
       return {
         data: {
-          totalCount: invoiceStats[0]?.totalCount || 0,
-          pendingCount: (invoiceStats[0]?.sentCount || 0) + (invoiceStats[0]?.draftCount || 0),
-          paidCount: invoiceStats[0]?.paidCount || 0,
-          overdueCount: invoiceStats[0]?.overdueCount || 0,
+          totalCount: totalCountResult?.count || 0,
+          pendingCount: (sentCountResult?.count || 0) + (draftCountResult?.count || 0),
+          paidCount: paidCountResult?.count || 0,
+          overdueCount: overdueCountResult?.count || 0,
           totalAmount,
           pendingAmount,
           paidAmount,

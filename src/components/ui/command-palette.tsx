@@ -1,82 +1,230 @@
 /**
- * CLERK-STYLE COMMAND PALETTE
+ * Command Palette Component - Engineer Premium (Vercel/Clerk Inspired)
  *
- * A fast, searchable command palette inspired by Linear and Clerk.
+ * ENGINEER PREMIUM FEATURES:
+ * - Cmd+K trigger (Mac) / Ctrl+K (Windows)
+ * - Dual-layer "milled" border shadow
+ * - 150ms snappy animations
+ * - 20% backdrop opacity with blur
+ * - Navigation and Actions groups
+ * - Keyboard hints footer
+ * - 8px border radius
  *
- * FEATURES:
- * - Cmd+K / Ctrl+K shortcut to open
- * - Searchable actions and navigation
- * - Keyboard navigation (arrows + enter)
- * - Recent commands at top
- * - Grouped actions with icons
- * - Framer Motion animations
- *
- * @example
- * ```tsx
- * import { CommandPalette, useCommandPalette } from "@/components/ui/command-palette"
- *
- * function App() {
- *   const { isOpen, open, close } = useCommandPalette()
- *
- *   const commands = [
- *     {
- *       id: "new-student",
- *       label: "Add new student",
- *       icon: Plus,
- *       shortcut: "N",
- *       action: () => router.push("/school-admin/students/create")
- *     },
- *   ]
- *
- *   return (
- *     <>
- *       <CommandPalette isOpen={isOpen} onClose={close} commands={commands} />
- *       <button onClick={open}>Open (Cmd+K)</button>
- *     </>
- *   )
- * }
- * ```
+ * DESIGN PHILOSOPHY:
+ * - "Keyboard-first search"
+ * - "Fast, feels instant"
+ * - "Clean, minimal UI"
+ * - "Grouped results"
  */
 
 "use client"
 
 import * as React from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { Search, Command, FileText, Users, Settings, LogOut, Home } from "lucide-react"
+import { Command } from "cmdk"
+import { Search, LayoutDashboard, Users, Plus, Settings, LogOut, FileText, Calendar, BarChart3, Home } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
+import * as Dialog from "@radix-ui/react-dialog"
 
-// =============================================================================
-// TYPES
-// =============================================================================
+// Type guard for component type
+function isComponentType(icon: CommandItem['icon']): icon is React.ComponentType<{ className?: string }> {
+  return typeof icon === 'function'
+}
 
 export interface CommandItem {
   id: string
   label: string
   description?: string
-  icon?: React.ComponentType<{ className?: string }>
+  icon?: React.ReactNode | React.ComponentType<{ className?: string }>
   shortcut?: string
   keywords?: string[]
   action: () => void
-  group?: string
+  group?: "navigation" | "actions" | "settings"
 }
 
-export interface CommandGroup {
-  id: string
-  label: string
-  commands: CommandItem[]
+export interface CommandGroupData {
+  heading: string
+  items: CommandItem[]
 }
 
-export interface CommandPaletteProps {
+interface CommandPaletteProps {
   isOpen: boolean
   onClose: () => void
-  commands?: CommandItem[]
-  groups?: CommandGroup[]
+  items?: CommandGroupData[]
+  commands?: CommandItem[]  // Legacy support - flat list of commands
+  trigger?: React.ReactNode
   placeholder?: string
-  recentCommands?: string[]
+}
+
+const defaultItems: CommandGroupData[] = [
+  {
+    heading: "Navigation",
+    items: [
+      { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard className="w-4 h-4" />, action: () => {} },
+      { id: "students", label: "Students", icon: <Users className="w-4 h-4" />, action: () => {} },
+      { id: "classes", label: "Classes", icon: <FileText className="w-4 h-4" />, action: () => {} },
+      { id: "reports", label: "Reports", icon: <BarChart3 className="w-4 h-4" />, action: () => {} },
+    ],
+  },
+  {
+    heading: "Actions",
+    items: [
+      { id: "create", label: "Create New", icon: <Plus className="w-4 h-4" />, shortcut: "N", action: () => {} },
+      { id: "schedule", label: "Schedule", icon: <Calendar className="w-4 h-4" />, action: () => {} },
+    ],
+  },
+  {
+    heading: "Settings",
+    items: [
+      { id: "settings", label: "Settings", icon: <Settings className="w-4 h-4" />, action: () => {} },
+      { id: "logout", label: "Logout", icon: <LogOut className="w-4 h-4" />, action: () => {} },
+    ],
+  },
+]
+
+export function CommandPalette({ isOpen, onClose, items, commands, trigger, placeholder = "Search anything..." }: CommandPaletteProps) {
+  const router = useRouter()
+
+  // Support legacy `commands` prop - convert to items format
+  const itemsList = React.useMemo(() => {
+    if (items) return items
+    if (commands) {
+      return [{ heading: "Actions", items: commands }]
+    }
+    return defaultItems
+  }, [items, commands])
+
+  const runCommand = React.useCallback((command: () => void) => {
+    onClose()
+    command()
+  }, [onClose])
+
+  return (
+    <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <Dialog.Portal>
+        {/* Backdrop overlay - 20% opacity with blur */}
+        <Dialog.Overlay className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50 transition-opacity duration-150 data-[state=closed]:animate-out data-[state=open]:animate-in data-[state=closed]:fade-out data-[state=open]:fade-in" />
+
+        {/* Command dialog */}
+        <Dialog.Content className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] sm:pt-[20vh]">
+          <div className="w-full max-w-lg mx-4 overflow-hidden rounded-[8px] bg-white border border-gray-200 shadow-[0_0_0_1px_rgba(255,255,255,0.8)_inset,0_16px_48px_rgba(0,0,0,0.15)] animate-in fade-in slide-in-from-top-4 duration-150 ease-out dark:bg-gray-900 dark:border-gray-700">
+            <Command
+              className="w-full"
+              loop
+            >
+              {/* Search input */}
+              <div className="flex items-center border-b border-gray-100 px-4 dark:border-gray-800">
+                <Search className="w-4 h-4 text-gray-400 shrink-0" />
+                <Command.Input
+                  placeholder={placeholder}
+                  className="flex h-12 w-full bg-transparent px-3 py-2 text-sm outline-none text-[#000000] placeholder:text-gray-400 dark:text-gray-100 dark:placeholder:text-gray-500"
+                />
+                {/* Keyboard hint */}
+                <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 bg-gray-100 border border-gray-200 rounded text-[11px] text-gray-500 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400">
+                  <span>{typeof window !== "undefined" && window.navigator.platform.toLowerCase().includes("mac") ? "⌘" : "Ctrl"}</span>
+                  <span>K</span>
+                </kbd>
+              </div>
+
+              {/* Results list */}
+              <Command.List className="max-h-80 overflow-y-auto p-2">
+                {itemsList.map((group) => (
+                  <Command.Group
+                    key={group.heading}
+                    heading={
+                      <div className="px-2 py-1.5 text-[13px] font-medium text-gray-500 dark:text-gray-400">
+                        {group.heading}
+                      </div>
+                    }
+                  >
+                    {group.items.map((item) => (
+                      <Command.Item
+                        key={item.id}
+                        onSelect={() => runCommand(item.action)}
+                        value={item.label}
+                        keywords={item.keywords}
+                        className="group flex items-center gap-3 px-3 py-2 rounded-[6px] text-[14px] text-gray-700 cursor-pointer hover:bg-gray-100 data-[selected=true]:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 dark:data-[selected=true]:bg-gray-800 transition-colors duration-75"
+                      >
+                        {item.icon && (
+                          <span className="text-gray-400 dark:text-gray-500">
+                            {isComponentType(item.icon)
+                              ? React.createElement(item.icon, { className: "w-4 h-4" })
+                              : item.icon
+                            }
+                          </span>
+                        )}
+                        <span className="flex-1">{item.label}</span>
+                        {item.shortcut && (
+                          <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-[11px] text-gray-400 dark:bg-gray-800 dark:text-gray-500">
+                            {item.shortcut}
+                          </kbd>
+                        )}
+                      </Command.Item>
+                    ))}
+                  </Command.Group>
+                ))}
+
+                {/* No results */}
+                <Command.Empty className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                  No results found.
+                </Command.Empty>
+              </Command.List>
+
+              {/* Footer - keyboard navigation hint */}
+              <div className="flex items-center justify-between px-4 py-2 border-t border-gray-100 dark:border-gray-800">
+                <div className="flex items-center gap-4 text-[12px] text-gray-400 dark:text-gray-500">
+                  <span className="flex items-center gap-1">
+                    <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded dark:bg-gray-800 dark:border-gray-700">↑↓</kbd>
+                    <span>to navigate</span>
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded dark:bg-gray-800 dark:border-gray-700">↵</kbd>
+                    <span>to select</span>
+                  </span>
+                  <span className="hidden sm:inline-flex items-center gap-1">
+                    <kbd className="px-1.5 py-0.5 bg-gray-100 border border-gray-200 rounded dark:bg-gray-800 dark:border-gray-700">esc</kbd>
+                    <span>to close</span>
+                  </span>
+                </div>
+              </div>
+            </Command>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  )
+}
+
+/**
+ * Command Palette Trigger Button
+ * Optional trigger component for headers
+ */
+export function CommandPaletteTrigger({ className, onClick }: { className?: string; onClick?: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-2 px-3 py-1.5",
+        "bg-gray-50 border border-gray-200 rounded-[6px]",
+        "text-sm text-gray-500",
+        "hover:bg-gray-100 hover:text-gray-700",
+        "transition-colors duration-150",
+        "focus-visible:ring-2 focus-visible:ring-black/10 focus-visible:outline-none",
+        "dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-300",
+        className
+      )}
+    >
+      <Search className="w-4 h-4" />
+      <span>Search...</span>
+      <kbd className="ml-auto text-[11px] text-gray-400">
+        {typeof window !== "undefined" && window.navigator.platform.toLowerCase().includes("mac") ? "⌘K" : "Ctrl+K"}
+      </kbd>
+    </button>
+  )
 }
 
 // =============================================================================
-// KEYBOARD HOOK
+// HOOK FOR EASY INTEGRATION
 // =============================================================================
 
 export function useCommandPalette() {
@@ -106,324 +254,6 @@ export function useCommandPalette() {
 }
 
 // =============================================================================
-// COMMAND ITEM COMPONENT
-// =============================================================================
-
-interface CommandItemProps {
-  command: CommandItem
-  isSelected: boolean
-  onClick: () => void
-  index: number
-}
-
-function CommandItemComponent({ command, isSelected, onClick, index }: CommandItemProps) {
-  const Icon = command.icon
-
-  return (
-    <motion.button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "w-full flex items-center gap-3 px-4 py-3 text-left rounded-lg transition-colors",
-        "focus:outline-none focus:ring-2 focus:ring-purple-500/50",
-        isSelected
-          ? "bg-purple-500/10 text-purple-300"
-          : "hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300"
-      )}
-      initial={{ opacity: 0, x: -10 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: index * 0.03, duration: 0.15 }}
-      whileHover={{ scale: 1.01 }}
-      whileTap={{ scale: 0.99 }}
-    >
-      {Icon && (
-        <span className={cn(
-          "flex-shrink-0 w-5 h-5",
-          isSelected ? "text-purple-500" : "text-gray-400"
-        )}>
-          <Icon className="w-5 h-5" />
-        </span>
-      )}
-      <div className="flex-1 min-w-0">
-        <span className="block text-sm font-medium truncate">{command.label}</span>
-        {command.description && (
-          <span className="block text-xs text-gray-500 dark:text-gray-400 truncate">
-            {command.description}
-          </span>
-        )}
-      </div>
-      {command.shortcut && (
-        <kbd className={cn(
-          "flex-shrink-0 px-2 py-0.5 text-xs font-medium rounded",
-          "border transition-colors",
-          isSelected
-            ? "border-purple-500/30 bg-purple-500/10 text-purple-300"
-            : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-500"
-        )}>
-          {command.shortcut}
-        </kbd>
-      )}
-    </motion.button>
-  )
-}
-
-// =============================================================================
-// MAIN COMPONENT
-// =============================================================================
-
-export function CommandPalette({
-  isOpen,
-  onClose,
-  commands: propCommands,
-  groups: propGroups,
-  placeholder = "Type a command or search...",
-  recentCommands = [],
-}: CommandPaletteProps) {
-  const [search, setSearch] = React.useState("")
-  const [selectedIndex, setSelectedIndex] = React.useState(0)
-  const inputRef = React.useRef<HTMLInputElement>(null)
-  const listRef = React.useRef<HTMLDivElement>(null)
-
-  // Normalize commands to groups
-  const allGroups = React.useMemo(() => {
-    if (propGroups) {
-      return propGroups
-    }
-    if (propCommands) {
-      return [{ id: "all", label: "Actions", commands: propCommands }]
-    }
-    return []
-  }, [propCommands, propGroups])
-
-  // Filter commands based on search
-  const filteredGroups = React.useMemo(() => {
-    if (!search) return allGroups
-
-    const searchLower = search.toLowerCase()
-
-    return allGroups
-      .map((group) => ({
-        ...group,
-        commands: group.commands.filter((cmd) => {
-          const matchesLabel = cmd.label.toLowerCase().includes(searchLower)
-          const matchesDesc = cmd.description?.toLowerCase().includes(searchLower)
-          const matchesKeywords = cmd.keywords?.some((k) => k.toLowerCase().includes(searchLower))
-          return matchesLabel || matchesDesc || matchesKeywords
-        }),
-      }))
-      .filter((group) => group.commands.length > 0)
-  }, [allGroups, search])
-
-  // Flatten for keyboard navigation
-  const flatCommands = React.useMemo(
-    () => filteredGroups.flatMap((group) => group.commands),
-    [filteredGroups]
-  )
-
-  // Reset selected index when search changes
-  React.useEffect(() => {
-    setSelectedIndex(0)
-  }, [search])
-
-  // Focus input on open
-  React.useEffect(() => {
-    if (isOpen) {
-      inputRef.current?.focus()
-    }
-  }, [isOpen])
-
-  // Keyboard navigation
-  React.useEffect(() => {
-    if (!isOpen) return
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      switch (e.key) {
-        case "ArrowDown":
-          e.preventDefault()
-          setSelectedIndex((i) => (i + 1) % flatCommands.length)
-          break
-        case "ArrowUp":
-          e.preventDefault()
-          setSelectedIndex((i) => (i - 1 + flatCommands.length) % flatCommands.length)
-          break
-        case "Enter":
-          e.preventDefault()
-          flatCommands[selectedIndex]?.action()
-          onClose()
-          break
-      }
-    }
-
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [isOpen, flatCommands, selectedIndex, onClose])
-
-  // Scroll selected item into view
-  React.useEffect(() => {
-    if (listRef.current) {
-      const selectedEl = listRef.current.children[selectedIndex] as HTMLElement
-      selectedEl?.scrollIntoView({ block: "nearest", behavior: "smooth" })
-    }
-  }, [selectedIndex])
-
-  const handleCommandClick = (command: CommandItem) => {
-    command.action()
-    onClose()
-    setSearch("")
-  }
-
-  const backdropVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { duration: 0.2 },
-    },
-    exit: {
-      opacity: 0,
-      transition: { duration: 0.15 },
-    },
-  }
-
-  const modalVariants = {
-    hidden: {
-      opacity: 0,
-      scale: 0.95,
-      y: -10,
-    },
-    visible: {
-      opacity: 1,
-      scale: 1,
-      y: 0,
-      transition: {
-        type: "spring",
-        stiffness: 400,
-        damping: 30,
-      },
-    },
-    exit: {
-      opacity: 0,
-      scale: 0.95,
-      y: 10,
-      transition: { duration: 0.15 },
-    },
-  }
-
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            variants={backdropVariants}
-            initial="hidden"
-            animate="visible"
-            exit="exit"
-            className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
-            onClick={onClose}
-            aria-hidden="true"
-          />
-
-          {/* Modal */}
-          <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]">
-            <motion.div
-              variants={modalVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              className="w-full max-w-xl mx-4 overflow-hidden"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div
-                className="bg-white dark:bg-[rgb(27,27,31)] rounded-xl border border-gray-200 dark:border-gray-700 shadow-2xl"
-                style={{
-                  boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-                }}
-              >
-                {/* Search Input */}
-                <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-200 dark:border-gray-700">
-                  <Search className="w-5 h-5 text-gray-400" />
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder={placeholder}
-                    className="flex-1 bg-transparent text-gray-900 dark:text-gray-100 placeholder-gray-500 outline-none text-base"
-                  />
-                  <kbd className="hidden sm:flex items-center gap-1 px-2 py-1 text-xs text-gray-500 border border-gray-200 dark:border-gray-700 rounded">
-                    <Command className="w-3 h-3" />
-                    <span>K</span>
-                  </kbd>
-                </div>
-
-                {/* Commands List */}
-                <div className="max-h-[400px] overflow-y-auto p-2" ref={listRef}>
-                  {flatCommands.length === 0 ? (
-                    <div className="py-12 text-center text-gray-500 dark:text-gray-400">
-                      <Search className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                      <p className="text-sm">No commands found</p>
-                      <p className="text-xs mt-1">Try a different search term</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-1">
-                      {filteredGroups.map((group, groupIndex) => (
-                        <div key={group.id}>
-                          {group.label && filteredGroups.length > 1 && (
-                            <div className="px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                              {group.label}
-                            </div>
-                          )}
-                          {group.commands.map((command, cmdIndex) => {
-                            const globalIndex = flatCommands.indexOf(command)
-                            return (
-                              <CommandItemComponent
-                                key={command.id}
-                                command={command}
-                                isSelected={selectedIndex === globalIndex}
-                                onClick={() => handleCommandClick(command)}
-                                index={groupIndex * 10 + cmdIndex}
-                              />
-                            )
-                          })}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Footer */}
-                <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                  <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-                    <span className="flex items-center gap-1">
-                      <kbd className="px-1.5 py-0.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded">
-                        arrows
-                      </kbd>
-                      <span>to navigate</span>
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <kbd className="px-1.5 py-0.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded">
-                        enter
-                      </kbd>
-                      <span>to select</span>
-                    </span>
-                  </div>
-                  <span className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                    <kbd className="px-1.5 py-0.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded">
-                      esc
-                    </kbd>
-                    <span>to close</span>
-                  </span>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </>
-      )}
-    </AnimatePresence>
-  )
-}
-
-// =============================================================================
 // PRESET COMMANDS
 // =============================================================================
 
@@ -432,7 +262,7 @@ export function createNavigationCommands(router: { push: (path: string) => void 
     {
       id: "dashboard",
       label: "Go to Dashboard",
-      icon: Home,
+      icon: <Home className="w-4 h-4" />,
       shortcut: "G D",
       keywords: ["home", "main"],
       action: () => router.push("/dashboard"),
@@ -440,7 +270,7 @@ export function createNavigationCommands(router: { push: (path: string) => void 
     {
       id: "students",
       label: "View Students",
-      icon: Users,
+      icon: <Users className="w-4 h-4" />,
       shortcut: "G S",
       keywords: ["learners", "pupils"],
       action: () => router.push("/school-admin/students"),
@@ -448,7 +278,7 @@ export function createNavigationCommands(router: { push: (path: string) => void 
     {
       id: "settings",
       label: "Open Settings",
-      icon: Settings,
+      icon: <Settings className="w-4 h-4" />,
       shortcut: "G S",
       keywords: ["config", "preferences"],
       action: () => router.push("/settings"),
@@ -461,7 +291,7 @@ export function createQuickActionsCommands(router: { push: (path: string) => voi
     {
       id: "new-student",
       label: "Add New Student",
-      icon: Users,
+      icon: <Users className="w-4 h-4" />,
       shortcut: "N",
       keywords: ["create", "add", "student"],
       action: () => router.push("/school-admin/students/create"),
@@ -469,7 +299,7 @@ export function createQuickActionsCommands(router: { push: (path: string) => voi
     {
       id: "new-teacher",
       label: "Add New Teacher",
-      icon: Users,
+      icon: <Users className="w-4 h-4" />,
       shortcut: "T",
       keywords: ["create", "add", "teacher", "staff"],
       action: () => router.push("/school-admin/teachers/create"),
@@ -477,10 +307,12 @@ export function createQuickActionsCommands(router: { push: (path: string) => voi
     {
       id: "new-class",
       label: "Create New Class",
-      icon: FileText,
+      icon: <FileText className="w-4 h-4" />,
       shortcut: "C",
       keywords: ["create", "add", "class", "section"],
       action: () => router.push("/school-admin/classes/create"),
     },
   ]
 }
+
+export default CommandPalette

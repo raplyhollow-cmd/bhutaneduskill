@@ -692,19 +692,29 @@ export function PortalSidebar({ userType, userName, userImage, studentId }: Side
 
                 return (
                   <div key={category.title} className="nav-category">
-                    {/* Category Header */}
+                    {/* Category Header - Engineer Premium styling */}
                     <button
                       onClick={() => toggleCategory(category.title)}
-                      className="nav-section-title flex items-center justify-between w-full px-3 py-2 text-xs font-semibold uppercase tracking-wider text-ceramic-dimmed hover:text-ceramic-secondary transition-colors duration-200 group"
+                      className={cn(
+                        "group",
+                        "flex items-center justify-between w-full",
+                        "px-3 py-2",
+                        "text-xs font-semibold uppercase tracking-wider",
+                        "text-[#888888]",
+                        "hover:text-[#666666]",
+                        "transition-colors duration-150",
+                        "focus:outline-none focus-visible:ring-2 focus-visible:ring-black/10 rounded-[6px]"
+                      )}
                       aria-expanded={isCategoryOpen}
                       aria-controls={`category-${category.title.replace(/\s+/g, "-")}`}
                     >
                       <span>{category.title}</span>
                       <motion.div
                         animate={{ rotate: isCategoryOpen ? 180 : 0 }}
-                        transition={{ duration: 0.2, ease: "easeInOut" }}
+                        transition={{ duration: 0.15, ease: "easeInOut" }}
+                        className="text-gray-400 group-hover:text-gray-600"
                       >
-                        <ChevronDown className="w-4 h-4 text-ceramic-dimmed" />
+                        <ChevronDown className="w-4 h-4" />
                       </motion.div>
                     </button>
 
@@ -735,24 +745,38 @@ export function PortalSidebar({ userType, userName, userImage, studentId }: Side
                                   href={item.href}
                                   onClick={() => setIsMobileMenuOpen(false)}
                                   className={cn(
-                                    "nav-item-clerk flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all duration-200 relative group focus:outline-none min-h-[44px] ml-2",
-                                    isActive
-                                      ? "bg-ceramic-purple-50 text-ceramic-brand nav-item-clerk-active"
-                                      : "text-ceramic-secondary hover:bg-ceramic-gray-50 hover:text-ceramic-primary"
+                                    // Engineer Premium Navigation Item
+                                    "group relative",
+                                    "flex items-center gap-3",
+                                    "px-4 py-3 rounded-[6px]",
+                                    "text-[#666666]",
+                                    // Ghost hover - 20% white fade-in
+                                    "hover:bg-gray-50/80",
+                                    "hover:text-[#000000]",
+                                    "transition-all duration-150",
+                                    "focus-visible:ring-2 focus-visible:ring-black/10",
+                                    "min-h-[44px] ml-2"
                                   )}
                                   aria-current={isActive ? "page" : undefined}
                                 >
-                                  <motion.div
-                                    whileHover={{ scale: 1.1 }}
-                                    transition={{ type: "spring", stiffness: 300 }}
-                                    className="nav-icon-clerk flex-shrink-0 w-5 h-5 flex items-center justify-center"
-                                  >
+                                  {/* Icon */}
+                                  <span className={cn(
+                                    "flex-shrink-0 w-5 h-5 flex items-center justify-center transition-colors duration-150",
+                                    isActive ? "text-[#000000]" : "text-gray-400 group-hover:text-gray-600"
+                                  )}>
                                     <item.icon className="w-5 h-5" />
-                                  </motion.div>
-                                  <span className="font-medium flex-1">{item.name}</span>
+                                  </span>
+
+                                  {/* Label */}
+                                  <span className={cn(
+                                    "font-medium flex-1 transition-colors duration-150",
+                                    isActive ? "text-[#000000]" : ""
+                                  )}>{item.name}</span>
+
+                                  {/* Active indicator - left border */}
                                   {isActive && (
                                     <motion.div
-                                      className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full bg-ceramic-brand"
+                                      className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full bg-current"
                                       layoutId={`active-indicator-${userType}`}
                                       transition={{ type: "spring", stiffness: 300, damping: 30 }}
                                     />
@@ -776,7 +800,7 @@ export function PortalSidebar({ userType, userName, userImage, studentId }: Side
               {/* Cross-portal navigation section - shown for teacher, parent, counselor */}
               {(userType === "teacher" || userType === "parent" || userType === "counselor") && studentId && (
                 <div className="mt-4 pt-4 border-t border-ceramic-border">
-                  <p className="nav-section-title text-xs font-semibold uppercase tracking-wider text-ceramic-dimmed px-3 py-2 flex items-center gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-[#888888] px-3 py-2 flex items-center gap-2">
                     <ExternalLink className="w-3 h-3" />
                     View Related
                   </p>
@@ -786,11 +810,25 @@ export function PortalSidebar({ userType, userName, userImage, studentId }: Side
                         key={link.type}
                         href={link.href}
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className="nav-item-clerk flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200 relative group focus:outline-none text-ceramic-secondary hover:bg-ceramic-gray-50 hover:text-ceramic-primary min-h-[44px] ml-2"
+                        className={cn(
+                          // Engineer Premium Navigation Item
+                          "group relative",
+                          "flex items-center gap-3",
+                          "px-4 py-3 rounded-[6px]",
+                          "text-[#666666]",
+                          // Ghost hover - 20% white fade-in
+                          "hover:bg-gray-50/80",
+                          "hover:text-[#000000]",
+                          "transition-all duration-150",
+                          "focus-visible:ring-2 focus-visible:ring-black/10",
+                          "min-h-[44px] ml-2"
+                        )}
                       >
-                        <link.icon className="nav-icon-clerk w-4 h-4 flex-shrink-0" />
-                        <span className="text-sm flex-1">{link.label}</span>
-                        <ExternalLink className="w-3 h-3 text-ceramic-dimmed" />
+                        <span className="flex-shrink-0 w-4 h-4 flex items-center justify-center text-gray-400 group-hover:text-gray-600 transition-colors duration-150">
+                          <link.icon className="w-4 h-4" />
+                        </span>
+                        <span className="text-sm font-medium flex-1">{link.label}</span>
+                        <ExternalLink className="w-3 h-3 text-gray-400 group-hover:text-gray-600 transition-colors duration-150" />
                       </Link>
                     ))}
                   </div>

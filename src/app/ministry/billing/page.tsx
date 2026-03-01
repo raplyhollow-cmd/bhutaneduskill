@@ -546,7 +546,7 @@ export default function MinistryBillingPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">
-              {formatCurrency(stats.monthlyRecurring / 100)}
+              {formatCurrency(stats.monthlyRecurring)}
             </div>
             <p className={`text-xs mt-1 flex items-center gap-1 ${stats.revenueChange >= 0 ? "text-green-600" : "text-red-600"}`}>
               {stats.revenueChange >= 0 ? (
@@ -632,7 +632,7 @@ export default function MinistryBillingPage() {
                         }}
                       />
                       <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-10">
-                        {formatCurrency(month.revenue / 100)}
+                        {formatCurrency(month.revenue)}
                       </div>
                     </div>
                     <span className="text-xs text-gray-500">{month.month}</span>
@@ -943,7 +943,7 @@ export default function MinistryBillingPage() {
                       </td>
                       <td className="py-4 px-4 text-center">{getStatusBadge(invoice.status)}</td>
                       <td className="py-4 px-4 text-right font-semibold text-gray-900">
-                        {formatCurrency(invoice.amount / 100, invoice.currency)}
+                        {formatCurrency(invoice.amount, invoice.currency)}
                       </td>
                       <td className="py-4 px-4">
                         <div className="flex items-center justify-end gap-2">

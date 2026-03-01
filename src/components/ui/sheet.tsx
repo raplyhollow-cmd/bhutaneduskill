@@ -54,7 +54,7 @@ const sheetVariants = cva(
       },
     },
     defaultVariants: {
-      side: "bottom",
+      side: "right",
     },
   }
 );
@@ -62,7 +62,7 @@ const sheetVariants = cva(
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   SheetContentProps
->(({ side = "bottom", className, children, isOpen, ...props }, ref) => (
+>(({ side = "right", className, children, isOpen, ...props }, ref) => (
   <SheetPortal>
     <SheetOverlay isOpen={isOpen} />
     <DialogPrimitive.Content
@@ -96,7 +96,7 @@ function getTranslateClass(side: string): string {
     case "right":
       return "translate-x-full";
     default:
-      return "translate-y-full";
+      return "translate-x-full";
   }
 }
 

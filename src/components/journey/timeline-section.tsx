@@ -244,8 +244,22 @@ export function TimelineSection() {
           </div>
 
           <h2 className="text-4xl sm:text-5xl md:text-6xl font-bold text-white mb-6">
-            From <span className="bg-clip-text text-transparent" style={{ background: `${portal.counselor.gradient}, ${portal.admin.gradient}` }}>Idea</span> to{" "}
-            <span className="bg-clip-text text-transparent" style={{ background: portal.student.gradient }}>Impact</span>
+            From <span
+              className="bg-clip-text text-transparent"
+              style={{
+                backgroundImage: `linear-gradient(135deg, ${portal.counselor.gradient}, ${portal.admin.gradient})`,
+                WebkitBackgroundClip: 'text',
+                backgroundClip: 'text'
+              }}
+            >Idea</span> to{" "}
+            <span
+              className="bg-clip-text text-transparent"
+              style={{
+                backgroundImage: portal.student.gradient,
+                WebkitBackgroundClip: 'text',
+                backgroundClip: 'text'
+              }}
+            >Impact</span>
           </h2>
 
           <p className="text-lg text-ceramic-gray-400 max-w-2xl mx-auto">

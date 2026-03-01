@@ -52,18 +52,24 @@ export const POST = createApiRoute<{ id: string }>(
 
     const invoiceNumber = `INV-${year}-${String(count).padStart(4, '0')}`;
 
-    // Calculate amount based on tier
-    const tierPricing = {
-      small: 5000,
-      medium: 10000,
-      large: 20000,
+    // Calculate amount based on tier (matching database tier names: basic, standard, premium)
+    const tierPricing: Record<string, number> = {
+      basic: 5000,    // Small - Up to 100 students
+      standard: 10000, // Medium - Up to 500 students
+      premium: 20000,  // Large - Up to 1000 students
     };
-    const amount = tierPricing[school.subscriptionTier as keyof typeof tierPricing] || 10000;
+    const tier = school.subscriptionTier || 'standard';
+    const amount = tierPricing[tier] || 10000;
 
-    // Calculate billing period (1 year from now)
-    const startDate = billingPeriodStart ? new Date(billingPeriodStart) : new Date();
-    const endDate = billingPeriodEnd ? new Date(billingPeriodEnd) : new Date();
-    endDate.setFullYear(endDate.getFullYear() + 1);
+    // Calculate billing period (annual: Jan 1 to Dec 31 of current year)
+    const currentYear = new Date().getFullYear();
+    const startDate = billingPeriodStart ? new Date(billingPeriodStart) : new Date(currentYear, 0, 1); // January 1
+    const endDate = billingPeriodEnd ? new Date(billingPeriodEnd) : new Date(currentYear, 11, 31); // December 31
+
+    // Due date for payment is 30 days from invoice date (not billing period end)
+    const invoiceDate = new Date();
+    const dueDate = new Date(invoiceDate);
+    dueDate.setDate(dueDate.getDate() + 30); // Net 30 days
 
     // Create invoice
     await db
@@ -72,7 +78,7 @@ export const POST = createApiRoute<{ id: string }>(
         id: `inv_${nanoid()}`,
         invoiceNumber,
         schoolId: school.id,
-        subscriptionTier: school.subscriptionTier || 'standard',
+        subscriptionTier: tier,
         amount: String(amount),
         taxAmount: "0",
         discountAmount: "0",
@@ -80,8 +86,8 @@ export const POST = createApiRoute<{ id: string }>(
         currency: 'BTN',
         billingPeriodStart: startDate,
         billingPeriodEnd: endDate,
-        invoiceDate: new Date(),
-        dueDate: endDate,
+        invoiceDate: invoiceDate,
+        dueDate: dueDate,
         status: 'sent',
         createdBy: adminId,
         createdAt: new Date(),

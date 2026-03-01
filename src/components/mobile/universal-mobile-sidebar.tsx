@@ -4,8 +4,6 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { motion, useMotionValue, useTransform, PanInfo, Variants } from "framer-motion";
 import {
   Menu,
@@ -16,6 +14,7 @@ import {
   Settings,
   LogOut,
   Home,
+  Search,
 } from "lucide-react";
 import { PORTAL_CONFIG, MOBILE_SETTINGS, type PortalType } from "@/config/portal-config";
 import { useAuth } from "@clerk/nextjs";
@@ -28,6 +27,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { NotificationBell } from "@/components/ui/notification-bell";
+import { useCommandPalette } from "@/components/ui/command-palette";
 
 interface UniversalMobileSidebarProps {
   portalType: PortalType;
@@ -160,36 +160,29 @@ export function UniversalMobileSidebar({
 
   return (
     <>
-      {/* Mobile menu button - Floating with safe area */}
-      <motion.div
-        className="lg:hidden fixed top-4 left-4 z-50"
+      {/* Mobile menu button - Engineer Premium */}
+      <motion.button
+        className="lg:hidden fixed top-3 left-3 z-50 flex items-center justify-center w-10 h-10 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all duration-150"
         style={{ paddingTop: settings.safeAreas.top }}
-        initial={{ scale: 0.8, opacity: 0 }}
+        initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 300, damping: 20 }}
+        transition={{ duration: 0.15 }}
+        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        aria-label={isMobileMenuOpen ? "Close portal navigation menu" : "Open portal navigation menu"}
+        aria-expanded={isMobileMenuOpen}
+        aria-controls="universal-sidebar"
       >
-        <Button
-          size="icon"
-          variant="outline"
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="bg-white/95 backdrop-blur-xl shadow-lg border-ceramic-border hover:bg-ceramic-gray-50 text-ceramic-primary focus:outline-none focus:ring-2 focus:ring-ceramic-brand focus:ring-offset-2 rounded-xl min-h-[44px] min-w-[44px]"
-          aria-label={isMobileMenuOpen ? "Close portal navigation menu" : "Open portal navigation menu"}
-          aria-expanded={isMobileMenuOpen}
-          aria-controls="universal-sidebar"
+        <motion.div
+          animate={{ rotate: isMobileMenuOpen ? 90 : 0 }}
+          transition={{ duration: 0.15, ease: "easeInOut" }}
         >
-          <motion.div
-            animate={{ rotate: isMobileMenuOpen ? 180 : 0 }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
-            className="relative"
-          >
-            {isMobileMenuOpen ? (
-              <X className="h-5 w-5" />
-            ) : (
-              <Menu className="h-5 w-5" />
-            )}
-          </motion.div>
-        </Button>
-      </motion.div>
+          {isMobileMenuOpen ? (
+            <X className="h-5 w-5 text-gray-700" />
+          ) : (
+            <Menu className="h-5 w-5 text-gray-700" />
+          )}
+        </motion.div>
+      </motion.button>
 
       {/* Overlay for mobile - with swipe to close */}
       {isMobileMenuOpen && (
@@ -233,63 +226,10 @@ export function UniversalMobileSidebar({
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1, duration: 0.4 }}
           >
-            <Link
-              href={`/${portalType}/dashboard`}
-              className="block group"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              <motion.h1
-                className="text-xl font-bold flex items-center gap-2 text-ceramic-primary"
-                whileHover={{ scale: 1.02 }}
-                transition={{ type: "spring", stiffness: 400 }}
-              >
-                <motion.div
-                  animate={{ rotate: [0, 10, 0] }}
-                  transition={{ duration: 0.5, repeat: Infinity, repeatType: "loop", repeatDelay: 3 }}
-                >
-                  <GraduationCap className="w-6 h-6" style={{ color: config.activeText }} />
-                </motion.div>
-                Bhutan EduSkill
-              </motion.h1>
-              <p className="text-sm text-ceramic-secondary mt-1">{config.name}</p>
-            </Link>
+            {/* Logo/Brand - REMOVED */}
           </motion.div>
 
-          {/* User Info */}
-          {userName && (
-            <motion.div
-              className="p-4 border-b border-ceramic-border"
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15, duration: 0.4 }}
-            >
-              <div className="flex items-center gap-3">
-                {userImage ? (
-                  <motion.img
-                    src={userImage}
-                    alt={userName}
-                    className="w-10 h-10 rounded-full bg-ceramic-gray-200 border-2 border-ceramic-border"
-                    whileHover={{ scale: 1.1, rotate: 5 }}
-                    transition={{ type: "spring", stiffness: 300 }}
-                  />
-                ) : (
-                  <motion.div
-                    className="w-10 h-10 rounded-full bg-ceramic-brand/10 flex items-center justify-center border-2 border-ceramic-border min-h-[44px] min-w-[44px]"
-                    whileHover={{ scale: 1.1, rotate: 5 }}
-                    transition={{ type: "spring", stiffness: 300 }}
-                  >
-                    <span className="font-semibold text-ceramic-brand text-sm">
-                      {getUserInitials()}
-                    </span>
-                  </motion.div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate text-ceramic-primary">{userName}</p>
-                  <p className="text-xs text-ceramic-dimmed capitalize">{portalType.replace("-", " ")}</p>
-                </div>
-              </div>
-            </motion.div>
-          )}
+          {/* User Info - REMOVED */}
 
           {/* Navigation - with smooth scrolling and improved touch targets */}
           <nav
@@ -319,29 +259,39 @@ export function UniversalMobileSidebar({
                       href={item.href}
                       onClick={() => setIsMobileMenuOpen(false)}
                       className={cn(
-                        "nav-item-clerk flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative group focus:outline-none focus-visible:ring-2 focus-visible:ring-ceramic-brand min-h-[48px]",
-                        isActive
-                          ? "bg-ceramic-purple-50 text-ceramic-brand nav-item-clerk-active shadow-sm"
-                          : "text-ceramic-secondary hover:bg-ceramic-gray-50 hover:text-ceramic-primary active:scale-[0.98]"
+                        // Vercel exact styles
+                        "flex items-center h-9",
+                        "px-2 rounded-md",
+                        // Text - near black, not sad gray
+                        "text-gray-900",
+                        // Hover - subtle gray 100
+                        "hover:bg-gray-100",
+                        "focus-visible:bg-gray-100",
+                        // Active state - darker gray
+                        isActive && "bg-gray-200"
                       )}
                       aria-current={isActive ? "page" : undefined}
                     >
-                      <motion.div
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        transition={{ type: "spring", stiffness: 400, damping: 20 }}
-                        className="nav-icon-clerk flex-shrink-0 w-6 h-6 flex items-center justify-center relative z-10"
-                      >
-                        <item.icon className="w-5 h-5" strokeWidth={2.5} />
-                      </motion.div>
-                      <span className="font-medium text-sm relative z-10">
-                        {item.name}
-                      </span>
+                      {/* Icon container - 36px like Vercel */}
+                      <div className="flex-none grid size-9 place-content-center">
+                        {item.icon && (
+                          <item.icon
+                            className="w-4 h-4"
+                            strokeWidth={2.5}
+                            style={{ color: 'currentColor' }}
+                          />
+                        )}
+                      </div>
+
+                      {/* Label */}
+                      <span className="flex-1 min-w-0 text-sm font-medium">{item.name}</span>
+
+                      {/* Active indicator - 2px left border */}
                       {isActive && (
                         <motion.div
-                          className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-9 rounded-r-full bg-ceramic-brand"
+                          className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-current"
                           layoutId={`active-indicator-${portalType}`}
-                          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                          transition={{ type: "spring", stiffness: 400, damping: 30 }}
                         />
                       )}
                     </Link>
@@ -350,46 +300,24 @@ export function UniversalMobileSidebar({
               })}
             </ul>
           </nav>
-
-          {/* Footer - spacer for safe area + quick actions */}
-          <div
-            className="p-4 border-t border-ceramic-border space-y-2"
-            style={{ paddingBottom: `calc(1rem + ${settings.safeAreas.bottom})` }}
-          >
-            {/* Quick action buttons */}
-            <Link
-              href={`/${portalType}/dashboard`}
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl text-ceramic-secondary hover:bg-ceramic-gray-50 transition-colors min-h-[48px]"
-            >
-              <Home className="w-5 h-5" strokeWidth={2.5} />
-              <span className="font-medium text-sm">Home</span>
-            </Link>
-            <Link
-              href={`/${portalType}/settings`}
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl text-ceramic-secondary hover:bg-ceramic-gray-50 transition-colors min-h-[48px]"
-            >
-              <Settings className="w-5 h-5" strokeWidth={2.5} />
-              <span className="font-medium text-sm">Settings</span>
-            </Link>
-          </div>
         </div>
       </aside>
 
-      {/* Mobile Bottom Navigation - Only visible on small screens */}
+      {/* Mobile Bottom Navigation - Engineer Premium */}
       {topNavItems.length > 0 && (
         <motion.nav
-          className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-ceramic-border z-40"
+          className="lg:hidden fixed bottom-0 left-0 right-0 bg-white z-40"
           style={{
+            borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
+            boxShadow: '0 0 0 1px rgba(255, 255, 255, 0.8) inset',
             paddingBottom: settings.safeAreas.bottom,
           }}
           initial={{ y: 100 }}
           animate={{ y: 0 }}
-          transition={{ type: "spring", stiffness: 300, damping: 30 }}
+          transition={{ duration: 0.15 }}
           aria-label="Mobile bottom navigation"
         >
-          <ul className="flex items-center justify-around py-2 px-safe">
+          <ul className="flex items-center justify-around py-1">
             {topNavItems.map((item) => {
               const isActive =
                 pathname === item.href ||
@@ -401,23 +329,23 @@ export function UniversalMobileSidebar({
                   <Link
                     href={item.href}
                     className={cn(
-                      "flex flex-col items-center justify-center py-2 px-1 rounded-lg transition-all duration-200 min-h-[56px]",
+                      "flex flex-col items-center justify-center py-2 px-2 rounded-lg transition-colors duration-150 min-h-[48px]",
                       isActive
-                        ? "text-ceramic-brand"
-                        : "text-ceramic-secondary hover:text-ceramic-primary"
+                        ? "text-gray-900"
+                        : "text-gray-500 hover:text-gray-700"
                     )}
                     aria-current={isActive ? "page" : undefined}
                   >
                     <motion.div
-                      whileTap={{ scale: 0.9 }}
+                      whileTap={{ scale: 0.95 }}
                       className={cn(
-                        "flex items-center justify-center w-10 h-10 rounded-full mb-1 transition-colors",
-                        isActive ? "bg-ceramic-brand/10" : ""
+                        "flex items-center justify-center w-8 h-8 rounded-lg mb-1 transition-colors",
+                        isActive ? "bg-gray-100" : ""
                       )}
                     >
                       <item.icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 2} />
                     </motion.div>
-                    <span className="text-[11px] font-medium leading-tight text-center px-1">
+                    <span className="text-[11px] font-medium leading-tight text-center">
                       {item.name}
                     </span>
                   </Link>
@@ -428,16 +356,16 @@ export function UniversalMobileSidebar({
             <li className="flex-1">
               <button
                 onClick={() => setIsMobileMenuOpen(true)}
-                className="flex flex-col items-center justify-center py-2 px-1 rounded-lg transition-all duration-200 min-h-[56px] text-ceramic-secondary hover:text-ceramic-primary w-full"
+                className="flex flex-col items-center justify-center py-2 px-2 rounded-lg transition-colors duration-150 min-h-[48px] text-gray-500 hover:text-gray-700 w-full"
                 aria-label="Open full menu"
               >
                 <motion.div
-                  whileTap={{ scale: 0.9 }}
-                  className="flex items-center justify-center w-10 h-10 rounded-full mb-1"
+                  whileTap={{ scale: 0.95 }}
+                  className="flex items-center justify-center w-8 h-8 rounded-lg mb-1"
                 >
                   <Menu className="w-5 h-5" />
                 </motion.div>
-                <span className="text-[11px] font-medium leading-tight text-center px-1">
+                <span className="text-[11px] font-medium leading-tight text-center">
                   More
                 </span>
               </button>
@@ -450,10 +378,29 @@ export function UniversalMobileSidebar({
 }
 
 /**
- * Universal Portal Header Component
+ * Universal Portal Header Component - Engineer Premium
  *
- * Consistent header across all portals with portal-specific branding
+ * ENGINEER PREMIUM HEADER SPECIFICATION:
+ * - Height: 56px fixed
+ * - Background: #FFFFFF
+ * - Border-bottom: 1px solid rgba(0, 0, 0, 0.08)
+ * - Shadow: 0 0 0 1px rgba(255, 255, 255, 0.8) inset (milled border)
+ * - 150ms transitions
+ *
+ * Desktop (>768px):
+ * ┌─────────────────────────────────────────────────────────┐
+ * │ [Burger]  [Logo] [Title]        [Search] [Badge] [Menu] │
+ * │  hidden   40px    auto      flex-1    32px     40px    │
+ * └─────────────────────────────────────────────────────────┘
+ *
+ * Mobile (<768px):
+ * ┌────────────────────────────────────────────┐
+ * │ [Burger] [Title/Logo]        [Badge] [Menu] │
+ * │   40px        flex-1            32px   40px │
+ * └────────────────────────────────────────────┘
+ *
  * Includes profile dropdown menu with settings and sign out options
+ * Command palette trigger on desktop
  * Mobile-optimized with responsive text sizing
  */
 export function UniversalPortalHeader({
@@ -469,6 +416,7 @@ export function UniversalPortalHeader({
 }) {
   const config = PORTAL_CONFIG[portalType];
   const { signOut } = useAuth();
+  const { open: openCommandPalette } = useCommandPalette();
 
   const handleSignOut = async () => {
     await signOut({ redirectUrl: '/' });
@@ -486,67 +434,94 @@ export function UniversalPortalHeader({
   };
 
   return (
-    <header className="topnav-clerk bg-white border-b border-gray-200 sticky top-0 z-[50]">
-      <div className="flex items-center justify-between py-3 sm:py-4 pl-4 pr-4 lg:pl-[272px] lg:pr-0">
-        {/* Left side - Title */}
+    <header
+      className="sticky top-0 z-[50] bg-white"
+      style={{
+        borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
+        boxShadow: '0 0 0 1px rgba(255, 255, 255, 0.8) inset',
+      }}
+    >
+      <div className="flex items-center h-14 px-3 sm:px-4">
+        {/* Left side - Logo and Title */}
         <motion.div
-          className="flex-1 min-w-0"
-          initial={{ opacity: 0, x: -20 }}
+          className="flex items-center gap-3 flex-1 min-w-0"
+          initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3 }}
+          transition={{ duration: 0.15 }}
         >
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">
-            {title || "Dashboard"}
-          </h1>
-          {subtitle && (
-            <p className="text-xs sm:text-sm text-ceramic-secondary mt-0.5 truncate">
-              {subtitle}
-            </p>
-          )}
+          {/* Logo - Desktop only */}
+          <div className="hidden sm:flex items-center justify-center w-8 h-8 rounded-lg" style={{ background: config.gradient }}>
+            <GraduationCap className="w-4 h-4 text-white" />
+          </div>
+
+          {/* Portal Title */}
+          <div className="min-w-0">
+            <h1 className="text-base sm:text-lg font-semibold text-gray-900 truncate tracking-tight">
+              {title || config.name}
+            </h1>
+            {subtitle && (
+              <p className="text-xs text-gray-500 truncate">
+                {subtitle}
+              </p>
+            )}
+          </div>
         </motion.div>
 
-        {/* Right side - Actions (flush to right edge) */}
+        {/* Right side - Actions */}
         <motion.div
-          className="flex items-center gap-3 flex-shrink-0"
-          initial={{ opacity: 0, x: 20 }}
+          className="flex items-center gap-2 flex-shrink-0"
+          initial={{ opacity: 0, x: 10 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3, delay: 0.05 }}
+          transition={{ duration: 0.15, delay: 0.05 }}
         >
-          {/* Notifications */}
-          <NotificationBell className="hover:bg-ceramic-gray-100 rounded-full" />
+          {/* Command Palette Trigger - Desktop only */}
+          <button
+            onClick={openCommandPalette}
+            className="hidden md:inline-flex items-center gap-2 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-[6px] text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-black/10 focus-visible:outline-none"
+            aria-label="Open command palette"
+          >
+            <Search className="w-4 h-4" />
+            <span className="hidden lg:inline">Search...</span>
+            <kbd className="ml-auto text-[11px] text-gray-400">
+              {typeof window !== "undefined" && window.navigator.platform.toLowerCase().includes("mac") ? "⌘" : "Ctrl"}K
+            </kbd>
+          </button>
 
-          {/* User dropdown - at true top-right edge */}
+          {/* Notifications - Badge icon (32px) */}
+          <NotificationBell className="hover:bg-gray-100 rounded-full p-1.5 transition-colors duration-150" />
+
+          {/* User dropdown - Badge (32px) + Menu (40px) */}
           {userName && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <motion.button
-                  className="flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-ceramic-brand/50 rounded-full px-2 py-1.5 hover:bg-ceramic-gray-50 dark:hover:bg-ceramic-gray-800 transition-colors"
+                  className="flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-gray-200 rounded-lg px-2 py-1.5 hover:bg-gray-50 transition-colors duration-150"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  transition={{ type: "spring", stiffness: 300 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 20 }}
                 >
+                  {/* User info - Desktop only */}
                   <div className="text-right hidden sm:block">
-                    <p className="font-medium text-sm text-ceramic-primary">{userName}</p>
-                    <p className="text-xs text-ceramic-secondary capitalize">
-                      {portalType.replace("-", " ")}
-                    </p>
+                    <p className="text-sm font-medium text-gray-700">{userName}</p>
                   </div>
+
+                  {/* Avatar badge - 32px */}
                   <div
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold shadow-sm flex-shrink-0"
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold flex-shrink-0"
                     style={{ background: config.gradient }}
                   >
-                    <span className="text-sm font-semibold">
-                      {getUserInitials()}
-                    </span>
+                    {getUserInitials()}
                   </div>
-                  <ChevronDown className="w-4 h-4 text-ceramic-dimmed hidden sm:block" />
+
+                  {/* Chevron - Desktop only */}
+                  <ChevronDown className="w-4 h-4 text-gray-400 hidden sm:block" />
                 </motion.button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56" variant="ceramic">
+              <DropdownMenuContent align="end" className="w-48" variant="ceramic">
                 <DropdownMenuLabel ceramicVariant="ceramic">
                   <div className="flex flex-col space-y-1">
                     <p className="text-sm font-medium leading-none">{userName}</p>
-                    <p className="text-xs leading-none text-ceramic-dimmed capitalize">
+                    <p className="text-xs leading-none text-gray-500 capitalize">
                       {portalType.replace("-", " ")}
                     </p>
                   </div>
@@ -568,7 +543,7 @@ export function UniversalPortalHeader({
                 <DropdownMenuItem
                   onClick={handleSignOut}
                   ceramicVariant="ceramic"
-                  className="text-ceramic-negative focus:text-ceramic-negative cursor-pointer"
+                  className="text-red-600 focus:text-red-600 cursor-pointer"
                 >
                   <LogOut className="w-4 h-4 mr-2" />
                   <span>Sign Out</span>

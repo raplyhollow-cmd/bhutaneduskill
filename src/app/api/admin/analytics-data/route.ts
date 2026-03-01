@@ -89,10 +89,13 @@ interface RevenueMetrics {
   activeSubscriptions: number;
   monthlyRecurringRevenue: number;
   annualRecurringRevenue: number;
+  collectedAmount: number; // Total amount from paid invoices
+  schoolsWithPaidInvoices: number; // Count of schools with paid invoices
   paymentStatus: {
     pending: number;
     paid: number;
     overdue: number;
+    collectedAmount?: number; // Total collected from school invoices
   };
 }
 
@@ -217,13 +220,13 @@ export const GET = createApiRoute(
  */
 async function getSchoolEngagementMetrics(): Promise<SchoolEngagementMetrics> {
   // Total schools
-  const [totalResult] = await db.select({ count: count() }).from(schools);
+  const [totalResult] = await db.select({ count: sql<number>`COUNT(*)::int` }).from(schools);
   const totalSchools = totalResult?.count || 0;
 
   // Active schools (with user activity in last 30 days)
   const thirtyDaysAgo = getDateDaysAgo(30);
   const [activeResult] = await db
-    .select({ count: count() })
+    .select({ count: sql<number>`COUNT(*)::int` })
     .from(schools)
     .where(sql`${schools.id} IN (
       SELECT DISTINCT ${users.schoolId}
@@ -238,7 +241,7 @@ async function getSchoolEngagementMetrics(): Promise<SchoolEngagementMetrics> {
   const schoolsByTypeResult = await db
     .select({
       type: schools.type,
-      count: count(),
+      count: sql<number>`COUNT(*)::int`,
     })
     .from(schools)
     .groupBy(schools.type);
@@ -252,7 +255,7 @@ async function getSchoolEngagementMetrics(): Promise<SchoolEngagementMetrics> {
   const schoolsByLevelResult = await db
     .select({
       level: schools.level,
-      count: count(),
+      count: sql<number>`COUNT(*)::int`,
     })
     .from(schools)
     .groupBy(schools.level);
@@ -267,13 +270,13 @@ async function getSchoolEngagementMetrics(): Promise<SchoolEngagementMetrics> {
     .select({
       schoolId: schools.id,
       schoolName: schools.name,
-      studentCount: count(),
+      studentCount: sql<number>`COUNT(*)::int`,
     })
     .from(schools)
     .innerJoin(users, eq(schools.id, users.schoolId))
     .where(eq(users.type, 'student'))
     .groupBy(schools.id, schools.name)
-    .orderBy(desc(count()))
+    .orderBy(desc(sql<number>`COUNT(*)::int`))
     .limit(10);
 
   return {
@@ -293,7 +296,7 @@ async function getUserGrowthTrends(): Promise<UserGrowthTrends> {
   const totalByTypeResult = await db
     .select({
       type: users.type,
-      count: count(),
+      count: sql<number>`COUNT(*)::int`,
     })
     .from(users)
     .groupBy(users.type);
@@ -308,7 +311,7 @@ async function getUserGrowthTrends(): Promise<UserGrowthTrends> {
   const newThisWeekResult = await db
     .select({
       type: users.type,
-      count: count(),
+      count: sql<number>`COUNT(*)::int`,
     })
     .from(users)
     .where(gte(users.createdAt, oneWeekAgo))
@@ -324,7 +327,7 @@ async function getUserGrowthTrends(): Promise<UserGrowthTrends> {
   const newThisMonthResult = await db
     .select({
       type: users.type,
-      count: count(),
+      count: sql<number>`COUNT(*)::int`,
     })
     .from(users)
     .where(gte(users.createdAt, oneMonthAgo))
@@ -340,7 +343,7 @@ async function getUserGrowthTrends(): Promise<UserGrowthTrends> {
   const newThisYearResult = await db
     .select({
       type: users.type,
-      count: count(),
+      count: sql<number>`COUNT(*)::int`,
     })
     .from(users)
     .where(gte(users.createdAt, oneYearAgo))
@@ -353,7 +356,7 @@ async function getUserGrowthTrends(): Promise<UserGrowthTrends> {
 
   // Active users (logged in recently)
   const [active7DaysResult] = await db
-    .select({ count: count() })
+    .select({ count: sql<number>`COUNT(*)::int` })
     .from(users)
     .where(gte(users.lastLogin, oneWeekAgo));
 
@@ -362,7 +365,7 @@ async function getUserGrowthTrends(): Promise<UserGrowthTrends> {
   const thirtyDaysAgoForActive = getDateDaysAgo(30);
 
   const [active30DaysResult] = await db
-    .select({ count: count() })
+    .select({ count: sql<number>`COUNT(*)::int` })
     .from(users)
     .where(gte(users.lastLogin, thirtyDaysAgoForActive));
 
@@ -428,11 +431,11 @@ async function getCareerInterestsDistribution(): Promise<CareerInterestsDistribu
   const topCategoriesResult = await db
     .select({
       category: careerMatches.careerTitle,
-      count: count(),
+      count: sql<number>`COUNT(*)::int`,
     })
     .from(careerMatches)
     .groupBy(careerMatches.careerTitle)
-    .orderBy(desc(count()))
+    .orderBy(desc(sql<number>`COUNT(*)::int`))
     .limit(10);
 
   const totalCareerMatches = topCategoriesResult.reduce((sum, row) => sum + row.count, 0);
@@ -447,7 +450,7 @@ async function getCareerInterestsDistribution(): Promise<CareerInterestsDistribu
   const studentGradesResult = await db
     .select({
       grade: users.grade,
-      count: count(),
+      count: sql<number>`COUNT(*)::int`,
     })
     .from(users)
     .where(and(
@@ -455,7 +458,7 @@ async function getCareerInterestsDistribution(): Promise<CareerInterestsDistribu
       sql`${users.grade} IS NOT NULL`
     ))
     .groupBy(users.grade)
-    .orderBy(desc(count()))
+    .orderBy(desc(sql<number>`COUNT(*)::int`))
     .limit(5);
 
   // OPTIMIZATION: Batch fetch top categories for all grades at once
@@ -464,14 +467,14 @@ async function getCareerInterestsDistribution(): Promise<CareerInterestsDistribu
     .select({
       grade: users.grade,
       category: careerMatches.careerTitle,
-      count: count(),
+      count: sql<number>`COUNT(*)::int`,
     })
     .from(users)
     .innerJoin(assessments, eq(users.id, assessments.userId))
     .innerJoin(careerMatches, eq(assessments.id, careerMatches.assessmentId))
     .where(eq(users.type, 'student'))
     .groupBy(users.grade, careerMatches.careerTitle)
-    .orderBy(desc(count()));
+    .orderBy(desc(sql<number>`COUNT(*)::int`));
 
   // Group by grade and find top category for each
   const gradeTopCategories = new Map<number | null, { category: string; count: number }>();
@@ -493,7 +496,7 @@ async function getCareerInterestsDistribution(): Promise<CareerInterestsDistribu
   const riasecDistributionResult = await db
     .select({
       code: riasecResults.primaryHollandCode,
-      count: count(),
+      count: sql<number>`COUNT(*)::int`,
     })
     .from(riasecResults)
     .groupBy(riasecResults.primaryHollandCode);
@@ -515,12 +518,12 @@ async function getCareerInterestsDistribution(): Promise<CareerInterestsDistribu
  */
 async function getAssessmentCompletionMetrics(): Promise<AssessmentCompletionMetrics> {
   // Total assessments
-  const [totalResult] = await db.select({ count: count() }).from(assessments);
+  const [totalResult] = await db.select({ count: sql<number>`COUNT(*)::int` }).from(assessments);
   const totalAssessments = totalResult?.count || 0;
 
   // Completed assessments
   const [completedResult] = await db
-    .select({ count: count() })
+    .select({ count: sql<number>`COUNT(*)::int` })
     .from(assessments)
     .where(sql`${assessments.completedAt} IS NOT NULL`);
 
@@ -531,23 +534,23 @@ async function getAssessmentCompletionMetrics(): Promise<AssessmentCompletionMet
     : 0;
 
   // By type (RIASEC, MBTI, DISC)
-  const riasecTotal = await db.select({ count: count() }).from(riasecResults);
-  const mbtiTotal = await db.select({ count: count() }).from(mbtiResults);
-  const discTotal = await db.select({ count: count() }).from(discResults);
+  const riasecTotal = await db.select({ count: sql<number>`COUNT(*)::int` }).from(riasecResults);
+  const mbtiTotal = await db.select({ count: sql<number>`COUNT(*)::int` }).from(mbtiResults);
+  const discTotal = await db.select({ count: sql<number>`COUNT(*)::int` }).from(discResults);
 
   // Get started assessments count for each type
   const riasecStartedResult = await db
-    .select({ count: count() })
+    .select({ count: sql<number>`COUNT(*)::int` })
     .from(assessments)
     .where(eq(assessments.type, 'riasec'));
 
   const mbtiStartedResult = await db
-    .select({ count: count() })
+    .select({ count: sql<number>`COUNT(*)::int` })
     .from(assessments)
     .where(eq(assessments.type, 'mbti'));
 
   const discStartedResult = await db
-    .select({ count: count() })
+    .select({ count: sql<number>`COUNT(*)::int` })
     .from(assessments)
     .where(eq(assessments.type, 'disc'));
 
@@ -599,12 +602,12 @@ async function getAcademicPerformanceMetrics(): Promise<AcademicPerformanceMetri
   // Pass rate (assuming 40% is passing)
   const [passResult] = await db
     .select({
-      count: count(),
+      count: sql<number>`COUNT(*)::int`,
     })
     .from(examResultsEnhanced)
     .where(gte(examResultsEnhanced.percentage, 40));
 
-  const [totalResult] = await db.select({ count: count() }).from(examResultsEnhanced);
+  const [totalResult] = await db.select({ count: sql<number>`COUNT(*)::int` }).from(examResultsEnhanced);
 
   const passRate = totalResult?.count
     ? Math.round((passResult?.count || 0) / totalResult.count * 100)
@@ -642,15 +645,15 @@ async function getAcademicPerformanceMetrics(): Promise<AcademicPerformanceMetri
  */
 async function getRevenueMetrics(): Promise<RevenueMetrics> {
   try {
-    // Active subscriptions
+    // Active subscriptions from subscriptions table (multi-tenant billing)
     const [activeSubsResult] = await db
-      .select({ count: count() })
+      .select({ count: sql<number>`COUNT(*)::int` })
       .from(subscriptions)
       .where(sql`${subscriptions.status} = 'active' OR ${subscriptions.status} = 'trialing'`);
 
-    const activeSubscriptions = activeSubsResult?.count || 0;
+    const activeSubscriptionsFromBilling = activeSubsResult?.count || 0;
 
-    // Monthly recurring revenue (MRR)
+    // Monthly recurring revenue (MRR) from subscriptions
     const [mrrResult] = await db
       .select({
         total: sum(subscriptions.price),
@@ -674,37 +677,70 @@ async function getRevenueMetrics(): Promise<RevenueMetrics> {
 
     const monthlyRecurringRevenue = Number(mrrFromMonthly) + mrrFromYearly;
 
-    // Annual recurring revenue (ARR)
+    // Annual recurring revenue (ARR) from subscriptions
     const annualRecurringRevenue = monthlyRecurringRevenue * 12;
+
+    // Invoice-based revenue (school billing)
+    // Sum totalAmount for paid invoices
+    const [paidInvoicesResult] = await db
+      .select({
+        total: sum(invoices.totalAmount),
+      })
+      .from(invoices)
+      .where(eq(invoices.status, 'paid'));
+
+    const collectedAmount = paidInvoicesResult?.total
+      ? Number(paidInvoicesResult.total)
+      : 0;
+
+    // Count distinct schools with paid invoices using SQL template
+    const [schoolsResult] = await db
+      .select({
+        count: sql<number>`COUNT(DISTINCT ${invoices.schoolId})::int`,
+      })
+      .from(invoices)
+      .where(eq(invoices.status, 'paid'));
+
+    const schoolsWithPaidInvoices = schoolsResult?.count || 0;
 
     // Payment status from fee payments
     const [pendingResult] = await db
-      .select({ count: count() })
+      .select({ count: sql<number>`COUNT(*)::int` })
       .from(feePayments)
       .where(eq(feePayments.status, 'pending'));
 
     const [paidResult] = await db
-      .select({ count: count() })
+      .select({ count: sql<number>`COUNT(*)::int` })
       .from(feePayments)
       .where(eq(feePayments.status, 'paid'));
 
     // Overdue: fee records with due date past and status pending
     const [overdueResult] = await db
-      .select({ count: count() })
+      .select({ count: sql<number>`COUNT(*)::int` })
       .from(studentFees)
       .where(and(
         eq(studentFees.status, 'pending'),
         sql`${studentFees.dueDate} < ${new Date().toISOString()}`
       ));
 
+    // COMBINE metrics from both billing systems:
+    // - Subscriptions (multi-tenant billing)
+    // - Invoices (school-based billing where Pelkhil's Nu 10,000 is)
+    // Note: Invoice amounts are annual payments, so divide by 12 for MRR
+    const annualRevenueFromInvoices = collectedAmount; // Full amount is annual
+    const monthlyRevenueFromInvoices = Math.round(collectedAmount / 12); // Convert to monthly equivalent
+
     return {
-      activeSubscriptions,
-      monthlyRecurringRevenue,
-      annualRecurringRevenue,
+      activeSubscriptions: activeSubscriptionsFromBilling + schoolsWithPaidInvoices,
+      monthlyRecurringRevenue: monthlyRecurringRevenue + monthlyRevenueFromInvoices,
+      annualRecurringRevenue: annualRecurringRevenue + annualRevenueFromInvoices,
+      collectedAmount,
+      schoolsWithPaidInvoices,
       paymentStatus: {
         pending: pendingResult?.count || 0,
         paid: paidResult?.count || 0,
         overdue: overdueResult?.count || 0,
+        collectedAmount,
       },
     };
   } catch (error) {
@@ -714,6 +750,8 @@ async function getRevenueMetrics(): Promise<RevenueMetrics> {
       activeSubscriptions: 0,
       monthlyRecurringRevenue: 0,
       annualRecurringRevenue: 0,
+      collectedAmount: 0,
+      schoolsWithPaidInvoices: 0,
       paymentStatus: {
         pending: 0,
         paid: 0,

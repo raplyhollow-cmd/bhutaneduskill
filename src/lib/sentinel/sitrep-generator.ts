@@ -16,7 +16,7 @@ import {
   sitrepReports,
   careerMatches,
 } from "@/lib/db/schema";
-import { eq, gt, lt, and, sql, desc, count } from "drizzle-orm";
+import { eq, gt, lt, and, sql, desc } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { detectAllAnomalies, generateAnomalySummary } from "./anomaly-detector";
 import { nanoid } from "nanoid";
@@ -158,7 +158,7 @@ export async function generateSITREP(
 async function gatherGrowthData(yesterdayStr: string) {
   // Count total schools
   const [totalSchoolsResult] = await db
-    .select({ count: count() })
+    .select({ count: sql<number>`COUNT(*)::int` })
     .from(schools);
   const totalSchools = Number(totalSchoolsResult?.count || 0);
 
@@ -171,29 +171,29 @@ async function gatherGrowthData(yesterdayStr: string) {
   monthStart.setHours(0, 0, 0, 0);
 
   const [newSchoolsThisMonthResult] = await db
-    .select({ count: count() })
+    .select({ count: sql<number>`COUNT(*)::int` })
     .from(schools)
     .where(gt(schools.createdAt, monthStart));
 
   // Count users by type
   const [studentsResult] = await db
-    .select({ count: count() })
+    .select({ count: sql<number>`COUNT(*)::int` })
     .from(users)
     .where(eq(users.type, "student"));
 
   const [teachersResult] = await db
-    .select({ count: count() })
+    .select({ count: sql<number>`COUNT(*)::int` })
     .from(users)
     .where(eq(users.type, "teacher"));
 
   // Count new users this month
   const [newUsersResult] = await db
-    .select({ count: count() })
+    .select({ count: sql<number>`COUNT(*)::int` })
     .from(users)
     .where(gt(users.createdAt, monthStart));
 
   const [newStudentsResult] = await db
-    .select({ count: count() })
+    .select({ count: sql<number>`COUNT(*)::int` })
     .from(users)
     .where(
       and(
@@ -203,7 +203,7 @@ async function gatherGrowthData(yesterdayStr: string) {
     );
 
   const [newTeachersResult] = await db
-    .select({ count: count() })
+    .select({ count: sql<number>`COUNT(*)::int` })
     .from(users)
     .where(
       and(
@@ -218,7 +218,7 @@ async function gatherGrowthData(yesterdayStr: string) {
   lastMonthStart.setDate(1);
 
   const [lastMonthUsersResult] = await db
-    .select({ count: count() })
+    .select({ count: sql<number>`COUNT(*)::int` })
     .from(users)
     .where(gt(users.createdAt, lastMonthStart));
 
@@ -260,7 +260,7 @@ async function gatherRevenueData(reportDate: Date) {
   // Count overdue invoices
   const [overdueResult] = await db
     .select({
-      count: count(),
+      count: sql<number>`COUNT(*)::int`,
       totalAmount: sql<number>`COALESCE(SUM(${invoices.totalAmount}), 0)`,
     })
     .from(invoices)
@@ -269,7 +269,7 @@ async function gatherRevenueData(reportDate: Date) {
   // Count pending invoices
   const [pendingResult] = await db
     .select({
-      count: count(),
+      count: sql<number>`COUNT(*)::int`,
       totalAmount: sql<number>`COALESCE(SUM(${invoices.totalAmount}), 0)`,
     })
     .from(invoices)
@@ -278,7 +278,7 @@ async function gatherRevenueData(reportDate: Date) {
   // Count paid invoices this month
   const [paidThisMonthResult] = await db
     .select({
-      count: count(),
+      count: sql<number>`COUNT(*)::int`,
       totalAmount: sql<number>`COALESCE(SUM(${invoices.totalAmount}), 0)`,
     })
     .from(invoices)
@@ -307,13 +307,13 @@ async function gatherActivityData(yesterdayStr: string) {
 
   // Count AI interactions today
   const [aiTodayResult] = await db
-    .select({ count: count() })
+    .select({ count: sql<number>`COUNT(*)::int` })
     .from(aiInteractions)
     .where(gt(aiInteractions.createdAt, todayStart));
 
   // Count assessments completed
   const [assessmentsTodayResult] = await db
-    .select({ count: count() })
+    .select({ count: sql<number>`COUNT(*)::int` })
     .from(assessments)
     .where(
       and(
@@ -322,15 +322,15 @@ async function gatherActivityData(yesterdayStr: string) {
       )
     );
 
-  // Get top career interests
+  // Get top career interests using raw SQL for GROUP BY
   const topCareers = await db
     .select({
       career: careerMatches.careerTitle,
-      count: count(),
+      count: sql<number>`COUNT(*)::int`,
     })
     .from(careerMatches)
     .groupBy(careerMatches.careerTitle)
-    .orderBy(desc(count()))
+    .orderBy(desc(sql<number>`COUNT(*)::int`))
     .limit(5);
 
   const topCareer = topCareers[0]?.career || "Software Engineer";

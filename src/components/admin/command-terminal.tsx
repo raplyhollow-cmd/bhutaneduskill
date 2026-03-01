@@ -45,6 +45,7 @@ interface Message {
 }
 
 const quickCommands = [
+  "Show help and available commands",
   "Send payment reminder to all overdue schools",
   "Show me schools approaching seat limits",
   "Generate SITREP for today",
@@ -318,12 +319,60 @@ async function simulateCommandParse(command: string): Promise<ParsedCommand> {
     };
   }
 
+  // Schools approaching seat limits
+  if (lower.includes("school") && (lower.includes("seat") || lower.includes("limit"))) {
+    return {
+      action: "show_schools_near_limits",
+      entityType: "school",
+      entityName: "Schools Near Seat Limits",
+      parameters: {},
+      explanation: "I'll show you schools that are approaching their subscription seat limits.",
+      confidence: 0.9,
+    };
+  }
+
+  // List anomalies
+  if (lower.includes("anomal") || lower.includes("alert") || lower.includes("critical")) {
+    return {
+      action: "list_anomalies",
+      entityType: "system",
+      entityName: "System Anomalies",
+      parameters: {},
+      explanation: "I'll list all system anomalies and alerts grouped by severity.",
+      confidence: 0.9,
+    };
+  }
+
+  // Send notification to school
+  if (lower.includes("send") && lower.includes("notification") && lower.includes("school")) {
+    return {
+      action: "send_school_notification",
+      entityType: "school",
+      entityName: "All Schools",
+      parameters: {},
+      explanation: "I'll help you send a notification to specific schools.",
+      confidence: 0.85,
+    };
+  }
+
+  // Help / what can you do
+  if (lower.includes("help") || lower.includes("what can") || lower.includes("how to use") || lower.includes("how do")) {
+    return {
+      action: "show_help",
+      entityType: "system",
+      entityName: "Help",
+      parameters: {},
+      explanation: "I can help you with:\n• Send payment reminders to schools\n• Show schools approaching seat limits\n• Generate SITREP reports\n• List system anomalies\n• Send notifications to schools\n• Suspend school access\n\nTry typing a command or click the quick commands below!",
+      confidence: 0.95,
+    };
+  }
+
   return {
     action: "unknown",
     entityType: "unknown",
     entityName: "Unknown",
     parameters: {},
-    explanation: "I'm not sure what you want me to do. Try commands like 'Send payment reminder' or 'Show SITREP'.",
+    explanation: "I'm not sure what you want me to do. Try commands like 'Send payment reminder', 'Show SITREP', or type 'help' for more options.",
     confidence: 0.3,
   };
 }

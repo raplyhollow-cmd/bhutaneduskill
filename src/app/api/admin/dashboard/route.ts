@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users, schools, assessments, careerMatches, schoolAdminApplications } from "@/lib/db/schema";
-import { eq, and, or, desc, gte, count, isNotNull } from "drizzle-orm";
+import { eq, and, or, desc, gte, isNotNull } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, errorResponse } from "@/lib/api/response-helpers";
 import { logger } from "@/lib/logger";
@@ -20,6 +21,9 @@ export const GET = createApiRoute(
   async (request: NextRequest, auth) => {
     // Auth is provided by createApiRoute wrapper
     const { user, userId } = auth;
+
+    // DEBUG: Log that we entered the dashboard handler
+    logger.info("Dashboard API called", { userId: auth.userId, userEmail: auth.user?.email });
 
     // Initialize response data with defaults
     let stats = {
@@ -47,25 +51,27 @@ export const GET = createApiRoute(
 
     // Fetch basic stats (wrapped in try-catch for graceful degradation)
     try {
-      const totalSchoolsResult = await db.select({ count: count() }).from(schools);
+      const totalSchoolsResult = await db.select({ count: sql<number>`COUNT(*)::int` }).from(schools);
       stats.totalSchools = totalSchoolsResult[0]?.count || 0;
+      logger.info("Dashboard: total schools fetched", { count: stats.totalSchools, result: totalSchoolsResult[0] });
     } catch (error) {
       logger.warn("Failed to fetch total schools", error);
       partialData.push("totalSchools");
     }
 
     try {
-      const totalStudentsResult = await db.select({ count: count() })
+      const totalStudentsResult = await db.select({ count: sql<number>`COUNT(*)::int` })
         .from(users)
         .where(eq(users.type, "student"));
       stats.totalStudents = totalStudentsResult[0]?.count || 0;
+      logger.info("Dashboard: students fetched", { count: stats.totalStudents, raw: totalStudentsResult[0] });
     } catch (error) {
       logger.warn("Failed to fetch total students", error);
       partialData.push("totalStudents");
     }
 
     try {
-      const totalTeachersResult = await db.select({ count: count() })
+      const totalTeachersResult = await db.select({ count: sql<number>`COUNT(*)::int` })
         .from(users)
         .where(or(
           eq(users.type, "teacher"),
@@ -78,7 +84,7 @@ export const GET = createApiRoute(
     }
 
     try {
-      const totalAssessmentsResult = await db.select({ count: count() })
+      const totalAssessmentsResult = await db.select({ count: sql<number>`COUNT(*)::int` })
         .from(assessments)
         .where(isNotNull(assessments.completedAt));
       stats.totalAssessments = totalAssessmentsResult[0]?.count || 0;
@@ -108,7 +114,7 @@ export const GET = createApiRoute(
     // Fetch pending school admin applications
     try {
       const pendingAppsResult = await db
-        .select({ count: count() })
+        .select({ count: sql<number>`COUNT(*)::int` })
         .from(schoolAdminApplications)
         .where(eq(schoolAdminApplications.status, "pending_approval"));
       stats.pendingApplications = pendingAppsResult[0]?.count || 0;
@@ -129,7 +135,7 @@ export const GET = createApiRoute(
         topSchoolsData.map(async (school) => {
           try {
             const studentCountResult = await db
-              .select({ count: count() })
+              .select({ count: sql<number>`COUNT(*)::int` })
               .from(users)
               .where(and(eq(users.schoolId, school.id), eq(users.type, "student")));
 
@@ -218,6 +224,7 @@ export const GET = createApiRoute(
 
     // Always return the data we have - even if it's all zeros (empty database)
     // An empty system is not an error
+    logger.info("Dashboard: returning data", { stats, topSchoolsCount: topSchools.length });
     return successResponse({
       stats,
       topSchools,

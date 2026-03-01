@@ -1,6 +1,18 @@
+/* ============================================
+   FONT IMPORTS - Must come first
+   ============================================ */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@import "../styles/engineer-premium.css";
+
+/* ============================================
+   GEIST & INTER FONT
+   Geist is loaded via Next.js font() in layout.tsx
+   Inter is loaded via CSS import above
+   ============================================ */
 
 /* ============================================
    CLERK DESIGN SYSTEM - Complete Implementation
@@ -387,6 +399,109 @@ select option {
 
   .dark ::-webkit-scrollbar-thumb:hover {
     background: var(--ceramic-gray-600);
+  }
+
+  /* ============================================
+     ENGINEER PREMIUM TYPOGRAPHY
+     Geist font with precise gray scaling
+     ============================================ */
+
+  /* Geist font variables */
+  :root {
+    --font-geist-sans: 'Geist Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-geist-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  }
+
+  /* Engineer Premium Typography Classes */
+  .prose-engineer {
+    /* Better tracking for headings - Vercel style */
+    h1, h2, h3, h4, h5, h6 {
+      letter-spacing: -0.02em;
+      font-weight: 600;
+      color: var(--text-ep-primary, #000000);
+    }
+
+    h1 { font-size: 2rem; line-height: 1.2; }
+    h2 { font-size: 1.5rem; line-height: 1.3; }
+    h3 { font-size: 1.125rem; line-height: 1.4; }
+    h4 { font-size: 1rem; line-height: 1.5; }
+
+    /* Body with proper secondary gray */
+    p {
+      line-height: 1.7;
+      color: var(--text-ep-secondary, #666666);
+    }
+
+    /* Labels with tertiary gray */
+    label, .label {
+      color: var(--text-ep-tertiary, #888888);
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+
+    /* Muted text */
+    .text-muted, .text-ep-muted {
+      color: var(--text-ep-muted, #a0a0a0);
+    }
+
+    /* Small text */
+    small, .text-sm {
+      font-size: 0.875rem;
+      color: var(--text-ep-secondary, #666666);
+    }
+
+    /* Links */
+    a {
+      color: var(--text-ep-primary, #000000);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    a:hover {
+      color: var(--text-ep-secondary, #666666);
+    }
+
+    /* Code blocks */
+    code {
+      font-family: var(--font-geist-mono), monospace;
+      font-size: 0.875em;
+      background: rgba(0, 0, 0, 0.05);
+      padding: 0.125rem 0.25rem;
+      border-radius: 4px;
+    }
+
+    /* Strong text */
+    strong, b {
+      font-weight: 600;
+      color: var(--text-ep-primary, #000000);
+    }
+  }
+
+  /* Dark mode for prose-engineer */
+  .dark .prose-engineer {
+    h1, h2, h3, h4, h5, h6 {
+      color: #ffffff;
+    }
+
+    p {
+      color: #a0a0a0;
+    }
+
+    label, .label {
+      color: #666666;
+    }
+
+    a {
+      color: #ffffff;
+    }
+
+    a:hover {
+      color: #a0a0a0;
+    }
+
+    code {
+      background: rgba(255, 255, 255, 0.1);
+    }
   }
 }
 

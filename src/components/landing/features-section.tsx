@@ -192,7 +192,14 @@ export function FeaturesSection() {
           </div>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-gray-950 dark:text-white mb-4">
             Real Problems,{" "}
-            <span className="bg-clip-text text-transparent" style={{ background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)' }}>
+            <span
+              className="bg-clip-text text-transparent"
+              style={{
+                backgroundImage: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)',
+                WebkitBackgroundClip: 'text',
+                backgroundClip: 'text'
+              }}
+            >
               Real Solutions
             </span>
           </h2>

@@ -17,7 +17,7 @@ import { logger } from "@/lib/logger";
 
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
-import { invoices, subscriptions, subscriptionPlans, tenants, schools } from "@/lib/db/schema";
+import { invoices, subscriptions, subscriptionPlans, tenants, schools, students } from "@/lib/db/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { revalidatePath } from "next/cache";
@@ -26,6 +26,18 @@ import { revalidatePath } from "next/cache";
 // TYPES
 // ============================================================================
 
+// Replaced SubscriptionData with SchoolData for Bhutan school-based billing
+export interface SchoolData {
+  id: string;
+  name: string;
+  code?: string;
+  subscriptionTier: string;
+  status: string;
+  students: number;
+  maxStudents?: number;
+}
+
+// Keep SubscriptionData type for backward compatibility (not used in Bhutan)
 export interface SubscriptionData {
   id: string;
   schoolName: string;
@@ -119,10 +131,11 @@ function numberToDecimal(value: number): string {
 // ============================================================================
 
 /**
- * Fetch all billing data (subscriptions, invoices, stats)
+ * Fetch all billing data (schools, invoices, stats)
+ * Bhutan schools use invoice-based billing, not subscription-based
  */
 export async function fetchBillingData(): Promise<ActionResult<{
-  subscriptions: SubscriptionData[];
+  schools: SchoolData[];
   invoices: InvoiceData[];
   stats: BillingStats;
   revenueChart: RevenueChartData[];
@@ -133,61 +146,40 @@ export async function fetchBillingData(): Promise<ActionResult<{
   }
 
   try {
-    // Fetch subscriptions
-    const subscriptionsResult = await db
+    // Fetch schools for invoice creation (Bhutan uses invoice-based billing)
+    const schoolsResult = await db
       .select({
-        id: subscriptions.id,
-        status: subscriptions.status,
-        startDate: subscriptions.startDate,
-        endDate: subscriptions.endDate,
-        currentPeriodStart: subscriptions.currentPeriodStart,
-        currentPeriodEnd: subscriptions.currentPeriodEnd,
-        price: subscriptions.price,
-        currency: subscriptions.currency,
-        billingCycle: subscriptions.billingCycle,
-        autoRenew: subscriptions.autoRenew,
-        isTrial: subscriptions.isTrial,
-        trialEndDate: subscriptions.trialEndDate,
-        maxUsers: subscriptions.maxUsers,
-        currentUsers: subscriptions.currentUsers,
-        maxStudents: subscriptions.maxStudents,
-        currentStudents: subscriptions.currentStudents,
-        maxTeachers: subscriptions.maxTeachers,
-        currentTeachers: subscriptions.currentTeachers,
-        planId: subscriptionPlans.id,
-        planName: subscriptionPlans.name,
-        planTier: subscriptionPlans.tier,
-        tenantId: tenants.id,
-        tenantName: tenants.name,
-        tenantSlug: tenants.slug,
-        tenantDomain: tenants.domain,
+        id: schools.id,
+        name: schools.name,
+        code: schools.code,
+        subscriptionTier: schools.subscriptionTier,
+        isActive: schools.isActive,
+        subscriptionStatus: schools.subscriptionStatus,
+        maxStudents: schools.maxStudents,
       })
-      .from(subscriptions)
-      .leftJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
-      .leftJoin(tenants, eq(subscriptions.tenantId, tenants.id))
-      .orderBy(desc(subscriptions.createdAt))
+      .from(schools)
+      .orderBy(desc(schools.createdAt))
       .limit(100);
 
-    const formattedSubscriptions: SubscriptionData[] = subscriptionsResult.map((sub) => ({
-      id: sub.id,
-      schoolName: sub.tenantName || "Unknown",
-      schoolCode: undefined,
-      tenantSlug: sub.tenantSlug,
-      plan: sub.planName?.toLowerCase() || "unknown",
-      status: sub.status,
-      students: sub.currentStudents || 0,
-      teachers: sub.currentTeachers || 0,
-      renewalDate: sub.currentPeriodEnd?.toISOString() || sub.endDate?.toISOString() || new Date().toISOString(),
-      totalPaid: sub.price || 0,
-      isTrial: sub.isTrial,
-      trialEndDate: sub.trialEndDate?.toISOString(),
-      autoRenew: sub.autoRenew,
-      price: sub.price,
-      currency: sub.currency,
-      billingCycle: sub.billingCycle,
-      maxStudents: sub.maxStudents,
-      maxTeachers: sub.maxTeachers,
-    }));
+    // Count students for each school
+    const formattedSchools: SchoolData[] = await Promise.all(
+      schoolsResult.map(async (school) => {
+        const [studentCount] = await db
+          .select({ count: sql<number>`COUNT(*)::int` })
+          .from(students)
+          .where(eq(students.schoolId, school.id));
+
+        return {
+          id: school.id,
+          name: school.name,
+          code: school.code || undefined,
+          subscriptionTier: school.subscriptionTier || 'standard',
+          status: school.isActive ? (school.subscriptionStatus || 'active') : 'inactive',
+          students: studentCount?.count || 0,
+          maxStudents: school.maxStudents || undefined,
+        };
+      })
+    );
 
     // Fetch invoices - using schoolId instead of tenantId/subscriptionId
     const invoicesResult = await db
@@ -239,51 +231,77 @@ export async function fetchBillingData(): Promise<ActionResult<{
       refundedAt: inv.refundedAt?.toISOString(),
     }));
 
-    // Calculate stats from subscriptions
-    const revenueStats = await db
-      .select({
-        totalRevenue: sql<number>`COALESCE(SUM(${subscriptions.price}), 0)`,
-        activeCount: sql<number>`COUNT(*) FILTER (WHERE ${subscriptions.status} = 'active')`,
-        trialCount: sql<number>`COUNT(*) FILTER (WHERE ${subscriptions.status} = 'trialing')`,
-        pastDueCount: sql<number>`COUNT(*) FILTER (WHERE ${subscriptions.status} = 'past_due')`,
-      })
+    // Calculate stats from subscriptions - use separate queries for neon-http compatibility
+    const [activeSubsResult] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(subscriptions)
+      .where(eq(subscriptions.status, 'active'));
+
+    const [trialSubsResult] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(subscriptions)
+      .where(eq(subscriptions.status, 'trialing'));
+
+    const [pastDueSubsResult] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(subscriptions)
+      .where(eq(subscriptions.status, 'past_due'));
+
+    const [totalRevenueResult] = await db
+      .select({ total: sql<number>`COALESCE(SUM(${subscriptions.price}), 0)` })
       .from(subscriptions);
 
-    // Calculate stats from invoices - handle decimal type properly
+    // Calculate stats from invoices - separate queries for compatibility
+    const [sentInvoicesResult] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(invoices)
+      .where(eq(invoices.status, 'sent'));
+
+    const [draftInvoicesResult] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(invoices)
+      .where(eq(invoices.status, 'draft'));
+
+    const [paidInvoicesResult] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(invoices)
+      .where(eq(invoices.status, 'paid'));
+
+    const [overdueInvoicesResult] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(invoices)
+      .where(eq(invoices.status, 'overdue'));
+
+    // Get all invoices for amount calculations
     const invoiceStatsResult = await db
       .select({
-        pendingCount: sql<number>`COUNT(*) FILTER (WHERE ${invoices.status} = 'sent')`,
-        draftCount: sql<number>`COUNT(*) FILTER (WHERE ${invoices.status} = 'draft')`,
-        paidCount: sql<number>`COUNT(*) FILTER (WHERE ${invoices.status} = 'paid')`,
-        overdueCount: sql<number>`COUNT(*) FILTER (WHERE ${invoices.status} = 'overdue')`,
-        pendingAmount: invoices.totalAmount,
-        paidAmount: invoices.totalAmount,
-        refundedAmount: invoices.refundAmount,
+        status: invoices.status,
+        totalAmount: invoices.totalAmount,
+        refundAmount: invoices.refundAmount,
       })
       .from(invoices);
 
     // Aggregate invoice stats manually to handle decimal conversion
-    let pendingCount = 0;
+    let pendingCount = sentInvoicesResult?.count || 0;
+    let draftCount = draftInvoicesResult?.count || 0;
+    let paidCount = paidInvoicesResult?.count || 0;
+    let overdueCount = overdueInvoicesResult?.count || 0;
     let pendingAmount = 0;
     let paidAmount = 0;
     let refundedAmount = 0;
 
+    // Calculate amounts from invoices
     for (const stat of invoiceStatsResult) {
-      if (stat.pendingAmount) {
-        pendingAmount += decimalToNumber(stat.pendingAmount);
+      if (stat.status === 'sent' || stat.status === 'draft') {
+        if (stat.totalAmount) {
+          pendingAmount += decimalToNumber(stat.totalAmount);
+        }
       }
-      if (stat.refundedAmount) {
-        refundedAmount += decimalToNumber(stat.refundedAmount);
+      if (stat.status === 'paid' && stat.totalAmount) {
+        paidAmount += decimalToNumber(stat.totalAmount);
       }
-    }
-
-    // Count by status
-    for (const inv of invoicesResult) {
-      if (inv.status === "sent" || inv.status === "draft") {
-        pendingCount++;
-      }
-      if (inv.status === "paid") {
-        paidAmount += decimalToNumber(inv.totalAmount);
+      if (stat.refundAmount) {
+        refundedAmount += decimalToNumber(stat.refundAmount);
       }
     }
 
@@ -300,11 +318,11 @@ export async function fetchBillingData(): Promise<ActionResult<{
       .where(eq(subscriptions.status, "active"));
 
     const stats: BillingStats = {
-      totalRevenue: revenueStats[0]?.totalRevenue || 0,
+      totalRevenue: Number(totalRevenueResult?.total || 0),
       revenueChange: 12, // Mock value - would be calculated from historical data
-      activeSubscriptions: revenueStats[0]?.activeCount || 0,
+      activeSubscriptions: activeSubsResult?.count || 0,
       pendingInvoices: pendingCount,
-      overduePayments: revenueStats[0]?.pastDueCount || 0,
+      overduePayments: overdueInvoicesResult?.count || 0,
       monthlyRecurring: mrrResult[0]?.mrr || 0,
       pendingAmount,
       paidAmount,
@@ -328,7 +346,7 @@ export async function fetchBillingData(): Promise<ActionResult<{
     return {
       success: true,
       data: {
-        subscriptions: formattedSubscriptions,
+        schools: formattedSchools,
         invoices: formattedInvoices,
         stats,
         revenueChart,

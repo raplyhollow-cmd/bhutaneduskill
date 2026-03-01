@@ -48,12 +48,11 @@ async function detectSeatLimitAnomalies(): Promise<AnomalyDetection[]> {
   const anomalies: AnomalyDetection[] = [];
 
   try {
-    // Get all active schools with their subscriptions
+    // Get all active schools
     const allSchools = await db
       .select({
         id: schools.id,
         name: schools.name,
-        maxStudents: schools.maxStudents,
         subscriptionTier: schools.subscriptionTier,
       })
       .from(schools)
@@ -73,8 +72,14 @@ async function detectSeatLimitAnomalies(): Promise<AnomalyDetection[]> {
       // Skip unlimited tiers
       if (limit === -1) continue;
 
-      const maxStudents = school.maxStudents || 0;
-      const usagePercentage = limit > 0 ? (maxStudents / limit) * 100 : 0;
+      // Count actual students in this school (not the maxStudents config field)
+      const [studentCount] = await db
+        .select({ count: sql<number>`COUNT(*)::int` })
+        .from(users)
+        .where(and(eq(users.type, "student"), eq(users.schoolId, school.id)));
+
+      const actualStudentCount = studentCount?.count || 0;
+      const usagePercentage = limit > 0 ? (actualStudentCount / limit) * 100 : 0;
 
       // Alert at 90% usage
       if (usagePercentage >= 90 && usagePercentage < 100) {
@@ -84,9 +89,9 @@ async function detectSeatLimitAnomalies(): Promise<AnomalyDetection[]> {
           entityId: school.id,
           entityType: "school",
           title: `${school.name} approaching seat limit`,
-          message: `${school.name} has ${maxStudents} students (${usagePercentage.toFixed(0)}%) of ${limit} seat limit. Upgrade required soon.`,
+          message: `${school.name} has ${actualStudentCount} students (${usagePercentage.toFixed(0)}%) of ${limit} seat limit. Upgrade required soon.`,
           suggestedAction: `Send upgrade notification to ${school.name} school admin`,
-          metadata: { schoolName: school.name, currentUsage: maxStudents, limit, usagePercentage },
+          metadata: { schoolName: school.name, currentUsage: actualStudentCount, limit, usagePercentage },
         });
       }
 
@@ -98,9 +103,9 @@ async function detectSeatLimitAnomalies(): Promise<AnomalyDetection[]> {
           entityId: school.id,
           entityType: "school",
           title: `${school.name} exceeded seat limit`,
-          message: `${school.name} has ${maxStudents} students, exceeding the ${limit} seat limit. Immediate action required.`,
+          message: `${school.name} has ${actualStudentCount} students, exceeding the ${limit} seat limit. Immediate action required.`,
           suggestedAction: `Suspend new student registration or upgrade subscription for ${school.name}`,
-          metadata: { schoolName: school.name, currentUsage: maxStudents, limit, usagePercentage },
+          metadata: { schoolName: school.name, currentUsage: actualStudentCount, limit, usagePercentage },
         });
       }
     }

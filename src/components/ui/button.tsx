@@ -72,14 +72,14 @@ const buttonVariants = cva(
         danger: "bg-red-600 text-white hover:bg-red-700",
         // Link: Underlined text
         link: "text-purple-600 underline-offset-4 hover:underline dark:text-purple-400",
-        // Portal-specific variants (kept for backwards compatibility)
-        student: "",
-        teacher: "",
-        parent: "",
-        counselor: "",
-        admin: "",
-        "school-admin": "",
-        ministry: "",
+        // Portal-specific variants with gradients
+        student: "[background:linear-gradient(135deg,rgb(249_115_22)_0%,rgb(194_65_12)_100%)] text-white hover:opacity-90",
+        teacher: "[background:linear-gradient(135deg,rgb(59_130_246)_0%,rgb(37_99_235)_100%)] text-white hover:opacity-90",
+        parent: "[background:linear-gradient(135deg,rgb(107_114_128)_0%,rgb(75_85_99)_100%)] text-white hover:opacity-90",
+        counselor: "[background:linear-gradient(135deg,rgb(168_85_247)_0%,rgb(147_51_234)_100%)] text-white hover:opacity-90",
+        admin: "[background:linear-gradient(135deg,rgb(236_72_153)_0%,rgb(219_39_119)_100%)] text-white hover:opacity-90",
+        "school-admin": "[background:linear-gradient(135deg,rgb(139_92_246)_0%,rgb(124_58_237)_100%)] text-white hover:opacity-90",
+        ministry: "[background:linear-gradient(135deg,rgb(20_184_166)_0%,rgb(13_148_136)_100%)] text-white hover:opacity-90",
         // Ceramic design system variants
         ceramic: "[background-color:var(--ceramic-brand)] [color:var(--ceramic-white)] hover:opacity-90",
         "ceramic-outline": "[border-color:var(--border-color-primary)] [background-color:transparent] [color:var(--ceramic-primary)] hover:[background-color:var(--ceramic-gray-100)]",
@@ -115,38 +115,35 @@ const buttonVariants = cva(
 /**
  * Get inline styles for button variants
  * Uses design tokens for consistent spacing, radius, and transitions
- */
-/**
- * Get inline styles for button variants
- * UX OPTIMIZED: Removed shadows, simplified to solid colors only
+ * ENGINEER PREMIUM: Portal buttons now use gradients for premium look
  */
 function getButtonStyles(variant?: string, size?: string): React.CSSProperties {
   const styles: React.CSSProperties = {
-    borderRadius: '6px', // Consistent 6px radius (rounded-md)
-    transition: 'background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out',
+    borderRadius: '6px', // Consistent 6px radius (Engineer Premium spec)
+    transition: 'all 150ms ease-out', // 150ms snappy transitions
   }
 
-  // Portal-specific colors (solid colors, no gradients for buttons)
+  // Portal-specific gradients (Engineer Premium spec)
   if (variant === 'student') {
-    styles.background = portal.student.primary // Design token
+    styles.background = portal.student.gradient // Design token gradient
     styles.color = '#ffffff'
   } else if (variant === 'teacher') {
-    styles.background = portal.teacher.primary // Design token
+    styles.background = portal.teacher.gradient // Design token gradient
     styles.color = '#ffffff'
   } else if (variant === 'parent') {
-    styles.background = portal.parent.primary // Design token
+    styles.background = portal.parent.gradient // Design token gradient
     styles.color = '#ffffff'
   } else if (variant === 'counselor') {
-    styles.background = portal.counselor.primary // Design token
+    styles.background = portal.counselor.gradient // Design token gradient
     styles.color = '#ffffff'
   } else if (variant === 'admin') {
-    styles.background = portal.admin.primary // Design token
+    styles.background = portal.admin.gradient // Design token gradient
     styles.color = '#ffffff'
   } else if (variant === 'school-admin') {
-    styles.background = portal.schoolAdmin.primary // Design token
+    styles.background = portal.schoolAdmin.gradient // Design token gradient
     styles.color = '#ffffff'
   } else if (variant === 'ministry') {
-    styles.background = portal.ministry.primary // Design token
+    styles.background = portal.ministry.gradient // Design token gradient
     styles.color = '#ffffff'
   }
 

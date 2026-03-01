@@ -72,7 +72,8 @@
       "Bash(1)",
       "Bash(git commit:*)",
       "Bash(printf '\\\\n')",
-      "Bash(sed \"s/\\\\.tsx$//\")"
+      "Bash(sed \"s/\\\\.tsx$//\")",
+      "Bash(echo \"Exit code: $?\")"
     ]
   }
 }

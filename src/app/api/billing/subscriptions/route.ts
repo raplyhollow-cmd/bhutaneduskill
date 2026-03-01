@@ -87,15 +87,25 @@ export const GET = createApiRoute(
       .from(subscriptions)
       .where(whereClause);
 
-    // Calculate revenue stats
-    const revenueStats = await db
-      .select({
-        totalRevenue: sql<number>`COALESCE(SUM(${subscriptions.price}), 0)`,
-        activeCount: sql<number>`COUNT(*) FILTER (WHERE ${subscriptions.status} = 'active')`,
-        trialCount: sql<number>`COUNT(*) FILTER (WHERE ${subscriptions.status} = 'trialing')`,
-        pastDueCount: sql<number>`COUNT(*) FILTER (WHERE ${subscriptions.status} = 'past_due')`,
-      })
+    // Calculate revenue stats - use separate queries for neon-http compatibility
+    const [totalRevenueResult] = await db
+      .select({ total: sql<number>`COALESCE(SUM(${subscriptions.price}), 0)` })
       .from(subscriptions);
+
+    const [activeCountResult] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(subscriptions)
+      .where(eq(subscriptions.status, 'active'));
+
+    const [trialCountResult] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(subscriptions)
+      .where(eq(subscriptions.status, 'trialing'));
+
+    const [pastDueCountResult] = await db
+      .select({ count: sql<number>`COUNT(*)::int` })
+      .from(subscriptions)
+      .where(eq(subscriptions.status, 'past_due'));
 
     // Get monthly recurring revenue (MRR)
     const mrrResult = await db
@@ -139,13 +149,13 @@ export const GET = createApiRoute(
         total: totalCount[0]?.count || 0,
       },
       stats: {
-        totalRevenue: revenueStats[0]?.totalRevenue || 0,
-        activeSubscriptions: revenueStats[0]?.activeCount || 0,
-        trialSubscriptions: revenueStats[0]?.trialCount || 0,
-        pastDueSubscriptions: revenueStats[0]?.pastDueCount || 0,
+        totalRevenue: Number(totalRevenueResult?.total || 0),
+        activeSubscriptions: activeCountResult?.count || 0,
+        trialSubscriptions: trialCountResult?.count || 0,
+        pastDueSubscriptions: pastDueCountResult?.count || 0,
         monthlyRecurring: mrrResult[0]?.mrr || 0,
         pendingInvoices: 0, // Will be updated from invoices endpoint
-        overduePayments: revenueStats[0]?.pastDueCount || 0,
+        overduePayments: pastDueCountResult?.count || 0,
       },
     };
   },

@@ -69,6 +69,7 @@ import {
   updateInvoiceStatus,
   processRefund,
   updateSubscription,
+  type SchoolData,
   type SubscriptionData,
   type InvoiceData,
   type BillingStats,
@@ -273,7 +274,7 @@ function formatCurrency(amount: number, currency: string = "BTN"): string {
     style: "currency",
     currency: currency,
     minimumFractionDigits: 0,
-  }).format(amount / 100); // Amount is stored in cents
+  }).format(amount); // Amount is stored as actual value (Nu), not cents
 }
 
 function formatDate(dateString: string): string {
@@ -304,7 +305,7 @@ export default function AdminBillingPage() {
 
   // Data state
   const [loading, setLoading] = useState(true);
-  const [subscriptions, setSubscriptions] = useState<SubscriptionData[]>([]);
+  const [schools, setSchools] = useState<SchoolData[]>([]);
   const [invoices, setInvoices] = useState<InvoiceData[]>([]);
   const [paymentTransactions, setPaymentTransactions] = useState<PaymentTransaction[]>([]);
   const [stats, setStats] = useState<BillingStats>({
@@ -329,13 +330,12 @@ export default function AdminBillingPage() {
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [showSubscriptionDetailModal, setShowSubscriptionDetailModal] = useState(false);
   const [generatingInvoice, setGeneratingInvoice] = useState(false);
   const [processingRefund, setProcessingRefund] = useState(false);
   const [recordingPayment, setRecordingPayment] = useState(false);
 
   // Form state
-  const [selectedSubscription, setSelectedSubscription] = useState<string>("");
+  const [selectedSchool, setSelectedSchool] = useState<string>("");
   const [invoiceAmount, setInvoiceAmount] = useState<string>("");
   const [invoiceNotes, setInvoiceNotes] = useState<string>("");
   const [refundInvoice, setRefundInvoice] = useState<RefundData | null>(null);
@@ -345,7 +345,6 @@ export default function AdminBillingPage() {
   const [paymentAmount, setPaymentAmount] = useState<string>("");
   const [paymentMethod, setPaymentMethod] = useState<string>("manual");
   const [paymentNotes, setPaymentNotes] = useState<string>("");
-  const [selectedSubscriptionDetail, setSelectedSubscriptionDetail] = useState<SubscriptionData | null>(null);
 
   // Fetch billing data using server action
   const loadBillingData = useCallback(async () => {
@@ -356,7 +355,7 @@ export default function AdminBillingPage() {
       const result = await fetchBillingData();
 
       if (result.success && result.data) {
-        setSubscriptions(result.data.subscriptions);
+        setSchools(result.data.schools);
         setInvoices(result.data.invoices);
         setStats(result.data.stats);
         setRevenueChart(result.data.revenueChart);
@@ -374,15 +373,14 @@ export default function AdminBillingPage() {
   // Create invoice handler using server action
   async function handleCreateInvoice(e: React.FormEvent) {
     e.preventDefault();
-    if (!selectedSubscription || !invoiceAmount) return;
+    if (!selectedSchool || !invoiceAmount) return;
 
     setGeneratingInvoice(true);
     setActionMessage(null);
 
     startTransition(async () => {
-      // Get school ID from the subscription (subscription.id is the school ID in our context)
       const result = await createInvoice({
-        schoolId: selectedSubscription,
+        schoolId: selectedSchool,
         amount: parseInt(invoiceAmount, 10),
         notes: invoiceNotes || undefined,
       });
@@ -390,7 +388,7 @@ export default function AdminBillingPage() {
       if (result.success) {
         await loadBillingData();
         setShowInvoiceModal(false);
-        setSelectedSubscription("");
+        setSelectedSchool("");
         setInvoiceAmount("");
         setInvoiceNotes("");
         setActionMessage({ type: "success", message: result.message || "Invoice generated successfully!" });
@@ -546,12 +544,6 @@ export default function AdminBillingPage() {
   }
 
   // Get subscription details
-  function viewSubscriptionDetails(subscription: SubscriptionData) {
-    setSelectedSubscriptionDetail(subscription);
-    setShowSubscriptionDetailModal(true);
-    fetchPaymentTransactions(subscription.id);
-  }
-
   // Loading state
   if (loading) {
     return (
@@ -643,10 +635,6 @@ export default function AdminBillingPage() {
           <TabsTrigger value="overview" className="gap-2">
             <BarChart3 className="w-4 h-4" />
             Overview
-          </TabsTrigger>
-          <TabsTrigger value="subscriptions" className="gap-2">
-            <Users className="w-4 h-4" />
-            Subscriptions
           </TabsTrigger>
           <TabsTrigger value="invoices" className="gap-2">
             <Receipt className="w-4 h-4" />
@@ -841,142 +829,6 @@ export default function AdminBillingPage() {
         </TabsContent>
 
         {/* SUBSCRIPTIONS TAB */}
-        <TabsContent value="subscriptions" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>School Subscriptions</CardTitle>
-                  <CardDescription>
-                    {subscriptions.length} schools with active subscriptions
-                  </CardDescription>
-                </div>
-                <div className="flex gap-2">
-                  <select className="px-3 py-2 rounded-lg border border-gray-300 text-sm">
-                    <option value="">All Plans</option>
-                    <option value="starter">Starter</option>
-                    <option value="professional">Professional</option>
-                    <option value="enterprise">Enterprise</option>
-                  </select>
-                  <select className="px-3 py-2 rounded-lg border border-gray-300 text-sm">
-                    <option value="">All Statuses</option>
-                    <option value="active">Active</option>
-                    <option value="trialing">Trial</option>
-                    <option value="past_due">Past Due</option>
-                  </select>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {subscriptions.length === 0 ? (
-                <div className="text-center py-12 text-gray-500">
-                  <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                  <p>No subscriptions found</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-200">
-                        <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">School</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Plan</th>
-                        <th className="text-center py-3 px-4 font-medium text-gray-600 text-sm">Usage</th>
-                        <th className="text-center py-3 px-4 font-medium text-gray-600 text-sm">Status</th>
-                        <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Renewal</th>
-                        <th className="text-right py-3 px-4 font-medium text-gray-600 text-sm">Total Paid</th>
-                        <th className="text-right py-3 px-4 font-medium text-gray-600 text-sm">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {subscriptions.map((sub) => (
-                        <tr key={sub.id} className="border-b border-gray-100 hover:bg-gray-50">
-                          <td className="py-4 px-4">
-                            <div className="flex items-center gap-3">
-                              <div
-                                className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-semibold"
-                                style={{
-                                  background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)",
-                                }}
-                              >
-                                {getInitials(sub.schoolName)}
-                              </div>
-                              <div>
-                                <Link
-                                  href={`/admin/schools/${sub.id}`}
-                                  className="font-medium text-gray-900 hover:text-pink-600 transition-colors"
-                                >
-                                  {sub.schoolName}
-                                </Link>
-                                <p className="text-xs text-gray-500">{sub.schoolCode || ""}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="py-4 px-4">
-                            <Badge
-                              variant="outline"
-                              className="capitalize"
-                              style={{
-                                borderColor: "rgb(236 72 153)",
-                                color: "rgb(219 39 119)",
-                              }}
-                            >
-                              {sub.plan}
-                            </Badge>
-                          </td>
-                          <td className="py-4 px-4">
-                            <div className="flex flex-col gap-1">
-                              <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-900">
-                                <Users className="w-3 h-3 text-gray-400" />
-                                {sub.students} / {sub.maxStudents === -1 ? "Unlimited" : sub.maxStudents} students
-                              </span>
-                              <span className="inline-flex items-center gap-1 text-xs text-gray-500">
-                                {sub.teachers} teachers
-                              </span>
-                            </div>
-                          </td>
-                          <td className="py-4 px-4 text-center">{getStatusBadge(sub.status)}</td>
-                          <td className="py-4 px-4">
-                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                              <Calendar className="w-4 h-4" />
-                              {formatDate(sub.renewalDate)}
-                            </div>
-                            {sub.autoRenew && (
-                              <span className="text-xs text-green-600">Auto-renew enabled</span>
-                            )}
-                          </td>
-                          <td className="py-4 px-4 text-right font-medium text-gray-900">
-                            {formatCurrency(sub.totalPaid)}
-                          </td>
-                          <td className="py-4 px-4">
-                            <div className="flex items-center justify-end gap-2">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 hover:bg-pink-50 hover:text-pink-600"
-                                onClick={() => viewSubscriptionDetails(sub)}
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 hover:bg-pink-50 hover:text-pink-600"
-                                onClick={() => handleUpdateSubscription(sub.id, "cancel")}
-                              >
-                                <X className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         {/* INVOICES TAB */}
         <TabsContent value="invoices" className="space-y-6">
           <Card>
@@ -1349,14 +1201,14 @@ export default function AdminBillingPage() {
                 </label>
                 <select
                   required
-                  value={selectedSubscription}
-                  onChange={(e) => setSelectedSubscription(e.target.value)}
+                  value={selectedSchool}
+                  onChange={(e) => setSelectedSchool(e.target.value)}
                   className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 outline-none"
                 >
                   <option value="">Choose a school...</option>
-                  {subscriptions.map((sub) => (
-                    <option key={sub.id} value={sub.id}>
-                      {sub.schoolName} - {sub.plan} ({formatCurrency(sub.price)})
+                  {schools.map((school) => (
+                    <option key={school.id} value={school.id}>
+                      {school.name} - {school.subscriptionTier} ({school.students} students)
                     </option>
                   ))}
                 </select>
@@ -1403,7 +1255,7 @@ export default function AdminBillingPage() {
               </Button>
               <Button
                 type="submit"
-                disabled={generatingInvoice || !selectedSubscription || !invoiceAmount}
+                disabled={generatingInvoice || !selectedSchool || !invoiceAmount}
                 style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
                 className="text-white"
               >
@@ -1632,113 +1484,6 @@ export default function AdminBillingPage() {
               </Button>
             </DialogFooter>
           </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Subscription Detail Modal */}
-      <Dialog open={showSubscriptionDetailModal} onOpenChange={setShowSubscriptionDetailModal}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Subscription Details</DialogTitle>
-            <DialogDescription>
-              {selectedSubscriptionDetail?.schoolName} - {selectedSubscriptionDetail?.plan}
-            </DialogDescription>
-          </DialogHeader>
-          {selectedSubscriptionDetail && (
-            <div className="space-y-6 py-4">
-              {/* Status and Renewal */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <p className="text-sm text-gray-500 mb-1">Status</p>
-                  {getStatusBadge(selectedSubscriptionDetail.status)}
-                </div>
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <p className="text-sm text-gray-500 mb-1">Renewal Date</p>
-                  <p className="font-semibold text-gray-900">
-                    {formatDate(selectedSubscriptionDetail.renewalDate)}
-                  </p>
-                </div>
-              </div>
-
-              {/* Usage */}
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-sm text-gray-500 mb-3">Usage</p>
-                <div className="space-y-3">
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-gray-600">Students</span>
-                      <span className="font-medium text-gray-900">
-                        {selectedSubscriptionDetail.students} / {selectedSubscriptionDetail.maxStudents === -1 ? "Unlimited" : selectedSubscriptionDetail.maxStudents}
-                      </span>
-                    </div>
-                    {selectedSubscriptionDetail.maxStudents !== -1 && (
-                      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-pink-500"
-                          style={{
-                            width: `${Math.min((selectedSubscriptionDetail.students / selectedSubscriptionDetail.maxStudents) * 100, 100)}%`
-                          }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-gray-600">Teachers</span>
-                      <span className="font-medium text-gray-900">
-                        {selectedSubscriptionDetail.teachers} / {selectedSubscriptionDetail.maxTeachers === -1 ? "Unlimited" : selectedSubscriptionDetail.maxTeachers}
-                      </span>
-                    </div>
-                    {selectedSubscriptionDetail.maxTeachers !== -1 && (
-                      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-blue-500"
-                          style={{
-                            width: `${Math.min((selectedSubscriptionDetail.teachers / selectedSubscriptionDetail.maxTeachers) * 100, 100)}%`
-                          }}
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Billing */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <p className="text-sm text-gray-500 mb-1">Plan Price</p>
-                  <p className="font-semibold text-gray-900">
-                    {formatCurrency(selectedSubscriptionDetail.price)} / {selectedSubscriptionDetail.billingCycle}
-                  </p>
-                </div>
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <p className="text-sm text-gray-500 mb-1">Total Paid</p>
-                  <p className="font-semibold text-green-600">
-                    {formatCurrency(selectedSubscriptionDetail.totalPaid)}
-                  </p>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3 pt-4 border-t">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => handleUpdateSubscription(selectedSubscriptionDetail.id, "cancel")}
-                >
-                  <X className="w-4 h-4 mr-2" />
-                  Cancel Subscription
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setShowSubscriptionDetailModal(false)}
-                >
-                  Close
-                </Button>
-              </div>
-            </div>
-          )}
         </DialogContent>
       </Dialog>
     </div>

@@ -170,7 +170,7 @@ export default function AdminDashboardPage() {
   }, []);
 
   useEffect(() => {
-    if (!isLoading && stats && topSchools && careerInterests && stats.totalSchools > 0) {
+    if (!isLoading && stats && topSchools && careerInterests) {
       loadAIInsights();
     }
   }, [isLoading, stats, topSchools, careerInterests]);
@@ -181,7 +181,9 @@ export default function AdminDashboardPage() {
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-      const data = await response.json();
+      const json = await response.json();
+      // API returns { data: { stats, topSchools, careerInterests } }
+      const data = json.data || json;
       setStats(data.stats || stats);
       setTopSchools(data.topSchools || []);
       setCareerInterests(data.careerInterests || []);
@@ -232,8 +234,8 @@ export default function AdminDashboardPage() {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        setAiInsights(data.insights || []);
+        const json = await response.json();
+        setAiInsights(json.data?.insights || []);
       } else {
         setAiInsights([]);
       }
@@ -418,7 +420,7 @@ export default function AdminDashboardPage() {
                 href={action.href}
                 className="group"
               >
-                <PremiumCard className="p-4 text-center hover:scale-105 transition-transform ceramic-interactive">
+                <PremiumCard className="p-4 text-center hover:scale-105 transition-transform ceramic-interactive h-full min-h-[140px] flex flex-col items-center justify-center">
                   <div className={`w-12 h-12 rounded-xl ${action.ceramicBg} flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform`}>
                     <Icon className={`w-6 h-6 ${action.ceramicColor}`} />
                   </div>
