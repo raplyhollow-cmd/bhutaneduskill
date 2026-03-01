@@ -1633,3 +1633,18 @@ select option {
   transform: translateZ(0);
   will-change: transform;
 }
+
+/* Animated gradient text for landing page */
+.gradient-text-animated {
+  background: linear-gradient(90deg, #f97316, #dc2626, #f97316);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradientShift 3s linear infinite;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}

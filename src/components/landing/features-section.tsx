@@ -82,24 +82,24 @@ function ProblemSolutionCard({ problem, index }: { problem: typeof problems[0]; 
       transition={{ delay: index * 0.15, duration: 0.5 }}
       className="group"
     >
-      <div className="relative overflow-hidden rounded-3xl bg-ceramic-white dark:bg-ceramic-gray-900 border border-ceramic-border hover:shadow-2xl transition-all duration-500">
+      <div className="relative overflow-hidden rounded-3xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:shadow-2xl transition-all duration-500">
         {/* Problem Section - Top */}
-        <div className="relative p-6 pb-8 border-b border-ceramic-border">
+        <div className="relative p-6 pb-8 border-b border-gray-200 dark:border-gray-800">
           {/* Alert badge */}
           <div className="flex items-center gap-2 mb-4">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ceramic-negative/10 dark:bg-ceramic-negative/20 border border-ceramic-negative/30">
-              <AlertCircle className="w-3.5 h-3.5 text-ceramic-negative" />
-              <span className="text-xs font-semibold text-ceramic-negative">The Problem</span>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800">
+              <AlertCircle className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
+              <span className="text-xs font-semibold text-red-600 dark:text-red-400">The Problem</span>
             </div>
           </div>
 
           {/* Problem statement */}
-          <p className="text-base text-ceramic-primary dark:text-ceramic-gray-200 leading-relaxed mb-4">
+          <p className="text-base text-gray-900 dark:text-gray-200 leading-relaxed mb-4">
             {problem.problem}
           </p>
 
           {/* Context */}
-          <p className="text-sm text-ceramic-dimmed italic">
+          <p className="text-sm text-gray-500 dark:text-gray-400 italic">
             "{problem.context}"
           </p>
         </div>
@@ -108,9 +108,9 @@ function ProblemSolutionCard({ problem, index }: { problem: typeof problems[0]; 
         <div className={`${problem.bgColor} p-6 relative`}>
           {/* Check badge */}
           <div className="flex items-center gap-2 mb-4">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-ceramic-white dark:bg-ceramic-gray-800 border border-ceramic-border">
-              <CheckCircle2 className="w-3.5 h-3.5 text-ceramic-positive" />
-              <span className="text-xs font-semibold text-ceramic-positive">Our Solution</span>
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+              <CheckCircle2 className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+              <span className="text-xs font-semibold text-green-600 dark:text-green-400">Our Solution</span>
             </div>
           </div>
 
@@ -126,7 +126,7 @@ function ProblemSolutionCard({ problem, index }: { problem: typeof problems[0]; 
                 problem.stat
               )}
             </div>
-            <span className="text-sm text-ceramic-secondary dark:text-ceramic-gray-400">
+            <span className="text-sm text-gray-600 dark:text-gray-400">
               {problem.statLabel}
             </span>
           </div>
@@ -139,14 +139,14 @@ function ProblemSolutionCard({ problem, index }: { problem: typeof problems[0]; 
             >
               <Icon className="w-4 h-4 text-white" strokeWidth={2} />
             </div>
-            <p className="text-sm font-medium text-ceramic-primary dark:text-ceramic-gray-100 leading-relaxed">
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 leading-relaxed">
               {problem.outcome}
             </p>
           </div>
 
           {/* Solution steps */}
           <div className="flex items-center justify-between">
-            <p className="text-xs text-ceramic-secondary dark:text-ceramic-gray-400 font-medium">
+            <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">
               {problem.solution}
             </p>
             <Link
@@ -172,9 +172,9 @@ function ProblemSolutionCard({ problem, index }: { problem: typeof problems[0]; 
 
 export function FeaturesSection() {
   return (
-    <section className="relative py-32 bg-ceramic-white dark:bg-ceramic-gray-950 overflow-hidden">
+    <section className="relative py-32 bg-white dark:bg-gray-950 overflow-hidden">
       {/* Background decorations */}
-      <div className="absolute top-20 left-1/4 w-96 h-96 bg-ceramic-brand/5 rounded-full blur-3xl" />
+      <div className="absolute top-20 left-1/4 w-96 h-96 bg-orange-500/5 rounded-full blur-3xl" />
       <div className="absolute bottom-20 right-1/4 w-96 h-96 bg-blue-400/5 rounded-full blur-3xl" />
 
       <div className="max-w-6xl mx-auto px-6 relative">
@@ -186,17 +186,17 @@ export function FeaturesSection() {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-ceramic-gray-50 dark:bg-ceramic-gray-900 border border-ceramic-border text-sm font-medium text-ceramic-secondary dark:text-ceramic-gray-300 mb-6">
-            <div className="w-1.5 h-1.5 rounded-full bg-ceramic-brand" />
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 mb-6">
+            <div className="w-1.5 h-1.5 rounded-full bg-orange-500" />
             Why Schools Choose Us
           </div>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-ceramic-primary dark:text-white mb-4">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-gray-950 dark:text-white mb-4">
             Real Problems,{" "}
             <span className="bg-clip-text text-transparent" style={{ background: 'linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)' }}>
               Real Solutions
             </span>
           </h2>
-          <p className="text-lg text-ceramic-dimmed max-w-2xl mx-auto">
+          <p className="text-lg text-gray-500 dark:text-gray-400 max-w-2xl mx-auto">
             We don't just add features. We solve actual problems faced by Bhutanese students, parents, and teachers every day.
           </p>
         </motion.div>
@@ -216,8 +216,8 @@ export function FeaturesSection() {
           transition={{ delay: 0.5 }}
           className="mt-16 text-center"
         >
-          <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full border border-ceramic-border" style={{ background: 'linear-gradient(135deg, rgb(254 243 199) 0%, rgb(254 215 170) 100%)' }}>
-            <span className="text-ceramic-primary font-medium">
+          <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full border border-orange-200 dark:border-orange-800" style={{ background: 'linear-gradient(135deg, rgb(254 243 199) 0%, rgb(254 215 170) 100%)' }}>
+            <span className="text-gray-900 dark:text-gray-900 font-medium">
               Already know what you need?
             </span>
             <Link
