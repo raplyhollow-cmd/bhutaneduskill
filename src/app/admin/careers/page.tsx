@@ -61,6 +61,30 @@ type CareerData = {
   educationPath?: string[];
   salaryRange?: string;
 };
+
+// Type for raw API response from getCareers()
+type RawCareerData = {
+  id: string;
+  name: string;
+  slug: string;
+  title?: string;
+  description?: string | null;
+  riasecCode?: string | null;
+  hollandCodes?: Record<string, number> | string[] | null;
+  skills?: string[] | null;
+  educationLevel?: string[] | string | null;
+  subjects?: string[] | string[][] | null;
+  workEnvironment?: string | null;
+  typicalSalary?: string | null;
+  bhutanDemand?: string | null;
+  bhutanSpecific?: boolean;
+  isActive?: boolean;
+  category?: string;
+  industry?: string;
+  demandOutlook?: string;
+  salaryRange?: string;
+  educationPath?: string[];
+};
 import Link from "next/link";
 import {
   getCareers,
@@ -159,17 +183,25 @@ export default function AdminCareersPage() {
     try {
       const data = await getCareers();
       // Transform data to match CareerData type with computed fields
-      const transformedData = data.map((career: any): CareerData => ({
+      const transformedData = data.map((career: RawCareerData): CareerData => ({
         id: career.id,
         name: career.name,
         slug: career.slug,
         title: career.title,
         description: career.description,
         riasecCode: career.riasecCode,
-        hollandCodes: career.hollandCodes,
+        hollandCodes: typeof career.hollandCodes === 'object' && !Array.isArray(career.hollandCodes)
+          ? career.hollandCodes as Record<string, number>
+          : null,
         skills: career.skills,
-        educationLevel: career.educationLevel,
-        subjects: career.subjects,
+        educationLevel: Array.isArray(career.educationLevel)
+          ? career.educationLevel
+          : undefined,
+        subjects: Array.isArray(career.subjects)
+          ? Array.isArray(career.subjects[0])
+            ? (career.subjects as string[][]).flat()
+            : career.subjects as string[]
+          : undefined,
         workEnvironment: career.workEnvironment,
         typicalSalary: career.typicalSalary,
         bhutanDemand: career.bhutanDemand,
@@ -179,7 +211,11 @@ export default function AdminCareersPage() {
           ? career.bhutanDemand
           : "medium",
         salaryRange: career.typicalSalary || undefined,
-        educationPath: career.educationLevel ? [career.educationLevel] : undefined,
+        educationPath: career.educationLevel
+          ? Array.isArray(career.educationLevel)
+            ? career.educationLevel
+            : [career.educationLevel]
+          : undefined,
       }));
       setCareers(transformedData);
       setFilteredCareers(transformedData);

@@ -184,7 +184,10 @@ function getRiskLevel(gnhScore: number): "low" | "medium" | "high" {
 
 /**
  * Determine trend based on score ranges
- * In production, this would compare with historical data
+ * TODO: Compare with historical data for accurate trend calculation
+ * Requires: A gnh_history table with monthly GNH scores by dzongkhag
+ * Schema: { id, dzongkhag, gnhScore, recordedAt }
+ * Formula: Compare currentScore - previousMonthScore
  */
 function getTrend(gnhScore: number): "improving" | "stable" | "declining" {
   if (gnhScore >= 75) return "improving";
@@ -513,22 +516,27 @@ export const GET = createApiRoute(
       ? allInterventions[0]?.category || "Academic Support"
       : "Academic Stress";
 
+    // TODO: Add change calculation from historical data
+    // Requires: Historical snapshots of intervention counts by type
     const interventionSummary: InterventionSummary[] = [
       {
         type: "Counseling Sessions",
         count: counselingSessionCount,
-        change: 12, // In production, calculate from historical comparison
+        // TODO: Calculate from: (currentMonthCount - lastMonthCount) / lastMonthCount * 100
+        change: 12,
         mostCommon: mostCommonIntervention,
       },
       {
         type: "Mental Health Screenings",
         count: Math.round(totalStudents * 0.36), // Estimate based on screening rate
+        // TODO: Replace with actual count from screenings table
         change: 8,
         mostCommon: "Anxiety Assessment",
       },
       {
         type: "Wellness Workshops",
         count: Math.round(dzongkhagMetrics.length * 12),
+        // TODO: Replace with actual count from events/workshops table
         change: 15,
         mostCommon: "Mindfulness & Stress Management",
       },

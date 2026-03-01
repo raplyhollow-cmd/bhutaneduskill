@@ -115,7 +115,8 @@ export default function TeacherStudentsPage() {
           throw new Error(`Failed to fetch data: ${response.statusText}`);
         }
 
-        const data = await response.json();
+        const result = await response.json();
+        const data = result.data || {}; // Access nested data from successResponse
 
         // Process API data to match our interface
         const apiClasses: ClassData[] = (data.studentsByClass || []).map((cls: {

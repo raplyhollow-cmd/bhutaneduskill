@@ -141,6 +141,33 @@ export async function submitHomework(data: {
         })
         .where(eq(homeworkSubmissionsTable.id, existingSubmission[0].id));
 
+      // Broadcast homework submission to teacher
+      if (homework[0].classId) {
+        const { broadcastHomeworkSubmitted } = await import("@/lib/notifications-broadcast");
+        const { users } = await import("@/lib/db/schema");
+        const [student] = await db
+          .select({ firstName: users.firstName, lastName: users.lastName })
+          .from(users)
+          .where(eq(users.id, studentId))
+          .limit(1);
+
+        if (student[0]) {
+          broadcastHomeworkSubmitted(homework[0].classId, {
+            id: existingSubmission[0].id,
+            homeworkId: data.homeworkId,
+            homeworkTitle: homework[0].title || "Homework",
+            studentId,
+            studentName: `${student[0].firstName} ${student[0].lastName || ""}`.trim(),
+            classId: homework[0].classId,
+            submittedAt: now.toISOString(),
+            isLate,
+          }).catch((err) => {
+            // Don't fail the submission if broadcast fails
+            logger.error("Failed to broadcast homework submission", { error: err });
+          });
+        }
+      }
+
       return { success: true, submissionId: existingSubmission[0].id };
     } else {
       // Create new submission
@@ -162,6 +189,33 @@ export async function submitHomework(data: {
           updatedAt: now,
         })
         .returning();
+
+      // Broadcast homework submission to teacher
+      if (homework[0].classId) {
+        const { broadcastHomeworkSubmitted } = await import("@/lib/notifications-broadcast");
+        const { users } = await import("@/lib/db/schema");
+        const [student] = await db
+          .select({ firstName: users.firstName, lastName: users.lastName })
+          .from(users)
+          .where(eq(users.id, studentId))
+          .limit(1);
+
+        if (student[0]) {
+          broadcastHomeworkSubmitted(homework[0].classId, {
+            id: newSubmission.id,
+            homeworkId: data.homeworkId,
+            homeworkTitle: homework[0].title || "Homework",
+            studentId,
+            studentName: `${student[0].firstName} ${student[0].lastName || ""}`.trim(),
+            classId: homework[0].classId,
+            submittedAt: now.toISOString(),
+            isLate,
+          }).catch((err) => {
+            // Don't fail the submission if broadcast fails
+            logger.error("Failed to broadcast homework submission", { error: err });
+          });
+        }
+      }
 
       return { success: true, submissionId: newSubmission.id };
     }
@@ -334,6 +388,30 @@ export async function selfCheckIn(data: {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
+
+    // Broadcast attendance update for live dashboard refresh
+    const { broadcastAttendanceUpdated } = await import("@/lib/notifications-broadcast");
+    const { users } = await import("@/lib/db/schema");
+    const [student] = await db
+      .select({ firstName: users.firstName, lastName: users.lastName })
+      .from(users)
+      .where(eq(users.id, studentId))
+      .limit(1);
+
+    if (student[0] && schoolId) {
+      broadcastAttendanceUpdated(schoolId, {
+        studentId,
+        studentName: `${student[0].firstName} ${student[0].lastName || ""}`.trim(),
+        classId: data.classId,
+        date: today,
+        status: "present",
+        checkInTime,
+        recordedBy: studentId,
+      }).catch((err) => {
+        // Don't fail the check-in if broadcast fails
+        logger.error("Failed to broadcast attendance update", { error: err });
+      });
+    }
 
     return { success: true, checkInTime };
   } catch (error) {

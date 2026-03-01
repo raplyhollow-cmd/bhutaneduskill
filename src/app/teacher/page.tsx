@@ -71,7 +71,8 @@ export default function TeacherDashboardPage() {
       try {
         const response = await fetch("/api/teacher/dashboard");
         if (!response.ok) throw new Error("Failed to fetch dashboard data");
-        const data = await response.json();
+        const result = await response.json();
+        const data = result.data || {}; // Access nested data from successResponse
 
         setStats(data.stats || {
           totalStudents: 0,

@@ -164,8 +164,12 @@ export const GET = createApiRoute(
       ? Math.round((attendanceData[0].presentCount / attendanceData[0].totalRecords) * 100)
       : 90;
 
-    // Calculate trend (compare with baseline - in production, use historical data)
-    const attendanceTrend = nationalAttendance - 91; // Baseline 91%
+    // TODO: Calculate trend from historical data - compare with same period last month
+    // Requires: A historical_attendance table with daily/monthly snapshots
+    // Schema: { id, date, presentCount, totalRecords }
+    // Formula: currentPeriodRate - previousPeriodRate
+    // Current: Using static baseline (91%) as reference
+    const attendanceTrend = nationalAttendance - 91;
 
     // ============================================================================
     // STEP 3: Calculate REAL GNH score from interventions and red flags

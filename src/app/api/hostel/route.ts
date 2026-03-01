@@ -1114,7 +1114,7 @@ export const POST = createApiRoute(
 
     // Action: submit-complaint (Submit hostel complaint)
     if (action === "submit-complaint") {
-      const { category, title, description, hostelId, roomId, location, priority, photoUrls } = body;
+      const { category, title, description, hostelId, roomId, location, priority } = body;
 
       const complaintId = `comp-${Date.now()}-${nanoid(8)}`;
       const [complaint] = await db
@@ -1132,7 +1132,6 @@ export const POST = createApiRoute(
           roomId,
           location,
           priority: priority || "medium",
-          photoUrls,
           status: "open",
           createdAt: new Date(),
           updatedAt: new Date(),

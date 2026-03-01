@@ -5,7 +5,7 @@ import { eq, and } from "drizzle-orm";
 import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, errorResponse } from "@/lib/api/response-helpers";
 import { logger } from "@/lib/logger";
-import { gradeHomework } from "@/lib/auto-grading";
+import { gradeHomework, type Question } from "@/lib/auto-grading";
 import { requirePermission } from "@/lib/rbac";
 import type { HomeworkQuestionWithAnswer, StudentHomeworkData, DraftAnswer, HomeworkContent } from "@/types";
 
@@ -16,7 +16,7 @@ interface GradableQuestion {
   id: string;
   type: string;
   question: string;
-  options: unknown[];
+  options?: unknown[] | string[];
   correctAnswer: unknown;
   points: number;
   tolerance?: number;
@@ -214,8 +214,21 @@ export const POST = createApiRoute(
           }));
 
         if (gradableQuestions.length > 0) {
+          // Convert GradableQuestion[] to Question[] for gradeHomework
+          const questionsForGrading: Question[] = gradableQuestions.map(q => ({
+            id: q.id,
+            type: q.type as Question["type"],
+            question: q.question,
+            options: q.options as string[] | undefined,
+            correctAnswer: q.correctAnswer as string | string[] | number,
+            points: q.points,
+            tolerance: q.tolerance,
+            keywords: q.keywords,
+            explanation: q.explanation,
+          }));
+
           gradingResult = gradeHomework(
-            gradableQuestions as any[],
+            questionsForGrading,
             answers || [],
             integrityMetadata
           ) as GradingResult;

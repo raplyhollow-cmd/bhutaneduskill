@@ -24,7 +24,7 @@ import {
 import { eq, and, desc } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { nanoid } from "nanoid";
-import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, errorResponse, badRequestResponse } from "@/lib/api/response-helpers";
 
 // ============================================================================
@@ -332,8 +332,8 @@ async function generateMBTICareerMatches(
  * Fetches all assessments for the current student
  */
 export const GET = createApiRoute(
-  async (request: NextRequest) => {
-    const auth = getAuth(request);
+  async (request: NextRequest, auth) => {
+    // Auth is provided by createApiRoute wrapper
     if (!auth) {
       return errorResponse("Unauthorized", 401);
     }
@@ -421,18 +421,28 @@ export const GET = createApiRoute(
  * For completed assessments, generates career matches.
  */
 export const POST = createApiRoute(
-  async (request: NextRequest) => {
-    const auth = getAuth(request);
+  async (request: NextRequest, auth) => {
+    // Auth is provided by createApiRoute wrapper
     if (!auth) {
       return errorResponse("Unauthorized", 401);
     }
 
     const { userId } = auth;
 
+    // Declare variables outside try block for error handling
+    let assessmentType: AssessmentType | undefined;
+    let isComplete = false;
+    let hasResults = false;
+
     try {
       const body = (await request.json()) as SaveAssessmentRequest;
 
       const { type, answers, results, timeSpent, completedAt } = body;
+
+      // Store for error handling
+      assessmentType = type;
+      isComplete = !!completedAt || !!results;
+      hasResults = !!results;
 
       // Validate request
       if (!type) {
@@ -442,9 +452,6 @@ export const POST = createApiRoute(
       if (!answers || Object.keys(answers).length === 0) {
         return badRequestResponse("Assessment answers are required");
       }
-
-      // Check if assessment is being completed
-      const isComplete = !!completedAt || !!results;
 
       // Generate assessment ID
       const assessmentId = `assessment_${nanoid(12)}`;
@@ -459,27 +466,55 @@ export const POST = createApiRoute(
         aptitude: "General Aptitude Test",
       };
 
-      // Create the assessment record
-      const [newAssessment] = await db
-        .insert(assessments)
-        .values({
-          id: assessmentId,
+      // Create the assessment record with detailed error handling
+      let newAssessment;
+      try {
+        // Insert without .returning() for neon-http compatibility
+        await db
+          .insert(assessments)
+          .values({
+            id: assessmentId,
+            userId,
+            type,
+            title: titles[type] || `${type.toUpperCase()} Assessment`,
+            description: `Assessment completed on ${now.toLocaleDateString()}`,
+            dueDate: now.toISOString(),
+            totalPoints: 100,
+            passingScore: 60,
+            status: isComplete ? "completed" : "in_progress",
+            startedAt: now,
+            completedAt: completedAt ? new Date(completedAt) : isComplete ? now : null,
+            results: isComplete ? [] : null,
+            isActive: true,
+            createdAt: now,
+            updatedAt: now,
+          });
+
+        // Fetch the created assessment using select (more reliable than .returning() with neon-http)
+        const [createdAssessment] = await db
+          .select()
+          .from(assessments)
+          .where(eq(assessments.id, assessmentId))
+          .limit(1);
+
+        if (!createdAssessment) {
+          throw new Error("Failed to create assessment record");
+        }
+
+        newAssessment = createdAssessment;
+      } catch (dbError: unknown) {
+        const errorDetails = {
+          operation: "insert_assessment",
+          assessmentId,
           userId,
           type,
-          title: titles[type] || `${type.toUpperCase()} Assessment`,
-          description: `Assessment completed on ${now.toLocaleDateString()}`,
-          dueDate: now.toISOString(),
-          totalPoints: 100,
-          passingScore: 60,
-          status: isComplete ? "completed" : "in_progress",
-          startedAt: now,
-          completedAt: completedAt ? new Date(completedAt) : isComplete ? now : null,
-          results: isComplete ? [] : null,
-          isActive: true,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .returning();
+          errorMessage: dbError instanceof Error ? dbError.message : String(dbError),
+          errorName: dbError instanceof Error ? dbError.name : "Unknown",
+        };
+        logger.error("Failed to insert assessment record", errorDetails);
+        console.error("[Assessment Insert Error]", JSON.stringify(errorDetails, null, 2));
+        throw new Error(`Failed to insert assessment: ${errorDetails.errorMessage}`);
+      }
 
       // If assessment is complete, save type-specific results and generate career matches
       let careerMatchesData: CareerMatchData[] = [];
@@ -501,18 +536,32 @@ export const POST = createApiRoute(
                 conventional: scores.conventional || scores.C || 0,
               };
 
-              await db.insert(riasecResults).values({
-                id: riasecId,
-                userId,
-                assessmentId,
-                hollandCode,
-                scores: riasecScores,
-                primaryHollandCode: hollandCode[0] || "R",
-                secondaryHollandCode: hollandCode[1] || "I",
-                recommendedCareers: [],
-                completedAt: now,
-                createdAt: now,
-              });
+              try {
+                await db.insert(riasecResults).values({
+                  id: riasecId,
+                  userId,
+                  assessmentId,
+                  hollandCode,
+                  scores: riasecScores,
+                  primaryHollandCode: hollandCode[0] || "R",
+                  secondaryHollandCode: hollandCode[1] || "I",
+                  recommendedCareers: [],
+                  completedAt: now,
+                  createdAt: now,
+                });
+              } catch (dbError: unknown) {
+                const errorDetails = {
+                  operation: "insert_riasec_results",
+                  riasecId,
+                  userId,
+                  assessmentId,
+                  errorMessage: dbError instanceof Error ? dbError.message : String(dbError),
+                  errorName: dbError instanceof Error ? dbError.name : "Unknown",
+                };
+                logger.error("Failed to insert RIASEC results", errorDetails);
+                console.error("[RIASEC Insert Error]", JSON.stringify(errorDetails, null, 2));
+                throw new Error(`Failed to insert RIASEC results: ${errorDetails.errorMessage}`);
+              }
 
               careerMatchesData = await generateRIASECCareerMatches(
                 userId,
@@ -614,7 +663,21 @@ export const POST = createApiRoute(
             createdAt: now,
           }));
 
-          await db.insert(careerMatches).values(careerMatchRecords);
+          try {
+            await db.insert(careerMatches).values(careerMatchRecords);
+          } catch (dbError: unknown) {
+            const errorDetails = {
+              operation: "insert_career_matches",
+              count: careerMatchRecords.length,
+              userId,
+              assessmentId,
+              errorMessage: dbError instanceof Error ? dbError.message : String(dbError),
+              errorName: dbError instanceof Error ? dbError.name : "Unknown",
+            };
+            logger.error("Failed to insert career matches", errorDetails);
+            console.error("[Career Matches Insert Error]", JSON.stringify(errorDetails, null, 2));
+            // Don't throw - career matches are optional
+          }
         }
       }
 
@@ -638,7 +701,20 @@ export const POST = createApiRoute(
         careerMatches: careerMatchesData,
       });
     } catch (error) {
-      logger.apiError(error, { route: "/api/student/assessments", method: "POST" });
+      // Enhanced error logging with actual error details
+      const errorDetails = {
+        route: "/api/student/assessments",
+        method: "POST",
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorName: error instanceof Error ? error.name : "Unknown",
+        errorStack: error instanceof Error ? error.stack : undefined,
+        requestBody: { type: assessmentType, isComplete, hasResults },
+      };
+      logger.apiError(error, errorDetails);
+
+      // Log more details for debugging
+      console.error("[Assessment Save Error Details]", JSON.stringify(errorDetails, null, 2));
+
       return errorResponse("Failed to save assessment", 500);
     }
   },

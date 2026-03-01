@@ -312,28 +312,34 @@ export async function chatWithCareerCoachFromServer(
       systemInstruction: CAREER_COACH_SYSTEM,
     } as ModelOptions);
 
-    // Build the prompt with context
-    const contextStr = buildCareerCoachContext(context);
-    const fullPrompt = `${userMessage}${contextStr}
+    // Build the complete prompt with conversation history
+    // We need to format the conversation properly for Gemini to understand
+    let fullPrompt = "";
 
-Please provide a helpful, encouraging response. If appropriate, include 2-3 follow-up suggestions at the end.`;
-
-    let result;
-
-    // If there's conversation history, use startChat with history
     if (conversationHistory && conversationHistory.length > 0) {
-      const chat = model.startChat({
-        history: conversationHistory.map((msg) => ({
-          role: msg.role === "assistant" ? "model" : "user",
-          parts: [{ text: msg.content }],
-        })),
-      });
-      result = await chat.sendMessage(fullPrompt);
+      // Format conversation for the prompt
+      const formattedHistory = conversationHistory.map((msg, index) => {
+        const roleLabel = msg.role === "assistant" ? "Career Coach" : "You";
+        return `${roleLabel}: ${msg.content}`;
+      }).join("\n\n");
+
+      fullPrompt = `PREVIOUS CONVERSATION:\n\n${formattedHistory}\n\nCURRENT MESSAGE:\nYou: ${userMessage}`;
     } else {
-      // For first message, use generateContent directly
-      result = await model.generateContent(fullPrompt);
+      // First message
+      fullPrompt = userMessage;
     }
 
+    // Add context information
+    const contextStr = buildCareerCoachContext(context);
+    fullPrompt = `${fullPrompt}${contextStr}`;
+
+    // Add instruction at the end
+    fullPrompt += `
+
+Please provide a helpful, encouraging response that directly addresses their question. If appropriate, include 2-3 follow-up suggestions at the end. Vary your responses - don't be repetitive.`;
+
+    // Always use generateContent for consistent context handling
+    const result = await model.generateContent(fullPrompt);
     const response = await result.response;
     const aiMessage = response.text();
 

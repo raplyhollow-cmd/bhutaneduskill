@@ -66,7 +66,8 @@ export default function TeacherSchedulePage() {
 
         const response = await fetch("/api/teacher/schedule");
         if (response.ok) {
-          const data = await response.json();
+          const result = await response.json();
+          const data = result.data || {}; // Access nested data from successResponse
           setSchedule(data.schedule || []);
         } else {
           logger.error("Failed to fetch schedule", { status: response.status });

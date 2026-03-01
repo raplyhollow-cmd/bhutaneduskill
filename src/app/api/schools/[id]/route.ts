@@ -63,6 +63,9 @@ export const PUT = createApiRoute<{ id: string }>(
 
     const body = await request.json();
 
+    // Log the incoming request body for debugging
+    console.log("[PUT /api/schools/[id]] Request body:", JSON.stringify(body, null, 2));
+
     // Only update fields that exist in the schools schema
     const updateData: Record<string, unknown> = {};
     if (body.name !== undefined) updateData.name = body.name;
@@ -79,13 +82,21 @@ export const PUT = createApiRoute<{ id: string }>(
     // Add updatedAt timestamp
     updateData.updatedAt = new Date();
 
+    console.log("[PUT /api/schools/[id]] Update data:", JSON.stringify(updateData, null, 2));
     logger.info("Updating school", { route: "/api/schools/[id]", id, updateData });
 
-    const [updatedSchool] = await db
+    // Update without .returning() for neon-http compatibility
+    await db
       .update(schools)
       .set(updateData)
+      .where(eq(schools.id, id));
+
+    // Fetch the updated school using select
+    const [updatedSchool] = await db
+      .select()
+      .from(schools)
       .where(eq(schools.id, id))
-      .returning();
+      .limit(1);
 
     if (!updatedSchool) {
       return notFoundResponse("School");

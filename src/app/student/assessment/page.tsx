@@ -3,8 +3,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowRight, Brain, Target, Compass, Lightbulb, GraduationCap, Briefcase, Sparkles } from "lucide-react";
+import { ArrowRight, Brain, Target, Compass, Lightbulb, GraduationCap, Briefcase, Sparkles, CheckCircle2, Loader2 } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 const ASSESSMENT_CATEGORIES = [
   {
@@ -21,6 +22,7 @@ const ASSESSMENT_CATEGORIES = [
         duration: "15 min",
         questions: 16,
         badge: "Popular",
+        resultType: "mbti",
       },
       {
         slug: "disc",
@@ -29,6 +31,7 @@ const ASSESSMENT_CATEGORIES = [
         duration: "10 min",
         questions: 8,
         badge: null,
+        resultType: "disc",
       },
     ],
   },
@@ -46,6 +49,7 @@ const ASSESSMENT_CATEGORIES = [
         duration: "10 min",
         questions: 18,
         badge: "Recommended",
+        resultType: "riasec",
       },
       {
         slug: "spark-lite",
@@ -54,6 +58,7 @@ const ASSESSMENT_CATEGORIES = [
         duration: "8 min",
         questions: 18,
         badge: "Grade 8",
+        resultType: null, // Not implemented yet
       },
       {
         slug: "spark-basic",
@@ -62,6 +67,7 @@ const ASSESSMENT_CATEGORIES = [
         duration: "12 min",
         questions: 24,
         badge: "Grade 9-10",
+        resultType: null, // Not implemented yet
       },
       {
         slug: "spark-advanced",
@@ -70,6 +76,7 @@ const ASSESSMENT_CATEGORIES = [
         duration: "12 min",
         questions: 24,
         badge: "Grade 11-12",
+        resultType: null, // Not implemented yet
       },
     ],
   },
@@ -87,6 +94,7 @@ const ASSESSMENT_CATEGORIES = [
         duration: "10 min",
         questions: 18,
         badge: null,
+        resultType: "work-values",
       },
     ],
   },
@@ -104,12 +112,63 @@ const ASSESSMENT_CATEGORIES = [
         duration: "8 min",
         questions: 12,
         badge: null,
+        resultType: "learning-styles",
       },
     ],
   },
 ];
 
+interface CompletedAssessments {
+  mbti: boolean;
+  riasec: boolean;
+  disc: boolean;
+  workValues: boolean;
+  learningStyles: boolean;
+}
+
 export default function AssessmentCatalogPage() {
+  const [completedAssessments, setCompletedAssessments] = useState<CompletedAssessments>({
+    mbti: false,
+    riasec: false,
+    disc: false,
+    workValues: false,
+    learningStyles: false,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchCompletedAssessments() {
+      try {
+        // Fetch all assessment results
+        const [mbtiRes, riasecRes, discRes, workValuesRes, learningStylesRes] = await Promise.allSettled([
+          fetch("/api/assessments/mbti").then(r => r.json()).catch(() => ({ results: [] })),
+          fetch("/api/assessments/riasec").then(r => r.json()).catch(() => ({ results: [] })),
+          fetch("/api/assessments/disc").then(r => r.json()).catch(() => ({ results: [] })),
+          fetch("/api/assessments/work-values").then(r => r.json()).catch(() => ({ results: [] })),
+          fetch("/api/assessments/learning-styles").then(r => r.json()).catch(() => ({ results: [] })),
+        ]);
+
+        setCompletedAssessments({
+          mbti: mbtiRes.status === "fulfilled" && mbtiRes.value.results?.length > 0,
+          riasec: riasecRes.status === "fulfilled" && riasecRes.value.results?.length > 0,
+          disc: discRes.status === "fulfilled" && discRes.value.results?.length > 0,
+          workValues: workValuesRes.status === "fulfilled" && workValuesRes.value.results?.length > 0,
+          learningStyles: learningStylesRes.status === "fulfilled" && learningStylesRes.value.results?.length > 0,
+        });
+      } catch (error) {
+        console.error("Failed to fetch completed assessments:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchCompletedAssessments();
+  }, []);
+
+  // Count completed assessments
+  const completedCount = Object.values(completedAssessments).filter(Boolean).length;
+  const totalCount = 5; // Total implemented assessments
+
   return (
     <div className="max-w-6xl mx-auto space-y-8">
       {/* Header */}
@@ -121,6 +180,38 @@ export default function AssessmentCatalogPage() {
           Discover your strengths, interests, and values to find the perfect career path
         </p>
       </div>
+
+      {/* Progress Card */}
+      <Card className="bg-gradient-to-r from-orange-500 to-amber-500 text-white border-0">
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center">
+                {isLoading ? (
+                  <Loader2 className="w-8 h-8 animate-spin" />
+                ) : (
+                  <span className="text-2xl font-bold">{completedCount}/{totalCount}</span>
+                )}
+              </div>
+              <div>
+                <h2 className="text-xl font-bold">
+                  {isLoading ? "Loading your progress..." : completedCount === totalCount ? "All assessments completed!" : `${totalCount - completedCount} assessment${totalCount - completedCount > 1 ? "s" : ""} remaining`}
+                </h2>
+                <p className="text-orange-100">
+                  {isLoading ? "" : completedCount === 0
+                    ? "Start your first assessment to discover your career potential"
+                    : completedCount === totalCount
+                      ? "Great job! You've completed all career assessments."
+                      : "Keep going! The more assessments you complete, the better your career matches."}
+                </p>
+              </div>
+            </div>
+            {!isLoading && completedCount > 0 && (
+              <Sparkles className="w-12 h-12 text-orange-200" />
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Hero Card */}
       <Card className="bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0">
@@ -150,41 +241,74 @@ export default function AssessmentCatalogPage() {
           </div>
 
           <div className="grid md:grid-cols-2 gap-4">
-            {category.assessments.map((assessment) => (
-              <Card key={assessment.slug} className="hover:shadow-md transition-shadow">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-lg">{assessment.name}</CardTitle>
-                      <CardDescription className="mt-1">
-                        {assessment.description}
-                      </CardDescription>
+            {category.assessments.map((assessment) => {
+              const isCompleted = assessment.resultType && completedAssessments[assessment.resultType];
+              const isImplemented = assessment.resultType !== null;
+
+              return (
+                <Card
+                  key={assessment.slug}
+                  className={`hover:shadow-md transition-shadow ${isCompleted ? "border-green-300 bg-green-50/50" : ""}`}
+                >
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          {assessment.name}
+                          {isCompleted && (
+                            <CheckCircle2 className="w-5 h-5 text-green-600" />
+                          )}
+                        </CardTitle>
+                        <CardDescription className="mt-1">
+                          {assessment.description}
+                        </CardDescription>
+                      </div>
+                      <div className="flex gap-2">
+                        {assessment.badge && (
+                          <Badge variant="secondary">{assessment.badge}</Badge>
+                        )}
+                        {isCompleted && (
+                          <Badge className="bg-green-600 text-white">Completed</Badge>
+                        )}
+                      </div>
                     </div>
-                    {assessment.badge && (
-                      <Badge variant="secondary">{assessment.badge}</Badge>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4 text-sm text-gray-500">
-                      <span className="flex items-center gap-1">
-                        <GraduationCap className="w-4 h-4" />
-                        {assessment.questions} questions
-                      </span>
-                      <span>•</span>
-                      <span>{assessment.duration}</span>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4 text-sm text-gray-500">
+                        <span className="flex items-center gap-1">
+                          <GraduationCap className="w-4 h-4" />
+                          {assessment.questions} questions
+                        </span>
+                        <span>•</span>
+                        <span>{assessment.duration}</span>
+                      </div>
+                      {isImplemented ? (
+                        isCompleted ? (
+                          <Button size="sm" variant="outline" asChild>
+                            <Link href={`/student/assessment/${assessment.slug}`}>
+                              View Results
+                              <ArrowRight className="w-4 h-4 ml-1" />
+                            </Link>
+                          </Button>
+                        ) : (
+                          <Button size="sm" asChild>
+                            <Link href={`/student/assessment/${assessment.slug}`}>
+                              Start
+                              <ArrowRight className="w-4 h-4 ml-1" />
+                            </Link>
+                          </Button>
+                        )
+                      ) : (
+                        <Button size="sm" variant="outline" disabled>
+                          Coming Soon
+                        </Button>
+                      )}
                     </div>
-                    <Button size="sm" asChild>
-                      <Link href={`/student/assessment/${assessment.slug}`}>
-                        Start
-                        <ArrowRight className="w-4 h-4 ml-1" />
-                      </Link>
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </div>
       ))}

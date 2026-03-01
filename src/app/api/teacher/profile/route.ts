@@ -5,18 +5,18 @@ import { users, teachers, classes, subjects, departments, schools, classSubjects
 import { eq, and, inArray } from "drizzle-orm";
 import { parseJsonArray } from "@/lib/db/json-helpers";
 import { createApiRoute } from "@/lib/api/route-handler";
-import { requirePermission } from "@/lib/rbac";
+import type { AuthContext } from "@/lib/api/route-handler";
 
 /**
  * GET /api/teacher/profile - Fetch teacher profile
  */
 export const GET = createApiRoute(
-  async (request, auth) => {
-    const { userId, user } = auth;
+  async (request: NextRequest, auth: AuthContext | null) => {
+    if (!auth) {
+      return Response.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
 
-    // Check profile.read permission
-    const permCheck = await requirePermission(userId, "profile.read");
-    if (permCheck) return permCheck;
+    const { userId, user } = auth;
 
     const { searchParams } = new URL(request.url);
     const includeStats = searchParams.get("includeStats") !== "false"; // default true
@@ -280,12 +280,12 @@ export const GET = createApiRoute(
  * PATCH /api/teacher/profile - Update teacher profile
  */
 export const PATCH = createApiRoute(
-  async (request, auth) => {
-    const { userId, user } = auth;
+  async (request: NextRequest, auth: AuthContext | null) => {
+    if (!auth) {
+      return Response.json({ success: false, error: "Unauthorized" }, { status: 401 });
+    }
 
-    // Check profile.update permission
-    const permCheck = await requirePermission(userId, "profile.update");
-    if (permCheck) return permCheck;
+    const { userId, user } = auth;
 
     const body = await request.json();
 

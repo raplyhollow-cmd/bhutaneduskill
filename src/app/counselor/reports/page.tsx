@@ -172,7 +172,7 @@ interface RecentReport {
   status?: string;
   fileSize?: string;
   url?: string;
-  data?: any;
+  data?: Record<string, unknown>;
 }
 
 export default function CounselorReportsPage() {

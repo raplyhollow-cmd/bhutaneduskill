@@ -23,6 +23,12 @@ interface StudentContextData {
     date: Date | null;
     outcome: string | null;
   }>;
+  journalSummary: {
+    totalEntries: number;
+    recentMood: string | null;
+    recentTopics: string[];
+    lastEntryDate: string | null;
+  };
 }
 
 // GET /api/counselor/student-context - Get student context for intervention
@@ -37,7 +43,7 @@ export const GET = createApiRoute(
       return { error: "Student ID is required", status: 400 } satisfies ApiErrorResponse;
     }
 
-    // Get student details
+    // Get student details including settings (for journal data)
     const studentRecords = await db
       .select({
         id: students.id,
@@ -47,6 +53,7 @@ export const GET = createApiRoute(
         currentClass: students.currentClass,
         section: students.section,
         schoolId: students.schoolId,
+        settings: users.settings,
       })
       .from(students)
       .innerJoin(users, eq(students.userId, users.id))
@@ -77,6 +84,26 @@ export const GET = createApiRoute(
 
     logger.info("Student context retrieved", { studentId });
 
+    // Extract journal data from settings
+    const settings = (student.settings as Record<string, unknown>) || {};
+    const journalEntries = (settings.journalEntries as Array<{
+      date: string;
+      mood?: string;
+      tags?: string[];
+      title?: string;
+    }>) || [];
+
+    // Build journal summary
+    const sortedEntries = [...journalEntries].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+    const recentEntry = sortedEntries[0];
+    const recentTopics = sortedEntries
+      .slice(0, 5)
+      .flatMap((e) => e.tags || [])
+      .filter((tag, i, arr) => arr.indexOf(tag) === i)
+      .slice(0, 5);
+
     const data: StudentContextData = {
       id: student.id,
       name: student.name,
@@ -94,6 +121,12 @@ export const GET = createApiRoute(
         date: i.startDate,
         outcome: i.outcome,
       })),
+      journalSummary: {
+        totalEntries: journalEntries.length,
+        recentMood: recentEntry?.mood || null,
+        recentTopics,
+        lastEntryDate: recentEntry?.date || null,
+      },
     };
 
     return { data } satisfies ApiSuccess<StudentContextData>;

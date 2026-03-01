@@ -36,7 +36,7 @@ export function createApiRoute<
   ): Promise<NextResponse> => {
     try {
       // Authentication check - skip if allowedRoles is empty (open endpoint)
-      let result: any;
+      let result: NextResponse | Response | Record<string, unknown>;
 
       if (allowedRoles.length > 0) {
         // Protected endpoint - require auth

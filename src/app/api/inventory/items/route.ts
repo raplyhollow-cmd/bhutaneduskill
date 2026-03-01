@@ -175,7 +175,6 @@ export const GET = createApiRoute(
         lastMaintenanceDate: inventoryItems.lastMaintenanceDate,
         nextMaintenanceDate: inventoryItems.nextMaintenanceDate,
         warrantyExpiry: inventoryItems.warrantyExpiry,
-        photoUrls: inventoryItems.photoUrls,
         notes: inventoryItems.notes,
         createdAt: inventoryItems.createdAt,
         updatedAt: inventoryItems.updatedAt,
@@ -265,7 +264,6 @@ interface CreateItemInput {
   lastMaintenanceDate?: string;
   nextMaintenanceDate?: string;
   warrantyExpiry?: string;
-  photoUrls?: string[];
   notes?: string;
 }
 
@@ -345,7 +343,6 @@ export const POST = createApiRoute(
         lastMaintenanceDate: data.lastMaintenanceDate || null,
         nextMaintenanceDate: data.nextMaintenanceDate || null,
         warrantyExpiry: data.warrantyExpiry || null,
-        photoUrls: data.photoUrls || null,
         notes: data.notes || null,
         createdAt: now,
         updatedAt: now,
@@ -434,7 +431,6 @@ export const PATCH = createApiRoute(
       "lastMaintenanceDate",
       "nextMaintenanceDate",
       "warrantyExpiry",
-      "photoUrls",
       "notes",
     ];
 

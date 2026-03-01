@@ -159,7 +159,7 @@ export function AdminLayoutClient({ children, userName, portalType }: AdminLayou
     };
 
     checkAuth();
-  }, [router, pathname]);
+  }, [pathname]);
 
   // Portal-specific color for loading spinner
   const portalColor = portal.admin.primary;

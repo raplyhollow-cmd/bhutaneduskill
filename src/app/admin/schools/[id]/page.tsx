@@ -12,7 +12,7 @@
 
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { PremiumCard } from "@/components/admin/premium-card";
 import { PageWrapper } from "@/components/admin/page-wrapper";
@@ -20,6 +20,7 @@ import { LiveBadge } from "@/components/admin/live-badge";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AddSchoolSlideIn } from "@/components/admin/add-school-slide-in";
 import {
   ArrowLeft,
   Edit,
@@ -97,12 +98,14 @@ interface SchoolDetail {
 export default function SchoolDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const schoolId = params.id as string;
 
   const [school, setSchool] = useState<SchoolDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isApproveModalOpen, setIsApproveModalOpen] = useState(false);
+  const [isEditSlideInOpen, setIsEditSlideInOpen] = useState(false);
 
   useEffect(() => {
     async function fetchSchoolDetail() {
@@ -116,8 +119,8 @@ export default function SchoolDetailPage() {
           }
           return;
         }
-        const data = await res.json();
-        setSchool(data);
+        const jsonData = await res.json();
+        setSchool(jsonData.data || jsonData);
       } catch (err) {
         setError("Failed to load school details");
         console.error(err);
@@ -130,6 +133,16 @@ export default function SchoolDetailPage() {
       fetchSchoolDetail();
     }
   }, [schoolId]);
+
+  // Handle ?action=edit query parameter
+  useEffect(() => {
+    const action = searchParams.get("action");
+    if (action === "edit" && school && !isLoading) {
+      setIsEditSlideInOpen(true);
+      // Clear the query param without triggering a navigation
+      router.replace(`/admin/schools/${schoolId}`, { scroll: false });
+    }
+  }, [searchParams, school, isLoading, schoolId, router]);
 
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this school? This action cannot be undone.")) {
@@ -165,8 +178,8 @@ export default function SchoolDetailPage() {
         // Refresh school data
         const res2 = await fetch(`/api/admin/schools/${schoolId}`);
         if (res2.ok) {
-          const data = await res2.json();
-          setSchool(data);
+          const jsonData = await res2.json();
+          setSchool(jsonData.data || jsonData);
         }
         setIsApproveModalOpen(false);
       } else {
@@ -189,8 +202,8 @@ export default function SchoolDetailPage() {
       if (res.ok) {
         const res2 = await fetch(`/api/admin/schools/${schoolId}`);
         if (res2.ok) {
-          const data = await res2.json();
-          setSchool(data);
+          const jsonData = await res2.json();
+          setSchool(jsonData.data || jsonData);
         }
       } else {
         const data = await res.json();
@@ -210,8 +223,8 @@ export default function SchoolDetailPage() {
       if (res.ok) {
         const res2 = await fetch(`/api/admin/schools/${schoolId}`);
         if (res2.ok) {
-          const data = await res2.json();
-          setSchool(data);
+          const jsonData = await res2.json();
+          setSchool(jsonData.data || jsonData);
         }
       } else {
         const data = await res.json();
@@ -386,7 +399,7 @@ export default function SchoolDetailPage() {
           )}
           <Button
             variant="outline"
-            onClick={() => router.push(`/admin/schools/${schoolId}?action=edit`)}
+            onClick={() => setIsEditSlideInOpen(true)}
             className="transition-all duration-150"
           >
             <Edit className="w-4 h-4 mr-2" />
@@ -586,7 +599,7 @@ export default function SchoolDetailPage() {
             // Refresh school data
             fetch(`/api/admin/schools/${schoolId}`)
               .then(res => res.json())
-              .then(data => setSchool(data));
+              .then(jsonData => setSchool(jsonData.data || jsonData));
           }} />
         </TabsContent>
 
@@ -676,6 +689,33 @@ export default function SchoolDetailPage() {
           city: school.city,
           maxStudents: school.maxStudents,
         } as SchoolDetailForModal : null}
+      />
+
+      {/* Edit School Slide-In */}
+      <AddSchoolSlideIn
+        isOpen={isEditSlideInOpen}
+        onClose={() => setIsEditSlideInOpen(false)}
+        onSuccess={() => {
+          setIsEditSlideInOpen(false);
+          // Refresh school data
+          fetch(`/api/admin/schools/${schoolId}`)
+            .then(res => res.json())
+            .then(jsonData => setSchool(jsonData.data || jsonData));
+        }}
+        school={school ? {
+          id: school.id,
+          name: school.name,
+          code: school.code,
+          schoolType: school.schoolType,
+          level: school.level,
+          contactEmail: school.contactEmail,
+          contactPhone: school.contactPhone,
+          address: school.address,
+          city: school.city,
+          isActive: school.isActive,
+          subscriptionTier: school.subscriptionTier,
+          maxStudents: school.maxStudents,
+        } : undefined}
       />
     </PageWrapper>
   );

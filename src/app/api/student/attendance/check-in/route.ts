@@ -207,6 +207,24 @@ export const POST = createApiRoute(
       })
       .returning();
 
+    // Broadcast attendance update for live dashboard refresh
+    if (user.schoolId && targetClassId) {
+      const { broadcastAttendanceUpdated } = await import("@/lib/notifications-broadcast");
+      const studentName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Student";
+      broadcastAttendanceUpdated(user.schoolId, {
+        studentId: userId,
+        studentName,
+        classId: targetClassId,
+        date: today,
+        status,
+        checkInTime: currentTime,
+        recordedBy: userId,
+      }).catch((err) => {
+        // Don't fail the request if broadcast fails
+        logger.error("Failed to broadcast attendance update", { error: err });
+      });
+    }
+
     return NextResponse.json({
       data: {
         attendance: {

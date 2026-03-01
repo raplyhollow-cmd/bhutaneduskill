@@ -293,6 +293,9 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
   // But NOT classes, homework, attendance, results (school-specific data)
   if (isPendingEnrollment) {
     // Get assessments (available to all students)
+    // Only count career assessments (5 types: riasec, mbti, disc, work_values, learning-styles)
+    const CAREER_ASSESSMENT_TYPES = ["riasec", "mbti", "disc", "work_values", "learning-styles"] as const;
+
     const studentAssessments = await db
       .select()
       .from(assessments)
@@ -300,7 +303,11 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
       .orderBy(desc(assessments.createdAt))
       .limit(20);
 
-    const completedAssessments = studentAssessments.filter((a) => a.status === "completed");
+    // Filter for career assessments only
+    const careerAssessments = studentAssessments.filter(a =>
+      CAREER_ASSESSMENT_TYPES.includes(a.type as typeof CAREER_ASSESSMENT_TYPES[number])
+    );
+    const completedAssessments = careerAssessments.filter((a) => a.status === "completed");
     const latestAssessment = completedAssessments[0] || null;
 
     // Get career matches
@@ -345,7 +352,7 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
       homework: { pending: 0, submitted: 0, graded: 0, total: 0 },
       assessments: {
         completed: completedAssessments.length,
-        total: studentAssessments.length,
+        total: CAREER_ASSESSMENT_TYPES.length, // Always 5 for career assessments
         latestResult: latestAssessment ? {
           type: (latestAssessment as AssessmentWithExtras).type,
           completedAt: latestAssessment.completedAt ? new Date(latestAssessment.completedAt).toISOString() : null,
@@ -496,6 +503,9 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
   }
 
   // 3. Get assessment summary
+  // Only count career assessments (5 types: riasec, mbti, disc, work_values, learning-styles)
+  const CAREER_ASSESSMENT_TYPES = ["riasec", "mbti", "disc", "work_values", "learning-styles"] as const;
+
   const studentAssessments = await db
     .select()
     .from(assessments)
@@ -503,7 +513,11 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
     .orderBy(desc(assessments.createdAt))
     .limit(20);
 
-  const completedAssessments = studentAssessments.filter(a => a.status === "completed");
+  // Filter for career assessments only
+  const careerAssessments = studentAssessments.filter(a =>
+    CAREER_ASSESSMENT_TYPES.includes(a.type as typeof CAREER_ASSESSMENT_TYPES[number])
+  );
+  const completedAssessments = careerAssessments.filter(a => a.status === "completed");
   const latestAssessment = completedAssessments[0] || null;
 
   // Get RIASEC result for career matching
@@ -522,7 +536,7 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
   const assessmentWithExtras = latestAssessment as AssessmentWithExtras | null;
   const assessmentSummary: AssessmentSummary = {
     completed: completedAssessments.length,
-    total: studentAssessments.length,
+    total: CAREER_ASSESSMENT_TYPES.length, // Always 5 for career assessments
     latestResult: latestAssessment ? {
       type: assessmentWithExtras!.type,
       completedAt: latestAssessment.completedAt ? new Date(latestAssessment.completedAt).toISOString() : null,

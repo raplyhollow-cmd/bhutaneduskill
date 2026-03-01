@@ -314,13 +314,41 @@ export async function POST(request: NextRequest) {
 
     if (data.academicDetails) {
       const updateData: Record<string, number | string> = {};
-      if (data.academicDetails.grade) {
-        updateData.classGrade = parseInt(data.academicDetails.grade);
-        updateData.grade = parseInt(data.academicDetails.grade);
+
+      // Handle new classId-based selection
+      if (data.academicDetails.selectedClassId) {
+        const { classes } = await import("@/lib/db/schema");
+
+        // Fetch class details to get grade and section
+        const classRecords = await db
+          .select({
+            id: classes.id,
+            grade: classes.grade,
+            section: classes.section,
+            name: classes.name,
+          })
+          .from(classes)
+          .where(eq(classes.id, data.academicDetails.selectedClassId as string))
+          .limit(1);
+
+        if (classRecords.length > 0) {
+          const classRecord = classRecords[0];
+          updateData.classGrade = classRecord.grade;
+          updateData.grade = classRecord.grade;
+          updateData.section = classRecord.section;
+          updateData.classId = classRecord.id;
+        }
+      } else {
+        // Fallback to legacy grade/section if provided
+        if (data.academicDetails.grade) {
+          updateData.classGrade = parseInt(data.academicDetails.grade);
+          updateData.grade = parseInt(data.academicDetails.grade);
+        }
+        if (data.academicDetails.section) {
+          updateData.section = data.academicDetails.section;
+        }
       }
-      if (data.academicDetails.section) {
-        updateData.section = data.academicDetails.section;
-      }
+
       if (Object.keys(updateData).length > 0) {
         await db
           .update(users)
@@ -425,6 +453,7 @@ export async function POST(request: NextRequest) {
             status: "pending",
             requestedGrade: dbUser.classGrade || dbUser.grade || null,
             requestedSection: dbUser.section || null,
+            requestedClassId: (dbUser as { classId?: string }).classId || null,
             guardianName: dbUser.parentContact || null,
             guardianPhone: dbUser.parentPhone || null,
             guardianEmail: null,
@@ -438,7 +467,7 @@ export async function POST(request: NextRequest) {
             notes: null,
             createdAt: now,
             updatedAt: now,
-          });
+          } as any);
 
           logger.info("Created student application record", { applicationId, studentId: dbUser.id, schoolId: dbUser.schoolId });
 

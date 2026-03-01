@@ -66,7 +66,7 @@ export const POST = createApiRoute<{ id: string }>(
     endDate.setFullYear(endDate.getFullYear() + 1);
 
     // Create invoice
-    const [invoice] = await db
+    await db
       .insert(invoices)
       .values({
         id: `inv_${nanoid()}`,
@@ -86,11 +86,17 @@ export const POST = createApiRoute<{ id: string }>(
         createdBy: adminId,
         createdAt: new Date(),
         updatedAt: new Date(),
-      })
-      .returning();
+      });
+
+    // Fetch the created invoice using select (more reliable than .returning() with neon-http)
+    const [invoice] = await db
+      .select()
+      .from(invoices)
+      .where(eq(invoices.invoiceNumber, invoiceNumber))
+      .limit(1);
 
     logger.info('Invoice generated', {
-      invoiceId: invoice.id,
+      invoiceId: invoice?.id,
       invoiceNumber,
       schoolId: school.id,
       schoolName: school.name,

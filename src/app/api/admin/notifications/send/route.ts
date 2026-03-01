@@ -7,6 +7,7 @@
  * - Retrieves target users based on notification's targetAudience
  * - Creates notificationDelivery records for each user
  * - Marks notification as sent
+ * - Broadcasts real-time notifications via Pusher
  * - Returns delivery statistics
  */
 
@@ -17,6 +18,8 @@ import { notifications, notificationDeliveries, users, userNotificationSettings 
 import { eq, and, inArray, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { logger } from "@/lib/logger";
+import { broadcastToUser, broadcastToSchool } from "@/lib/realtime-server";
+import { RealtimeEvents } from "@/lib/realtime";
 
 // ============================================================================
 // POST - Send Notification
@@ -238,6 +241,27 @@ export const POST = createApiRoute(
         updatedAt: new Date(),
       })
       .where(eq(notifications.id, body.notificationId));
+
+    // Broadcast real-time notifications to each delivered user
+    const notificationPayload = {
+      id: body.notificationId,
+      title: notification.title,
+      message: notification.message,
+      type: notification.type,
+      actionUrl: notification.actionUrl,
+      actionLabel: notification.actionLabel,
+    };
+
+    // Broadcast to all users who received the notification
+    for (const user of targetUsers) {
+      const userId = user.id as string;
+      const delivery = deliveryRecords.find((d) => d.userId === userId);
+      if (delivery && delivery.status === "delivered") {
+        await broadcastToUser(userId, RealtimeEvents.NOTIFICATION_SENT, notificationPayload).catch((err) => {
+          logger.error("Failed to broadcast to user", { error: err, userId });
+        });
+      }
+    }
 
     // Send email notifications if requested
     let emailSent = 0;

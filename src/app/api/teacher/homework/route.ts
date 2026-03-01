@@ -20,6 +20,7 @@ import { logger } from "@/lib/logger";
 import { requirePermission } from "@/lib/rbac";
 import type { SQL } from "drizzle-orm";
 import type { AuthContext } from "@/lib/api/route-handler";
+import { broadcastHomeworkCreated } from "@/lib/notifications-broadcast";
 
 // ============================================================================
 // TYPES
@@ -236,6 +237,7 @@ export const POST = createApiRoute(
       }
 
       // Verify subject if provided
+      let subjectInfo: typeof subjects.$inferSelect | null = null;
       if (validatedData.subjectId) {
         const subjectInfoResult = await db
           .select()
@@ -243,7 +245,7 @@ export const POST = createApiRoute(
           .where(eq(subjects.id, validatedData.subjectId))
           .limit(1);
 
-        const subjectInfo = subjectInfoResult[0] || null;
+        subjectInfo = subjectInfoResult[0] || null;
 
         if (!subjectInfo) {
           return notFoundResponse("Subject");
@@ -284,6 +286,20 @@ export const POST = createApiRoute(
         homeworkId,
         teacherId: currentUser.id,
         classId: validatedData.classId,
+      });
+
+      // Broadcast to students in the class
+      await broadcastHomeworkCreated(validatedData.classId, {
+        id: newHomework.id,
+        title: newHomework.title,
+        description: newHomework.description || "",
+        dueDate: newHomework.dueDate,
+        classId: validatedData.classId,
+        teacherName: (currentUser as { name?: string }).name || "Your teacher",
+        subjectName: subjectInfo?.name,
+      }).catch((err) => {
+        // Don't fail the request if broadcast fails
+        logger.error("Failed to broadcast homework creation", { error: err });
       });
 
       return createdResponse(newHomework);

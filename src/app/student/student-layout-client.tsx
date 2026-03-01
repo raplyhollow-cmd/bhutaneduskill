@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { UniversalMobileSidebar, UniversalPortalHeader } from "@/components/mobile/universal-mobile-sidebar";
 import { PortalErrorBoundary } from "@/components/error/portal-error-boundary";
 import { cn } from "@/lib/utils";
 import { portal } from "@/styles/design-tokens";
 import { CommandPalette, useCommandPalette } from "@/components/ui/command-palette";
-import { Home, BookOpen, ClipboardList, Video, CheckCircle, BarChart3, TrendingUp, DollarSign, GraduationCap, Bus, Megaphone, Briefcase, Target, FileText, Globe, Award, Bookmark, Settings } from "lucide-react";
+import { useToast } from "@/components/ui/toaster";
+import { useUserEvents } from "@/hooks/use-realtime";
+import { RealtimeEvents } from "@/lib/realtime";
+import { Home, BookOpen, ClipboardList, Video, CheckCircle, BarChart3, TrendingUp, DollarSign, GraduationCap, Bus, Megaphone, Briefcase, Target, FileText, Globe, Award, Bookmark, Settings, Bell } from "lucide-react";
 
 interface StudentLayoutClientProps {
   children: React.ReactNode;
@@ -30,9 +33,57 @@ export function StudentLayoutClient({ children, userName, portalType, needsSetup
   const pathname = usePathname();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
 
   // Command palette setup
   const { isOpen, close } = useCommandPalette();
+
+  // Toast for notifications
+  const { toast } = useToast();
+
+  // Real-time notification listener
+  useUserEvents(userId, {
+    [RealtimeEvents.NOTIFICATION_SENT]: (data: unknown) => {
+      const notification = data as { title: string; message: string; actionUrl?: string };
+      toast({
+        title: notification.title,
+        description: notification.message,
+        action: notification.actionUrl ? {
+          label: "View",
+          onClick: () => router.push(notification.actionUrl!),
+        } : undefined,
+      });
+    },
+    [RealtimeEvents.HOMEWORK_CREATED]: (data: unknown) => {
+      const homework = data as { homework: { title: string; dueDate: string } };
+      toast({
+        title: "New Homework Posted",
+        description: `${homework.homework.title} - Due: ${new Date(homework.homework.dueDate).toLocaleDateString()}`,
+        action: {
+          label: "View",
+          onClick: () => router.push("/student/homework"),
+        },
+      });
+    },
+    [RealtimeEvents.HOMEWORK_GRADED]: (data: unknown) => {
+      const grading = data as { homeworkTitle: string; score: number; totalPoints: number };
+      toast({
+        title: "Homework Graded",
+        description: `Your homework "${grading.homeworkTitle}" has been graded. Score: ${grading.score}/${grading.totalPoints}`,
+        action: {
+          label: "View",
+          onClick: () => router.push("/student/homework"),
+        },
+      });
+    },
+    [RealtimeEvents.ANNOUNCEMENT_CREATED]: (data: unknown) => {
+      const announcement = data as { announcement: { title: string; message: string } };
+      toast({
+        title: announcement.announcement.title,
+        description: announcement.announcement.message,
+      });
+    },
+  });
 
   // Student-specific commands
   const commands = [
@@ -66,8 +117,17 @@ export function StudentLayoutClient({ children, userName, portalType, needsSetup
           return;
         }
 
-        const roleRes = await fetch("/api/auth/set-role");
+        const [roleRes, profileRes] = await Promise.all([
+          fetch("/api/auth/set-role"),
+          fetch("/api/user/profile"),
+        ]);
         const roleData = await roleRes.json();
+        const profileData = await profileRes.json();
+
+        // Set userId for real-time notifications
+        if (profileData.user?.id) {
+          setUserId(profileData.user.id);
+        }
 
         // Check if user is student
         if (roleData.userType === "student") {

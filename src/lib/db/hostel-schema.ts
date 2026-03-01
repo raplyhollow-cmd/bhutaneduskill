@@ -282,9 +282,6 @@ export const roomInspections = pgTable("room_inspections", {
   followUpDate: text("follow_up_date"),
   followUpActions: text("follow_up_actions"),
 
-  // Photos
-  photoUrls: json("photo_urls").$type<string[]>(),
-
   // Status
   status: text("status").notNull().default("completed"), // "completed", "follow_up_pending", "resolved"
 
@@ -387,9 +384,6 @@ export const hostelComplaints = pgTable("hostel_complaints", {
 
   // Urgency
   priority: text("priority").notNull().default("medium"), // "low", "medium", "high", "emergency"
-
-  // Photos
-  photoUrls: json("photo_urls").$type<string[]>(),
 
   // Status
   status: text("status").notNull().default("open"), // "open", "in_progress", "resolved", "rejected", "closed"

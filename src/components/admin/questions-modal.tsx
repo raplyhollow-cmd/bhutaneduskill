@@ -51,7 +51,19 @@ interface QuestionData {
   max?: number;
   dimensions?: string[];
   categories?: string[];
+  options?: string[];
   [key: string]: string | number | string[] | undefined;
+}
+
+interface DbQuestion {
+  id: string;
+  questionText: string;
+  questionData: QuestionData | Record<string, unknown>;
+  options: string[];
+  correctAnswer: string;
+  points: number;
+  order: number;
+  isActive: boolean;
 }
 
 interface Question {
@@ -101,12 +113,14 @@ export function QuestionsModal({ open, onClose, assessmentType, onSuccess }: Que
     try {
       const data = await getAssessmentQuestions(assessmentType.id);
       // Map database question to component Question type
-      setQuestions(data.map((q: any) => ({
+      setQuestions(data.map((q: DbQuestion) => ({
         id: q.id,
         questionText: q.questionText,
-        questionData: q.questionData as QuestionData | undefined,
-        options: q.options,
-        correctAnswer: q.correctAnswer,
+        questionData: typeof q.questionData === 'object' && q.questionData !== null
+          ? q.questionData as QuestionData
+          : undefined,
+        options: q.options || undefined,
+        correctAnswer: q.correctAnswer || undefined,
         points: q.points,
         order: q.order,
         isActive: q.isActive,

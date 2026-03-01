@@ -22,9 +22,9 @@ type SchoolWithDistrict = {
   contactEmail?: string | null;
   contactPhone?: string | null;
   address?: string | null;
+  city?: string | null;  // Changed from districtName
   createdAt: Date;
   districtId?: string | null;
-  districtName?: string | null;
   isActive?: boolean | null;
 };
 
@@ -57,7 +57,7 @@ export default async function AdminSchoolsPage() {
 
   const { userId, user } = authResult;
 
-  // Fetch all schools with their district info
+  // Fetch all schools
   const allSchools = await db
     .select({
       id: schools.id,
@@ -68,13 +68,12 @@ export default async function AdminSchoolsPage() {
       contactEmail: schools.contactEmail,
       contactPhone: schools.contactPhone,
       address: schools.address,
+      city: schools.city,  // Changed from districtName to city
       createdAt: schools.createdAt,
       districtId: schools.districtId,
-      districtName: districts.name,
       isActive: schools.isActive,
     })
     .from(schools)
-    .leftJoin(districts, eq(schools.districtId, districts.id))
     .orderBy(desc(schools.createdAt));
 
   // Get stats for each school
@@ -109,11 +108,12 @@ export default async function AdminSchoolsPage() {
         contactEmail: school.contactEmail ?? "",
         contactPhone: school.contactPhone ?? "",
         address: school.address ?? "",
+        city: school.city ?? "Unknown",
         createdAt: school.createdAt,
         tenantId: school.id,
         tenantName: school.name,
         districtId: school.districtId ?? "",
-        districtName: school.districtName ?? "Unknown",
+        districtName: school.city ?? "Unknown",
         isActive: school.isActive ?? true,
         stats: school.stats,
       }))}

@@ -85,7 +85,13 @@ export interface ValidatedInputProps
 
 export interface ValidatedTextareaProps
   extends Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "size"> {
-  field: ReturnType<typeof useFieldValidation>
+  field: Omit<ReturnType<typeof useFieldValidation>, 'props'> & {
+    props: {
+      value: string
+      onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
+      onBlur: () => void
+    }
+  }
   label?: string
   hint?: string
   rows?: number
@@ -353,7 +359,7 @@ export function ValidatedTextarea({
           id={textareaId}
           rows={rows}
           value={field.value}
-          onChange={field.props.onChange as (e: React.ChangeEvent<any>) => void}
+          onChange={(e) => field.props.onChange?.(e)}
           onBlur={field.props.onBlur}
           aria-invalid={hasError}
           aria-describedby={cn(

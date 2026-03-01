@@ -10,68 +10,114 @@ import { calculateCareerMatches } from "@/lib/services/career-matching.service";
 import { createApiRoute } from "@/lib/api/route-handler";
 
 export const POST = createApiRoute(
-  async (request, { userId, user }) => {
+  async (request, auth) => {
+    // Debug logging
+    console.log("[MBTI POST] Auth check:", { hasAuth: !!auth, auth });
+
+    // auth is provided by createApiRoute wrapper
+    if (!auth) {
+      console.error("[MBTI POST] No auth provided");
+      return { error: "Unauthorized", status: 401 };
+    }
+
+    const { userId, user } = auth;
+    console.log("[MBTI POST] Destructured:", { userId, userType: user?.type });
+
     // Check RBAC permission for creating assessments
     // Students can create assessments for themselves without special permission
     if (user.type !== "student") {
+      console.log("[MBTI POST] Non-student user, checking permissions");
       const permCheck = await requirePermission(userId, "assessments.create");
       if (permCheck) return permCheck;
     }
 
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+      console.log("[MBTI POST] Request body parsed:", { hasAnswers: !!body.answers, hasResults: !!body.results });
+    } catch (parseError) {
+      console.error("[MBTI POST] Failed to parse request body:", parseError);
+      return { error: "Invalid request body", status: 400 };
+    }
+
     const { answers, results } = body;
+
+    if (!results) {
+      console.error("[MBTI POST] Missing results in request body");
+      return { error: "Results are required", status: 400 };
+    }
+
+    console.log("[MBTI POST] Creating assessment for user:", userId, "type:", results.type);
 
     // Create assessment record
     // Note: assessments table has required fields for academic assessments,
     // but personality assessments use dedicated result tables.
     // We provide minimal values for required fields.
     const assessmentId = `mbti_${Date.now()}`;
-    const [assessment] = await db
-      .insert(assessments)
-      .values({
-        id: assessmentId,
-        title: "MBTI Personality Assessment",
-        description: `MBTI personality type: ${results.type}`,
-        dueDate: new Date().toISOString(), // Current date since it's already completed
-        totalPoints: 100,
-        passingScore: 0,
-        userId: userId,
-        type: "mbti",
-        status: "completed",
-        // Store results - casting to any because the schema expects a specific array type
-        // but personality assessments store structured objects
-        results: [{ questionId: "personality_type", answer: results.type, score: 0, correct: true }] as any,
-        startedAt: new Date(),
-        completedAt: new Date(),
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .returning();
+
+    try {
+      console.log("[MBTI POST] Attempting to insert assessment:", assessmentId);
+      const [assessment] = await db
+        .insert(assessments)
+        .values({
+          id: assessmentId,
+          title: "MBTI Personality Assessment",
+          description: `MBTI personality type: ${results.type}`,
+          dueDate: new Date().toISOString(), // Current date since it's already completed
+          totalPoints: 100,
+          passingScore: 0,
+          userId: userId,
+          type: "mbti",
+          status: "completed",
+          // Store results - casting to any because the schema expects a specific array type
+          // but personality assessments store structured objects
+          results: [{ questionId: "personality_type", answer: results.type, score: 0, correct: true }] as any,
+          startedAt: new Date(),
+          completedAt: new Date(),
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .returning();
+      console.log("[MBTI POST] Assessment created:", assessment?.id);
+    } catch (dbError) {
+      console.error("[MBTI POST] Failed to insert assessment:", dbError);
+      return { error: `Failed to create assessment: ${dbError instanceof Error ? dbError.message : String(dbError)}`, status: 500 };
+    }
 
     // Create MBTI result record
-    await db.insert(mbtiResults).values({
-      id: `mbti_res_${Date.now()}`,
-      assessmentId: assessmentId,
-      userId: userId,
-      personalityType: results.type,
-      scores: {
-        e: results.eiScore ? Math.round((100 + results.eiScore) / 2) : 50,
-        i: results.eiScore ? Math.round((100 - results.eiScore) / 2) : 50,
-        s: results.snScore ? Math.round((100 + results.snScore) / 2) : 50,
-        n: results.snScore ? Math.round((100 - results.snScore) / 2) : 50,
-        t: results.tfScore ? Math.round((100 + results.tfScore) / 2) : 50,
-        f: results.tfScore ? Math.round((100 - results.tfScore) / 2) : 50,
-        j: results.jpScore ? Math.round((100 + results.jpScore) / 2) : 50,
-        p: results.jpScore ? Math.round((100 - results.jpScore) / 2) : 50,
-      },
-      description: results.description || `Your MBTI personality type is ${results.type}`,
-      strengths: results.strengths || results.traits || [],
-      weaknesses: results.weaknesses || [],
-      recommendedCareers: results.careerSuggestions || [],
-      completedAt: new Date(),
-      createdAt: new Date(),
-    } as any);
+    try {
+      console.log("[MBTI POST] Attempting to insert MBTI result");
+
+      // The MBTI calculation returns 'careerSuggestions' but we store as 'recommendedCareers'
+      const recommendedCareers = (results as any).careerSuggestions || [];
+
+      await db.insert(mbtiResults).values({
+        id: `mbti_res_${Date.now()}`,
+        assessmentId: assessmentId,
+        userId: userId,
+        personalityType: results.type,
+        scores: {
+          e: results.eiScore ? Math.round((100 + results.eiScore) / 2) : 50,
+          i: results.eiScore ? Math.round((100 - results.eiScore) / 2) : 50,
+          s: results.snScore ? Math.round((100 + results.snScore) / 2) : 50,
+          n: results.snScore ? Math.round((100 - results.snScore) / 2) : 50,
+          t: results.tfScore ? Math.round((100 + results.tfScore) / 2) : 50,
+          f: results.tfScore ? Math.round((100 - results.tfScore) / 2) : 50,
+          j: results.jpScore ? Math.round((100 + results.jpScore) / 2) : 50,
+          p: results.jpScore ? Math.round((100 - results.jpScore) / 2) : 50,
+        },
+        description: results.description || `Your MBTI personality type is ${results.type}`,
+        strengths: results.strengths || results.traits || [],
+        recommendedCareers: recommendedCareers,
+        completedAt: new Date(),
+        createdAt: new Date(),
+      } as any);
+      console.log("[MBTI POST] MBTI result created successfully");
+    } catch (dbError) {
+      console.error("[MBTI POST] Failed to insert MBTI result:", dbError);
+      return { error: `Failed to save MBTI result: ${dbError instanceof Error ? dbError.message : String(dbError)}`, status: 500 };
+    }
 
     // Trigger career matching
     try {
@@ -81,9 +127,9 @@ export const POST = createApiRoute(
       // Don't fail the assessment
     }
 
-    return { success: true, assessmentId: assessment.id };
+    return { success: true, assessmentId };
   },
-  [] // Any authenticated user
+  ['student', 'parent', 'teacher', 'admin', 'school-admin', 'counselor'] // Require authentication
 );
 
 /**
@@ -94,7 +140,12 @@ export const POST = createApiRoute(
  * - limit: Maximum results to return (default: 10)
  */
 export const GET = createApiRoute(
-  async (request, { userId, user }) => {
+  async (request, auth) => {
+    if (!auth) {
+      return { error: "Unauthorized", results: [], status: 401 };
+    }
+
+    const { userId, user } = auth;
     const { searchParams } = new URL(request.url);
     const userIdParam = searchParams.get("userId");
     const limit = parseInt(searchParams.get("limit") || "10");

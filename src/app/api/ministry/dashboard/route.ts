@@ -125,7 +125,11 @@ export const GET = createApiRoute(
           : 0,
       newSchoolsThisMonth: newSchoolsThisMonth[0]?.count || 0,
       activeTeachers: totalTeachers[0]?.count || 0,
-      enrollmentGrowth: 8.5, // TODO: Calculate from historical data
+      // TODO: Calculate from historical data
+      // Requires: A historical_metrics table with monthly enrollment snapshots
+      // Schema: { id, schoolId, metricType, value, recordedAt }
+      // Formula: ((currentMonth - lastMonth) / lastMonth) * 100
+      enrollmentGrowth: 8.5,
     };
 
     // Enrich top schools with completion rates and student counts
@@ -160,7 +164,11 @@ export const GET = createApiRoute(
           district: school.state || school.city || "Bhutan",
           completion,
           students: studentCount[0]?.count || 0,
-          change: Math.floor(Math.random() * 10) - 3, // TODO: Calculate from historical data
+          // TODO: Calculate from historical data
+          // Requires: A historical_metrics table with monthly performance snapshots
+          // Schema: { id, schoolId, metricType, value, recordedAt }
+          // Formula: currentMonth.completion - previousMonth.completion
+          change: Math.floor(Math.random() * 10) - 3,
         };
       })
     );
@@ -174,6 +182,9 @@ export const GET = createApiRoute(
     const careerInterests: CareerInterest[] = careerInterestsData.map((item) => ({
       career: item.careerTitle,
       percentage: totalMatches > 0 ? Math.round((item.count / totalMatches) * 100) : 0,
+      // TODO: Calculate from historical data - career interest trends over time
+      // Requires: A career_interest_history table tracking monthly changes
+      // Schema: { id, careerTitle, count, recordedAt }
       trend: ["+3%", "+2%", "+1%", "0%", "-1%", "+4%"][Math.floor(Math.random() * 6)],
       count: item.count,
     }));

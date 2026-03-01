@@ -107,6 +107,14 @@ BEGIN
   END IF;
 END $$;
 
+-- Learning styles results
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'learning_styles_results') THEN
+    ALTER TABLE "learning_styles_results" ALTER COLUMN "recommendations" SET DATA TYPE json USING COALESCE(recommendations::json, '[]'::json);
+  END IF;
+END $$;
+
 -- Assessment templates
 DO $$
 BEGIN

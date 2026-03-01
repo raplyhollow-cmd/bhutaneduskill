@@ -444,8 +444,12 @@ async function getRegionalAnalysis(startDate: Date | null): Promise<RegionalAnal
         ? Math.round(Number(performanceResult.avg))
         : 0;
 
-      // Growth rate (simplified - would need historical data for accurate calculation)
-      const growthRate = Math.floor(Math.random() * 15) - 2; // Placeholder
+      // TODO: Calculate from historical data for accurate district growth rate
+      // Requires: A historical_enrollment table with monthly student counts by district
+      // Schema: { id, districtId, studentCount, recordedAt }
+      // Formula: ((currentStudentCount - previousStudentCount) / previousStudentCount) * 100
+      // Current: Simplified placeholder using random values for demo purposes
+      const growthRate = Math.floor(Math.random() * 15) - 2;
 
       return {
         districtId: district.id,

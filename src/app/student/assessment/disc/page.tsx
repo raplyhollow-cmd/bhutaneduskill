@@ -58,8 +58,8 @@ export default function DISCAssessmentPage() {
     const newAnswers = {
       ...answers,
       [question.id]: {
-        most: parseInt(mostValue),
-        least: parseInt(leastValue),
+        most: mostValue as "D" | "I" | "S" | "C",
+        least: leastValue as "D" | "I" | "S" | "C",
       },
     };
     setAnswers(newAnswers);
@@ -289,22 +289,22 @@ export default function DISCAssessmentPage() {
                     onClick={() => {
                       handleAnswer(
                         option.value,
-                        currentAnswer ? String(currentAnswer.least) : "C"
+                        currentAnswer ? currentAnswer.least : "C"
                       );
                     }}
                     className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
-                      currentAnswer?.most === parseInt(option.value)
+                      currentAnswer?.most === option.value
                         ? "border-green-500 bg-green-50 text-green-900"
                         : "border-gray-200 hover:border-green-300 hover:bg-green-50"
                     }`}
                   >
                     <div className="flex items-center gap-3">
                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                        currentAnswer?.most === parseInt(option.value)
+                        currentAnswer?.most === option.value
                           ? "border-green-500 bg-green-500"
                           : "border-gray-300"
                       }`}>
-                        {currentAnswer?.most === parseInt(option.value) && (
+                        {currentAnswer?.most === option.value && (
                           <CheckCircle2 className="w-3 h-3 text-white" />
                         )}
                       </div>
@@ -327,23 +327,23 @@ export default function DISCAssessmentPage() {
                     key={`least-${option.value}`}
                     onClick={() => {
                       handleAnswer(
-                        currentAnswer ? String(currentAnswer.most) : "D",
+                        currentAnswer ? currentAnswer.most : "D",
                         option.value
                       );
                     }}
                     className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
-                      currentAnswer?.least === parseInt(option.value)
+                      currentAnswer?.least === option.value
                         ? "border-red-500 bg-red-50 text-red-900"
                         : "border-gray-200 hover:border-red-300 hover:bg-red-50"
                     }`}
                   >
                     <div className="flex items-center gap-3">
                       <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                        currentAnswer?.least === parseInt(option.value)
+                        currentAnswer?.least === option.value
                           ? "border-red-500 bg-red-500"
                           : "border-gray-300"
                       }`}>
-                        {currentAnswer?.least === parseInt(option.value) && (
+                        {currentAnswer?.least === option.value && (
                           <CheckCircle2 className="w-3 h-3 text-white" />
                         )}
                       </div>

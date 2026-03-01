@@ -16,7 +16,12 @@ import { createApiRoute } from "@/lib/api/route-handler";
  * - limit: Maximum results to return (default: 10)
  */
 export const GET = createApiRoute(
-  async (request, { userId, user }) => {
+  async (request, auth) => {
+    if (!auth) {
+      return { error: "Unauthorized", results: [], status: 401 };
+    }
+
+    const { userId, user } = auth;
     const { searchParams } = new URL(request.url);
     const userIdParam = searchParams.get("userId");
     const limit = parseInt(searchParams.get("limit") || "10");
@@ -77,7 +82,13 @@ export const GET = createApiRoute(
  * POST /api/assessments/riasec - Save RIASEC assessment results
  */
 export const POST = createApiRoute(
-  async (request, { userId, user }) => {
+  async (request, auth) => {
+    if (!auth) {
+      return { error: "Unauthorized", status: 401 };
+    }
+
+    const { userId, user } = auth;
+
     // Check RBAC permission for creating assessments
     // Students can create assessments for themselves without special permission
     if (user.type !== "student") {
@@ -118,16 +129,37 @@ export const POST = createApiRoute(
       .returning();
 
     // Create RIASEC result record
+    // Map single-letter score keys to full schema names
+    const scoreMapping: Record<string, string> = {
+      R: "realistic",
+      I: "investigative",
+      A: "artistic",
+      S: "social",
+      E: "enterprising",
+      C: "conventional",
+    };
+
+    const rawScores = (scores || results?.scores || {}) as Record<string, number>;
+    const mappedScores: Record<string, number> = {};
+
+    for (const [key, value] of Object.entries(rawScores)) {
+      const fullKey = scoreMapping[key];
+      if (fullKey) {
+        mappedScores[fullKey] = value;
+      } else {
+        mappedScores[key] = value; // Pass through if no mapping
+      }
+    }
+
     const riasecData = {
       id: `riasec_res_${Date.now()}`,
       assessmentId: assessmentId,
       userId: userId,
-      scores: (scores || results?.scores || {}) as Record<string, number>,
+      scores: mappedScores,
       hollandCode: hollandCodeStr,
       primaryHollandCode: (Array.isArray(hollandCode) ? hollandCode[0] : hollandCode?.[0]) || results?.primaryHollandCode || "R",
       secondaryHollandCode: (Array.isArray(hollandCode) ? hollandCode[1] : hollandCode?.[1]) || results?.secondaryHollandCode || "I",
-      recommendedCareers: results?.recommendedCareers || [],
-      traits: results?.traits || [],
+      recommendedCareers: results?.careerSuggestions || results?.recommendedCareers || [],
       completedAt: new Date(),
       createdAt: new Date(),
     };

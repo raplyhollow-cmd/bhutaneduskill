@@ -18,11 +18,11 @@ import { db } from "@/lib/db";
 import { schools } from "@/lib/db/schema";
 import { ilike } from "drizzle-orm";
 import { logger } from "@/lib/logger";
-import { createApiRoute } from "@/lib/api/route-handler";
+import { createApiRoute, type AuthContext } from "@/lib/api/route-handler";
 import { successResponse, badRequestResponse } from "@/lib/api/response-helpers";
 
 export const GET = createApiRoute(
-  async (request: NextRequest, auth: any) => { // auth is null for open endpoints
+  async (request: NextRequest, auth: AuthContext | null) => { // auth is null for open endpoints
     const { searchParams } = new URL(request.url);
     const name = searchParams.get("name");
 

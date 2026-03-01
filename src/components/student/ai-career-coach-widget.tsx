@@ -7,11 +7,12 @@
  * Uses the existing /api/ai/career-coach endpoint.
  *
  * Features:
- * - Collapsible chat interface
+ * - Expandable chat interface (click to expand)
+ * - Full right side on desktop when expanded
+ * - Full screen on mobile when expanded
  * - Quick prompts based on student context
  * - Conversation history persisted in localStorage
  * - Typing indicators during API calls
- * - Mobile responsive (full-screen modal on mobile)
  */
 
 import { useState, useEffect, useRef } from "react";
@@ -29,6 +30,7 @@ import {
   X,
   MessageCircle,
   Loader2,
+  ChevronRight,
 } from "lucide-react";
 import type { ChatMessage, QuickPrompt } from "@/types/student";
 
@@ -62,22 +64,12 @@ interface AICareerCoachWidgetProps {
 }
 
 export function AICareerCoachWidget({ className = "" }: AICareerCoachWidgetProps) {
-  const [isOpen, setIsOpen] = useState(true);
-  const [isMinimized, setIsMinimized] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  // Detect mobile
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
 
   // Load conversation history from localStorage
   useEffect(() => {
@@ -110,6 +102,13 @@ export function AICareerCoachWidget({ className = "" }: AICareerCoachWidgetProps
     }
   }, [messages]);
 
+  // Focus input when expanded
+  useEffect(() => {
+    if (isExpanded) {
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [isExpanded]);
+
   const handleSendMessage = async (content?: string) => {
     const messageText = content || inputValue.trim();
     if (!messageText || isLoading) return;
@@ -126,15 +125,19 @@ export function AICareerCoachWidget({ className = "" }: AICareerCoachWidgetProps
     setIsLoading(true);
 
     try {
+      // IMPORTANT: Send ONLY previous messages as history, not the current one
+      // The API will add the new message to the chat context
+      const historyForAPI = messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
+
       const response = await fetch("/api/ai/career-coach", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: messageText,
-          conversationHistory: messages.map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
+          conversationHistory: historyForAPI,
         }),
       });
 
@@ -182,183 +185,152 @@ export function AICareerCoachWidget({ className = "" }: AICareerCoachWidgetProps
     localStorage.removeItem(STORAGE_KEY);
   };
 
-  // If minimized, show floating button
-  if (isMinimized) {
+  // ============================================================================
+  // EXPANDED STATE (Full screen on mobile, right side panel on desktop)
+  // ============================================================================
+  if (isExpanded) {
     return (
-      <Button
-        onClick={() => setIsMinimized(false)}
-        className={`fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full shadow-lg bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 ${className}`}
-        size="icon"
-      >
-        <MessageCircle className="h-6 w-6" />
-      </Button>
-    );
-  }
+      <div className="fixed inset-0 z-50 flex">
+        {/* Backdrop */}
+        <div
+          className="absolute inset-0 bg-black/20 backdrop-blur-sm"
+          onClick={() => setIsExpanded(false)}
+        />
 
-  // On mobile, show as full-screen modal
-  if (isMobile && isOpen) {
-    return (
-      <div className="fixed inset-0 z-50 bg-ceramic-bg p-4 flex flex-col">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 flex items-center justify-center">
-              <Sparkles className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h2 className="font-bold text-ceramic-primary">AI Career Coach</h2>
-              <p className="text-xs text-ceramic-dimmed">Ask me anything about your future</p>
+        {/* Panel - Full screen on mobile, right side on desktop */}
+        <div className="relative w-full md:w-[500px] lg:w-[600px] h-full ml-auto bg-white shadow-2xl flex flex-col">
+          {/* Header */}
+          <div className="bg-gradient-to-br from-violet-500 to-purple-600 p-4 text-white">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="font-semibold">AI Career Coach</h2>
+                  <p className="text-sm text-white/80">Your personal guide to career success</p>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsExpanded(false)}
+                className="text-white hover:bg-white/20"
+              >
+                <X className="h-5 w-5" />
+              </Button>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => {
-              setIsOpen(false);
-              setIsMinimized(true);
-            }}
-          >
-            <X className="h-5 w-5" />
-          </Button>
-        </div>
 
-        <ScrollArea className="flex-1 mb-4 pr-4">
-          <MessageList messages={messages} isLoading={isLoading} />
-        </ScrollArea>
+          {/* Messages */}
+          <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
+            <MessageList messages={messages} isLoading={isLoading} />
+          </ScrollArea>
 
-        <div className="space-y-3">
+          {/* Quick Prompts */}
           {messages.length === 0 && !isLoading && (
-            <div className="grid grid-cols-2 gap-2">
-              {DEFAULT_PROMPTS.map((prompt) => (
-                <Button
-                  key={prompt.id}
-                  variant="outline"
-                  className="justify-start text-left h-auto py-3 px-4"
-                  onClick={() => handleQuickPrompt(prompt)}
-                >
-                  <span className="mr-2">{prompt.icon}</span>
-                  <span className="text-sm">{prompt.text}</span>
-                </Button>
-              ))}
+            <div className="px-4 pb-4">
+              <p className="text-sm text-gray-600 mb-3">Quick questions to get started:</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {DEFAULT_PROMPTS.map((prompt) => (
+                  <Button
+                    key={prompt.id}
+                    variant="outline"
+                    className="justify-start text-left h-auto py-3 px-4"
+                    onClick={() => handleQuickPrompt(prompt)}
+                  >
+                    <span className="mr-2 text-lg">{prompt.icon}</span>
+                    <span className="text-sm">{prompt.text}</span>
+                  </Button>
+                ))}
+              </div>
             </div>
           )}
 
-          <div className="flex gap-2">
-            <Input
-              ref={inputRef}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Ask about careers, colleges, subjects..."
-              disabled={isLoading}
-              className="flex-1"
-            />
-            <Button
-              onClick={() => handleSendMessage()}
-              disabled={isLoading || !inputValue.trim()}
-              size="icon"
-              className="bg-gradient-to-r from-orange-500 to-orange-600"
-            >
-              {isLoading ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <Send className="h-5 w-5" />
-              )}
-            </Button>
-          </div>
+          {/* Input Area */}
+          <div className="p-4 border-t bg-gray-50 space-y-3">
+            <div className="flex gap-2">
+              <Input
+                ref={inputRef}
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Ask about careers, colleges, subjects..."
+                disabled={isLoading}
+                className="flex-1"
+              />
+              <Button
+                onClick={() => handleSendMessage()}
+                disabled={isLoading || !inputValue.trim()}
+                size="icon"
+                className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Send className="h-5 w-5" />
+                )}
+              </Button>
+            </div>
 
-          {messages.length > 2 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={clearHistory}
-              className="w-full text-ceramic-dimmed"
-            >
-              Clear conversation history
-            </Button>
-          )}
+            {messages.length > 2 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearHistory}
+                className="w-full text-gray-500 hover:text-gray-700"
+              >
+                Clear conversation history
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     );
   }
 
-  // Desktop: embedded card
+  // ============================================================================
+  // COLLAPSED STATE (Bubble Card)
+  // ============================================================================
   return (
-    <Card variant="ceramic" className={`flex flex-col h-[450px] ${className}`}>
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 flex items-center justify-center">
-              <Sparkles className="h-4 w-4 text-white" />
-            </div>
-            <div>
-              <CardTitle className="text-base flex items-center gap-2">
-                AI Career Coach
-                <Badge variant="ceramic-info" className="text-[10px]">Online</Badge>
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Ask me about careers, colleges, and more
-              </CardDescription>
-            </div>
+    <div
+      className="relative group cursor-pointer transition-all duration-300"
+      onClick={() => setIsExpanded(true)}
+    >
+      {/* Bubble Card */}
+      <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-4 text-white shadow-lg hover:shadow-xl transition-all duration-300 group-hover:scale-[1.02]">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+            <Sparkles className="w-6 h-6" />
           </div>
-          <div className="flex gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setIsMinimized(true)}
+          <div className="flex-1">
+            <h3 className="font-semibold mb-0.5">AI Career Coach</h3>
+            <p className="text-sm text-white/80">Ask me anything about your future</p>
+          </div>
+          <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors">
+            <ChevronRight className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Sample prompts preview */}
+        <div className="mt-4 flex flex-wrap gap-2">
+          {DEFAULT_PROMPTS.slice(0, 3).map((prompt) => (
+            <span
+              key={prompt.id}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white/20 text-xs"
             >
-              <Minimize2 className="h-4 w-4" />
-            </Button>
-          </div>
+              <span>{prompt.icon}</span>
+              <span className="truncate max-w-[100px]">{prompt.text}</span>
+            </span>
+          ))}
         </div>
-      </CardHeader>
+      </div>
 
-      <CardContent className="flex-1 flex flex-col p-4 pt-0 gap-3 overflow-hidden">
-        <ScrollArea className="flex-1 pr-4" ref={scrollAreaRef}>
-          <MessageList messages={messages} isLoading={isLoading} />
-        </ScrollArea>
-
-        {messages.length === 0 && !isLoading && (
-          <div className="grid grid-cols-2 gap-2">
-            {DEFAULT_PROMPTS.slice(0, 4).map((prompt) => (
-              <Button
-                key={prompt.id}
-                variant="outline"
-                className="justify-start text-left h-auto py-2 px-3 text-xs"
-                onClick={() => handleQuickPrompt(prompt)}
-              >
-                <span className="mr-1">{prompt.icon}</span>
-                <span className="truncate">{prompt.text}</span>
-              </Button>
-            ))}
-          </div>
-        )}
-
-        <div className="flex gap-2">
-          <Input
-            ref={inputRef}
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Ask anything..."
-            disabled={isLoading}
-            className="h-9 text-sm"
-          />
-          <Button
-            onClick={() => handleSendMessage()}
-            disabled={isLoading || !inputValue.trim()}
-            size="icon"
-            className="h-9 w-9 bg-gradient-to-r from-orange-500 to-orange-600 shrink-0"
-          >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+      {/* Chat indicator */}
+      {messages.length > 0 && (
+        <div className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 rounded-full border-2 border-white" />
+      )}
+    </div>
   );
 }
 

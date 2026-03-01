@@ -14,53 +14,76 @@ import type { DISCResult, DISCQuestion } from "./types";
 
 export interface DISCInput {
   [questionId: string]: {
-    most: number; // 1-4 rating for "Most like me"
-    least: number; // 1-4 rating for "Least like me"
+    most: "D" | "I" | "S" | "C"; // Dimension selected as "Most like me"
+    least: "D" | "I" | "S" | "C"; // Dimension selected as "Least like me"
   };
 }
 
 /**
  * Calculate DISC type from assessment answers
+ *
+ * Scoring Method:
+ * 1. Each answer has a "most like me" and "least like me" selection
+ * 2. "Most like me" adds +1 to that dimension's score
+ * 3. "Least like me" subtracts -1 from that dimension's score
+ * 4. Raw scores are normalized to a 0-100 scale
+ * 5. Primary type is determined by highest score(s)
  */
 export function calculateDISC(
   answers: DISCInput,
   questions: DISCQuestion[]
 ): DISCResult {
-  // Initialize scores for each dimension
-  const scores = {
+  // Initialize raw scores for each dimension
+  const rawScores = {
     D: 0,
     I: 0,
     S: 0,
     C: 0,
   };
 
-  // Count responses per dimension
-  const counts = {
-    D: 0,
-    I: 0,
-    S: 0,
-    C: 0,
-  };
+  // Count of questions answered
+  let totalQuestions = 0;
 
-  // Calculate scores
+  // Process each question and answer
   questions.forEach((question) => {
     const answer = answers[question.id];
     if (answer) {
-      // Add "most" response (positive weight)
-      scores[question.dimension] += answer.most;
-      counts[question.dimension]++;
+      totalQuestions++;
 
-      // Subtract "least" response (negative weight for things you're NOT like)
-      scores[question.dimension] -= answer.least;
+      // Normalize and validate the dimension values
+      const most = answer.most?.toUpperCase().trim();
+      const least = answer.least?.toUpperCase().trim();
+      const validDimensions = ["D", "I", "S", "C"] as const;
+
+      // Add score for "most like me" selection
+      if (validDimensions.includes(most as any)) {
+        rawScores[most as keyof typeof rawScores] += 1;
+      }
+
+      // Subtract score for "least like me" selection
+      if (validDimensions.includes(least as any)) {
+        rawScores[least as keyof typeof rawScores] -= 1;
+      }
     }
   });
 
-  // Normalize to 0-100 scale
-  const maxPossible = Math.max(...Object.values(counts)) * 4; // Max score per question is 4
-  const dominance = Math.round(Math.max(0, (scores.D / maxPossible) * 100));
-  const influence = Math.round(Math.max(0, (scores.I / maxPossible) * 100));
-  const steadiness = Math.round(Math.max(0, (scores.S / maxPossible) * 100));
-  const conscientiousness = Math.round(Math.max(0, (scores.C / maxPossible) * 100));
+  // Normalize scores to 0-100 scale
+  // Min possible score is when dimension is always selected as "least": -totalQuestions
+  // Max possible score is when dimension is always selected as "most": +totalQuestions
+  const minPossible = -totalQuestions;
+  const maxPossible = totalQuestions;
+  const range = maxPossible - minPossible;
+
+  const normalizeScore = (rawScore: number): number => {
+    if (range === 0) return 50; // Edge case: no answers
+    const normalized = ((rawScore - minPossible) / range) * 100;
+    return Math.max(0, Math.min(100, Math.round(normalized)));
+  };
+
+  const dominance = normalizeScore(rawScores.D);
+  const influence = normalizeScore(rawScores.I);
+  const steadiness = normalizeScore(rawScores.S);
+  const conscientiousness = normalizeScore(rawScores.C);
 
   // Determine primary type (top 1-2 dimensions)
   const allScores = [

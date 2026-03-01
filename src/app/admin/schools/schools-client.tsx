@@ -24,10 +24,11 @@ import {
   Clock,
   TrendingUp,
   Sparkles,
+  Upload,
   type LucideIcon,
 } from "lucide-react";
 import { AddSchoolSlideIn } from "@/components/admin/add-school-slide-in";
-import { EditSchoolModal } from "@/components/admin/edit-school-modal";
+import { BulkImportSchoolsModal } from "@/components/admin/bulk-import-schools-modal";
 import { cn } from "@/lib/utils";
 
 interface School {
@@ -43,7 +44,7 @@ interface School {
   tenantId: string;
   tenantName: string;
   districtId: string;
-  districtName: string;
+  city: string;  // Changed from districtName
   isActive?: boolean;
   stats: {
     students: number;
@@ -72,8 +73,8 @@ export function SchoolsClient({
   schoolTypes,
 }: SchoolsClientProps) {
   const router = useRouter();
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isSlideInOpen, setIsSlideInOpen] = useState(false);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [editingSchool, setEditingSchool] = useState<School | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<School | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -89,11 +90,11 @@ export function SchoolsClient({
 
   const handleEditClick = (school: School) => {
     setEditingSchool(school);
-    setIsEditModalOpen(true);
+    setIsSlideInOpen(true);
   };
 
-  const handleCloseEditModal = () => {
-    setIsEditModalOpen(false);
+  const handleCloseSlideIn = () => {
+    setIsSlideInOpen(false);
     setEditingSchool(null);
   };
 
@@ -160,7 +161,7 @@ export function SchoolsClient({
     const matchesSearch =
       school.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       school.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      school.districtName?.toLowerCase().includes(searchQuery.toLowerCase());
+      school.city?.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesType = !typeFilter || school.schoolType === typeFilter;
 
@@ -234,7 +235,18 @@ export function SchoolsClient({
             Quick Add
           </Button>
           <Button
-            onClick={() => setIsAddModalOpen(true)}
+            variant="outline"
+            onClick={() => setIsBulkImportOpen(true)}
+            className="shadow-sm hover:shadow-md transition-all"
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            Bulk Import
+          </Button>
+          <Button
+            onClick={() => {
+              setEditingSchool(null);
+              setIsSlideInOpen(true);
+            }}
             style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
             className="text-white shadow-lg shadow-pink-500/30 hover:shadow-xl hover:shadow-pink-500/40 transition-all"
           >
@@ -393,7 +405,10 @@ export function SchoolsClient({
               </p>
               {!searchQuery && !typeFilter && statusFilter === "all" && (
                 <Button
-                  onClick={() => setIsAddModalOpen(true)}
+                  onClick={() => {
+                    setEditingSchool(null);
+                    setIsSlideInOpen(true);
+                  }}
                   style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
                   className="text-white"
                 >
@@ -456,10 +471,10 @@ export function SchoolsClient({
                       </td>
                       <td className="py-4 px-4">
                         <div className="space-y-1">
-                          {school.districtName && (
+                          {school.city && (
                             <div className="flex items-center gap-1 text-sm text-gray-700">
                               <MapPin className="w-3.5 h-3.5 text-gray-400" />
-                              {school.districtName}
+                              {school.city}
                             </div>
                           )}
                           {school.address && (
@@ -635,19 +650,19 @@ export function SchoolsClient({
         </PremiumCard>
       </div>
 
-      {/* Add School Slide-In Form */}
+      {/* School Slide-In Form (Add/Edit) */}
       <AddSchoolSlideIn
-        isOpen={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onSuccess={handleModalSuccess}
-      />
-
-      {/* Edit School Modal */}
-      <EditSchoolModal
-        open={isEditModalOpen}
-        onClose={handleCloseEditModal}
+        isOpen={isSlideInOpen}
+        onClose={handleCloseSlideIn}
         onSuccess={handleModalSuccess}
         school={editingSchool}
+      />
+
+      {/* Bulk Import Schools Modal */}
+      <BulkImportSchoolsModal
+        isOpen={isBulkImportOpen}
+        onClose={() => setIsBulkImportOpen(false)}
+        onSuccess={handleModalSuccess}
       />
 
       {/* Quick Add School Modal */}

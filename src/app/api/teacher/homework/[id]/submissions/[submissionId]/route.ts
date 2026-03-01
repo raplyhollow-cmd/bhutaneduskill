@@ -6,6 +6,7 @@ import { homework, homeworkSubmissions, users } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { gradeHomework } from "@/lib/auto-grading";
 import { createApiRoute } from "@/lib/api/route-handler";
+import { broadcastHomeworkGraded } from "@/lib/notifications-broadcast";
 
 interface Params {
   params: Promise<{ id: string; submissionId: string }>;
@@ -173,6 +174,20 @@ export const PUT = createApiRoute<{ id: string; submissionId: string }>(
       .set(updateData)
       .where(eq(homeworkSubmissions.id, submissionId))
       .returning();
+
+    // Broadcast grading notification to the student
+    const studentId = (submission[0] as { studentId: string }).studentId;
+    await broadcastHomeworkGraded(studentId, {
+      id: submissionId,
+      homeworkId: id,
+      homeworkTitle: homeworkData.title,
+      score: updateData.score || 0,
+      totalPoints: homeworkData.totalPoints || 100,
+      feedback: updateData.feedback,
+    }).catch((err) => {
+      // Don't fail the request if broadcast fails
+      logger.error("Failed to broadcast homework grading", { error: err });
+    });
 
     return { submission: updated };
   },

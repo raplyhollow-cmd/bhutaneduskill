@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
 
       // FALLBACK: Try to determine userType from database or create default
       // If user already exists in DB, use their type
-      let existingDbUser: any[] = [];
+      let existingDbUser: Array<{ type: string }> = [];
       try {
         existingDbUser = await db
           .select({ type: users.type })

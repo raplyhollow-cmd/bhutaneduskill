@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { useUnsavedChangesToast } from "@/components/ui/toaster";
 import { portal } from "@/styles/design-tokens";
+import { Button } from "@/components/ui/button";
 
 interface SlideInFormProps {
   isOpen: boolean;
@@ -15,6 +15,7 @@ interface SlideInFormProps {
   children: React.ReactNode;
   onSave?: () => void | Promise<void>;
   portalType?: "student" | "teacher" | "parent" | "counselor" | "admin" | "school-admin" | "ministry";
+  saveLabel?: string;
 }
 
 const portalGradients = {
@@ -38,14 +39,12 @@ const portalSolidColors = {
 };
 
 /**
- * Ultra-Modern Slide-In Form with Unsaved Changes Toast
+ * Simplified Slide-In Form
  *
  * Features:
- * - Slides in from right side (modern, space-efficient)
- * - Shows toast with Save button when user types (no auto-save)
- * - Toast has "Save" button - user clicks to save
- * - Discord/Clerk style gradient toasts
- * - Smooth animations with backdrop blur
+ * - Slides in from right side
+ * - Clean, simple interface
+ * - No complex unsaved changes tracking (handled by parent)
  * - Portal-specific gradient accents
  *
  * Usage:
@@ -67,80 +66,54 @@ export function SlideInForm({
   children,
   onSave,
   portalType = "admin",
+  saveLabel = "Save",
 }: SlideInFormProps) {
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const { showUnsaved, hideUnsaved, showSaved } = useUnsavedChangesToast();
-  const formContainerRef = useRef<HTMLDivElement>(null);
 
-  // Create stable handleSave function
-  const handleSave = useCallback(async () => {
-    if (!onSave) return;
+  // Stable handleSave that wraps onSave
+  const handleSaveClick = useCallback(async () => {
+    if (!onSave || isSaving) return;
 
     setIsSaving(true);
     try {
       await onSave();
-      setHasUnsavedChanges(false);
-      showSaved();
-    } catch (error) {
-      console.error("Save failed:", error);
     } finally {
       setIsSaving(false);
     }
-  }, [onSave, showSaved]);
+  }, [onSave, isSaving]);
 
-  // Show unsaved changes toast when form is dirty
-  useEffect(() => {
-    if (hasUnsavedChanges && isOpen) {
-      showUnsaved(handleSave);
-    } else if (!hasUnsavedChanges) {
-      hideUnsaved();
-    }
-
-    return () => {
-      if (hasUnsavedChanges) {
-        hideUnsaved();
-      }
-    };
-  // Note: showUnsaved and hideUnsaved intentionally excluded from deps
-  // They are stable references from useUnsavedChangesToast hook
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasUnsavedChanges, isOpen, handleSave]);
-
-  // Handle close with unsaved changes warning
-  const handleClose = () => {
-    if (hasUnsavedChanges) {
-      const shouldClose = confirm("You have unsaved changes. Are you sure you want to close?");
-      if (!shouldClose) return;
-    }
-    setHasUnsavedChanges(false);
-    hideUnsaved();
+  // Handle close
+  const handleClose = useCallback(() => {
+    if (isSaving) return; // Don't close while saving
     onClose();
-  };
+  }, [onClose, isSaving]);
 
   // Handle keyboard escape
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isOpen) {
+      if (e.key === "Escape" && isOpen && !isSaving) {
         handleClose();
       }
     };
 
     document.addEventListener("keydown", handleEscape);
     return () => document.removeEventListener("keydown", handleEscape);
-  }, [isOpen, hasUnsavedChanges]);
+  }, [isOpen, isSaving, handleClose]);
 
-  // Track form changes
-  const handleFormChange = useCallback(() => {
-    if (!hasUnsavedChanges) {
-      setHasUnsavedChanges(true);
+  // Prevent body scroll when open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = "";
+      };
     }
-  }, [hasUnsavedChanges]);
+  }, [isOpen]);
 
-  // Reset when form opens/closes
+  // Reset saving state when form closes
   useEffect(() => {
     if (!isOpen) {
-      setHasUnsavedChanges(false);
+      setIsSaving(false);
     }
   }, [isOpen]);
 
@@ -154,13 +127,12 @@ export function SlideInForm({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-ceramic-black/40 z-50 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/40 z-50 backdrop-blur-sm"
             onClick={handleClose}
           />
 
-          {/* Slide-in Panel - Ceramic styled */}
+          {/* Slide-in Panel */}
           <motion.div
-            ref={formContainerRef}
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
@@ -170,7 +142,7 @@ export function SlideInForm({
               damping: 30,
               mass: 0.8,
             }}
-            className="fixed inset-y-0 right-0 w-full sm:w-[480px] bg-ceramic-white shadow-2xl z-50 flex flex-col"
+            className="fixed inset-y-0 right-0 w-full sm:w-[480px] bg-white shadow-2xl z-50 flex flex-col"
           >
             {/* Header with gradient accent */}
             <div className="flex-shrink-0">
@@ -178,64 +150,64 @@ export function SlideInForm({
                 className="h-1.5 w-full"
                 style={{ background: portalGradients[portalType] }}
               />
-              <div className="flex items-center justify-between px-6 py-5 border-b border-ceramic-border">
+              <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200">
                 <div className="flex-1">
-                  <h2 className="text-xl font-semibold text-ceramic-primary">{title}</h2>
+                  <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
                   {description && (
-                    <p className="text-sm text-ceramic-secondary mt-1">{description}</p>
+                    <p className="text-sm text-gray-500 mt-1">{description}</p>
                   )}
                 </div>
                 <button
                   onClick={handleClose}
-                  className="ml-4 p-2 hover:bg-ceramic-gray-100 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ceramic-gray-200"
+                  disabled={isSaving}
+                  className="ml-4 p-2 hover:bg-gray-100 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-gray-200 disabled:opacity-50"
                   aria-label="Close form"
                 >
-                  <X className="w-5 h-5 text-ceramic-secondary" />
+                  <X className="w-5 h-5 text-gray-500" />
                 </button>
               </div>
             </div>
 
-            {/* Saving indicator - ceramic styled */}
+            {/* Saving indicator */}
             {isSaving && (
               <motion.div
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="px-6 py-2 bg-ceramic-info/10 border-b border-ceramic-info/20 flex items-center gap-2"
+                className="px-6 py-2 bg-blue-50 border-b border-blue-100 flex items-center gap-2"
               >
-                <div className="w-2 h-2 bg-ceramic-info rounded-full animate-pulse" />
-                <span className="text-xs text-ceramic-info font-medium">Saving...</span>
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                <span className="text-xs text-blue-700 font-medium">Saving...</span>
               </motion.div>
             )}
 
             {/* Form Content */}
             <div className="flex-1 overflow-y-auto px-6 py-6">
-              <div onChange={handleFormChange}>
-                {children}
-              </div>
+              {children}
             </div>
 
-            {/* Footer - Status bar - ceramic styled */}
-            <div className="flex-shrink-0 px-6 py-4 border-t border-ceramic-border bg-ceramic-gray-50">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div
-                    className={cn(
-                      "w-2 h-2 rounded-full transition-colors",
-                      hasUnsavedChanges ? "bg-ceramic-warning" : "bg-ceramic-positive"
-                    )}
-                  />
-                  <span className="text-xs text-ceramic-secondary">
-                    {hasUnsavedChanges ? "Unsaved changes" : "All changes saved"}
-                  </span>
-                </div>
-                {hasUnsavedChanges && !isSaving && (
-                  <span className="text-xs text-ceramic-dimmed">
-                    Click "Save" in the toast notification
-                  </span>
-                )}
+            {/* Footer Actions */}
+            {onSave && (
+              <div className="flex-shrink-0 px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={handleClose}
+                  disabled={isSaving}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant={portalType}
+                  onClick={handleSaveClick}
+                  disabled={isSaving}
+                  loading={isSaving}
+                >
+                  {isSaving ? "Saving..." : saveLabel}
+                </Button>
               </div>
-            </div>
+            )}
           </motion.div>
         </>
       )}
@@ -245,8 +217,6 @@ export function SlideInForm({
 
 /**
  * Quick action button that opens slide-in form
- * Use this in place of "Add" buttons
- * Now with ceramic design system styling
  */
 export function SlideInFormButton({
   onClick,

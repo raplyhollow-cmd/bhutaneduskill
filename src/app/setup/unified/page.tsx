@@ -210,6 +210,57 @@ export default function UnifiedSetupWizard() {
   const [guardianName, setGuardianName] = useState("");
   const [guardianPhone, setGuardianPhone] = useState("");
 
+  // Dynamic classes loading for students
+  type SchoolClass = {
+    id: string;
+    name: string;
+    grade: number;
+    section: string;
+    academicYear?: string;
+  };
+  const [availableClasses, setAvailableClasses] = useState<SchoolClass[]>([]);
+  const [isLoadingClasses, setIsLoadingClasses] = useState(false);
+  const [selectedClassId, setSelectedClassId] = useState("");
+  const [classesError, setClassesError] = useState("");
+
+  // Load classes when school is verified (for students)
+  useEffect(() => {
+    if (verifiedSchool && selectedRole?.id === "student") {
+      loadClassesForSchool(verifiedSchool.code);
+    } else if (!verifiedSchool) {
+      // Clear classes when school is cleared
+      setAvailableClasses([]);
+      setSelectedClassId("");
+      setClassesError("");
+    }
+  }, [verifiedSchool, selectedRole]);
+
+  const loadClassesForSchool = async (schoolCode: string) => {
+    setIsLoadingClasses(true);
+    setClassesError("");
+    try {
+      const response = await fetch(`/api/classes/public?schoolCode=${encodeURIComponent(schoolCode)}`);
+      const data = await response.json();
+
+      if (data.success) {
+        setAvailableClasses(data.data.classes);
+        // Clear previous selection if it's no longer valid
+        if (selectedClassId && !data.data.classes.some((c: SchoolClass) => c.id === selectedClassId)) {
+          setSelectedClassId("");
+        }
+      } else {
+        setClassesError(data.error || "Failed to load classes");
+        setAvailableClasses([]);
+      }
+    } catch (error) {
+      logger.error("Failed to load classes", error);
+      setClassesError("Failed to load classes. Please try again.");
+      setAvailableClasses([]);
+    } finally {
+      setIsLoadingClasses(false);
+    }
+  };
+
   // Teacher specific
   const [employeeId, setEmployeeId] = useState("");
   const [qualifications, setQualifications] = useState("");
@@ -243,7 +294,7 @@ export default function UnifiedSetupWizard() {
       case "student":
         if (currentStep === 2) return verifiedSchool !== null;
         if (currentStep === 3) return !!(fullName && dateOfBirth && gender);
-        if (currentStep === 4) return !!(grade && section);
+        if (currentStep === 4) return !!selectedClassId;
         return true;
       case "teacher":
         if (currentStep === 2) return verifiedSchool !== null;
@@ -311,7 +362,7 @@ export default function UnifiedSetupWizard() {
       switch (selectedRole.id) {
         case "student":
           body.data.personalDetails = { fullName, dateOfBirth, gender, bloodGroup, studentId };
-          body.data.academicDetails = { grade, section };
+          body.data.academicDetails = { selectedClassId };
           body.data.guardianDetails = { guardianName, guardianPhone };
           break;
         case "teacher":
@@ -838,32 +889,38 @@ export default function UnifiedSetupWizard() {
           </div>
 
           <div className="space-y-4">
+            {/* Dynamic Class Selector */}
             <div>
-              <Label htmlFor="grade">Class/Grade</Label>
-              <Select value={grade} onValueChange={setGrade}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select your class" />
-                </SelectTrigger>
-                <SelectContent>
-                  {GRADES.map((g) => (
-                    <SelectItem key={g} value={g}>Class {g}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="section">Section</Label>
-              <Select value={section} onValueChange={setSection}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select section" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SECTIONS.map((s) => (
-                    <SelectItem key={s} value={s}>Section {s}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="classSelect">Select Your Class</Label>
+              {isLoadingClasses ? (
+                <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Loading classes for {verifiedSchool?.name}...
+                </div>
+              ) : classesError ? (
+                <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-sm text-amber-700">{classesError}</p>
+                </div>
+              ) : availableClasses.length === 0 && !isLoadingClasses ? (
+                <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-sm text-amber-700">
+                    No classes found for your school. Please contact your school administrator to create classes.
+                  </p>
+                </div>
+              ) : (
+                <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                  <SelectTrigger id="classSelect" className="mt-2">
+                    <SelectValue placeholder="Select your class" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableClasses.map((cls) => (
+                      <SelectItem key={cls.id} value={cls.id}>
+                        {cls.name} <span className="text-gray-500">(Grade {cls.grade} - {cls.section})</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             <div>

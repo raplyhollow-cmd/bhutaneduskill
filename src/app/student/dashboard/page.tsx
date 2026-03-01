@@ -12,7 +12,7 @@
 "use client";
 
 import { logger } from "@/lib/logger";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +34,7 @@ import {
   School,
   Award,
   Flame,
+  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
 import { fetchStudentDashboard } from "../_actions";
@@ -43,7 +44,9 @@ import { AssessmentProfileCard } from "@/components/student/assessment-profile-c
 import { AICareerCoachWidget } from "@/components/student/ai-career-coach-widget";
 import { RoadmapTracker } from "@/components/student/roadmap-tracker";
 import { MarksOverviewCard } from "@/components/student/marks-overview-card";
+import { useRealtime } from "@/hooks/use-realtime";
 import type { StudentDashboardData } from "@/lib/api/student";
+import type { LucideIcon } from "lucide-react";
 
 export const dynamic = 'force-dynamic';
 
@@ -82,7 +85,7 @@ function StatBubble({
   color = "orange",
   href,
 }: {
-  icon: any;
+  icon: LucideIcon;
   label: string;
   value: string | number;
   subtext?: string;
@@ -121,7 +124,7 @@ function ActionBubble({
   urgency = "medium",
   href,
 }: {
-  icon: any;
+  icon: LucideIcon;
   title: string;
   description: string;
   badge?: string;
@@ -161,29 +164,83 @@ export default function StudentDashboardPage() {
   const [dashboardData, setDashboardData] = useState<StudentDashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showUpdated, setShowUpdated] = useState(false);
+
+  const hasFetched = useRef(false);
+  const { isConnected, bind } = useRealtime();
+
+  const refreshData = useCallback(async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      const data = await fetchStudentDashboard();
+      setDashboardData(data);
+
+      // Show updated indicator
+      setShowUpdated(true);
+      setTimeout(() => setShowUpdated(false), 2000);
+    } catch (err) {
+      logger.error("Dashboard refresh error:", err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [isRefreshing]);
 
   useEffect(() => {
-    let mounted = true;
+    if (hasFetched.current) return;
+    hasFetched.current = true;
 
     async function loadData() {
       try {
         const data = await fetchStudentDashboard();
-        if (mounted) {
-          setDashboardData(data);
-          setIsLoading(false);
-        }
+        setDashboardData(data);
+        setIsLoading(false);
       } catch (err) {
-        if (mounted) {
-          logger.error("Dashboard error:", err);
-          setError("Failed to load dashboard");
-          setIsLoading(false);
-        }
+        logger.error("Dashboard error:", err);
+        setError("Failed to load dashboard");
+        setIsLoading(false);
       }
     }
 
     loadData();
-    return () => { mounted = false; };
   }, []);
+
+  // Set up live refresh listeners for student-specific events
+  useEffect(() => {
+    if (!dashboardData?.student?.schoolId) return;
+
+    const schoolId = dashboardData.student.schoolId;
+    const userId = dashboardData.student.id;
+
+    const cleanups: Array<() => void> = [];
+
+    // Listen to school-wide channel for homework graded events
+    const schoolChannel = `private-school-${schoolId}`;
+
+    // Listen for homework graded events
+    const unbind1 = bind(schoolChannel, "homework.graded", () => {
+      refreshData();
+    });
+
+    // Listen for attendance checked-in events
+    const unbind2 = bind(schoolChannel, "attendance.checked_in", () => {
+      refreshData();
+    });
+
+    cleanups.push(unbind1, unbind2);
+
+    // Also listen to user-specific channel
+    const userChannel = `private-user-${userId}`;
+    const unbind3 = bind(userChannel, "homework.graded", () => {
+      refreshData();
+    });
+    cleanups.push(unbind3);
+
+    return () => {
+      cleanups.forEach((cleanup) => cleanup());
+    };
+  }, [dashboardData?.student?.schoolId, dashboardData?.student?.id, bind, refreshData]);
 
   if (isLoading) return <DashboardSkeleton />;
 
@@ -275,7 +332,22 @@ export default function StudentDashboardPage() {
   }
 
   return (
-    <div className="space-y-6 p-4 max-w-7xl mx-auto">
+    <div className="relative space-y-6 p-4 max-w-7xl mx-auto">
+      {/* Live Update Indicator */}
+      {showUpdated && (
+        <div className="fixed top-4 right-4 z-50 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 animate-fade-in-down">
+          <RefreshCw className="w-4 h-4 animate-spin" />
+          <span className="text-sm font-medium">Dashboard updated</span>
+        </div>
+      )}
+
+      {/* Connection Status Indicator */}
+      {isConnected ? (
+        <div className="fixed bottom-4 right-4 z-50 bg-blue-500 text-white px-3 py-1 rounded-full shadow-lg flex items-center gap-2 text-xs">
+          <div className="w-2 h-2 bg-green-300 rounded-full animate-pulse" />
+          <span>Live</span>
+        </div>
+      ) : null}
       {/* Welcome Header with School & Class Teacher Info */}
       <Card className="rounded-3xl border-0 overflow-hidden">
         <div className="bg-gradient-to-br from-orange-500 via-orange-600 to-amber-600 p-6 text-white">
@@ -376,25 +448,8 @@ export default function StudentDashboardPage() {
         />
       </div>
 
-      {/* AI Chat Section - Gemini Style */}
-      <Card className="rounded-3xl border-0 shadow-lg overflow-hidden">
-        <CardContent className="p-0">
-          <div className="bg-gradient-to-br from-violet-500 to-purple-600 p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-white">AI Career Coach</h3>
-                <p className="text-white/80 text-sm">Your personal guide to career success</p>
-              </div>
-            </div>
-          </div>
-          <div className="p-4 bg-gray-50 dark:bg-gray-900">
-            <AICareerCoachWidget />
-          </div>
-        </CardContent>
-      </Card>
+      {/* AI Chat Section - Expandable Bubble */}
+      <AICareerCoachWidget />
 
       {/* Recommended Actions - Bubble Style */}
       {recommendedActions.length > 0 && (

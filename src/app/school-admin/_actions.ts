@@ -1545,7 +1545,6 @@ export async function createInventoryItem(data: {
         lastMaintenanceDate: null,
         nextMaintenanceDate: null,
         warrantyExpiry: null,
-        photoUrls: null,
         notes: null,
         createdAt: now,
         updatedAt: now,

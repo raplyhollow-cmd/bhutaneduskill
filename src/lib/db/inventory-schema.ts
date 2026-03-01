@@ -113,9 +113,6 @@ export const inventoryItems = pgTable("inventory_items", {
   nextMaintenanceDate: text("next_maintenance_date"),
   warrantyExpiry: text("warranty_expiry"), // ISO date
 
-  // Photos
-  photoUrls: json("photo_urls").$type<string[]>(),
-
   // Notes
   notes: text("notes"),
 
