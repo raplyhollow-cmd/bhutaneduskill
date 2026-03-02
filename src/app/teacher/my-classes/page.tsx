@@ -4,6 +4,9 @@
  * Phase 7: Shows teachers all their assigned classes and subjects
  * - Homeroom classes (where they are the class teacher)
  * - Subject assignments (where they teach specific subjects)
+ *
+ * SMART UX FEATURES:
+ * - QuickActionMenu for each class (View Students, View Homework, Take Attendance)
  */
 
 "use client";
@@ -22,9 +25,12 @@ import {
   School,
   Clock,
   ChevronRight,
+  FileText,
+  CheckCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { TableQuickActions, ActionIcons } from "@/components/shared/table-quick-actions";
 
 interface Subject {
   id: string;
@@ -215,7 +221,31 @@ export default function TeacherMyClassesPage() {
                     {cls.studentCount} student{cls.studentCount !== 1 ? "s" : ""}
                   </CardDescription>
                 </div>
-                <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
+                <div className="flex items-center gap-1">
+                  {/* Quick Action Menu */}
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <TableQuickActions
+                      actions={[
+                        {
+                          label: "View Students",
+                          icon: <Users className="w-4 h-4" />,
+                          onClick: () => router.push(`/teacher/students?classId=${cls.id}`),
+                        },
+                        {
+                          label: "View Homework",
+                          icon: <FileText className="w-4 h-4" />,
+                          onClick: () => router.push(`/teacher/homework?classId=${cls.id}`),
+                        },
+                        {
+                          label: "Take Attendance",
+                          icon: <CheckCircle className="w-4 h-4" />,
+                          onClick: () => router.push(`/teacher/attendance?classId=${cls.id}`),
+                        },
+                      ]}
+                    />
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-blue-600 transition-colors" />
+                </div>
               </div>
             </CardHeader>
             <CardContent>

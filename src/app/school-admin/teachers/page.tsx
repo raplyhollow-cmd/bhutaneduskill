@@ -21,7 +21,6 @@ import {
   Building2,
   UserCheck,
   UserX,
-  MoreHorizontal,
 } from "lucide-react";
 import { AddTeacherModal } from "@/components/school-admin/add-teacher-modal";
 import { ExpressAddModal, useExpressAdd } from "@/components/ui/express-add-modal";
@@ -37,6 +36,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { InPlaceText } from "@/components/ui/in-place-editor";
+import { TableQuickActions, ActionIcons, QuickAction } from "@/components/shared/table-quick-actions";
+import { Eye, Edit, Users } from "lucide-react";
 
 interface Teacher {
   id: string;
@@ -158,6 +160,56 @@ export default function SchoolAdminTeachersPage() {
     setIsProcessing(false);
   };
 
+  // Save teacher name via API (for InPlaceEditor)
+  const saveTeacherName = async (teacherId: string, newName: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const response = await fetch(`/api/school-admin/teachers/${teacherId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newName }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update teacher name");
+      }
+
+      // Update local state
+      setTeachers((prev) =>
+        prev.map((t) => (t.id === teacherId ? { ...t, name: newName } : t))
+      );
+
+      return { success: true };
+    } catch (error) {
+      console.error("Failed to update teacher name:", error);
+      return { success: false, error: "Failed to update name" };
+    }
+  };
+
+  // Save teacher department via API (for InPlaceEditor)
+  const saveTeacherDepartment = async (teacherId: string, newDept: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const response = await fetch(`/api/school-admin/teachers/${teacherId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ department: newDept }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update teacher department");
+      }
+
+      // Update local state
+      setTeachers((prev) =>
+        prev.map((t) => (t.id === teacherId ? { ...t, department: newDept } : t))
+      );
+
+      return { success: true };
+    } catch (error) {
+      console.error("Failed to update teacher department:", error);
+      return { success: false, error: "Failed to update department" };
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -169,6 +221,36 @@ export default function SchoolAdminTeachersPage() {
   const getInitials = (f: string | null, l: string | null) => {
     const a = (f?.[0] || "") + (l?.[0] || "");
     return a.toUpperCase() || "T";
+  };
+
+  // Action handlers for individual teacher
+  const handleViewTeacher = (teacher: Teacher) => {
+    // Navigate to teacher details or open modal
+    console.log("View teacher:", teacher);
+  };
+
+  const handleEditTeacher = (teacher: Teacher) => {
+    // Open edit modal
+    console.log("Edit teacher:", teacher);
+  };
+
+  const handleDeleteTeacher = async (teacher: Teacher) => {
+    if (!confirm(`Delete ${teacher.name}? This action cannot be undone.`)) return;
+    try {
+      const response = await fetch(`/api/school-admin/teachers/${teacher.id}`, { method: "DELETE" });
+      if (response.ok) {
+        await fetchTeachers();
+      } else {
+        alert("Failed to delete teacher");
+      }
+    } catch {
+      alert("Failed to delete teacher");
+    }
+  };
+
+  const handleAssignClasses = (teacher: Teacher) => {
+    // Open assign classes modal
+    console.log("Assign classes to teacher:", teacher);
   };
 
   return (
@@ -258,6 +340,7 @@ export default function SchoolAdminTeachersPage() {
           <div className="col-span-2">Department</div>
           <div className="col-span-2">Classes</div>
           <div className="col-span-1 text-right">Status</div>
+          <div className="col-span-1 text-right">Actions</div>
         </div>
 
         {/* Rows */}
@@ -291,19 +374,30 @@ export default function SchoolAdminTeachersPage() {
                       {getInitials(teacher.firstName, teacher.lastName)}
                     </div>
                     <div className="min-w-0">
-                      <p className="font-medium text-gray-900 truncate">{teacher.name}</p>
+                      <InPlaceText
+                        value={teacher.name}
+                        onSave={async (newName) => saveTeacherName(teacher.id, newName)}
+                        placeholder="Teacher name"
+                        minLength={2}
+                        maxLength={100}
+                        required={true}
+                        displayClassName="font-medium text-gray-900 truncate"
+                        showIcon={true}
+                      />
                       <p className="text-xs text-gray-400 font-mono">{teacher.employeeId || "-"}</p>
                     </div>
                   </div>
                   <div className="col-span-3 text-gray-600 truncate text-xs">{teacher.email || "-"}</div>
                   <div className="col-span-2">
-                    {teacher.department ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 text-xs">
-                        {teacher.department}
-                      </span>
-                    ) : (
-                      <span className="text-gray-400 text-xs">-</span>
-                    )}
+                    <InPlaceText
+                      value={teacher.department || ""}
+                      onSave={async (newDept) => saveTeacherDepartment(teacher.id, newDept)}
+                      placeholder="Set department"
+                      minLength={2}
+                      maxLength={50}
+                      displayClassName="inline-flex items-center px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 text-xs"
+                      showIcon={true}
+                    />
                   </div>
                   <div className="col-span-2 text-xs text-gray-500">
                     {teacher.subjects && teacher.subjects.length > 0 ? (
@@ -319,6 +413,20 @@ export default function SchoolAdminTeachersPage() {
                     )}>
                       {teacher.isActive ? "Active" : "Inactive"}
                     </span>
+                  </div>
+                  <div className="col-span-1 text-right" onClick={e => e.stopPropagation()}>
+                    <TableQuickActions
+                      actions={(() => {
+                        const actionsList: QuickAction[] = [
+                          { label: "View Details", icon: ActionIcons.view, onClick: () => handleViewTeacher(teacher) },
+                          { label: "Edit Profile", icon: ActionIcons.edit, onClick: () => handleEditTeacher(teacher) },
+                          { label: "Assign Classes", icon: ActionIcons.assign, onClick: () => handleAssignClasses(teacher) },
+                        ];
+                        actionsList.push({ separator: true });
+                        actionsList.push({ label: "Delete Teacher", icon: ActionIcons.delete, onClick: () => handleDeleteTeacher(teacher), variant: "danger" });
+                        return actionsList;
+                      })()}
+                    />
                   </div>
                 </div>
               );

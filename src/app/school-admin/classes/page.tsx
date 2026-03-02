@@ -33,9 +33,11 @@ import {
 import Link from "next/link";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { InPlaceText } from "@/components/ui/in-place-editor";
 import { BulkCreateClassesDropdown } from "@/components/school-admin/bulk-create-classes-dropdown";
 import { ManageSubjectTeachersModal } from "@/components/school-admin/manage-subject-teachers-modal";
 import { ClassesGrid } from "./components/classes-grid";
+import { TableQuickActions, ActionIcons, QuickAction } from "@/components/shared/table-quick-actions";
 
 interface Class {
   id: string;
@@ -289,10 +291,69 @@ export default function SchoolAdminClassesPage() {
     return a.toUpperCase() || "T";
   };
 
+  // Action handlers for individual class
+  const handleViewClass = (cls: Class) => {
+    setSelectedClass(cls);
+  };
+
+  const handleEditClass = (cls: Class) => {
+    // Navigate to edit page
+    window.location.href = `/school-admin/classes/${cls.id}`;
+  };
+
+  const handleDeleteClass = async (cls: Class) => {
+    if (!confirm(`Delete ${cls.name}? This action cannot be undone.`)) return;
+    try {
+      const response = await fetch(`/api/school-admin/classes/${cls.id}`, { method: "DELETE" });
+      if (response.ok) {
+        await fetchClasses();
+      } else {
+        alert("Failed to delete class");
+      }
+    } catch {
+      alert("Failed to delete class");
+    }
+  };
+
+  const handleAssignTeacher = (cls: Class) => {
+    // Focus on the teacher dropdown
+    setSelectedClass(cls);
+  };
+
+  const handleManageStudents = (cls: Class) => {
+    setSelectedClass(cls);
+    setSlideOverTab("students");
+  };
+
   // Handle inline update from ClassesGrid
   const handleInlineUpdate = async (id: string, field: string, value: string) => {
     // For now, just re-fetch - full implementation would need proper API endpoints
     await fetchClasses();
+  };
+
+  // Save class name via API (for InPlaceEditor)
+  const saveClassName = async (classId: string, newName: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const response = await fetch(`/api/school-admin/classes/${classId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newName }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update class name");
+      }
+
+      // Update local state
+      setClasses((prev) =>
+        prev.map((c) => (c.id === classId ? { ...c, name: newName } : c))
+      );
+
+      return { success: true };
+    } catch (error) {
+      console.error("Failed to update class name:", error);
+      return { success: false, error: "Failed to update name" };
+    }
   };
 
   // For hierarchical view - map existing Class to expected format
@@ -383,6 +444,7 @@ export default function SchoolAdminClassesPage() {
           <div className="col-span-2">Room</div>
           <div className="col-span-2">Students</div>
           <div className="col-span-1 text-right">Status</div>
+          <div className="col-span-1 text-right">Actions</div>
         </div>
 
         {/* Rows */}
@@ -423,7 +485,16 @@ export default function SchoolAdminClassesPage() {
                       <BookOpen className="w-3.5 h-3.5" />
                     </div>
                     <div className="min-w-0">
-                      <p className="font-medium text-gray-900 truncate">{cls.name}</p>
+                      <InPlaceText
+                        value={cls.name}
+                        onSave={async (newName) => saveClassName(cls.id, newName)}
+                        placeholder="Class name"
+                        minLength={2}
+                        maxLength={100}
+                        required={true}
+                        displayClassName="font-medium text-gray-900 truncate"
+                        showIcon={true}
+                      />
                       <p className="text-xs text-gray-400">{cls.grade} - {cls.section}</p>
                     </div>
                   </div>
@@ -502,6 +573,21 @@ export default function SchoolAdminClassesPage() {
                     )}>
                       {cls.status === "active" ? "Active" : "Inactive"}
                     </span>
+                  </div>
+                  <div className="col-span-1 text-right" onClick={e => e.stopPropagation()}>
+                    <TableQuickActions
+                      actions={(() => {
+                        const actionsList: QuickAction[] = [
+                          { label: "View", icon: ActionIcons.view, onClick: () => handleViewClass(cls) },
+                          { label: "Edit", icon: ActionIcons.edit, onClick: () => handleEditClass(cls) },
+                          { label: "Assign Teacher", icon: ActionIcons.assign, onClick: () => handleAssignTeacher(cls) },
+                          { label: "Manage Students", icon: <span className="text-sm">👥</span>, onClick: () => handleManageStudents(cls) },
+                        ];
+                        actionsList.push({ separator: true });
+                        actionsList.push({ label: "Delete", icon: ActionIcons.delete, onClick: () => handleDeleteClass(cls), variant: "danger" });
+                        return actionsList;
+                      })()}
+                    />
                   </div>
                 </div>
               );

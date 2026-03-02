@@ -12,6 +12,7 @@ interface SubjectsGridProps {
   onUpdate?: (id: string, field: string, value: string) => Promise<void>;
   onEdit?: (subject: Subject) => void;
   onDelete?: (subject: Subject) => void;
+  onView?: (subject: Subject) => void;
 }
 
 /**
@@ -23,7 +24,7 @@ interface SubjectsGridProps {
  * - Staggered row animations
  * - Empty state handling
  */
-export function SubjectsGrid({ subjects, onUpdate, onEdit, onDelete }: SubjectsGridProps) {
+export function SubjectsGrid({ subjects, onUpdate, onEdit, onDelete, onView }: SubjectsGridProps) {
   // Memoize grouped data to avoid re-computation
   const grouped = useMemo(() => groupSubjectsByGrade(subjects), [subjects]);
   const sortedGrades = useMemo(() => getSortedGrades(grouped), [grouped]);
@@ -84,6 +85,7 @@ export function SubjectsGrid({ subjects, onUpdate, onEdit, onDelete }: SubjectsG
                 onUpdate={onUpdate}
                 onEdit={onEdit}
                 onDelete={onDelete}
+                onView={onView}
               />
             ))}
           </div>

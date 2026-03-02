@@ -4,6 +4,9 @@ import { logger } from "@/lib/logger";
 /**
  * TEACHER CLASSES PAGE
  * View and manage all classes assigned to the teacher
+ *
+ * SMART UX FEATURES:
+ * - QuickActionMenu for each class (View Students, View Homework, Take Attendance)
  */
 
 
@@ -35,9 +38,11 @@ import {
   Loader2,
   ChevronDown,
   GraduationCap,
+  FileText,
 } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { TableQuickActions } from "@/components/shared/table-quick-actions";
 
 interface TeacherClass {
   id: string;
@@ -407,15 +412,37 @@ export default function TeacherClassesPage() {
               >
                 <CardHeader>
                   <div className="flex items-start justify-between">
-                    <div>
+                    <div className="flex-1">
                       <CardTitle className="text-lg">{cls.name}</CardTitle>
                       <CardDescription className="mt-1">
                         Grade {cls.grade} - {cls.section}
                       </CardDescription>
                     </div>
-                    <Badge variant={cls.status === "active" ? "default" : "secondary"}>
-                      {cls.status === "active" ? "Active" : "Archived"}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={cls.status === "active" ? "default" : "secondary"}>
+                        {cls.status === "active" ? "Active" : "Archived"}
+                      </Badge>
+                      {/* Quick Action Menu */}
+                      <TableQuickActions
+                        actions={[
+                          {
+                            label: "View Students",
+                            icon: <Users className="w-4 h-4" />,
+                            onClick: () => window.location.assign(`/teacher/students?classId=${cls.id}`),
+                          },
+                          {
+                            label: "View Homework",
+                            icon: <FileText className="w-4 h-4" />,
+                            onClick: () => window.location.assign(`/teacher/homework?classId=${cls.id}`),
+                          },
+                          {
+                            label: "Take Attendance",
+                            icon: <CheckCircle className="w-4 h-4" />,
+                            onClick: () => window.location.assign(`/teacher/attendance?classId=${cls.id}`),
+                          },
+                        ]}
+                      />
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">

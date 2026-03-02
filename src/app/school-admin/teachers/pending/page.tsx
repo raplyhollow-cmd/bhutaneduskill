@@ -157,7 +157,7 @@ export default function PendingTeacherApplicationsPage() {
     }
   };
 
-  const parseJsonArray = (jsonStr: string | null): Array<{ subject: string; grade?: number }> => {
+  const parseJsonArray = (jsonStr: string | null): Array<{ subject: string; grades?: number[] }> => {
     if (!jsonStr) return [];
     try {
       const parsed = JSON.parse(jsonStr);

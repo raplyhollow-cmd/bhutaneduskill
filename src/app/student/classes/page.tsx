@@ -25,6 +25,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
+import { TableQuickActions, ActionIcons } from "@/components/shared/table-quick-actions";
 
 interface ClassData {
   id: string;
@@ -393,9 +394,19 @@ export default function StudentClassesPage() {
                           <p className="text-sm text-gray-500">{cls.subject?.code || cls.name}</p>
                         </div>
                       </div>
-                      <Badge variant="outline" className="shrink-0">
-                        Grade {cls.grade}-{cls.section}
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="shrink-0">
+                          Grade {cls.grade}-{cls.section}
+                        </Badge>
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <TableQuickActions
+                            actions={[
+                              { label: "View Details", icon: ActionIcons.view, onClick: () => setSelectedClass(cls) },
+                              { label: "View Homework", icon: ActionIcons.classes, onClick: () => window.location.assign("/student/homework") },
+                            ]}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">

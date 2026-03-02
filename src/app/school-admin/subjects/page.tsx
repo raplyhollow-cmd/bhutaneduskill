@@ -273,6 +273,13 @@ export default function SchoolAdminSubjectsPage() {
     setSuccess(null);
   };
 
+  // View subject details
+  const handleViewSubject = (subject: Subject) => {
+    // For now, reuse the edit modal to view details
+    // Could be expanded to a read-only view
+    openEditModal(subject);
+  };
+
   // Handle delete
   const handleDelete = async () => {
     if (!showDeleteDialog) return;
@@ -304,11 +311,12 @@ export default function SchoolAdminSubjectsPage() {
     try {
       const updateData: Partial<SubjectFormData> = {};
       if (field === "code") updateData.code = value;
+      if (field === "name") updateData.name = value;
       if (field === "teacher") updateData.description = subject.description; // Placeholder for teacher
       if (field === "room") updateData.description = subject.description; // Placeholder for room
 
       const result = await updateSubject(id, {
-        name: subject.name,
+        name: field === "name" ? value : subject.name,
         code: field === "code" ? value : subject.code,
         type: subject.type as "core" | "elective" | "optional",
         grade: subject.grade || undefined,
@@ -532,6 +540,7 @@ export default function SchoolAdminSubjectsPage() {
             onUpdate={handleInlineUpdate}
             onEdit={openEditModal}
             onDelete={(subject) => setShowDeleteDialog(subject)}
+            onView={handleViewSubject}
           />
         </>
       )}

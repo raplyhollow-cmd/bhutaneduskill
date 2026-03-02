@@ -5,6 +5,11 @@ import { logger } from "@/lib/logger";
  * TEACHER HOMEWORK PAGE
  * Create and manage homework assignments
  * Quick add homework with ExpressAddModal
+ *
+ * SMART UX FEATURES:
+ * - QuickActionMenu for each homework (Edit, Delete, Duplicate, Grade, Publish)
+ * - ExpressAddButton for quick homework creation
+ * - StatusToggleCell for Published/Unpublished toggle
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -14,7 +19,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ExpressAddModal, useExpressAdd } from "@/components/ui/express-add-modal";
-import { Plus, Eye, Edit, Trash2, FileText, Loader2, Sparkles, BookOpen } from "lucide-react";
+import { TableQuickActions } from "@/components/shared/table-quick-actions";
+import { Copy, Send, Plus, Eye, Edit, Trash2, FileText, Loader2, Sparkles, BookOpen } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface StoredHomework {
   id: string;
@@ -166,6 +173,47 @@ export default function TeacherHomeworkPage() {
     }
   };
 
+  // Handle status toggle (Published/Unpublished)
+  const handleStatusToggle = async (homeworkId: string, isPublished: boolean): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const response = await fetch(`/api/teacher/homework/${homeworkId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isPublished }),
+      });
+
+      if (response.ok) {
+        await fetchHomework();
+        return { success: true };
+      } else {
+        const error = await response.json();
+        return { success: false, error: error.error || "Failed to update status" };
+      }
+    } catch (error: unknown) {
+      logger.error("Failed to toggle status:", error);
+      return { success: false, error: "Network error" };
+    }
+  };
+
+  // Handle duplicate homework
+  const handleDuplicate = async (homeworkId: string) => {
+    try {
+      const response = await fetch(`/api/teacher/homework/${homeworkId}/duplicate`, {
+        method: "POST",
+      });
+
+      if (response.ok) {
+        showNotification("success", "Homework duplicated successfully");
+        await fetchHomework();
+      } else {
+        throw new Error("Failed to duplicate homework");
+      }
+    } catch (error: unknown) {
+      logger.error("Failed to duplicate homework:", error);
+      showNotification("error", error instanceof Error ? error.message : "Failed to duplicate homework");
+    }
+  };
+
   if (view === "create") {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -232,7 +280,7 @@ export default function TeacherHomeworkPage() {
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {homeworkList.map((hw) => (
-              <Card key={hw.id} className="hover:shadow-lg transition-shadow">
+              <Card key={hw.id} className="hover:shadow-lg transition-shadow group">
                 <CardContent className="pt-6">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-start gap-3">
@@ -244,9 +292,54 @@ export default function TeacherHomeworkPage() {
                         <p className="text-sm text-muted-foreground">{hw.subject || hw.class?.name || "General"}</p>
                       </div>
                     </div>
-                    <Badge variant={hw.isPublished ? "default" : "secondary"}>
-                      {hw.isPublished ? "Published" : "Draft"}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      {/* Status Toggle Cell */}
+                      <button
+                        onClick={() => handleStatusToggle(hw.id, !hw.isPublished)}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-medium transition-colors hover:opacity-80 border text-xs",
+                          hw.isPublished
+                            ? "bg-blue-50 text-blue-700 border-blue-200"
+                            : "bg-gray-100 text-gray-500 border-gray-200"
+                        )}
+                      >
+                        {hw.isPublished ? "Published" : "Draft"}
+                      </button>
+                      {/* Quick Action Menu */}
+                      <TableQuickActions
+                        actions={[
+                          {
+                            label: "View",
+                            icon: <Eye className="w-4 h-4" />,
+                            onClick: () => window.location.assign(`/teacher/homework/${hw.id}`),
+                          },
+                          {
+                            label: "Edit",
+                            icon: <Edit className="w-4 h-4" />,
+                            onClick: () => {
+                              setSelectedHomework(hw);
+                              setView("edit");
+                            },
+                          },
+                          {
+                            label: "Duplicate",
+                            icon: <Copy className="w-4 h-4" />,
+                            onClick: () => handleDuplicate(hw.id),
+                          },
+                          {
+                            label: "Grade",
+                            icon: <Send className="w-4 h-4" />,
+                            onClick: () => window.location.assign(`/teacher/homework/${hw.id}/grade`),
+                          },
+                          {
+                            label: "Delete",
+                            icon: <Trash2 className="w-4 h-4" />,
+                            variant: "danger",
+                            onClick: () => handleDelete(hw.id),
+                          },
+                        ]}
+                      />
+                    </div>
                   </div>
                   <p className="text-sm mt-2">Due: {hw.dueDate ? new Date(hw.dueDate).toLocaleDateString() : "Not set"}</p>
                   <p className="text-sm text-muted-foreground">
@@ -254,21 +347,11 @@ export default function TeacherHomeworkPage() {
                   </p>
 
                   <div className="flex gap-2 mt-4">
-                    <Button variant="outline" size="sm" className="flex-1">
-                      <Eye className="w-4 h-4 mr-1" />
-                      View
-                    </Button>
-                    {!hw.isPublished && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePublish(hw.id)}
-                      >
-                        Publish
-                      </Button>
-                    )}
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(hw.id)}>
-                      <Trash2 className="w-4 h-4 text-destructive" />
+                    <Button variant="outline" size="sm" className="flex-1" asChild>
+                      <a href={`/teacher/homework/${hw.id}`}>
+                        <Eye className="w-4 h-4 mr-1" />
+                        View
+                      </a>
                     </Button>
                   </div>
                 </CardContent>

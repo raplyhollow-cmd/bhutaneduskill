@@ -29,6 +29,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { fetchHomework } from "../_actions";
 import type { HomeworkData } from "@/lib/api/school-admin";
+import { TableQuickActions, ActionIcons, QuickAction } from "@/components/shared/table-quick-actions";
 
 interface HomeworkClientProps {
   initialSearch: string;
@@ -105,6 +106,59 @@ export function HomeworkClient({
   }, [searchQuery]);
 
   const totalPages = Math.ceil(total / 10);
+
+  // Action handlers for individual homework
+  const handleViewHomework = (hw: HomeworkData) => {
+    router.push(`/school-admin/homework/${hw.id}`);
+  };
+
+  const handleEditHomework = (hw: HomeworkData) => {
+    router.push(`/school-admin/homework/${hw.id}/edit`);
+  };
+
+  const handleDeleteHomework = async (hw: HomeworkData) => {
+    if (!confirm(`Delete "${hw.title}"? This action cannot be undone.`)) return;
+    try {
+      const response = await fetch(`/api/school-admin/homework/${hw.id}`, { method: "DELETE" });
+      if (response.ok) {
+        await loadHomework();
+      } else {
+        alert("Failed to delete homework");
+      }
+    } catch {
+      alert("Failed to delete homework");
+    }
+  };
+
+  const handleDuplicateHomework = async (hw: HomeworkData) => {
+    try {
+      const response = await fetch(`/api/school-admin/homework/${hw.id}/duplicate`, { method: "POST" });
+      if (response.ok) {
+        await loadHomework();
+      } else {
+        alert("Failed to duplicate homework");
+      }
+    } catch {
+      alert("Failed to duplicate homework");
+    }
+  };
+
+  const handlePublishHomework = async (hw: HomeworkData) => {
+    try {
+      const response = await fetch(`/api/school-admin/homework/${hw.id}/publish`, { method: "POST" });
+      if (response.ok) {
+        await loadHomework();
+      } else {
+        alert("Failed to publish homework");
+      }
+    } catch {
+      alert("Failed to publish homework");
+    }
+  };
+
+  const handleViewSubmissions = (hw: HomeworkData) => {
+    router.push(`/school-admin/homework/${hw.id}/submissions`);
+  };
 
   // Calculate stats from real data
   const totalSubmitted = homeworkList.reduce((sum, hw) => sum + hw.submitted, 0);
@@ -254,7 +308,7 @@ export function HomeworkClient({
                       <th className="text-left py-3 px-4 font-medium text-gray-600">Subject</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-600">Due Date</th>
                       <th className="text-left py-3 px-4 font-medium text-gray-600">Progress</th>
-                      <th className="text-right py-3 px-4 font-medium text-gray-600">Actions</th>
+                      <th className="text-right py-3 px-4 font-medium text-gray-600 w-16">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -302,12 +356,22 @@ export function HomeworkClient({
                             </div>
                           </td>
                           <td className="py-3 px-4 text-right">
-                            <Button variant="outline" size="sm" asChild>
-                              <Link href={`/school-admin/homework/${hw.id}`}>
-                                <Eye className="w-4 h-4 mr-1" />
-                                View
-                              </Link>
-                            </Button>
+                            <div className="flex items-center justify-end gap-1 group">
+                              <TableQuickActions
+                                actions={(() => {
+                                  const actionsList: QuickAction[] = [
+                                    { label: "View", icon: ActionIcons.view, onClick: () => handleViewHomework(hw) },
+                                    { label: "Edit", icon: ActionIcons.edit, onClick: () => handleEditHomework(hw) },
+                                    { label: "Duplicate", icon: ActionIcons.duplicate, onClick: () => handleDuplicateHomework(hw) },
+                                    { label: "Publish", icon: ActionIcons.publish, onClick: () => handlePublishHomework(hw) },
+                                    { label: "View Submissions", icon: <span className="text-sm">📝</span>, onClick: () => handleViewSubmissions(hw) },
+                                  ];
+                                  actionsList.push({ separator: true });
+                                  actionsList.push({ label: "Delete", icon: ActionIcons.delete, onClick: () => handleDeleteHomework(hw), variant: "danger" });
+                                  return actionsList;
+                                })()}
+                              />
+                            </div>
                           </td>
                         </tr>
                       );

@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ErrorMessage } from "@/components/ui/error-message";
 import { DashboardSkeleton } from "@/components/ui/skeleton";
-import { FileText, Clock, AlertCircle, Loader2, CheckCircle2, Filter, MessageSquare, Star } from "lucide-react";
+import { FileText, Clock, AlertCircle, Loader2, CheckCircle2, Filter, MessageSquare, Star, Trash2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { TableQuickActions, ActionIcons, QuickAction } from "@/components/shared/table-quick-actions";
 
 // API response type
 interface ApiHomework {
@@ -223,6 +224,38 @@ export default function StudentHomeworkPage() {
   // View submission details
   const handleViewSubmission = (hw: ApiHomework) => {
     setViewSubmission(hw);
+  };
+
+  // Action handlers for individual homework
+  const handleViewHomework = (hw: ApiHomework) => {
+    if (hw.submission && hw.submission.status !== "draft") {
+      handleViewSubmission(hw);
+    } else {
+      setSelectedHomework(hw);
+    }
+  };
+
+  const handleSubmitHomework = (hw: ApiHomework) => {
+    setSelectedHomework(hw);
+  };
+
+  const handleDeleteHomework = async (hw: ApiHomework) => {
+    // For students, this would delete their draft submission
+    if (!hw.submission || hw.submission.status !== "draft") {
+      alert("You can only delete draft submissions.");
+      return;
+    }
+    if (!confirm("Delete this draft submission?")) return;
+    try {
+      const response = await fetch(`/api/student/homework/${hw.id}`, { method: "DELETE" });
+      if (response.ok) {
+        await fetchHomework();
+      } else {
+        alert("Failed to delete draft");
+      }
+    } catch {
+      alert("Failed to delete draft");
+    }
   };
 
   if (viewSubmission) {
@@ -523,7 +556,7 @@ export default function StudentHomeworkPage() {
               const daysLeft = dueDate ? Math.ceil((dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
 
               return (
-                <Card key={hw.id} className="hover:shadow-lg transition-shadow">
+                <Card key={hw.id} className="hover:shadow-lg transition-shadow group">
                   <CardContent className="pt-6">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
@@ -533,6 +566,21 @@ export default function StudentHomeworkPage() {
                         </div>
                         <p className="text-sm text-muted-foreground line-clamp-2">{hw.description || "No description provided"}</p>
                       </div>
+                      <TableQuickActions
+                        actions={(() => {
+                          const actionsList: QuickAction[] = [
+                            { label: "View", icon: ActionIcons.view, onClick: () => handleViewHomework(hw) },
+                          ];
+                          if (!hw.submission || hw.submission.status === "draft") {
+                            actionsList.push({ label: "Submit", icon: <span className="text-sm">📝</span>, onClick: () => handleSubmitHomework(hw) });
+                          }
+                          if (hw.submission?.status === "draft") {
+                            actionsList.push({ separator: true });
+                            actionsList.push({ label: "Delete Draft", icon: ActionIcons.delete, onClick: () => handleDeleteHomework(hw), variant: "danger" });
+                          }
+                          return actionsList;
+                        })()}
+                      />
                     </div>
 
                     <div className="flex items-center gap-2 mb-3">

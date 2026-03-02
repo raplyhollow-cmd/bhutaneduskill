@@ -51,6 +51,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { fetchStudents } from "../_actions";
 import type { StudentData } from "@/lib/api/school-admin";
 import { InPlaceText } from "@/components/ui/in-place-editor";
+import { TableQuickActions, ActionIcons, QuickAction } from "@/components/shared/table-quick-actions";
 
 interface StudentsClientProps {
   initialSearch: string;
@@ -241,6 +242,38 @@ export function StudentsClient({
   };
 
   const totalPages = Math.ceil(total / 10);
+
+  // Action handlers for individual student
+  const handleViewStudent = (student: StudentData) => {
+    router.push(`/school-admin/students/${student.id}`);
+  };
+
+  const handleEditStudent = (student: StudentData) => {
+    // Open edit modal - to be implemented
+    console.log("Edit student:", student);
+  };
+
+  const handleDeleteStudent = async (student: StudentData) => {
+    if (!confirm(`Delete ${student.name}? This action cannot be undone.`)) return;
+    try {
+      const response = await fetch(`/api/users/${student.id}`, { method: "DELETE" });
+      if (response.ok) {
+        await loadStudents();
+      } else {
+        alert("Failed to delete student");
+      }
+    } catch {
+      alert("Failed to delete student");
+    }
+  };
+
+  const handleViewFees = (student: StudentData) => {
+    router.push(`/school-admin/students/${student.id}?tab=fees`);
+  };
+
+  const handleViewAttendance = (student: StudentData) => {
+    router.push(`/school-admin/students/${student.id}?tab=attendance`);
+  };
 
   // Calculate stats from real data
   const totalActive = students.filter((s) => s.status === "active").length;
@@ -563,7 +596,7 @@ export function StudentsClient({
                       <th className="text-left py-3 px-4 font-semibold text-gray-700">Attendance</th>
                       <th className="text-left py-3 px-4 font-semibold text-gray-700">Fee Status</th>
                       <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
-                      <th className="text-right py-3 px-4 font-semibold text-gray-700">Actions</th>
+                      <th className="text-right py-3 px-4 font-semibold text-gray-700 w-16">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -652,18 +685,20 @@ export function StudentsClient({
                           </Badge>
                         </td>
                         <td className="py-3 px-4">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button variant="ghost" size="sm" asChild>
-                              <Link href={`/school-admin/students/${student.id}`}>
-                                <Eye className="w-4 h-4" />
-                              </Link>
-                            </Button>
-                            <Button variant="ghost" size="sm">
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50">
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                          <div className="flex items-center justify-end gap-1 group" onClick={(e) => e.stopPropagation()}>
+                            <TableQuickActions
+                              actions={(() => {
+                                const actionsList: QuickAction[] = [
+                                  { label: "View Details", icon: ActionIcons.view, onClick: () => handleViewStudent(student) },
+                                  { label: "Edit Profile", icon: ActionIcons.edit, onClick: () => handleEditStudent(student) },
+                                  { label: "View Fees", icon: <span className="text-sm">💰</span>, onClick: () => handleViewFees(student) },
+                                  { label: "View Attendance", icon: <span className="text-sm">📊</span>, onClick: () => handleViewAttendance(student) },
+                                ];
+                                actionsList.push({ separator: true });
+                                actionsList.push({ label: "Delete Student", icon: ActionIcons.delete, onClick: () => handleDeleteStudent(student), variant: "danger" });
+                                return actionsList;
+                              })()}
+                            />
                           </div>
                         </td>
                       </tr>
