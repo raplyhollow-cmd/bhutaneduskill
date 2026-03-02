@@ -74,17 +74,43 @@ export async function requireAuthServer(allowedRoles?: string[]): Promise<AuthRe
   const { db } = await import("@/lib/db");
   const { users } = await import("@/lib/db/schema");
   const { eq } = await import("drizzle-orm");
+  const { logger } = await import("@/lib/logger");
 
   // Get user with role from database
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.clerkUserId, userId))
-    .limit(1);
+  let userRecords;
+  try {
+    userRecords = await db
+      .select({
+        id: users.id,
+        clerkUserId: users.clerkUserId,
+        type: users.type,
+        schoolId: users.schoolId,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        name: users.name,
+        email: users.email,
+        phone: users.phone,
+        role: users.role,
+        onboardingComplete: users.onboardingComplete,
+        onboardingStatus: users.onboardingStatus,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+      })
+      .from(users)
+      .where(eq(users.clerkUserId, userId))
+      .limit(1);
+  } catch (dbError) {
+    // Database query failed - log but don't crash
+    logger.error("requireAuthServer: database query failed", dbError);
+    return { error: "Database error", status: 500 };
+  }
 
-  if (!user) {
+  if (!userRecords || userRecords.length === 0) {
+    logger.debug("requireAuthServer: user not found in database", { clerkUserId: userId });
     return { error: "User not found", status: 404 };
   }
+
+  const user = userRecords[0];
 
   // Check role if required
   if (allowedRoles && allowedRoles.length > 0) {

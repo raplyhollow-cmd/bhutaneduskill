@@ -11,20 +11,16 @@ import { db } from "@/lib/db";
 import { users, classes } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { logger } from "@/lib/logger";
-import { createApiRoute, getAuth } from "@/lib/api/route-handler";
-import { successResponse, errorResponse, notFoundResponse } from "@/lib/api/response-helpers";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, notFoundResponse } from "@/lib/api/response-helpers";
 
 // ============================================================================
 // GET /api/school-admin/classes
 // ============================================================================
 
 export const GET = createApiRoute(
-  async (request: NextRequest) => {
-    const auth = getAuth(request);
-    if (!auth) {
-      return errorResponse("Unauthorized", 401);
-    }
-
+  async (request: NextRequest, auth) => {
+    // Auth is provided by createApiRoute wrapper
     const { userId } = auth;
 
     // Get school admin's school ID using db.select()

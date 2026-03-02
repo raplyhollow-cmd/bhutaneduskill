@@ -31,7 +31,10 @@ export default function TeacherApprovalsPage() {
     try {
       setLoading(true);
       const res = await fetch("/api/teacher/pending-students");
-      const data = await res.json();
+      const response = await res.json();
+
+      // successResponse wraps data in a "data" property
+      const data = response.data || response;
 
       if (data.success) {
         setStudents(data.students || []);
@@ -63,7 +66,9 @@ export default function TeacherApprovalsPage() {
         body: JSON.stringify({ type: "student" }),
       });
 
-      const data = await res.json();
+      const response = await res.json();
+      // successResponse wraps data in a "data" property
+      const data = response.data || response;
 
       if (data.success) {
         toast({
@@ -103,7 +108,9 @@ export default function TeacherApprovalsPage() {
         body: JSON.stringify({ type: "student", reason: "Rejected by teacher" }),
       });
 
-      const data = await res.json();
+      const response = await res.json();
+      // successResponse wraps data in a "data" property
+      const data = response.data || response;
 
       if (data.success) {
         toast({

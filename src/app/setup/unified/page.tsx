@@ -1,130 +1,70 @@
 "use client";
 
 import { logger } from "@/lib/logger";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 import { WizardContainer } from "@/components/wizard/wizard-container";
 import { WizardNavigation } from "@/components/wizard/wizard-navigation";
-import { SchoolCodeInput } from "@/components/wizard/school-code-input";
 import { SchoolSearchInput, type School as SchoolType } from "@/components/wizard/school-search-input";
 import { VerificationCodeInput } from "@/components/wizard/verification-code-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, CheckCircle2, UserPlus, GraduationCap, Users, BookOpen, School, ChevronRight, ArrowRight, Sparkles, MapPin } from "lucide-react";
-import { motion } from "framer-motion";
+import { Loader2, CheckCircle2, UserPlus, GraduationCap, Users, BookOpen, School, ChevronRight, Sparkles, MapPin } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { cn } from "@/lib/utils";
 
-// Role definitions with colors and icons
+// Role definitions - Premium styling
 const ROLES = [
   {
     id: "student",
     name: "Student",
     description: "Take assessments, explore careers, track your progress",
-    icon: "GraduationCap",
-    color: "rgb(249 115 22)",
-    colorTo: "rgb(194 65 12)",
-    bgColor: "bg-orange-50",
-    borderColor: "border-orange-200",
-    steps: [
-      { id: "role", title: "Select Role" },
-      { id: "find", title: "Find School" },
-      { id: "details", title: "Your Details" },
-      { id: "academic", title: "Academic Info" },
-      { id: "complete", title: "Complete" },
-    ],
+    icon: GraduationCap,
+    gradient: "from-orange-500 to-orange-600",
+    steps: ["Role", "School", "Details", "Academic", "Done"],
   },
   {
     id: "teacher",
     name: "Teacher",
     description: "Manage classes, homework, track student progress",
-    icon: "BookOpen",
-    color: "rgb(59 130 246)",
-    colorTo: "rgb(37 99 235)",
-    bgColor: "bg-blue-50",
-    borderColor: "border-blue-200",
-    steps: [
-      { id: "role", title: "Select Role" },
-      { id: "find", title: "Find School" },
-      { id: "details", title: "Your Details" },
-      { id: "subjects", title: "Subjects & Classes" },
-      { id: "complete", title: "Complete" },
-    ],
+    icon: BookOpen,
+    gradient: "from-blue-500 to-blue-600",
+    steps: ["Role", "School", "Details", "Subjects", "Done"],
   },
   {
     id: "parent",
     name: "Parent",
     description: "Monitor your child's progress and communicate",
-    icon: "Users",
-    color: "rgb(107 114 128)",
-    colorTo: "rgb(75 85 99)",
-    bgColor: "bg-gray-50",
-    borderColor: "border-gray-200",
-    steps: [
-      { id: "role", title: "Select Role" },
-      { id: "find", title: "Find School" },
-      { id: "details", title: "Your Details" },
-      { id: "children", title: "Link Children" },
-      { id: "complete", title: "Complete" },
-    ],
+    icon: Users,
+    gradient: "from-neutral-400 to-neutral-500",
+    steps: ["Role", "School", "Details", "Children", "Done"],
   },
   {
     id: "counselor",
     name: "Counselor",
     description: "Guide students through career and personal development",
-    icon: "UserPlus",
-    color: "rgb(168 85 247)",
-    colorTo: "rgb(147 51 234)",
-    bgColor: "bg-purple-50",
-    borderColor: "border-purple-200",
-    steps: [
-      { id: "role", title: "Select Role" },
-      { id: "find", title: "Find School" },
-      { id: "details", title: "Your Details" },
-      { id: "specialization", title: "Specialization" },
-      { id: "complete", title: "Complete" },
-    ],
+    icon: UserPlus,
+    gradient: "from-purple-500 to-purple-600",
+    steps: ["Role", "School", "Details", "Specialization", "Done"],
   },
   {
     id: "school-admin",
     name: "School Admin",
     description: "Manage school, students, teachers, and operations",
-    icon: "School",
-    color: "rgb(139 92 246)",
-    colorTo: "rgb(124 58 237)",
-    bgColor: "bg-violet-50",
-    borderColor: "border-violet-200",
-    steps: [
-      { id: "role", title: "Select Role" },
-      { id: "find", title: "Find School" },
-      { id: "details", title: "Your Details" },
-      { id: "complete", title: "Complete" },
-    ],
+    icon: School,
+    gradient: "from-violet-500 to-violet-600",
+    steps: ["Role", "School", "Details", "Done"],
   },
 ];
-
-// Icon mapping
-const IconMap = {
-  GraduationCap,
-  BookOpen,
-  Users,
-  UserPlus,
-  School,
-};
 
 // Constants
 const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"];
 const GENDERS = ["Male", "Female", "Other"];
-const GRADES = ["6", "7", "8", "9", "10", "11", "12"];
-const SECTIONS = ["A", "B", "C", "D", "E"];
-const SUBJECT_OPTIONS = [
-  "Mathematics", "English", "Dzongkha", "Science", "Physics",
-  "Chemistry", "Biology", "History", "Geography", "Economics",
-  "Information Technology", "Physical Education", "Art", "Music"
-];
+const QUALIFICATIONS = ["Class X", "Class XII", "Diploma", "Bachelor's", "Master's", "M.Ed", "B.Ed", "PhD", "Other"];
 const RELATIONSHIPS = ["Father", "Mother", "Guardian", "Grandparent", "Other"];
 const SPECIALIZATIONS = [
   "Career Counseling", "Academic Guidance", "Personal Development",
@@ -135,64 +75,19 @@ const POSITIONS = ["principal", "vice_principal", "admin_officer", "other"];
 
 export default function UnifiedSetupWizard() {
   const router = useRouter();
+  const { user: clerkUser, isLoaded: clerkLoaded } = useUser();
   const [selectedRole, setSelectedRole] = useState<typeof ROLES[0] | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Check if user is already set up (especially admin users)
-  // Also check for pre-filled school code from URL
-  useEffect(() => {
-    let isMounted = true;
+  // Note: Authentication and routing is now handled by middleware
+  // The middleware redirects users here when they need to complete setup
+  // No need to check auth status here - just render the form
 
-    fetch("/api/auth/set-role")
-      .then((res) => res.json())
-      .then((data) => {
-        if (!isMounted) return;
-
-        const { userType, needsSetup } = data;
-
-        // If user does not need setup, redirect to their portal
-        if (!needsSetup && userType) {
-          const redirectMap: Record<string, string> = {
-            student: "/student",
-            teacher: "/teacher",
-            parent: "/parent",
-            counselor: "/counselor",
-            "school-admin": "/school-admin",
-            admin: "/admin",
-            ministry: "/ministry",
-          };
-          const redirectPath = redirectMap[userType] || "/setup/unified";
-          // Use router.push for Next.js navigation (more reliable than window.location.href)
-          router.push(redirectPath);
-        }
-      })
-      .catch(() => {
-        // On error, continue showing setup wizard
-      });
-
-    // Check for pre-filled school code in URL query parameter
-    const urlParams = new URLSearchParams(window.location.search);
-    const preFilledCode = urlParams.get("code");
-    if (preFilledCode) {
-      setSchoolCode(preFilledCode.toUpperCase());
-    }
-
-    return () => {
-      isMounted = false;
-    };
-  }, [router]);
-
-
-  // Common form fields
+  // Form state
   const [schoolCode, setSchoolCode] = useState("");
-  type VerifiedSchool = {
-    id: string;
-    name: string;
-    code: string;
-    city?: string;
-  };
+  type VerifiedSchool = { id: string; name: string; code: string; city?: string; };
   const [verifiedSchool, setVerifiedSchool] = useState<VerifiedSchool | null>(null);
   const [selectedSchool, setSelectedSchool] = useState<SchoolType | null>(null);
   const [isCodeVerified, setIsCodeVerified] = useState(false);
@@ -200,38 +95,59 @@ export default function UnifiedSetupWizard() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
 
-  // Student specific
+  // Student
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [gender, setGender] = useState("");
   const [bloodGroup, setBloodGroup] = useState("");
   const [studentId, setStudentId] = useState("");
-  const [grade, setGrade] = useState("");
-  const [section, setSection] = useState("");
-  const [guardianName, setGuardianName] = useState("");
-  const [guardianPhone, setGuardianPhone] = useState("");
-
-  // Dynamic classes loading for students
-  type SchoolClass = {
-    id: string;
-    name: string;
-    grade: number;
-    section: string;
-    academicYear?: string;
-  };
+  type SchoolClass = { id: string; name: string; grade: number; section: string; };
   const [availableClasses, setAvailableClasses] = useState<SchoolClass[]>([]);
   const [isLoadingClasses, setIsLoadingClasses] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState("");
   const [classesError, setClassesError] = useState("");
+  const [guardianName, setGuardianName] = useState("");
+  const [guardianPhone, setGuardianPhone] = useState("");
 
-  // Load classes when school is verified (for students)
+  // Teacher
+  const [cidNo, setCidNo] = useState("");
+  const [qualification, setQualification] = useState("");
+  const [university, setUniversity] = useState("");
+  // Track selected subjects with their grades: { "Mathematics": [6, 7, 8], "English": [9, 10] }
+  const [selectedSubjects, setSelectedSubjects] = useState<Record<string, number[]>>({});
+  type Subject = { id: string; name: string; grade?: number };
+  const [availableSubjects, setAvailableSubjects] = useState<Subject[]>([]);
+  const [isLoadingSubjects, setIsLoadingSubjects] = useState(false);
+  const [subjectsError, setSubjectsError] = useState("");
+  const [teacherAvailableClasses, setTeacherAvailableClasses] = useState<SchoolClass[]>([]);
+  const [isLoadingTeacherClasses, setIsLoadingTeacherClasses] = useState(false);
+  const [teacherClassesError, setTeacherClassesError] = useState("");
+
+  // Parent
+  const [relationship, setRelationship] = useState("");
+  const [children, setChildren] = useState<Array<{ name: string; studentId: string }>>([]);
+  const [newChildName, setNewChildName] = useState("");
+  const [newChildId, setNewChildId] = useState("");
+
+  // Counselor
+  const [licenseNumber, setLicenseNumber] = useState("");
+  const [selectedSpecializations, setSelectedSpecializations] = useState<string[]>([]);
+
+  // School Admin
+  const [position, setPosition] = useState("principal");
+
+  // Auto-fill email from Clerk
+  useEffect(() => {
+    if (clerkLoaded && clerkUser?.primaryEmailAddress?.emailAddress && !email) {
+      setEmail(clerkUser.primaryEmailAddress.emailAddress);
+    }
+  }, [clerkLoaded, clerkUser, email]);
+
+  // Load classes for students
   useEffect(() => {
     if (verifiedSchool && selectedRole?.id === "student") {
       loadClassesForSchool(verifiedSchool.code);
     } else if (!verifiedSchool) {
-      // Clear classes when school is cleared
-      setAvailableClasses([]);
-      setSelectedClassId("");
-      setClassesError("");
+      setAvailableClasses([]); setSelectedClassId(""); setClassesError("");
     }
   }, [verifiedSchool, selectedRole]);
 
@@ -241,10 +157,8 @@ export default function UnifiedSetupWizard() {
     try {
       const response = await fetch(`/api/classes/public?schoolCode=${encodeURIComponent(schoolCode)}`);
       const data = await response.json();
-
       if (data.success) {
         setAvailableClasses(data.data.classes);
-        // Clear previous selection if it's no longer valid
         if (selectedClassId && !data.data.classes.some((c: SchoolClass) => c.id === selectedClassId)) {
           setSelectedClassId("");
         }
@@ -254,31 +168,61 @@ export default function UnifiedSetupWizard() {
       }
     } catch (error) {
       logger.error("Failed to load classes", error);
-      setClassesError("Failed to load classes. Please try again.");
+      setClassesError("Failed to load classes");
       setAvailableClasses([]);
     } finally {
       setIsLoadingClasses(false);
     }
   };
 
-  // Teacher specific
-  const [employeeId, setEmployeeId] = useState("");
-  const [qualifications, setQualifications] = useState("");
-  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
-  const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
+  // Load subjects and classes for teachers
+  useEffect(() => {
+    if (verifiedSchool && selectedRole?.id === "teacher") {
+      loadSubjectsForSchool(verifiedSchool.code);
+    } else if (!verifiedSchool) {
+      setAvailableSubjects([]); setSelectedSubjects({}); setSubjectsError("");
+    }
+  }, [verifiedSchool, selectedRole]);
 
-  // Parent specific
-  const [relationship, setRelationship] = useState("");
-  const [children, setChildren] = useState<Array<{ name: string; studentId: string }>>([]);
-  const [newChildName, setNewChildName] = useState("");
-  const [newChildId, setNewChildId] = useState("");
+  const loadSubjectsForSchool = async (schoolCode: string) => {
+    setIsLoadingSubjects(true);
+    setSubjectsError("");
+    try {
+      const response = await fetch(`/api/subjects/public?schoolCode=${encodeURIComponent(schoolCode)}`);
+      const data = await response.json();
+      if (data.success) {
+        setAvailableSubjects(data.data.subjects || []);
+      } else {
+        setSubjectsError(data.error || "Failed to load subjects");
+        setAvailableSubjects([]);
+      }
+    } catch (error) {
+      logger.error("Failed to load subjects", error);
+      setAvailableSubjects([]);
+    } finally {
+      setIsLoadingSubjects(false);
+    }
+  };
 
-  // Counselor specific
-  const [licenseNumber, setLicenseNumber] = useState("");
-  const [selectedSpecializations, setSelectedSpecializations] = useState<string[]>([]);
-
-  // School Admin specific
-  const [position, setPosition] = useState("principal");
+  const loadTeacherClassesForSchool = async (schoolCode: string) => {
+    setIsLoadingTeacherClasses(true);
+    setTeacherClassesError("");
+    try {
+      const response = await fetch(`/api/classes/public?schoolCode=${encodeURIComponent(schoolCode)}`);
+      const data = await response.json();
+      if (data.success) {
+        setTeacherAvailableClasses(data.data.classes || []);
+      } else {
+        setTeacherClassesError(data.error || "Failed to load classes");
+        setTeacherAvailableClasses([]);
+      }
+    } catch (error) {
+      logger.error("Failed to load teacher classes", error);
+      setTeacherAvailableClasses([]);
+    } finally {
+      setIsLoadingTeacherClasses(false);
+    }
+  };
 
   const steps = selectedRole?.steps || ROLES[0].steps;
 
@@ -289,7 +233,6 @@ export default function UnifiedSetupWizard() {
 
   const canGoNext = () => {
     if (!selectedRole) return false;
-
     switch (selectedRole.id) {
       case "student":
         if (currentStep === 2) return verifiedSchool !== null;
@@ -298,8 +241,8 @@ export default function UnifiedSetupWizard() {
         return true;
       case "teacher":
         if (currentStep === 2) return verifiedSchool !== null;
-        if (currentStep === 3) return !!(fullName && email && phone);
-        if (currentStep === 4) return selectedSubjects.length > 0 && selectedClasses.length > 0;
+        if (currentStep === 3) return !!(fullName && cidNo && phone && qualification);
+        if (currentStep === 4) return Object.keys(selectedSubjects).length > 0;
         return true;
       case "parent":
         if (currentStep === 2) return verifiedSchool !== null;
@@ -308,7 +251,7 @@ export default function UnifiedSetupWizard() {
         return true;
       case "counselor":
         if (currentStep === 2) return verifiedSchool !== null;
-        if (currentStep === 3) return !!(fullName && email && phone && qualifications);
+        if (currentStep === 3) return !!(fullName && email && phone);
         if (currentStep === 4) return true;
         return true;
       case "school-admin":
@@ -323,7 +266,6 @@ export default function UnifiedSetupWizard() {
   const handleNext = async () => {
     setError("");
     const totalSteps = steps.length;
-
     if (currentStep === totalSteps) {
       await completeWizard();
     } else if (currentStep === totalSteps - 1) {
@@ -335,8 +277,7 @@ export default function UnifiedSetupWizard() {
 
   const handleBack = () => {
     if (currentStep === 2 && selectedRole) {
-      setSelectedRole(null);
-      setCurrentStep(1);
+      setSelectedRole(null); setCurrentStep(1);
     } else {
       setCurrentStep((prev) => Math.max(1, prev - 1));
     }
@@ -344,21 +285,14 @@ export default function UnifiedSetupWizard() {
 
   const submitWizardData = async () => {
     if (!selectedRole) return;
-
     setIsLoading(true);
     setError("");
-
     try {
       const endpoint = `/api/setup/${selectedRole.id}`;
-      const body: {
-        step: string;
-        data: Record<string, unknown>;
-      } = {
+      const body: { step: string; data: Record<string, unknown> } = {
         step: "complete",
         data: { schoolCode },
       };
-
-      // Add role-specific data
       switch (selectedRole.id) {
         case "student":
           body.data.personalDetails = { fullName, dateOfBirth, gender, bloodGroup, studentId };
@@ -366,16 +300,19 @@ export default function UnifiedSetupWizard() {
           body.data.guardianDetails = { guardianName, guardianPhone };
           break;
         case "teacher":
-          body.data.personalDetails = { fullName, email, phone, employeeId, qualifications };
-          body.data.subjects = selectedSubjects;
-          body.data.classes = selectedClasses;
+          body.data.personalDetails = { fullName, cidNo, phone, qualification, university };
+          // Convert { "Mathematics": [6, 7], "English": [9] } to array of objects with subject and grade
+          // This allows showing which grade each subject is for in the pending approval page
+          body.data.subjects = Object.entries(selectedSubjects).flatMap(([subject, grades]) =>
+            grades.map(grade => ({ subject, grade }))
+          );
           break;
         case "parent":
           body.data.personalDetails = { fullName, email, phone, relationship };
           body.data.children = children;
           break;
         case "counselor":
-          body.data.personalDetails = { fullName, email, phone, licenseNumber, qualifications, specializations: selectedSpecializations };
+          body.data.personalDetails = { fullName, email, phone, licenseNumber, specializations: selectedSpecializations };
           break;
         case "school-admin":
           body.data.adminName = fullName;
@@ -384,32 +321,24 @@ export default function UnifiedSetupWizard() {
           body.data.position = position;
           break;
       }
-
       const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-
       if (response.ok) {
         setCurrentStep((prev) => prev + 1);
       } else {
-        // Try to get error details from response
         let errorMsg = `Setup failed (Status: ${response.status})`;
         try {
           const errorData = await response.json();
           errorMsg = errorData.error || errorData.details || errorMsg;
-        } catch (e) {
-          // Response body might not be JSON
-          const text = await response.text().catch(() => "");
-          if (text) errorMsg = `${errorMsg}: ${text}`;
-        }
+        } catch (e) {}
         logger.error("Setup API error:", errorMsg);
         setError(errorMsg);
       }
     } catch (err) {
-      const errMsg = err instanceof Error ? err.message : "Unknown error";
-      logger.error("Setup wizard network error:", errMsg);
+      logger.error("Setup wizard network error:", err);
       setError("Network error. Please try again.");
     } finally {
       setIsLoading(false);
@@ -418,27 +347,18 @@ export default function UnifiedSetupWizard() {
 
   const completeWizard = async () => {
     if (!selectedRole) return;
-
     setIsLoading(true);
     try {
-      // Mark setup as complete
       const response = await fetch("/api/setup/complete", { method: "POST" });
-
       if (!response.ok) {
         const data = await response.json();
         setError(data.error || "Failed to complete setup");
         return;
       }
-
       const data = await response.json();
-
-      logger.debug("[Setup Complete] Setup complete, needsApproval:", data.needsApproval);
-
-      // For school-admins who need approval, redirect to pending-approval page
       if (data.needsApproval) {
         router.push("/pending-approval");
       } else {
-        // Redirect to portal immediately
         router.push(`/${selectedRole.id}?welcome=true`);
       }
     } catch (err) {
@@ -449,12 +369,21 @@ export default function UnifiedSetupWizard() {
     }
   };
 
+  // Auto-redirect when completion screen is shown
+  useEffect(() => {
+    const steps = selectedRole?.steps || [];
+    const totalSteps = steps.length;
+    // When user reaches the completion screen (last step), automatically redirect
+    if (currentStep === totalSteps && selectedRole && !isLoading) {
+      completeWizard();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep, selectedRole]);
 
   const addChild = () => {
     if (newChildName && newChildId) {
       setChildren([...children, { name: newChildName, studentId: newChildId }]);
-      setNewChildName("");
-      setNewChildId("");
+      setNewChildName(""); setNewChildId("");
     }
   };
 
@@ -462,16 +391,18 @@ export default function UnifiedSetupWizard() {
     setChildren(children.filter((_, i) => i !== index));
   };
 
-  const toggleSubject = (subject: string) => {
-    setSelectedSubjects((prev) =>
-      prev.includes(subject) ? prev.filter((s) => s !== subject) : [...prev, subject]
-    );
-  };
-
-  const toggleClass = (className: string) => {
-    setSelectedClasses((prev) =>
-      prev.includes(className) ? prev.filter((c) => c !== className) : [...prev, className]
-    );
+  const toggleSubjectGrade = (subjectName: string, grade: number) => {
+    setSelectedSubjects((prev) => {
+      const currentGrades = prev[subjectName] || [];
+      const newGrades = currentGrades.includes(grade)
+        ? currentGrades.filter(g => g !== grade)
+        : [...currentGrades, grade];
+      if (newGrades.length === 0) {
+        const { [subjectName]: _, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [subjectName]: newGrades };
+    });
   };
 
   const toggleSpecialization = (spec: string) => {
@@ -480,77 +411,49 @@ export default function UnifiedSetupWizard() {
     );
   };
 
+  // =============================================================================
+  // RENDER FUNCTIONS - Premium styling
+  // =============================================================================
+
   const renderRoleSelection = () => (
-    <div className="space-y-8">
-      <div className="text-center space-y-3">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100">
-          <Sparkles className="w-4 h-4 text-blue-500" />
-          <span className="text-sm font-medium text-blue-700">Welcome to Bhutan EduSkill</span>
+    <div className="space-y-5">
+      <div className="text-center space-y-2">
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-gray-100 to-gray-200/80 border border-gray-200/60 shadow-sm">
+          <Sparkles className="w-3.5 h-3.5 text-orange-500" />
+          <span className="text-xs font-medium text-gray-700">Bhutan EduSkill</span>
         </div>
-        <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">Choose your role</h2>
-        <p className="text-slate-600 max-w-md mx-auto">Select your role to get started with your personalized onboarding experience</p>
+        <h2 className="text-xl font-semibold text-gray-900">Choose your role</h2>
+        <p className="text-gray-500 text-sm">Select your role to continue</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {ROLES.map((role, index) => {
-          const Icon = IconMap[role.icon as keyof typeof IconMap];
-          return (
-            <motion.button
-              key={role.id}
-              type="button"
-              onClick={() => handleRoleSelect(role)}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05, duration: 0.3 }}
-              className="group relative p-5 rounded-2xl border-2 border-slate-200 bg-white text-left transition-all duration-300 hover:shadow-xl hover:-translate-y-1 hover:border-transparent"
-              style={{
-                boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)"
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = role.color;
-                e.currentTarget.style.boxShadow = `0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1), 0 0 0 4px ${role.color}15`;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "rgb(226 232 240)";
-                e.currentTarget.style.boxShadow = "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)";
-              }}
-            >
-              {/* Gradient background on hover */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {ROLES.map((role, index) => (
+          <motion.button
+            key={role.id}
+            type="button"
+            onClick={() => handleRoleSelect(role)}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.04, duration: 0.2 }}
+            className="group relative p-4 rounded-xl border border-gray-200/80 bg-white/80 hover:bg-white hover:border-gray-300/80 hover:shadow-md hover:shadow-gray-200/50 text-left transition-all duration-200"
+          >
+            <div className="flex items-center gap-3">
               <div
-                className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-                style={{ background: `linear-gradient(135deg, ${role.color}08 0%, ${role.colorTo}08 100%)` }}
-              />
-
-              {/* Icon container */}
-              <div className="flex items-start gap-4 relative">
-                <div
-                  className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:rotate-3"
-                  style={{ background: `linear-gradient(135deg, ${role.color} 0%, ${role.colorTo} 100%)` }}
-                >
-                  <Icon className="w-7 h-7 text-white" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-slate-900 mb-1 text-lg">{role.name}</h3>
-                  <p className="text-sm text-slate-600 line-clamp-2 leading-relaxed">{role.description}</p>
-                </div>
-              </div>
-
-              {/* Arrow indicator */}
-              <div className="absolute bottom-4 right-4 w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 group-hover:translate-x-0 translate-x-2"
-                style={{ backgroundColor: `${role.color}15` }}
+                className={cn(
+                  "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 bg-gradient-to-br shadow-sm",
+                  role.gradient
+                )}
               >
-                <ArrowRight className="w-4 h-4" style={{ color: role.color }} />
+                <role.icon className="w-5 h-5 text-white" />
               </div>
-            </motion.button>
-          );
-        })}
-      </div>
-
-      <div className="flex items-center justify-center gap-2 text-sm text-slate-500 bg-slate-50 px-4 py-3 rounded-xl border border-slate-200">
-        <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <span>Not sure which role to choose? Contact your school administrator for guidance.</span>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-gray-900 text-sm">{role.name}</h3>
+                <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{role.description}</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-700 transition-colors" />
+            </div>
+          </motion.button>
+        ))}
       </div>
     </div>
   );
@@ -559,83 +462,61 @@ export default function UnifiedSetupWizard() {
     // State 1: No school selected - show search
     if (!selectedSchool) {
       return (
-        <div className="space-y-6">
+        <div className="space-y-5">
           <div className="text-center space-y-2">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center mx-auto">
-              <School className="w-8 h-8 text-blue-600" />
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-100 to-gray-200/80 flex items-center justify-center mx-auto shadow-sm">
+              <School className="w-6 h-6 text-gray-600" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-slate-900">Find Your School</h2>
-              <p className="text-slate-600 mt-1">
+              <h2 className="text-lg font-semibold text-gray-900">Find Your School</h2>
+              <p className="text-gray-500 text-sm mt-1">
                 {selectedRole?.id === "parent"
-                  ? "Search for your child's school to verify and link your account."
-                  : "Search for your school by name to verify your enrollment."}
+                  ? "Search for your child's school"
+                  : "Search for your school by name"}
               </p>
             </div>
           </div>
-
           <SchoolSearchInput onSchoolSelect={setSelectedSchool} />
         </div>
       );
     }
 
-    // State 2: School selected but not verified - show code input
+    // State 2: School selected but not verified
     if (!isCodeVerified) {
       return (
-        <div className="space-y-6">
-          {/* Selected school card */}
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="p-4 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200"
-          >
+        <div className="space-y-4">
+          <div className="p-4 rounded-xl bg-gray-50/80 border border-gray-200/60 shadow-sm">
             <div className="flex items-center justify-between">
-              <div className="flex items-start gap-3">
-                <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
-                  <School className="w-6 h-6 text-blue-600" />
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-100 to-blue-200/80 flex items-center justify-center">
+                  <School className="w-5 h-5 text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-blue-900">{selectedSchool.name}</h3>
-                  <p className="text-sm text-blue-700 flex items-center gap-1 mt-0.5">
-                    <MapPin className="w-3.5 h-3.5" />
+                  <h3 className="font-medium text-gray-900">{selectedSchool.name}</h3>
+                  <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                    <MapPin className="w-3 h-3" />
                     {selectedSchool.city}
-                    {selectedSchool.state && `, ${selectedSchool.state}`}
                   </p>
                 </div>
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setSelectedSchool(null);
-                  setIsCodeVerified(false);
-                  setSchoolCode("");
-                }}
-                className="text-blue-600 hover:text-blue-700 hover:bg-white/50"
+              <button
+                onClick={() => { setSelectedSchool(null); setIsCodeVerified(false); setSchoolCode(""); }}
+                className="text-xs text-gray-500 hover:text-gray-700 transition-colors"
               >
                 Change
-              </Button>
+              </button>
             </div>
-          </motion.div>
+          </div>
 
-          {/* Verification code input */}
-          <div className="space-y-4">
-            <div className="text-center space-y-2">
-              <h3 className="font-semibold text-slate-900">Enter School Code</h3>
-              <p className="text-sm text-slate-600">
-                Enter the verification code for <span className="font-medium text-blue-600">{selectedSchool.name}</span>
-              </p>
-            </div>
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium text-gray-900">Enter School Code</h3>
             <VerificationCodeInput
               expectedCode={selectedSchool.code}
               schoolName={selectedSchool.name}
               onVerified={(isValid, code) => {
                 setIsCodeVerified(isValid);
                 setSchoolCode(code);
-                if (isValid) {
-                  setVerifiedSchool(selectedSchool);
-                }
+                if (isValid) setVerifiedSchool(selectedSchool);
               }}
             />
           </div>
@@ -643,189 +524,207 @@ export default function UnifiedSetupWizard() {
       );
     }
 
-    // State 3: Verified - show success
+    // State 3: Verified
     return (
-      <div className="space-y-6">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="p-5 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-200"
-        >
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-xl bg-emerald-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-emerald-500/30">
-              <CheckCircle2 className="w-6 h-6 text-white" />
+      <div className="space-y-4">
+        <div className="p-4 rounded-xl bg-emerald-50/80 border border-emerald-200/60 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-emerald-500 flex items-center justify-center shadow-sm">
+              <CheckCircle2 className="w-5 h-5 text-white" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold text-emerald-900">{selectedSchool.name}</h3>
-              <p className="text-sm text-emerald-700 flex items-center gap-1 mt-1">
-                <MapPin className="w-3.5 h-3.5" />
-                {selectedSchool.city}
-                {selectedSchool.state && `, ${selectedSchool.state}`}
-              </p>
+              <h3 className="font-medium text-emerald-700">{selectedSchool.name}</h3>
+              <p className="text-xs text-emerald-600">{selectedSchool.city}</p>
             </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setIsCodeVerified(false);
-                setVerifiedSchool(null);
-              }}
-              className="text-emerald-600 hover:text-emerald-700 hover:bg-white/50"
+            <button
+              onClick={() => { setIsCodeVerified(false); setVerifiedSchool(null); }}
+              className="text-xs text-emerald-600 hover:text-emerald-700 transition-colors"
             >
               Change
-            </Button>
+            </button>
           </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200"
-        >
-          <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-          <span className="text-sm font-medium text-emerald-700">School verified successfully! You can proceed to the next step.</span>
-        </motion.div>
+        </div>
+        <p className="text-sm text-emerald-700 text-center">School verified successfully</p>
       </div>
     );
   };
 
   const renderPersonalDetails = () => (
-    <div className="space-y-6">
-      <div className="text-center space-y-2">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center mx-auto">
-          <GraduationCap className="w-8 h-8 text-slate-600" />
-        </div>
-        <div>
-          <h2 className="text-xl font-semibold text-slate-900">Your Details</h2>
-          <p className="text-slate-600 mt-1">
-            Tell us about yourself so we can set up your {selectedRole?.name} account.
-          </p>
-        </div>
+    <div className="space-y-4">
+      <div className="text-center space-y-1">
+        <h2 className="text-lg font-semibold text-gray-900">Your Details</h2>
+        <p className="text-gray-500 text-sm">Tell us about yourself</p>
       </div>
 
-      <div className="space-y-5 max-w-lg mx-auto">
+      <div className="space-y-3">
         <div>
-          <Label htmlFor="fullName">Full Name</Label>
+          <Label htmlFor="fullName" className="text-gray-600 text-xs font-medium">Full Name</Label>
           <Input
             id="fullName"
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             placeholder="Enter your full name"
+            className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-gray-200"
           />
         </div>
 
         {selectedRole?.id === "student" ? (
           <>
-            <div>
-              <Label htmlFor="dateOfBirth">Date of Birth</Label>
-              <Input
-                id="dateOfBirth"
-                type="date"
-                value={dateOfBirth}
-                onChange={(e) => setDateOfBirth(e.target.value)}
-                max={new Date().toISOString().split('T')[0]}
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="dateOfBirth" className="text-gray-600 text-xs font-medium">Date of Birth</Label>
+                <Input
+                  id="dateOfBirth"
+                  type="date"
+                  value={dateOfBirth}
+                  onChange={(e) => setDateOfBirth(e.target.value)}
+                  max={new Date().toISOString().split('T')[0]}
+                  className="bg-neutral-800 border-neutral-700 text-white focus:border-neutral-500"
+                />
+              </div>
+              <div>
+                <Label htmlFor="gender" className="text-gray-600 text-xs font-medium">Gender</Label>
+                <Select value={gender} onValueChange={setGender}>
+                  <SelectTrigger className="bg-white border-gray-300 text-gray-900">
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-gray-200">
+                    {GENDERS.map((g) => (
+                      <SelectItem key={g} value={g} className="text-gray-900 hover:bg-gray-100">{g}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            <div>
-              <Label htmlFor="gender">Gender</Label>
-              <Select value={gender} onValueChange={setGender}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select gender" />
-                </SelectTrigger>
-                <SelectContent>
-                  {GENDERS.map((g) => (
-                    <SelectItem key={g} value={g}>{g}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="bloodGroup">Blood Group (Optional)</Label>
-              <Select value={bloodGroup} onValueChange={setBloodGroup}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select blood group" />
-                </SelectTrigger>
-                <SelectContent>
-                  {BLOOD_GROUPS.map((bg) => (
-                    <SelectItem key={bg} value={bg}>{bg}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="studentId">Student ID (Optional)</Label>
-              <Input
-                id="studentId"
-                value={studentId}
-                onChange={(e) => setStudentId(e.target.value)}
-                placeholder="Your school student ID"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="bloodGroup" className="text-gray-600 text-xs font-medium">Blood Group</Label>
+                <Select value={bloodGroup} onValueChange={setBloodGroup}>
+                  <SelectTrigger className="bg-white border-gray-300 text-gray-900">
+                    <SelectValue placeholder="Optional" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-gray-200">
+                    {BLOOD_GROUPS.map((bg) => (
+                      <SelectItem key={bg} value={bg} className="text-gray-900 hover:bg-gray-100">{bg}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="studentId" className="text-gray-600 text-xs font-medium">Student ID</Label>
+                <Input
+                  id="studentId"
+                  value={studentId}
+                  onChange={(e) => setStudentId(e.target.value)}
+                  placeholder="Optional"
+                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-gray-200"
+                />
+              </div>
             </div>
           </>
-        ) : selectedRole?.id === "teacher" || selectedRole?.id === "counselor" || selectedRole?.id === "school-admin" ? (
+        ) : selectedRole?.id === "teacher" ? (
           <>
-            <div>
-              <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your.email@school.edu.bt"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="cidNo" className="text-gray-600 text-xs font-medium">CID / Route Permit / Passport No</Label>
+                <Input
+                  id="cidNo"
+                  value={cidNo}
+                  onChange={(e) => setCidNo(e.target.value)}
+                  placeholder="Enter your ID number"
+                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-gray-200"
+                />
+              </div>
+              <div>
+                <Label htmlFor="phone" className="text-gray-600 text-xs font-medium">Mobile No</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+975 17 123 456"
+                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-gray-200"
+                />
+              </div>
             </div>
 
-            <div>
-              <Label htmlFor="phone">Phone Number</Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+975 17 123 456"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="qualification" className="text-gray-600 text-xs font-medium">Qualification</Label>
+                <Select value={qualification} onValueChange={setQualification}>
+                  <SelectTrigger className="bg-white border-gray-300 text-gray-900">
+                    <SelectValue placeholder="Select" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-gray-200">
+                    {QUALIFICATIONS.map((qual) => (
+                      <SelectItem key={qual} value={qual} className="text-gray-900 hover:bg-gray-100">{qual}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="university" className="text-gray-600 text-xs font-medium">University</Label>
+                <Input
+                  id="university"
+                  value={university}
+                  onChange={(e) => setUniversity(e.target.value)}
+                  placeholder="Your university"
+                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-gray-200"
+                />
+              </div>
+            </div>
+          </>
+        ) : selectedRole?.id === "counselor" || selectedRole?.id === "school-admin" ? (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="email" className="text-gray-600 text-xs font-medium">Email Address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="your@email.com"
+                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-gray-200"
+                />
+              </div>
+              <div>
+                <Label htmlFor="phone" className="text-gray-600 text-xs font-medium">Phone Number</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+975 17 123 456"
+                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-gray-200"
+                />
+              </div>
             </div>
 
-            {(selectedRole?.id === "teacher" || selectedRole?.id === "counselor") && (
-              <>
-                <div>
-                  <Label htmlFor="employeeId">
-                    {selectedRole?.id === "teacher" ? "Employee ID" : "License Number"} (Optional)
-                  </Label>
-                  <Input
-                    id="employeeId"
-                    value={selectedRole?.id === "teacher" ? employeeId : licenseNumber}
-                    onChange={(e) => selectedRole?.id === "teacher" ? setEmployeeId(e.target.value) : setLicenseNumber(e.target.value)}
-                    placeholder={selectedRole?.id === "teacher" ? "Your school employee ID" : "Professional license number"}
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="qualifications">Qualifications</Label>
-                  <Input
-                    id="qualifications"
-                    value={qualifications}
-                    onChange={(e) => setQualifications(e.target.value)}
-                    placeholder="e.g., B.Ed, M.Ed, M.A. in Counseling"
-                  />
-                </div>
-              </>
+            {selectedRole?.id === "counselor" && (
+              <div>
+                <Label htmlFor="licenseNumber" className="text-gray-600 text-xs font-medium">License Number</Label>
+                <Input
+                  id="licenseNumber"
+                  value={licenseNumber}
+                  onChange={(e) => setLicenseNumber(e.target.value)}
+                  placeholder="Optional"
+                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-gray-200"
+                />
+              </div>
             )}
 
             {selectedRole?.id === "school-admin" && (
               <div>
-                <Label htmlFor="position">Position</Label>
+                <Label htmlFor="position" className="text-gray-600 text-xs font-medium">Position</Label>
                 <Select value={position} onValueChange={setPosition}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select your position" />
+                  <SelectTrigger className="bg-white border-gray-300 text-gray-900">
+                    <SelectValue placeholder="Select position" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white border-gray-200">
                     {POSITIONS.map((pos) => (
-                      <SelectItem key={pos} value={pos}>
+                      <SelectItem key={pos} value={pos} className="text-gray-900 hover:bg-gray-100">
                         {pos === "vice_principal" ? "Vice Principal" :
                          pos === "admin_officer" ? "Administrative Officer" :
                          pos.charAt(0).toUpperCase() + pos.slice(1)}
@@ -838,37 +737,39 @@ export default function UnifiedSetupWizard() {
           </>
         ) : selectedRole?.id === "parent" ? (
           <>
-            <div>
-              <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="parent@example.com"
-              />
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="email" className="text-gray-600 text-xs font-medium">Email Address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="parent@example.com"
+                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-gray-200"
+                />
+              </div>
+              <div>
+                <Label htmlFor="phone" className="text-gray-600 text-xs font-medium">Phone Number</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+975 17 123 456"
+                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-gray-200"
+                />
+              </div>
             </div>
-
             <div>
-              <Label htmlFor="phone">Phone Number</Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="+975 17 123 456"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="relationship">Relationship to Student</Label>
+              <Label htmlFor="relationship" className="text-gray-600 text-xs font-medium">Relationship</Label>
               <Select value={relationship} onValueChange={setRelationship}>
-                <SelectTrigger>
+                <SelectTrigger className="bg-white border-gray-300 text-gray-900">
                   <SelectValue placeholder="Select relationship" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white border-gray-200">
                   {RELATIONSHIPS.map((rel) => (
-                    <SelectItem key={rel} value={rel.toLowerCase()}>{rel}</SelectItem>
+                    <SelectItem key={rel} value={rel.toLowerCase()} className="text-gray-900 hover:bg-gray-100">{rel}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -882,65 +783,62 @@ export default function UnifiedSetupWizard() {
   const renderAcademicDetails = () => {
     if (selectedRole?.id === "student") {
       return (
-        <div className="space-y-6">
-          <div>
-            <h2 className="text-xl font-semibold mb-2">Academic Details</h2>
-            <p className="text-gray-600">Tell us about your current class.</p>
+        <div className="space-y-4">
+          <div className="text-center space-y-1">
+            <h2 className="text-lg font-semibold text-gray-900">Academic Info</h2>
           </div>
 
-          <div className="space-y-4">
-            {/* Dynamic Class Selector */}
-            <div>
-              <Label htmlFor="classSelect">Select Your Class</Label>
-              {isLoadingClasses ? (
-                <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Loading classes for {verifiedSchool?.name}...
-                </div>
-              ) : classesError ? (
-                <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <p className="text-sm text-amber-700">{classesError}</p>
-                </div>
-              ) : availableClasses.length === 0 && !isLoadingClasses ? (
-                <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                  <p className="text-sm text-amber-700">
-                    No classes found for your school. Please contact your school administrator to create classes.
-                  </p>
-                </div>
-              ) : (
-                <Select value={selectedClassId} onValueChange={setSelectedClassId}>
-                  <SelectTrigger id="classSelect" className="mt-2">
-                    <SelectValue placeholder="Select your class" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableClasses.map((cls) => (
-                      <SelectItem key={cls.id} value={cls.id}>
-                        {cls.name} <span className="text-gray-500">(Grade {cls.grade} - {cls.section})</span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
+          <div>
+            <Label htmlFor="classSelect" className="text-gray-600 text-xs font-medium">Your Class</Label>
+            {isLoadingClasses ? (
+              <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Loading classes...
+              </div>
+            ) : classesError ? (
+              <div className="p-3 bg-red-50/80 border border-red-200/60 rounded-lg">
+                <p className="text-sm text-red-700">{classesError}</p>
+              </div>
+            ) : availableClasses.length === 0 ? (
+              <div className="p-3 bg-gray-50/80 border border-gray-200/60 rounded-lg">
+                <p className="text-sm text-gray-500">No classes found. Contact your school admin.</p>
+              </div>
+            ) : (
+              <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                <SelectTrigger className="bg-white border-gray-300 text-gray-900">
+                  <SelectValue placeholder="Choose from available classes" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-gray-200">
+                  {availableClasses.map((cls) => (
+                    <SelectItem key={cls.id} value={cls.id} className="text-gray-900 hover:bg-gray-100">
+                      {cls.name} <span className="text-neutral-500">({cls.grade}-{cls.section})</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
 
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="guardianName">Guardian Name</Label>
+              <Label htmlFor="guardianName" className="text-gray-600 text-xs font-medium">Guardian Name</Label>
               <Input
                 id="guardianName"
                 value={guardianName}
                 onChange={(e) => setGuardianName(e.target.value)}
-                placeholder="Parent or guardian name"
+                placeholder="Guardian name"
+                className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-gray-200"
               />
             </div>
-
             <div>
-              <Label htmlFor="guardianPhone">Guardian Phone</Label>
+              <Label htmlFor="guardianPhone" className="text-gray-600 text-xs font-medium">Guardian Phone</Label>
               <Input
                 id="guardianPhone"
                 type="tel"
                 value={guardianPhone}
                 onChange={(e) => setGuardianPhone(e.target.value)}
                 placeholder="+975 17 123 456"
+                className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-gray-200"
               />
             </div>
           </div>
@@ -950,50 +848,102 @@ export default function UnifiedSetupWizard() {
 
     if (selectedRole?.id === "teacher") {
       return (
-        <div className="space-y-6">
-          <div>
-            <h2 className="text-xl font-semibold mb-2">Subjects & Classes</h2>
-            <p className="text-gray-600">Select the subjects you teach and your assigned classes.</p>
+        <div className="space-y-4">
+          <div className="text-center space-y-1">
+            <h2 className="text-lg font-semibold text-gray-900">Subjects & Classes</h2>
+            <p className="text-gray-500 text-sm">Select what you teach</p>
           </div>
 
           <div>
-            <Label>Subjects (Select at least one)</Label>
-            <div className="grid grid-cols-2 gap-2 mt-2 max-h-48 overflow-y-auto">
-              {SUBJECT_OPTIONS.map((subject) => (
-                <button
-                  key={subject}
-                  type="button"
-                  onClick={() => toggleSubject(subject)}
-                  className={`p-2 text-sm rounded-lg border-2 text-left transition-all ${
-                    selectedSubjects.includes(subject)
-                      ? "border-blue-500 bg-blue-50 text-blue-700"
-                      : "border-gray-200 hover:border-gray-300"
-                  }`}
-                >
-                  {subject}
-                </button>
-              ))}
-            </div>
-          </div>
+            <Label className="text-gray-600 text-xs font-medium mb-3">Select Subjects & Grades</Label>
+            {isLoadingSubjects ? (
+              <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Loading subjects...
+              </div>
+            ) : subjectsError ? (
+              <div className="p-3 bg-red-50/80 border border-red-200/60 rounded-lg">
+                <p className="text-sm text-red-700">{subjectsError}</p>
+              </div>
+            ) : availableSubjects.length === 0 ? (
+              <div className="p-3 bg-gray-50/80 border border-gray-200/60 rounded-lg">
+                <p className="text-sm text-gray-500">No subjects found. Contact your school admin.</p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[280px] overflow-y-auto pr-1">
+                {(() => {
+                  // Group subjects by name and collect grades (deduplicate)
+                  const groupedSubjects = availableSubjects.reduce((acc, subject) => {
+                    if (!acc[subject.name]) {
+                      acc[subject.name] = { name: subject.name, grades: new Set<number>() };
+                    }
+                    if (subject.grade) {
+                      acc[subject.name].grades.add(subject.grade);
+                    }
+                    return acc;
+                  }, {} as Record<string, { name: string; grades: Set<number> }>);
 
-          <div>
-            <Label>Classes (Select at least one)</Label>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {GRADES.map((className) => (
-                <button
-                  key={className}
-                  type="button"
-                  onClick={() => toggleClass(className)}
-                  className={`px-4 py-2 rounded-lg border-2 transition-all ${
-                    selectedClasses.includes(className)
-                      ? "border-blue-500 bg-blue-50 text-blue-700"
-                      : "border-gray-200 hover:border-gray-300"
-                  }`}
-                >
-                  Class {className}
-                </button>
-              ))}
-            </div>
+                  // Convert to array and sort by name, then grades
+                  const subjectList = Object.values(groupedSubjects)
+                    .map(s => ({
+                      ...s,
+                      grades: Array.from(s.grades).sort((a, b) => a - b)
+                    }))
+                    .sort((a, b) => a.name.localeCompare(b.name));
+
+                  return subjectList.map((subject) => {
+                    const selectedGrades = selectedSubjects[subject.name] || [];
+                    const hasSelection = selectedGrades.length > 0;
+
+                    return (
+                      <div
+                        key={subject.name}
+                        className={cn(
+                          "p-4 rounded-xl border transition-all",
+                          hasSelection
+                            ? "bg-blue-50/50 border-blue-300/60"
+                            : "bg-white border-gray-200"
+                        )}
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className={cn(
+                            "font-medium",
+                            hasSelection ? "text-blue-700" : "text-gray-900"
+                          )}>
+                            {subject.name}
+                          </h4>
+                          {hasSelection && (
+                            <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
+                              {selectedGrades.length} grade{selectedGrades.length > 1 ? 's' : ''} selected
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {subject.grades.map((grade) => {
+                            const isSelected = selectedGrades.includes(grade);
+                            return (
+                              <button
+                                key={grade}
+                                type="button"
+                                onClick={() => toggleSubjectGrade(subject.name, grade)}
+                                className={cn(
+                                  "px-3 py-1.5 rounded-lg text-sm font-medium transition-all",
+                                  isSelected
+                                    ? "bg-blue-500 text-white shadow-sm"
+                                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                )}
+                              >
+                                Grade {grade}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            )}
           </div>
         </div>
       );
@@ -1001,68 +951,62 @@ export default function UnifiedSetupWizard() {
 
     if (selectedRole?.id === "parent") {
       return (
-        <div className="space-y-6">
-          <div>
-            <h2 className="text-xl font-semibold mb-2">Link Your Children</h2>
-            <p className="text-gray-600">Add your children who are enrolled at this school.</p>
+        <div className="space-y-4">
+          <div className="text-center space-y-1">
+            <h2 className="text-lg font-semibold text-gray-900">Link Your Children</h2>
+            <p className="text-gray-500 text-sm">Add your children enrolled at this school</p>
           </div>
 
-          <Card className="p-4">
-            <h3 className="font-medium mb-3">Add a Child</h3>
-            <div className="space-y-3">
+          <div className="p-4 rounded-xl bg-gray-50/80 border border-gray-200/60 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label htmlFor="childName">Child's Name</Label>
+                <Label htmlFor="childName" className="text-gray-600 text-xs font-medium">Child's Name</Label>
                 <Input
                   id="childName"
                   value={newChildName}
                   onChange={(e) => setNewChildName(e.target.value)}
-                  placeholder="Enter child's full name"
+                  placeholder="Full name"
+                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-gray-200"
                 />
               </div>
-
               <div>
-                <Label htmlFor="childId">Student ID</Label>
+                <Label htmlFor="childId" className="text-gray-600 text-xs font-medium">Student ID</Label>
                 <Input
                   id="childId"
                   value={newChildId}
                   onChange={(e) => setNewChildId(e.target.value)}
-                  placeholder="Enter student ID from school"
+                  placeholder="Student ID"
+                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-gray-200"
                 />
               </div>
-
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={addChild}
-              >
-                <UserPlus className="w-4 h-4 mr-2" />
-                Add Child
-              </Button>
             </div>
-          </Card>
+            <Button
+              type="button"
+              onClick={addChild}
+              className="w-full bg-neutral-700 hover:bg-neutral-600 text-white border border-neutral-600"
+            >
+              <UserPlus className="w-4 h-4 mr-2" />
+              Add Child
+            </Button>
+          </div>
 
           {children.length > 0 && (
-            <div>
-              <h3 className="font-medium mb-2">Linked Children ({children.length})</h3>
-              <div className="space-y-2">
-                {children.map((child, index) => (
-                  <Card key={index} className="p-3 flex items-center justify-between">
-                    <div>
-                      <p className="font-medium">{child.name}</p>
-                      <p className="text-sm text-gray-500">ID: {child.studentId}</p>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeChild(index)}
-                    >
-                      Remove
-                    </Button>
-                  </Card>
-                ))}
-              </div>
+            <div className="space-y-2">
+              <p className="text-xs text-neutral-500">Linked Children ({children.length})</p>
+              {children.map((child, index) => (
+                <div key={index} className="p-3 rounded-lg bg-neutral-800/50 border border-neutral-700 flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-white">{child.name}</p>
+                    <p className="text-xs text-neutral-500">ID: {child.studentId}</p>
+                  </div>
+                  <button
+                    onClick={() => removeChild(index)}
+                    className="text-xs text-red-400 hover:text-red-300"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -1071,30 +1015,28 @@ export default function UnifiedSetupWizard() {
 
     if (selectedRole?.id === "counselor") {
       return (
-        <div className="space-y-6">
-          <div>
-            <h2 className="text-xl font-semibold mb-2">Areas of Specialization</h2>
-            <p className="text-gray-600">Select your counseling specializations.</p>
+        <div className="space-y-4">
+          <div className="text-center space-y-1">
+            <h2 className="text-lg font-semibold text-gray-900">Specializations</h2>
+            <p className="text-gray-500 text-sm">Select your areas of expertise</p>
           </div>
 
-          <div>
-            <Label>Specializations (Select all that apply)</Label>
-            <div className="grid grid-cols-2 gap-2 mt-2 max-h-48 overflow-y-auto">
-              {SPECIALIZATIONS.map((spec) => (
-                <button
-                  key={spec}
-                  type="button"
-                  onClick={() => toggleSpecialization(spec)}
-                  className={`p-2 text-sm rounded-lg border-2 text-left transition-all ${
-                    selectedSpecializations.includes(spec)
-                      ? "border-purple-500 bg-purple-50 text-purple-700"
-                      : "border-gray-200 hover:border-gray-300"
-                  }`}
-                >
-                  {spec}
-                </button>
-              ))}
-            </div>
+          <div className="flex flex-wrap gap-2">
+            {SPECIALIZATIONS.map((spec) => (
+              <button
+                key={spec}
+                type="button"
+                onClick={() => toggleSpecialization(spec)}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg text-sm border transition-all",
+                  selectedSpecializations.includes(spec)
+                    ? "bg-purple-500 border-purple-500 text-white shadow-sm"
+                    : "bg-white border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50"
+                )}
+              >
+                {spec}
+              </button>
+            ))}
           </div>
         </div>
       );
@@ -1106,255 +1048,142 @@ export default function UnifiedSetupWizard() {
   const renderCompletion = () => {
     if (!selectedRole) return null;
 
-    const roleFeatures: Record<string, { color: string; title: string; features: string[]; action?: string; actionPath?: string }> = {
+    const features: Record<string, { title: string; features: string[] }> = {
       student: {
-        color: "purple",
-        title: "Discover Your Career Path!",
+        title: "Your Account is Ready!",
         features: [
           "Take free career assessments (RIASEC, MBTI, DISC)",
           "Explore careers and RUB colleges",
           "Set academic goals and track progress",
           "View homework and class schedules",
         ],
-        action: "Take RIASEC Assessment",
-        actionPath: "/dashboard/assessment/riasec",
       },
       teacher: {
-        color: "blue",
         title: "Your Teacher Account is Ready!",
         features: [
           "Create homework assignments for your classes",
           "Take attendance digitally",
           "Grade student submissions",
           "Create learning modules",
-          "Earn extra income through tutoring",
         ],
       },
       parent: {
-        color: "gray",
-        title: "Stay Connected to Your Child's Education!",
+        title: "Your Parent Account is Ready!",
         features: [
           "View your child's attendance records",
           "Monitor homework and assessments",
           "Track academic progress",
           "Communicate with teachers",
-          "Pay school fees online",
         ],
       },
       counselor: {
-        color: "purple",
-        title: "Start Guiding Students to Success!",
+        title: "Your Counselor Account is Ready!",
         features: [
           "View assigned students and their profiles",
           "Schedule counseling sessions",
-          "Track student interventions and progress",
+          "Track student interventions",
           "Maintain confidential counseling notes",
-          "Administer career assessments",
         ],
       },
       "school-admin": {
-        color: "violet",
-        title: "Application Submitted - Awaiting Approval",
+        title: "Application Submitted",
         features: [
           "Your application has been submitted to the platform administrator",
           "You'll receive an email once your account is approved",
-          "After approval, you can manage your school, students, and teachers",
-          "Set up subjects, class schedules, and fee structures",
-          "Explore AI-powered insights for your school",
+          "After approval, you can manage your school",
         ],
       },
     };
 
-    const features = roleFeatures[selectedRole.id] || roleFeatures.student;
+    const roleFeatures = features[selectedRole.id] || features.student;
 
     return (
-      <div className="text-center space-y-8 py-6">
+      <div className="text-center space-y-6 py-4">
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: "spring", duration: 0.5 }}
-          className="relative"
+          transition={{ type: "spring", duration: 0.4 }}
+          className="relative w-16 h-16 mx-auto"
         >
-          {/* Animated rings */}
           <motion.div
-            animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0, 0.5] }}
-            transition={{ duration: 2, repeat: Infinity, repeatType: "loop", ease: "easeInOut" }}
-            className="absolute inset-0 rounded-full"
-            style={{ background: `linear-gradient(135deg, ${selectedRole.color} 0%, ${selectedRole.colorTo} 100%)` }}
+            animate={{ scale: [1, 1.1, 1], opacity: [0.5, 0, 0.5] }}
+            transition={{ duration: 1.5, repeat: Infinity, repeatType: "loop" }}
+            className="absolute inset-0 rounded-full bg-gradient-to-br from-gray-300/40 to-transparent"
           />
-          <motion.div
-            animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0, 0.3] }}
-            transition={{ duration: 2, repeat: Infinity, repeatType: "loop", ease: "easeInOut", delay: 0.3 }}
-            className="absolute inset-0 rounded-full"
-            style={{ background: `linear-gradient(135deg, ${selectedRole.color} 0%, ${selectedRole.colorTo} 100%)` }}
-          />
-
           <div
-            className="relative w-24 h-24 rounded-full flex items-center justify-center mx-auto"
-            style={{ background: `linear-gradient(135deg, ${selectedRole.color} 0%, ${selectedRole.colorTo} 100%)` }}
+            className={cn(
+              "relative w-16 h-16 rounded-full flex items-center justify-center bg-gradient-to-br shadow-lg",
+              selectedRole.gradient
+            )}
           >
-            <CheckCircle2 className="w-12 h-12 text-white" />
+            <CheckCircle2 className="w-8 h-8 text-white" />
           </div>
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.15 }}
         >
-          <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">
+          <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 mb-1">
             {selectedRole.id === "school-admin" ? "Application Submitted!" : `Welcome, ${fullName}!`}
           </h2>
-          <p className="text-slate-600">
+          <p className="text-gray-500 text-sm">
             {selectedRole.id === "school-admin"
-              ? `Your application for ${verifiedSchool?.name || "your school"} has been submitted and is awaiting approval.`
-              : `Your ${selectedRole.name} account is ready.`}
+              ? "Your application is awaiting approval"
+              : "Your account is ready to use"}
           </p>
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
+          transition={{ delay: 0.25 }}
+          className="text-left p-4 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100/80 border border-gray-200/60 shadow-sm"
         >
-          <Card
-            className={`p-5 text-left border-2 ${selectedRole.bgColor} ${selectedRole.borderColor}`}
-          >
-            <h3 className={`font-bold text-lg mb-4 flex items-center gap-2`} style={{ color: selectedRole.color }}>
-              <Sparkles className="w-5 h-5" />
-              {features.title}
-            </h3>
-            <ul className="space-y-3">
-              {features.features.map((feature, i) => (
-                <motion.li
-                  key={i}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.4 + i * 0.05 }}
-                  className="flex items-start gap-3 text-sm"
-                  style={{ color: selectedRole.color }}
-                >
-                  <span className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                    style={{ backgroundColor: `${selectedRole.color}20` }}
-                  >
-                    <CheckCircle2 className="w-3 h-3" style={{ color: selectedRole.color }} />
-                  </span>
-                  {feature}
-                </motion.li>
-              ))}
-            </ul>
-
-            {selectedRole.id === "student" && features.action && features.actionPath && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-4 bg-white"
-                onClick={() => router.push(features.actionPath)}
+          <h3 className={cn("font-medium mb-3", selectedRole.gradient.includes("orange") ? "text-orange-600" : selectedRole.gradient.includes("blue") ? "text-blue-600" : selectedRole.gradient.includes("neutral") ? "text-gray-700" : "text-purple-600")}>
+            {roleFeatures.title}
+          </h3>
+          <ul className="space-y-2">
+            {roleFeatures.features.map((feature, i) => (
+              <motion.li
+                key={i}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.3 + i * 0.05 }}
+                className="flex items-start gap-2 text-sm text-gray-700"
               >
-                {features.action}
-              </Button>
-            )}
-          </Card>
-        </motion.div>
-
-        {selectedRole.id === "parent" && children.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-100 text-slate-600 text-sm"
-          >
-            <Users className="w-4 h-4" />
-            {children.length} child{children.length > 1 ? "ren" : ""} linked to your account
-          </motion.div>
-        )}
-
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-        >
-          <Button
-            onClick={completeWizard}
-            size="lg"
-            disabled={isLoading}
-            className="text-white border-0 shadow-lg hover:shadow-xl transition-all duration-300"
-            style={{ background: `linear-gradient(135deg, ${selectedRole.color} 0%, ${selectedRole.colorTo} 100%)` }}
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Processing...
-              </>
-            ) : selectedRole.id === "school-admin" ? (
-              <>
-                View Application Status
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </>
-            ) : (
-              <>
-                Go to Dashboard
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </>
-            )}
-          </Button>
+                <div className="w-1.5 h-1.5 rounded-full bg-gray-400 mt-1.5 flex-shrink-0" />
+                {feature}
+              </motion.li>
+            ))}
+          </ul>
         </motion.div>
       </div>
     );
-  };
-
-  const getStepTitle = () => {
-    if (!selectedRole) return "Select Your Role";
-    return steps[currentStep - 1]?.title || "Setup";
-  };
-
-  const getWizardTitle = () => {
-    if (!selectedRole) return "Setup Your Account";
-    return `${selectedRole.name} Setup`;
-  };
-
-  const getWizardSubtitle = () => {
-    if (!selectedRole) return "Join Bhutan EduSkill";
-    return selectedRole.description;
-  };
-
-  // Get step titles for the stepper
-  const getStepTitles = () => {
-    if (!selectedRole) return ["Select Role", "Find School", "Your Details", "Complete"];
-    return steps.map(s => s.title);
   };
 
   return (
     <WizardContainer
       currentStep={currentStep}
       totalSteps={steps.length}
-      title={getWizardTitle()}
-      subtitle={getWizardSubtitle()}
+      title={selectedRole ? `${selectedRole.name} Setup` : "Create Account"}
+      subtitle={selectedRole?.description}
       onExit={() => router.push("/")}
-      stepTitles={getStepTitles()}
+      stepTitles={steps}
     >
       {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+        <div className="mb-4 p-3 bg-red-50/80 border border-red-200/60 rounded-lg text-sm text-red-700">
           {error}
         </div>
       )}
 
-      {/* Step 1: Role Selection */}
       {currentStep === 1 && renderRoleSelection()}
-
-      {/* Step 2: School Verification */}
       {currentStep === 2 && selectedRole && renderSchoolVerification()}
-
-      {/* Step 3: Personal Details */}
       {currentStep === 3 && selectedRole && renderPersonalDetails()}
-
-      {/* Step 4: Role-Specific Details */}
       {currentStep === 4 && selectedRole && renderAcademicDetails()}
-
-      {/* Step 5: Completion */}
       {currentStep === steps.length && selectedRole && renderCompletion()}
 
-      {/* Navigation */}
       {currentStep < steps.length && selectedRole && (
         <WizardNavigation
           currentStep={currentStep}
@@ -1364,7 +1193,7 @@ export default function UnifiedSetupWizard() {
           isNextLoading={isLoading}
           onNext={handleNext}
           onBack={handleBack}
-          nextLabel={currentStep === steps.length - 1 ? "Complete Setup" : undefined}
+          nextLabel={currentStep === steps.length - 1 ? "Complete" : undefined}
         />
       )}
     </WizardContainer>

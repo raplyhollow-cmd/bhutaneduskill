@@ -141,13 +141,17 @@ export default function TeacherClassesPage() {
         const classesData = await classesResponse.json();
 
         // Process students data if available
+        // API returns { data: { students: [...], studentsByClass: [...] } }, so we need to access data.data
         let studentsData: { studentsByClass?: StudentsByClass[]; students?: ClassStudent[] } = {};
         if (studentsResponse.ok) {
-          studentsData = await studentsResponse.json();
+          const rawData = await studentsResponse.json();
+          studentsData = rawData.data || rawData;
         }
 
         // Process and enrich class data with real student counts
-        const processedClasses: TeacherClass[] = (classesData.classes || []).map((cls: TeacherClass) => {
+        // API returns { data: { classes: [...] } }, so we need to access data.data.classes
+        const classesArray = classesData.data?.classes || classesData.classes || [];
+        const processedClasses: TeacherClass[] = classesArray.map((cls: TeacherClass) => {
           // Find students for this class
           const classStudents = studentsData.studentsByClass?.find(
             (sbc) => sbc.classId === cls.id

@@ -2,46 +2,68 @@
 
 import { logger } from "@/lib/logger";
 /**
- * PLATFORM ADMIN - COUNSELORS MANAGEMENT (Client Component)
+ * PLATFORM ADMIN - COUNSELORS MANAGEMENT
  *
- * Multi-tenant counselor management page for platform administrators.
- * View, verify, and manage all counselors across all schools.
+ * Ultra-luxury intelligent inline-editing grid design:
+ * - Inline editable fields (click to edit, no panels)
+ * - Verification toggle (click to toggle, no confirmation)
+ * - Quick action menu (three-dot with all actions)
+ * - Keyboard navigation (arrows, enter, space, escape)
+ * - Optimistic UI (instant feedback, sync in background)
+ * - Bulk actions with conditional bar
+ * - Custom grid table (12-column, NOT HTML table)
  */
 
-
 import { useState, useEffect, useCallback } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Users,
-  UserCheck,
-  Search,
-  Filter,
-  Edit,
-  Trash2,
-  Eye,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Mail,
-  Phone,
-  Building2,
-  MapPin,
-  Calendar,
-  TrendingUp,
-  ShieldCheck,
-  AlertCircle,
-  GraduationCap,
-  FileText,
-  MessageSquare,
-  Loader2,
-  CheckCircle2,
-  X,
-  Plus,
-} from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AddCounselorModal } from "@/components/admin/add-counselor-modal";
 import { EditCounselorModal } from "@/components/admin/edit-counselor-modal";
+import { InlineEditText } from "@/components/admin/inline-edit-text";
+import { QuickActionMenu } from "@/components/admin/quick-action-menu";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { TableSkeleton } from "@/components/ui/skeleton/table-skeleton";
+import {
+  Users,
+  Search,
+  Plus,
+  Sparkles,
+  X,
+  Check,
+  Square,
+  Trash2,
+  Building2,
+  UserCheck,
+  MoreHorizontal,
+  Loader2,
+  AlertCircle,
+  Eye,
+  Edit,
+  ShieldCheck,
+  MailCheck,
+  Loader2 as Spinner,
+  GraduationCap,
+  CheckCircle,
+  Clock,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   verifyCounselor,
   deleteCounselor,
@@ -66,69 +88,111 @@ interface CounselorData extends User {
   assignments: CounselorAssignment[];
 }
 
+interface UserStats {
+  total: number;
+  verified: number;
+  pending: number;
+  activePlans: number;
+  totalNotes: number;
+}
+
+interface PaginatedResponse {
+  data: CounselorData[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+// Status badges
+const statusBadges: Record<string, { label: string; color: string; icon: any }> = {
+  active: {
+    label: "Active",
+    color: "bg-green-50 text-green-700 border-green-200",
+    icon: CheckCircle,
+  },
+  inactive: {
+    label: "Inactive",
+    color: "bg-gray-50 text-gray-700 border-gray-200",
+    icon: Clock,
+  },
+  pending: {
+    label: "Pending",
+    color: "bg-yellow-50 text-yellow-700 border-yellow-200",
+    icon: Clock,
+  },
+};
+
 export default function AdminCounselorsPage() {
-  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Data states
   const [counselors, setCounselors] = useState<CounselorData[]>([]);
-  const [filteredCounselors, setFilteredCounselors] = useState<CounselorData[]>([]);
-  const [uniqueSchools, setUniqueSchools] = useState<CounselorData[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState<UserStats>({
+    total: 0,
+    verified: 0,
+    pending: 0,
+    activePlans: 0,
+    totalNotes: 0,
+  });
+
+  // Pagination
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 50,
+    total: 0,
+    totalPages: 1,
+  });
 
   // Filter states
-  const [searchQuery, setSearchQuery] = useState("");
-  const [schoolFilter, setSchoolFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
+  const [schoolFilter, setSchoolFilter] = useState(searchParams.get("school") || "all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "verified" | "pending">(
+    (searchParams.get("status") as "all" | "verified" | "pending") || "all"
+  );
+
+  // Selection states
+  const [selectedCounselors, setSelectedCounselors] = useState<Set<string>>(new Set());
+  const [isSelectAllMode, setIsSelectAllMode] = useState(false);
+  const [selectAllCount, setSelectAllCount] = useState(0);
 
   // Modal states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingCounselor, setEditingCounselor] = useState<CounselorData | null>(null);
-  const [viewingCounselor, setViewingCounselor] = useState<CounselorData | null>(null);
-  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [deletingCounselor, setDeletingCounselor] = useState<CounselorData | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isVerifying, setIsVerifying] = useState<string | null>(null);
 
-  // Fetch counselors on mount
-  useEffect(() => {
-    fetchCounselors();
-  }, []);
+  // Keyboard navigation state
+  const [focusedIndex, setFocusedIndex] = useState<number>(-1);
 
-  // Apply filters
-  useEffect(() => {
-    let filtered = [...counselors];
+  // Fetch counselors
+  const fetchCounselors = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
 
-    if (searchQuery) {
-      filtered = filtered.filter(
-        (counselor) =>
-          counselor.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          counselor.lastName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          counselor.email?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    if (schoolFilter !== "all") {
-      filtered = filtered.filter((c) => c.schoolId === schoolFilter);
-    }
-
-    if (statusFilter === "verified") {
-      filtered = filtered.filter((c) => c.emailVerified);
-    } else if (statusFilter === "pending") {
-      filtered = filtered.filter((c) => !c.emailVerified);
-    }
-
-    setFilteredCounselors(filtered);
-  }, [counselors, searchQuery, schoolFilter, statusFilter]);
-
-  const fetchCounselors = async () => {
-    setLoading(true);
     try {
-      const response = await fetch("/api/admin/users?role=counselor&limit=200");
+      const params = new URLSearchParams({
+        page: pagination.page.toString(),
+        limit: pagination.limit.toString(),
+      });
+
+      if (searchQuery) params.set("search", searchQuery);
+      if (schoolFilter !== "all") params.set("school", schoolFilter);
+      if (statusFilter !== "all") params.set("status", statusFilter);
+
+      const response = await fetch(`/api/admin/users?role=counselor&${params.toString()}`);
       if (!response.ok) throw new Error("Failed to fetch counselors");
 
-      const data = await response.json();
-      // API returns { success: true, data: { data: [...], pagination: {...} } }
-      const counselorsData: CounselorData[] = data.data?.data || [];
+      const data: PaginatedResponse = await response.json();
+      const counselorsData: CounselorData[] = data.data || [];
 
-      // Enrich with stats and assignments (for now using mock stats)
+      // Enrich with mock stats
       const enriched = counselorsData.map((c: CounselorData) => ({
         ...c,
         stats: {
@@ -140,616 +204,486 @@ export default function AdminCounselorsPage() {
       }));
 
       setCounselors(enriched);
-      setFilteredCounselors(enriched);
+      setPagination((prev) => ({ ...prev, ...data.pagination }));
 
-      // Get unique schools
-      const uniqueSchoolsMap = new Map(
-        enriched.filter((c: CounselorData) => c.schoolName).map((c: CounselorData) => [c.schoolId as string, c])
-      );
-      const schools = Array.from(uniqueSchoolsMap.values());
-      setUniqueSchools(schools);
-    } catch (error) {
-      logger.error("Failed to fetch counselors:", error);
+      // Calculate stats
+      setStats({
+        total: data.pagination.total,
+        verified: enriched.filter((c) => c.emailVerified).length,
+        pending: enriched.filter((c) => !c.emailVerified).length,
+        activePlans: 0,
+        totalNotes: 0,
+      });
+    } catch (err) {
+      logger.error("Failed to fetch counselors:", err);
+      setError("Failed to load counselors");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
+    }
+  }, [pagination.page, searchQuery, schoolFilter, statusFilter]);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchCounselors();
+  }, [pagination.page]);
+
+  // Handle search (debounced)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPagination((prev) => ({ ...prev, page: 1 }));
+      fetchCounselors();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery, schoolFilter, statusFilter]);
+
+  // Get filtered counselors
+  const filteredCounselors = counselors.filter((counselor) => {
+    const matchSearch = !searchQuery ||
+      counselor.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      counselor.lastName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      counselor.email?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchSchool = schoolFilter === "all" || counselor.schoolId === schoolFilter;
+    const matchStatus = statusFilter === "all" ||
+      (statusFilter === "verified" && counselor.emailVerified) ||
+      (statusFilter === "pending" && !counselor.emailVerified);
+    return matchSearch && matchSchool && matchStatus;
+  });
+
+  // Reset focus when filtered counselors change
+  useEffect(() => {
+    setFocusedIndex(-1);
+  }, [filteredCounselors.length]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (filteredCounselors.length === 0) return;
+
+      const focusedUserId = focusedIndex >= 0 && focusedIndex < filteredCounselors.length ? filteredCounselors[focusedIndex]?.id : null;
+
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault();
+          setFocusedIndex((prev) => (prev < filteredCounselors.length - 1 ? prev + 1 : prev));
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          setFocusedIndex((prev) => (prev > 0 ? prev - 1 : -1));
+          break;
+        case "Enter":
+          if (focusedIndex >= 0 && focusedUserId) {
+            setEditingCounselor(counselors.find((c) => c.id === focusedUserId) || null);
+            setIsEditModalOpen(true);
+          }
+          break;
+        case " ":
+          if (focusedIndex >= 0 && focusedUserId) {
+            e.preventDefault();
+            toggle(focusedUserId);
+          }
+          break;
+        case "Escape":
+          setFocusedIndex(-1);
+          if (selectedCounselors.size > 0) {
+            setSelectedCounselors(new Set());
+          }
+          break;
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [filteredCounselors, focusedIndex, counselors, selectedCounselors.size]);
+
+  // Toggle selection
+  const toggle = (id: string) => {
+    const newSelected = new Set(selectedCounselors);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedCounselors(newSelected);
+  };
+
+  const toggleAll = () => {
+    if (selectedCounselors.size === filteredCounselors.length) {
+      setSelectedCounselors(new Set());
+    } else {
+      setSelectedCounselors(new Set(filteredCounselors.map((c) => c.id)));
     }
   };
 
-  const handleViewCounselor = (counselor: CounselorData) => {
-    setViewingCounselor(counselor);
-    setIsViewDialogOpen(true);
-  };
+  const allSelected = filteredCounselors.length > 0 && selectedCounselors.size === filteredCounselors.length;
 
-  const handleEditCounselor = (counselor: CounselorData) => {
-    setEditingCounselor(counselor);
-    setIsEditModalOpen(true);
-  };
+  // Optimistic verification toggle
+  const toggleVerification = async (counselorId: string) => {
+    const counselor = counselors.find((c) => c.id === counselorId);
+    if (!counselor) return;
 
-  const handleVerifyCounselor = async (counselor: CounselorData) => {
-    setIsVerifying(counselor.id);
+    const newStatus = !counselor.emailVerified;
+    // Optimistic update
+    setCounselors((prev) => prev.map((c) => (c.id === counselorId ? { ...c, emailVerified: newStatus } : c)));
+
     try {
-      await verifyCounselor(counselor.id);
-      // Refresh counselors list
-      await fetchCounselors();
-    } catch (error) {
-      alert(error instanceof Error ? error.message : "Failed to verify counselor");
-    } finally {
-      setIsVerifying(null);
+      await verifyCounselor(counselorId);
+    } catch (err) {
+      // Rollback
+      setCounselors((prev) => prev.map((c) => (c.id === counselorId ? { ...c, emailVerified: !newStatus } : c)));
+      logger.error(err, { action: "toggleVerification", counselorId });
+      setError("Failed to update verification status");
     }
   };
 
-  const handleDeleteCounselor = (counselor: CounselorData) => {
-    setDeletingCounselor(counselor);
-    setIsDeleteDialogOpen(true);
-  };
-
-  const confirmDeleteCounselor = async () => {
-    if (!deletingCounselor) return;
-
+  // Update inline field
+  const updateCounselorEmail = async (counselorId: string, email: string) => {
     try {
-      await deleteCounselor(deletingCounselor.id);
-      setIsDeleteDialogOpen(false);
-      setDeletingCounselor(null);
+      const response = await fetch(`/api/admin/users/${counselorId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      if (!response.ok) throw new Error("Failed to update email");
       await fetchCounselors();
-    } catch (error) {
-      alert(error instanceof Error ? error.message : "Failed to delete counselor");
+    } catch (err) {
+      logger.error(err, { action: "updateCounselorEmail", counselorId });
+      throw err;
     }
   };
 
-  // Calculate stats
-  const totalCounselors = filteredCounselors.length;
-  const verifiedCounselors = filteredCounselors.filter((c) => c.emailVerified).length;
-  const pendingCounselors = filteredCounselors.filter((c) => !c.emailVerified).length;
-  const totalActivePlans = filteredCounselors.reduce((sum, c) => sum + (c.stats?.activePlans || 0), 0);
-  const totalNotes = filteredCounselors.reduce((sum, c) => sum + (c.stats?.totalNotes || 0), 0);
+  // Delete counselor
+  const deleteCounselorAction = async (counselorId: string) => {
+    try {
+      await deleteCounselor(counselorId);
+      await fetchCounselors();
+    } catch (err) {
+      logger.error(err, { action: "deleteCounselor", counselorId });
+      throw err;
+    }
+  };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
-        <p className="ml-3 text-gray-600">Loading counselors...</p>
-      </div>
-    );
-  }
+  // Bulk actions
+  const bulkAction = async (action: string, value?: any) => {
+    try {
+      if (action === "delete") {
+        if (!confirm(`Delete ${selectedCounselors.size} selected counselors? This cannot be undone.`)) return;
+        await Promise.all(Array.from(selectedCounselors).map((id) => deleteCounselor(id)));
+      } else if (action === "verify") {
+        await Promise.all(Array.from(selectedCounselors).map((id) => verifyCounselor(id)));
+      }
+      setSelectedCounselors(new Set());
+      await fetchCounselors();
+    } catch (err) {
+      logger.error(err, { event: "bulkAction", actionType: action });
+      setError("Failed to complete bulk action");
+    }
+  };
+
+  // Get initials
+  const getInitials = (firstName?: string | null, lastName?: string | null) => {
+    const first = firstName?.[0] || "";
+    const last = lastName?.[0] || "";
+    return (first + last).toUpperCase() || "?";
+  };
+
+  // Get counselor gradient (purple theme)
+  const getCounselorGradient = () => "linear-gradient(135deg, rgb(168 85 247) 0%, rgb(147 51 234) 100%)";
+
+  // Get unique schools
+  const uniqueSchools = Array.from(
+    new Map(counselors.filter((c) => c.schoolName).map((c) => [c.schoolId as string, c])).values()
+  );
 
   return (
-    <div className="space-y-8">
+    <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex items-center justify-between pb-3">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Counselors Management</h1>
-          <p className="text-gray-600">
-            View and manage all counselors across the platform
-          </p>
+          <h1 className="text-lg font-semibold text-gray-900">Counselors</h1>
+          <p className="text-xs text-gray-500">{pagination.total.toLocaleString()} total</p>
         </div>
-        <div className="flex gap-3">
-          <Button variant="outline">
-            <Filter className="w-4 h-4 mr-2" />
-            Advanced Filters
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={fetchCounselors} disabled={isLoading} className="h-8 text-xs">
+            {isLoading ? <Spinner className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 mr-1.5" />}
+            Refresh
           </Button>
           <Button
+            size="sm"
             onClick={() => setIsAddModalOpen(true)}
-            style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
-            className="text-white"
+            className="h-8 bg-pink-600 hover:bg-pink-700 text-xs"
           >
-            <UserCheck className="w-4 h-4 mr-2" />
-            Add Counselor
+            <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Counselor
           </Button>
         </div>
       </div>
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <UserCheck className="w-4 h-4" />
-              Total Counselors
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900">{totalCounselors}</div>
-            <p className="text-xs text-gray-500 mt-1">Across all schools</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-green-500" />
-              Verified
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-green-600">{verifiedCounselors}</div>
-            <p className="text-xs text-gray-500">
-              {((verifiedCounselors / totalCounselors) * 100).toFixed(1)}% verified
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-yellow-500" />
-              Pending
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-yellow-600">{pendingCounselors}</div>
-            <p className="text-xs text-gray-500">Awaiting verification</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <FileText className="w-4 h-4" />
-              Active Plans
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900">{totalActivePlans}</div>
-            <p className="text-xs text-gray-500">Career plans active</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <MessageSquare className="w-4 h-4" />
-              Total Notes
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900">{totalNotes}</div>
-            <p className="text-xs text-gray-500">Counselor notes</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Search and Filter */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col lg:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search counselors by name or email..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 min-h-[44px] rounded-lg border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none"
-              />
-            </div>
-            <select
-              value={schoolFilter}
-              onChange={(e) => setSchoolFilter(e.target.value)}
-              className="px-4 py-3 min-h-[44px] rounded-lg border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none bg-white"
-            >
-              <option value="all">All Schools</option>
-              {uniqueSchools.map((school) => (
-                <option key={school.schoolId} value={school.schoolId}>
-                  {school.schoolName}
-                </option>
-              ))}
-            </select>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-3 min-h-[44px] rounded-lg border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 outline-none bg-white"
-            >
-              <option value="all">All Status</option>
-              <option value="verified">Verified</option>
-              <option value="pending">Pending Verification</option>
-            </select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Counselors Table */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>All Counselors</CardTitle>
-              <CardDescription>
-                {filteredCounselors.length} counselors across {uniqueSchools.length} schools
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Counselor</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">School Assignments</th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-600 text-sm">Active Plans</th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-600 text-sm">Total Notes</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Last Login</th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-600 text-sm">Status</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600 text-sm">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredCounselors.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="text-center py-12">
-                      <div className="flex flex-col items-center gap-4">
-                        <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
-                          <UserCheck className="w-8 h-8 text-gray-400" />
-                        </div>
-                        <div>
-                          <p className="text-gray-900 font-medium">No counselors found</p>
-                          <p className="text-gray-500 text-sm">Try adjusting your filters</p>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredCounselors.map((counselor) => (
-                    <tr key={counselor.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-4 px-4">
-                        <div className="flex items-start gap-3">
-                          <div
-                            className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0"
-                            style={{ background: "linear-gradient(135deg, rgb(168 85 247) 0%, rgb(147 51 234) 100%)" }}
-                          >
-                            {counselor.firstName?.[0]}
-                            {counselor.lastName?.[0]}
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900">
-                              {counselor.firstName} {counselor.lastName}
-                            </p>
-                            <p className="text-sm text-gray-500">{counselor.email || "No email"}</p>
-                            {counselor.phone && (
-                              <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
-                                <Phone className="w-3 h-3" />
-                                {counselor.phone}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4">
-                        <div className="space-y-2">
-                          {counselor.assignments && counselor.assignments.length > 0 ? (
-                            counselor.assignments.map((assignment) => (
-                              <div key={assignment.schoolId} className="flex items-center gap-2">
-                                <Building2 className="w-3 h-3 text-gray-400" />
-                                <span className="text-sm text-gray-700">{assignment.schoolName}</span>
-                              </div>
-                            ))
-                          ) : (
-                            <span className="text-sm text-gray-400">No assignments</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-4 px-4 text-center">
-                        <span className="inline-flex items-center gap-1 text-sm font-medium text-gray-900">
-                          <FileText className="w-4 h-4 text-purple-400" />
-                          {counselor.stats.activePlans}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4 text-center">
-                        <span className="inline-flex items-center gap-1 text-sm font-medium text-gray-900">
-                          <MessageSquare className="w-4 h-4 text-gray-400" />
-                          {counselor.stats.totalNotes}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4">
-                        {counselor.lastLogin ? (
-                          <div className="text-sm text-gray-600">
-                            {new Date(counselor.lastLogin).toLocaleDateString()}
-                          </div>
-                        ) : (
-                          <span className="text-sm text-gray-400">Never</span>
-                        )}
-                      </td>
-                      <td className="py-4 px-4 text-center">
-                        {!counselor.emailVerified ? (
-                          <Badge className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs">
-                            <Clock className="w-3 h-3 mr-1" />
-                            Pending
-                          </Badge>
-                        ) : counselor.lastLogin ? (
-                          <Badge className="bg-green-50 text-green-700 border-green-200 text-xs">
-                            <CheckCircle className="w-3 h-3 mr-1" />
-                            Active
-                          </Badge>
-                        ) : (
-                          <Badge className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
-                            <ShieldCheck className="w-3 h-3 mr-1" />
-                            Verified
-                          </Badge>
-                        )}
-                      </td>
-                      <td className="py-4 px-4">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 hover:bg-pink-50 hover:text-pink-600"
-                            title="View details"
-                            onClick={() => handleViewCounselor(counselor)}
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 hover:bg-pink-50 hover:text-pink-600"
-                            title="Edit counselor"
-                            onClick={() => handleEditCounselor(counselor)}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 hover:bg-purple-50 hover:text-purple-600"
-                            title="Manage assignments"
-                          >
-                            <Building2 className="w-4 h-4" />
-                          </Button>
-                          {!counselor.emailVerified && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 hover:bg-green-50 hover:text-green-600"
-                              title="Verify counselor"
-                              onClick={() => handleVerifyCounselor(counselor)}
-                              disabled={isVerifying === counselor.id}
-                            >
-                              <ShieldCheck className={`w-4 h-4 ${isVerifying === counselor.id ? 'animate-spin' : ''}`} />
-                            </Button>
-                          )}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 hover:bg-red-50 hover:text-red-600"
-                            title="Delete counselor"
-                            onClick={() => handleDeleteCounselor(counselor)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Pending Verifications */}
-      {pendingCounselors > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-yellow-500" />
-              Pending Verifications
-            </CardTitle>
-            <CardDescription>
-              {pendingCounselors} counselor(s) awaiting verification
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {filteredCounselors
-                .filter((c) => !c.emailVerified)
-                .slice(0, 5)
-                .map((counselor) => (
-                  <div
-                    key={counselor.id}
-                    className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg border border-yellow-200"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold"
-                        style={{ background: "linear-gradient(135deg, rgb(168 85 247) 0%, rgb(147 51 234) 100%)" }}
-                      >
-                        {counselor.firstName?.[0]}
-                        {counselor.lastName?.[0]}
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-900">
-                          {counselor.firstName} {counselor.lastName}
-                        </p>
-                        <p className="text-sm text-gray-600">{counselor.email}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleViewCounselor(counselor)}
-                      >
-                        Review
-                      </Button>
-                      <Button
-                        size="sm"
-                        style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
-                        onClick={() => handleVerifyCounselor(counselor)}
-                        disabled={isVerifying === counselor.id}
-                      >
-                        <ShieldCheck className={`w-4 h-4 mr-2 ${isVerifying === counselor.id ? 'animate-spin' : ''}`} />
-                        Verify
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </CardContent>
-        </Card>
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg flex items-center gap-3 mb-3">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <span className="text-sm flex-1">{error}</span>
+          <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       )}
 
-      {/* School Assignments Overview */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Building2 className="w-5 h-5" />
-            School Assignments Overview
-          </CardTitle>
-          <CardDescription>Counselor distribution across schools</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {uniqueSchools.slice(0, 6).map((school) => {
-              const schoolCounselors = filteredCounselors.filter((c) =>
-                c.assignments?.some((a) => a.schoolId === school.schoolId)
-              );
-              return (
-                <div key={school.schoolId} className="p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <Building2 className="w-4 h-4 text-gray-400" />
-                      <span className="font-medium text-gray-900">{school.schoolName}</span>
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className="text-xs"
-                      style={{
-                        borderColor: "rgb(236 72 153)",
-                        color: "rgb(219 39 119)",
-                      }}
-                    >
-                      {schoolCounselors.length} counselor(s)
-                    </Badge>
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {schoolCounselors.map((c) => (
-                      <Badge key={c.id} variant="outline" className="text-xs bg-purple-50">
-                        {c.firstName} {c.lastName?.[0]}.
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
+      {/* Bulk Action Bar - Conditional */}
+      {selectedCounselors.size > 0 && (
+        <div className="flex items-center justify-between px-3 py-2 bg-pink-50 border border-pink-200 rounded-lg mb-3">
+          <span className="text-sm font-medium text-pink-900">{selectedCounselors.size} selected</span>
+          <div className="flex items-center gap-1">
+            <Button size="sm" variant="ghost" className="h-7 text-xs text-pink-700 hover:bg-pink-100" onClick={() => setSelectedCounselors(new Set())}>
+              <X className="w-3.5 h-3.5 mr-1" /> Clear
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 text-xs text-pink-700 hover:bg-pink-100" onClick={() => bulkAction("verify")}>
+              <ShieldCheck className="w-3.5 h-3.5 mr-1" /> Verify
+            </Button>
+            <Button size="sm" variant="ghost" className="h-7 text-xs text-red-600 hover:bg-red-50" onClick={() => bulkAction("delete")}>
+              <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
+            </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      )}
 
-      {/* Performance Metrics */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Counselors by Active Plans</CardTitle>
-            <CardDescription>Counselors managing the most career plans</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {filteredCounselors
-                .sort((a, b) => (b.stats?.activePlans || 0) - (a.stats?.activePlans || 0))
-                .filter((c) => c.stats?.activePlans > 0)
-                .slice(0, 5)
-                .map((counselor, index) => (
-                  <div key={counselor.id} className="flex items-center gap-4">
-                    <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                        index === 0
-                          ? "bg-yellow-100 text-yellow-700"
-                          : index === 1
-                          ? "bg-gray-100 text-gray-700"
-                          : index === 2
-                          ? "bg-orange-100 text-orange-700"
-                          : "bg-gray-50 text-gray-600"
-                      }`}
-                    >
-                      {index + 1}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-medium text-gray-900">
-                          {counselor.firstName} {counselor.lastName}
-                        </span>
-                        <span className="text-sm text-gray-500">{counselor.stats?.activePlans || 0} plans</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Recently Added Counselors</CardTitle>
-            <CardDescription>Latest counselors to join the platform</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {filteredCounselors
-                .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
-                .slice(0, 5)
-                .map((counselor) => (
-                  <div key={counselor.id} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold"
-                      style={{ background: "linear-gradient(135deg, rgb(168 85 247) 0%, rgb(147 51 234) 100%)" }}
-                    >
-                      {counselor.firstName?.[0]}
-                      {counselor.lastName?.[0]}
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900">
-                        {counselor.firstName} {counselor.lastName}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {counselor.schoolName} • {counselor.stats?.assignedSchools || 0} school(s)
-                      </p>
-                    </div>
-                    {!counselor.emailVerified ? (
-                      <Badge className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs">
-                        <Clock className="w-3 h-3 mr-1" />
-                        Pending
-                      </Badge>
-                    ) : (
-                      <Badge className="bg-green-50 text-green-700 border-green-200 text-xs">
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        Verified
-                      </Badge>
-                    )}
-                  </div>
-                ))}
-            </div>
-          </CardContent>
-        </Card>
+      {/* Toolbar */}
+      <div className="flex items-center gap-2 pb-2">
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Input
+            placeholder="Search..."
+            className="pl-8 h-9 text-sm border-gray-200"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <Select value={schoolFilter} onValueChange={setSchoolFilter}>
+          <SelectTrigger className="w-[180px] h-9 text-sm border-gray-200">
+            <SelectValue placeholder="School" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Schools</SelectItem>
+            {uniqueSchools.map((school) => (
+              <SelectItem key={school.schoolId} value={school.schoolId}>
+                {school.schoolName}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as "all" | "verified" | "pending")}>
+          <SelectTrigger className="w-[140px] h-9 text-sm border-gray-200">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="verified">Verified</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+          </SelectContent>
+        </Select>
+        {filteredCounselors.length > 0 && (
+          <button onClick={toggleAll} className="ml-auto flex items-center gap-1.5 px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-md transition-colors">
+            {allSelected ? <Check className="w-4 h-4 text-pink-600" /> : <Square className="w-4 h-4 text-gray-400" />}
+            {allSelected ? "Deselect All" : "Select All"}
+          </button>
+        )}
+        <span className="text-xs text-gray-400">{filteredCounselors.length} of {pagination.total}</span>
       </div>
 
-      {/* Bulk Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Bulk Actions</CardTitle>
-          <CardDescription>Perform actions on multiple counselors at once</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-3">
-            <Button variant="outline" className="min-h-[44px]">
-              <Mail className="w-4 h-4 mr-2" />
-              Send Email to Selected
+      {/* Custom Grid Table */}
+      {isLoading ? (
+        <TableSkeleton rows={10} columns={8} />
+      ) : (
+        <div className="flex-1 border border-gray-200 rounded-xl overflow-hidden bg-white">
+          {/* Header */}
+          <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-gray-50/80 border-b border-gray-200 text-xs font-medium text-gray-500">
+            <div className="col-span-1"></div>
+            <div className="col-span-3">Counselor</div>
+            <div className="col-span-3">Email</div>
+            <div className="col-span-2">School</div>
+            <div className="col-span-1">Verified</div>
+            <div className="col-span-1">Plans</div>
+            <div className="col-span-1 text-right">Status</div>
+          </div>
+
+          {/* Rows */}
+          <div className="divide-y divide-gray-100">
+            {filteredCounselors.length === 0 ? (
+              <div className="flex items-center justify-center h-40 text-gray-400 text-sm">
+                {searchQuery || schoolFilter !== "all" || statusFilter !== "all" ? "No results found" : "No counselors yet"}
+              </div>
+            ) : (
+              filteredCounselors.map((counselor, idx) => {
+                const selected = selectedCounselors.has(counselor.id);
+                const isFocused = focusedIndex === idx;
+                return (
+                  <div
+                    key={counselor.id}
+                    className={cn(
+                      "grid grid-cols-12 gap-2 px-4 py-2.5 items-center text-sm transition-colors cursor-pointer group",
+                      selected ? "bg-pink-50" : "hover:bg-gray-50",
+                      isFocused && "ring-2 ring-pink-400 ring-inset z-10"
+                    )}
+                    onClick={(e) => {
+                      if (!(e.target as HTMLElement).closest("button") && !(e.target as HTMLElement).closest("input")) {
+                        toggle(counselor.id);
+                      }
+                    }}
+                  >
+                    {/* Checkbox */}
+                    <div className="col-span-1" onClick={(e) => e.stopPropagation()}>
+                      <div
+                        className={cn(
+                          "w-4 h-4 rounded border-2 flex items-center justify-center transition-all cursor-pointer",
+                          selected ? "bg-pink-600 border-pink-600" : "border-gray-300 group-hover:border-pink-400"
+                        )}
+                        onClick={() => toggle(counselor.id)}
+                      >
+                        {selected && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                    </div>
+
+                    {/* Counselor - Avatar + Name */}
+                    <div className="col-span-3 flex items-center gap-2">
+                      <div
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0"
+                        style={{ background: getCounselorGradient() }}
+                      >
+                        {getInitials(counselor.firstName, counselor.lastName)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium text-gray-900 truncate">
+                          {counselor.firstName} {counselor.lastName}
+                        </p>
+                        <p className="text-xs text-gray-400 truncate max-w-[120px]">{counselor.clerkUserId?.slice(0, 8)}...</p>
+                      </div>
+                    </div>
+
+                    {/* Email - Inline Editable */}
+                    <div className="col-span-3">
+                      <InlineEditText
+                        value={counselor.email || ""}
+                        onSave={(newValue) => updateCounselorEmail(counselor.id, newValue)}
+                        className="text-gray-600 text-xs"
+                      />
+                    </div>
+
+                    {/* School */}
+                    <div className="col-span-2 text-xs text-gray-500 truncate">
+                      {counselor.schoolName || "-"}
+                    </div>
+
+                    {/* Verified - Toggle */}
+                    <div className="col-span-1" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => toggleVerification(counselor.id)}
+                        className={cn(
+                          "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium transition-colors hover:opacity-80",
+                          counselor.emailVerified ? "bg-green-50 text-green-700" : "bg-yellow-50 text-yellow-700"
+                        )}
+                      >
+                        {counselor.emailVerified ? <Check className="w-3 h-3 mr-1" /> : <Clock className="w-3 h-3 mr-1" />}
+                        {counselor.emailVerified ? "Yes" : "No"}
+                      </button>
+                    </div>
+
+                    {/* Plans Count */}
+                    <div className="col-span-1 text-xs text-gray-500 text-center">
+                      {counselor.stats?.activePlans || 0}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="col-span-1 text-right" onClick={(e) => e.stopPropagation()}>
+                      <QuickActionMenu
+                        user={counselor}
+                        onView={() => { setEditingCounselor(counselor); setIsEditModalOpen(true); }}
+                        onEdit={() => { setEditingCounselor(counselor); setIsEditModalOpen(true); }}
+                        onDelete={() => { setDeletingCounselor(counselor); setIsDeleteDialogOpen(true); }}
+                        onVerifyEmail={counselor.emailVerified ? undefined : () => toggleVerification(counselor.id)}
+                      />
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {!isLoading && pagination.totalPages > 1 && (
+        <div className="flex items-center justify-between pt-4">
+          <p className="text-xs text-gray-500">
+            Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
+          </p>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPagination((prev) => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
+              disabled={pagination.page === 1 || isLoading}
+              className="h-8 text-xs"
+            >
+              Previous
             </Button>
-            <Button variant="outline" className="min-h-[44px]">
-              <Building2 className="w-4 h-4 mr-2" />
-              Assign to Schools
-            </Button>
-            <Button variant="outline" className="min-h-[44px]">
-              <ShieldCheck className="w-4 h-4 mr-2" />
-              Verify Selected
-            </Button>
-            <Button variant="outline" className="min-h-[44px] text-red-600 hover:bg-red-50">
-              <Trash2 className="w-4 h-4 mr-2" />
-              Remove Selected
+            {Array.from({ length: Math.min(5, pagination.totalPages) }, (_, i) => {
+              const pageNum = pagination.page <= 3
+                ? i + 1
+                : pagination.page >= pagination.totalPages - 2
+                ? pagination.totalPages - 4 + i
+                : pagination.page - 2 + i;
+              if (pageNum < 1 || pageNum > pagination.totalPages) return null;
+              return (
+                <Button
+                  key={pageNum}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPagination((prev) => ({ ...prev, page: pageNum }))}
+                  disabled={isLoading}
+                  className={cn(
+                    "h-8 text-xs min-w-[32px]",
+                    pagination.page === pageNum ? "bg-pink-600 text-white border-pink-600" : ""
+                  )}
+                >
+                  {pageNum}
+                </Button>
+              );
+            })}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setPagination((prev) => ({ ...prev, page: Math.min(pagination.totalPages, prev.page + 1) }))}
+              disabled={pagination.page === pagination.totalPages || isLoading}
+              className="h-8 text-xs"
+            >
+              Next
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      )}
+
+      {/* Stats Overview - Compact Grid */}
+      {!isLoading && (
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 mt-4">
+          {[
+            { label: "Total", value: stats.total, color: "text-purple-600", bg: "bg-purple-50", icon: Users },
+            { label: "Verified", value: stats.verified, color: "text-green-600", bg: "bg-green-50", icon: CheckCircle },
+            { label: "Pending", value: stats.pending, color: "text-yellow-600", bg: "bg-yellow-50", icon: Clock },
+            { label: "Active Plans", value: stats.activePlans, color: "text-blue-600", bg: "bg-blue-50", icon: GraduationCap },
+            { label: "Total Notes", value: stats.totalNotes, color: "text-gray-600", bg: "bg-gray-50", icon: Edit },
+          ].map((stat, idx) => (
+            <div key={idx} className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-pink-200 transition-colors">
+              <div className={cn("p-2 rounded-lg", stat.bg)}>
+                <stat.icon className="w-4 h-4 text-gray-700" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-gray-500">{stat.label}</p>
+                <p className={cn("text-sm font-semibold", stat.color)}>{stat.value}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Add Counselor Modal */}
       <AddCounselorModal
@@ -769,161 +703,33 @@ export default function AdminCounselorsPage() {
         counselor={editingCounselor}
       />
 
-      {/* View Counselor Dialog */}
-      {isViewDialogOpen && viewingCounselor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-xl font-bold text-gray-900">Counselor Details</h2>
-              <button
-                onClick={() => setIsViewDialogOpen(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 space-y-6">
-              {/* Profile Header */}
-              <div className="flex items-center gap-4">
-                <div
-                  className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold"
-                  style={{ background: "linear-gradient(135deg, rgb(168 85 247) 0%, rgb(147 51 234) 100%)" }}
-                >
-                  {viewingCounselor.firstName?.[0]}
-                  {viewingCounselor.lastName?.[0]}
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    {viewingCounselor.firstName} {viewingCounselor.lastName}
-                  </h3>
-                  <p className="text-gray-500">{viewingCounselor.email}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    {!viewingCounselor.emailVerified ? (
-                      <Badge className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs">
-                        <Clock className="w-3 h-3 mr-1" />
-                        Pending Verification
-                      </Badge>
-                    ) : (
-                      <Badge className="bg-green-50 text-green-700 border-green-200 text-xs">
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        Verified
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Details Grid */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <Mail className="w-4 h-4" />
-                    Email
-                  </div>
-                  <p className="font-medium">{viewingCounselor.email}</p>
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <Phone className="w-4 h-4" />
-                    Phone
-                  </div>
-                  <p className="font-medium">{viewingCounselor.phone || "N/A"}</p>
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <Building2 className="w-4 h-4" />
-                    School
-                  </div>
-                  <p className="font-medium">{viewingCounselor.schoolName || "Unassigned"}</p>
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <Calendar className="w-4 h-4" />
-                    Joined
-                  </div>
-                  <p className="font-medium">
-                    {viewingCounselor.createdAt ? new Date(viewingCounselor.createdAt).toLocaleDateString() : "N/A"}
-                  </p>
-                </div>
-              </div>
-
-              {/* Assignments */}
-              {viewingCounselor.assignments && viewingCounselor.assignments.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="font-medium text-gray-900">School Assignments</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {viewingCounselor.assignments.map((assignment) => (
-                      <Badge key={assignment.schoolId} variant="outline">
-                        {assignment.schoolName}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="flex justify-end gap-3 p-6 border-t bg-gray-50">
-              <Button
-                variant="outline"
-                onClick={() => setIsViewDialogOpen(false)}
-              >
-                Close
-              </Button>
-              {!viewingCounselor.emailVerified && (
-                <Button
-                  style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
-                  className="text-white"
-                  onClick={() => {
-                    setIsViewDialogOpen(false);
-                    handleVerifyCounselor(viewingCounselor);
-                  }}
-                  disabled={isVerifying === viewingCounselor.id}
-                >
-                  <ShieldCheck className={`w-4 h-4 mr-2 ${isVerifying === viewingCounselor.id ? 'animate-spin' : ''}`} />
-                  Verify Counselor
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Delete Confirmation Dialog */}
-      {isDeleteDialogOpen && deletingCounselor && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                <Trash2 className="w-6 h-6 text-red-600" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-gray-900">Delete Counselor?</h3>
-                <p className="text-sm text-gray-500">This action cannot be undone</p>
-              </div>
-            </div>
-            <p className="text-gray-700 mb-6">
-              Are you sure you want to delete <strong>{deletingCounselor.firstName} {deletingCounselor.lastName}</strong>?
-              This will remove the counselor from the system and all associated data.
-            </p>
-            <div className="flex justify-end gap-3">
-              <Button
-                variant="outline"
-                onClick={() => {
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Counselor?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{deletingCounselor?.firstName} {deletingCounselor?.lastName}</strong>?
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (deletingCounselor) {
+                  await deleteCounselorAction(deletingCounselor.id);
                   setIsDeleteDialogOpen(false);
                   setDeletingCounselor(null);
-                }}
-              >
-                Cancel
-              </Button>
-              <Button
-                className="bg-red-600 hover:bg-red-700 text-white"
-                onClick={confirmDeleteCounselor}
-              >
-                Delete Counselor
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+                }
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

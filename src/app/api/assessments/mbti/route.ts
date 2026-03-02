@@ -90,7 +90,8 @@ export const POST = createApiRoute(
       console.log("[MBTI POST] Attempting to insert MBTI result");
 
       // The MBTI calculation returns 'careerSuggestions' but we store as 'recommendedCareers'
-      const recommendedCareers = (results as any).careerSuggestions || [];
+      // Also check for multiple possible field names for robustness
+      const recommendedCareers = (results as any).careerSuggestions || results.careerSuggestions || results.recommendedCareers || [];
 
       await db.insert(mbtiResults).values({
         id: `mbti_res_${Date.now()}`,
@@ -109,6 +110,7 @@ export const POST = createApiRoute(
         },
         description: results.description || `Your MBTI personality type is ${results.type}`,
         strengths: results.strengths || results.traits || [],
+        weaknesses: results.weaknesses || [],
         recommendedCareers: recommendedCareers,
         completedAt: new Date(),
         createdAt: new Date(),

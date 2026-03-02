@@ -399,6 +399,7 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
   }
 
   // Fetch class teacher name for current period
+  // Use classTeacherId to get the teacher's name dynamically from users table
   let classTeacherName: string | null = null;
   let className: string | null = null;
   if (enrollment?.classId) {
@@ -406,14 +407,27 @@ export async function getStudentDashboardData(): Promise<StudentDashboardData> {
       const [classRecord] = await db
         .select({
           name: classes.name,
-          classTeacherName: classes.classTeacherName,
+          classTeacherId: classes.classTeacherId,
         })
         .from(classes)
         .where(eq(classes.id, enrollment.classId))
         .limit(1);
       if (classRecord) {
         className = classRecord.name;
-        classTeacherName = classRecord.classTeacherName;
+        // If class has a teacher assigned, fetch their name
+        if (classRecord.classTeacherId) {
+          const [teacher] = await db
+            .select({
+              firstName: users.firstName,
+              lastName: users.lastName,
+            })
+            .from(users)
+            .where(eq(users.id, classRecord.classTeacherId))
+            .limit(1);
+          if (teacher) {
+            classTeacherName = `${teacher.firstName || ""} ${teacher.lastName || ""}`.trim() || null;
+          }
+        }
       }
     } catch {
       // If class query fails, continue without class info
@@ -949,6 +963,7 @@ export async function getStudentProgressData(): Promise<StudentProgressData> {
   }
 
   // Fetch class teacher name
+  // Use classTeacherId to get the teacher's name dynamically from users table
   let classTeacherName: string | null = null;
   let className: string | null = null;
   if (enrollment?.classId) {
@@ -956,14 +971,27 @@ export async function getStudentProgressData(): Promise<StudentProgressData> {
       const [classRecord] = await db
         .select({
           name: classes.name,
-          classTeacherName: classes.classTeacherName,
+          classTeacherId: classes.classTeacherId,
         })
         .from(classes)
         .where(eq(classes.id, enrollment.classId))
         .limit(1);
       if (classRecord) {
         className = classRecord.name;
-        classTeacherName = classRecord.classTeacherName;
+        // If class has a teacher assigned, fetch their name
+        if (classRecord.classTeacherId) {
+          const [teacher] = await db
+            .select({
+              firstName: users.firstName,
+              lastName: users.lastName,
+            })
+            .from(users)
+            .where(eq(users.id, classRecord.classTeacherId))
+            .limit(1);
+          if (teacher) {
+            classTeacherName = `${teacher.firstName || ""} ${teacher.lastName || ""}`.trim() || null;
+          }
+        }
       }
     } catch {
       // If class query fails, continue without class info

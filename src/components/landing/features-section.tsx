@@ -42,7 +42,13 @@ const problems = [
   },
 ];
 
-function StatCounter({ value, suffix = "" }: { value: string; suffix?: string }) {
+interface StatCounterProps {
+  value: string;
+  suffix?: string;
+  gradient?: string;
+}
+
+function StatCounter({ value, suffix = "", gradient }: StatCounterProps) {
   const [displayValue, setDisplayValue] = useState(0);
   const numericValue = parseInt(value) || 0;
 
@@ -63,12 +69,29 @@ function StatCounter({ value, suffix = "" }: { value: string; suffix?: string })
     return () => clearInterval(timer);
   }, [numericValue]);
 
-  return (
-    <span>
+  const content = (
+    <>
       {displayValue}
       {suffix}
-    </span>
+    </>
   );
+
+  if (gradient) {
+    return (
+      <span
+        className="bg-clip-text text-transparent"
+        style={{
+          backgroundImage: `linear-gradient(135deg, ${gradient} 0%, ${gradient} 100%)`,
+          WebkitBackgroundClip: 'text',
+          backgroundClip: 'text'
+        }}
+      >
+        {content}
+      </span>
+    );
+  }
+
+  return <span>{content}</span>;
 }
 
 function ProblemSolutionCard({ problem, index }: { problem: typeof problems[0]; index: number }) {
@@ -116,14 +139,24 @@ function ProblemSolutionCard({ problem, index }: { problem: typeof problems[0]; 
 
           {/* Stat highlight */}
           <div className="flex items-baseline gap-2 mb-4">
-            <div
-              className="text-4xl font-bold bg-clip-text text-transparent"
-              style={{ background: `linear-gradient(135deg, ${problem.color} 0%, ${problem.color} 100%)` }}
-            >
+            <div className="text-4xl font-bold">
               {problem.stat.includes('%') ? (
-                <StatCounter value={problem.stat.replace('%', '')} suffix="%" />
+                <StatCounter
+                  value={problem.stat.replace('%', '')}
+                  suffix="%"
+                  gradient={problem.color}
+                />
               ) : (
-                problem.stat
+                <span
+                  className="bg-clip-text text-transparent"
+                  style={{
+                    backgroundImage: `linear-gradient(135deg, ${problem.color} 0%, ${problem.color} 100%)`,
+                    WebkitBackgroundClip: 'text',
+                    backgroundClip: 'text'
+                  }}
+                >
+                  {problem.stat}
+                </span>
               )}
             </div>
             <span className="text-sm text-gray-600 dark:text-gray-400">

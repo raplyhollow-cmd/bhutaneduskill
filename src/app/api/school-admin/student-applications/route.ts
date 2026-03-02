@@ -4,6 +4,10 @@ import { studentApplications, users } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { createApiRoute } from "@/lib/api/route-handler";
+import { alias } from "drizzle-orm/pg-core";
+
+// Create alias for users table to join approver info
+const approvers = alias(users, "approvers");
 
 /**
  * GET /api/school-admin/student-applications
@@ -36,7 +40,7 @@ export const GET = createApiRoute(
       conditions.push(eq(studentApplications.status, statusFilter));
     }
 
-    // Fetch applications with student details
+    // Fetch applications with student details and reviewer info
     const applications = await db
       .select({
         id: studentApplications.id,
@@ -52,6 +56,7 @@ export const GET = createApiRoute(
         specialNeeds: studentApplications.specialNeeds,
         submittedAt: studentApplications.submittedAt,
         reviewedAt: studentApplications.reviewedAt,
+        reviewedBy: studentApplications.reviewedBy,
         rejectionReason: studentApplications.rejectionReason,
         notes: studentApplications.notes,
         student: {
@@ -65,9 +70,18 @@ export const GET = createApiRoute(
           dateOfBirth: users.dateOfBirth,
           profileImage: users.profileImage,
         },
+        reviewer: {
+          id: approvers.id,
+          name: approvers.name,
+          firstName: approvers.firstName,
+          lastName: approvers.lastName,
+          email: approvers.email,
+          type: approvers.type,
+        },
       })
       .from(studentApplications)
       .innerJoin(users, eq(studentApplications.studentId, users.id))
+      .leftJoin(approvers, eq(studentApplications.reviewedBy, approvers.id))
       .where(and(...conditions))
       .orderBy(desc(studentApplications.submittedAt));
 

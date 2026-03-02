@@ -40,10 +40,11 @@ export const GET = createApiRoute(
 
     try {
       // Get teacher's classes using db.select()
+      // Use classTeacherId to get classes where this teacher is the homeroom teacher
       const teacherClassesData = await db
         .select()
         .from(classes)
-        .where(eq(classes.teacherId, userId))
+        .where(eq(classes.classTeacherId, userId))
         .orderBy(desc(classes.createdAt));
 
       if (!teacherClassesData || teacherClassesData.length === 0) {

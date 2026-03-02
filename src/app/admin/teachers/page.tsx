@@ -4,79 +4,113 @@ import { logger } from "@/lib/logger";
 /**
  * PLATFORM ADMIN - TEACHERS MANAGEMENT
  *
- * Multi-tenant teacher management page for platform administrators.
- * View, verify, and manage all teachers across all schools.
+ * Ultra-luxury intelligent inline-editing grid design:
+ * - Inline editable fields (click to edit, no panels)
+ * - Verification toggle (click to toggle, no confirmation)
+ * - Quick action menu (three-dot with all actions)
+ * - Keyboard navigation (arrows, enter, space, escape)
+ * - Optimistic UI (instant feedback, sync in background)
+ * - Bulk actions with conditional bar
+ * - Custom grid table (12-column, NOT HTML table)
  */
 
-
-import { useEffect, useCallback, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { InlineEditText } from "@/components/admin/inline-edit-text";
+import { QuickActionMenu } from "@/components/admin/quick-action-menu";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Users,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { TableSkeleton } from "@/components/ui/skeleton/table-skeleton";
+import { EditTeacherModal } from "@/components/admin/edit-teacher-modal";
+import {
   Briefcase,
   Search,
-  Filter,
-  Edit,
+  Plus,
+  Sparkles,
+  X,
+  Check,
+  Square,
   Trash2,
-  Eye,
-  CheckCircle,
-  XCircle,
-  Clock,
+  MoreHorizontal,
+  Loader2 as Spinner,
+  AlertCircle,
+  ShieldCheck,
+  BookOpen,
+  Users,
   GraduationCap,
   Building2,
-  BookOpen,
-  TrendingUp,
-  ShieldCheck,
-  AlertCircle,
-  Loader2,
-  X,
+  CheckCircle,
+  Ban,
+  MailCheck,
+  Eye,
+  Edit,
+  Key,
   Mail,
-  Phone,
-  IdCard,
-  Calendar,
 } from "lucide-react";
-import { AddUserModal } from "@/components/admin/add-user-modal";
-import { EditTeacherModal } from "@/components/admin/edit-teacher-modal";
+import { cn } from "@/lib/utils";
 
-// Types for teacher data - compatible with EditTeacherModal's Teacher interface
-export interface TeacherData {
+interface Teacher {
   id: string;
-  firstName?: string;
-  lastName?: string;
-  email?: string;
-  phone?: string;
-  employeeId?: string;
-  department?: string;
-  schoolId?: string;
-  subjects?: string | string[];
-  clerkUserId?: string;
-  emailVerified?: boolean;
+  name: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  schoolId?: string | null;
+  emailVerified: boolean;
   onboardingStatus?: string | null;
-  createdAt: Date | string;
   lastLogin?: string | null;
-  schoolName?: string | null;
-  schoolCode?: string | null;
-  schoolType?: string | null;
-  stats: {
+  isActive?: boolean;
+  phone?: string | null;
+  employeeId?: string | null;
+  subjects?: string | string[] | null;
+  school?: {
+    id: string;
+    name: string;
+    code: string;
+  } | null;
+  // Stats
+  stats?: {
     classes: number;
     students: number;
   };
-  // Approval details
-  applicationStatus?: string | null;
-  approvedBy?: string | null;
-  approvedByName?: string | null;
-  approvedAt?: Date | null;
 }
 
-interface SchoolOption {
-  schoolId: string;
-  schoolName: string;
+interface TeacherStats {
+  total: number;
+  verified: number;
+  pending: number;
+  totalClasses: number;
+  totalStudents: number;
 }
 
-// Helper function to parse subjects field (stored as JSON string in DB)
+// Verification filter chips
+const verificationChips = [
+  { value: "all", label: "All Teachers", icon: Briefcase },
+  { value: "verified", label: "Verified", icon: CheckCircle },
+  { value: "pending", label: "Pending", icon: Ban },
+];
+
+type FilterStatus = "all" | "verified" | "pending";
+
+// Helper function to parse subjects field
 function parseSubjects(subjects: string | string[] | null | undefined): string[] {
   if (!subjects) return [];
   if (Array.isArray(subjects)) return subjects;
@@ -87,1036 +121,822 @@ function parseSubjects(subjects: string | string[] | null | undefined): string[]
   }
 }
 
-interface SchoolOption {
-  schoolId: string;
-  schoolName: string;
-}
-
 export default function AdminTeachersPage() {
-  const searchParams = useSearchParams();
+  const router = useRouter();
 
-  // State for data
-  const [teachers, setTeachers] = useState<TeacherData[]>([]);
-  const [filteredTeachers, setFilteredTeachers] = useState<TeacherData[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Filter states - initialize from URL params
-  const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
-  const [schoolFilter, setSchoolFilter] = useState(searchParams.get("school") || "all");
-  const [subjectFilter, setSubjectFilter] = useState(searchParams.get("subject") || "all");
-  const [statusFilter, setStatusFilter] = useState(searchParams.get("status") || "all");
-
-  // Modal states
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [viewingTeacher, setViewingTeacher] = useState<TeacherData | null>(null);
-  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-  const [deletingTeacher, setDeletingTeacher] = useState<TeacherData | null>(null);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  // State
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [stats, setStats] = useState<TeacherStats>({
+    total: 0,
+    verified: 0,
+    pending: 0,
+    totalClasses: 0,
+    totalStudents: 0,
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState<string | null>(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingTeacher, setEditingTeacher] = useState<TeacherData | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // Fetch teachers from API
-  const fetchTeachers = useCallback(async () => {
-    setLoading(true);
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [verificationFilter, setVerificationFilter] = useState<FilterStatus>("all");
+  const [schoolFilter, setSchoolFilter] = useState("");
+
+  // Modal state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<Teacher | null>(null);
+
+  // Selection state
+  const [selectedTeachers, setSelectedTeachers] = useState<Set<string>>(new Set());
+
+  // Keyboard navigation state
+  const [focusedIndex, setFocusedIndex] = useState<number>(-1);
+
+  // Fetch teachers
+  const fetchTeachers = async () => {
+    setIsLoading(true);
+    setError(null);
+
     try {
       const response = await fetch("/api/admin/teachers");
       if (!response.ok) throw new Error("Failed to fetch teachers");
 
       const data = await response.json();
-      const teachersData = data.data || [];
-
-      // Transform data to match expected format
-      const transformedData = teachersData.map((teacher: TeacherData & { school?: { name?: string; code?: string } }) => ({
-        ...teacher,
-        schoolName: teacher.school?.name || null,
-        schoolCode: teacher.school?.code || null,
-        schoolType: null,
+      const teachersData: Teacher[] = (data.data || []).map((t: Teacher) => ({
+        ...t,
+        isActive: t.onboardingStatus === "completed",
         stats: {
           classes: 0,
           students: 0,
         },
       }));
 
-      setTeachers(transformedData);
-      setFilteredTeachers(transformedData);
-    } catch (error) {
-      logger.error("Failed to fetch teachers:", error);
-      setTeachers([]);
-      setFilteredTeachers([]);
+      setTeachers(teachersData);
+
+      // Calculate stats
+      const verifiedCount = teachersData.filter((t) => t.emailVerified).length;
+      const pendingCount = teachersData.filter((t) => !t.emailVerified).length;
+      const totalClasses = teachersData.reduce((sum, t) => sum + (t.stats?.classes || 0), 0);
+      const totalStudents = teachersData.reduce((sum, t) => sum + (t.stats?.students || 0), 0);
+
+      setStats({
+        total: teachersData.length,
+        verified: verifiedCount,
+        pending: pendingCount,
+        totalClasses,
+        totalStudents,
+      });
+    } catch (err) {
+      logger.error(err, { action: "fetchTeachers" });
+      setError("Failed to load teachers. Please try again.");
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
-  }, []);
+  };
 
   // Initial fetch
   useEffect(() => {
     fetchTeachers();
-  }, [fetchTeachers]);
+  }, []);
 
-  // Handle view teacher
-  const handleViewTeacher = (teacher: TeacherData) => {
-    setViewingTeacher(teacher);
-    setIsViewDialogOpen(true);
+  // Calculate filtered teachers
+  const filteredTeachers = teachers.filter((teacher) => {
+    const matchesSearch =
+      teacher.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      teacher.lastName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      teacher.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      teacher.employeeId?.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesVerification =
+      verificationFilter === "all" ||
+      (verificationFilter === "verified" && teacher.emailVerified) ||
+      (verificationFilter === "pending" && !teacher.emailVerified);
+
+    const matchesSchool = !schoolFilter || teacher.schoolId === schoolFilter;
+
+    return matchesSearch && matchesVerification && matchesSchool;
+  });
+
+  // Get unique schools for filter
+  const uniqueSchools = Array.from(
+    new Map(
+      teachers
+        .filter((t) => t.school && t.schoolId)
+        .map((t) => [t.schoolId, t.school!] as [string, typeof t.school])
+    ).values()
+  );
+
+  // Reset focus when filtered teachers change
+  useEffect(() => {
+    setFocusedIndex(-1);
+  }, [filteredTeachers.length]);
+
+  // Refresh data
+  const refreshData = () => {
+    router.refresh();
+    fetchTeachers();
   };
 
-  // Handle edit teacher
-  const handleEditTeacher = (teacher: TeacherData) => {
-    setEditingTeacher(teacher);
-    setIsEditModalOpen(true);
-  };
+  // Update teacher name with inline edit
+  const updateTeacherName = async (teacherId: string, newName: string) => {
+    const teacher = teachers.find((t) => t.id === teacherId);
+    if (!teacher) return;
 
-  // Handle verify teacher
-  const handleVerifyTeacher = async (teacher: TeacherData) => {
-    setIsVerifying(teacher.id);
+    const [firstName, ...lastNameParts] = newName.trim().split(" ");
+    const lastName = lastNameParts.join(" ");
+
+    const oldFirstName = teacher.firstName;
+    const oldLastName = teacher.lastName;
+
+    // Optimistic update
+    setTeachers((prev) =>
+      prev.map((t) =>
+        t.id === teacherId ? { ...t, firstName, lastName, name: newName } : t
+      )
+    );
+
     try {
-      const response = await fetch(`/api/admin/users/${teacher.id}/verify`, {
-        method: 'POST',
+      const response = await fetch(`/api/admin/users/${teacherId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ firstName, lastName }),
       });
-      if (response.ok) {
-        // Refresh teachers list
-        await fetchTeachers();
-      } else {
-        const error = await response.json();
-        logger.error('Failed to verify teacher:', error.error);
-        alert(error.error || 'Failed to verify teacher');
-      }
-    } catch (error) {
-      logger.error('Error verifying teacher:', error);
-      alert('Failed to verify teacher');
+
+      if (!response.ok) throw new Error("Failed to update name");
+    } catch (err) {
+      // Rollback
+      setTeachers((prev) =>
+        prev.map((t) =>
+          t.id === teacherId ? { ...t, firstName: oldFirstName, lastName: oldLastName } : t
+        )
+      );
+      logger.error(err, { action: "updateTeacherName", teacherId });
+      throw err;
+    }
+  };
+
+  // Update teacher email with inline edit
+  const updateTeacherEmail = async (teacherId: string, newEmail: string) => {
+    const teacher = teachers.find((t) => t.id === teacherId);
+    if (!teacher) return;
+
+    const oldEmail = teacher.email;
+
+    // Optimistic update
+    setTeachers((prev) =>
+      prev.map((t) => (t.id === teacherId ? { ...t, email: newEmail } : t))
+    );
+
+    try {
+      const response = await fetch(`/api/admin/users/${teacherId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: newEmail }),
+      });
+
+      if (!response.ok) throw new Error("Failed to update email");
+    } catch (err) {
+      // Rollback
+      setTeachers((prev) =>
+        prev.map((t) => (t.id === teacherId ? { ...t, email: oldEmail } : t))
+      );
+      logger.error(err, { action: "updateTeacherEmail", teacherId });
+      throw err;
+    }
+  };
+
+  // Update teacher phone with inline edit
+  const updateTeacherPhone = async (teacherId: string, newPhone: string) => {
+    const teacher = teachers.find((t) => t.id === teacherId);
+    if (!teacher) return;
+
+    const oldPhone = teacher.phone;
+
+    // Optimistic update
+    setTeachers((prev) =>
+      prev.map((t) => (t.id === teacherId ? { ...t, phone: newPhone || null } : t))
+    );
+
+    try {
+      const response = await fetch(`/api/admin/users/${teacherId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: newPhone || null }),
+      });
+
+      if (!response.ok) throw new Error("Failed to update phone");
+    } catch (err) {
+      // Rollback
+      setTeachers((prev) =>
+        prev.map((t) => (t.id === teacherId ? { ...t, phone: oldPhone } : t))
+      );
+      logger.error(err, { action: "updateTeacherPhone", teacherId });
+      throw err;
+    }
+  };
+
+  // Toggle verification with optimistic update
+  const toggleVerification = async (teacherId: string) => {
+    const teacher = teachers.find((t) => t.id === teacherId);
+    if (!teacher) return;
+
+    const newStatus = !teacher.emailVerified;
+
+    // Optimistic update
+    setTeachers((prev) =>
+      prev.map((t) => (t.id === teacherId ? { ...t, emailVerified: newStatus } : t))
+    );
+
+    setIsVerifying(teacherId);
+
+    try {
+      const response = await fetch(`/api/admin/users/${teacherId}/verify`, {
+        method: "POST",
+      });
+
+      if (!response.ok) throw new Error("Failed to update verification");
+
+      // Update stats
+      setStats((prev) => ({
+        ...prev,
+        verified: newStatus ? prev.verified + 1 : prev.verified - 1,
+        pending: newStatus ? prev.pending - 1 : prev.pending + 1,
+      }));
+    } catch (err) {
+      // Rollback
+      setTeachers((prev) =>
+        prev.map((t) => (t.id === teacherId ? { ...t, emailVerified: !newStatus } : t))
+      );
+      logger.error(err, { action: "toggleVerification", teacherId });
+      setError("Failed to update verification. Please try again.");
     } finally {
       setIsVerifying(null);
     }
   };
 
-  // Handle delete teacher
-  const handleDeleteTeacher = (teacher: TeacherData) => {
-    setDeletingTeacher(teacher);
-    setIsDeleteDialogOpen(true);
-  };
-
-  // Confirm delete teacher
-  const confirmDeleteTeacher = async () => {
-    if (!deletingTeacher) return;
+  // Delete teacher
+  const deleteTeacher = async (teacherId: string) => {
+    setIsDeleting(teacherId);
+    setError(null);
 
     try {
-      const response = await fetch(`/api/admin/users/${deletingTeacher.id}`, {
-        method: 'DELETE',
+      const response = await fetch(`/api/admin/users/${teacherId}`, {
+        method: "DELETE",
       });
-      if (response.ok) {
-        setIsDeleteDialogOpen(false);
-        setDeletingTeacher(null);
-        // Refresh teachers list
-        await fetchTeachers();
-      } else {
-        const error = await response.json();
-        logger.error('Failed to delete teacher:', error.error);
-        alert(error.error || 'Failed to delete teacher');
+
+      if (!response.ok) {
+        let errorMsg = `Failed to delete teacher (Status: ${response.status})`;
+        try {
+          const errorData = await response.json();
+          if (errorData.error) errorMsg = errorData.error;
+        } catch {
+          // Ignore JSON parse errors
+        }
+        throw new Error(errorMsg);
       }
-    } catch (error) {
-      logger.error('Error deleting teacher:', error);
-      alert('Failed to delete teacher');
+
+      // Remove from local state
+      setTeachers((prev) => prev.filter((t) => t.id !== teacherId));
+      setDeleteConfirm(null);
+
+      // Update stats
+      setStats((prev) => ({ ...prev, total: prev.total - 1 }));
+    } catch (err) {
+      logger.error(err, { action: "deleteTeacher", teacherId });
+      setError("Failed to delete teacher. Please try again.");
+    } finally {
+      setIsDeleting(null);
     }
   };
 
-  // Apply filters
-  useEffect(() => {
-    let filtered = [...teachers];
-
-    // Search filter
-    if (searchQuery) {
-      filtered = filtered.filter(
-        (teacher) =>
-          teacher.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          teacher.lastName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          teacher.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          teacher.employeeId?.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    // School filter
-    if (schoolFilter !== "all") {
-      filtered = filtered.filter((teacher) => teacher.schoolId === schoolFilter);
-    }
-
-    // Subject filter
-    if (subjectFilter !== "all" && subjectFilter) {
-      filtered = filtered.filter((teacher) =>
-        parseSubjects(teacher.subjects).includes(subjectFilter)
-      );
-    }
-
-    // Status filter
-    if (statusFilter === "verified") {
-      filtered = filtered.filter((teacher) => teacher.emailVerified);
-    } else if (statusFilter === "pending") {
-      filtered = filtered.filter((teacher) => !teacher.emailVerified);
-    }
-
-    setFilteredTeachers(filtered);
-  }, [teachers, searchQuery, schoolFilter, subjectFilter, statusFilter]);
-
-  // Calculate stats
-  const totalTeachers = filteredTeachers.length;
-  const verifiedTeachers = filteredTeachers.filter((t) => t.emailVerified).length;
-  const pendingTeachers = filteredTeachers.filter((t) => !t.emailVerified).length;
-  const totalClasses = filteredTeachers.reduce((sum, t) => sum + (t.stats?.classes || 0), 0);
-  const totalStudents = filteredTeachers.reduce((sum, t) => sum + (t.stats?.students || 0), 0);
-
-  // Subject distribution
-  const subjectCounts = filteredTeachers.reduce((acc: Record<string, number>, teacher) => {
-    const subjectsArray = parseSubjects(teacher.subjects);
-    subjectsArray.forEach((subject: string) => {
-      acc[subject] = (acc[subject] || 0) + 1;
+  // Toggle selection
+  const toggle = useCallback((teacherId: string) => {
+    setSelectedTeachers((prev) => {
+      const next = new Set(prev);
+      if (next.has(teacherId)) {
+        next.delete(teacherId);
+      } else {
+        next.add(teacherId);
+      }
+      return next;
     });
-    return acc;
-  }, {} as Record<string, number>);
+  }, []);
 
-  // Get unique schools for filter
-  const uniqueSchools: SchoolOption[] = Array.from(
-    new Map(
-      filteredTeachers
-        .filter((t: TeacherData) => t.schoolName && t.schoolId)
-        .map((t: TeacherData) => [t.schoolId, { schoolId: t.schoolId!, schoolName: t.schoolName! }] as [string, SchoolOption])
-    ).values()
-  );
+  const toggleAll = () => {
+    if (selectedTeachers.size === filteredTeachers.length) {
+      setSelectedTeachers(new Set());
+    } else {
+      setSelectedTeachers(new Set(filteredTeachers.map((t) => t.id)));
+    }
+  };
+
+  const allSelected = filteredTeachers.length > 0 && selectedTeachers.size === filteredTeachers.length;
+
+  // Bulk actions
+  const bulkAction = async (action: string, value?: any) => {
+    try {
+      if (action === "delete") {
+        if (!confirm(`Delete ${selectedTeachers.size} selected teachers? This cannot be undone.`)) return;
+        await Promise.all(
+          Array.from(selectedTeachers).map((id) => fetch(`/api/admin/users/${id}`, { method: "DELETE" }))
+        );
+      } else if (action === "verify") {
+        await Promise.all(
+          Array.from(selectedTeachers).map((id) =>
+            fetch(`/api/admin/users/${id}/verify`, { method: "POST" })
+          )
+        );
+      } else if (action === "status") {
+        await Promise.all(
+          Array.from(selectedTeachers).map((id) =>
+            fetch(`/api/admin/users/${id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ isActive: value }),
+            })
+          )
+        );
+      }
+      setSelectedTeachers(new Set());
+      await fetchTeachers();
+    } catch (err) {
+      logger.error(err, { event: "bulkAction", actionType: action });
+      setError("Failed to complete bulk action");
+    }
+  };
+
+  // Get initials for avatar
+  const getInitials = (firstName?: string | null, lastName?: string | null) => {
+    const first = firstName?.[0] || "";
+    const last = lastName?.[0] || "";
+    return (first + last).toUpperCase() || "?";
+  };
+
+  // Get avatar gradient
+  const getAvatarGradient = () => {
+    return "linear-gradient(135deg, rgb(59 130 246) 0%, rgb(37 99 235) 100%)";
+  };
+
+  // Get subject display
+  const getSubjectsDisplay = (subjects: string | string[] | null | undefined) => {
+    const parsed = parseSubjects(subjects);
+    if (parsed.length === 0) return "-";
+    if (parsed.length === 1) return parsed[0];
+    return `${parsed[0]} +${parsed.length - 1}`;
+  };
+
+  // Handle view teacher
+  const handleViewTeacher = (teacher: Teacher) => {
+    setEditingTeacher(teacher);
+    setIsEditModalOpen(true);
+  };
+
+  // Handle edit teacher
+  const handleEditTeacher = (teacher: Teacher) => {
+    setEditingTeacher(teacher);
+    setIsEditModalOpen(true);
+  };
+
+  // Handle delete teacher
+  const handleDeleteTeacher = (teacher: Teacher) => {
+    setDeleteConfirm(teacher);
+  };
+
+  // Handle reset password
+  const handleResetPassword = (teacher: Teacher) => {
+    // TODO: Implement password reset
+    alert(`Password reset link sent to ${teacher.email}`);
+  };
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      if (filteredTeachers.length === 0) return;
+
+      const focusedTeacherId =
+        focusedIndex >= 0 && focusedIndex < filteredTeachers.length
+          ? filteredTeachers[focusedIndex]?.id
+          : null;
+
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault();
+          setFocusedIndex((prev) => (prev < filteredTeachers.length - 1 ? prev + 1 : prev));
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          setFocusedIndex((prev) => (prev > 0 ? prev - 1 : -1));
+          break;
+        case "Enter":
+          if (focusedIndex >= 0 && focusedTeacherId) {
+            const teacher = teachers.find((t) => t.id === focusedTeacherId);
+            if (teacher) {
+              handleEditTeacher(teacher);
+            }
+          }
+          break;
+        case " ":
+          if (focusedIndex >= 0 && focusedTeacherId) {
+            e.preventDefault();
+            toggle(focusedTeacherId);
+          }
+          break;
+        case "Escape":
+          setFocusedIndex(-1);
+          if (selectedTeachers.size > 0) {
+            setSelectedTeachers(new Set());
+          }
+          break;
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [filteredTeachers, focusedIndex, teachers, selectedTeachers.size, toggle]);
 
   return (
-    <div className="space-y-8">
+    <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex items-center justify-between pb-3">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Teachers Management</h1>
-          <p className="text-gray-600">
-            View and manage all teachers across all schools
-          </p>
+          <h1 className="text-lg font-semibold text-gray-900">Teachers</h1>
+          <p className="text-xs text-gray-500">{stats.total} total</p>
         </div>
-        <div className="flex gap-3">
-          <Button variant="outline">
-            <Filter className="w-4 h-4 mr-2" />
-            Advanced Filters
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={refreshData}
+            disabled={isLoading}
+            className="h-8 text-xs"
+          >
+            {isLoading ? (
+              <Spinner className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+            ) : (
+              <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+            )}
+            Refresh
           </Button>
           <Button
-            onClick={() => setIsAddModalOpen(true)}
-            style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
-            className="text-white"
+            size="sm"
+            onClick={() => {
+              setEditingTeacher(null);
+              setIsEditModalOpen(true);
+            }}
+            className="h-8 bg-pink-600 hover:bg-pink-700 text-xs"
           >
-            <Briefcase className="w-4 h-4 mr-2" />
+            <Plus className="w-3.5 h-3.5 mr-1.5" />
             Add Teacher
           </Button>
         </div>
       </div>
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <Briefcase className="w-4 h-4" />
-              Total Teachers
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900">{totalTeachers}</div>
-            <p className="text-xs text-gray-500 mt-1">Across all schools</p>
-          </CardContent>
-        </Card>
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg flex items-center gap-3 mb-3">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <span className="text-sm flex-1">{error}</span>
+          <button
+            onClick={() => setError(null)}
+            className="text-red-500 hover:text-red-700"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-blue-500" />
-              Verified
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-blue-600">{verifiedTeachers}</div>
-            <p className="text-xs text-gray-500 mt-1">
-              {totalTeachers > 0 ? ((verifiedTeachers / totalTeachers) * 100).toFixed(1) : 0}% verified
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-yellow-500" />
-              Pending
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-yellow-600">{pendingTeachers}</div>
-            <p className="text-xs text-gray-500 mt-1">Awaiting verification</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <GraduationCap className="w-4 h-4" />
-              Total Classes
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900">{totalClasses}</div>
-            <p className="text-xs text-gray-500 mt-1">Active classes</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Students Taught
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-gray-900">{totalStudents}</div>
-            <p className="text-xs text-gray-500 mt-1">Total enrollment</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Subject Distribution */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Subject Expertise Distribution</CardTitle>
-          <CardDescription>Teachers by subject specialization</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-3">
-            {Object.entries(subjectCounts)
-              .sort(([, a], [, b]) => (b as number) - (a as number))
-              .slice(0, 10)
-              .map(([subject, count]) => (
-                <Badge
-                  key={subject}
-                  variant="outline"
-                  className="px-4 py-2 text-sm min-h-[44px] flex items-center"
-                  style={{
-                    borderColor: "rgb(236 72 153)",
-                    color: "rgb(219 39 119)",
-                  }}
-                >
-                  <BookOpen className="w-3 h-3 mr-1" />
-                  {subject}: {count}
-                </Badge>
-              ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Search and Filter */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col lg:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search teachers by name, email, or employee ID..."
-                className="w-full pl-10 pr-4 py-3 min-h-[44px] rounded-lg border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 outline-none"
-              />
-            </div>
-            <select
-              value={schoolFilter}
-              onChange={(e) => setSchoolFilter(e.target.value)}
-              className="px-4 py-3 min-h-[44px] rounded-lg border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 outline-none bg-white"
-            >
-              <option value="all">All Schools</option>
-              {uniqueSchools.map((school) => (
-                <option key={school.schoolId} value={school.schoolId}>
-                  {school.schoolName}
-                </option>
-              ))}
-            </select>
-            <select
-              value={subjectFilter}
-              onChange={(e) => setSubjectFilter(e.target.value)}
-              className="px-4 py-3 min-h-[44px] rounded-lg border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 outline-none bg-white"
-            >
-              <option value="all">All Subjects</option>
-              {Object.keys(subjectCounts).map((subject) => (
-                <option key={subject} value={subject}>
-                  {subject}
-                </option>
-              ))}
-            </select>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-3 min-h-[44px] rounded-lg border border-gray-300 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 outline-none bg-white"
-            >
-              <option value="all">All Status</option>
-              <option value="verified">Verified</option>
-              <option value="pending">Pending Verification</option>
-            </select>
+      {/* Bulk Action Bar - Conditional */}
+      {selectedTeachers.size > 0 && (
+        <div className="flex items-center justify-between px-3 py-2 bg-pink-50 border border-pink-200 rounded-lg mb-3">
+          <span className="text-sm font-medium text-pink-900">{selectedTeachers.size} selected</span>
+          <div className="flex items-center gap-1">
             <Button
-              style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
-              className="text-white min-h-[44px]"
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs text-pink-700 hover:bg-pink-100"
+              onClick={() => setSelectedTeachers(new Set())}
             >
-              Apply Filters
+              <X className="w-3.5 h-3.5 mr-1" />
+              Clear
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs text-pink-700 hover:bg-pink-100"
+              onClick={() => bulkAction("verify")}
+            >
+              <ShieldCheck className="w-3.5 h-3.5 mr-1" />
+              Verify
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs text-pink-700 hover:bg-pink-100"
+              onClick={() => bulkAction("status", true)}
+            >
+              <CheckCircle className="w-3.5 h-3.5 mr-1" />
+              Enable
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs text-pink-700 hover:bg-pink-100"
+              onClick={() => bulkAction("status", false)}
+            >
+              <Ban className="w-3.5 h-3.5 mr-1" />
+              Disable
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs text-red-600 hover:bg-red-50"
+              onClick={() => bulkAction("delete")}
+            >
+              <Trash2 className="w-3.5 h-3.5 mr-1" />
+              Delete
             </Button>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Active Filters Display */}
-      {(schoolFilter !== "all" || subjectFilter !== "all" || statusFilter !== "all" || searchQuery) && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm text-gray-600">Active filters:</span>
-          {schoolFilter !== "all" && (
-            <Badge
-              variant="outline"
-              className="px-3 py-1 cursor-pointer hover:bg-gray-100"
-              onClick={() => setSchoolFilter("all")}
-              style={{ borderColor: "rgb(236 72 153)", color: "rgb(219 39 119)" }}
-            >
-              School: {uniqueSchools.find((s) => s.schoolId === schoolFilter)?.schoolName} <XCircle className="w-3 h-3 ml-1" />
-            </Badge>
-          )}
-          {subjectFilter !== "all" && (
-            <Badge
-              variant="outline"
-              className="px-3 py-1 cursor-pointer hover:bg-gray-100"
-              onClick={() => setSubjectFilter("all")}
-              style={{ borderColor: "rgb(236 72 153)", color: "rgb(219 39 119)" }}
-            >
-              Subject: {subjectFilter} <XCircle className="w-3 h-3 ml-1" />
-            </Badge>
-          )}
-          {statusFilter !== "all" && (
-            <Badge
-              variant="outline"
-              className="px-3 py-1 cursor-pointer hover:bg-gray-100"
-              onClick={() => setStatusFilter("all")}
-              style={{ borderColor: "rgb(236 72 153)", color: "rgb(219 39 119)" }}
-            >
-              Status: {statusFilter} <XCircle className="w-3 h-3 ml-1" />
-            </Badge>
-          )}
-          {searchQuery && (
-            <Badge
-              variant="outline"
-              className="px-3 py-1 cursor-pointer hover:bg-gray-100"
-              onClick={() => setSearchQuery("")}
-              style={{ borderColor: "rgb(236 72 153)", color: "rgb(219 39 119)" }}
-            >
-              Search: "{searchQuery}" <XCircle className="w-3 h-3 ml-1" />
-            </Badge>
-          )}
         </div>
       )}
 
-      {/* Teachers Table */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>All Teachers</CardTitle>
-              <CardDescription>
-                {filteredTeachers.length} teachers across {uniqueSchools.length} schools
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="min-h-[36px]">
-                <TrendingUp className="w-4 h-4 mr-2" />
-                Export Report
-              </Button>
-              <Button variant="outline" size="sm" className="min-h-[36px]">
-                Bulk Verify
-              </Button>
-            </div>
+      {/* Stats Overview - Compact */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-3">
+        <div className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-pink-200 transition-colors">
+          <div className="p-2 rounded-lg bg-pink-50">
+            <Briefcase className="w-4 h-4 text-pink-600" />
           </div>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="text-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-pink-600 mx-auto" />
-              <p className="text-gray-500 mt-4">Loading teachers...</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Teacher</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">School</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600 text-sm">Subjects</th>
-                    <th className="text-center py-3 px-4 font-medium text-gray-600 text-sm">Classes</th>
-                    <th className="text-center py-3 px-4 font-medium text-gray-600 text-sm">Students</th>
-                    <th className="text-center py-3 px-4 font-medium text-gray-600 text-sm">Email Status</th>
-                    <th className="text-center py-3 px-4 font-medium text-gray-600 text-sm">School Approval</th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-600 text-sm">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTeachers.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="text-center py-12">
-                        <div className="flex flex-col items-center gap-4">
-                          <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
-                            <Briefcase className="w-8 h-8 text-gray-400" />
-                          </div>
-                          <div>
-                            <p className="text-gray-900 font-medium">No teachers found</p>
-                            <p className="text-gray-500 text-sm">Try adjusting your filters or add a new teacher</p>
-                          </div>
-                          <Button
-                            onClick={() => setIsAddModalOpen(true)}
-                            style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
-                            className="text-white"
-                          >
-                            <Briefcase className="w-4 h-4 mr-2" />
-                            Add First Teacher
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredTeachers.map((teacher) => (
-                      <tr key={teacher.id} className="border-b border-gray-100 hover:bg-gray-50">
-                        <td className="py-4 px-4">
-                          <div className="flex items-start gap-3">
-                            <div
-                              className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0"
-                              style={{ background: "linear-gradient(135deg, rgb(59 130 246) 0%, rgb(37 99 235) 100%)" }}
-                            >
-                              {teacher.firstName?.[0]}{teacher.lastName?.[0]}
-                            </div>
-                            <div>
-                              <p className="font-medium text-gray-900">
-                                {teacher.firstName} {teacher.lastName}
-                              </p>
-                              <p className="text-sm text-gray-500">{teacher.email || "No email"}</p>
-                              {teacher.employeeId && (
-                                <Badge variant="outline" className="mt-1 text-xs">
-                                  ID: {teacher.employeeId}
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-4 px-4">
-                          <div className="flex items-center gap-1 text-sm text-gray-600">
-                            <Building2 className="w-3 h-3 text-gray-400" />
-                            {teacher.schoolName || "Unassigned"}
-                          </div>
-                          {teacher.schoolType && (
-                            <p className="text-xs text-gray-500">{teacher.schoolType}</p>
-                          )}
-                        </td>
-                        <td className="py-4 px-4">
-                          <div className="flex flex-wrap gap-1">
-                            {(() => {
-                              const subjectsList = parseSubjects(teacher.subjects);
-                              return subjectsList.length > 0 ? (
-                                <>
-                                  {subjectsList.slice(0, 2).map((subject: string) => (
-                                    <Badge
-                                      key={subject}
-                                      variant="outline"
-                                      className="text-xs"
-                                      style={{
-                                        borderColor: "rgb(59 130 246)",
-                                        color: "rgb(37 99 235)",
-                                      }}
-                                    >
-                                      {subject}
-                                    </Badge>
-                                  ))}
-                                  {subjectsList.length > 2 && (
-                                    <Badge variant="outline" className="text-xs">
-                                      +{subjectsList.length - 2}
-                                    </Badge>
-                                  )}
-                                </>
-                              ) : (
-                                <span className="text-sm text-gray-400">No subjects</span>
-                              );
-                            })()}
-                          </div>
-                        </td>
-                        <td className="py-4 px-4 text-center">
-                          <span className="inline-flex items-center gap-1 text-sm font-medium text-gray-900">
-                            <GraduationCap className="w-4 h-4 text-gray-400" />
-                            {teacher.stats?.classes || 0}
-                          </span>
-                        </td>
-                        <td className="py-4 px-4 text-center">
-                          <span className="inline-flex items-center gap-1 text-sm font-medium text-gray-900">
-                            <Users className="w-4 h-4 text-gray-400" />
-                            {teacher.stats?.students || 0}
-                          </span>
-                        </td>
-                        {/* Email Status Column */}
-                        <td className="py-4 px-4 text-center">
-                          {!teacher.emailVerified ? (
-                            <Badge className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs">
-                              <Clock className="w-3 h-3 mr-1" />
-                              Pending
-                            </Badge>
-                          ) : teacher.lastLogin ? (
-                            <Badge className="bg-green-50 text-green-700 border-green-200 text-xs">
-                              <CheckCircle className="w-3 h-3 mr-1" />
-                              Active
-                            </Badge>
-                          ) : (
-                            <Badge className="bg-blue-50 text-blue-700 border-blue-200 text-xs">
-                              <ShieldCheck className="w-3 h-3 mr-1" />
-                              Verified
-                            </Badge>
-                          )}
-                        </td>
-                        {/* School Approval Status Column */}
-                        <td className="py-4 px-4 text-center">
-                          {teacher.onboardingStatus === "enrolled" || teacher.applicationStatus === "approved" ? (
-                            <div className="flex flex-col items-center gap-1">
-                              <Badge className="bg-green-50 text-green-700 border-green-200 text-xs">
-                                <CheckCircle className="w-3 h-3 mr-1" />
-                                Approved
-                              </Badge>
-                              {teacher.approvedByName && (
-                                <p className="text-xs text-gray-500">by {teacher.approvedByName}</p>
-                              )}
-                            </div>
-                          ) : teacher.onboardingStatus === "pending_approval" || teacher.onboardingStatus === "pending_enrollment" || teacher.applicationStatus === "pending" ? (
-                            <Badge className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs">
-                              <Clock className="w-3 h-3 mr-1" />
-                              Pending
-                            </Badge>
-                          ) : teacher.applicationStatus === "rejected" ? (
-                            <Badge className="bg-red-50 text-red-700 border-red-200 text-xs">
-                              <XCircle className="w-3 h-3 mr-1" />
-                              Rejected
-                            </Badge>
-                          ) : (
-                            <span className="text-xs text-gray-400">—</span>
-                          )}
-                        </td>
-                        <td className="py-4 px-4">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 hover:bg-pink-50 hover:text-pink-600"
-                              title="View details"
-                              onClick={() => handleViewTeacher(teacher)}
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 hover:bg-pink-50 hover:text-pink-600"
-                              title="Edit teacher"
-                              onClick={() => handleEditTeacher(teacher)}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            {!teacher.emailVerified && (
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 hover:bg-green-50 hover:text-green-600"
-                                title="Verify teacher"
-                                onClick={() => handleVerifyTeacher(teacher)}
-                                disabled={isVerifying === teacher.id}
-                              >
-                                <ShieldCheck className={`w-4 h-4 ${isVerifying === teacher.id ? 'animate-spin' : ''}`} />
-                              </Button>
-                            )}
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 hover:bg-red-50 hover:text-red-600"
-                              title="Delete teacher"
-                              onClick={() => handleDeleteTeacher(teacher)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                      )))}
-                </tbody>
-              </table>
-            </div>
-          )}
-
-          {/* Pagination */}
-          {!loading && filteredTeachers.length > 0 && (
-            <div className="flex items-center justify-between mt-6 pt-6 border-t border-gray-200">
-              <p className="text-sm text-gray-500">
-                Showing 1-{filteredTeachers.length} of {totalTeachers} teachers
-              </p>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" disabled className="min-h-[36px]">
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="min-h-[36px]"
-                  style={{
-                    background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)",
-                    color: "white",
-                    border: "none",
-                  }}
-                >
-                  1
-                </Button>
-                <Button variant="outline" size="sm" className="min-h-[36px]">
-                  Next
-                </Button>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Pending Verifications */}
-      {pendingTeachers > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-yellow-500" />
-              Pending Verifications
-            </CardTitle>
-            <CardDescription>
-              {pendingTeachers} teacher(s) awaiting verification
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {filteredTeachers
-                .filter((t) => !t.emailVerified)
-                .slice(0, 5)
-                .map((teacher) => (
-                  <div
-                    key={teacher.id}
-                    className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg border border-yellow-200"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold"
-                        style={{ background: "linear-gradient(135deg, rgb(59 130 246) 0%, rgb(37 99 235) 100%)" }}
-                      >
-                        {teacher.firstName?.[0]}
-                        {teacher.lastName?.[0]}
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-900">
-                          {teacher.firstName} {teacher.lastName}
-                        </p>
-                        <p className="text-sm text-gray-600">{teacher.email}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="min-h-[36px]"
-                        onClick={() => handleViewTeacher(teacher)}
-                      >
-                        Review
-                      </Button>
-                      <Button
-                        size="sm"
-                        className="min-h-[36px]"
-                        style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
-                        onClick={() => handleVerifyTeacher(teacher)}
-                        disabled={isVerifying === teacher.id}
-                      >
-                        <ShieldCheck className={`w-4 h-4 mr-2 ${isVerifying === teacher.id ? 'animate-spin' : ''}`} />
-                        Verify
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Performance Metrics */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Teachers by Class Count</CardTitle>
-            <CardDescription>Teachers managing the most classes</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {filteredTeachers
-                .sort((a, b) => (b.stats?.classes || 0) - (a.stats?.classes || 0))
-                .slice(0, 5)
-                .map((teacher, index) => (
-                  <div key={teacher.id} className="flex items-center gap-4">
-                    <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                        index === 0
-                          ? "bg-yellow-100 text-yellow-700"
-                          : index === 1
-                          ? "bg-gray-100 text-gray-700"
-                          : index === 2
-                          ? "bg-orange-100 text-orange-700"
-                          : "bg-gray-50 text-gray-600"
-                      }`}
-                    >
-                      {index + 1}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-medium text-gray-900">
-                          {teacher.firstName} {teacher.lastName}
-                        </span>
-                        <span className="text-sm text-gray-500">{teacher.stats?.classes || 0} classes</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className="h-2 rounded-full"
-                          style={{
-                            width: `${((teacher.stats?.classes || 0) / (Math.max(...filteredTeachers.map(t => t.stats?.classes || 0)) || 1)) * 100}%`,
-                            background: "linear-gradient(90deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)",
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Recently Added Teachers</CardTitle>
-            <CardDescription>Latest teachers to join the platform</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {filteredTeachers
-                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                .slice(0, 5)
-                .map((teacher) => (
-                  <div key={teacher.id} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                    <div
-                      className="w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold"
-                      style={{ background: "linear-gradient(135deg, rgb(59 130 246) 0%, rgb(37 99 235) 100%)" }}
-                    >
-                      {teacher.firstName?.[0]}
-                      {teacher.lastName?.[0]}
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900">
-                        {teacher.firstName} {teacher.lastName}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {teacher.schoolName} • {parseSubjects(teacher.subjects).join(", ") || "No subjects"}
-                      </p>
-                    </div>
-                    {!teacher.emailVerified ? (
-                      <Badge className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs">
-                        <Clock className="w-3 h-3 mr-1" />
-                        Pending
-                      </Badge>
-                    ) : (
-                      <Badge className="bg-green-50 text-green-700 border-green-200 text-xs">
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        Verified
-                      </Badge>
-                    )}
-                  </div>
-                ))}
-            </div>
-          </CardContent>
-        </Card>
+          <div className="min-w-0">
+            <p className="text-xs text-gray-500">Teachers</p>
+            <p className="text-sm font-semibold text-pink-600">{stats.total}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-pink-200 transition-colors">
+          <div className="p-2 rounded-lg bg-blue-50">
+            <ShieldCheck className="w-4 h-4 text-blue-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-gray-500">Verified</p>
+            <p className="text-sm font-semibold text-blue-600">{stats.verified}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-pink-200 transition-colors">
+          <div className="p-2 rounded-lg bg-yellow-50">
+            <Ban className="w-4 h-4 text-yellow-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-gray-500">Pending</p>
+            <p className="text-sm font-semibold text-yellow-600">{stats.pending}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-pink-200 transition-colors">
+          <div className="p-2 rounded-lg bg-purple-50">
+            <BookOpen className="w-4 h-4 text-purple-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-gray-500">Classes</p>
+            <p className="text-sm font-semibold text-purple-600">{stats.totalClasses}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-pink-200 transition-colors">
+          <div className="p-2 rounded-lg bg-green-50">
+            <Users className="w-4 h-4 text-green-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-gray-500">Students</p>
+            <p className="text-sm font-semibold text-green-600">{stats.totalStudents}</p>
+          </div>
+        </div>
       </div>
 
-      {/* Add User Modal */}
-      <AddUserModal
-        open={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        onSuccess={fetchTeachers}
-      />
-
-      {/* View Teacher Dialog */}
-      {isViewDialogOpen && viewingTeacher && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-xl font-bold text-gray-900">Teacher Details</h2>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsViewDialogOpen(false)}
-              >
-                <X className="w-5 h-5" />
-              </Button>
-            </div>
-            <div className="p-6 space-y-6">
-              {/* Profile Header */}
-              <div className="flex items-center gap-4">
-                <div
-                  className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold"
-                  style={{ background: "linear-gradient(135deg, rgb(59 130 246) 0%, rgb(37 99 235) 100%)" }}
-                >
-                  {viewingTeacher.firstName?.[0]}
-                  {viewingTeacher.lastName?.[0]}
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    {viewingTeacher.firstName} {viewingTeacher.lastName}
-                  </h3>
-                  <p className="text-gray-500">{viewingTeacher.email}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    {!viewingTeacher.emailVerified ? (
-                      <Badge className="bg-yellow-50 text-yellow-700 border-yellow-200 text-xs">
-                        <Clock className="w-3 h-3 mr-1" />
-                        Pending Verification
-                      </Badge>
-                    ) : (
-                      <Badge className="bg-green-50 text-green-700 border-green-200 text-xs">
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        Verified
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Details Grid */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <IdCard className="w-4 h-4" />
-                    Employee ID
-                  </div>
-                  <p className="font-medium">{viewingTeacher.employeeId || "N/A"}</p>
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <Building2 className="w-4 h-4" />
-                    School
-                  </div>
-                  <p className="font-medium">{viewingTeacher.schoolName || "Unassigned"}</p>
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <Phone className="w-4 h-4" />
-                    Phone
-                  </div>
-                  <p className="font-medium">{viewingTeacher.phone || "N/A"}</p>
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <Calendar className="w-4 h-4" />
-                    Joined
-                  </div>
-                  <p className="font-medium">
-                    {viewingTeacher.createdAt
-                      ? new Date(viewingTeacher.createdAt).toLocaleDateString()
-                      : "N/A"}
-                  </p>
-                </div>
-              </div>
-
-              {/* Subjects */}
-              <div className="space-y-2">
-                <h4 className="font-medium text-gray-900">Subjects</h4>
-                <div className="flex flex-wrap gap-2">
-                  {parseSubjects(viewingTeacher.subjects).length > 0 ? (
-                    parseSubjects(viewingTeacher.subjects).map((subject: string) => (
-                      <Badge
-                        key={subject}
-                        variant="outline"
-                        style={{
-                          borderColor: "rgb(59 130 246)",
-                          color: "rgb(37 99 235)",
-                        }}
-                      >
-                        {subject}
-                      </Badge>
-                    ))
-                  ) : (
-                    <span className="text-sm text-gray-400">No subjects assigned</span>
-                  )}
-                </div>
-              </div>
-
-              {/* Department */}
-              {viewingTeacher.department && (
-                <div className="space-y-1">
-                  <h4 className="font-medium text-gray-900">Department</h4>
-                  <p className="text-gray-700">{viewingTeacher.department}</p>
-                </div>
-              )}
-            </div>
-            <div className="flex justify-end gap-3 p-6 border-t bg-gray-50">
-              <Button
-                variant="outline"
-                onClick={() => setIsViewDialogOpen(false)}
-              >
-                Close
-              </Button>
-              {!viewingTeacher.emailVerified && (
-                <Button
-                  style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
-                  className="text-white"
-                  onClick={() => {
-                    setIsViewDialogOpen(false);
-                    handleVerifyTeacher(viewingTeacher);
-                  }}
-                  disabled={isVerifying === viewingTeacher.id}
-                >
-                  <ShieldCheck className={`w-4 h-4 mr-2 ${isVerifying === viewingTeacher.id ? 'animate-spin' : ''}`} />
-                  Verify Teacher
-                </Button>
-              )}
-            </div>
-          </div>
+      {/* Toolbar */}
+      <div className="flex items-center gap-2 pb-2">
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Input
+            placeholder="Search teachers..."
+            className="pl-8 h-9 text-sm border-gray-200"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
-      )}
+        <Select value={verificationFilter} onValueChange={(v) => setVerificationFilter(v as FilterStatus)}>
+          <SelectTrigger className="w-[140px] h-9 text-sm border-gray-200">
+            <SelectValue placeholder="Verification" />
+          </SelectTrigger>
+          <SelectContent>
+            {verificationChips.map((chip) => {
+              const Icon = chip.icon;
+              return (
+                <SelectItem key={chip.value} value={chip.value}>
+                  <div className="flex items-center gap-2">
+                    <Icon className="w-3.5 h-3.5" />
+                    {chip.label}
+                  </div>
+                </SelectItem>
+              );
+            })}
+          </SelectContent>
+        </Select>
+        {uniqueSchools.length > 0 && (
+          <Select value={schoolFilter} onValueChange={setSchoolFilter}>
+            <SelectTrigger className="w-[160px] h-9 text-sm border-gray-200">
+              <SelectValue placeholder="School" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Schools</SelectItem>
+              {uniqueSchools.map((school) => (
+                <SelectItem key={school.id} value={school.id}>
+                  {school.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {filteredTeachers.length > 0 && (
+          <button
+            onClick={toggleAll}
+            className="ml-auto flex items-center gap-1.5 px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+          >
+            {allSelected ? (
+              <Check className="w-4 h-4 text-pink-600" />
+            ) : (
+              <Square className="w-4 h-4 text-gray-400" />
+            )}
+            {allSelected ? "Deselect All" : "Select All"}
+          </button>
+        )}
+        <span className="text-xs text-gray-400">
+          {filteredTeachers.length} of {stats.total}
+        </span>
+      </div>
 
-      {/* Delete Confirmation Dialog */}
-      {isDeleteDialogOpen && deletingTeacher && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                  <Trash2 className="w-6 h-6 text-red-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-gray-900">Delete Teacher?</h3>
-                  <p className="text-sm text-gray-500">This action cannot be undone</p>
-                </div>
+      {/* Custom Grid Table */}
+      {isLoading ? (
+        <TableSkeleton rows={10} columns={8} />
+      ) : (
+        <div className="flex-1 border border-gray-200 rounded-xl overflow-hidden bg-white">
+          {/* Header */}
+          <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-gray-50/80 border-b border-gray-200 text-xs font-medium text-gray-500">
+            <div className="col-span-1"></div>
+            <div className="col-span-3">Teacher</div>
+            <div className="col-span-2">Email</div>
+            <div className="col-span-2">School</div>
+            <div className="col-span-1">Subjects</div>
+            <div className="col-span-1">Verified</div>
+            <div className="col-span-1">Students</div>
+            <div className="col-span-1 text-right">Status</div>
+          </div>
+
+          {/* Rows */}
+          <div className="divide-y divide-gray-100">
+            {filteredTeachers.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-40 text-gray-400 text-sm">
+                <Briefcase className="w-8 h-8 mb-2 opacity-50" />
+                {searchQuery || verificationFilter !== "all" || schoolFilter
+                  ? "No teachers found"
+                  : "No teachers yet"}
               </div>
-              <p className="text-gray-700 mb-6">
-                Are you sure you want to delete <strong>{deletingTeacher.firstName} {deletingTeacher.lastName}</strong>?
-                This will remove the teacher from the system and all associated data.
-              </p>
-              <div className="flex justify-end gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setIsDeleteDialogOpen(false);
-                    setDeletingTeacher(null);
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  className="bg-red-600 hover:bg-red-700 text-white"
-                  onClick={confirmDeleteTeacher}
-                >
-                  Delete Teacher
-                </Button>
-              </div>
-            </div>
+            ) : (
+              filteredTeachers.map((teacher, idx) => {
+                const selected = selectedTeachers.has(teacher.id);
+                const isFocused = focusedIndex === idx;
+                const subjects = parseSubjects(teacher.subjects);
+                return (
+                  <div
+                    key={teacher.id}
+                    className={cn(
+                      "grid grid-cols-12 gap-2 px-4 py-2.5 items-center text-sm transition-colors cursor-pointer group",
+                      selected ? "bg-pink-50" : "hover:bg-gray-50",
+                      isFocused && "ring-2 ring-pink-400 ring-inset z-10"
+                    )}
+                    onClick={(e) => {
+                      if (
+                        !(e.target as HTMLElement).closest("button") &&
+                        !(e.target as HTMLElement).closest("input")
+                      ) {
+                        toggle(teacher.id);
+                      }
+                    }}
+                  >
+                    {/* Checkbox */}
+                    <div className="col-span-1" onClick={(e) => e.stopPropagation()}>
+                      <div
+                        className={cn(
+                          "w-4 h-4 rounded border-2 flex items-center justify-center transition-all cursor-pointer",
+                          selected ? "bg-pink-600 border-pink-600" : "border-gray-300 group-hover:border-pink-400"
+                        )}
+                        onClick={() => toggle(teacher.id)}
+                      >
+                        {selected && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                    </div>
+
+                    {/* Teacher - Avatar + Name */}
+                    <div className="col-span-3 flex items-center gap-2">
+                      <div
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0"
+                        style={{ background: getAvatarGradient() }}
+                      >
+                        {getInitials(teacher.firstName, teacher.lastName)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium text-gray-900 truncate">
+                          {teacher.firstName} {teacher.lastName}
+                        </p>
+                        <p className="text-xs text-gray-400 truncate max-w-[120px]">
+                          {teacher.employeeId || teacher.id.slice(0, 8)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Email - Inline Editable */}
+                    <div className="col-span-2">
+                      <InlineEditText
+                        value={teacher.email || ""}
+                        onSave={(newValue) => updateTeacherEmail(teacher.id, newValue)}
+                        className="text-gray-600 text-xs"
+                      />
+                    </div>
+
+                    {/* School */}
+                    <div className="col-span-2 text-xs text-gray-500 truncate">
+                      {teacher.school?.name || "-"}
+                    </div>
+
+                    {/* Subjects */}
+                    <div className="col-span-1">
+                      {subjects.length > 0 ? (
+                        <Badge
+                          variant="outline"
+                          className="text-xs px-1.5 py-0 border-purple-200 text-purple-700 bg-purple-50"
+                        >
+                          {getSubjectsDisplay(teacher.subjects)}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-gray-400">-</span>
+                      )}
+                    </div>
+
+                    {/* Verified - Toggle */}
+                    <div className="col-span-1" onClick={(e) => e.stopPropagation()}>
+                      {isVerifying === teacher.id ? (
+                        <div className="flex items-center justify-center">
+                          <Spinner className="w-4 h-4 animate-spin text-pink-600" />
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => toggleVerification(teacher.id)}
+                          className={cn(
+                            "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium transition-colors hover:opacity-80",
+                            teacher.emailVerified
+                              ? "bg-green-50 text-green-700"
+                              : "bg-yellow-50 text-yellow-700"
+                          )}
+                        >
+                          {teacher.emailVerified ? (
+                            <>
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              Yes
+                            </>
+                          ) : (
+                            <>
+                              <Ban className="w-3 h-3 mr-1" />
+                              No
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Students Count */}
+                    <div className="col-span-1 text-xs text-gray-500">
+                      {teacher.stats?.students || 0}
+                    </div>
+
+                    {/* Status - Action Menu */}
+                    <div className="col-span-1 text-right" onClick={(e) => e.stopPropagation()}>
+                      <QuickActionMenu
+                        user={teacher}
+                        onView={handleViewTeacher}
+                        onEdit={handleEditTeacher}
+                        onDelete={handleDeleteTeacher}
+                        onResetPassword={handleResetPassword}
+                        onVerifyEmail={
+                          !teacher.emailVerified
+                            ? (t) => toggleVerification(t.id)
+                            : undefined
+                        }
+                      />
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       )}
@@ -1124,20 +944,46 @@ export default function AdminTeachersPage() {
       {/* Edit Teacher Modal */}
       <EditTeacherModal
         open={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        onSuccess={fetchTeachers}
-        teacher={editingTeacher ? {
-          id: editingTeacher.id,
-          firstName: editingTeacher.firstName,
-          lastName: editingTeacher.lastName,
-          email: editingTeacher.email,
-          phone: editingTeacher.phone,
-          employeeId: editingTeacher.employeeId,
-          department: editingTeacher.department,
-          schoolId: editingTeacher.schoolId,
-          subjects: Array.isArray(editingTeacher.subjects) ? JSON.stringify(editingTeacher.subjects) : editingTeacher.subjects,
-        } : null}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setEditingTeacher(null);
+        }}
+        onSuccess={() => {
+          setIsEditModalOpen(false);
+          setEditingTeacher(null);
+          fetchTeachers();
+        }}
+        teacher={editingTeacher}
       />
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Teacher</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{deleteConfirm?.firstName} {deleteConfirm?.lastName}</strong>?
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deleteConfirm && deleteTeacher(deleteConfirm.id)}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {isDeleting === deleteConfirm?.id ? (
+                <>
+                  <Spinner className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete Teacher"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

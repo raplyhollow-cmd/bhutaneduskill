@@ -62,47 +62,21 @@ export function SchoolAdminLayoutClient({ children, userName, portalType, needsS
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // If server says needs setup, redirect immediately
-        if (needsSetup) {
-          router.push("/setup/school-admin");
-          return;
-        }
-
-        // If pending approval, show pending approval page (but don't loop)
-        if (isPendingApproval && !pathname.includes("pending-approval")) {
-          router.push("/pending-approval");
-          return;
-        }
-
-        const roleRes = await fetch("/api/auth/set-role");
-        const roleData = await roleRes.json();
-
-        // Check if user is school-admin
-        if (roleData.userType === "school-admin") {
+        // NOTE: Middleware now handles pending approval and setup redirects
+        // This just verifies auth and sets loading state
+        const profileRes = await fetch("/api/user/profile");
+        if (profileRes.ok) {
           setIsAuthenticated(true);
-          setIsLoading(false);
-          return;
-        }
-
-        // Redirect to setup if not school-admin
-        if (roleData.needsSetup || !roleData.userType) {
-          router.push("/setup/school-admin");
-          return;
-        }
-
-        // Wrong portal type - redirect to correct one
-        if (roleData.userType && roleData.userType !== "school-admin") {
-          router.push(`/${roleData.userType}`);
-          return;
         }
       } catch (error) {
         console.error("Auth check failed:", error);
-        router.push("/setup/school-admin");
+      } finally {
+        setIsLoading(false);
       }
     };
 
     checkAuth();
-  }, [router, needsSetup, isPendingApproval, pathname]);
+  }, []);
 
   // Always call hooks at the top level - no early returns that skip components!
   // This ensures the same number of hooks are called on every render.
@@ -142,13 +116,14 @@ export function SchoolAdminLayoutClient({ children, userName, portalType, needsS
           "min-h-[calc(100dvh-64px)]"
         )}>
           <PortalErrorBoundary portalType={portalType}>
-            {/* Show loading/verifying state when not authenticated */}
-            {!isAuthenticated ? (
+            {/* ALWAYS render children to avoid hooks mismatch - use visibility to hide */}
+            <div style={{ visibility: !isAuthenticated ? "hidden" : "visible" }}>
+              {children}
+            </div>
+            {!isAuthenticated && (
               <div className="flex items-center justify-center h-64">
                 <p className="text-gray-500">Verifying your account...</p>
               </div>
-            ) : (
-              children
             )}
           </PortalErrorBoundary>
         </main>

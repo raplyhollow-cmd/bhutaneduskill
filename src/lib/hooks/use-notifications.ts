@@ -134,7 +134,9 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
 
       return data.data?.unreadCount || 0;
     } catch (err) {
-      console.error("Failed to fetch unread count:", err);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Failed to fetch unread count:", err);
+      }
       return 0;
     }
   }, []);
@@ -198,7 +200,9 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (err) {
-      console.error("Failed to mark notification as read:", err);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Failed to mark notification as read:", err);
+      }
     }
   }, []);
 
@@ -223,7 +227,9 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
       );
       setUnreadCount(0);
     } catch (err) {
-      console.error("Failed to mark all as read:", err);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Failed to mark all as read:", err);
+      }
     }
   }, []);
 
@@ -275,7 +281,9 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
           return count;
         }
       } catch (err) {
-        console.error("Failed to fetch unread count:", err);
+        if (process.env.NODE_ENV === "development") {
+          console.error("Failed to fetch unread count:", err);
+        }
       }
       return 0;
     };
@@ -296,7 +304,11 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
           setUnreadCount(responseData.unreadCount || 0);
         }
       } catch (err) {
-        console.error("Failed to fetch notifications:", err);
+        // Only log in development - auth failures during normal operation are expected
+        if (process.env.NODE_ENV === "development") {
+          console.error("Failed to fetch notifications:", err);
+        }
+        setError("Failed to fetch notifications");
       } finally {
         setIsLoading(false);
       }
@@ -381,7 +393,9 @@ export function useUnreadCount(options: { pollingInterval?: number } = {}) {
           setUrgentCount(data.data?.urgentCount || 0);
         }
       } catch (err) {
-        console.error("Failed to fetch unread count:", err);
+        if (process.env.NODE_ENV === "development") {
+          console.error("Failed to fetch unread count:", err);
+        }
       }
     };
 

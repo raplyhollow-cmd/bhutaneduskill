@@ -18,14 +18,35 @@ export default async function StudentLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const authResult = await requireAuth(['student']);
+  // First check if user is authenticated (without role restriction)
+  const authResult = await requireAuth([]);
 
   if ('error' in authResult) {
-    logger.security("unauthorized_student_access_attempt", { error: authResult.error });
+    // Check error type - 404 means user exists in Clerk but not in DB (needs setup)
+    // 401 means not authenticated with Clerk at all
+    if (authResult.status === 404 || authResult.error === "User not found") {
+      // User authenticated with Clerk but no DB record - redirect to setup
+      logger.security("user_no_db_record", { error: authResult.error });
+      redirect("/setup/unified");
+    }
+    // User is not authenticated at all
+    logger.security("unauthenticated_access_attempt", { error: authResult.error });
     redirect("/sign-in");
   }
 
   const { user } = authResult;
+
+  // Check if user has the correct role
+  if (user.type !== 'student') {
+    // User is authenticated but has the wrong role
+    // Redirect them to their correct portal instead of /sign-in to avoid loop
+    logger.security("wrong_portal_access_attempt", {
+      expected: "student",
+      actual: user.type,
+      userId: user.id
+    });
+    redirect(`/${user.type}`);
+  }
 
   // Get user data regardless of onboarding status
   const userName = user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() : "Student";

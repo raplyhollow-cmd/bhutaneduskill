@@ -105,56 +105,28 @@ export function StudentLayoutClient({ children, userName, portalType, needsSetup
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // If server says needs setup, redirect immediately
-        if (needsSetup) {
-          router.push("/setup/student");
-          return;
-        }
+        // NOTE: Middleware now handles pending approval and setup redirects
+        // This just fetches user profile for notifications
 
-        // If pending approval, redirect to pending approval page
-        if (isPendingApproval && !pathname.includes("pending-approval")) {
-          router.push("/pending-approval");
-          return;
-        }
-
-        const [roleRes, profileRes] = await Promise.all([
-          fetch("/api/auth/set-role"),
-          fetch("/api/user/profile"),
-        ]);
-        const roleData = await roleRes.json();
+        const profileRes = await fetch("/api/user/profile");
         const profileData = await profileRes.json();
 
         // Set userId for real-time notifications
-        if (profileData.user?.id) {
-          setUserId(profileData.user.id);
+        const profile = profileData.data?.profile;
+        if (profile?.id) {
+          setUserId(profile.id);
         }
 
-        // Check if user is student
-        if (roleData.userType === "student") {
-          setIsAuthenticated(true);
-          setIsLoading(false);
-          return;
-        }
-
-        // Redirect to setup if not student
-        if (roleData.needsSetup || !roleData.userType) {
-          router.push("/setup/unified");
-          return;
-        }
-
-        // Wrong portal type - redirect to correct one
-        if (roleData.userType && roleData.userType !== "student") {
-          router.push(`/${roleData.userType}`);
-          return;
-        }
+        setIsAuthenticated(true);
+        setIsLoading(false);
       } catch (error) {
-        console.error("Auth check failed, redirecting to setup");
-        router.push("/setup/unified");
+        console.error("Auth check failed, redirecting to sign-in");
+        router.push("/sign-in");
       }
     };
 
     checkAuth();
-  }, [router, needsSetup, isPendingApproval, pathname]);
+  }, [router]);
 
   // Portal-specific color for loading spinner
   const portalColor = portal.student.primary;
@@ -179,7 +151,7 @@ export function StudentLayoutClient({ children, userName, portalType, needsSetup
         </div>
       )}
 
-      {/* ALWAYS render the same structure */}
+      {/* ALWAYS render the same structure - use visibility to hide instead of conditional rendering */}
       <div className="lg:pl-64 pb-16 lg:pb-0">
         <UniversalPortalHeader
           portalType={portalType}
@@ -191,12 +163,14 @@ export function StudentLayoutClient({ children, userName, portalType, needsSetup
           "min-h-[calc(100dvh-64px)]"
         )}>
           <PortalErrorBoundary portalType={portalType}>
-            {!isAuthenticated ? (
+            {/* ALWAYS render children to avoid hooks mismatch - use visibility to hide */}
+            <div style={{ visibility: !isAuthenticated ? "hidden" : "visible" }}>
+              {children}
+            </div>
+            {!isAuthenticated && (
               <div className="flex items-center justify-center h-64">
                 <p className="text-gray-500">Verifying your account...</p>
               </div>
-            ) : (
-              children
             )}
           </PortalErrorBoundary>
         </main>

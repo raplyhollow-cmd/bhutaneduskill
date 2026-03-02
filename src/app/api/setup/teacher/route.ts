@@ -11,7 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
 import { users, wizardProgress, teacherApplications, notifications, notificationDeliveries, schools } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { logger } from "@/lib/logger";
 
@@ -141,7 +141,17 @@ export async function POST(request: NextRequest) {
 
     // Get user from database
     const userRecord = await db
-      .select()
+      .select({
+        id: users.id,
+        clerkUserId: users.clerkUserId,
+        type: users.type,
+        schoolId: users.schoolId,
+        email: users.email,
+        phone: users.phone,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        name: users.name,
+      })
       .from(users)
       .where(eq(users.clerkUserId, user.id))
       .limit(1);
@@ -152,7 +162,7 @@ export async function POST(request: NextRequest) {
       // User doesn't exist - create them
       logger.info("Creating new teacher user", { clerkUserId: user.id });
 
-      const newUserId = `user-${Date.now()}`;
+      const newUserId = `user-${nanoid()}`;
       const firstName = user.firstName || "";
       const lastName = user.lastName || "";
       // Defensive email extraction
@@ -161,50 +171,74 @@ export async function POST(request: NextRequest) {
         || user.emailAddresses?.[0]?.emailAddress
         || "";
 
-      // Create the user
-      await db.insert(users).values({
-        id: newUserId,
-        clerkUserId: user.id,
-        type: "teacher",
-        role: "teacher",
-        name: `${firstName} ${lastName}`.trim() || "Teacher",
-        firstName,
-        lastName,
-        email,
-        phone: data.personalDetails?.phone || "",
-        profileImage: user.imageUrl || "",
-        gender: "",
-        grade: 0,
-        section: null,
-        rollNumber: "",
-        address: "",
-        city: "",
-        state: "",
-        postalCode: "",
-        country: "Bhutan",
-        parentContact: null,
-        parentPhone: null,
-        emergencyContact: null,
-        bloodGroup: "",
-        enrollmentDate: new Date().toISOString().split('T')[0],
-        lastLogin: new Date().toISOString(),
-        onboardingComplete: step === "complete",
-        onboardingStatus: "pending_enrollment",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        department: "",
-        employeeId: data.personalDetails?.employeeId || "",
-        subjects: data.subjects || [],
-        ...(data.personalDetails?.fullName && {
-          firstName: data.personalDetails.fullName.split(" ")[0],
-          lastName: data.personalDetails.fullName.split(" ").slice(1).join(" "),
-          name: data.personalDetails.fullName,
-        }),
-        ...(data.personalDetails?.email && { email: data.personalDetails.email }),
-        ...(data.personalDetails?.phone && { phone: data.personalDetails.phone }),
-      });
+      // Prepare base values
+      const baseName = `${firstName} ${lastName}`.trim() || "Teacher";
+      const fullName = data?.personalDetails?.fullName || baseName;
+      const nameParts = fullName.trim().split(" ");
+      const finalFirstName = nameParts[0] || firstName;
+      // Handle single-name users: use empty string instead of null, but don't fail
+      // If user only has one name (e.g., "Sonam"), lastName will be empty - that's OK
+      const finalLastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : (lastName || "");
+      const finalEmail = data?.personalDetails?.email || email;
+      const finalPhone = data?.personalDetails?.phone || email; // Use email as fallback for NOT NULL phone
 
-      dbUser = (await db.select().from(users).where(eq(users.id, newUserId)).limit(1))[0];
+      // Use raw SQL to insert with only guaranteed columns first
+      await db.execute(sql`
+        INSERT INTO users (
+          id, clerk_user_id, type, role, name, first_name, last_name,
+          email, phone, country, grade, enrollment_date, last_login,
+          onboarding_complete, onboarding_status, created_at, updated_at
+        ) VALUES (
+          ${newUserId}, ${user.id}, 'teacher', 'teacher', ${fullName}, ${finalFirstName}, ${finalLastName},
+          ${finalEmail}, ${finalPhone}, 'Bhutan', 1,
+          ${new Date().toISOString().split('T')[0]}, ${new Date().toISOString()},
+          ${step === "complete"}, 'pending_enrollment', ${new Date().toISOString()}, ${new Date().toISOString()}
+        )
+      `);
+
+      // Try to update optional fields separately (may not exist in all databases)
+      try {
+        // Only include subjects in the query if we have data
+        if (data?.subjects && data.subjects.length > 0) {
+          const subjectsJson = JSON.stringify(data.subjects);
+          await db.execute(sql`
+            UPDATE users SET
+              cid_no = ${data?.personalDetails?.cidNo || null},
+              qualification = ${data?.personalDetails?.qualification || null},
+              university = ${data?.personalDetails?.university || null},
+              subjects = ${subjectsJson}::json
+            WHERE id = ${newUserId}
+          `);
+        } else {
+          await db.execute(sql`
+            UPDATE users SET
+              cid_no = ${data?.personalDetails?.cidNo || null},
+              qualification = ${data?.personalDetails?.qualification || null},
+              university = ${data?.personalDetails?.university || null}
+            WHERE id = ${newUserId}
+          `);
+        }
+        logger.info("Updated teacher optional fields", { userId: newUserId });
+      } catch (updateError) {
+        logger.warn("Could not update optional teacher fields (columns may not exist)", { updateError });
+      }
+
+      const newUserRecord = await db
+        .select({
+          id: users.id,
+          clerkUserId: users.clerkUserId,
+          type: users.type,
+          schoolId: users.schoolId,
+          email: users.email,
+          phone: users.phone,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          name: users.name,
+        })
+        .from(users)
+        .where(eq(users.id, newUserId))
+        .limit(1);
+      dbUser = newUserRecord[0];
 
       logger.info("Created new teacher user", { userId: dbUser.id });
     } else {
@@ -286,23 +320,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Update user details
-    if (data.personalDetails) {
-      const fullName = data.personalDetails.fullName || "";
-      const nameParts = fullName.trim().split(" ");
-      await db
-        .update(users)
-        .set({
-          firstName: nameParts[0] || "",
-          lastName: nameParts.slice(1).join(" ") || "",
-          email: data.personalDetails.email || "",
-          phone: data.personalDetails.phone || "",
-          employeeId: data.personalDetails.employeeId || "",
-          subjects: data.subjects || [],
-        })
-        .where(eq(users.id, dbUser.id));
-    }
-
     // Mark onboarding as complete when step is "complete"
     if (step === "complete") {
       await db
@@ -368,10 +385,11 @@ export async function POST(request: NextRequest) {
             userId: dbUser.id,
             schoolId: dbUser.schoolId,
             status: "pending",
-            qualifications: data.qualifications || null,
+            qualifications: data.personalDetails?.qualification || null,
+            university: data.personalDetails?.university || null,
             experience: data.experience ? parseInt(String(data.experience)) : null,
             subjects: JSON.stringify(subjectsArray),
-            desiredClasses: data.desiredClasses ? JSON.stringify(data.desiredClasses) : null,
+            desiredClasses: data.classes ? JSON.stringify(data.classes) : null,
             previousSchool: data.previousSchool || null,
             specialization: data.specialization || null,
             appliedAt: now,
@@ -395,7 +413,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    logger.error("Teacher setup error:", error);
+    logger.error("Teacher setup error:", { error, message: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined });
     return NextResponse.json(
       {
         error: "Failed to process setup",

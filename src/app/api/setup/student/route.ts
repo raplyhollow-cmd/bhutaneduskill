@@ -126,7 +126,23 @@ export async function POST(request: NextRequest) {
 
     // Get user from database
     const userRecord = await db
-      .select()
+      .select({
+        id: users.id,
+        clerkUserId: users.clerkUserId,
+        type: users.type,
+        schoolId: users.schoolId,
+        email: users.email,
+        phone: users.phone,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        name: users.name,
+        classGrade: users.classGrade,
+        grade: users.grade,
+        section: users.section,
+        parentContact: users.parentContact,
+        parentPhone: users.parentPhone,
+        onboardingStatus: users.onboardingStatus,
+      })
       .from(users)
       .where(eq(users.clerkUserId, userId))
       .limit(1);
@@ -137,7 +153,7 @@ export async function POST(request: NextRequest) {
       // User doesn't exist - create them
       logger.info("Creating new student user", { clerkUserId: userId });
 
-      const newUserId = `user-${Date.now()}`;
+      const newUserId = `user-${nanoid()}`;
       const firstName = clerkUser.first_name || "";
       const lastName = clerkUser.last_name || "";
       // Defensive email extraction
@@ -145,70 +161,66 @@ export async function POST(request: NextRequest) {
         || clerkUser.primary_email_address?.email_address
         || "";
 
-      // Create the user with minimum required fields
-      await db.insert(users).values({
-        id: newUserId,
-        clerkUserId: userId,
-        type: "student",
-        role: "student",
-        name: `${firstName} ${lastName}`.trim() || "Student",
-        firstName,
-        lastName,
-        email,
-        phone: "",
-        profileImage: clerkUser.image_url || "",
-        gender: "",
-        grade: 0,
-        section: null,
-        rollNumber: "",
-        address: "",
-        city: "",
-        state: "",
-        postalCode: "",
-        country: "Bhutan",
-        parentContact: null,
-        parentPhone: null,
-        emergencyContact: null,
-        bloodGroup: "",
-        enrollmentDate: new Date().toISOString().split('T')[0],
-        lastLogin: new Date().toISOString(),
-        onboardingComplete: step === "complete",
-        onboardingStatus: "pending_enrollment",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        ...(data.personalDetails?.fullName && {
-          firstName: data.personalDetails.fullName.split(" ")[0],
-          lastName: data.personalDetails.fullName.split(" ").slice(1).join(" "),
-          name: data.personalDetails.fullName,
-        }),
-        ...(data.personalDetails?.dateOfBirth && {
-          dateOfBirth: data.personalDetails.dateOfBirth,
-        }),
-        ...(data.personalDetails?.gender && {
-          gender: data.personalDetails.gender,
-        }),
-        ...(data.personalDetails?.bloodGroup && {
-          bloodGroup: data.personalDetails.bloodGroup,
-        }),
-        ...(data.academicDetails?.grade && {
-          classGrade: parseInt(data.academicDetails.grade),
-          grade: parseInt(data.academicDetails.grade),
-        }),
-        ...(data.academicDetails?.section && {
-          section: data.academicDetails.section,
-        }),
-        ...(data.academicDetails?.rollNumber && {
-          rollNumber: data.academicDetails.rollNumber,
-        }),
-        ...(data.guardianDetails?.guardianName && {
-          parentContact: data.guardianDetails.guardianName,
-        }),
-        ...(data.guardianDetails?.guardianPhone && {
-          parentPhone: data.guardianDetails.guardianPhone,
-        }),
-      });
+      // Prepare base values
+      const baseName = `${firstName} ${lastName}`.trim() || "Student";
+      const fullName = data?.personalDetails?.fullName || baseName;
+      const nameParts = fullName.trim().split(" ");
+      const finalFirstName = nameParts[0] || firstName;
+      // Handle single-name users: if only one name provided, use empty string or fallback
+      const finalLastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : (lastName || "");
 
-      dbUser = (await db.select().from(users).where(eq(users.id, newUserId)).limit(1))[0];
+      // Use raw SQL to insert with only guaranteed columns first
+      await db.execute(sql`
+        INSERT INTO users (
+          id, clerk_user_id, type, role, name, first_name, last_name,
+          email, phone, country, grade, enrollment_date, last_login,
+          onboarding_complete, onboarding_status, created_at, updated_at
+        ) VALUES (
+          ${newUserId}, ${userId}, 'student', 'student', ${fullName}, ${finalFirstName}, ${finalLastName},
+          ${email}, ${email}, 'Bhutan', 1,
+          ${new Date().toISOString().split('T')[0]}, ${new Date().toISOString()},
+          ${step === "complete"}, 'pending_enrollment', ${new Date().toISOString()}, ${new Date().toISOString()}
+        )
+      `);
+
+      // Try to update optional fields separately (may not exist in all databases)
+      try {
+        await db.execute(sql`
+          UPDATE users SET
+            date_of_birth = ${data?.personalDetails?.dateOfBirth || null},
+            gender = ${data?.personalDetails?.gender || null},
+            blood_group = ${data?.personalDetails?.bloodGroup || null},
+            parent_contact = ${data?.guardianDetails?.guardianName || null},
+            parent_phone = ${data?.guardianDetails?.guardianPhone || null},
+            profile_image = ${clerkUser.image_url || null}
+          WHERE id = ${newUserId}
+        `);
+      } catch (updateError) {
+        logger.warn("Could not update optional student fields (columns may not exist)", { updateError });
+      }
+
+      const newUserRecord = await db
+        .select({
+          id: users.id,
+          clerkUserId: users.clerkUserId,
+          type: users.type,
+          schoolId: users.schoolId,
+          email: users.email,
+          phone: users.phone,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          name: users.name,
+          classGrade: users.classGrade,
+          grade: users.grade,
+          section: users.section,
+          parentContact: users.parentContact,
+          parentPhone: users.parentPhone,
+          onboardingStatus: users.onboardingStatus,
+        })
+        .from(users)
+        .where(eq(users.id, newUserId))
+        .limit(1);
+      dbUser = newUserRecord[0];
 
       logger.info("Created new student user", { userId: dbUser.id });
     } else {
@@ -412,7 +424,7 @@ export async function POST(request: NextRequest) {
 
           // Count current enrolled students
           const currentStudentsResult = await db
-            .select({ count: sql<number>`count(*)` })
+            .select({ count: sql<number>`COUNT(*)::int` })
             .from(users)
             .where(
               and(

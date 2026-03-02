@@ -1,357 +1,277 @@
-# Debug Notes
+# Debug Documentation
 
-## "referencedTable" Error - Self-Referential Relations (Feb 23, 2026)
+**Last Updated:** February 25, 2026
+**Purpose:** Central reference for debugging common issues in the Bhutan EduSkill project
 
-### Issue: `Cannot read properties of undefined (reading 'referencedTable')`
+---
 
-**Root Cause:** Drizzle ORM's `relations()` API with self-referential foreign keys causes circular reference issues when the schema is loaded. The `users` table has `parentId` which references `users.id`, and the `usersRelations` defined a `parent: one(users)` relation, creating a circular dependency that Drizzle cannot resolve.
+## Quick Reference - Common Issues
 
-**Fix:** Removed the self-referential `parent` relation from `usersRelations` in `src/lib/db/schema.ts`:
+### 1. TypeScript Errors
 
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `Object literal may only specify known properties, 'success' does not exist` | Wrong `ApiErrorResponse` type format | Use `{ error, status }` not `{ success: false, error }` |
+| `Generic type 'ApiSuccess<T>' requires 1 type argument(s)` | Missing generic type | Add type: `satisfies ApiSuccess<DataType>` |
+| `Cannot find name 'sql'` | Missing drizzle import | Add `sql` to imports: `import { eq, and, sql } from "drizzle-orm"` |
+| `iterationCount must be non-negative` | Framer Motion missing repeatType | Always add `repeatType: "loop"` to infinite animations |
+
+### 2. Database Query Issues
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| `db.query.* is not a function` | Using disabled query API with neon-http | Use `db.select().from().where()` pattern instead |
+| `Property 'clerkId' does not exist` | Wrong field name | Use `clerkUserId` not `clerkId` |
+| `Property 'school_id' does not exist` | Drizzle uses camelCase | Use `schoolId` not `school_id` |
+| `relation * is disabled` | Relations disabled in neon-http | Use explicit joins with `.innerJoin()` |
+
+### 3. Authentication Issues
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| "User not found" in setup | API doesn't create user if not exists | Ensure setup API checks for user and creates if missing |
+| Redirected to setup despite being admin | 3-file bypass pattern incomplete | Check set-role API, admin layout, and dashboard |
+| `requireAuth returns error` | Wrong role or not authenticated | Check user type matches required roles array |
+
+### 4. Build Issues
+
+| Issue | Cause | Fix |
+|-------|-------|-----|
+| Build out of memory | Large project exceeds default memory | Set `NODE_OPTIONS="--max-old-space-size=16384"` |
+| Tailwind gradient errors | Using Tailwind classes for gradients | Use inline styles: `style={{ background: 'linear-gradient(...)' }}` |
+| Port already in use | Previous dev server running | Kill process on port 3003 |
+
+---
+
+## File-Specific Debugging
+
+### API Route Response Format
+
+**Correct Pattern:**
 ```typescript
-// BEFORE (BROKEN):
-export const usersRelations = relations(users, ({ one, many }) => ({
-  parent: one(users, {  // ❌ Self-referential - causes referencedTable error
-    fields: [users.parentId],
-    references: [users.id],
-  }),
-  // ...
-}));
+// Success response
+return NextResponse.json({
+  data: { ... }
+} satisfies ApiSuccess<DataType>);
 
-// AFTER (FIXED):
-export const usersRelations = relations(users, ({ one, many }) => ({
-  school: one(schools, { ... }),
-  // parent relation removed - use explicit joins instead
-  // ...
-}));
+// Error response
+return NextResponse.json(
+  { error: "Message", status: 400 } satisfies ApiErrorResponse,
+  { status: 400 }
+);
 ```
 
----
-
-## Subjects Management CRUD Implementation (Feb 23, 2026)
-
-### Status: ✅ FULLY IMPLEMENTED
-
-School Admin can now create, read, update, and delete subjects via the UI.
-
-**Files Created/Modified:**
-
-1. **Server Actions** (`src/app/school-admin/_actions.ts`)
-   - `createSubject(data)` - Create new subject
-   - `updateSubject(id, data)` - Update existing subject
-   - `deleteSubject(id)` - Soft delete (sets isActive: false)
-   - `fetchSubjectById(id)` - Get single subject
-
-2. **UI Page** (`src/app/school-admin/subjects/page.tsx`)
-   - Converted to client component with full state management
-   - Grid view of all subjects with stats cards
-   - Add Subject modal with form validation
-   - Edit Subject modal (inline update)
-   - Delete confirmation dialog
-   - Search/filter functionality
-
-**Subject Form Fields:**
-- Name (required)
-- Code (required, auto-converted to uppercase)
-- Type: Core | Elective | Optional
-- Grade Level: 6-12
-- Description (optional)
-
-**Navigation:**
-- Menu item already exists: `/school-admin/subjects`
-
----
-
-## Teacher Approval Flow Status (Feb 23, 2026)
-
-### Status: ✅ FULLY IMPLEMENTED AND WORKING
-
-The teacher approval flow is complete and working. All components have been built:
-
-1. **Teacher Signup API** (`src/app/api/setup/teacher/route.ts`)
-   - Creates user with `type: "teacher"`
-   - Links to school via school code verification
-   - Creates `teacher_applications` entry with status="pending"
-   - Sends notification to school admins
-   - Sets `onboardingStatus: "pending_enrollment"`
-
-2. **Pending Teachers API** (`src/app/api/school-admin/teachers/pending/route.ts`)
-   - GET: Fetches all pending teacher applications
-   - POST: Approves (status → "approved", onboarding → "enrolled")
-   - POST: Rejects (status → "rejected", onboarding → "pending_approval")
-
-3. **Pending Teachers UI** (`src/app/school-admin/teachers/pending/page.tsx`)
-   - Lists pending applications with teacher details
-   - Approve/Reject buttons with confirmation
-   - Real-time updates after actions
-   - Empty state handling
-
-4. **Navigation** (`src/config/portal-config.ts`)
-   - "Pending Teachers" menu item added
-   - Icon: UserCheck
-   - Href: /school-admin/teachers/pending
-
-### Current Database State:
-- Teacher Applications: 0 (all processed)
-- Teacher Users: 1 (booksilverpine@gmail.com - status: enrolled)
-
-The flow works - new teacher signups will go through the proper approval process.
-
----
-
-## School-Admin Classes Page Issues (Feb 23, 2026)
-
-### Issue 1: "Cannot read properties of undefined (reading 'referencedTable')"
-
-**Error Location:** `src/lib/api/school-admin.ts:552`
-
-**Root Cause:** Using `db.query.classes.findMany({ with: { teacher: true } })` which requires Drizzle ORM relation definitions that weren't properly set up in the schema.
-
-**Fix:** Changed from `db.query` syntax to standard `db.select().from().leftJoin()` pattern:
-
+**Incorrect Pattern (causes errors):**
 ```typescript
-// BEFORE (BROKEN):
-const classesList = await db.query.classes.findMany({
-  where: and(...conditions),
-  with: { teacher: true },
-  limit,
-  offset,
-  orderBy: [desc(classes.createdAt)],
+// DON'T DO THIS
+return NextResponse.json({
+  success: false,  // ❌ ApiErrorResponse doesn't have 'success'
+  error: "Message"
 });
+```
 
-// AFTER (FIXED):
-const classesList = await db
-  .select({
-    id: classes.id,
-    name: classes.name,
-    grade: classes.grade,
-    section: classes.section,
-    teacherId: classes.teacherId,
-    // ... other fields
-    teacherFirstName: users.firstName,
-    teacherLastName: users.lastName,
-  })
-  .from(classes)
-  .leftJoin(users, eq(classes.teacherId, users.id))
-  .where(and(...conditions))
-  .orderBy(desc(classes.createdAt))
-  .limit(limit)
-  .offset(offset);
+### Database Query Pattern
+
+**Correct Pattern (neon-http):**
+```typescript
+import { db } from "@/lib/db";
+import { users, classes } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
+
+const result = await db
+  .select()
+  .from(users)
+  .where(eq(users.id, userId));
+```
+
+**Incorrect Pattern (doesn't work):**
+```typescript
+// DON'T DO THIS - query API is disabled
+const result = await db.query.users.findFirst({
+  where: eq(users.id, userId)
+});
+```
+
+### Framer Motion Animation
+
+**Correct Pattern:**
+```tsx
+<motion.div
+  animate={{ opacity: [0, 1, 0] }}
+  transition={{
+    repeat: Infinity,
+    repeatType: "loop",  // ✅ REQUIRED for infinite animations
+    duration: 2
+  }}
+/>
+```
+
+**Incorrect Pattern:**
+```tsx
+// DON'T DO THIS - causes error
+transition={{ repeat: Infinity, duration: 2 }}  // ❌ Missing repeatType
 ```
 
 ---
 
-### Issue 2: Column "students" does not exist
+## API Endpoint Debugging
 
-**Error:** `Failed query: insert into "classes" (...) values (..., $14, ...)`
-**Error Message:** Column "students" doesn't exist in the database
-
-**Root Cause:** The Drizzle schema defined a `students` column (json type) that doesn't exist in the actual database table.
-
-**Database Check:**
-```sql
-SELECT column_name, data_type
-FROM information_schema.columns
-WHERE table_name = 'classes'
-ORDER BY ordinal_position;
-
--- Result: NO 'students' column in database
-```
-
-**Fixes Applied:**
-
-1. **Removed from schema** (`src/lib/db/schema.ts`):
-   - Removed `students: json("students").$type<Array<{...}>>()` line
-
-2. **Removed from INSERT** (`src/app/school-admin/_actions.ts`):
-   - Removed `students: []` from `createClass` function
-
-3. **Removed from SELECT** (`src/lib/api/school-admin.ts`):
-   - Removed `students: classes.students` from select query
-   - Changed enrollment count to use `enrollments` table instead
-
-4. **Fixed homework list query** (`src/lib/api/school-admin.ts`):
-   - Changed from `parseJsonArray(classRelation.students).length` to enrollment count from `enrollments` table
-
----
-
-### Issue 3: Multiple `db.query.*` calls causing potential errors
-
-**Locations:** Multiple files in `src/lib/api/school-admin.ts`
-
-**Root Cause:** `db.query.*` syntax requires proper relation definitions in Drizzle schema. When relations aren't properly defined, it causes "referencedTable" errors.
-
-**Fix:** Converted all `db.query.*` calls to standard `db.select().from().leftJoin()` pattern:
-
-| Before | After |
-|--------|-------|
-| `db.query.classes.findMany()` | `db.select().from(classes).leftJoin(users, ...)` |
-| `db.query.homework.findMany({ with: { class, subject } })` | `db.select({...}).from(homework).leftJoin(classes, ...).leftJoin(subjects, ...)` |
-
----
-
-## Summary of Changes
-
-### Files Modified:
-
-1. **`src/lib/db/schema.ts`**
-   - Removed `students` column from `classes` table definition
-
-2. **`src/lib/api/school-admin.ts`**
-   - Changed `getClasses()` to use `leftJoin` instead of `db.query`
-   - Changed `getHomeworkList()` to use `leftJoin` instead of `db.query`
-   - Fixed enrollment count to use `enrollments` table
-
-3. **`src/app/school-admin/_actions.ts`**
-   - Removed `students: []` from `createClass()` INSERT query
-
----
-
-## Lessons Learned
-
-1. **Always verify database schema matches Drizzle schema**
-   - Use `SELECT * FROM information_schema.columns WHERE table_name = 'xyz'` to check actual DB columns
-
-2. **Avoid `db.query.*` for complex queries**
-   - Use standard `db.select().from().leftJoin()` for more control
-   - Only use `db.query.*` for simple queries without relations
-
-3. **Use `enrollments` table for student counts**
-   - The `classes.students` JSON field doesn't exist in DB
-   - Always count from `enrollments` table with `status = 'active'`
-
----
-
-## Related Commands
+### Test an API Route
 
 ```bash
-# Check database table columns
-node -e "
-const { neon } = require('@neondatabase/serverless');
-require('dotenv').config({ path: '.env' });
-const sql = neon(process.env.DATABASE_URL);
-sql\`
-  SELECT column_name, data_type
-  FROM information_schema.columns
-  WHERE table_name = 'classes'
-  ORDER BY ordinal_position
-\`.then(console.log).catch(console.error);
-"
+# Test authentication
+curl -X GET http://localhost:3003/api/user/profile \
+  -H "Authorization: Bearer YOUR_TOKEN"
 
-# Push schema changes (use with caution)
-npx drizzle-kit push
+# Test POST with data
+curl -X POST http://localhost:3003/api/school-admin/subjects/abc123/teachers \
+  -H "Content-Type: application/json" \
+  -d '{"teacherId": "teacher-123", "role": "subject_expert"}'
+```
 
-# Type check
-npx tsc --noEmit
+### Check Database Connection
+
+```bash
+# Run database connection test
+node scripts/check-db-connection.js
+```
+
+### Verify Schema
+
+```bash
+# Check schema matches database
+npm run db:push
 ```
 
 ---
 
-## Teacher Dashboard "homework homework" SQL Error (Feb 24, 2026)
+## Portal-Specific Debugging
 
-### Issue: Failed query with duplicated table name `"homework" "homework"`
+### Platform Admin Bypass Not Working
 
-**Error Message:**
+**Files to Check:**
+1. `src/app/api/auth/set-role/route.ts` - Must return `needsSetup: false` for admins
+2. `src/app/admin/layout.tsx` - Must skip setup redirect for admins
+3. `src/app/dashboard/page.tsx` - Must redirect admins to `/admin`
+
+### School Admin Can't See Features
+
+**Common Causes:**
+- `schoolId` not set on user record
+- User type is not `school-admin`
+- Feature requires specific permissions
+
+### Teacher Shows "No Classes Assigned"
+
+**Checks:**
+1. User has been approved (not pending)
+2. Teacher has assignments in `teacher_assignments` table
+3. Class belongs to teacher's school
+4. Academic year matches
+
+---
+
+## Performance Debugging
+
+### Slow Page Loads
+
+**Check:**
+1. Database query N+1 problems
+2. Missing indexes on frequently queried fields
+3. Large component re-renders
+4. Client-side vs server-side data fetching
+
+### Memory Leaks
+
+**Common Causes:**
+1. Event listeners not cleaned up
+2. Timers/intervals not cleared
+3. Large data stored in component state
+4. Growing arrays without limits
+
+---
+
+## Environment Variables
+
+### Required Variables
+
+```bash
+# Clerk Authentication
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
+
+# Database (Neon PostgreSQL)
+DATABASE_URL=
+
+# Application
+NEXT_PUBLIC_APP_URL=
 ```
-[BhutanEduSkill] [ERROR] "Failed query: select ... from "homework" "homework" where ..."
+
+---
+
+## Logging
+
+### View Logs
+
+```bash
+# Check production logs
+tail -f logs/app.log
+
+# Check error logs
+tail -f logs/error.log
 ```
 
-**Root Cause:** `src/app/teacher/dashboard/_actions.ts` used `db.query.*` API which is **NOT SUPPORTED** by the `neon-http` driver. The `neon-http` driver (used in this project) doesn't support Drizzle's query API - it generates malformed SQL with duplicated table names.
+### Enable Debug Logging
 
-**Affected Files:**
-1. `src/app/teacher/dashboard/_actions.ts` - Server actions for teacher dashboard
-2. `src/app/api/classes/route.ts` - Classes API endpoint
-3. `src/app/api/teacher/students/route.ts` - Teacher students endpoint
-
-### The Fix Pattern
-
-**FORBIDDEN** (causes errors with neon-http):
 ```typescript
-// ❌ DON'T USE - neon-http doesn't support query API
-const data = await db.query.classes.findMany({
-  where: eq(classes.teacherId, userId),
-  with: { teacher: true },
-});
+import { logger } from "@/lib/logger";
+
+logger.debug("Debug info", { key: "value" });
+logger.info("Info message");
+logger.warn("Warning message");
+logger.error("Error message", { error });
 ```
 
-**CORRECT** (works with neon-http):
-```typescript
-// ✅ USE THIS PATTERN
-const data = await db
-  .select()
-  .from(classes)
-  .where(eq(classes.teacherId, userId));
+---
+
+## Recovery Procedures
+
+### Reset Database
+
+```bash
+# Push schema to database
+npm run db:push
+
+# Or use Drizzle Studio
+npm run db:studio
 ```
 
-### Complete Conversion Table
+### Clear Next.js Cache
 
-| Forbidden (db.query) | Correct (db.select) |
-|---------------------|---------------------|
-| `db.query.classes.findMany()` | `db.select().from(classes).where()` |
-| `db.query.users.findFirst()` | `db.select().from(users).where().limit(1)` |
-| `db.query.enrollments.findMany()` | `db.select().from(enrollments).where()` |
-| `db.query.attendance.findMany()` | `db.select().from(attendance).where()` |
-| `db.query.homework.findMany()` | `db.select().from(homework).where()` |
-| `db.query.homeworkSubmissions.findMany()` | `db.select().from(homeworkSubmissions).where()` |
-| `db.query.teacherBehaviorLogs.findMany()` | `db.select().from(teacherBehaviorLogs).where()` |
+```bash
+# Remove .next directory
+rm -rf .next
 
-### Key Changes in _actions.ts
-
-**Before (lines 93-96):**
-```typescript
-const teacherClasses = await db.query.classes.findMany({
-  where: eq(classes.teacherId, user.id),
-  orderBy: [desc(classes.createdAt)],
-});
+# Rebuild
+npm run build
 ```
 
-**After:**
-```typescript
-const teacherClasses = await db
-  .select()
-  .from(classes)
-  .where(eq(classes.teacherId, userId))
-  .orderBy(desc(classes.createdAt));
+### Fix Corrupted Build
+
+```bash
+# Clean install
+rm -rf node_modules package-lock.json
+npm install
+
+# Rebuild
+npm run build
 ```
 
-**Before (lines 181-184) - findFirst pattern:**
-```typescript
-const student = await db.query.users.findFirst({
-  where: eq(users.id, submission.studentId),
-  columns: { id: true, firstName: true, lastName: true },
-});
-```
+---
 
-**After:**
-```typescript
-const studentData = await db
-  .select({
-    id: users.id,
-    firstName: users.firstName,
-    lastName: users.lastName,
-  })
-  .from(users)
-  .where(eq(users.id, submission.studentId))
-  .limit(1);
+## Contact for Debug Help
 
-if (studentData.length > 0) {
-  const student = studentData[0];
-  // use student
-}
-```
-
-### Related Files Already Fixed (Feb 24, 2026)
-- `/api/classes/route.ts` - Converted to db.select()
-- `/api/teacher/students/route.ts` - Converted to db.select()
-- `/api/teacher/dashboard/route.ts` - Already using db.select()
-
-### Why This Happens
-
-The `neon-http` driver uses HTTP requests to PostgreSQL instead of a native connection. It's designed for serverless environments but has limitations:
-- **No `db.query` API support** - Must use `db.select().from()`
-- **No relation loading** - Must manually join or fetch related data
-- **No transaction support** - Must use single queries
-
-### Reference
-- See QUICKREF.md line 24-28 for the primary rule
-- See CLAUDE.md "CRITICAL: Database Query Rules" section
+1. Check `docs/ERRORS_AND_FIXES.md` for documented fixes
+2. Review `docs/DEVELOPMENT_FRAMEWORK.md` for coding patterns
+3. Check `MEMORY.md` for project-specific rules
+4. Review recent `CHANGELOG.md` entries for breaking changes

@@ -68,22 +68,23 @@ export const POST = createApiRoute(
       return forbiddenResponse("Access denied");
     }
 
-    // For teachers: verify they teach a class for the student's grade
+    // For teachers: verify they are the CLASS TEACHER for this specific class (grade + section)
     if (user.type === 'teacher' && type === 'student') {
-      // Check if teacher teaches any class for the student's grade
-      const teacherClasses = await db
+      const teacherClass = await db
         .select()
         .from(classes)
         .where(
           and(
             eq(classes.schoolId, user.schoolId!),
-            eq(classes.grade, applicant.classGrade || 0)
+            eq(classes.classTeacherId, userId), // Teacher must be assigned as class teacher
+            eq(classes.grade, applicant.classGrade || 0),
+            eq(classes.section, (applicant.section || '').toUpperCase())
           )
         )
         .limit(1);
 
-      if (teacherClasses.length === 0) {
-        return forbiddenResponse("You can only approve students for grades you teach");
+      if (teacherClass.length === 0) {
+        return forbiddenResponse("You can only approve students for classes where you are assigned as the class teacher");
       }
     }
 
@@ -93,21 +94,27 @@ export const POST = createApiRoute(
       .set({
         onboardingComplete: true,
         onboardingStatus: type === 'student' ? 'enrolled' : 'complete',
+        approvedBy: userId, // Track who approved this user
+        approvedAt: new Date(), // Track when approval happened
         updatedAt: new Date(),
       })
       .where(eq(users.id, applicantId));
 
     // For students, create enrollment record
     if (type === 'student') {
-      // Find or create a class for the student's grade
+      // Find or create a class for the student's grade AND section
       if (applicant.classGrade) {
+        const studentSection = (applicant.section || 'A').toUpperCase();
+
+        // Search for existing class with matching grade AND section
         const classRecords = await db
           .select()
           .from(classes)
           .where(
             and(
               eq(classes.schoolId, applicant.schoolId!),
-              eq(classes.grade, applicant.classGrade)
+              eq(classes.grade, applicant.classGrade),
+              eq(classes.section, studentSection)
             )
           )
           .orderBy(desc(classes.createdAt))
@@ -115,20 +122,26 @@ export const POST = createApiRoute(
 
         let classId = classRecords[0]?.id;
 
-        // If no class exists, create one
+        // If no class exists, create one with the correct section
         if (!classId) {
           classId = `class_${nanoid()}`;
+
+          // If teacher is approving, assign them as the class teacher
+          const approverIsTeacher = user.type === 'teacher';
+
           await db.insert(classes).values({
             id: classId,
             schoolId: applicant.schoolId!,
-            name: `Class ${applicant.classGrade}A`,
+            name: `Class ${applicant.classGrade} ${studentSection}`,
             grade: parseInt(applicant.classGrade) || 0,
-            section: 'A',
+            section: studentSection,
             roomNumber: "TBD",
             capacity: 40,
-            homeroomTeacherName: "To be assigned",
-            classTeacherName: "To be assigned",
+            classTeacherId: approverIsTeacher ? userId : null, // Assign teacher as class teacher
+            homeroomTeacherName: approverIsTeacher ? user.name : "To be assigned",
+            classTeacherName: approverIsTeacher ? user.name : "To be assigned",
             academicYear: new Date().getFullYear().toString(),
+            isActive: true,
             createdAt: new Date(),
             updatedAt: new Date(),
           });
@@ -144,6 +157,12 @@ export const POST = createApiRoute(
           enrollmentDate: new Date().toISOString().split('T')[0],
           createdAt: new Date(),
           updatedAt: new Date(),
+        });
+
+        logger.info("Student enrolled in class", {
+          studentId: applicantId,
+          classId,
+          className: `Class ${applicant.classGrade} ${studentSection}`,
         });
       }
     }

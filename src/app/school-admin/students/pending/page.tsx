@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ShieldCheck } from "lucide-react";
 
 interface StudentApplication {
   id: string;
@@ -50,6 +51,7 @@ interface StudentApplication {
   specialNeeds: string | null;
   submittedAt: string;
   reviewedAt: string | null;
+  reviewedBy: string | null;
   rejectionReason: string | null;
   notes: string | null;
   student: {
@@ -63,6 +65,14 @@ interface StudentApplication {
     dateOfBirth: string | null;
     profileImage: string | null;
   };
+  reviewer?: {
+    id: string;
+    name: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string | null;
+    type: string;
+  } | null;
 }
 
 interface ClassOption {
@@ -455,9 +465,18 @@ export default function PendingStudentsPage() {
                     {/* Approved info */}
                     {application.status === "approved" && application.reviewedAt && (
                       <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                        <p className="text-sm font-medium text-green-800">
+                        <p className="text-sm font-medium text-green-800 mb-1">
                           Approved on {new Date(application.reviewedAt).toLocaleDateString()}
                         </p>
+                        {application.reviewer && (
+                          <p className="text-xs text-green-700 flex items-center gap-1">
+                            <ShieldCheck className="h-3 w-3" />
+                            by {application.reviewer.name}
+                            {application.reviewer.type === "teacher" && " (Teacher)"}
+                            {application.reviewer.type === "school-admin" && " (School Admin)"}
+                            {application.reviewer.type === "admin" && " (Platform Admin)"}
+                          </p>
+                        )}
                       </div>
                     )}
                   </CardContent>

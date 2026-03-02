@@ -6,7 +6,7 @@ import { UniversalMobileSidebar, UniversalPortalHeader } from "@/components/mobi
 import { PortalErrorBoundary } from "@/components/error/portal-error-boundary";
 import { cn } from "@/lib/utils";
 import { portal } from "@/styles/design-tokens";
-import { CommandPalette, useCommandPalette, createNavigationCommands, createQuickActionsCommands } from "@/components/ui/command-palette";
+import { CommandPalette, useCommandPalette } from "@/components/ui/command-palette";
 import { useToast } from "@/components/ui/toaster";
 import { useUserEvents } from "@/hooks/use-realtime";
 import { RealtimeEvents } from "@/lib/realtime";
@@ -76,7 +76,13 @@ export function TeacherLayoutClient({ children, userName, portalType, needsSetup
 
   // Create portal-specific commands
   const commands = [
-    ...createNavigationCommands(router),
+    {
+      id: "dashboard",
+      label: "Dashboard",
+      icon: Home,
+      shortcut: "D",
+      action: () => router.push("/teacher/dashboard"),
+    },
     {
       id: "classes",
       label: "My Classes",
@@ -130,7 +136,7 @@ export function TeacherLayoutClient({ children, userName, portalType, needsSetup
       id: "schedule",
       label: "Schedule",
       icon: Calendar,
-      shortcut: "D",
+      shortcut: "L",
       action: () => router.push("/teacher/schedule"),
     },
     {
@@ -158,56 +164,28 @@ export function TeacherLayoutClient({ children, userName, portalType, needsSetup
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // If server says needs setup, redirect immediately
-        if (needsSetup) {
-          router.push("/setup/teacher");
-          return;
-        }
+        // NOTE: Middleware now handles pending approval and setup redirects
+        // This just fetches user profile for notifications
 
-        // If pending approval, redirect to pending approval page
-        if (isPendingApproval && !pathname.includes("pending-approval")) {
-          router.push("/pending-approval");
-          return;
-        }
-
-        const [roleRes, profileRes] = await Promise.all([
-          fetch("/api/auth/set-role"),
-          fetch("/api/user/profile"),
-        ]);
-        const roleData = await roleRes.json();
+        const profileRes = await fetch("/api/user/profile");
         const profileData = await profileRes.json();
 
         // Set userId for real-time notifications
-        if (profileData.user?.id) {
-          setUserId(profileData.user.id);
+        const profile = profileData.data?.profile;
+        if (profile?.id) {
+          setUserId(profile.id);
         }
 
-        // Check if user is teacher
-        if (roleData.userType === "teacher") {
-          setIsAuthenticated(true);
-          setIsLoading(false);
-          return;
-        }
-
-        // Redirect to setup if not teacher
-        if (roleData.needsSetup || !roleData.userType) {
-          router.push("/setup/unified");
-          return;
-        }
-
-        // Wrong portal type - redirect to correct one
-        if (roleData.userType && roleData.userType !== "teacher") {
-          router.push(`/${roleData.userType}`);
-          return;
-        }
+        setIsAuthenticated(true);
+        setIsLoading(false);
       } catch (error) {
-        console.error("Auth check failed, redirecting to setup");
-        router.push("/setup/unified");
+        console.error("Auth check failed, redirecting to sign-in");
+        router.push("/sign-in");
       }
     };
 
     checkAuth();
-  }, [router, needsSetup, isPendingApproval, pathname]);
+  }, [router]);
 
   // Portal-specific color for loading spinner
   const portalColor = portal.teacher.primary;
@@ -244,12 +222,14 @@ export function TeacherLayoutClient({ children, userName, portalType, needsSetup
           "min-h-[calc(100dvh-64px)]"
         )}>
           <PortalErrorBoundary portalType={portalType}>
-            {!isAuthenticated ? (
+            {/* ALWAYS render children to avoid hooks mismatch - use visibility to hide */}
+            <div style={{ visibility: !isAuthenticated ? "hidden" : "visible" }}>
+              {children}
+            </div>
+            {!isAuthenticated && (
               <div className="flex items-center justify-center h-64">
                 <p className="text-gray-500">Verifying your account...</p>
               </div>
-            ) : (
-              children
             )}
           </PortalErrorBoundary>
         </main>

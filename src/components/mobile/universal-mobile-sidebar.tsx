@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { motion, useMotionValue, useTransform, PanInfo, Variants } from "framer-motion";
+import { motion, useMotionValue, useTransform, PanInfo, Variants, AnimatePresence } from "framer-motion";
 import {
   Menu,
   X,
@@ -16,7 +16,7 @@ import {
   Home,
   Search,
 } from "lucide-react";
-import { PORTAL_CONFIG, MOBILE_SETTINGS, type PortalType } from "@/config/portal-config";
+import { PORTAL_CONFIG, MOBILE_SETTINGS, type PortalType, type NavigationItem } from "@/config/portal-config";
 import { useAuth } from "@clerk/nextjs";
 import {
   DropdownMenu,
@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { NotificationBell } from "@/components/ui/notification-bell";
 import { useCommandPalette } from "@/components/ui/command-palette";
+import { chevronRotateVariants, sidebarExpandVariants } from "@/lib/motion/variants";
 
 interface UniversalMobileSidebarProps {
   portalType: PortalType;
@@ -62,11 +63,22 @@ export function UniversalMobileSidebar({
   const pathname = usePathname();
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const sidebarRef = useRef<HTMLDivElement>(null);
   const touchStart = useRef<{ x: number; y: number } | null>(null);
 
   const config = PORTAL_CONFIG[portalType];
   const settings = MOBILE_SETTINGS;
+
+  // Toggle expanded state for nested navigation
+  const toggleExpanded = (name: string) => {
+    setExpandedItems(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  };
 
   // Close menu on Escape key
   useEffect(() => {
@@ -238,10 +250,14 @@ export function UniversalMobileSidebar({
           >
             <ul role="list" className="space-y-1">
               {config.navigationItems.map((item, index) => {
-                const isActive =
-                  pathname === item.href ||
-                  (pathname.startsWith(item.href + "/") &&
-                    item.href !== `/${portalType}/dashboard`);
+                const hasChildren = item.children && item.children.length > 0;
+                const isExpanded = expandedItems.has(item.name);
+                const isActive = pathname === item.href || (item.href !== `/${portalType}/dashboard` && pathname.startsWith(item.href + "/"));
+
+                // Check if any child is active
+                const isChildActive = hasChildren && item.children!.some(
+                  child => pathname === child.href || pathname.startsWith(child.href + "/")
+                );
 
                 return (
                   <motion.li
@@ -255,46 +271,123 @@ export function UniversalMobileSidebar({
                       damping: 24,
                     }}
                   >
-                    <Link
-                      href={item.href}
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className={cn(
-                        // Vercel exact styles
-                        "flex items-center h-9",
-                        "px-2 rounded-md",
-                        // Text - near black, not sad gray
-                        "text-gray-900",
-                        // Hover - subtle gray 100
-                        "hover:bg-gray-100",
-                        "focus-visible:bg-gray-100",
-                        // Active state - darker gray
-                        isActive && "bg-gray-200"
-                      )}
-                      aria-current={isActive ? "page" : undefined}
-                    >
-                      {/* Icon container - 36px like Vercel */}
-                      <div className="flex-none grid size-9 place-content-center">
-                        {item.icon && (
-                          <item.icon
-                            className="w-4 h-4"
-                            strokeWidth={2.5}
-                            style={{ color: 'currentColor' }}
+                    {/* Parent Item */}
+                    <div className="relative">
+                      <motion.button
+                        onClick={() => {
+                          if (hasChildren) {
+                            toggleExpanded(item.name);
+                          } else {
+                            router.push(item.href);
+                            setIsMobileMenuOpen(false);
+                          }
+                        }}
+                        whileTap={{ scale: 0.97 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                        className={cn(
+                          "flex items-center w-full h-9 px-2 rounded-md text-gray-900 text-sm font-medium",
+                          "hover:bg-gray-100 active:bg-gray-200 focus-visible:bg-gray-100 transition-all duration-150 cursor-pointer select-none",
+                          (isActive || isChildActive) && "bg-gray-200"
+                        )}
+                      >
+                        {/* Icon */}
+                        <div className="flex-none grid size-9 place-content-center">
+                          {item.icon && (
+                            <item.icon className="w-4 h-4" strokeWidth={2.5} style={{ color: 'currentColor' }} />
+                          )}
+                        </div>
+
+                        {/* Label */}
+                        <span className="flex-1 text-left">{item.name}</span>
+
+                        {/* Badge - live-dot */}
+                        {item.badge?.type === "live-dot" && (
+                          <span className="flex items-center gap-1 mr-2">
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                            </span>
+                          </span>
+                        )}
+
+                        {/* Chevron for expandable items */}
+                        {hasChildren && (
+                          <motion.div
+                            variants={chevronRotateVariants}
+                            initial={false}
+                            animate={isExpanded ? "expanded" : "collapsed"}
+                          >
+                            <ChevronDown className="w-4 h-4 text-gray-400" />
+                          </motion.div>
+                        )}
+
+                        {/* Active indicator */}
+                        {(isActive || isChildActive) && (
+                          <motion.div
+                            className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-current"
+                            layoutId={`active-indicator-${portalType}`}
+                            transition={{ type: "spring", stiffness: 400, damping: 30 }}
                           />
                         )}
-                      </div>
+                      </motion.button>
+                    </div>
 
-                      {/* Label */}
-                      <span className="flex-1 min-w-0 text-sm font-medium">{item.name}</span>
+                    {/* Children (nested items) */}
+                    {hasChildren && (
+                      <AnimatePresence initial={false}>
+                        {isExpanded && (
+                          <motion.div
+                            variants={sidebarExpandVariants}
+                            initial="collapsed"
+                            animate="expanded"
+                            exit="collapsed"
+                            className="pl-4"
+                          >
+                            {item.children!.map((child, childIndex) => {
+                              const isChildActiveItem = pathname === child.href || pathname.startsWith(child.href + "/");
 
-                      {/* Active indicator - 2px left border */}
-                      {isActive && (
-                        <motion.div
-                          className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-current"
-                          layoutId={`active-indicator-${portalType}`}
-                          transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                        />
-                      )}
-                    </Link>
+                              return (
+                                <motion.div
+                                  key={child.name}
+                                  initial={{ opacity: 0, x: -10 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  transition={{ delay: childIndex * 0.02 }}
+                                  whileTap={{ scale: 0.97 }}
+                                >
+                                  <Link
+                                    href={child.href}
+                                    onClick={() => setIsMobileMenuOpen(false)}
+                                    className={cn(
+                                      "flex items-center h-8 px-2 rounded-md text-gray-700 text-sm",
+                                      "hover:bg-gray-100 active:bg-gray-200 transition-all duration-150 cursor-pointer select-none",
+                                      isChildActiveItem && "bg-gray-100 text-gray-900 font-medium"
+                                    )}
+                                  >
+                                    {/* Child icon */}
+                                    <div className="flex-none grid size-8 place-content-center mr-1">
+                                      {child.icon && (
+                                        <child.icon className="w-3.5 h-3.5" strokeWidth={2} />
+                                      )}
+                                    </div>
+
+                                    {/* Child label */}
+                                    <span className="flex-1">{child.name}</span>
+
+                                    {/* Child badge */}
+                                    {child.badge?.type === "live-dot" && (
+                                      <span className="relative flex h-2 w-2">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                                      </span>
+                                    )}
+                                  </Link>
+                                </motion.div>
+                              );
+                            })}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    )}
                   </motion.li>
                 );
               })}
@@ -329,10 +422,11 @@ export function UniversalMobileSidebar({
                   <Link
                     href={item.href}
                     className={cn(
-                      "flex flex-col items-center justify-center py-2 px-2 rounded-lg transition-colors duration-150 min-h-[48px]",
+                      "flex flex-col items-center justify-center py-2 px-2 rounded-lg min-h-[48px]",
+                      "transition-all duration-150 cursor-pointer select-none",
                       isActive
-                        ? "text-gray-900"
-                        : "text-gray-500 hover:text-gray-700"
+                        ? "text-gray-900 bg-gray-50"
+                        : "text-gray-500 hover:text-gray-700 hover:bg-gray-50 active:bg-gray-100"
                     )}
                     aria-current={isActive ? "page" : undefined}
                   >
@@ -356,7 +450,7 @@ export function UniversalMobileSidebar({
             <li className="flex-1">
               <button
                 onClick={() => setIsMobileMenuOpen(true)}
-                className="flex flex-col items-center justify-center py-2 px-2 rounded-lg transition-colors duration-150 min-h-[48px] text-gray-500 hover:text-gray-700 w-full"
+                className="flex flex-col items-center justify-center py-2 px-2 rounded-lg min-h-[48px] text-gray-500 hover:text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition-all duration-150 cursor-pointer select-none w-full"
                 aria-label="Open full menu"
               >
                 <motion.div

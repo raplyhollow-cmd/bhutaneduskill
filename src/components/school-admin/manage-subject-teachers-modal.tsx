@@ -20,6 +20,7 @@ import {
   UserMinus,
   BookOpen,
   Users,
+  RefreshCw,
 } from "lucide-react";
 
 interface Subject {
@@ -209,9 +210,20 @@ export function ManageSubjectTeachersModal({
                 Grade {classInfo.grade} - Section {classInfo.section}
               </CardDescription>
             </div>
-            <Button variant="ghost" size="sm" onClick={onClose} disabled={isSaving}>
-              <X className="w-4 h-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={loadData}
+                disabled={isLoading || isSaving}
+                title="Refresh teacher list"
+              >
+                <RefreshCw className="w-4 h-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={onClose} disabled={isSaving}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </CardHeader>
 
@@ -322,12 +334,16 @@ export function ManageSubjectTeachersModal({
                               disabled={isSaving}
                             >
                               <option value="">Select a teacher...</option>
-                              {allTeachers.map((teacher) => (
-                                <option key={teacher.id} value={teacher.id}>
-                                  {teacher.firstName} {teacher.lastName}
-                                  {teacher.employeeId ? ` (${teacher.employeeId})` : ""}
-                                </option>
-                              ))}
+                              {allTeachers.map((teacher) => {
+                                const displayName = teacher.firstName && teacher.lastName
+                                  ? `${teacher.firstName} ${teacher.lastName}`
+                                  : teacher.firstName || teacher.email || "Unknown Teacher";
+                                return (
+                                  <option key={teacher.id} value={teacher.id}>
+                                    {displayName}{teacher.employeeId ? ` (${teacher.employeeId})` : ""}
+                                  </option>
+                                );
+                              })}
                             </select>
                             <div className="flex gap-2">
                               <Button

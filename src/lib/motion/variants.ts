@@ -486,7 +486,102 @@ export const glowVariants: VariantsType = {
 };
 
 // ============================================================================
-// PRESET COLLECTIONS
+// HIERARCHICAL DATA VARIANTS
+// ============================================================================
+
+/**
+ * Row entry animation with stagger for hierarchical data tables.
+ * Usage: <motion.div variants={rowEntryVariants} initial="hidden" animate="visible" custom={index}>
+ */
+export const rowEntryVariants: VariantsType = {
+  hidden: {
+    opacity: 0,
+    y: prefersReducedMotion() ? 0 : distance.base,
+  },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: {
+      delay: i * 0.03, // 30ms stagger per row
+      duration: getDuration(200) / 1000,
+      ease: [0.4, 0, 0.2, 1], // Vercel easing
+    },
+  }),
+};
+
+/**
+ * Group header animation for hierarchical data sections.
+ * Supports sticky state with visual feedback.
+ */
+export const groupHeaderVariants: VariantsType = {
+  hidden: {
+    opacity: 0,
+    y: prefersReducedMotion() ? 0 : -distance.tiny,
+  },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: getDuration(150) / 1000,
+      ease: [0.4, 0, 0.2, 1],
+    },
+  },
+  stick: {
+    backgroundColor: "#ffffff",
+    boxShadow: "0 1px 2px rgba(0, 0, 0, 0.05)",
+  },
+};
+
+/**
+ * Sidebar expansion animation for nested navigation.
+ */
+export const sidebarExpandVariants: VariantsType = {
+  collapsed: {
+    height: 0,
+    opacity: 0,
+    overflow: "hidden",
+    transition: {
+      duration: getDuration(150) / 1000,
+      ease: [0.4, 0, 0.2, 1],
+    },
+  },
+  expanded: {
+    height: "auto",
+    opacity: 1,
+    transition: {
+      duration: getDuration(200) / 1000,
+      ease: [0.4, 0, 0.2, 1],
+    },
+  },
+};
+
+/**
+ * Chevron rotation for expandable sidebar items.
+ */
+export const chevronRotateVariants: VariantsType = {
+  collapsed: {
+    rotate: -90,
+    transition: { duration: getDuration(150) / 1000 },
+  },
+  expanded: {
+    rotate: 0,
+    transition: { duration: getDuration(150) / 1000 },
+  },
+};
+
+/**
+ * Scale variants for press feedback on interactive elements.
+ */
+export const scalePressVariants: VariantsType = {
+  idle: { scale: scale.rest },
+  press: {
+    scale: scale.shrink,
+    transition: { duration: getDuration(75) / 1000 },
+  },
+};
+
+// ============================================================================
+// TYPE EXPORTS
 // ============================================================================
 
 /**
@@ -513,10 +608,12 @@ export const variants = {
   shake: shakeVariants,
   pulse: pulseVariants,
   glow: glowVariants,
+  // Hierarchical data variants
+  rowEntry: rowEntryVariants,
+  groupHeader: groupHeaderVariants,
+  sidebarExpand: sidebarExpandVariants,
+  chevronRotate: chevronRotateVariants,
+  scalePress: scalePressVariants,
 } as const;
-
-// ============================================================================
-// TYPE EXPORTS
-// ============================================================================
 
 export type VariantName = keyof typeof variants;

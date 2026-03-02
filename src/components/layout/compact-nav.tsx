@@ -1,15 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
-import { Compass, Home, User, MoreHorizontal, LogIn, Zap, GraduationCap, BookOpen, Users, HeartHandshake, Building, Shield, Trophy, Landmark, GraduationCap as AlumniIcon, ChevronDown } from "lucide-react";
+import { motion } from "framer-motion";
+import { Compass, Home, User, MoreHorizontal, LogIn, Zap, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { PortalSelector } from "./portal-selector";
 import { MobileMenuSheet } from "./mobile-menu-sheet";
-import { Button } from "@/components/ui/button";
-import { portal as portalTokens, semantic } from "@/styles/design-tokens";
+import { portal as portalTokens } from "@/styles/design-tokens";
 
 const navLinks = [
   { name: "Home", href: "/", icon: Home },
@@ -17,74 +15,9 @@ const navLinks = [
   { name: "Journey", href: "/journey", icon: Trophy },
 ];
 
-const portals = [
-  {
-    name: "Student",
-    href: "/student",
-    icon: GraduationCap,
-    color: portalTokens.student.primary,
-    description: "Take assessments, explore careers, plan your future"
-  },
-  {
-    name: "Teacher",
-    href: "/teacher",
-    icon: BookOpen,
-    color: portalTokens.teacher.primary,
-    description: "Manage classes, homework, track student progress"
-  },
-  {
-    name: "Parent",
-    href: "/parent",
-    icon: Users,
-    color: portalTokens.parent.primary,
-    description: "Monitor child's progress and communicate"
-  },
-  {
-    name: "Counselor",
-    href: "/counselor",
-    icon: HeartHandshake,
-    color: portalTokens.counselor.primary,
-    description: "Student interventions, sessions, resources"
-  },
-  {
-    name: "Alumni",
-    href: "/alumni",
-    icon: AlumniIcon,
-    color: semantic.success.primary,
-    description: "Network, mentorship, and career opportunities"
-  },
-  {
-    name: "School Admin",
-    href: "/school-admin",
-    icon: Building,
-    color: portalTokens.schoolAdmin.primary,
-    description: "Manage school operations, students, teachers"
-  },
-  {
-    name: "Ministry",
-    href: "/ministry",
-    icon: Landmark,
-    color: portalTokens.counselor.primary,
-    description: "National education oversight, analytics, policies"
-  },
-  {
-    name: "Platform Admin",
-    href: "/admin",
-    icon: Shield,
-    color: portalTokens.admin.primary,
-    description: "Platform management, schools, billing"
-  },
-];
-
 export function CompactNav() {
   const pathname = usePathname();
-  const [portalOpen, setPortalOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const portalButtonRef = useRef<HTMLButtonElement>(null);
-
-  const handlePortalClick = () => {
-    setPortalOpen(true);
-  };
 
   // Mobile Tab Bar Component
   const MobileTabBar = () => (
@@ -99,64 +32,71 @@ export function CompactNav() {
     >
       <div className="flex items-center justify-around h-16 px-2">
         {/* Home Tab */}
-        <Link
-          href="/"
-          className={cn(
-            "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 min-w-[60px]",
-            pathname === "/"
-              ? "text-ceramic-brand"
-              : "text-ceramic-secondary"
-          )}
-        >
-          <Home className={cn("w-5 h-5", pathname === "/" && "fill-current")} />
-          <span className="text-[10px] font-medium">Home</span>
-        </Link>
+        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+          <Link
+            href="/"
+            className={cn(
+              "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 min-w-[60px]",
+              pathname === "/"
+                ? "text-ceramic-brand"
+                : "text-ceramic-secondary"
+            )}
+          >
+            <Home className={cn("w-5 h-5", pathname === "/" && "fill-current")} />
+            <span className="text-[10px] font-medium">Home</span>
+          </Link>
+        </motion.div>
 
         {/* About Tab */}
-        <Link
-          href="/about"
-          className={cn(
-            "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 min-w-[60px]",
-            pathname === "/about"
-              ? "text-ceramic-brand"
-              : "text-ceramic-secondary"
-          )}
-        >
-          <User className={cn("w-5 h-5", pathname === "/about" && "fill-current")} />
-          <span className="text-[10px] font-medium">About</span>
-        </Link>
+        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+          <Link
+            href="/about"
+            className={cn(
+              "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 min-w-[60px]",
+              pathname === "/about"
+                ? "text-ceramic-brand"
+                : "text-ceramic-secondary"
+            )}
+          >
+            <User className={cn("w-5 h-5", pathname === "/about" && "fill-current")} />
+            <span className="text-[10px] font-medium">About</span>
+          </Link>
+        </motion.div>
 
         {/* Portals Tab */}
-        <button
-          ref={portalButtonRef}
-          onClick={handlePortalClick}
-          className={cn(
-            "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 min-w-[60px]",
-            portalOpen
-              ? "text-ceramic-brand"
-              : "text-ceramic-secondary"
-          )}
-        >
-          <Compass className={cn("w-5 h-5", portalOpen && "fill-current")} />
-          <span className="text-[10px] font-medium">Portals</span>
-        </button>
+        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+          <Link
+            href="/portals"
+            className={cn(
+              "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 min-w-[60px]",
+              pathname === "/portals"
+                ? "text-ceramic-brand"
+                : "text-ceramic-secondary"
+            )}
+          >
+            <Compass className={cn("w-5 h-5", pathname === "/portals" && "fill-current")} />
+            <span className="text-[10px] font-medium">Portals</span>
+          </Link>
+        </motion.div>
 
         {/* Sign In Tab */}
-        <Link
-          href="/sign-in"
-          className={cn(
-            "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 min-w-[60px]",
-            pathname === "/sign-in"
-              ? "text-ceramic-brand"
-              : "text-ceramic-secondary"
-          )}
-        >
-          <LogIn className={cn("w-5 h-5", pathname === "/sign-in" && "fill-current")} />
-          <span className="text-[10px] font-medium">Sign In</span>
-        </Link>
+        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+          <Link
+            href="/sign-in"
+            className={cn(
+              "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 min-w-[60px]",
+              pathname?.startsWith("/sign-in")
+                ? "text-ceramic-brand"
+                : "text-ceramic-secondary"
+            )}
+          >
+            <LogIn className={cn("w-5 h-5", pathname?.startsWith("/sign-in") && "fill-current")} />
+            <span className="text-[10px] font-medium">Sign In</span>
+          </Link>
+        </motion.div>
 
         {/* Menu Tab */}
-        <button
+        <motion.button
           onClick={() => setMenuOpen(true)}
           className={cn(
             "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 min-w-[60px]",
@@ -164,10 +104,12 @@ export function CompactNav() {
               ? "text-ceramic-brand"
               : "text-ceramic-secondary"
           )}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
         >
           <MoreHorizontal className={cn("w-5 h-5", menuOpen && "fill-current")} />
           <span className="text-[10px] font-medium">Menu</span>
-        </button>
+        </motion.button>
       </div>
     </motion.nav>
   );
@@ -178,138 +120,193 @@ export function CompactNav() {
       initial={{ y: -100, opacity: 0 }}
       animate={{ y: 16, opacity: 1 }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="hidden md:block fixed top-4 left-1/2 -translate-x-1/2 z-40"
+      className="hidden lg:block fixed top-4 left-1/2 -translate-x-1/2 z-40 max-w-full"
     >
       <div
-        className="flex items-center gap-1 px-2 py-2 rounded-full bg-ceramic-white/85 dark:bg-ceramic-gray-900/85 backdrop-blur-xl border border-ceramic-border shadow-xl"
+        className="flex items-center gap-1 px-3 py-2 rounded-full bg-ceramic-white/85 dark:bg-ceramic-gray-900/85 backdrop-blur-xl border border-ceramic-border shadow-xl whitespace-nowrap"
         style={{ boxShadow: "0 4px 20px -2px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.05)" }}
       >
-        {/* Logo */}
-        <Link
-          href="/"
-          className="flex items-center gap-2 px-3 py-2 rounded-full transition-all duration-200"
-        >
-          <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center"
-            style={{ background: portalTokens.student.gradient }}
+        {/* Logo - BES abbreviation with full text */}
+        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+          <Link
+            href="/"
+            className="flex items-center gap-2 px-3 py-2 rounded-full transition-all duration-200 whitespace-nowrap"
           >
-            <Compass className="w-4 h-4 text-white" />
-          </div>
-          <span className="font-semibold text-ceramic-primary dark:text-white text-sm hidden lg:block">
-            Bhutan EduSkill
-          </span>
-        </Link>
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: portalTokens.student.gradient }}
+            >
+              <Compass className="w-4 h-4 text-white" />
+            </div>
+            <span className="font-semibold text-ceramic-primary dark:text-white text-sm whitespace-nowrap">
+              Bhutan EduSkill
+            </span>
+          </Link>
+        </motion.div>
 
-        <div className="w-px h-6 bg-ceramic-border" />
+        <div className="w-px h-6 bg-ceramic-border flex-shrink-0" />
 
         {/* Nav Links */}
         {navLinks.map((link) => {
           const Icon = link.icon;
           const isActive = pathname === link.href;
           return (
-            <Link
+            <motion.div
               key={link.name}
-              href={link.href}
-              className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-200 text-sm font-medium",
-                isActive
-                  ? "text-ceramic-brand bg-ceramic-brand/10"
-                  : "text-ceramic-secondary hover:text-ceramic-primary hover:bg-ceramic-gray-50 dark:hover:bg-ceramic-gray-800"
-              )}
+              whileHover={{ scale: 1.02, y: -1 }}
+              whileTap={{ scale: 0.98, y: 0 }}
             >
-              <Icon className="w-4 h-4" />
-              <span>{link.name}</span>
-            </Link>
+              <Link
+                href={link.href}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-full transition-all duration-200 text-sm font-medium whitespace-nowrap",
+                  isActive
+                    ? "text-ceramic-brand bg-ceramic-brand/10"
+                    : "text-ceramic-secondary hover:text-ceramic-primary hover:bg-ceramic-gray-50 dark:hover:bg-ceramic-gray-800"
+                )}
+              >
+                <Icon className="w-4 h-4 flex-shrink-0" />
+                <span className="whitespace-nowrap">{link.name}</span>
+              </Link>
+            </motion.div>
           );
         })}
 
-        <div className="w-px h-6 bg-ceramic-border" />
+        <div className="w-px h-6 bg-ceramic-border flex-shrink-0" />
 
-        {/* Portals Dropdown - Hover */}
-        <div
-          className="relative group"
-        >
-          <button
-            ref={portalButtonRef}
-            onClick={handlePortalClick}
+        {/* Portals Link */}
+        <motion.div whileHover={{ scale: 1.02, y: -1 }} whileTap={{ scale: 0.98, y: 0 }}>
+          <Link
+            href="/portals"
             className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-200 text-sm font-medium",
-              portalOpen
+              "flex items-center gap-2 px-3 py-2 rounded-full transition-all duration-200 text-sm font-medium whitespace-nowrap",
+              pathname === "/portals"
                 ? "text-ceramic-brand bg-ceramic-brand/10"
                 : "text-ceramic-secondary hover:text-ceramic-primary hover:bg-ceramic-gray-50 dark:hover:bg-ceramic-gray-800"
             )}
           >
-            <Compass className="w-4 h-4" />
-            <span>Portals</span>
-          </button>
+            <Compass className="w-4 h-4 flex-shrink-0" />
+            <span className="whitespace-nowrap">Portals</span>
+          </Link>
+        </motion.div>
 
-          {/* Hover Dropdown */}
-          <div className="absolute left-1/2 -translate-x-1/2 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible z-50">
-            <div className="bg-ceramic-white/95 dark:bg-ceramic-gray-900/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-ceramic-border p-2 w-64">
-              <div className="grid grid-cols-1 gap-1">
-                {portals.map((portal) => {
-                  const Icon = portal.icon;
-                  return (
-                    <Link
-                      key={portal.name}
-                      href={portal.href}
-                      className="group/item flex items-center gap-3 p-3 rounded-xl hover:bg-ceramic-gray-50 dark:hover:bg-ceramic-gray-800 transition-all duration-200"
-                    >
-                      <div
-                        className="w-9 h-9 rounded-lg flex items-center justify-center group-hover/item:scale-110 transition-transform duration-200 flex-shrink-0"
-                        style={{ background: `${portal.color}15` }}
-                      >
-                        <Icon className="w-4 h-4" style={{ color: portal.color }} />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-ceramic-primary group-hover/item:text-ceramic-brand transition-colors truncate">
-                          {portal.name}
-                        </p>
-                        <p className="text-xs text-ceramic-dimmed truncate">
-                          {portal.description}
-                        </p>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
+        <div className="w-px h-6 bg-ceramic-border flex-shrink-0" />
+
+        {/* Sign In / Get Started Button */}
+        <motion.div
+          whileHover={{ scale: 1.02, y: -1 }}
+          whileTap={{ scale: 0.98, y: 0 }}
+        >
+          <Link
+            href="/sign-in"
+            className="flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-200 text-sm font-medium text-white hover:shadow-lg whitespace-nowrap block"
+            style={{
+              background: "linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)",
+            }}
+          >
+            <Zap className="w-4 h-4 flex-shrink-0" />
+            <span className="whitespace-nowrap">Sign In / Get Started</span>
+          </Link>
+        </motion.div>
+      </div>
+    </motion.nav>
+  );
+
+  // Tablet/Small Desktop Nav - Compact version
+  const TabletNav = () => (
+    <motion.nav
+      initial={{ y: -100, opacity: 0 }}
+      animate={{ y: 16, opacity: 1 }}
+      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      className="hidden md:block lg:hidden fixed top-4 left-1/2 -translate-x-1/2 z-40"
+    >
+      <div
+        className="flex items-center gap-1 px-2 py-2 rounded-full bg-ceramic-white/85 dark:bg-ceramic-gray-900/85 backdrop-blur-xl border border-ceramic-border shadow-xl"
+        style={{ boxShadow: "0 4px 20px -2px rgba(0,0,0,0.1), 0 0 0 1px rgba(0,0,0,0.05)" }}
+      >
+        {/* Logo - BES abbreviation */}
+        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+          <Link
+            href="/"
+            className="flex items-center gap-2 px-2 py-2 rounded-full transition-all duration-200"
+          >
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: portalTokens.student.gradient }}
+            >
+              <Compass className="w-3.5 h-3.5 text-white" />
             </div>
-          </div>
-        </div>
+            <span className="font-semibold text-ceramic-primary dark:text-white text-xs">
+              BES
+            </span>
+          </Link>
+        </motion.div>
 
-        <div className="w-px h-6 bg-ceramic-border" />
+        <div className="w-px h-5 bg-ceramic-border flex-shrink-0" />
 
-        {/* Sign In */}
-        <Link
-          href="/sign-in"
-          className={cn(
-            "flex items-center gap-2 px-4 py-2 rounded-full transition-all duration-200 text-sm font-medium",
-            pathname === "/sign-in"
-              ? "text-ceramic-brand bg-ceramic-brand/10"
-              : "text-ceramic-secondary hover:text-ceramic-primary hover:bg-ceramic-gray-50 dark:hover:bg-ceramic-gray-800"
-          )}
+        {/* Nav Links - Icons only */}
+        {navLinks.map((link) => {
+          const Icon = link.icon;
+          const isActive = pathname === link.href;
+          return (
+            <motion.div
+              key={link.name}
+              whileHover={{ scale: 1.05, y: -1 }}
+              whileTap={{ scale: 0.95, y: 0 }}
+            >
+              <Link
+                href={link.href}
+                className={cn(
+                  "flex items-center justify-center w-9 h-9 rounded-full transition-all duration-200",
+                  isActive
+                    ? "text-ceramic-brand bg-ceramic-brand/10"
+                    : "text-ceramic-secondary hover:text-ceramic-primary hover:bg-ceramic-gray-50 dark:hover:bg-ceramic-gray-800"
+                )}
+                title={link.name}
+              >
+                <Icon className="w-4 h-4" />
+              </Link>
+            </motion.div>
+          );
+        })}
+
+        <div className="w-px h-5 bg-ceramic-border flex-shrink-0" />
+
+        {/* Portals Link - Icon only */}
+        <motion.div whileHover={{ scale: 1.05, y: -1 }} whileTap={{ scale: 0.95, y: 0 }}>
+          <Link
+            href="/portals"
+            className={cn(
+              "flex items-center justify-center w-9 h-9 rounded-full transition-all duration-200",
+              pathname === "/portals"
+                ? "text-ceramic-brand bg-ceramic-brand/10"
+                : "text-ceramic-secondary hover:text-ceramic-primary hover:bg-ceramic-gray-50 dark:hover:bg-ceramic-gray-800"
+            )}
+            title="Portals"
+          >
+            <Compass className="w-4 h-4" />
+          </Link>
+        </motion.div>
+
+        <div className="w-px h-5 bg-ceramic-border flex-shrink-0" />
+
+        {/* Sign In Button - Compact */}
+        <motion.div
+          whileHover={{ scale: 1.02, y: -1 }}
+          whileTap={{ scale: 0.98, y: 0 }}
         >
-          <LogIn className="w-4 h-4" />
-          <span className="hidden lg:inline">Sign In</span>
-        </Link>
-
-        {/* Get Started Button */}
-        <Link
-          href="/sign-up"
-          className="flex items-center gap-2 px-5 py-2 rounded-full transition-all duration-200 text-sm font-medium text-white hover:shadow-lg"
-          style={{
-            background: "linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "scale(1.02)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "scale(1)";
-          }}
-        >
-          <Zap className="w-4 h-4" />
-          <span className="hidden lg:inline">Get Started</span>
-        </Link>
+          <Link
+            href="/sign-in"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-full transition-all duration-200 text-xs font-semibold text-white hover:shadow-lg block"
+            style={{
+              background: "linear-gradient(135deg, rgb(249 115 22) 0%, rgb(194 65 12) 100%)",
+            }}
+            title="Sign In / Get Started"
+          >
+            <Zap className="w-3.5 h-3.5 flex-shrink-0" />
+            <span className="whitespace-nowrap">Sign In</span>
+          </Link>
+        </motion.div>
       </div>
     </motion.nav>
   );
@@ -317,14 +314,8 @@ export function CompactNav() {
   return (
     <>
       <DesktopPillNav />
+      <TabletNav />
       <MobileTabBar />
-
-      {/* Portal Selector Overlay */}
-      <PortalSelector
-        isOpen={portalOpen}
-        onClose={() => setPortalOpen(false)}
-        triggerRef={portalButtonRef}
-      />
 
       {/* Mobile Menu Sheet */}
       <MobileMenuSheet
@@ -334,8 +325,10 @@ export function CompactNav() {
 
       {/* Spacer for mobile to prevent content hidden behind tab bar */}
       <div className="md:hidden h-16" />
+      {/* Spacer for tablet to prevent content hidden behind floating nav */}
+      <div className="hidden md:block lg:hidden h-20" />
       {/* Spacer for desktop to prevent content hidden behind floating nav */}
-      <div className="hidden md:block h-24" />
+      <div className="hidden lg:block h-24" />
     </>
   );
 }

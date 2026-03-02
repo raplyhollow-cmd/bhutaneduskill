@@ -27,8 +27,9 @@ import { cn } from "@/lib/utils"
 import * as Dialog from "@radix-ui/react-dialog"
 
 // Type guard for component type
+// Returns true for both function components and JSX elements (which are ReactElements)
 function isComponentType(icon: CommandItem['icon']): icon is React.ComponentType<{ className?: string }> {
-  return typeof icon === 'function'
+  return typeof icon === 'function' || (typeof icon === 'object' && icon !== null && '$$typeof' in icon)
 }
 
 export interface CommandItem {

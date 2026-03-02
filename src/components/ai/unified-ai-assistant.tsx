@@ -32,8 +32,9 @@ export function UnifiedAIAssistant() {
     // Fetch user role from API
     fetch("/api/user/profile")
       .then((res) => res.json())
-      .then((data) => {
-        const profile = data.profile || data;
+      .then((response) => {
+        // API returns { success: true, data: { profile: {...} } }
+        const profile = response.data?.profile || response.profile || response;
         console.log("[UnifiedAIAssistant] User role:", profile.type);
       })
       .catch(() => {

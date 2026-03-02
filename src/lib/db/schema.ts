@@ -260,10 +260,16 @@ export const users = pgTable("users", {
   emailVerified: boolean("email_verified").default(false),
   onboardingComplete: boolean("onboarding_complete").default(false),
   onboardingStatus: text("onboarding_status").default("restricted"),
+  approvedBy: text("approved_by").references(() => users.id), // User who approved this account (school admin, teacher, or platform admin)
+  approvedAt: timestamp("approved_at"), // When the account was approved
   classGrade: integer("class_grade"),
   parentId: text("parent_id").references(() => users.id),
   isActive: boolean("is_active").default(true),
   department: text("department"), // Department for staff users
+  // Teacher-specific fields
+  cidNo: text("cid_no"), // CID / Route Permit / Passport number for teachers (Bhutan + international)
+  qualification: text("qualification"), // Qualification level (Class X, Diploma, Bachelor's, etc.)
+  university: text("university"), // University/Institute name
   // Additional profile fields (optional)
   school: text("school"), // School reference for compatibility
   interests: json("interests"), // Database has json type
@@ -375,7 +381,8 @@ export const teacherApplications = pgTable("teacher_applications", {
   userId: text("user_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }).notNull(),
   status: text("status").notNull().default("pending"), // "pending" | "approved" | "rejected"
-  qualifications: text("qualifications"), // JSON string of qualifications
+  qualifications: text("qualifications"), // Qualification level (Class X, Diploma, Bachelor's, etc.)
+  university: text("university"), // University/Institute name
   experience: integer("experience"), // Years of experience
   subjects: text("subjects"), // JSON array of subject IDs
   desiredClasses: text("desired_classes"), // JSON array of class IDs

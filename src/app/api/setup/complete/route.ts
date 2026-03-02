@@ -101,12 +101,17 @@ export async function POST(request: NextRequest) {
           .where(eq(users.id, dbUser.id));
       }
     } else {
-      // For other roles, just mark as complete
+      // For other roles, mark onboardingComplete=true but don't change onboardingStatus
+      // Students and teachers should stay in pending_enrollment/pending_approval until approved
       await db
         .update(users)
         .set({
           onboardingComplete: true,
-          onboardingStatus: "complete",
+          // Don't change onboardingStatus - keep it as pending_enrollment or pending_approval
+          // Only set to "complete" if already approved by school admin
+          ...(dbUser.onboardingStatus !== "pending_enrollment" &&
+             dbUser.onboardingStatus !== "pending_approval" &&
+             dbUser.onboardingStatus !== "restricted" ? { onboardingStatus: "complete" } : {}),
         })
         .where(eq(users.id, dbUser.id));
     }
@@ -114,8 +119,10 @@ export async function POST(request: NextRequest) {
     logger.debug("[Setup Complete] Completed setup for user:", dbUser.id, "type:", dbUser.type);
 
     // Return the approval status so the wizard knows where to redirect
-    const needsApproval = dbUser.type === "school-admin" &&
-      (application.length === 0 || application[0].status !== "approved");
+    // Teachers and students also need approval if they're in pending_enrollment status
+    const needsApproval =
+      (dbUser.type === "school-admin" && (application.length === 0 || application[0].status !== "approved")) ||
+      (dbUser.onboardingStatus === "pending_enrollment" || dbUser.onboardingStatus === "pending_approval");
 
     return NextResponse.json({
       success: true,

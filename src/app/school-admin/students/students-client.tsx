@@ -44,6 +44,7 @@ import {
   Phone,
   MapPin,
   Sparkles,
+  ShieldCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -558,6 +559,7 @@ export function StudentsClient({
                       <th className="text-left py-3 px-4 font-semibold text-gray-700">Student</th>
                       <th className="text-left py-3 px-4 font-semibold text-gray-700">Class</th>
                       <th className="text-left py-3 px-4 font-semibold text-gray-700">Parent</th>
+                      <th className="text-left py-3 px-4 font-semibold text-gray-700">Approved By</th>
                       <th className="text-left py-3 px-4 font-semibold text-gray-700">Attendance</th>
                       <th className="text-left py-3 px-4 font-semibold text-gray-700">Fee Status</th>
                       <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
@@ -608,6 +610,23 @@ export function StudentsClient({
                         <td className="py-3 px-4">
                           <p className="text-sm text-gray-900">{student.parentName || "Not specified"}</p>
                           {student.parentPhone && <p className="text-xs text-gray-500">{student.parentPhone}</p>}
+                        </td>
+                        <td className="py-3 px-4">
+                          {student.approverName ? (
+                            <div className="flex items-center gap-1.5">
+                              <ShieldCheck className="w-3.5 h-3.5 text-green-600" />
+                              <div>
+                                <p className="text-sm text-gray-900">{student.approverName}</p>
+                                <p className="text-xs text-gray-500 capitalize">
+                                  {student.approverType === "teacher" && "Teacher"}
+                                  {student.approverType === "school-admin" && "School Admin"}
+                                  {student.approverType === "admin" && "Platform Admin"}
+                                </p>
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-gray-400">—</span>
+                          )}
                         </td>
                         <td className="py-3 px-4">
                           <span

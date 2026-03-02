@@ -17,22 +17,9 @@ const menuSections = [
     title: "Explore",
     items: [
       { name: "Home", href: "/", icon: Home },
-      { name: "Careers", href: "/student/careers", icon: Compass },
+      { name: "Portals", href: "/portals", icon: Compass },
       { name: "About", href: "/about", icon: User },
       { name: "Contact", href: "/contact", icon: MessageSquare },
-    ],
-  },
-  {
-    title: "Portals",
-    items: [
-      { name: "Student", href: "/student", icon: GraduationCap },
-      { name: "Teacher", href: "/teacher", icon: BookOpen },
-      { name: "Parent", href: "/parent", icon: User },
-      { name: "Counselor", href: "/counselor", icon: HeartHandshake },
-      { name: "Alumni", href: "/alumni", icon: AlumniIcon },
-      { name: "School Admin", href: "/school-admin", icon: Building },
-      { name: "Ministry", href: "/ministry", icon: Landmark },
-      { name: "Platform Admin", href: "/admin", icon: Shield },
     ],
   },
 ];

@@ -7,6 +7,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.2.2] - Classes Management & Bulk Operations (March 2, 2026)
+
+### Added
+
+**School Admin - Classes Page Premium Redesign**
+- Compact Google Drive-style table view with 12-column grid layout
+- 640px slide-over panel with 4 tabs: Overview, Students, Subjects, Schedule
+- Quick stats cards showing enrollment, subjects, attendance, homework
+- Bulk Create Classes dropdown for multi-select grade/section combinations
+- Inline teacher assignment dropdown per class row
+- Progress bars for enrollment with color-coded indicators (green/yellow/red)
+- Bulk add students with multi-select and checkbox functionality
+- Individual remove student with confirmation dialog
+- Subject-teacher management modal integration
+
+**RBAC Foundation - Permissions Helper**
+- New file: `src/lib/permissions.ts`
+- `isClassTeacher(classId, userId)` - Check if user is class teacher via `classTeacherId` or `teacher_assignments.role`
+- `requireClassTeacher(classId)` - Authorization wrapper for class-level operations
+- `getClassTeacherClasses(userId)` - Get all classes where user is class teacher
+- Supports both direct assignment and role-based (`homeroom`, `both`) teacher assignments
+
+### Changed
+
+**School Admin - Classes Page**
+- Replaced card grid with premium compact table view
+- Added fully functional class detail slide-over panel
+- Class teacher assignment now works with inline dropdown in slide-over
+- Students tab supports bulk add and individual remove operations
+- Subjects tab shows assigned teachers with avatar badges and "Manage" button
+
+**School Admin - Teachers Page**
+- Fixed response structure access: `data.teachers` → `data.data.teachers`
+- Teachers now display correctly after approval
+
+**API Routes - Classes**
+- Fixed 401 Unauthorized error by using auth parameter from `createApiRoute` wrapper
+- Removed manual `getAuth(request)` call that was bypassing wrapper auth
+
+**Notifications Hook**
+- Error logging now only in development mode (`NODE_ENV === "development"`)
+- Reduced console noise from polling failures
+
+**Command Palette**
+- Fixed duplicate key errors ("students", "settings") in teacher portal
+- Fixed "Objects are not valid as a React child" error for JSX icon elements
+- Updated `isComponentType` to recognize React elements via `$$typeof` property
+- Teacher portal now uses teacher-specific command definitions
+
+### Fixed
+
+- Teachers list not displaying after approval (response structure mismatch)
+- Classes API returning 401 Unauthorized (manual auth check)
+- Command palette duplicate keys causing React warnings
+- Command palette icons rendering as objects instead of components
+- Notifications hook logging fetch errors to console every 30 seconds
+
+### Technical Notes
+
+- Slide-over panel uses `fetchClassDetailData` on-demand loading per tab
+- Bulk operations use existing `/api/school-admin/classes/[id]/students/bulk` endpoint
+- Subject-teacher assignments use existing `/api/school-admin/classes/[id]/subject-teachers` endpoints
+- Permissions helper checks BOTH `classes.classTeacherId` AND `teacher_assignments.role` for maximum flexibility
+- All API endpoints migrated to use `createApiRoute` wrapper for consistent auth handling
+
+---
+
 ## [2.2.1] - Admin Portal Bug Fixes (February 28, 2026)
 
 ### Fixed

@@ -21,36 +21,35 @@ export const POST = createApiRoute(
     const body = await request.json();
     const { teacherId } = body;
 
-    if (!teacherId) {
-      return badRequestResponse("Teacher ID is required");
+    // Allow unassigning (teacherId can be null or empty string to remove teacher)
+    if (teacherId) {
+      // Verify the teacher exists and is a teacher using db.select()
+      const teacherCheck = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, teacherId))
+        .limit(1);
+
+      if (teacherCheck.length === 0) {
+        return notFoundResponse("Teacher");
+      }
+
+      if (teacherCheck[0].type !== "teacher") {
+        return badRequestResponse("Selected user is not a teacher");
+      }
     }
 
-    // Verify the teacher exists and is a teacher using db.select()
-    const teacherCheck = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, teacherId))
-      .limit(1);
-
-    if (teacherCheck.length === 0) {
-      return notFoundResponse("Teacher");
-    }
-
-    if (teacherCheck[0].type !== "teacher") {
-      return badRequestResponse("Selected user is not a teacher");
-    }
-
-    // Update the class with the new teacher
+    // Update the class with the new class teacher (or null to unassign)
     await db
       .update(classes)
-      .set({ teacherId, updatedAt: new Date() })
+      .set({ classTeacherId: teacherId || null, updatedAt: new Date() })
       .where(eq(classes.id, classId));
 
     // Log success
-    logger.info("Teacher assigned to class", { userId, classId, teacherId });
+    logger.info("Teacher assigned to class", { userId, classId, teacherId: teacherId || null });
 
     // Return success response
-    return successResponse({ message: "Teacher assigned successfully" });
+    return successResponse({ message: teacherId ? "Teacher assigned successfully" : "Teacher unassigned successfully" });
   },
   ['school-admin', 'admin']
 );

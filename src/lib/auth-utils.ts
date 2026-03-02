@@ -750,6 +750,7 @@ export async function requireAuth(allowedRoles?: string[]): Promise<
         id: users.id,
         clerkUserId: users.clerkUserId,
         type: users.type,
+        role: users.role,  // Also select role as fallback
         firstName: users.firstName,
         lastName: users.lastName,
         name: users.name,
@@ -781,11 +782,13 @@ export async function requireAuth(allowedRoles?: string[]): Promise<
   // Cast through unknown first because we're selecting a subset of User fields
   const user = userRecords[0] as unknown as User;
 
-  console.log("[requireAuth] User found:", { id: user.id, type: user.type, allowedRoles });
+  console.log("[requireAuth] User found:", { id: user.id, type: user.type, role: (user as any).role, allowedRoles });
 
   // Check role if required (empty array = no role restriction)
-  if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(user.type)) {
-    console.log("[requireAuth] Role mismatch - user type:", user.type, "allowed:", allowedRoles);
+  // Check both 'type' and 'role' columns for flexibility
+  const userRole = user.type || (user as any).role;
+  if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(userRole)) {
+    console.log("[requireAuth] Role mismatch - user type:", user.type, "user role:", (user as any).role, "allowed:", allowedRoles);
     return { error: "Forbidden", status: 403 };
   }
 

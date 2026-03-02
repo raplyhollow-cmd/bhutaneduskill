@@ -10,7 +10,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { users, teacherApplications } from "@/lib/db/schema";
-import { eq, and, desc, or, notInArray } from "drizzle-orm";
+import { eq, and, desc, or, notInArray, sql } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, errorResponse, badRequestResponse } from "@/lib/api/response-helpers";
@@ -55,6 +55,7 @@ export const GET = createApiRoute(
           phone: users.phone,
           employeeId: users.employeeId,
           profileImage: users.profileImage,
+          cidNo: users.cidNo,
         },
       })
       .from(teacherApplications)
@@ -158,7 +159,18 @@ export const POST = createApiRoute(
 
     // Check if this is a real application or just a user with pending status
     const [application] = await db
-      .select()
+      .select({
+        id: teacherApplications.id,
+        userId: teacherApplications.userId,
+        schoolId: teacherApplications.schoolId,
+        status: teacherApplications.status,
+        qualifications: teacherApplications.qualifications,
+        university: teacherApplications.university,
+        experience: teacherApplications.experience,
+        subjects: teacherApplications.subjects,
+        appliedAt: teacherApplications.appliedAt,
+        rejectionReason: teacherApplications.rejectionReason,
+      })
       .from(teacherApplications)
       .where(
         and(

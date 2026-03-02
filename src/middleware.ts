@@ -162,8 +162,10 @@ export default clerkMiddleware(async (auth, request) => {
             console.log("[Middleware] Platform admin bypass - allowing full access to:", request.nextUrl.pathname);
             // Platform admin has full access - continue to route handler
           }
-          // Block access for restricted and pending_approval users
-          else if (onboardingStatus === "restricted" || onboardingStatus === "pending_approval") {
+          // Block access for restricted, pending_approval, and pending_enrollment users
+          else if (onboardingStatus === "restricted" ||
+                   onboardingStatus === "pending_approval" ||
+                   onboardingStatus === "pending_enrollment") {
             return NextResponse.json(
               {
                 error: onboardingStatus === "restricted"
@@ -205,26 +207,69 @@ export default clerkMiddleware(async (auth, request) => {
   // Cookie-based Intelligent Routing (for root and /route)
   // ============================================================================
   // Check if user has a userType cookie and redirect accordingly
-  // This avoids API calls during build time which caused Vercel timeouts
+  // ALWAYS verify against database - cookie alone is not trustworthy
+  // This prevents loops from stale cookies when DB records are deleted
   if (userId && shouldIntelligentRoute(request)) {
-    const userTypeCookie = request.cookies.get("userType")?.value;
-    if (userTypeCookie) {
-      // User has a userType cookie - redirect to their portal
-      const portalMap: Record<string, string> = {
-        student: "/student",
-        teacher: "/teacher",
-        parent: "/parent",
-        counselor: "/counselor",
-        "school-admin": "/school-admin",
-        admin: "/admin",
-        ministry: "/ministry",
-      };
-      const redirectPath = portalMap[userTypeCookie];
-      if (redirectPath && request.nextUrl.pathname !== redirectPath) {
-        return NextResponse.redirect(new URL(redirectPath, request.url));
+    try {
+      const userRecords = await db
+        .select({
+          type: users.type,
+          onboardingStatus: users.onboardingStatus
+        })
+        .from(users)
+        .where(eq(users.clerkUserId, userId))
+        .limit(1);
+
+      if (userRecords.length === 0) {
+        // No user in database - redirect to setup regardless of cookie
+        // Clear any stale cookie
+        const redirectResponse = NextResponse.redirect(new URL("/setup/unified", request.url));
+        redirectResponse.cookies.delete("userType");
+        return redirectResponse;
+      }
+
+      const { type, onboardingStatus } = userRecords[0];
+
+      // If user is restricted, pending approval, or pending enrollment, redirect to pending-approval page
+      if (onboardingStatus === "restricted" ||
+          onboardingStatus === "pending_approval" ||
+          onboardingStatus === "pending_enrollment") {
+        const redirectResponse = NextResponse.redirect(new URL("/pending-approval", request.url));
+        redirectResponse.cookies.delete("userType");
+        return redirectResponse;
+      }
+
+      // If user exists with valid type, set cookie and redirect to their portal
+      if (type) {
+        const portalMap: Record<string, string> = {
+          student: "/student",
+          teacher: "/teacher",
+          parent: "/parent",
+          counselor: "/counselor",
+          "school-admin": "/school-admin",
+          admin: "/admin",
+          ministry: "/ministry",
+        };
+        const redirectPath = portalMap[type];
+        if (redirectPath && request.nextUrl.pathname !== redirectPath) {
+          // Set the cookie for future requests (sync with DB truth)
+          const redirectResponse = NextResponse.redirect(new URL(redirectPath, request.url));
+          redirectResponse.cookies.set("userType", type, {
+            httpOnly: false,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            maxAge: 60 * 60 * 24 * 30, // 30 days
+          });
+          return redirectResponse;
+        }
+      }
+    } catch (error) {
+      // On database error, fail open and let the page handle routing
+      const isDevelopment = process.env.NODE_ENV === "development";
+      if (isDevelopment) {
+        console.error("[Middleware] Intelligent routing database check failed:", error);
       }
     }
-    // If no userType cookie, let the page handle routing (via /api/auth/set-role)
   }
 
   // ============================================================================
@@ -234,6 +279,38 @@ export default clerkMiddleware(async (auth, request) => {
     if (!userId) {
       // Clerk will redirect to sign in automatically
       return;
+    }
+
+    // Check if user has pending approval status - redirect to pending page
+    // This applies to all portal routes except the pending-approval page itself
+    if (!request.nextUrl.pathname.startsWith("/pending-approval")) {
+      try {
+        const userRecords = await db
+          .select({
+            onboardingStatus: users.onboardingStatus
+          })
+          .from(users)
+          .where(eq(users.clerkUserId, userId))
+          .limit(1);
+
+        if (userRecords.length > 0) {
+          const { onboardingStatus } = userRecords[0];
+          // Redirect pending users to pending-approval page
+          if (onboardingStatus === "pending_approval" || onboardingStatus === "pending_enrollment") {
+            return NextResponse.redirect(new URL("/pending-approval", request.url));
+          }
+          // Redirect restricted users to setup
+          if (onboardingStatus === "restricted") {
+            return NextResponse.redirect(new URL("/setup/unified", request.url));
+          }
+        }
+      } catch (error) {
+        // On DB error, fail open and let the page handle it
+        const isDevelopment = process.env.NODE_ENV === "development";
+        if (isDevelopment) {
+          console.error("[Middleware] Pending approval check failed:", error);
+        }
+      }
     }
   }
 

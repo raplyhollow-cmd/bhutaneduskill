@@ -16,7 +16,7 @@ import { logger } from "@/lib/logger";
 import { db } from "@/lib/db";
 import { users, classes, enrollments, subjects, homework, attendance } from "@/lib/db/schema";
 import { eq, and, desc, inArray } from "drizzle-orm";
-import { createApiRoute, getAuth } from "@/lib/api/route-handler";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, errorResponse } from "@/lib/api/response-helpers";
 
 // ============================================================================
@@ -24,20 +24,15 @@ import { successResponse, errorResponse } from "@/lib/api/response-helpers";
 // ============================================================================
 
 export const GET = createApiRoute(
-  async (request: NextRequest) => {
-    const auth = getAuth(request);
-    if (!auth) {
-      return errorResponse("Unauthorized", 401);
-    }
-
-    const { user: currentUser } = auth;
+  async (request: NextRequest, auth) => {
+    const { userId, user } = auth;
 
     try {
       // Get student's enrollments using db.select()
       const studentEnrollmentsData = await db
         .select()
         .from(enrollments)
-        .where(eq(enrollments.studentId, currentUser.id))
+        .where(eq(enrollments.studentId, userId))
         .orderBy(desc(enrollments.createdAt));
 
       if (!studentEnrollmentsData || studentEnrollmentsData.length === 0) {
@@ -53,9 +48,9 @@ export const GET = createApiRoute(
         .from(classes)
         .where(inArray(classes.id, classIds));
 
-      // Get teacher IDs from classes
+      // Get class teacher IDs from classes
       const teacherIds = classData
-        .map(c => c.teacherId)
+        .map(c => c.classTeacherId)
         .filter((id): id is string => id !== null && id !== undefined);
 
       // Get teacher details using db.select()
@@ -74,7 +69,7 @@ export const GET = createApiRoute(
           const cls = classData.find(c => c.id === enrollmentItem.classId);
           if (!cls) return null;
 
-          const teacher = cls.teacherId ? teacherMap.get(cls.teacherId) : null;
+          const teacher = cls.classTeacherId ? teacherMap.get(cls.classTeacherId) : null;
 
           // Get classmates count (students in same class) using db.select()
           const classmatesData = await db
@@ -99,7 +94,7 @@ export const GET = createApiRoute(
             .from(attendance)
             .where(
               and(
-                eq(attendance.studentId, currentUser.id),
+                eq(attendance.studentId, userId),
                 eq(attendance.classId, cls.id)
               )
             )

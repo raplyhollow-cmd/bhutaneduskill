@@ -4,7 +4,9 @@
  * GET /api/teacher/pending-students - Get pending student applications for teacher's classes
  *
  * Returns students who have applied to the school and are awaiting approval,
- * filtered to only show students in grades that the teacher teaches.
+ * filtered to only show students for classes where this teacher is assigned as class teacher.
+ *
+ * CLASS-BASED APPROVAL: Only the assigned class teacher can approve students
  */
 
 import { NextRequest } from "next/server";
@@ -20,12 +22,11 @@ export const GET = createApiRoute(
     const { userId, user } = auth;
 
     try {
-      // Get teacher's info including their assigned classes
+      // Get teacher's school
       const teacherInfo = await db
         .select({
           id: users.id,
           schoolId: users.schoolId,
-          classGrade: users.classGrade,
         })
         .from(users)
         .where(eq(users.id, userId))
@@ -37,36 +38,39 @@ export const GET = createApiRoute(
 
       const teacher = teacherInfo[0];
 
-      // Get all classes taught by this teacher (based on grade)
+      // Get all classes where this teacher is assigned as the CLASS TEACHER
       const teacherClasses = await db
         .select({
           id: classes.id,
           grade: classes.grade,
+          section: classes.section,
           name: classes.name,
         })
         .from(classes)
         .where(
           and(
             eq(classes.schoolId, teacher.schoolId!),
-            // Match teacher's assigned grade (if set)
-            teacher.classGrade ? eq(classes.grade, parseInt(teacher.classGrade)) : undefined
+            eq(classes.classTeacherId, userId) // Only classes where teacher is class teacher
           )
         );
 
       if (teacherClasses.length === 0) {
-        // Teacher has no classes assigned yet
+        // Teacher is not assigned as a class teacher to any class
         return successResponse({
           success: true,
           students: [],
-          message: "No classes assigned to you yet",
+          message: "You are not assigned as a class teacher to any class",
         });
       }
 
-      // Get grades this teacher teaches
-      const gradesTaught = teacherClasses.map((c) => c.grade);
+      // Build list of (grade, section) pairs this teacher can approve
+      const classCombinations = teacherClasses.map((c) => ({
+        grade: c.grade,
+        section: c.section?.toUpperCase(),
+      }));
 
-      // Get pending students for these grades
-      // Students with onboardingStatus = 'pending_enrollment' and matching grade
+      // Get pending students who applied to this teacher's classes
+      // Check both studentApplications (formal applications) and users (direct signup via wizard)
       const pendingStudents = await db
         .select({
           id: users.id,
@@ -88,11 +92,16 @@ export const GET = createApiRoute(
           )
         );
 
-      // Filter to only show students whose grade matches teacher's classes
+      // Filter to only show students whose grade+section matches this teacher's assigned classes
       const filteredStudents = pendingStudents
         .filter((student) => {
           const studentGrade = parseInt(student.classGrade || "0");
-          return gradesTaught.includes(studentGrade);
+          const studentSection = student.section?.toUpperCase();
+
+          // Check if student's grade+section matches any of this teacher's classes
+          return classCombinations.some(
+            (combo) => combo.grade === studentGrade && combo.section === studentSection
+          );
         })
         .map((student) => ({
           id: student.id,
@@ -104,15 +113,17 @@ export const GET = createApiRoute(
           applicationId: student.id, // Using user ID as application ID
         }));
 
-      logger.info("Teacher fetched pending students", {
+      logger.info("Teacher fetched pending students for their classes", {
         teacherId: userId,
         schoolId: teacher.schoolId,
+        assignedClasses: teacherClasses.map((c) => c.name),
         count: filteredStudents.length,
       });
 
       return successResponse({
         success: true,
         students: filteredStudents,
+        assignedClasses: teacherClasses.map((c) => c.name),
       });
     } catch (error) {
       logger.apiError(error, { route: "/api/teacher/pending-students", method: "GET" });

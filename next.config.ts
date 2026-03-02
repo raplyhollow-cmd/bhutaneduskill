@@ -53,7 +53,7 @@ const nextConfig: NextConfig = {
       // Cache webpack results for faster rebuilds
       config.cache = {
         type: 'filesystem',
-        cacheDirectory: '.next/cache/webpack',
+        cacheDirectory: process.cwd() + '/.next/cache/webpack',
       };
     }
     return config;

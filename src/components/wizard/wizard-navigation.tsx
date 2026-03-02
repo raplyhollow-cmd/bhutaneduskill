@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 interface WizardNavigationProps {
   currentStep: number;
@@ -37,39 +38,27 @@ export function WizardNavigation({
   const isFirstStep = currentStep === 1;
 
   return (
-    <div className="flex items-center justify-between mt-8 pt-6 border-t border-slate-200">
-      <div className="flex items-center gap-3">
+    <div className="flex items-center justify-between mt-6 pt-5 border-t border-gray-200/60">
+      <div className="flex items-center gap-2">
         {!isFirstStep && canGoBack && (
           <motion.div
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
           >
             <Button
-              variant="outline"
+              variant="ghost"
               onClick={onBack}
               disabled={isNextLoading}
-              className="border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400"
+              className="text-gray-500 hover:text-gray-900 hover:bg-gray-100/80"
             >
-              <ArrowLeft className="w-4 h-4 mr-2" />
+              <ArrowLeft className="w-4 h-4 mr-1" />
               {backLabel || "Back"}
             </Button>
           </motion.div>
         )}
       </div>
 
-      <div className="flex items-center gap-3">
-        {showSkip && onSkip && !isLastStep && (
-          <Button
-            variant="ghost"
-            onClick={onSkip}
-            disabled={isNextLoading}
-            type="button"
-            className="text-slate-500 hover:text-slate-700 hover:bg-slate-100"
-          >
-            {skipLabel}
-          </Button>
-        )}
-
+      <div className="flex items-center gap-2">
         <motion.div
           initial={{ opacity: 0, x: 10 }}
           animate={{ opacity: 1, x: 0 }}
@@ -78,7 +67,10 @@ export function WizardNavigation({
             onClick={onNext}
             disabled={!canGoNext || isNextLoading}
             type="submit"
-            className="min-w-[140px] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white border-0 shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 transition-all duration-200"
+            className={cn(
+              "min-w-[120px] bg-gray-900 text-white hover:bg-gray-800 border-0 shadow-sm shadow-gray-900/10",
+              "font-medium transition-all duration-200"
+            )}
           >
             {isNextLoading ? (
               <>
@@ -88,7 +80,7 @@ export function WizardNavigation({
             ) : (
               <>
                 {nextLabel || (isLastStep ? "Complete" : "Continue")}
-                {!isLastStep && <ArrowRight className="w-4 h-4 ml-2" />}
+                {!isLastStep && <ArrowRight className="w-4 h-4 ml-1" />}
               </>
             )}
           </Button>

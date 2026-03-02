@@ -150,10 +150,11 @@ export type RealtimeEventName = typeof RealtimeEvents[keyof typeof RealtimeEvent
 
 /**
  * Unbind all events and unsubscribe from a channel
+ * Note: Pusher channels use unbind() without arguments to unbind all events
  */
 export function cleanupChannel(channel: unknown): void {
-  const ch = channel as { unbindAll: () => void; unsubscribe: () => void };
-  ch.unbindAll();
+  const ch = channel as { unbind: () => void; unsubscribe: () => void };
+  ch.unbind(); // Unbind all events (no arguments = unbind all)
   ch.unsubscribe();
 }
 

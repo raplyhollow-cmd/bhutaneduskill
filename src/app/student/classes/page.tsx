@@ -75,8 +75,10 @@ export default function StudentClassesPage() {
   // Fetch classes on mount
   useEffect(() => {
     fetch("/api/student/classes")
-      .then((res) => res.json() as Promise<ClassesResponse>)
-      .then((data) => {
+      .then((res) => res.json())
+      .then((response) => {
+        // successResponse wraps data in a "data" property
+        const data = response.data || response;
         if (data.error) {
           setError(data.error);
         } else if (data.classes) {

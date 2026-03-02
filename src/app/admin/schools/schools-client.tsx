@@ -1,35 +1,80 @@
 "use client";
 
-import { useState } from "react";
+/**
+ * PLATFORM ADMIN - SCHOOLS MANAGEMENT
+ *
+ * Ultra-luxury intelligent inline-editing grid design:
+ * - Inline editable fields (click to edit, no panels)
+ * - School type selector (inline change)
+ * - Status toggle (click to toggle, no confirmation)
+ * - Quick action menu (three-dot with all actions)
+ * - Keyboard navigation (arrows, enter, space, escape)
+ * - Optimistic UI (instant feedback, sync in background)
+ * - Bulk actions with conditional bar
+ * - Custom grid table (12-column, NOT HTML table)
+ */
+
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { PremiumCard, PremiumCardHeader, PremiumCardTitle, PremiumCardDescription, PremiumCardContent } from "@/components/admin/premium-card";
+import { InlineEditText } from "@/components/admin/inline-edit-text";
+import { QuickActionMenu } from "@/components/admin/quick-action-menu";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ExpressAddModal, useExpressAdd } from "@/components/ui/express-add-modal";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { TableSkeleton } from "@/components/ui/skeleton/table-skeleton";
-import { StatCardSkeleton } from "@/components/ui/skeleton/card-skeleton";
+import { ExpressAddModal, useExpressAdd } from "@/components/ui/express-add-modal";
 import {
   Building2,
   Users,
   GraduationCap,
   Plus,
   Search,
-  MapPin,
+  Sparkles,
+  X,
+  Check,
+  Square,
+  Trash2,
+  MoreHorizontal,
+  Loader2 as Spinner,
+  AlertCircle,
+  ChevronDown,
   Eye,
   Edit,
-  Trash2,
-  CheckCircle,
-  AlertTriangle,
-  XCircle,
-  Clock,
-  TrendingUp,
-  Sparkles,
   Upload,
+  MapPin,
+  CheckCircle,
+  Ban,
+  Clock,
   type LucideIcon,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 import { AddSchoolSlideIn } from "@/components/admin/add-school-slide-in";
 import { BulkImportSchoolsModal } from "@/components/admin/bulk-import-schools-modal";
-import { cn } from "@/lib/utils";
 
 interface School {
   id: string;
@@ -44,7 +89,7 @@ interface School {
   tenantId: string;
   tenantName: string;
   districtId: string;
-  city: string;  // Changed from districtName
+  city: string;
   isActive?: boolean;
   stats: {
     students: number;
@@ -62,7 +107,24 @@ interface SchoolsClientProps {
   schoolTypes: Record<string, number>;
 }
 
-type FilterStatus = "all" | "active" | "pending" | "suspended";
+// School type options for dropdown
+const schoolTypeOptions = [
+  { value: "HSS", label: "Higher Secondary", color: "bg-blue-100 text-blue-700 border-blue-200" },
+  { value: "MSS", label: "Middle Secondary", color: "bg-green-100 text-green-700 border-green-200" },
+  { value: "LSS", label: "Lower Secondary", color: "bg-purple-100 text-purple-700 border-purple-200" },
+  { value: "Primary", label: "Primary", color: "bg-orange-100 text-orange-700 border-orange-200" },
+  { value: "Private", label: "Private", color: "bg-pink-100 text-pink-700 border-pink-200" },
+];
+
+// Status filter chips
+const statusChips = [
+  { value: "all", label: "All Schools", icon: Building2 },
+  { value: "active", label: "Active", icon: CheckCircle },
+  { value: "inactive", label: "Inactive", icon: Ban },
+  { value: "pending", label: "Pending", icon: Clock },
+];
+
+type FilterStatus = "all" | "active" | "pending" | "inactive";
 
 export function SchoolsClient({
   schoolsWithStats,
@@ -73,61 +135,301 @@ export function SchoolsClient({
   schoolTypes,
 }: SchoolsClientProps) {
   const router = useRouter();
-  const [isSlideInOpen, setIsSlideInOpen] = useState(false);
-  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
-  const [editingSchool, setEditingSchool] = useState<School | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<School | null>(null);
+
+  // State
+  const [schools, setSchools] = useState<School[]>(schoolsWithStats);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [isToggling, setIsToggling] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Search and filter state
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<FilterStatus>("all");
   const [typeFilter, setTypeFilter] = useState("");
 
-  // ExpressAddModal hook for quick school add
+  // Modal state
+  const [isSlideInOpen, setIsSlideInOpen] = useState(false);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
+  const [editingSchool, setEditingSchool] = useState<School | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<School | null>(null);
+
+  // Selection state
+  const [selectedSchools, setSelectedSchools] = useState<Set<string>>(new Set());
+
+  // Keyboard navigation state
+  const [focusedIndex, setFocusedIndex] = useState<number>(-1);
+
+  // Quick add modal
   const quickAdd = useExpressAdd();
 
-  const handleModalSuccess = () => {
+  // Calculate filtered schools
+  const filteredSchools = schools.filter((school) => {
+    const matchesSearch =
+      school.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      school.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      school.city?.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesType = !typeFilter || school.schoolType === typeFilter;
+
+    const matchesStatus =
+      statusFilter === "all" ||
+      (statusFilter === "active" && school.isActive !== false) ||
+      (statusFilter === "inactive" && school.isActive === false) ||
+      (statusFilter === "pending" && school.isActive === false);
+
+    return matchesSearch && matchesType && matchesStatus;
+  });
+
+  // Reset focus when filtered schools change
+  useEffect(() => {
+    setFocusedIndex(-1);
+  }, [filteredSchools]);
+
+  // Refresh data
+  const refreshData = () => {
     router.refresh();
   };
 
-  const handleEditClick = (school: School) => {
-    setEditingSchool(school);
-    setIsSlideInOpen(true);
-  };
+  // Toggle school active status with optimistic update
+  const toggleStatus = async (schoolId: string) => {
+    const school = schools.find((s) => s.id === schoolId);
+    if (!school) return;
 
-  const handleCloseSlideIn = () => {
-    setIsSlideInOpen(false);
-    setEditingSchool(null);
-  };
+    const newStatus = school.isActive === false ? true : false;
 
-  const handleDeleteClick = (school: School) => {
-    setDeleteConfirm(school);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!deleteConfirm) return;
+    // Optimistic update
+    setSchools((prev) =>
+      prev.map((s) => (s.id === schoolId ? { ...s, isActive: newStatus } : s))
+    );
 
     try {
-      const response = await fetch(`/api/schools/${deleteConfirm.id}`, {
-        method: "DELETE",
+      const response = await fetch(`/api/schools/${schoolId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: newStatus }),
       });
 
-      if (response.ok) {
-        setDeleteConfirm(null);
-        router.refresh();
-      } else {
-        const data = await response.json();
-        alert(data.error || "Failed to delete school");
+      if (!response.ok) {
+        throw new Error("Failed to update status");
       }
-    } catch (error) {
-      alert("Network error. Please try again.");
+    } catch (err) {
+      // Rollback on error
+      setSchools((prev) =>
+        prev.map((s) => (s.id === schoolId ? { ...s, isActive: !newStatus } : s))
+      );
+      logger.error(err, { action: "toggleStatus", schoolId });
+      setError("Failed to update status. Please try again.");
     }
   };
 
-  const handleDeleteCancel = () => {
-    setDeleteConfirm(null);
+  // Update school code with inline edit
+  const updateSchoolCode = async (schoolId: string, newCode: string) => {
+    const school = schools.find((s) => s.id === schoolId);
+    if (!school) return;
+
+    const oldCode = school.code;
+
+    // Optimistic update
+    setSchools((prev) =>
+      prev.map((s) => (s.id === schoolId ? { ...s, code: newCode } : s))
+    );
+
+    try {
+      const response = await fetch(`/api/schools/${schoolId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: newCode }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update code");
+      }
+    } catch (err) {
+      // Rollback
+      setSchools((prev) =>
+        prev.map((s) => (s.id === schoolId ? { ...s, code: oldCode } : s))
+      );
+      logger.error(err, { action: "updateSchoolCode", schoolId });
+      throw err;
+    }
   };
 
-  // Quick add school handler - creates school with minimal info
-  const handleQuickAddSchool = async (name: string): Promise<{ success: true; data?: unknown } | { success: false; error: string }> => {
+  // Update school name with inline edit
+  const updateSchoolName = async (schoolId: string, newName: string) => {
+    const school = schools.find((s) => s.id === schoolId);
+    if (!school) return;
+
+    const oldName = school.name;
+
+    // Optimistic update
+    setSchools((prev) =>
+      prev.map((s) => (s.id === schoolId ? { ...s, name: newName } : s))
+    );
+
+    try {
+      const response = await fetch(`/api/schools/${schoolId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newName }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update name");
+      }
+    } catch (err) {
+      // Rollback
+      setSchools((prev) =>
+        prev.map((s) => (s.id === schoolId ? { ...s, name: oldName } : s))
+      );
+      logger.error(err, { action: "updateSchoolName", schoolId });
+      throw err;
+    }
+  };
+
+  // Update contact email with inline edit
+  const updateContactEmail = async (schoolId: string, newEmail: string) => {
+    const school = schools.find((s) => s.id === schoolId);
+    if (!school) return;
+
+    const oldEmail = school.contactEmail;
+
+    // Optimistic update
+    setSchools((prev) =>
+      prev.map((s) => (s.id === schoolId ? { ...s, contactEmail: newEmail } : s))
+    );
+
+    try {
+      const response = await fetch(`/api/schools/${schoolId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contactEmail: newEmail }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update email");
+      }
+    } catch (err) {
+      // Rollback
+      setSchools((prev) =>
+        prev.map((s) => (s.id === schoolId ? { ...s, contactEmail: oldEmail } : s))
+      );
+      logger.error(err, { action: "updateContactEmail", schoolId });
+      throw err;
+    }
+  };
+
+  // Update school type with dropdown
+  const updateSchoolType = async (schoolId: string, newType: string) => {
+    const school = schools.find((s) => s.id === schoolId);
+    if (!school) return;
+
+    const oldType = school.schoolType;
+
+    // Optimistic update
+    setSchools((prev) =>
+      prev.map((s) => (s.id === schoolId ? { ...s, schoolType: newType } : s))
+    );
+
+    try {
+      const response = await fetch(`/api/schools/${schoolId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ schoolType: newType }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to update type");
+      }
+    } catch (err) {
+      // Rollback
+      setSchools((prev) =>
+        prev.map((s) => (s.id === schoolId ? { ...s, schoolType: oldType } : s))
+      );
+      logger.error(err, { action: "updateSchoolType", schoolId });
+      throw err;
+    }
+  };
+
+  // Delete school
+  const deleteSchool = async (schoolId: string) => {
+    setIsDeleting(schoolId);
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/schools/${schoolId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete school");
+      }
+
+      // Remove from local state
+      setSchools((prev) => prev.filter((s) => s.id !== schoolId));
+      setDeleteConfirm(null);
+    } catch (err) {
+      logger.error(err, { action: "deleteSchool", schoolId });
+      setError("Failed to delete school. Please try again.");
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
+  // Toggle selection
+  const toggle = useCallback((schoolId: string) => {
+    setSelectedSchools((prev) => {
+      const next = new Set(prev);
+      if (next.has(schoolId)) {
+        next.delete(schoolId);
+      } else {
+        next.add(schoolId);
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleAll = () => {
+    if (selectedSchools.size === filteredSchools.length) {
+      setSelectedSchools(new Set());
+    } else {
+      setSelectedSchools(new Set(filteredSchools.map((s) => s.id)));
+    }
+  };
+
+  const allSelected = filteredSchools.length > 0 && selectedSchools.size === filteredSchools.length;
+
+  // Bulk actions
+  const bulkAction = async (action: string, value?: any) => {
+    try {
+      if (action === "delete") {
+        if (!confirm(`Delete ${selectedSchools.size} selected schools? This cannot be undone.`)) return;
+        await Promise.all(
+          Array.from(selectedSchools).map((id) => fetch(`/api/schools/${id}`, { method: "DELETE" }))
+        );
+      } else if (action === "status") {
+        await Promise.all(
+          Array.from(selectedSchools).map((id) =>
+            fetch(`/api/schools/${id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ isActive: value }),
+            })
+          )
+        );
+      }
+      setSelectedSchools(new Set());
+      refreshData();
+    } catch (err) {
+      logger.error(err, { event: "bulkAction", actionType: action });
+      setError("Failed to complete bulk action");
+    }
+  };
+
+  // Quick add school handler
+  const handleQuickAddSchool = async (
+    name: string
+  ): Promise<{ success: true; data?: unknown } | { success: false; error: string }> => {
     try {
       const response = await fetch("/api/schools", {
         method: "POST",
@@ -140,12 +442,12 @@ export function SchoolsClient({
           contactEmail: "contact@school.edu.bt",
           contactPhone: "+975",
           address: "Bhutan",
-          districtId: null, // Will need to be set later
+          districtId: null,
         }),
       });
 
       if (response.ok) {
-        router.refresh();
+        refreshData();
         return { success: true };
       } else {
         const data = await response.json();
@@ -156,403 +458,494 @@ export function SchoolsClient({
     }
   };
 
-  // Filter schools
-  const filteredSchools = schoolsWithStats.filter((school) => {
-    const matchesSearch =
-      school.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      school.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      school.city?.toLowerCase().includes(searchQuery.toLowerCase());
+  // Handle modal success
+  const handleModalSuccess = () => {
+    refreshData();
+  };
 
-    const matchesType = !typeFilter || school.schoolType === typeFilter;
+  // Handle edit click
+  const handleEditClick = (school: School) => {
+    setEditingSchool(school);
+    setIsSlideInOpen(true);
+  };
 
-    const matchesStatus =
-      statusFilter === "all" ||
-      (statusFilter === "active" && school.isActive !== false) ||
-      (statusFilter === "pending" && school.isActive === false) ||
-      (statusFilter === "suspended" && school.isActive === false);
+  // Handle delete click
+  const handleDeleteClick = (school: School) => {
+    setDeleteConfirm(school);
+  };
 
-    return matchesSearch && matchesType && matchesStatus;
-  });
-
-  // Calculate stats for filters
-  const activeSchools = schoolsWithStats.filter((s) => s.isActive !== false).length;
-  const pendingSchools = schoolsWithStats.filter((s) => s.isActive === false).length;
-
-  const filterChips: { key: FilterStatus; label: string; count: number; icon: LucideIcon }[] = [
-    { key: "all", label: "All Schools", count: totalSchools, icon: Building2 },
-    { key: "active", label: "Active", count: activeSchools, icon: CheckCircle },
-    { key: "pending", label: "Pending", count: pendingSchools, icon: Clock },
-    { key: "suspended", label: "Suspended", count: 0, icon: XCircle },
-  ];
-
+  // Get school type color
   const getSchoolTypeColor = (type: string) => {
-    const colors: Record<string, string> = {
-      HSS: "bg-blue-100 text-blue-700 border-blue-200",
-      MSS: "bg-green-100 text-green-700 border-green-200",
-      LSS: "bg-purple-100 text-purple-700 border-purple-200",
-      Primary: "bg-orange-100 text-orange-700 border-orange-200",
-      Private: "bg-pink-100 text-pink-700 border-pink-200",
-    };
-    return colors[type] || "bg-gray-100 text-gray-700 border-gray-200";
+    const option = schoolTypeOptions.find((opt) => opt.value === type);
+    return option?.color || "bg-gray-100 text-gray-700 border-gray-200";
   };
 
-  const getStatusBadge = (school: School) => {
-    if (school.isActive === false) {
-      return (
-        <Badge className="bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-50">
-          <Clock className="w-3 h-3 mr-1" />
-          Pending
-        </Badge>
-      );
-    }
-    return (
-      <Badge className="bg-green-50 text-green-700 border-green-200 hover:bg-green-50">
-        <CheckCircle className="w-3 h-3 mr-1" />
-        Active
-      </Badge>
-    );
+  // Get school initials for avatar
+  const getSchoolInitials = (name: string) => {
+    return name.substring(0, 2).toUpperCase();
   };
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      if (filteredSchools.length === 0) return;
+
+      const focusedSchoolId =
+        focusedIndex >= 0 && focusedIndex < filteredSchools.length
+          ? filteredSchools[focusedIndex]?.id
+          : null;
+
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault();
+          setFocusedIndex((prev) => (prev < filteredSchools.length - 1 ? prev + 1 : prev));
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          setFocusedIndex((prev) => (prev > 0 ? prev - 1 : -1));
+          break;
+        case "Enter":
+          if (focusedIndex >= 0 && focusedSchoolId) {
+            const school = schools.find((s) => s.id === focusedSchoolId);
+            if (school) {
+              router.push(`/admin/schools/${focusedSchoolId}`);
+            }
+          }
+          break;
+        case " ":
+          if (focusedIndex >= 0 && focusedSchoolId) {
+            e.preventDefault();
+            toggle(focusedSchoolId);
+          }
+          break;
+        case "Escape":
+          setFocusedIndex(-1);
+          if (selectedSchools.size > 0) {
+            setSelectedSchools(new Set());
+          }
+          break;
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [filteredSchools, focusedIndex, schools, selectedSchools.size, toggle, router]);
+
+  // Calculate stats for status chips
+  const activeSchools = schools.filter((s) => s.isActive !== false).length;
+  const pendingSchools = schools.filter((s) => s.isActive === false).length;
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex items-center justify-between pb-3">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Schools Management
-          </h1>
-          <p className="text-gray-600">
-            Manage all schools and tenants on the platform
-          </p>
+          <h1 className="text-lg font-semibold text-gray-900">Schools</h1>
+          <p className="text-xs text-gray-500">{totalSchools} total</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <Button
             variant="outline"
-            onClick={quickAdd.open}
-            className="shadow-sm hover:shadow-md transition-all"
+            size="sm"
+            onClick={refreshData}
+            disabled={isLoading}
+            className="h-8 text-xs"
           >
-            <Sparkles className="w-4 h-4 mr-2" />
+            {isLoading ? (
+              <Spinner className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+            ) : (
+              <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+            )}
+            Refresh
+          </Button>
+          <Button variant="outline" size="sm" onClick={quickAdd.open} className="h-8 text-xs">
+            <Sparkles className="w-3.5 h-3.5 mr-1.5" />
             Quick Add
           </Button>
           <Button
             variant="outline"
+            size="sm"
             onClick={() => setIsBulkImportOpen(true)}
-            className="shadow-sm hover:shadow-md transition-all"
+            className="h-8 text-xs"
           >
-            <Upload className="w-4 h-4 mr-2" />
+            <Upload className="w-3.5 h-3.5 mr-1.5" />
             Bulk Import
           </Button>
           <Button
+            size="sm"
             onClick={() => {
               setEditingSchool(null);
               setIsSlideInOpen(true);
             }}
-            style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
-            className="text-white shadow-lg shadow-pink-500/30 hover:shadow-xl hover:shadow-pink-500/40 transition-all"
+            className="h-8 bg-pink-600 hover:bg-pink-700 text-xs"
           >
-            <Plus className="w-4 h-4 mr-2" />
+            <Plus className="w-3.5 h-3.5 mr-1.5" />
             Add School
           </Button>
         </div>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <PremiumCard className="relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-pink-500/10 to-pink-600/5 rounded-bl-full" />
-          <div className="relative">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-500">Total Schools</span>
-              <div className="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center">
-                <Building2 className="w-4 h-4 text-pink-600" />
-              </div>
-            </div>
-            <div className="text-3xl font-bold text-gray-900 mb-1">{totalSchools}</div>
-            <div className="flex items-center gap-1 text-xs text-green-600">
-              <TrendingUp className="w-3 h-3" />
-              <span>{activeSchools} active</span>
-            </div>
-          </div>
-        </PremiumCard>
+      {/* Error Display */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg flex items-center gap-3 mb-3">
+          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <span className="text-sm flex-1">{error}</span>
+          <button
+            onClick={() => setError(null)}
+            className="text-red-500 hover:text-red-700"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
-        <PremiumCard className="relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-blue-600/5 rounded-bl-full" />
-          <div className="relative">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-500">Total Students</span>
-              <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                <Users className="w-4 h-4 text-blue-600" />
-              </div>
-            </div>
-            <div className="text-3xl font-bold text-gray-900 mb-1">{totalStudents.toLocaleString()}</div>
-            <div className="text-xs text-gray-500">Across all schools</div>
+      {/* Bulk Action Bar - Conditional */}
+      {selectedSchools.size > 0 && (
+        <div className="flex items-center justify-between px-3 py-2 bg-pink-50 border border-pink-200 rounded-lg mb-3">
+          <span className="text-sm font-medium text-pink-900">{selectedSchools.size} selected</span>
+          <div className="flex items-center gap-1">
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs text-pink-700 hover:bg-pink-100"
+              onClick={() => setSelectedSchools(new Set())}
+            >
+              <X className="w-3.5 h-3.5 mr-1" />
+              Clear
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs text-pink-700 hover:bg-pink-100"
+              onClick={() => bulkAction("status", true)}
+            >
+              <CheckCircle className="w-3.5 h-3.5 mr-1" />
+              Enable
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs text-pink-700 hover:bg-pink-100"
+              onClick={() => bulkAction("status", false)}
+            >
+              <Ban className="w-3.5 h-3.5 mr-1" />
+              Disable
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-xs text-red-600 hover:bg-red-50"
+              onClick={() => bulkAction("delete")}
+            >
+              <Trash2 className="w-3.5 h-3.5 mr-1" />
+              Delete
+            </Button>
           </div>
-        </PremiumCard>
+        </div>
+      )}
 
-        <PremiumCard className="relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/10 to-purple-600/5 rounded-bl-full" />
-          <div className="relative">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-500">Total Teachers</span>
-              <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
-                <GraduationCap className="w-4 h-4 text-purple-600" />
-              </div>
-            </div>
-            <div className="text-3xl font-bold text-gray-900 mb-1">{totalTeachers.toLocaleString()}</div>
-            <div className="text-xs text-gray-500">Across all schools</div>
+      {/* Stats Overview - Compact */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+        <div className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-pink-200 transition-colors">
+          <div className="p-2 rounded-lg bg-pink-50">
+            <Building2 className="w-4 h-4 text-pink-600" />
           </div>
-        </PremiumCard>
-
-        <PremiumCard className="relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-green-500/10 to-green-600/5 rounded-bl-full" />
-          <div className="relative">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-500">Counselors</span>
-              <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
-                <Users className="w-4 h-4 text-green-600" />
-              </div>
-            </div>
-            <div className="text-3xl font-bold text-gray-900 mb-1">{totalCounselors}</div>
-            <div className="text-xs text-gray-500">Assigned to schools</div>
+          <div className="min-w-0">
+            <p className="text-xs text-gray-500">Schools</p>
+            <p className="text-sm font-semibold text-pink-600">{totalSchools}</p>
           </div>
-        </PremiumCard>
+        </div>
+        <div className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-pink-200 transition-colors">
+          <div className="p-2 rounded-lg bg-blue-50">
+            <Users className="w-4 h-4 text-blue-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-gray-500">Students</p>
+            <p className="text-sm font-semibold text-blue-600">{totalStudents.toLocaleString()}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-pink-200 transition-colors">
+          <div className="p-2 rounded-lg bg-purple-50">
+            <GraduationCap className="w-4 h-4 text-purple-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-gray-500">Teachers</p>
+            <p className="text-sm font-semibold text-purple-600">{totalTeachers.toLocaleString()}</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-pink-200 transition-colors">
+          <div className="p-2 rounded-lg bg-green-50">
+            <CheckCircle className="w-4 h-4 text-green-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-gray-500">Active</p>
+            <p className="text-sm font-semibold text-green-600">{activeSchools}</p>
+          </div>
+        </div>
       </div>
 
-      {/* Filter Chips */}
-      <div className="flex flex-wrap gap-2">
-        {filterChips.map((chip) => {
-          const Icon = chip.icon;
-          const isActive = statusFilter === chip.key;
-          return (
-            <button
-              key={chip.key}
-              onClick={() => setStatusFilter(chip.key)}
-              className={cn(
-                "inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200",
-                isActive
-                  ? "bg-pink-600 text-white shadow-md shadow-pink-500/30"
-                  : "bg-white text-gray-600 border border-gray-200 hover:border-pink-300 hover:bg-pink-50"
-              )}
-            >
-              <Icon className="w-4 h-4" />
-              {chip.label}
-              <Badge
-                variant="outline"
-                className={cn(
-                  "ml-1 text-xs",
-                  isActive
-                    ? "bg-white/20 text-white border-white/30"
-                    : "bg-gray-100 text-gray-600 border-gray-200"
-                )}
-              >
-                {chip.count}
-              </Badge>
-            </button>
-          );
-        })}
+      {/* Toolbar */}
+      <div className="flex items-center gap-2 pb-2">
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Input
+            placeholder="Search schools..."
+            className="pl-8 h-9 text-sm border-gray-200"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-[160px] h-9 text-sm border-gray-200">
+            <SelectValue placeholder="School Type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            {schoolTypeOptions.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => setStatusFilter(v as FilterStatus)}
+        >
+          <SelectTrigger className="w-[140px] h-9 text-sm border-gray-200">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            {statusChips.map((chip) => {
+              const Icon = chip.icon;
+              return (
+                <SelectItem key={chip.value} value={chip.value}>
+                  <div className="flex items-center gap-2">
+                    <Icon className="w-3.5 h-3.5" />
+                    {chip.label}
+                  </div>
+                </SelectItem>
+              );
+            })}
+          </SelectContent>
+        </Select>
+        {filteredSchools.length > 0 && (
+          <button
+            onClick={toggleAll}
+            className="ml-auto flex items-center gap-1.5 px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+          >
+            {allSelected ? (
+              <Check className="w-4 h-4 text-pink-600" />
+            ) : (
+              <Square className="w-4 h-4 text-gray-400" />
+            )}
+            {allSelected ? "Deselect All" : "Select All"}
+          </button>
+        )}
+        <span className="text-xs text-gray-400">
+          {filteredSchools.length} of {totalSchools}
+        </span>
       </div>
 
-      {/* Search and Filter Bar */}
-      <PremiumCard>
-        <PremiumCardContent className="pt-0">
-          <div className="flex flex-col lg:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search schools by name, code, or location..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 outline-none transition-all"
-              />
-            </div>
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              className="px-4 py-2.5 rounded-lg border border-gray-200 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20 outline-none bg-white transition-all"
-            >
-              <option value="">All School Types</option>
-              <option value="HSS">Higher Secondary School</option>
-              <option value="MSS">Middle Secondary School</option>
-              <option value="LSS">Lower Secondary School</option>
-              <option value="Primary">Primary School</option>
-              <option value="Private">Private School</option>
-            </select>
+      {/* Custom Grid Table */}
+      {isLoading ? (
+        <TableSkeleton rows={10} columns={8} />
+      ) : (
+        <div className="flex-1 border border-gray-200 rounded-xl overflow-hidden bg-white">
+          {/* Header */}
+          <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-gray-50/80 border-b border-gray-200 text-xs font-medium text-gray-500">
+            <div className="col-span-1"></div>
+            <div className="col-span-3">School</div>
+            <div className="col-span-2">Code</div>
+            <div className="col-span-2">Type</div>
+            <div className="col-span-2">Contact</div>
+            <div className="col-span-1">Students</div>
+            <div className="col-span-1 text-right">Status</div>
           </div>
-        </PremiumCardContent>
-      </PremiumCard>
 
-      {/* Schools Table */}
-      <PremiumCard>
-        <PremiumCardHeader>
-          <PremiumCardTitle>All Schools</PremiumCardTitle>
-          <PremiumCardDescription>
-            {filteredSchools.length} {filteredSchools.length === 1 ? "school" : "schools"}
-            {statusFilter !== "all" && ` (${statusFilter})`}
-          </PremiumCardDescription>
-        </PremiumCardHeader>
-        <PremiumCardContent>
-          {filteredSchools.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
-                <Building2 className="w-8 h-8 text-gray-400" />
-              </div>
-              <p className="text-gray-900 font-medium mb-1">No schools found</p>
-              <p className="text-gray-500 text-sm mb-4">
+          {/* Rows */}
+          <div className="divide-y divide-gray-100">
+            {filteredSchools.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-40 text-gray-400 text-sm">
+                <Building2 className="w-8 h-8 mb-2 opacity-50" />
                 {searchQuery || typeFilter || statusFilter !== "all"
-                  ? "Try adjusting your filters or search query"
-                  : "Get started by adding your first school"}
-              </p>
-              {!searchQuery && !typeFilter && statusFilter === "all" && (
-                <Button
-                  onClick={() => {
-                    setEditingSchool(null);
-                    setIsSlideInOpen(true);
-                  }}
-                  style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
-                  className="text-white"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add School
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">School</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">Type</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm">Location</th>
-                    <th className="text-center py-3 px-4 font-semibold text-gray-700 text-sm">Students</th>
-                    <th className="text-center py-3 px-4 font-semibold text-gray-700 text-sm">Teachers</th>
-                    <th className="text-center py-3 px-4 font-semibold text-gray-700 text-sm">Status</th>
-                    <th className="text-right py-3 px-4 font-semibold text-gray-700 text-sm">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredSchools.map((school) => (
-                    <tr
-                      key={school.id}
-                      className="border-b border-gray-100 hover:bg-pink-50/50 transition-colors group"
-                    >
-                      <td className="py-4 px-4">
-                        <div className="flex items-start gap-3">
-                          <div
-                            className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-semibold flex-shrink-0 shadow-sm"
-                            style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
-                          >
-                            {school.name.substring(0, 2).toUpperCase()}
-                          </div>
-                          <div>
-                            <a
-                              href={`/admin/schools/${school.id}`}
-                              className="font-semibold text-gray-900 hover:text-pink-600 transition-colors"
-                            >
-                              {school.name}
-                            </a>
-                            <p className="text-sm text-gray-500">Code: {school.code}</p>
-                            {school.level && (
-                              <Badge variant="outline" className="mt-1 text-xs border-gray-200">
-                                {school.level}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-4 px-4">
-                        <Badge
-                          variant="outline"
-                          className={cn("text-xs", getSchoolTypeColor(school.schoolType))}
-                        >
-                          {school.schoolType || "N/A"}
-                        </Badge>
-                      </td>
-                      <td className="py-4 px-4">
-                        <div className="space-y-1">
-                          {school.city && (
-                            <div className="flex items-center gap-1 text-sm text-gray-700">
-                              <MapPin className="w-3.5 h-3.5 text-gray-400" />
-                              {school.city}
-                            </div>
-                          )}
-                          {school.address && (
-                            <p className="text-xs text-gray-500 truncate max-w-[200px]">
-                              {school.address}
-                            </p>
-                          )}
-                        </div>
-                      </td>
-                      <td className="py-4 px-4 text-center">
-                        <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-900">
-                          <Users className="w-4 h-4 text-gray-400" />
-                          {school.stats.students}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4 text-center">
-                        <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-900">
-                          <GraduationCap className="w-4 h-4 text-gray-400" />
-                          {school.stats.teachers}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4 text-center">
-                        {getStatusBadge(school)}
-                      </td>
-                      <td className="py-4 px-4">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 hover:bg-pink-100 hover:text-pink-600 transition-colors"
-                            onClick={() => router.push(`/admin/schools/${school.id}`)}
-                            title="View details"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 hover:bg-blue-100 hover:text-blue-600 transition-colors"
-                            onClick={() => handleEditClick(school)}
-                            title="Edit school"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 hover:bg-red-100 hover:text-red-600 transition-colors"
-                            onClick={() => handleDeleteClick(school)}
-                            title="Delete school"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </PremiumCardContent>
-      </PremiumCard>
+                  ? "No schools found"
+                  : "No schools yet"}
+              </div>
+            ) : (
+              filteredSchools.map((school, idx) => {
+                const selected = selectedSchools.has(school.id);
+                const isFocused = focusedIndex === idx;
+                return (
+                  <div
+                    key={school.id}
+                    className={cn(
+                      "grid grid-cols-12 gap-2 px-4 py-2.5 items-center text-sm transition-colors cursor-pointer group",
+                      selected ? "bg-pink-50" : "hover:bg-gray-50",
+                      isFocused && "ring-2 ring-pink-400 ring-inset z-10"
+                    )}
+                    onClick={(e) => {
+                      if (
+                        !(e.target as HTMLElement).closest("button") &&
+                        !(e.target as HTMLElement).closest("input")
+                      ) {
+                        toggle(school.id);
+                      }
+                    }}
+                  >
+                    {/* Checkbox */}
+                    <div className="col-span-1" onClick={(e) => e.stopPropagation()}>
+                      <div
+                        className={cn(
+                          "w-4 h-4 rounded border-2 flex items-center justify-center transition-all cursor-pointer",
+                          selected
+                            ? "bg-pink-600 border-pink-600"
+                            : "border-gray-300 group-hover:border-pink-400"
+                        )}
+                        onClick={() => toggle(school.id)}
+                      >
+                        {selected && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                    </div>
 
-      {/* School Types Overview */}
-      <PremiumCard>
-        <PremiumCardHeader>
-          <PremiumCardTitle>School Types Distribution</PremiumCardTitle>
-          <PremiumCardDescription>Breakdown by school type</PremiumCardDescription>
-        </PremiumCardHeader>
-        <PremiumCardContent>
-          <div className="flex flex-wrap gap-3">
-            {Object.entries(schoolTypes).map(([type, count]: [string, number]) => (
+                    {/* School - Logo/Initials + Name (inline editable) */}
+                    <div className="col-span-3 flex items-center gap-2">
+                      <div
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-medium flex-shrink-0 shadow-sm"
+                        style={{
+                          background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)",
+                        }}
+                      >
+                        {getSchoolInitials(school.name)}
+                      </div>
+                      <div className="min-w-0">
+                        <InlineEditText
+                          value={school.name}
+                          onSave={(newValue) => updateSchoolName(school.id, newValue)}
+                          className="font-medium text-gray-900 text-xs"
+                        />
+                        <div className="flex items-center gap-1 text-xs text-gray-400">
+                          <MapPin className="w-3 h-3" />
+                          <span className="truncate max-w-[100px]">{school.city || "-"}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Code - Inline Editable */}
+                    <div className="col-span-2">
+                      <InlineEditText
+                        value={school.code}
+                        onSave={(newValue) => updateSchoolCode(school.id, newValue)}
+                        className="text-gray-600 text-xs font-mono"
+                      />
+                    </div>
+
+                    {/* Type - Dropdown Selector */}
+                    <div className="col-span-2" onClick={(e) => e.stopPropagation()}>
+                      <Select
+                        value={school.schoolType}
+                        onValueChange={(newType) => updateSchoolType(school.id, newType)}
+                      >
+                        <SelectTrigger className="h-7 text-xs border-gray-200">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {schoolTypeOptions.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              <Badge
+                                variant="outline"
+                                className={cn("text-xs mr-2", opt.color)}
+                              >
+                                {opt.value}
+                              </Badge>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Contact Email - Inline Editable */}
+                    <div className="col-span-2">
+                      <InlineEditText
+                        value={school.contactEmail || ""}
+                        onSave={(newValue) => updateContactEmail(school.id, newValue)}
+                        className="text-gray-600 text-xs"
+                      />
+                    </div>
+
+                    {/* Students Count */}
+                    <div className="col-span-1">
+                      <div className="flex items-center gap-1 text-gray-600">
+                        <Users className="w-3 h-3 text-gray-400" />
+                        <span className="text-xs font-medium">{school.stats.students}</span>
+                      </div>
+                    </div>
+
+                    {/* Status - Clickable Badge */}
+                    <div className="col-span-1 text-right" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => toggleStatus(school.id)}
+                        className={cn(
+                          "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium transition-colors hover:opacity-80",
+                          school.isActive !== false
+                            ? "bg-green-50 text-green-700"
+                            : "bg-gray-100 text-gray-500"
+                        )}
+                      >
+                        {school.isActive !== false ? "Active" : "Inactive"}
+                      </button>
+                    </div>
+
+                    {/* Quick Actions Menu */}
+                    <div className="col-span-1 text-right" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="p-1.5 hover:bg-gray-100 rounded transition-opacity opacity-0 group-hover:opacity-100">
+                            <MoreHorizontal className="w-4 h-4 text-gray-500" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuItem onClick={() => router.push(`/admin/schools/${school.id}`)}>
+                            <Eye className="w-4 h-4 mr-2 text-gray-500" />
+                            <span className="text-sm">View Details</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEditClick(school)}>
+                            <Edit className="w-4 h-4 mr-2 text-gray-500" />
+                            <span className="text-sm">Edit School</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteClick(school)}
+                            className="text-red-600 focus:text-red-600"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            <span className="text-sm">Delete School</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* School Types Distribution - Compact */}
+      {Object.keys(schoolTypes).length > 0 && (
+        <div className="mt-3 pt-3 border-t border-gray-200">
+          <div className="flex flex-wrap gap-2">
+            {Object.entries(schoolTypes).map(([type, count]) => (
               <Badge
                 key={type}
                 variant="outline"
                 className={cn(
-                  "px-4 py-2 text-sm font-medium transition-all hover:shadow-md",
+                  "px-3 py-1 text-xs font-medium transition-all hover:shadow-sm",
                   getSchoolTypeColor(type)
                 )}
               >
@@ -560,100 +953,16 @@ export function SchoolsClient({
               </Badge>
             ))}
           </div>
-        </PremiumCardContent>
-      </PremiumCard>
-
-      {/* Top Schools & Recent Additions */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        <PremiumCard>
-          <PremiumCardHeader>
-            <PremiumCardTitle>Top Schools by Enrollment</PremiumCardTitle>
-            <PremiumCardDescription>Highest student count</PremiumCardDescription>
-          </PremiumCardHeader>
-          <PremiumCardContent>
-            <div className="space-y-4">
-              {schoolsWithStats
-                .sort((a, b) => b.stats.students - a.stats.students)
-                .slice(0, 5)
-                .map((school, index) => (
-                  <div key={school.id} className="flex items-center gap-4">
-                    <div
-                      className={cn(
-                        "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0",
-                        index === 0
-                          ? "bg-gradient-to-br from-yellow-400 to-yellow-500 text-white"
-                          : index === 1
-                          ? "bg-gradient-to-br from-gray-300 to-gray-400 text-white"
-                          : index === 2
-                          ? "bg-gradient-to-br from-orange-400 to-orange-500 text-white"
-                          : "bg-gray-100 text-gray-600"
-                      )}
-                    >
-                      {index + 1}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="font-medium text-gray-900 truncate">{school.name}</span>
-                        <span className="text-sm text-gray-500 ml-2 flex-shrink-0">
-                          {school.stats.students} students
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                        <div
-                          className="h-2 rounded-full transition-all duration-500"
-                          style={{
-                            width: `${(school.stats.students / (schoolsWithStats[0]?.stats.students || 1)) * 100}%`,
-                            background: "linear-gradient(90deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)",
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </PremiumCardContent>
-        </PremiumCard>
-
-        <PremiumCard>
-          <PremiumCardHeader>
-            <PremiumCardTitle>Recently Added</PremiumCardTitle>
-            <PremiumCardDescription>Latest schools to join platform</PremiumCardDescription>
-          </PremiumCardHeader>
-          <PremiumCardContent>
-            <div className="space-y-3">
-              {schoolsWithStats
-                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                .slice(0, 5)
-                .map((school) => (
-                  <div
-                    key={school.id}
-                    className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg hover:bg-pink-50/50 transition-colors cursor-pointer"
-                    onClick={() => router.push(`/admin/schools/${school.id}`)}
-                  >
-                    <div
-                      className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-semibold flex-shrink-0 shadow-sm"
-                      style={{ background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)" }}
-                    >
-                      {school.name.substring(0, 2).toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-900 truncate">{school.name}</p>
-                      <p className="text-sm text-gray-500">
-                        {school.stats.students} students • {school.stats.teachers} teachers
-                      </p>
-                    </div>
-                    {getStatusBadge(school)}
-                  </div>
-                ))}
-            </div>
-          </PremiumCardContent>
-        </PremiumCard>
-      </div>
+        </div>
+      )}
 
       {/* School Slide-In Form (Add/Edit) */}
       <AddSchoolSlideIn
         isOpen={isSlideInOpen}
-        onClose={handleCloseSlideIn}
+        onClose={() => {
+          setIsSlideInOpen(false);
+          setEditingSchool(null);
+        }}
         onSuccess={handleModalSuccess}
         school={editingSchool}
       />
@@ -682,55 +991,36 @@ export function SchoolsClient({
 
       {/* Delete Confirmation Modal */}
       {deleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full animate-in fade-in-0 zoom-in-95 duration-200">
-            <div className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                  <AlertTriangle className="w-6 h-6 text-red-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Delete School</h3>
-                  <p className="text-sm text-gray-600">This action cannot be undone</p>
-                </div>
-              </div>
-
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-                <p className="text-sm text-red-900">
-                  You are about to delete <strong>{deleteConfirm.name}</strong>.
-                </p>
-                <p className="text-sm text-red-700 mt-2">
-                  This will also remove all associated data including students, teachers, and assessments.
-                </p>
-              </div>
-
-              <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                <p className="text-sm text-gray-700">
-                  <strong>Students:</strong> {deleteConfirm.stats.students} •
-                  <strong> Teachers:</strong> {deleteConfirm.stats.teachers} •
-                  <strong> Counselors:</strong> {deleteConfirm.stats.counselors}
-                </p>
-              </div>
-
-              <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  onClick={handleDeleteCancel}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={handleDeleteConfirm}
-                  className="flex-1"
-                >
-                  Delete School
-                </Button>
-              </div>
+        <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete School</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will also remove all associated data including
+                students, teachers, and assessments.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 my-4">
+              <p className="text-sm text-red-900">
+                You are about to delete <strong>{deleteConfirm.name}</strong>.
+              </p>
+              <p className="text-sm text-red-700 mt-2">
+                <strong>Students:</strong> {deleteConfirm.stats.students} •
+                <strong> Teachers:</strong> {deleteConfirm.stats.teachers} •
+                <strong> Counselors:</strong> {deleteConfirm.stats.counselors}
+              </p>
             </div>
-          </div>
-        </div>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setDeleteConfirm(null)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => deleteSchool(deleteConfirm.id)}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Delete School
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   );

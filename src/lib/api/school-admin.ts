@@ -180,8 +180,8 @@ export async function getCurrentSchoolId(): Promise<string | null> {
   try {
     const authResult = await requireAuthServer();
     if ('error' in authResult) {
-      logger.error("getCurrentSchoolId auth failed", { error: authResult.error, status: authResult.status });
-      throw new Error(authResult.error);
+      logger.debug("getCurrentSchoolId auth failed", { error: authResult.error, status: authResult.status });
+      return null; // Return null instead of throwing for graceful degradation
     }
     const { userId } = authResult;  // This is database userId from requireAuth
 
@@ -193,15 +193,21 @@ export async function getCurrentSchoolId(): Promise<string | null> {
       .limit(1);
 
     if (!user) {
-      logger.error("getCurrentSchoolId: user not found in DB", { userId });
+      logger.debug("getCurrentSchoolId: user not found in DB", { userId });
       return null;
     }
 
     logger.debug("getCurrentSchoolId success", { userId, schoolId: user.schoolId });
     return user.schoolId || null;
-  } catch (error) {
+  } catch (error: unknown) {
+    // Check if this is a "User not found" error - return null gracefully
+    if (error instanceof Error && error.message.includes("User not found")) {
+      logger.debug("getCurrentSchoolId: user not found, returning null");
+      return null;
+    }
+    // Log other errors but still return null for graceful degradation
     logger.error("getCurrentSchoolId failed", error);
-    throw error;
+    return null;
   }
 }
 
@@ -311,6 +317,10 @@ export interface StudentData {
   status: "active" | "inactive";
   attendance: string;
   feeStatus: "paid" | "partial" | "pending";
+  approvedBy: string | null; // User ID of who approved this student
+  approvedAt: string | null; // When the student was approved
+  approverName?: string | null; // Name of the approver (convenience field)
+  approverType?: string | null; // Type of user who approved (teacher, school-admin, admin)
 }
 
 export async function getStudents(schoolId: string | null, options: {
@@ -365,6 +375,8 @@ export async function getStudents(schoolId: string | null, options: {
       section: users.section,
       dateOfBirth: users.dateOfBirth,
       createdAt: users.createdAt,
+      approvedBy: users.approvedBy,
+      approvedAt: users.approvedAt,
     })
     .from(users)
     .where(and(...conditions))
@@ -378,12 +390,35 @@ export async function getStudents(schoolId: string | null, options: {
     .from(users)
     .where(and(...conditions));
 
+  // Get unique approver IDs to fetch their details in one query
+  const approverIds = [...new Set(studentsList.map(s => s.approvedBy).filter(Boolean))];
+
+  // Fetch approver details
+  const approversMap = new Map<string, { name: string; type: string }>();
+  if (approverIds.length > 0) {
+    const approvers = await db
+      .select({
+        id: users.id,
+        name: users.name,
+        type: users.type,
+      })
+      .from(users)
+      .where(sql`id = ANY(${approverIds})`);
+
+    for (const approver of approvers) {
+      approversMap.set(approver.id, { name: approver.name, type: approver.type });
+    }
+  }
+
   // Transform data
   const transformed: StudentData[] = studentsList.map((student) => {
     const name = `${student.firstName} ${student.lastName || ""}`.trim();
     const classStr = student.classGrade && student.section
       ? `Class ${student.classGrade} ${student.section}`
       : null;
+
+    // Get approver info
+    const approverInfo = student.approvedBy ? approversMap.get(student.approvedBy) : null;
 
     // Get attendance percentage (mock for now)
     const attendance = "85%";
@@ -405,6 +440,10 @@ export async function getStudents(schoolId: string | null, options: {
       status: "active",
       attendance,
       feeStatus,
+      approvedBy: student.approvedBy,
+      approvedAt: student.approvedAt?.toISOString() || null,
+      approverName: approverInfo?.name || null,
+      approverType: approverInfo?.type || null,
     };
   });
 
@@ -640,7 +679,10 @@ export async function getSubjects(schoolId: string | null, options: {
 
   const { search, limit = 100, offset = 0 } = options;
 
-  const conditions = [eq(subjects.schoolId, schoolId)];
+  const conditions = [
+    eq(subjects.schoolId, schoolId),
+    eq(subjects.isActive, true)  // Only show active subjects
+  ];
 
   if (search) {
     conditions.push(

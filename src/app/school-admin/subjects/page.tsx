@@ -4,6 +4,7 @@
  * - Starts blank (only shows school's own subjects)
  * - Add Subject button opens dropdown with global templates
  * - "Add Custom Subject" option at end for manual entry
+ * - NEW: Hierarchical view grouped by grade with inline editing
  */
 
 "use client";
@@ -24,7 +25,6 @@ import {
   Check,
   AlertCircle,
   ChevronDown,
-  ChevronRight,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
@@ -34,6 +34,7 @@ import {
   deleteSubject,
   type SubjectFormData,
 } from "../_actions";
+import { SubjectsGrid } from "./components/subjects-grid";
 
 interface Subject {
   id: string;
@@ -76,6 +77,8 @@ export default function SchoolAdminSubjectsPage() {
   // Dropdown state
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isCustomModalOpen, setIsCustomModalOpen] = useState(false);
+  // Track selected subject-grade combinations for multi-select
+  const [selectedSubjectGrades, setSelectedSubjectGrades] = useState<Set<string>>(new Set());
 
   // Edit states
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
@@ -127,29 +130,62 @@ export default function SchoolAdminSubjectsPage() {
     setSuccess(null);
   };
 
-  // Select from global template
-  const selectGlobalSubject = async (global: GlobalSubject) => {
+  // Toggle subject-grade selection
+  const toggleSubjectGrade = (global: GlobalSubject) => {
+    const key = `${global.id}-${global.grade}`;
+    const newSelected = new Set(selectedSubjectGrades);
+    if (newSelected.has(key)) {
+      newSelected.delete(key);
+    } else {
+      newSelected.add(key);
+    }
+    setSelectedSubjectGrades(newSelected);
+  };
+
+  // Add all selected subjects
+  const addSelectedSubjects = async () => {
+    if (selectedSubjectGrades.size === 0) return;
+
     setIsSubmitting(true);
     setError(null);
-    setIsDropdownOpen(false);
 
     try {
-      const result = await createSubject({
-        name: global.name,
-        code: `${global.code}-${global.grade}`, // Unique code for school
-        type: global.type as "core" | "elective" | "optional",
-        grade: global.grade || undefined,
-        description: global.description || undefined,
-      });
+      // Find the selected global subjects
+      const selectedGlobals = globalSubjects.filter(g =>
+        selectedSubjectGrades.has(`${g.id}-${g.grade}`)
+      );
 
-      if (result.success) {
-        setSuccess(`Added "${global.name}" to your subjects!`);
-        resetForm();
-        await loadSchoolSubjects();
-        setTimeout(() => setSuccess(null), 2000);
-      } else {
-        setError(result.error || "Failed to add subject");
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const global of selectedGlobals) {
+        const result = await createSubject({
+          name: global.name,
+          code: `${global.code}-${global.grade}`,
+          type: global.type as "core" | "elective" | "optional",
+          grade: global.grade || undefined,
+          description: global.description || undefined,
+        });
+
+        if (result.success) {
+          successCount++;
+        } else {
+          failCount++;
+        }
       }
+
+      // Clear selection and close dropdown
+      setSelectedSubjectGrades(new Set());
+      setIsDropdownOpen(false);
+
+      await loadSchoolSubjects();
+
+      if (failCount === 0) {
+        setSuccess(`Added ${successCount} subject(s) successfully!`);
+      } else {
+        setSuccess(`Added ${successCount} subject(s). ${failCount} failed.`);
+      }
+      setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unexpected error occurred");
     } finally {
@@ -259,6 +295,38 @@ export default function SchoolAdminSubjectsPage() {
     }
   };
 
+  // Handle inline update from SubjectsGrid
+  const handleInlineUpdate = async (id: string, field: string, value: string) => {
+    const subject = subjects.find(s => s.id === id);
+    if (!subject) return;
+
+    setIsSubmitting(true);
+    try {
+      const updateData: Partial<SubjectFormData> = {};
+      if (field === "code") updateData.code = value;
+      if (field === "teacher") updateData.description = subject.description; // Placeholder for teacher
+      if (field === "room") updateData.description = subject.description; // Placeholder for room
+
+      const result = await updateSubject(id, {
+        name: subject.name,
+        code: field === "code" ? value : subject.code,
+        type: subject.type as "core" | "elective" | "optional",
+        grade: subject.grade || undefined,
+        description: subject.description || undefined,
+      });
+
+      if (result.success) {
+        await loadSchoolSubjects();
+      } else {
+        setError(result.error || "Failed to update subject");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "An unexpected error occurred");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // Filter subjects
   const filteredSubjects = subjects.filter((s) =>
     s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -298,39 +366,112 @@ export default function SchoolAdminSubjectsPage() {
           {isDropdownOpen && (
             <>
               <div
-                className="fixed inset-0 z-40"
-                onClick={() => setIsDropdownOpen(false)}
+                className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm"
+                onClick={() => {
+                  setIsDropdownOpen(false);
+                  setSelectedSubjectGrades(new Set());
+                }}
               />
-              <Card className="absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto z-50 shadow-xl">
-                <CardContent className="p-2">
-                  <p className="text-xs text-gray-500 px-2 py-1 font-medium">SELECT FROM STANDARD SUBJECTS</p>
-                  {Object.entries(groupedGlobalSubjects).map(([name, grades]) => (
-                    <div key={name} className="mb-1">
-                      <p className="text-sm font-medium text-gray-700 px-2 py-1">{name}</p>
-                      {grades.map((g) => (
-                        <button
-                          key={g.id}
-                          onClick={() => selectGlobalSubject(g)}
-                          className="w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-violet-50 rounded-md transition-colors"
-                        >
-                          Grade {g.grade}
-                        </button>
-                      ))}
+              <div className="absolute right-0 mt-2 w-[700px] max-h-[520px] z-50 shadow-2xl rounded-xl overflow-hidden">
+                {/* Header with Buttons */}
+                <div className="bg-white border-b border-gray-200 px-4 py-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-900">Add Subjects</h3>
+                      <p className="text-xs text-gray-500">
+                        {selectedSubjectGrades.size > 0
+                          ? `${selectedSubjectGrades.size} grade(s) selected`
+                          : "Select subjects and grades to add"}
+                      </p>
                     </div>
-                  ))}
-                  <div className="border-t border-gray-200 mt-2 pt-2">
-                    <button
-                      onClick={() => {
-                        setIsDropdownOpen(false);
-                        setIsCustomModalOpen(true);
-                      }}
-                      className="w-full text-left px-4 py-2 text-sm text-violet-600 hover:bg-violet-50 rounded-md transition-colors font-medium"
-                    >
-                      + Add Custom Subject
-                    </button>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center gap-2">
+                      {/* Add Selected Button */}
+                      <button
+                        onClick={addSelectedSubjects}
+                        disabled={selectedSubjectGrades.size === 0 || isSubmitting}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                          selectedSubjectGrades.size > 0
+                            ? "bg-violet-600 text-white hover:bg-violet-700 shadow-md"
+                            : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                        }`}
+                      >
+                        {isSubmitting ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Adding...
+                          </span>
+                        ) : (
+                          `Add ${selectedSubjectGrades.size > 0 ? `(${selectedSubjectGrades.size}) ` : ""}Selected`
+                        )}
+                      </button>
+
+                      {/* Add Custom Subject Button */}
+                      <button
+                        onClick={() => {
+                          setIsDropdownOpen(false);
+                          setIsCustomModalOpen(true);
+                        }}
+                        className="px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm text-gray-600 hover:border-violet-400 hover:text-violet-600 hover:bg-violet-50 transition-all font-medium"
+                      >
+                        + Custom
+                      </button>
+
+                      {/* Close Button */}
+                      <button
+                        onClick={() => {
+                          setIsDropdownOpen(false);
+                          setSelectedSubjectGrades(new Set());
+                        }}
+                        className="ml-2 text-gray-400 hover:text-gray-600 transition-colors text-xl"
+                      >
+                        ×
+                      </button>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+
+                {/* Scrollable Content */}
+                <div className="bg-white overflow-y-auto max-h-[400px] p-4">
+                  <div className="grid grid-cols-5 gap-3">
+                    {Object.entries(groupedGlobalSubjects).map(([name, grades]) => (
+                      <div
+                        key={name}
+                        className="border border-gray-200 rounded-lg overflow-hidden hover:border-violet-300 hover:shadow-md transition-all"
+                      >
+                        {/* Subject Header */}
+                        <div className="bg-gradient-to-r from-violet-50 to-purple-50 px-3 py-2 border-b border-violet-100">
+                          <p className="text-xs font-semibold text-violet-900 truncate" title={name}>{name}</p>
+                          <p className="text-xs text-violet-600">{grades.length} grades</p>
+                        </div>
+
+                        {/* Grades Grid */}
+                        <div className="p-2 bg-white">
+                          <div className="grid grid-cols-2 gap-1">
+                            {grades.map((g) => {
+                              const isSelected = selectedSubjectGrades.has(`${g.id}-${g.grade}`);
+                              return (
+                                <button
+                                  key={g.id}
+                                  onClick={() => toggleSubjectGrade(g)}
+                                  className={`aspect-square flex items-center justify-center text-xs font-medium rounded transition-all ${
+                                    isSelected
+                                      ? "bg-violet-600 text-white shadow-md"
+                                      : "bg-gray-50 text-gray-700 hover:bg-violet-100 hover:text-violet-700"
+                                  }`}
+                                >
+                                  {g.grade}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </>
           )}
         </div>
@@ -359,83 +500,41 @@ export default function SchoolAdminSubjectsPage() {
         </Card>
       )}
 
-      {/* Subjects List */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <Input
-              placeholder="Search subjects..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-
-          {isLoading ? (
+      {/* Subjects List - NEW Hierarchical View */}
+      {isLoading ? (
+        <Card>
+          <CardContent className="pt-6">
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-6 h-6 animate-spin text-violet-600" />
             </div>
-          ) : filteredSubjects.length === 0 ? (
-            <div className="text-center py-12">
-              <BookOpen className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-1">No subjects yet</h3>
-              <p className="text-gray-500 mb-4">Add subjects from the standard curriculum or create custom ones</p>
-              <Button
-                onClick={() => setIsDropdownOpen(true)}
-                className="bg-violet-600 hover:bg-violet-700"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Your First Subject
-              </Button>
-            </div>
-          ) : (
-            <div className="grid md:grid-cols-3 gap-4">
-              {filteredSubjects.map((s) => (
-                <Card
-                  key={s.id}
-                  className="hover:shadow-lg transition-shadow cursor-pointer group"
-                  onClick={() => router.push(`/school-admin/subjects/${s.id}`)}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-violet-100 rounded-lg flex items-center justify-center">
-                          <BookOpen className="w-6 h-6 text-violet-600" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold">{s.name}</h3>
-                          <p className="text-sm text-gray-500">{s.code}</p>
-                        </div>
-                      </div>
-                      <Badge className={s.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>
-                        {s.isActive ? "Active" : "Inactive"}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
-                      <span>Grade {s.grade || "N/A"}</span>
-                      <Badge variant="outline" className="capitalize">
-                        {s.type}
-                      </Badge>
-                    </div>
-                    {s.description && (
-                      <p className="text-sm text-gray-500 mb-3 line-clamp-2">
-                        {s.description}
-                      </p>
-                    )}
-                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
-                      <span className="text-xs text-gray-400 group-hover:text-violet-600 transition-colors">
-                        View details
-                      </span>
-                      <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-violet-600 transition-colors" />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Search Bar */}
+          {filteredSubjects.length > 0 && (
+            <div className="flex items-center gap-4 mb-4">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  placeholder="Search subjects..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
             </div>
           )}
-        </CardContent>
-      </Card>
+
+          {/* Hierarchical Subjects Grid */}
+          <SubjectsGrid
+            subjects={filteredSubjects}
+            onUpdate={handleInlineUpdate}
+            onEdit={openEditModal}
+            onDelete={(subject) => setShowDeleteDialog(subject)}
+          />
+        </>
+      )}
 
       {/* Custom Subject Modal */}
       {isCustomModalOpen && (

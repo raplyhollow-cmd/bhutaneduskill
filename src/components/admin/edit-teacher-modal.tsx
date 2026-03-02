@@ -19,7 +19,7 @@ interface Teacher {
   employeeId?: string;
   department?: string;
   schoolId?: string;
-  subjects?: string;
+  subjects?: string | string[] | null;
 }
 
 interface EditTeacherModalProps {
@@ -31,6 +31,14 @@ interface EditTeacherModalProps {
 
 export function EditTeacherModal({ open, onClose, onSuccess, teacher }: EditTeacherModalProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Helper to format subjects for form input
+  const formatSubjects = (subjects: string | string[] | null | undefined): string => {
+    if (!subjects) return "";
+    if (Array.isArray(subjects)) return subjects.join(", ");
+    return subjects;
+  };
+
   const [formData, setFormData] = useState({
     firstName: teacher?.firstName || "",
     lastName: teacher?.lastName || "",
@@ -39,7 +47,7 @@ export function EditTeacherModal({ open, onClose, onSuccess, teacher }: EditTeac
     employeeId: teacher?.employeeId || "",
     department: teacher?.department || "",
     schoolId: teacher?.schoolId || "",
-    subjects: teacher?.subjects || "",
+    subjects: formatSubjects(teacher?.subjects),
   });
 
   // Update form when teacher changes
@@ -53,7 +61,7 @@ export function EditTeacherModal({ open, onClose, onSuccess, teacher }: EditTeac
         employeeId: teacher.employeeId || "",
         department: teacher.department || "",
         schoolId: teacher.schoolId || "",
-        subjects: teacher.subjects || "",
+        subjects: formatSubjects(teacher.subjects),
       });
     }
   }, [teacher]);

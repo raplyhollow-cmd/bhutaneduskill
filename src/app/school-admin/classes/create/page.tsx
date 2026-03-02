@@ -345,9 +345,9 @@ export default function CreateClassPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Users className="w-5 h-5" />
-                Homeroom Teacher
+                Class Teacher (Homeroom)
               </CardTitle>
-              <CardDescription>Assign a primary teacher for this class</CardDescription>
+              <CardDescription>Assign a primary teacher for this class who can approve pending students</CardDescription>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -365,7 +365,7 @@ export default function CreateClassPage() {
                 </div>
               ) : (
                 <div>
-                  <Label htmlFor="homeroomTeacherId">Homeroom Teacher</Label>
+                  <Label htmlFor="homeroomTeacherId">Class Teacher</Label>
                   <select
                     id="homeroomTeacherId"
                     name="homeroomTeacherId"
@@ -373,7 +373,7 @@ export default function CreateClassPage() {
                     onChange={handleInputChange}
                     className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
                   >
-                    <option value="">-- No Homeroom Teacher --</option>
+                    <option value="">-- No Class Teacher --</option>
                     {teachers.map((teacher) => (
                       <option key={teacher.id} value={teacher.id}>
                         {teacher.firstName || ""} {teacher.lastName || ""}
@@ -382,7 +382,7 @@ export default function CreateClassPage() {
                     ))}
                   </select>
                   <p className="text-xs text-gray-500 mt-1">
-                    The homeroom teacher will be responsible for attendance and overall student welfare
+                    The class teacher will be responsible for attendance, student welfare, and <strong>approving pending student applications</strong> for this class
                   </p>
                 </div>
               )}

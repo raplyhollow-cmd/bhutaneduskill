@@ -2038,7 +2038,7 @@ export async function updateSubject(id: string, data: Partial<SubjectFormData>) 
 }
 
 /**
- * Delete a subject (soft delete - sets isActive to false)
+ * Delete a subject (hard delete - permanently removes from database)
  */
 export async function deleteSubject(id: string) {
   const schoolId = await getCurrentSchoolId();
@@ -2077,11 +2077,10 @@ export async function deleteSubject(id: string) {
       };
     }
 
-    // Soft delete
+    // Hard delete - permanently remove the subject
     await db
-      .update(subjects)
-      .set({ isActive: false, updatedAt: new Date() })
-      .where(eq(subjects.id, id));
+      .delete(subjects)
+      .where(and(eq(subjects.id, id), eq(subjects.schoolId, schoolId)));
 
     logger.info("Subject deleted successfully", { subjectId: id, schoolId });
 

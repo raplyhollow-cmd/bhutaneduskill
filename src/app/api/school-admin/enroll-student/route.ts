@@ -106,6 +106,8 @@ export const POST = createApiRoute(
       .set({
         onboardingStatus: "enrolled",
         onboardingComplete: true,
+        approvedBy: adminId,
+        approvedAt: now,
         updatedAt: now,
       })
       .where(eq(users.id, studentId));
