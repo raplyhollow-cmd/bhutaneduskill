@@ -1,21 +1,39 @@
 "use client";
 
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
+import { PlatformAssistant } from "./platform-assistant";
 
 /**
  * UNIFIED AI ASSISTANT
  *
- * A stub component that logs user role information.
- * The full AI assistant implementation is pending re-architecture
- * to avoid React hooks ordering issues with lazy loading.
+ * Wraps the PlatformAssistant component with role detection.
+ *
+ * NOTE: The PlatformAssistant component manages its own sidebar state internally.
+ * To add external keyboard shortcut control, the component would need to accept
+ * an `open` prop or expose an `openChat` method via ref.
  */
-export function UnifiedAIAssistant() {
-  const { isLoaded, isSignedIn } = useUser();
+export interface UnifiedAIAssistantProps {
+  userId?: string;
+  userName?: string;
+  userRole?: "student" | "teacher" | "parent" | "counselor" | "school-admin" | "admin" | "ministry";
+}
 
+export function UnifiedAIAssistant({ userId, userName, userRole }: UnifiedAIAssistantProps) {
+  const { isLoaded, isSignedIn } = useUser();
+  const [resolvedUserId, setResolvedUserId] = useState<string | undefined>(userId);
+  const [resolvedUserName, setResolvedUserName] = useState<string | undefined>(userName);
+  const [resolvedUserRole, setResolvedUserRole] = useState<"student" | "teacher" | "parent" | "counselor" | "school-admin" | "admin" | "ministry" | undefined>(userRole);
+
+  // Fetch user profile data if not provided
   useEffect(() => {
     // Skip during SSR
     if (typeof window === "undefined") {
+      return;
+    }
+
+    // If all props are provided, no need to fetch
+    if (userId && userName && userRole) {
       return;
     }
 
@@ -35,14 +53,38 @@ export function UnifiedAIAssistant() {
       .then((response) => {
         // API returns { success: true, data: { profile: {...} } }
         const profile = response.data?.profile || response.profile || response;
-        console.log("[UnifiedAIAssistant] User role:", profile.type);
+
+        if (!resolvedUserId && profile.id) {
+          setResolvedUserId(profile.id);
+        }
+        if (!resolvedUserName) {
+          const name = profile.firstName && profile.lastName
+            ? `${profile.firstName} ${profile.lastName}`
+            : profile.firstName || profile.lastName || "User";
+          setResolvedUserName(name);
+        }
+        if (!resolvedUserRole && profile.type) {
+          setResolvedUserRole(profile.type);
+        }
       })
       .catch(() => {
-        console.log("[UnifiedAIAssistant] Using default role: student");
+        // Use defaults if fetch fails
+        if (!resolvedUserName) setResolvedUserName("User");
+        if (!resolvedUserRole) setResolvedUserRole("student");
       });
-  }, [isLoaded, isSignedIn]);
+  }, [isLoaded, isSignedIn, userId, userName, userRole, resolvedUserId, resolvedUserName, resolvedUserRole]);
 
-  // This component currently renders nothing
-  // TODO: Re-implement AI assistant with proper architecture
-  return null;
+  // Don't render until we have the required data
+  if (!resolvedUserRole) {
+    return null;
+  }
+
+  return (
+    <PlatformAssistant
+      userId={resolvedUserId}
+      userName={resolvedUserName}
+      userRole={resolvedUserRole}
+      key={resolvedUserRole} // Force re-render when role changes
+    />
+  );
 }

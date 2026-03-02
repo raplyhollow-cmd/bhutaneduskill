@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { BookOpen, MoreVertical } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { InlineEdit } from "@/components/ui/inline-edit";
+import { InPlaceText } from "@/components/ui/in-place-editor";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +20,7 @@ interface SubjectRowProps {
   onUpdate?: (id: string, field: string, value: string) => Promise<void>;
   onEdit?: (subject: Subject) => void;
   onDelete?: (subject: Subject) => void;
+  onView?: (subject: Subject) => void;
 }
 
 /**
@@ -31,13 +33,23 @@ interface SubjectRowProps {
  * - 50% opacity + grayscale for inactive subjects
  * - Context menu for actions
  */
-export function SubjectRow({ subject, index, onUpdate, onEdit, onDelete }: SubjectRowProps) {
-  const handleSave = async (field: string) => {
-    return async (value: string) => {
-      if (onUpdate) {
+export function SubjectRow({ subject, index, onUpdate, onEdit, onDelete, onView }: SubjectRowProps) {
+  const handleInPlaceSave = async (field: string, value: string): Promise<{ success: boolean; error?: string }> => {
+    if (onUpdate) {
+      try {
         await onUpdate(subject.id, field, value);
+        return { success: true };
+      } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : "Failed to save" };
       }
-    };
+    }
+    return { success: true };
+  };
+
+  const handleInlineSave = async (field: string, value: string): Promise<void> => {
+    if (onUpdate) {
+      await onUpdate(subject.id, field, value);
+    }
   };
 
   return (
@@ -80,14 +92,18 @@ export function SubjectRow({ subject, index, onUpdate, onEdit, onDelete }: Subje
           <BookOpen className="w-4 h-4" style={{ color: "var(--ceramic-gray-600, #90909d)" }} />
         </div>
 
-        {/* Subject Name */}
+        {/* Subject Name - Inline Editable */}
         <div className="flex-1 min-w-0">
-          <p
-            className="text-sm font-medium truncate"
-            style={{ color: "var(--ceramic-gray-900, #4c4c5c)" }}
-          >
-            {subject.name}
-          </p>
+          <InPlaceText
+            value={subject.name}
+            onSave={(value) => handleInPlaceSave("name", value)}
+            placeholder="Subject name"
+            minLength={2}
+            maxLength={100}
+            required={true}
+            displayClassName="text-sm font-medium truncate"
+            showIcon={true}
+          />
           <p className="text-xs truncate" style={{ color: "var(--ceramic-gray-500, #adadb7)" }}>
             {subject.type}
           </p>
@@ -97,7 +113,7 @@ export function SubjectRow({ subject, index, onUpdate, onEdit, onDelete }: Subje
         <div className="w-24">
           <InlineEdit
             value={subject.code}
-            onSave={handleSave("code")}
+            onSave={(value) => handleInlineSave("code", value)}
             placeholder="—"
             className="text-sm"
           />
@@ -107,7 +123,7 @@ export function SubjectRow({ subject, index, onUpdate, onEdit, onDelete }: Subje
         <div className="w-32">
           <InlineEdit
             value=""
-            onSave={handleSave("teacher")}
+            onSave={(value) => handleInlineSave("teacher", value)}
             placeholder="Unassigned"
             className="text-sm"
           />
@@ -117,7 +133,7 @@ export function SubjectRow({ subject, index, onUpdate, onEdit, onDelete }: Subje
         <div className="w-20">
           <InlineEdit
             value=""
-            onSave={handleSave("room")}
+            onSave={(value) => handleInlineSave("room", value)}
             placeholder="—"
             className="text-sm"
           />
@@ -139,13 +155,18 @@ export function SubjectRow({ subject, index, onUpdate, onEdit, onDelete }: Subje
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
-              className="p-1.5 rounded hover:bg-ceramic-gray-200 transition-colors duration-75"
+              className="p-1.5 rounded hover:bg-ceramic-gray-200 transition-colors duration-75 opacity-0 group-hover:opacity-100"
               style={{ backgroundColor: "transparent" }}
             >
               <MoreVertical className="w-4 h-4" style={{ color: "var(--ceramic-gray-500, #adadb7)" }} />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" variant="ceramic">
+            {onView && (
+              <DropdownMenuItem onClick={() => onView(subject)}>
+                View Details
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={() => onEdit?.(subject)}>
               Edit Details
             </DropdownMenuItem>

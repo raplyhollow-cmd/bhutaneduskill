@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { UniversalMobileSidebar, UniversalPortalHeader } from "@/components/mobile/universal-mobile-sidebar";
 import { PortalErrorBoundary } from "@/components/error/portal-error-boundary";
 import { CommandPalette, useCommandPalette, type CommandItem } from "@/components/ui/command-palette";
+import { UnifiedAIAssistant } from "@/components/ai/unified-ai-assistant";
 import { cn } from "@/lib/utils";
 import { portal } from "@/styles/design-tokens";
 import {
@@ -176,6 +177,9 @@ export function AdminLayoutClient({ children, userName, portalType }: AdminLayou
         commands={adminCommands}
         placeholder="Type a command or search..."
       />
+
+      {/* AI Assistant - Cmd+; */}
+      <UnifiedAIAssistant userName={userName} userRole="admin" />
 
       {/* Loading overlay */}
       {isLoading && (
