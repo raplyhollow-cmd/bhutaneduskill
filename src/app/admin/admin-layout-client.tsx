@@ -132,35 +132,38 @@ export function AdminLayoutClient({ children, userName, portalType }: AdminLayou
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const roleRes = await fetch("/api/auth/set-role");
-        const roleData = await roleRes.json();
+        const roleRes = await fetch("/api/resources/users/actions/get-role");
+        const roleResData = await roleRes.json();
 
         // Check if user is admin
-        if (roleData.userType === "admin") {
+        const userType = roleResData.data?.userType || roleResData.userType;
+        if (userType === "admin") {
           setIsAuthenticated(true);
           setIsLoading(false);
           return;
         }
 
-        // Redirect to setup if not admin
-        if (roleData.needsSetup || !roleData.userType) {
+        // Redirect to setup if not admin or if restricted
+        if (roleResData.data?.onboardingStatus === "restricted" ||
+            roleResData.data?.onboardingStatus === "pending_approval" ||
+            !userType) {
           router.push("/setup/unified");
           return;
         }
 
         // Wrong portal type - redirect to correct one
-        if (roleData.userType && roleData.userType !== "admin") {
-          router.push(`/${roleData.userType}`);
+        if (userType && userType !== "admin") {
+          router.push(`/${userType}/dashboard`);
           return;
         }
       } catch (error) {
-        console.error("Auth check failed, redirecting to setup");
+        console.error("Auth check failed, redirecting to setup", error);
         router.push("/setup/unified");
       }
     };
 
     checkAuth();
-  }, [pathname]);
+  }, [pathname, router]);
 
   // Portal-specific color for loading spinner
   const portalColor = portal.admin.primary;
