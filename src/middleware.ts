@@ -273,12 +273,17 @@ export default clerkMiddleware(async (auth, request) => {
   }
 
   // ============================================================================
-  // Authentication Check (protected routes only)
+  // HARD PROTECTION - Portal routes require authentication
   // ============================================================================
+  // CRITICAL: This MUST come before any other logic to ensure protected routes
+  // cannot be accessed without authentication.
   if (isProtectedRoute(request)) {
     if (!userId) {
-      // Clerk will redirect to sign in automatically
-      return;
+      // HARD REDIRECT: Immediately redirect to sign-in without loading any page content
+      // This prevents the E2E test "authentication bypass" issue
+      const signInUrl = new URL("/sign-in", request.url);
+      signInUrl.searchParams.set("redirect_url", request.nextUrl.pathname + request.nextUrl.search);
+      return NextResponse.redirect(signInUrl);
     }
 
     // Check if user has pending approval status - redirect to pending page

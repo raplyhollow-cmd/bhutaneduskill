@@ -164,6 +164,7 @@ export default function AdminDashboardPage() {
   const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingInsights, setIsLoadingInsights] = useState(true);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   useEffect(() => {
     loadDashboardData();
@@ -178,15 +179,29 @@ export default function AdminDashboardPage() {
   const loadDashboardData = async () => {
     try {
       const response = await fetch("/api/admin/dashboard");
+
+      // Handle authentication errors explicitly
+      if (response.status === 401 || response.status === 403) {
+        setApiError("You need to sign in to access this page");
+        // Redirect to sign-in after a short delay to allow error message to be seen
+        setTimeout(() => {
+          window.location.href = "/sign-in?redirect_url=" + encodeURIComponent(window.location.pathname);
+        }, 1500);
+        setIsLoading(false);
+        return;
+      }
+
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
+
       const json = await response.json();
       // API returns { data: { stats, topSchools, careerInterests } }
       const data = json.data || json;
       setStats(data.stats || stats);
       setTopSchools(data.topSchools || []);
       setCareerInterests(data.careerInterests || []);
+      setApiError(null); // Clear any previous error
 
       // Generate alerts from data
       const newAlerts: Alert[] = [];
@@ -200,6 +215,7 @@ export default function AdminDashboardPage() {
       setAlerts(newAlerts);
     } catch (error) {
       logger.error("Failed to load admin dashboard:", error);
+      setApiError("Failed to load dashboard data. Please refresh the page or try again later.");
       setStats({
         totalSchools: 0,
         totalStudents: 0,
@@ -250,10 +266,98 @@ export default function AdminDashboardPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div className="grid md:grid-cols-4 gap-4">
+        {/* Header Skeleton */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="space-y-2">
+            <div className="h-7 w-48 bg-ceramic-gray-100 rounded animate-pulse" />
+            <div className="h-4 w-64 bg-ceramic-gray-100/60 rounded animate-pulse" />
+          </div>
+          <div className="flex gap-2">
+            <div className="h-9 w-24 bg-ceramic-gray-100 rounded animate-pulse" />
+            <div className="h-9 w-32 bg-ceramic-gray-100 rounded animate-pulse" />
+          </div>
+        </div>
+
+        {/* Stats Grid Skeleton */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-32 bg-ceramic-gray-100 rounded-lg animate-pulse" />
+            <div key={i} className="p-5 bg-white rounded-lg border border-ceramic-border">
+              <div className="flex items-start justify-between mb-4">
+                <div className="space-y-2 flex-1">
+                  <div className="h-4 w-24 bg-ceramic-gray-100 rounded animate-pulse" />
+                  <div className="h-8 w-16 bg-ceramic-gray-100/60 rounded animate-pulse" />
+                </div>
+                <div className="w-12 h-12 bg-ceramic-gray-100 rounded-lg animate-pulse" />
+              </div>
+              <div className="h-4 w-20 bg-ceramic-gray-100/40 rounded animate-pulse" />
+            </div>
           ))}
+        </div>
+
+        {/* Quick Actions Skeleton */}
+        <div className="space-y-4">
+          <div className="h-5 w-32 bg-ceramic-gray-100 rounded animate-pulse" />
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-32 bg-ceramic-gray-100 rounded-lg animate-pulse" />
+            ))}
+          </div>
+        </div>
+
+        {/* Content Sections Skeleton */}
+        <div className="grid lg:grid-cols-2 gap-6">
+          <div className="p-6 bg-white rounded-lg border border-ceramic-border">
+            <div className="space-y-3 mb-4">
+              <div className="h-5 w-32 bg-ceramic-gray-100 rounded animate-pulse" />
+              <div className="h-4 w-48 bg-ceramic-gray-100/60 rounded animate-pulse" />
+            </div>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4 py-2">
+                <div className="w-8 h-8 bg-ceramic-gray-100 rounded-full animate-pulse" />
+                <div className="flex-1 space-y-1">
+                  <div className="h-4 w-full bg-ceramic-gray-100 rounded animate-pulse" />
+                  <div className="h-3 w-3/4 bg-ceramic-gray-100/60 rounded animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="p-6 bg-white rounded-lg border border-ceramic-border">
+            <div className="space-y-3 mb-4">
+              <div className="h-5 w-40 bg-ceramic-gray-100 rounded animate-pulse" />
+              <div className="h-4 w-56 bg-ceramic-gray-100/60 rounded animate-pulse" />
+            </div>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4 py-2">
+                <div className="w-6 h-6 bg-ceramic-gray-100 rounded-full animate-pulse" />
+                <div className="flex-1 space-y-1">
+                  <div className="h-4 w-full bg-ceramic-gray-100 rounded animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error message if API call failed
+  if (apiError) {
+    return (
+      <div className="space-y-6">
+        <div className="p-6 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600" />
+            <div>
+              <h3 className="font-semibold text-red-900">Error Loading Dashboard</h3>
+              <p className="text-sm text-red-700 mt-1">{apiError}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="mt-3 text-sm font-medium text-red-800 hover:text-red-900 underline"
+              >
+                Reload Page
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );

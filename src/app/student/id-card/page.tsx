@@ -109,7 +109,7 @@ export default function StudentIdCardPage() {
         <html>
           <head><title>Print ID Card</title></head>
           <body style="margin:0;padding:20px;display:flex;justify-content:center;align-items:center;min-height:100vh;">
-            <img src="${idCardUrl}" style="max-width:600px;width:100%;" />
+            <img src="${idCardUrl}" alt="Student ID Card for ${userName}" style="max-width:600px;width:100%;" />
             <script>
               window.onload = function() {
                 window.print();

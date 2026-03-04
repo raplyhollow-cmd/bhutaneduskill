@@ -389,7 +389,7 @@ export default function PendingTeacherApplicationsPage() {
                             style={{ background: 'linear-gradient(135deg, rgb(139 92 246) 0%, rgb(124 58 237) 100%)' }}
                           >
                             {application.user?.profileImage ? (
-                              <img src={application.user.profileImage} alt="" className="w-full h-full rounded-xl object-cover" />
+                              <img src={application.user.profileImage} alt={`Profile photo of ${application.user?.firstName || 'Teacher'} ${application.user?.lastName || ''}`} className="w-full h-full rounded-xl object-cover" />
                             ) : (
                               getInitials(application.user?.firstName || null, application.user?.lastName || null)
                             )}

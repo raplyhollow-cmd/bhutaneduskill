@@ -1,8 +1,23 @@
 "use client";
 
-import { SignIn } from "@clerk/nextjs";
+import { SignIn, useUser } from "@clerk/nextjs";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 
 export default function SignInPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { isLoaded, isSignedIn } = useUser();
+
+  // Handle redirect after sign-in
+  useEffect(() => {
+    if (isLoaded && isSignedIn) {
+      // Get the redirect URL from query params, default to dashboard
+      const redirectUrl = searchParams.get("redirect_url");
+      router.push(redirectUrl || "/");
+    }
+  }, [isLoaded, isSignedIn, router, searchParams]);
+
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-orange-50 via-white to-blue-50 px-4 py-6">
 
@@ -121,7 +136,8 @@ export default function SignInPage() {
       <div className="relative flex w-full max-w-[25rem] flex-1 flex-col justify-center">
         <SignIn
           signUpUrl="/sign-up"
-          fallbackRedirectUrl="/"
+          fallbackRedirectUrl={searchParams.get("redirect_url") || "/"}
+          forceRedirectUrl={searchParams.get("redirect_url") || undefined}
         />
       </div>
     </div>
