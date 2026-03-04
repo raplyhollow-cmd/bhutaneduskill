@@ -79,6 +79,19 @@ const healthConfig = {
   },
 };
 
+/**
+ * Format timestamp consistently to avoid hydration mismatches
+ */
+function formatMessageTime(timestamp: Date | string): string {
+  const date = typeof timestamp === "string" ? new Date(timestamp) : timestamp;
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  const ampm = hours >= 12 ? "PM" : "AM";
+  const displayHours = hours % 12 || 12;
+  const displayMinutes = minutes.toString().padStart(2, "0");
+  return `${displayHours}:${displayMinutes} ${ampm}`;
+}
+
 export function SITREPBriefing({ sitrep, isLoading, onRefresh }: SITREPBriefingProps) {
   const [typedText, setTypedText] = useState("");
   const [copied, setCopied] = useState(false);
@@ -158,8 +171,8 @@ export function SITREPBriefing({ sitrep, isLoading, onRefresh }: SITREPBriefingP
             <span className="text-[10px] font-black tracking-[0.3em] text-cyan-500 uppercase">
               SITREP // {sitrep.reportDate}
             </span>
-            <span className="text-[10px] font-mono text-ceramic-dimmed">
-              Generated at {new Date(sitrep.timestamp).toLocaleTimeString()}
+            <span className="text-[10px] font-mono text-ceramic-dimmed" suppressHydrationWarning>
+              Generated at {formatMessageTime(sitrep.timestamp)}
             </span>
           </div>
         </div>

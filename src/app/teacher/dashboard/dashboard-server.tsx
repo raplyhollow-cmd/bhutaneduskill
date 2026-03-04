@@ -26,6 +26,7 @@ import {
   TrendingDown,
 } from "lucide-react";
 import { TeacherAIInsights } from "./ai-insights-wrapper";
+import { ClassIntelligenceWidget } from "@/components/teacher/class-intelligence-widget";
 import Link from "next/link";
 import { TeacherQuickActions } from "./teacher-quick-actions";
 import type { TeacherDashboardData } from "./_actions";
@@ -115,6 +116,11 @@ export function TeacherDashboardPage({ dashboardData }: TeacherDashboardProps) {
 
       {/* AI Insights Section - Server Component wrapper */}
       <TeacherAIInsights dashboardData={dashboardData} />
+
+      {/* Class Intelligence Widget - Early Warning & Insights */}
+      {classes && classes.length > 0 && (
+        <ClassIntelligenceWidget classId={classes[0]?.id} />
+      )}
 
       {/* Classes Overview - Ceramic Styled */}
       {classes && classes.length > 0 ? (

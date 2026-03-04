@@ -71,6 +71,11 @@ const envSchema = z.object({
   NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
   SENTRY_AUTH_TOKEN: z.string().optional(),
   SENTRY_ENVIRONMENT: z.string().default("production"),
+
+  // -----------------------------------------------------------------------------
+  // Internal API (for service-to-service communication)
+  // -----------------------------------------------------------------------------
+  INTERNAL_API_KEY: z.string().optional().default("internal-dev-key-change-in-production"),
 });
 
 // Validate at import time - fail fast if env vars are missing

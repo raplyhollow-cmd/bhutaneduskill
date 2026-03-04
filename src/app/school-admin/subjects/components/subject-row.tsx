@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { BookOpen, MoreVertical } from "lucide-react";
+import { BookOpen, MoreVertical, UserPlus, Users, X, GraduationCap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { InlineEdit } from "@/components/ui/inline-edit";
 import { InPlaceText } from "@/components/ui/in-place-editor";
@@ -14,6 +14,26 @@ import {
 import { cn } from "@/lib/utils";
 import type { Subject } from "@/lib/grouping";
 
+interface TeacherAssignment {
+  id: string;
+  teacherId: string;
+  role: string;
+  isPrimary: boolean;
+  classId: string | null;
+  teacher: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string;
+  };
+  class?: {
+    id: string;
+    name: string;
+    grade: number;
+    section: string;
+  } | null;
+}
+
 interface SubjectRowProps {
   subject: Subject;
   index: number;
@@ -21,6 +41,9 @@ interface SubjectRowProps {
   onEdit?: (subject: Subject) => void;
   onDelete?: (subject: Subject) => void;
   onView?: (subject: Subject) => void;
+  teacherAssignments?: Record<string, TeacherAssignment[]>;
+  onAssignTeacher?: (subject: Subject) => void;
+  onRemoveTeacher?: (subjectId: string, teacherId: string, classId?: string | null) => void;
 }
 
 /**
@@ -32,8 +55,19 @@ interface SubjectRowProps {
  * - Scale-[0.98] on active/press
  * - 50% opacity + grayscale for inactive subjects
  * - Context menu for actions
+ * - Teacher assignment display and quick actions
  */
-export function SubjectRow({ subject, index, onUpdate, onEdit, onDelete, onView }: SubjectRowProps) {
+export function SubjectRow({
+  subject,
+  index,
+  onUpdate,
+  onEdit,
+  onDelete,
+  onView,
+  teacherAssignments,
+  onAssignTeacher,
+  onRemoveTeacher,
+}: SubjectRowProps) {
   const handleInPlaceSave = async (field: string, value: string): Promise<{ success: boolean; error?: string }> => {
     if (onUpdate) {
       try {
@@ -51,6 +85,17 @@ export function SubjectRow({ subject, index, onUpdate, onEdit, onDelete, onView 
       await onUpdate(subject.id, field, value);
     }
   };
+
+  // Get teacher name helper
+  const getTeacherName = (teacher: TeacherAssignment["teacher"]) => {
+    if (teacher.firstName && teacher.lastName) {
+      return `${teacher.firstName} ${teacher.lastName}`;
+    }
+    return teacher.email;
+  };
+
+  // Get assignments for this subject
+  const assignments = teacherAssignments?.[subject.id] || [];
 
   return (
     <motion.div
@@ -119,14 +164,43 @@ export function SubjectRow({ subject, index, onUpdate, onEdit, onDelete, onView 
           />
         </div>
 
-        {/* Assigned Teacher - Placeholder for now */}
-        <div className="w-32">
-          <InlineEdit
-            value=""
-            onSave={(value) => handleInlineSave("teacher", value)}
-            placeholder="Unassigned"
-            className="text-sm"
-          />
+        {/* Assigned Teachers */}
+        <div className="w-48 flex items-center gap-1">
+          {assignments.length === 0 ? (
+            <button
+              onClick={() => onAssignTeacher?.(subject)}
+              className="flex items-center gap-1 text-xs text-gray-500 hover:text-violet-600 transition-colors px-2 py-1 rounded hover:bg-violet-50"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              Assign Teacher
+            </button>
+          ) : (
+            <div className="flex items-center gap-1">
+              <div className="flex -space-x-1">
+                {assignments.slice(0, 3).map((assignment) => (
+                  <div
+                    key={assignment.id}
+                    className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-xs font-medium border-2 border-white"
+                    title={getTeacherName(assignment.teacher)}
+                  >
+                    {assignment.teacher.firstName?.[0] || assignment.teacher.email[0].toUpperCase()}
+                  </div>
+                ))}
+                {assignments.length > 3 && (
+                  <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 text-xs font-medium border-2 border-white">
+                    +{assignments.length - 3}
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => onAssignTeacher?.(subject)}
+                className="w-6 h-6 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center hover:bg-violet-200 transition-colors"
+                title="Add teacher"
+              >
+                <UserPlus className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Room No - Placeholder for now */}

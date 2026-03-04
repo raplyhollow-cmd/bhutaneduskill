@@ -93,4 +93,14 @@ export function forbiddenResponse(message: string = "Forbidden"): NextResponse<A
  */
 export function conflictResponse(message: string = "Conflict"): NextResponse<ApiErrorResponse> {
   return errorResponse(message, 409);
-};
+}
+
+/**
+ * Create a "method not allowed" error response
+ */
+export function methodNotAllowedResponse(allowedMethods: string = "GET, POST, PUT, DELETE"): NextResponse<ApiErrorResponse> {
+  return NextResponse.json(
+    { error: "Method not allowed", status: 405, allowedMethods },
+    { status: 405, headers: { Allow: allowedMethods } }
+  );
+}

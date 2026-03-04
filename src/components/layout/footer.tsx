@@ -10,10 +10,10 @@ import {
   Mail,
   Phone,
   MapPin,
-  ArrowUp,
   Heart,
   Shield,
   CheckCircle2,
+  ArrowUp,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -241,31 +241,6 @@ function TrustBadge({ badge, index }: { badge: typeof footerSections.trustBadges
   );
 }
 
-function BackToTop() {
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  return (
-    <motion.button
-      initial={{ opacity: 0, scale: 0.8 }}
-      whileInView={{ opacity: 1, scale: 1 }}
-      viewport={{ once: true }}
-      transition={{ delay: 0.4, duration: 0.3 }}
-      onClick={scrollToTop}
-      className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50 p-3 rounded-full bg-gradient-to-r from-orange-600 to-red-600 text-white shadow-lg hover:from-orange-700 hover:to-red-700 hover:shadow-xl transition-all group"
-      aria-label="Back to top"
-    >
-      <motion.div
-        animate={{ y: [0, -4, 0] }}
-        transition={{ duration: 2, repeat: Infinity, repeatType: "loop", ease: "easeInOut" }}
-      >
-        <ArrowUp className="w-5 h-5" strokeWidth={2} />
-      </motion.div>
-    </motion.button>
-  );
-}
-
 export function Footer() {
   return (
     <>
@@ -395,9 +370,6 @@ export function Footer() {
           <div className="h-0.5 bg-gradient-to-r from-orange-500 via-red-500 to-orange-500" />
         </div>
       </footer>
-
-      {/* Back to Top Button */}
-      <BackToTop />
     </>
   );
 }

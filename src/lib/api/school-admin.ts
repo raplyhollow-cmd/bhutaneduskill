@@ -613,7 +613,7 @@ export async function getClasses(schoolId: string | null, options: {
       teacherLastName: users.lastName,
     })
     .from(classes)
-    .leftJoin(users, eq(classes.teacherId, users.id))
+    .leftJoin(users, eq(classes.classTeacherId, users.id))
     .where(and(...conditions))
     .orderBy(desc(classes.createdAt))
     .limit(limit)

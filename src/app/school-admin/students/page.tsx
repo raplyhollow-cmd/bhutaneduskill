@@ -1,31 +1,24 @@
 /**
  * SCHOOL ADMIN - STUDENTS MANAGEMENT
  *
- * Features:
- * - List all students with filters
- * - Add new student
- * - Edit student details
- * - Bulk upload via CSV
- * - View student profile
- * - Enroll in classes
+ * Modern UX with:
+ * - ModernDataGrid for responsive data display
+ * - SlideOverPanel for detailed student view
+ * - Inline editing for quick updates
+ * - Bulk import via CSV
+ * - Advanced filtering and search
  *
  * Now using real database data via server actions.
  */
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Users,
   Plus,
-  Search,
-  Filter,
   Upload,
   Download,
-  Edit,
-  Trash2,
-  Eye,
   UserCheck,
   GraduationCap,
   AlertCircle,
@@ -52,8 +45,6 @@ export default async function SchoolAdminStudentsPage({
   const status = params.status || "All";
   const feeStatus = params.feeStatus || "All";
 
-  // Note: Since this is a server component, we'll pass initial data
-  // The client component will handle filtering with server actions
   return (
     <StudentsClient
       initialSearch={search}

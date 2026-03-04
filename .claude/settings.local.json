@@ -73,7 +73,15 @@
       "Bash(git commit:*)",
       "Bash(printf '\\\\n')",
       "Bash(sed \"s/\\\\.tsx$//\")",
-      "Bash(echo \"Exit code: $?\")"
+      "Bash(echo \"Exit code: $?\")",
+      "Bash(npx playwright test --project=chromium --headed)",
+      "Bash(git.exe checkout package.json)",
+      "Bash(npx playwright test src/tests/e2e/teacher --reporter=list)",
+      "Bash(npx playwright --version)",
+      "Bash(./node_modules/.bin/playwright test src/tests/e2e/teacher --reporter=list --project=chromium)",
+      "Bash(./node_modules/.bin/playwright test src/tests/e2e/teacher/authentication.spec.ts --reporter=list --project=chromium)",
+      "Bash(./node_modules/.bin/playwright test src/tests/e2e/teacher/simple.spec.ts --reporter=list --project=chromium)",
+      "Bash(cmd //c \"taskkill /F /PID 67352\")"
     ]
   }
 }

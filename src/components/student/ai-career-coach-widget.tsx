@@ -63,6 +63,19 @@ interface AICareerCoachWidgetProps {
   className?: string;
 }
 
+/**
+ * Format message timestamp consistently to avoid hydration mismatches
+ */
+function formatMessageTime(timestamp: Date | string): string {
+  const date = typeof timestamp === "string" ? new Date(timestamp) : timestamp;
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  const ampm = hours >= 12 ? "PM" : "AM";
+  const displayHours = hours % 12 || 12;
+  const displayMinutes = minutes.toString().padStart(2, "0");
+  return `${displayHours}:${displayMinutes} ${ampm}`;
+}
+
 export function AICareerCoachWidget({ className = "" }: AICareerCoachWidgetProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -421,11 +434,9 @@ function MessageBubble({ message }: MessageBubbleProps) {
           className={`text-[10px] mt-1 ${
             isUser ? "text-ceramic-dimmed" : "text-orange-400"
           }`}
+          suppressHydrationWarning
         >
-          {new Date(message.timestamp).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
+          {formatMessageTime(message.timestamp)}
         </p>
       </div>
     </div>

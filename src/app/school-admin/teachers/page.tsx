@@ -1,30 +1,35 @@
 /**
  * SCHOOL ADMIN - TEACHERS MANAGEMENT
  *
- * Premium compact list view
+ * Modern UX with:
+ * - GoogleDataTable component
+ * - SlideOverPanel for teacher details
+ * - Inline editing for key fields
+ * - Avatar display with gradients
+ * - Status badges
  */
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   Plus,
-  Search,
-  Loader2,
   Sparkles,
-  Check,
-  X,
-  Square,
+  Mail,
+  Phone,
+  User,
+  BookOpen,
+  Calendar,
+  GraduationCap,
+  Edit,
   Trash2,
-  Building2,
   UserCheck,
   UserX,
 } from "lucide-react";
 import { AddTeacherModal } from "@/components/school-admin/add-teacher-modal";
 import { ExpressAddModal, useExpressAdd } from "@/components/ui/express-add-modal";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,9 +41,30 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
-import { InPlaceText } from "@/components/ui/in-place-editor";
-import { TableQuickActions, ActionIcons, QuickAction } from "@/components/shared/table-quick-actions";
-import { Eye, Edit, Users } from "lucide-react";
+import {
+  GoogleDataTable,
+  GoogleColumn,
+  GoogleAction,
+} from "@/components/admin/google-data-table";
+import {
+  SlideOverPanel,
+  SlideOverSection,
+} from "@/components/admin/slide-over-panel";
+import { InlineEdit } from "@/components/ui/inline-edit";
+import { Separator } from "@/components/ui/separator";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+
+// ============================================================================
+// Types
+// ============================================================================
 
 interface Teacher {
   id: string;
@@ -51,21 +77,86 @@ interface Teacher {
   subjects: string[] | null;
   department?: string;
   isActive: boolean;
+  onLeave?: boolean;
   classGrade?: string | null;
   section?: string | null;
+  qualification?: string | null;
+  experience?: number | null;
+  joinedDate?: string | null;
+  address?: string | null;
+  bio?: string | null;
 }
+
+interface TeacherDetail extends Teacher {
+  assignedClasses?: ClassAssignment[];
+  schedule?: ScheduleItem[];
+}
+
+interface ClassAssignment {
+  id: string;
+  classId: string;
+  className: string;
+  subject: string;
+  isPrimary: boolean;
+}
+
+interface ScheduleItem {
+  id: string;
+  day: string;
+  period: number;
+  subject: string;
+  class: string;
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+const getInitials = (firstName: string | null, lastName: string | null): string => {
+  const first = firstName?.[0] || "";
+  const last = lastName?.[0] || "";
+  return (first + last).toUpperCase() || "T";
+};
+
+const getAvatarGradient = (firstName: string | null, lastName: string | null): string => {
+  const colors = [
+    "from-violet-500 to-purple-600",
+    "from-blue-500 to-cyan-600",
+    "from-emerald-500 to-teal-600",
+    "from-amber-500 to-orange-600",
+    "from-rose-500 to-pink-600",
+    "from-indigo-500 to-blue-600",
+  ];
+  const index = (firstName?.[0]?.charCodeAt(0) || 0) % colors.length;
+  return colors[index];
+};
+
+const getDepartmentColor = (dept: string | undefined): string => {
+  const colors: Record<string, string> = {
+    Science: "bg-blue-100 text-blue-700",
+    Mathematics: "bg-emerald-100 text-emerald-700",
+    English: "bg-amber-100 text-amber-700",
+    Dzongkha: "bg-rose-100 text-rose-700",
+    "Social Studies": "bg-orange-100 text-orange-700",
+    ICT: "bg-purple-100 text-purple-700",
+    General: "bg-gray-100 text-gray-700",
+  };
+  return colors[dept || ""] || "bg-gray-100 text-gray-700";
+};
+
+// ============================================================================
+// Main Page Component
+// ============================================================================
 
 export default function SchoolAdminTeachersPage() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [departmentFilter, setDepartmentFilter] = useState("all");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean }>({ open: false });
-  const [assignDeptOpen, setAssignDeptOpen] = useState(false);
-  const [selectedDept, setSelectedDept] = useState("");
+  const [selectedTeacher, setSelectedTeacher] = useState<TeacherDetail | null>(null);
+  const [slideOverOpen, setSlideOverOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
+  const [deleteDialog, setDeleteDialog] = useState(false);
+  const [editValue, setEditValue] = useState("");
 
   const quickAdd = useExpressAdd();
 
@@ -73,6 +164,7 @@ export default function SchoolAdminTeachersPage() {
     fetchTeachers();
   }, []);
 
+  // Fetch teachers from API
   const fetchTeachers = async () => {
     try {
       setLoading(true);
@@ -86,6 +178,7 @@ export default function SchoolAdminTeachersPage() {
     }
   };
 
+  // Quick add teacher
   const handleQuickAdd = async (name: string): Promise<{ success: true } | { success: false; error: string }> => {
     const [first, ...rest] = name.trim().split(" ");
     const last = rest.join(" ") || "";
@@ -95,376 +188,687 @@ export default function SchoolAdminTeachersPage() {
       body: JSON.stringify({
         firstName: first,
         lastName: last || "Teacher",
-        email: `${first.toLowerCase()}@school.edu`,
+        email: `${first.toLowerCase()}${last ? "." + last.toLowerCase() : ""}@school.edu`,
         phone: "",
         employeeId: `TCH${Date.now().toString().slice(-4)}`,
         department: "General",
         subjects: [],
       }),
     });
-    if (res.ok) { await fetchTeachers(); return { success: true }; }
+    if (res.ok) {
+      await fetchTeachers();
+      return { success: true };
+    }
     const d = await res.json();
-    return { success: false, error: d.error || "Failed" };
+    return { success: false, error: d.error || "Failed to add teacher" };
   };
 
-  const departments = Array.from(new Set(teachers.map(t => t.department).filter(Boolean)));
+  // Get unique departments
+  const departments = useMemo(() => {
+    return Array.from(new Set(teachers.map((t) => t.department).filter(Boolean)));
+  }, [teachers]);
 
-  const filtered = teachers.filter(t => {
-    const m = searchQuery === "" ||
-      t.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.employeeId?.toLowerCase().includes(searchQuery.toLowerCase());
-    const d = departmentFilter === "all" || t.department === departmentFilter;
-    return m && d;
-  });
-
-  const toggle = (id: string) => {
-    setSelectedIds(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  };
-
-  const toggleAll = () => {
-    setSelectedIds(s => s.size === filtered.length ? new Set() : new Set(filtered.map(t => t.id)));
-  };
-
-  const allSelected = filtered.length > 0 && selectedIds.size === filtered.length;
-
-  const bulkAction = async (action: string, value?: any) => {
-    setIsProcessing(true);
-    try {
-      if (action === "delete") {
-        await Promise.allSettled(Array.from(selectedIds).map(id => fetch(`/api/school-admin/teachers/${id}`, { method: "DELETE" })));
-        setTeachers(p => p.filter(t => !selectedIds.has(t.id)));
-      } else if (action === "department") {
-        await Promise.allSettled(Array.from(selectedIds).map(id =>
-          fetch(`/api/school-admin/teachers/${id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ department: value }),
-          })
-        ));
-        await fetchTeachers();
-      } else if (action === "status") {
-        await Promise.allSettled(Array.from(selectedIds).map(id =>
-          fetch(`/api/school-admin/teachers/${id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ isActive: value }),
-          })
-        ));
-        await fetchTeachers();
-      }
-      setSelectedIds(new Set());
-      setDeleteDialog({ open: false });
-      setAssignDeptOpen(false);
-    } catch { alert("Action failed"); }
-    setIsProcessing(false);
-  };
-
-  // Save teacher name via API (for InPlaceEditor)
-  const saveTeacherName = async (teacherId: string, newName: string): Promise<{ success: boolean; error?: string }> => {
+  // Update teacher field
+  const updateTeacherField = async (
+    teacherId: string,
+    field: string,
+    value: string
+  ): Promise<void> => {
     try {
       const response = await fetch(`/api/school-admin/teachers/${teacherId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName }),
+        body: JSON.stringify({ [field]: value }),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to update teacher name");
-      }
+      if (!response.ok) throw new Error("Failed to update");
 
-      // Update local state
       setTeachers((prev) =>
-        prev.map((t) => (t.id === teacherId ? { ...t, name: newName } : t))
+        prev.map((t) => (t.id === teacherId ? { ...t, [field]: value } : t))
       );
 
-      return { success: true };
+      if (selectedTeacher?.id === teacherId) {
+        setSelectedTeacher((prev) => (prev ? { ...prev, [field]: value } : null));
+      }
     } catch (error) {
-      console.error("Failed to update teacher name:", error);
-      return { success: false, error: "Failed to update name" };
+      console.error("Failed to update teacher:", error);
+      throw error;
     }
   };
 
-  // Save teacher department via API (for InPlaceEditor)
-  const saveTeacherDepartment = async (teacherId: string, newDept: string): Promise<{ success: boolean; error?: string }> => {
+  // Toggle teacher active status
+  const toggleTeacherStatus = async (teacher: Teacher, active: boolean) => {
+    await updateTeacherField(teacher.id, "isActive", active.toString());
+  };
+
+  // Delete teacher
+  const deleteTeacher = async (teacherId: string) => {
     try {
       const response = await fetch(`/api/school-admin/teachers/${teacherId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ department: newDept }),
+        method: "DELETE",
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to update teacher department");
-      }
-
-      // Update local state
-      setTeachers((prev) =>
-        prev.map((t) => (t.id === teacherId ? { ...t, department: newDept } : t))
-      );
-
-      return { success: true };
-    } catch (error) {
-      console.error("Failed to update teacher department:", error);
-      return { success: false, error: "Failed to update department" };
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-5 h-5 animate-spin text-violet-500" />
-      </div>
-    );
-  }
-
-  const getInitials = (f: string | null, l: string | null) => {
-    const a = (f?.[0] || "") + (l?.[0] || "");
-    return a.toUpperCase() || "T";
-  };
-
-  // Action handlers for individual teacher
-  const handleViewTeacher = (teacher: Teacher) => {
-    // Navigate to teacher details or open modal
-    console.log("View teacher:", teacher);
-  };
-
-  const handleEditTeacher = (teacher: Teacher) => {
-    // Open edit modal
-    console.log("Edit teacher:", teacher);
-  };
-
-  const handleDeleteTeacher = async (teacher: Teacher) => {
-    if (!confirm(`Delete ${teacher.name}? This action cannot be undone.`)) return;
-    try {
-      const response = await fetch(`/api/school-admin/teachers/${teacher.id}`, { method: "DELETE" });
       if (response.ok) {
-        await fetchTeachers();
-      } else {
-        alert("Failed to delete teacher");
+        setTeachers((prev) => prev.filter((t) => t.id !== teacherId));
+        setSlideOverOpen(false);
       }
-    } catch {
-      alert("Failed to delete teacher");
+    } catch (error) {
+      console.error("Failed to delete teacher:", error);
     }
   };
 
-  const handleAssignClasses = (teacher: Teacher) => {
-    // Open assign classes modal
-    console.log("Assign classes to teacher:", teacher);
-  };
+  // ============================================================================
+  // Data Grid Columns
+  // ============================================================================
 
-  return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between pb-3">
-        <div>
-          <h1 className="text-lg font-semibold text-gray-900">Teachers</h1>
-          <p className="text-xs text-gray-500">{teachers.length} total</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={quickAdd.open} className="h-8 text-xs">
-            <Sparkles className="w-3.5 h-3.5 mr-1.5" /> Quick Add
-          </Button>
-          <Button size="sm" onClick={() => setIsAddModalOpen(true)} className="h-8 bg-violet-600 hover:bg-violet-700 text-xs">
-            <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Teacher
-          </Button>
-        </div>
-      </div>
-
-      {/* Bulk Bar */}
-      {selectedIds.size > 0 && (
-        <div className="flex items-center justify-between px-3 py-2 bg-violet-50 border border-violet-200 rounded-lg mb-3">
-          <span className="text-sm font-medium text-violet-900">{selectedIds.size} selected</span>
-          <div className="flex items-center gap-1">
-            <Button size="sm" variant="ghost" className="h-7 text-xs text-violet-700 hover:bg-violet-100" onClick={() => setSelectedIds(new Set())}>
-              <X className="w-3.5 h-3.5 mr-1" /> Clear
-            </Button>
-            <Select onValueChange={(v) => { setSelectedDept(v); setAssignDeptOpen(true); }}>
-              <SelectTrigger className="w-[110px] h-7 text-xs border-violet-200">
-                <Building2 className="w-3 h-3 mr-1" /> Dept
-              </SelectTrigger>
-              <SelectContent>
-                {departments.map(d => <SelectItem key={d} value={d || ""}>{d}</SelectItem>)}
-                <SelectItem value="Science">Science</SelectItem>
-                <SelectItem value="Mathematics">Mathematics</SelectItem>
-                <SelectItem value="English">English</SelectItem>
-                <SelectItem value="Dzongkha">Dzongkha</SelectItem>
-                <SelectItem value="Social Studies">Social Studies</SelectItem>
-                <SelectItem value="ICT">ICT</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button size="sm" variant="ghost" className="h-7 text-xs text-violet-700 hover:bg-violet-100" onClick={() => bulkAction("status", false)}>
-              <UserX className="w-3.5 h-3.5 mr-1" /> Disable
-            </Button>
-            <Button size="sm" variant="ghost" className="h-7 text-xs text-violet-700 hover:bg-violet-100" onClick={() => bulkAction("status", true)}>
-              <UserCheck className="w-3.5 h-3.5 mr-1" /> Enable
-            </Button>
-            <Button size="sm" variant="ghost" className="h-7 text-xs text-red-600 hover:bg-red-50" onClick={() => setDeleteDialog({ open: true })}>
-              <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete
-            </Button>
+  const columns: GoogleColumn<Teacher>[] = [
+    {
+      id: "name",
+      label: "Teacher",
+      width: "200px",
+      sortable: true,
+      filterable: true,
+      render: (teacher) => (
+        <div className="flex items-center gap-3">
+          <div
+            className={cn(
+              "w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold shadow-sm bg-gradient-to-br",
+              getAvatarGradient(teacher.firstName, teacher.lastName)
+            )}
+          >
+            {getInitials(teacher.firstName, teacher.lastName)}
+          </div>
+          <div className="min-w-0">
+            <p className="font-medium text-gray-900 truncate">{teacher.name}</p>
+            <p className="text-xs text-gray-500 font-mono">{teacher.employeeId || "-"}</p>
           </div>
         </div>
-      )}
-
-      {/* Toolbar */}
-      <div className="flex items-center gap-2 pb-2">
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <Input placeholder="Search..." className="pl-8 h-9 text-sm border-gray-200" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+      ),
+    },
+    {
+      id: "email",
+      label: "Email",
+      width: "220px",
+      sortable: true,
+      filterable: true,
+      render: (teacher) => (
+        <div className="flex items-center gap-1.5 text-gray-600 text-sm">
+          <Mail className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+          <span className="truncate">{teacher.email || "-"}</span>
         </div>
-        <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
-          <SelectTrigger className="w-[140px] h-9 text-sm border-gray-200">
-            <SelectValue placeholder="Department" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Departments</SelectItem>
-            {departments.map(d => <SelectItem key={d} value={d || ""}>{d}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        {filtered.length > 0 && (
-          <button onClick={toggleAll} className="ml-auto flex items-center gap-1.5 px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-md transition-colors">
-            {allSelected ? <Check className="w-4 h-4 text-violet-600" /> : <Square className="w-4 h-4 text-gray-400" />}
-            {allSelected ? "Deselect All" : "Select All"}
-          </button>
-        )}
-        <span className="text-xs text-gray-400">{filtered.length} of {teachers.length}</span>
-      </div>
-
-      {/* Table */}
-      <div className="flex-1 border border-gray-200 rounded-xl overflow-hidden bg-white">
-        {/* Header */}
-        <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-gray-50/80 border-b border-gray-200 text-xs font-medium text-gray-500">
-          <div className="col-span-1"></div>
-          <div className="col-span-3">Teacher</div>
-          <div className="col-span-3">Email</div>
-          <div className="col-span-2">Department</div>
-          <div className="col-span-2">Classes</div>
-          <div className="col-span-1 text-right">Status</div>
-          <div className="col-span-1 text-right">Actions</div>
-        </div>
-
-        {/* Rows */}
-        <div className="divide-y divide-gray-100">
-          {filtered.length === 0 ? (
-            <div className="flex items-center justify-center h-40 text-gray-400 text-sm">
-              {searchQuery || departmentFilter !== "all" ? "No results found" : "No teachers yet"}
-            </div>
+      ),
+    },
+    {
+      id: "phone",
+      label: "Phone",
+      width: "160px",
+      filterable: true,
+      render: (teacher) => (
+        <div className="flex items-center gap-1.5 text-gray-600 text-sm">
+          <Phone className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+          {teacher.phone ? (
+            <span className="truncate">{teacher.phone}</span>
           ) : (
-            filtered.map(teacher => {
-              const selected = selectedIds.has(teacher.id);
-              return (
-                <div
-                  key={teacher.id}
-                  className={cn(
-                    "grid grid-cols-12 gap-2 px-4 py-2.5 items-center text-sm transition-colors cursor-pointer group",
-                    selected ? "bg-violet-50" : "hover:bg-gray-50"
-                  )}
-                  onClick={e => { if (!(e.target as HTMLElement).closest("button")) toggle(teacher.id); }}
-                >
-                  <div className="col-span-1" onClick={e => { e.stopPropagation(); toggle(teacher.id); }}>
-                    <div className={cn(
-                      "w-4 h-4 rounded border-2 flex items-center justify-center transition-all",
-                      selected ? "bg-violet-600 border-violet-600" : "border-gray-300 group-hover:border-violet-400"
-                    )}>
-                      {selected && <Check className="w-3 h-3 text-white" />}
-                    </div>
-                  </div>
-                  <div className="col-span-3 flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-medium" style={{ background: "linear-gradient(135deg, #8b5cf6, #7c3aed)" }}>
-                      {getInitials(teacher.firstName, teacher.lastName)}
-                    </div>
-                    <div className="min-w-0">
-                      <InPlaceText
-                        value={teacher.name}
-                        onSave={async (newName) => saveTeacherName(teacher.id, newName)}
-                        placeholder="Teacher name"
-                        minLength={2}
-                        maxLength={100}
-                        required={true}
-                        displayClassName="font-medium text-gray-900 truncate"
-                        showIcon={true}
-                      />
-                      <p className="text-xs text-gray-400 font-mono">{teacher.employeeId || "-"}</p>
-                    </div>
-                  </div>
-                  <div className="col-span-3 text-gray-600 truncate text-xs">{teacher.email || "-"}</div>
-                  <div className="col-span-2">
-                    <InPlaceText
-                      value={teacher.department || ""}
-                      onSave={async (newDept) => saveTeacherDepartment(teacher.id, newDept)}
-                      placeholder="Set department"
-                      minLength={2}
-                      maxLength={50}
-                      displayClassName="inline-flex items-center px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 text-xs"
-                      showIcon={true}
-                    />
-                  </div>
-                  <div className="col-span-2 text-xs text-gray-500">
-                    {teacher.subjects && teacher.subjects.length > 0 ? (
-                      <span>{teacher.subjects.length} subject{teacher.subjects.length > 1 ? "s" : ""}</span>
-                    ) : (
-                      <span className="text-gray-400">-</span>
-                    )}
-                  </div>
-                  <div className="col-span-1 text-right">
-                    <span className={cn(
-                      "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
-                      teacher.isActive ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"
-                    )}>
-                      {teacher.isActive ? "Active" : "Inactive"}
-                    </span>
-                  </div>
-                  <div className="col-span-1 text-right" onClick={e => e.stopPropagation()}>
-                    <TableQuickActions
-                      actions={(() => {
-                        const actionsList: QuickAction[] = [
-                          { label: "View Details", icon: ActionIcons.view, onClick: () => handleViewTeacher(teacher) },
-                          { label: "Edit Profile", icon: ActionIcons.edit, onClick: () => handleEditTeacher(teacher) },
-                          { label: "Assign Classes", icon: ActionIcons.assign, onClick: () => handleAssignClasses(teacher) },
-                        ];
-                        actionsList.push({ separator: true });
-                        actionsList.push({ label: "Delete Teacher", icon: ActionIcons.delete, onClick: () => handleDeleteTeacher(teacher), variant: "danger" });
-                        return actionsList;
-                      })()}
-                    />
-                  </div>
-                </div>
-              );
-            })
+            <InlineEdit
+              value=""
+              onSave={(value) => updateTeacherField(teacher.id, "phone", value)}
+              placeholder="Add phone"
+              className="text-gray-400"
+            />
           )}
         </div>
+      ),
+    },
+    {
+      id: "department",
+      label: "Department",
+      width: "130px",
+      sortable: true,
+      filterable: true,
+      render: (teacher) => (
+        <Badge
+          variant="outline"
+          className={cn("font-normal", getDepartmentColor(teacher.department))}
+        >
+          {teacher.department || "General"}
+        </Badge>
+      ),
+    },
+    {
+      id: "subjects",
+      label: "Subjects",
+      width: "160px",
+      filterable: true,
+      render: (teacher) => (
+        <div className="flex flex-wrap gap-1">
+          {teacher.subjects && teacher.subjects.length > 0 ? (
+            teacher.subjects.slice(0, 2).map((subject, idx) => (
+              <Badge key={idx} variant="secondary" className="text-xs">
+                {subject}
+              </Badge>
+            ))
+          ) : (
+            <span className="text-gray-400 text-sm">-</span>
+          )}
+          {teacher.subjects && teacher.subjects.length > 2 && (
+            <Badge variant="secondary" className="text-xs">
+              +{teacher.subjects.length - 2}
+            </Badge>
+          )}
+        </div>
+      ),
+    },
+    {
+      id: "status",
+      label: "Status",
+      width: "110px",
+      sortable: true,
+      filterable: true,
+      render: (teacher) => (
+        <Badge
+          variant="outline"
+          className={cn(
+            "font-normal",
+            teacher.isActive && !teacher.onLeave
+              ? "bg-green-50 text-green-700 border-green-200"
+              : teacher.onLeave
+              ? "bg-amber-50 text-amber-700 border-amber-200"
+              : "bg-gray-100 text-gray-500"
+          )}
+        >
+          {teacher.onLeave ? "On Leave" : teacher.isActive ? "Active" : "Inactive"}
+        </Badge>
+      ),
+    },
+  ];
+
+  // ============================================================================
+  // Data Grid Actions
+  // ============================================================================
+
+  const actions: GoogleAction<Teacher>[] = [
+    {
+      label: "View Details",
+      icon: <User className="w-4 h-4 mr-2" />,
+      onClick: (teacher) => {
+        setSelectedTeacher(teacher as TeacherDetail);
+        setActiveTab("overview");
+        setSlideOverOpen(true);
+      },
+    },
+    {
+      label: "Edit Profile",
+      icon: <Edit className="w-4 h-4 mr-2" />,
+      onClick: (teacher) => {
+        setSelectedTeacher(teacher as TeacherDetail);
+        setActiveTab("overview");
+        setSlideOverOpen(true);
+      },
+    },
+    {
+      label: "",
+      icon: null,
+      onClick: () => {},
+      separator: true,
+    } as GoogleAction<Teacher>,
+    {
+      label: "Mark Active",
+      icon: <UserCheck className="w-4 h-4 mr-2" />,
+      onClick: (teacher: Teacher) => toggleTeacherStatus(teacher, true),
+    },
+    {
+      label: "Mark Inactive",
+      icon: <UserX className="w-4 h-4 mr-2" />,
+      onClick: (teacher: Teacher) => toggleTeacherStatus(teacher, false),
+    },
+    {
+      label: "",
+      icon: null,
+      onClick: () => {},
+      separator: true,
+    } as GoogleAction<Teacher>,
+    {
+      label: "Delete",
+      icon: <Trash2 className="w-4 h-4 mr-2" />,
+      onClick: (teacher) => {
+        setSelectedTeacher(teacher as TeacherDetail);
+        setDeleteDialog(true);
+      },
+      variant: "danger",
+    },
+  ];
+
+  // ============================================================================
+  // Tabs for Slide-over Panel
+  // ============================================================================
+
+  const tabs = [
+    { id: "overview", label: "Overview", icon: <User className="w-4 h-4" /> },
+    { id: "subjects", label: "Subjects", icon: <BookOpen className="w-4 h-4" /> },
+    { id: "schedule", label: "Schedule", icon: <Calendar className="w-4 h-4" /> },
+    { id: "classes", label: "Classes", icon: <GraduationCap className="w-4 h-4" /> },
+  ];
+
+  // ============================================================================
+  // Render
+  // ============================================================================
+
+  return (
+    <div className="flex flex-col h-full p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Teachers</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            {teachers.length} {teachers.length === 1 ? "teacher" : "teachers"} total
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={quickAdd.open}
+            className="gap-2"
+          >
+            <Sparkles className="w-4 h-4" />
+            Quick Add
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => setIsAddModalOpen(true)}
+            className="gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Add Teacher
+          </Button>
+        </div>
       </div>
 
-      {/* Delete Dialog */}
-      <AlertDialog open={deleteDialog.open} onOpenChange={o => !o && setDeleteDialog({ open: false })}>
-        <AlertDialogContent className="sm:max-w-sm">
+      {/* Google Data Table */}
+      <GoogleDataTable
+        data={teachers}
+        columns={columns}
+        keyField="id"
+        isLoading={loading}
+        actions={actions}
+        onUpdate={updateTeacherField}
+        emptyState={
+          <div className="text-center py-12">
+            <GraduationCap className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500 mb-2">No teachers yet</p>
+            <p className="text-sm text-gray-400 mb-4">
+              Add your first teacher to get started
+            </p>
+            <Button size="sm" onClick={() => setIsAddModalOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Teacher
+            </Button>
+          </div>
+        }
+      />
+
+      {/* Slide-over Panel for Teacher Details */}
+      <SlideOverPanel
+        isOpen={slideOverOpen}
+        onClose={() => {
+          setSlideOverOpen(false);
+          setSelectedTeacher(null);
+        }}
+        title={selectedTeacher?.name || "Teacher Details"}
+        subtitle={selectedTeacher?.employeeId || ""}
+        tabs={tabs}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        width="lg"
+        actions={
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setDeleteDialog(true)}
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            Delete
+          </Button>
+        }
+      >
+        {selectedTeacher && (
+          <>
+            {/* Overview Tab */}
+            {activeTab === "overview" && (
+              <div className="space-y-6">
+                {/* Profile Section */}
+                <SlideOverSection title="Profile Information">
+                  <div className="flex items-start gap-6 mb-6">
+                    <div
+                      className={cn(
+                        "w-20 h-20 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg bg-gradient-to-br",
+                        getAvatarGradient(selectedTeacher.firstName, selectedTeacher.lastName)
+                      )}
+                    >
+                      {getInitials(selectedTeacher.firstName, selectedTeacher.lastName)}
+                    </div>
+                    <div className="flex-1 space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-xs text-gray-500">First Name</Label>
+                          <InlineEdit
+                            value={selectedTeacher.firstName || ""}
+                            onSave={(value) =>
+                              updateTeacherField(selectedTeacher.id, "firstName", value)
+                            }
+                            placeholder="First name"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-gray-500">Last Name</Label>
+                          <InlineEdit
+                            value={selectedTeacher.lastName || ""}
+                            onSave={(value) =>
+                              updateTeacherField(selectedTeacher.id, "lastName", value)
+                            }
+                            placeholder="Last name"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-xs text-gray-500">Email</Label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Mail className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm text-gray-900">
+                          {selectedTeacher.email || "-"}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-500">Phone</Label>
+                      <InlineEdit
+                        value={selectedTeacher.phone || ""}
+                        onSave={(value) =>
+                          updateTeacherField(selectedTeacher.id, "phone", value)
+                        }
+                        placeholder="Phone number"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-500">Employee ID</Label>
+                      <InlineEdit
+                        value={selectedTeacher.employeeId || ""}
+                        onSave={(value) =>
+                          updateTeacherField(selectedTeacher.id, "employeeId", value)
+                        }
+                        placeholder="Employee ID"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-500">Department</Label>
+                      <Select
+                        value={selectedTeacher.department || "General"}
+                        onValueChange={(value) =>
+                          updateTeacherField(selectedTeacher.id, "department", value)
+                        }
+                      >
+                        <SelectTrigger className="mt-1">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="General">General</SelectItem>
+                          <SelectItem value="Science">Science</SelectItem>
+                          <SelectItem value="Mathematics">Mathematics</SelectItem>
+                          <SelectItem value="English">English</SelectItem>
+                          <SelectItem value="Dzongkha">Dzongkha</SelectItem>
+                          <SelectItem value="Social Studies">Social Studies</SelectItem>
+                          <SelectItem value="ICT">ICT</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </SlideOverSection>
+
+                {/* Employment Details */}
+                <SlideOverSection
+                  title="Employment Details"
+                  description="Work-related information"
+                >
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-xs text-gray-500">Qualification</Label>
+                      <InlineEdit
+                        value={selectedTeacher.qualification || ""}
+                        onSave={(value) =>
+                          updateTeacherField(selectedTeacher.id, "qualification", value)
+                        }
+                        placeholder="Highest qualification"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs text-gray-500">Experience (years)</Label>
+                      <InlineEdit
+                        type="number"
+                        value={String(selectedTeacher.experience || "")}
+                        onSave={(value) =>
+                          updateTeacherField(selectedTeacher.id, "experience", value)
+                        }
+                        placeholder="Years of experience"
+                      />
+                    </div>
+                  </div>
+                  <Separator className="my-4" />
+                  <div>
+                    <Label className="text-xs text-gray-500">Bio / Notes</Label>
+                    <Textarea
+                      value={selectedTeacher.bio || ""}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      onBlur={() => {
+                        if (editValue !== (selectedTeacher.bio || "")) {
+                          updateTeacherField(selectedTeacher.id, "bio", editValue);
+                        }
+                      }}
+                      placeholder="Add notes about this teacher..."
+                      className="mt-1 min-h-[100px]"
+                    />
+                  </div>
+                </SlideOverSection>
+
+                {/* Status */}
+                <SlideOverSection title="Status">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Account Status</p>
+                      <p className="text-xs text-gray-500">
+                        Control teacher access to the system
+                      </p>
+                    </div>
+                    <Select
+                      value={selectedTeacher.isActive ? "active" : "inactive"}
+                      onValueChange={(value) =>
+                        updateTeacherField(
+                          selectedTeacher.id,
+                          "isActive",
+                          value === "active" ? "true" : "false"
+                        )
+                      }
+                    >
+                      <SelectTrigger className="w-40">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">
+                          <span className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-green-500" />
+                            Active
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="inactive">
+                          <span className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-gray-400" />
+                            Inactive
+                          </span>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </SlideOverSection>
+              </div>
+            )}
+
+            {/* Subjects Tab */}
+            {activeTab === "subjects" && (
+              <div className="p-6 space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Assigned Subjects
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      Manage subjects taught by this teacher
+                    </p>
+                  </div>
+                  <Button size="sm">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Subject
+                  </Button>
+                </div>
+
+                {selectedTeacher.subjects && selectedTeacher.subjects.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedTeacher.subjects.map((subject, idx) => (
+                      <Badge key={idx} variant="secondary" className="text-sm px-3 py-1">
+                        {subject}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 bg-gray-50 rounded-lg">
+                    <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500 mb-1">No subjects assigned</p>
+                    <p className="text-sm text-gray-400">
+                      Add subjects to track teacher workload
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Schedule Tab */}
+            {activeTab === "schedule" && (
+              <div className="p-6 space-y-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Weekly Schedule</h3>
+                  <p className="text-sm text-gray-500 mb-4">
+                    View and manage class schedule
+                  </p>
+                </div>
+
+                {/* Week schedule grid */}
+                <div className="bg-gray-50 rounded-lg p-6 text-center">
+                  <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500 mb-1">No schedule configured</p>
+                  <p className="text-sm text-gray-400">
+                    Schedule will be managed through the timetable module
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Classes Tab */}
+            {activeTab === "classes" && (
+              <div className="p-6 space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Class Assignments
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      Classes this teacher is assigned to
+                    </p>
+                  </div>
+                  <Button size="sm">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Assign Class
+                  </Button>
+                </div>
+
+                {selectedTeacher.classGrade ? (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-medium text-gray-900">
+                          Class {selectedTeacher.classGrade}
+                          {selectedTeacher.section && ` - ${selectedTeacher.section}`}
+                        </p>
+                        <p className="text-sm text-gray-500">Homeroom Teacher</p>
+                      </div>
+                      <Badge variant="outline">Primary</Badge>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-12 bg-gray-50 rounded-lg">
+                    <GraduationCap className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500 mb-1">No classes assigned</p>
+                    <p className="text-sm text-gray-400">
+                      Assign this teacher to a class as homeroom or subject teacher
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </SlideOverPanel>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialog} onOpenChange={setDeleteDialog}>
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {selectedIds.size} teacher{selectedIds.size > 1 ? "s" : ""}?</AlertDialogTitle>
-            <AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
+            <AlertDialogTitle>
+              {selectedTeacher ? `Delete ${selectedTeacher.name}?` : "Delete this teacher?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. All associated data will be permanently
+              removed.
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="h-9 text-sm">Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => bulkAction("delete")} className="h-9 text-sm bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (selectedTeacher) {
+                  deleteTeacher(selectedTeacher.id);
+                }
+                setDeleteDialog(false);
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Assign Dept Dialog */}
-      <AlertDialog open={assignDeptOpen} onOpenChange={o => !o && setAssignDeptOpen(false)}>
-        <AlertDialogContent className="sm:max-w-sm">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Assign Department</AlertDialogTitle>
-            <AlertDialogDescription>Assign {selectedIds.size} teacher{selectedIds.size > 1 ? "s" : ""} to <strong>{selectedDept}</strong>?</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="h-9 text-sm">Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={() => bulkAction("department", selectedDept)} className="h-9 text-sm">Assign</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Add Teacher Modal */}
+      <AddTeacherModal
+        open={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSuccess={() => {
+          fetchTeachers();
+          setIsAddModalOpen(false);
+        }}
+      />
 
-      <AddTeacherModal open={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} onSuccess={() => { fetchTeachers(); setIsAddModalOpen(false); }} />
-      <ExpressAddModal isOpen={quickAdd.isOpen} onClose={quickAdd.close} onSubmit={handleQuickAdd} title="Quick Add Teacher" placeholder="John Doe" successMessage="Teacher added!" icon={Plus} minLength={2} />
+      {/* Quick Add Modal */}
+      <ExpressAddModal
+        isOpen={quickAdd.isOpen}
+        onClose={quickAdd.close}
+        onSubmit={handleQuickAdd}
+        title="Quick Add Teacher"
+        placeholder="John Doe"
+        successMessage="Teacher added successfully!"
+        icon={Plus}
+        minLength={2}
+      />
     </div>
   );
 }

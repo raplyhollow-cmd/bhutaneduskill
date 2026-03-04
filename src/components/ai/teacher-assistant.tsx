@@ -69,6 +69,19 @@ const TEACHER_CONFIG = {
   ],
 };
 
+/**
+ * Format message timestamp consistently to avoid hydration mismatches
+ */
+function formatMessageTime(timestamp: Date | string): string {
+  const date = typeof timestamp === "string" ? new Date(timestamp) : timestamp;
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  const ampm = hours >= 12 ? "PM" : "AM";
+  const displayHours = hours % 12 || 12;
+  const displayMinutes = minutes.toString().padStart(2, "0");
+  return `${displayHours}:${displayMinutes} ${ampm}`;
+}
+
 export function TeacherAssistant({
   userName = "Teacher",
   embedded = false,
@@ -427,8 +440,8 @@ function MessageBubble({ message, roleColor = "rgb(37 99 235)" }: MessageBubbleP
         <span className={cn(
           "text-xs mt-1 block",
           isUser ? "text-blue-200" : "text-gray-400"
-        )}>
-          {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        )} suppressHydrationWarning>
+          {formatMessageTime(message.timestamp)}
         </span>
       </div>
     </div>

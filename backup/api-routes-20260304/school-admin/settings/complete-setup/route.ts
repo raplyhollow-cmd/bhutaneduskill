@@ -1,0 +1,141 @@
+/**
+ * COMPLETE SETUP API
+ *
+ * POST /api/school-admin/settings/complete-setup
+ *
+ * Saves all initial setup settings and marks school.setupComplete = true
+ */
+
+import { NextRequest } from "next/server";
+import { db } from "@/lib/db";
+import { schools, bellSchedules, academicYears } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
+import { logger } from "@/lib/logger";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { successResponse, errorResponse, badRequestResponse } from "@/lib/api/response-helpers";
+
+interface SetupData {
+  schoolName: string;
+  schoolCode: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  website: string;
+
+  academicYearStart: string;
+  academicYearEnd: string;
+  currentTerm: string;
+  terms: Array<{ name: string; startDate: string; endDate: string }>;
+  workingDays: string[];
+
+  bellScheduleName: string;
+  regularSchedule: Array<{
+    periodNumber: number;
+    name: string;
+    startTime: string;
+    endTime: string;
+    type: "class" | "break" | "lunch";
+  }>;
+  ppSchedule: Array<{
+    periodNumber: number;
+    name: string;
+    startTime: string;
+    endTime: string;
+    type: "class" | "break" | "lunch";
+  }>;
+  ppDifferentSchedule: boolean;
+
+  gradingSystem: string;
+  passMark: string;
+  grades: Array<{ grade: string; minScore: number; maxScore: number; label: string }>;
+}
+
+export const POST = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { userId, user } = auth;
+
+    if (!user.schoolId) {
+      return badRequestResponse("No school associated with your account");
+    }
+
+    try {
+      const body: SetupData = await request.json();
+
+      // 1. Update school profile
+      await db
+        .update(schools)
+        .set({
+          name: body.schoolName,
+          code: body.schoolCode,
+          email: body.email,
+          phone: body.phone,
+          address: body.address,
+          city: body.city,
+          website: body.website || null,
+          setupComplete: true,
+          setupCompletedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(schools.id, user.schoolId));
+
+      // 2. Create academic year
+      const nanoidModule = await import("nanoid");
+      const nanoid = nanoidModule.nanoid;
+
+      const academicYearId = `ay-${nanoid()}`;
+      await db.insert(academicYears).values({
+        id: academicYearId,
+        schoolId: user.schoolId,
+        name: `${body.academicYearStart}-${body.academicYearEnd}`,
+        startDate: `${body.academicYearStart}-03-01`,
+        endDate: `${body.academicYearEnd}-02-28`,
+        isActive: true,
+        currentTerm: body.currentTerm,
+        terms: body.terms,
+        workingDays: body.workingDays,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      // 3. Create regular bell schedule
+      const regularScheduleId = `bs-${nanoid()}`;
+      await db.insert(bellSchedules).values({
+        id: regularScheduleId,
+        schoolId: user.schoolId,
+        name: body.bellScheduleName || "Regular Schedule",
+        isActive: true,
+        applicableTo: ["6", "7", "8", "9", "10", "11", "12"], // Regular grades
+        periods: body.regularSchedule,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      // 4. Create PP bell schedule if different
+      if (body.ppDifferentSchedule && body.ppSchedule.length > 0) {
+        const ppScheduleId = `bs-${nanoid()}`;
+        await db.insert(bellSchedules).values({
+          id: ppScheduleId,
+          schoolId: user.schoolId,
+          name: "PP Schedule",
+          isActive: true,
+          applicableTo: ["PP"], // Pre-primary
+          periods: body.ppSchedule,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+
+      logger.info("School setup completed", { schoolId: user.schoolId, userId });
+
+      return successResponse({
+        message: "Setup completed successfully",
+        schoolId: user.schoolId,
+      });
+    } catch (error) {
+      logger.error("Failed to complete setup", { error, schoolId: user.schoolId });
+      return errorResponse(error instanceof Error ? error.message : "Failed to save settings");
+    }
+  },
+  ["school-admin"]
+);

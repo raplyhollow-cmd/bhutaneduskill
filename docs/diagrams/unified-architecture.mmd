@@ -1,0 +1,175 @@
+# UNIFIED ARCHITECTURE DIAGRAM
+# Bhutan EduSkill - Component + Schema + Route = 1
+
+```mermaid
+graph TB
+    subgraph "FEATURE DEFINITION (1 File)"
+        F[students.feature.ts]
+        F --> S["Schema Definition"]
+        F --> P["Permissions"]
+        F --> U["UI Config"]
+        F --> H["Custom Handlers"]
+    end
+
+    subgraph "GENERATED OUTPUTS"
+        S --> DS["Drizzle Schema"]
+        S --> TS["TypeScript Types"]
+
+        F --> API["API Handlers"]
+        F --> CMP["Components"]
+        F --> HOOKS["React Hooks"]
+    end
+
+    subgraph "UNIVERSAL API ROUTE"
+        API --> UA["/api/resources/[resource]/route.ts"]
+        UA --> GET["GET /api/resources/students"]
+        UA --> POST["POST /api/resources/students"]
+        UA --> PUT["PUT /api/resources/students/:id"]
+        UA --> DEL["DELETE /api/resources/students/:id"]
+    end
+
+    subgraph "UNIFIED COMPONENTS"
+        CMP --> DG["FeatureDataGrid"]
+        CMP --> FM["FeatureForm"]
+        CMP --> LP["FeatureListPage"]
+        CMP --> US["UnifiedSearch"]
+    end
+
+    subgraph "GEMINI LAYER (AI Integration)"
+        GL["gemini-layer.ts"]
+        GL --> SA["System Awareness"]
+        GL --> AQ["Autonomous Querying"]
+        GL --> SH["Self-Healing"]
+    end
+
+    subgraph "DATABASE"
+        DB[(PostgreSQL)]
+        GET --> DB
+        POST --> DB
+        PUT --> DB
+        DEL --> DB
+    end
+
+    subgraph "FRONTEND"
+        DG --> FE["React Pages"]
+        FM --> FE
+        LP --> FE
+    end
+
+    GL --> UA
+    GL --> DS
+
+    style F fill:#3b82f6
+    style UA fill:#10b981
+    style GL fill:#8b5cf6
+    style DB fill:#f59e0b
+```
+
+```mermaid
+flowchart LR
+    subgraph "BEFORE: Traditional Approach"
+        T1["drizzle/schema.ts"]
+        T2["app/api/students/route.ts"]
+        T3["components/students-grid.tsx"]
+        T4["types/students.ts"]
+        T1 -.-> T2
+        T2 -.-> T3
+        T3 -.-> T4
+    end
+
+    subgraph "AFTER: Unified Approach"
+        U1["src/features/students.feature.ts"]
+    end
+
+    T1 & T2 & T3 & T4 ==> U1
+```
+
+```mermaid
+sequenceDiagram
+    participant Dev as Developer
+    participant F as Feature File
+    participant D as defineFeature()
+    participant A as API Route
+    participant C as Components
+    participant G as GEMINI Layer
+
+    Dev->>F: Write students.feature.ts
+    F->>D: defineFeature({ schema, permissions, ui })
+    D->>D: Generate Drizzle Schema
+    D->>D: Generate API Handlers
+    D->>D: Generate Types
+    D->>C: Generate FeatureDataGrid
+    D->>C: Generate FeatureForm
+
+    Note over A,G: Runtime Execution
+
+    Client->>A: GET /api/resources/students
+    A->>A: Check Permissions
+    A->>A: Execute Query
+    A-->>Client: JSON Response
+
+    G->>F: Read Feature Config
+    G->>A: Autonomous Query
+    A-->>G: Data
+    G->>G: AI Analysis
+```
+
+```mermaid
+graph TD
+    subgraph "UNIFIED SYSTEM - Core Components"
+        direction TB
+
+        subgraph "Feature Definitions (50+ features)"
+            F1[students.feature.ts]
+            F2[teachers.feature.ts]
+            F3[classes.feature.ts]
+            F4[subjects.feature.ts]
+            F5[assessments.feature.ts]
+            FN[... 45+ more]
+        end
+
+        subgraph "Universal API Route"
+            UAR["/api/resources/[resource]/route.ts"]
+            UAR --> U1["list()"]
+            UAR --> U2["get(id)"]
+            UAR --> U3["create(data)"]
+            UAR --> U4["update(id, data)"]
+            UAR --> U5["delete(id)"]
+        end
+
+        subgraph "Unified Components"
+            UC1["FeatureDataGrid"]
+            UC2["FeatureForm"]
+            UC3["FeatureListPage"]
+            UC4["UnifiedSearch"]
+            UC5["UniversalModal"]
+        end
+
+        subgraph "GEMINI Layer"
+            GL["gemini-layer.ts"]
+            GL --> GL1["extractFeatureMetadata()"]
+            GL --> GL2["autonomousQuery()"]
+            GL --> GL3["selfHealingSuggestions()"]
+        end
+    end
+
+    F1 & F2 & F3 & F4 & F5 & FN --> UAR
+    F1 & F2 & F3 & F4 & F5 & FN --> UC1 & UC2 & UC3
+    F1 & F2 & F3 & F4 & F5 & FN --> GL
+
+    style UAR fill:#10b981,color:#fff
+    style GL fill:#8b5cf6,color:#fff
+```
+
+```mermaid
+graph LR
+    subgraph "Data Flow: Create Student"
+        A[User submits form] --> B[FeatureForm]
+        B --> C[POST /api/resources/students]
+        C --> D[defineFeature().create()]
+        D --> E[Drizzle Query]
+        E --> F[(PostgreSQL)]
+        F --> G[Return created student]
+        G --> H[Update UI]
+    end
+```

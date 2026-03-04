@@ -1,0 +1,827 @@
+openapi: 3.0.3
+info:
+  title: Bhutan EduSkill API
+  description: |
+    API for Bhutan EduSkill - Career guidance and school management platform for Bhutan schools.
+
+    ## Authentication
+    All API endpoints require authentication via Clerk JWT tokens. Include the token in the Authorization header:
+
+    ```
+    Authorization: Bearer <your-jwt-token>
+    ```
+
+    ## Portals
+    The API is organized by portals:
+    - `/api/student/*` - Student endpoints
+    - `/api/teacher/*` - Teacher endpoints
+    - `/api/school-admin/*` - School Admin endpoints
+    - `/api/parent/*` - Parent endpoints
+    - `/api/admin/*` - Platform Admin endpoints
+    - `/api/ministry/*` - Ministry endpoints
+
+  version: 1.0.0
+  contact:
+    name: Bhutan EduSkill Support
+    email: support@bhutaneduskill.bt
+  license:
+    name: Proprietary
+
+servers:
+  - url: http://localhost:3000/api
+    description: Development server
+  - url: https://api.bhutaneduskill.bt/api
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: User authentication and session management
+  - name: Students
+    description: Student management and data
+  - name: Teachers
+    description: Teacher management and data
+  - name: Assessments
+    description: Career assessments and results
+  - name: Grades
+    description: Student grades and reports
+  - name: Homework
+    description: Homework assignments and submissions
+  - name: Attendance
+    description: Student attendance tracking
+  - name: Schools
+    description: School management
+  - name: Intelligence
+    description: AI-powered insights and recommendations
+  - name: Analytics
+    description: Reports and analytics
+
+paths:
+  # ========================================================================
+  # Authentication
+  # ========================================================================
+  /auth/verify:
+    get:
+      tags: [Authentication]
+      summary: Verify authentication token
+      description: Validates the current JWT token and returns user info
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Token is valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ========================================================================
+  # Student Endpoints
+  # ========================================================================
+  /student/profile:
+    get:
+      tags: [Students]
+      summary: Get student profile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Student profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Student'
+    patch:
+      tags: [Students]
+      summary: Update student profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StudentUpdate'
+      responses:
+        '200':
+          description: Profile updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Student'
+
+  /student/assessments:
+    get:
+      tags: [Assessments]
+      summary: Get available assessments
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of assessments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Assessment'
+
+  /student/assessments/results:
+    get:
+      tags: [Assessments]
+      summary: Get student's assessment results
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Assessment results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AssessmentResult'
+
+  /student/assessments/{id}/report:
+    get:
+      tags: [Assessments]
+      summary: Get detailed assessment report
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Assessment report with AI insights
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssessmentReport'
+
+  /student/homework:
+    get:
+      tags: [Homework]
+      summary: Get student's homework
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of homework
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Homework'
+
+  /student/homework/{id}/submit:
+    post:
+      tags: [Homework]
+      summary: Submit homework
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                text:
+                  type: string
+      responses:
+        '200':
+          description: Homework submitted
+
+  /student/insights:
+    get:
+      tags: [Intelligence]
+      summary: Get student's AI insights
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Personalized insights
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Insight'
+
+  # ========================================================================
+  # Teacher Endpoints
+  # ========================================================================
+  /teacher/classes:
+    get:
+      tags: [Teachers]
+      summary: Get teacher's classes
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of classes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Class'
+
+  /teacher/homework:
+    get:
+      tags: [Homework]
+      summary: Get teacher's homework assignments
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of homework
+    post:
+      tags: [Homework]
+      summary: Create homework assignment
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HomeworkCreate'
+      responses:
+        '201':
+          description: Homework created
+
+  /teacher/homework/{id}/submissions:
+    get:
+      tags: [Homework]
+      summary: Get homework submissions
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of submissions
+
+  /teacher/students:
+    get:
+      tags: [Students]
+      summary: Get teacher's students
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of students
+
+  /teacher/students/{id}/assessments:
+    get:
+      tags: [Assessments]
+      summary: Get student's assessment results
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Student assessment results
+
+  /teacher/attendance:
+    post:
+      tags: [Attendance]
+      summary: Mark student attendance
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                date:
+                  type: string
+                  format: date
+                classId:
+                  type: string
+                attendance:
+                  type: object
+                  additionalProperties:
+                    type: string
+                    enum: [present, absent, late, excused]
+      responses:
+        '200':
+          description: Attendance marked
+
+  /teacher/ai-alerts:
+    get:
+      tags: [Intelligence]
+      summary: Get AI alerts for teacher
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: AI alerts about students
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    type:
+                      type: string
+                      enum: [at_risk, needs_attention, achievement]
+                    studentId:
+                      type: string
+                    message:
+                      type: string
+                    actionUrl:
+                      type: string
+
+  # ========================================================================
+  # School Admin Endpoints
+  # ========================================================================
+  /school-admin/students:
+    get:
+      tags: [Students]
+      summary: Get school's students
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, active, inactive]
+        - name: grade
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of students
+    post:
+      tags: [Students]
+      summary: Add new student
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StudentCreate'
+      responses:
+        '201':
+          description: Student created
+
+  /school-admin/students/{id}/approve:
+    post:
+      tags: [Students]
+      summary: Approve pending student
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Student approved
+
+  /school-admin/teachers:
+    get:
+      tags: [Teachers]
+      summary: Get school's teachers
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of teachers
+
+  /school-admin/reports/assessments:
+    get:
+      tags: [Analytics]
+      summary: Get assessment analytics
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Assessment statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  completionRate:
+                    type: number
+                  byType:
+                    type: object
+                  careerInterests:
+                    type: array
+
+  /school-admin/export/students:
+    get:
+      tags: [Analytics]
+      summary: Export student data
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: format
+          in: query
+          schema:
+            type: string
+            enum: [csv, xlsx, pdf]
+      responses:
+        '200':
+          description: Export file
+
+  # ========================================================================
+  # Admin Endpoints
+  # ========================================================================
+  /admin/schools:
+    get:
+      tags: [Schools]
+      summary: Get all schools
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of schools
+
+  /admin/schools/{id}/approve:
+    post:
+      tags: [Schools]
+      summary: Approve school
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: School approved
+
+  /admin/analytics:
+    get:
+      tags: [Analytics]
+      summary: Get platform analytics
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Platform statistics
+
+  # ========================================================================
+  # Ministry Endpoints
+  # ========================================================================
+  /ministry/workforce:
+    get:
+      tags: [Analytics]
+      summary: Get workforce predictions
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Workforce analytics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  predictions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        year:
+                          type: integer
+                        career:
+                          type: string
+                        demand:
+                          type: integer
+                  currentData:
+                    type: object
+
+  /ministry/gnh:
+    get:
+      tags: [Analytics]
+      summary: Get GNH alignment data
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: GNH statistics
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        type:
+          type: string
+          enum: [student, teacher, school_admin, parent, admin, ministry, counselor]
+        portal:
+          type: string
+
+    Student:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          properties:
+            grade:
+              type: string
+            section:
+              type: string
+            schoolId:
+              type: string
+            classId:
+              type: string
+            guardian:
+              type: string
+            dateOfBirth:
+              type: string
+              format: date
+            cid:
+              type: string
+              description: Bhutanese Citizen ID
+
+    StudentCreate:
+      type: object
+      required:
+        - name
+        - email
+        - grade
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        grade:
+          type: string
+        section:
+          type: string
+        guardian:
+          type: string
+        cid:
+          type: string
+
+    StudentUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        section:
+          type: string
+        guardian:
+          type: string
+
+    Teacher:
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          properties:
+            subject:
+              type: string
+            department:
+              type: string
+            qualification:
+              type: string
+
+    Class:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        grade:
+          type: string
+        section:
+          type: string
+        teacherId:
+          type: string
+        studentCount:
+          type: integer
+
+    Assessment:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        type:
+          type: string
+          enum: [riasec, mbti, disc, spark, work_values]
+        description:
+          type: string
+        questions:
+          type: integer
+        duration:
+          type: integer
+          description: Duration in minutes
+
+    AssessmentResult:
+      type: object
+      properties:
+        id:
+          type: string
+        assessmentId:
+          type: string
+        assessmentType:
+          type: string
+        score:
+          type: object
+        completedAt:
+          type: string
+          format: date-time
+
+    AssessmentReport:
+      type: object
+      properties:
+        result:
+          $ref: '#/components/schemas/AssessmentResult'
+        interpretation:
+          type: string
+        careerMatches:
+          type: array
+          items:
+            type: object
+            properties:
+              career:
+                type: string
+              matchScore:
+                type: number
+              description:
+                type: string
+        aiInsights:
+          type: array
+          items:
+            type: string
+        recommendations:
+          type: array
+          items:
+            type: string
+
+    Homework:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        classId:
+          type: string
+        teacherId:
+          type: string
+        dueDate:
+          type: string
+          format: date
+        createdAt:
+          type: string
+          format: date-time
+        submissionCount:
+          type: integer
+        totalStudents:
+          type: integer
+
+    HomeworkCreate:
+      type: object
+      required:
+        - title
+        - classId
+        - dueDate
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        classId:
+          type: string
+        dueDate:
+          type: string
+          format: date
+        attachments:
+          type: array
+          items:
+            type: string
+
+    Insight:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [alert, suggestion, prediction, achievement]
+        title:
+          type: string
+        description:
+          type: string
+        actionUrl:
+          type: string
+        isRead:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+  responses:
+    Unauthorized:
+      description: Unauthorized - Invalid or missing token
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              code:
+                type: string
+            example:
+              error: "Unauthorized access"
+              code: "UNAUTHORIZED"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              code:
+                type: string
+            example:
+              error: "Resource not found"
+              code: "NOT_FOUND"
+
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              code:
+                type: string
+              details:
+                type: object
+            example:
+              error: "Validation failed"
+              code: "VALIDATION_ERROR"
+              details:
+                email: "Invalid email format"

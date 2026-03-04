@@ -284,6 +284,7 @@ export const PORTAL_CONFIG = {
     navigationItems: [
       { name: "Dashboard", href: "/admin", icon: Home },
       { name: "Command Center", href: "/admin/command-center", icon: Command },
+      { name: "Digital Anatomy", href: "/admin/anatomy", icon: Heart },
       {
         name: "Schools & Users",
         href: "/admin/schools",

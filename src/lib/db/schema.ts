@@ -205,6 +205,34 @@ export {
 } from "./lesson-plan-schema";
 
 // ============================================================================
+// INTELLIGENCE LAYER - AI-powered insights and triggers
+// ============================================================================
+
+export {
+  userInsights,
+  insightTriggers,
+  assessmentCompletionEvents,
+  studentProgressAnalytics,
+  studentSkills,
+  teacherClassInsights,
+  schoolAdminAnalytics,
+  careerPlanProgress,
+  type UserInsight,
+  type NewUserInsight,
+  type AssessmentCompletionEvent,
+  type NewAssessmentCompletionEvent,
+  type StudentProgressAnalytic,
+  type StudentSkill,
+  type NewStudentSkill,
+  type TeacherClassInsight,
+  type NewTeacherClassInsight,
+  type SchoolAdminAnalytic,
+  type NewSchoolAdminAnalytic,
+  type CareerPlanProgress,
+  type NewCareerPlanProgress,
+} from "./schema/intelligence";
+
+// ============================================================================
 // DISTRICTS TABLE
 // ============================================================================
 
@@ -1016,6 +1044,34 @@ export const classes = pgTable("classes", {
 export type Class = typeof classes.$inferSelect;
 
 // ============================================================================
+// BATCHES TABLE
+// ============================================================================
+
+export const batches = pgTable("batches", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  code: text("code").unique().notNull(),
+  schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }).notNull(),
+  classId: text("class_id").references(() => classes.id, { onDelete: "cascade" }).notNull(),
+  year: integer("year").notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  // Indexes for frequently queried columns
+  schoolIdIdx: index("idx_batches_school_id").on(table.schoolId),
+  classIdIdx: index("idx_batches_class_id").on(table.classId),
+  yearIdx: index("idx_batches_year").on(table.year),
+  codeIdx: index("idx_batches_code").on(table.code),
+  isActiveIdx: index("idx_batches_is_active").on(table.isActive),
+  // Composite indexes for common query patterns
+  schoolYearIdx: index("idx_batches_school_year").on(table.schoolId, table.year),
+  schoolClassIdx: index("idx_batches_school_class").on(table.schoolId, table.classId),
+}));
+
+export type Batch = typeof batches.$inferSelect;
+
+// ============================================================================
 // SUBJECTS TABLE
 // ============================================================================
 
@@ -1780,6 +1836,44 @@ export const attendance = pgTable("attendance", {
 }));
 
 export type Attendance = typeof attendance.$inferSelect;
+
+// ============================================================================
+// TIMETABLES TABLE
+// ============================================================================
+
+export const timetables = pgTable("timetables", {
+  id: text("id").primaryKey(),
+  classId: text("class_id").references(() => classes.id, { onDelete: "cascade" }).notNull(),
+  schoolId: text("school_id").references(() => schools.id, { onDelete: "cascade" }).notNull(),
+  dayOfWeek: text("day_of_week").notNull(), // "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun"
+  periodNumber: integer("period_number").notNull(),
+  startTime: text("start_time"), // Format: "HH:MM"
+  endTime: text("end_time"), // Format: "HH:MM"
+  subjectId: text("subject_id").references(() => subjects.id, { onDelete: "restrict" }).notNull(),
+  teacherId: text("teacher_id").references(() => users.id, { onDelete: "restrict" }).notNull(),
+  roomNumber: text("room_number"),
+  semester: text("semester"), // e.g., "1", "2", "summer"
+  academicYear: text("academic_year"), // e.g., "2024-2025"
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  // Indexes for frequently queried columns
+  classIdIdx: index("idx_timetables_class_id").on(table.classId),
+  schoolIdIdx: index("idx_timetables_school_id").on(table.schoolId),
+  subjectIdIdx: index("idx_timetables_subject_id").on(table.subjectId),
+  teacherIdIdx: index("idx_timetables_teacher_id").on(table.teacherId),
+  dayOfWeekIdx: index("idx_timetables_day_of_week").on(table.dayOfWeek),
+  isActiveIdx: index("idx_timetables_is_active").on(table.isActive),
+  // Composite index for class + day + period (common query pattern)
+  classDayPeriodIdx: index("idx_timetables_class_day_period").on(table.classId, table.dayOfWeek, table.periodNumber),
+  // Composite index for teacher + day + period (for checking conflicts)
+  teacherDayPeriodIdx: index("idx_timetables_teacher_day_period").on(table.teacherId, table.dayOfWeek, table.periodNumber),
+  // Composite index for academic year + semester
+  academicIdx: index("idx_timetables_academic").on(table.schoolId, table.academicYear, table.semester),
+}));
+
+export type Timetable = typeof timetables.$inferSelect;
 
 // ============================================================================
 // CAREER MATCHES TABLE
@@ -3845,3 +3939,377 @@ export const medicalReferrals = pgTable("medical_referrals", {
 
 export type MedicalReferral = typeof medicalReferrals.$inferSelect;
 export type NewMedicalReferral = typeof medicalReferrals.$inferInsert;
+
+// ============================================================================
+// UNIFIED ARCHITECTURE - FEATURE TABLES
+// ============================================================================
+// These tables were added as part of the Unified Feature System evolution
+// Each feature now has its own table definition in the main schema
+// ============================================================================
+
+/**
+ * Lessons table
+ * Lesson plans and schedules for teachers
+ */
+export const lessons = pgTable("lessons", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description"),
+  classId: text("classId").notNull().references(() => classes.id, { onDelete: "no action" }),
+  subjectId: text("subjectId").notNull().references(() => subjects.id, { onDelete: "no action" }),
+  teacherId: text("teacherId").references(() => users.id, { onDelete: "set null" }),
+  schoolId: text("schoolId").references(() => schools.id, { onDelete: "cascade" }),
+  lessonDate: text("lessonDate").notNull(),
+  startTime: text("startTime"),
+  endTime: text("endTime"),
+  roomNumber: text("roomNumber"),
+  status: text("status").notNull(),
+  topics: text("topics"),
+  resources: text("resources"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  classIdIdx: index("idx_lessons_classId").on(table.classId),
+  subjectIdIdx: index("idx_lessons_subjectId").on(table.subjectId),
+  dateIdx: index("idx_lessons_date").on(table.lessonDate),
+}));
+
+export type Lesson = typeof lessons.$inferSelect;
+export type NewLesson = typeof lessons.$inferInsert;
+
+/**
+ * Skills table
+ * Skills catalog for student assessment
+ */
+export const skills = pgTable("skills", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  code: text("code").unique(),
+  category: text("category").notNull(),
+  description: text("description"),
+  proficiencyLevels: text("proficiencyLevels"),
+  schoolId: text("schoolId").references(() => schools.id, { onDelete: "cascade" }),
+  departmentId: text("departmentId").references(() => departments.id, { onDelete: "set null" }),
+  isActive: boolean("isActive").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  categoryIdx: index("idx_skills_category").on(table.category),
+  departmentIdIdx: index("idx_skills_departmentId").on(table.departmentId),
+  isActiveIdx: index("idx_skills_isActive").on(table.isActive),
+}));
+
+export type Skill = typeof skills.$inferSelect;
+export type NewSkill = typeof skills.$inferInsert;
+
+/**
+ * Behavior Records table
+ * Student behavior incident records
+ */
+export const behaviorRecords = pgTable("behavior_records", {
+  id: text("id").primaryKey(),
+  studentId: text("studentId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  schoolId: text("schoolId").references(() => schools.id, { onDelete: "cascade" }),
+  classId: text("classId").references(() => classes.id, { onDelete: "set null" }),
+  incidentDate: text("incidentDate").notNull(),
+  incidentType: text("incidentType").notNull(),
+  severity: text("severity").notNull(),
+  description: text("description"),
+  actionTaken: text("actionTaken"),
+  reportedBy: text("reportedBy").references(() => users.id, { onDelete: "set null" }),
+  verifiedBy: text("verifiedBy").references(() => users.id, { onDelete: "set null" }),
+  status: text("status").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  studentIdIdx: index("idx_behavior_records_studentId").on(table.studentId),
+  dateIdx: index("idx_behavior_records_date").on(table.incidentDate),
+}));
+
+export type BehaviorRecord = typeof behaviorRecords.$inferSelect;
+export type NewBehaviorRecord = typeof behaviorRecords.$inferInsert;
+
+/**
+ * Interventions table
+ * Student intervention and support programs
+ */
+export const interventions = pgTable("interventions", {
+  id: text("id").primaryKey(),
+  studentId: text("studentId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  schoolId: text("schoolId").references(() => schools.id, { onDelete: "cascade" }),
+  type: text("type").notNull(),
+  severity: text("severity").notNull(),
+  description: text("description"),
+  startDate: text("startDate"),
+  endDate: text("endDate"),
+  assignedTo: text("assignedTo").references(() => users.id, { onDelete: "set null" }),
+  status: text("status").notNull(),
+  outcome: text("outcome"),
+  followUpDate: text("followUpDate"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  studentIdIdx: index("idx_interventions_studentId").on(table.studentId),
+  statusIdx: index("idx_interventions_status").on(table.status),
+}));
+
+export type Intervention = typeof interventions.$inferSelect;
+export type NewIntervention = typeof interventions.$inferInsert;
+
+/**
+ * Fees table
+ * Fee definitions for students
+ */
+export const fees = pgTable("fees", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  feeType: text("feeType").notNull(),
+  amount: text("amount").notNull(),
+  currency: text("currency").default("BTN"),
+  classId: text("classId").references(() => classes.id, { onDelete: "set null" }),
+  schoolId: text("schoolId").references(() => schools.id, { onDelete: "cascade" }),
+  dueDate: text("dueDate"),
+  academicYear: text("academicYear"),
+  term: text("term"),
+  isRecurring: boolean("isRecurring").default(false),
+  isActive: boolean("isActive").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  classIdIdx: index("idx_fees_classId").on(table.classId),
+  typeIdx: index("idx_fees_type").on(table.feeType),
+}));
+
+export type Fee = typeof fees.$inferSelect;
+export type NewFee = typeof fees.$inferInsert;
+
+/**
+ * Plans table
+ * Subscription plan definitions
+ */
+export const plans = pgTable("plans", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description"),
+  maxUsers: integer("maxUsers"),
+  maxStorage: integer("maxStorage"),
+  price: text("price"),
+  currency: text("currency").default("BTN"),
+  billingCycle: text("billingCycle"),
+  features: text("features"),
+  isActive: boolean("isActive").default(true),
+  tier: text("tier"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+});
+
+export type Plan = typeof plans.$inferSelect;
+export type NewPlan = typeof plans.$inferInsert;
+
+/**
+ * Reports table
+ * Generated reports for analytics
+ */
+export const reports = pgTable("reports", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull(),
+  reportType: text("reportType").notNull(),
+  schoolId: text("schoolId").references(() => schools.id, { onDelete: "cascade" }),
+  classId: text("classId").references(() => classes.id, { onDelete: "set null" }),
+  generatedBy: text("generatedBy").references(() => users.id, { onDelete: "set null" }),
+  generatedFor: text("generatedFor").references(() => users.id, { onDelete: "set null" }),
+  reportData: text("reportData"),
+  dateFrom: text("dateFrom"),
+  dateTo: text("dateTo"),
+  format: text("format"),
+  fileUrl: text("fileUrl"),
+  status: text("status").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  schoolIdIdx: index("idx_reports_schoolId").on(table.schoolId),
+  typeIdx: index("idx_reports_type").on(table.reportType),
+}));
+
+export type Report = typeof reports.$inferSelect;
+export type NewReport = typeof reports.$inferInsert;
+
+/**
+ * Analytics table
+ * Custom analytics dashboards
+ */
+export const analytics = pgTable("analytics", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  type: text("type").notNull(),
+  schoolId: text("schoolId").references(() => schools.id, { onDelete: "cascade" }),
+  config: text("config"),
+  widgets: text("widgets"),
+  createdBy: text("createdBy").references(() => users.id, { onDelete: "set null" }),
+  isPublic: boolean("isPublic").default(false),
+  isActive: boolean("isActive").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+});
+
+export type Analytic = typeof analytics.$inferSelect;
+export type NewAnalytic = typeof analytics.$inferInsert;
+
+/**
+ * Teaching Resources table
+ * Shared teaching materials and resources
+ */
+export const teachingResources = pgTable("teaching_resources", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description"),
+  resourceType: text("resourceType").notNull(),
+  subjectId: text("subjectId").references(() => subjects.id, { onDelete: "set null" }),
+  classId: text("classId").references(() => classes.id, { onDelete: "set null" }),
+  teacherId: text("teacherId").references(() => users.id, { onDelete: "set null" }),
+  schoolId: text("schoolId").references(() => schools.id, { onDelete: "cascade" }),
+  fileUrl: text("fileUrl"),
+  fileSize: integer("fileSize"),
+  tags: text("tags"),
+  isShared: boolean("isShared").default(false),
+  downloadCount: integer("downloadCount").default(0),
+  isActive: boolean("isActive").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  teacherIdIdx: index("idx_teaching_resources_teacherId").on(table.teacherId),
+}));
+
+export type TeachingResource = typeof teachingResources.$inferSelect;
+export type NewTeachingResource = typeof teachingResources.$inferInsert;
+
+/**
+ * Communication table
+ * Internal messaging system
+ */
+export const communication = pgTable("communication", {
+  id: text("id").primaryKey(),
+  subject: text("subject").notNull(),
+  message: text("message"),
+  senderId: text("senderId").references(() => users.id, { onDelete: "set null" }),
+  recipientId: text("recipientId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  schoolId: text("schoolId").references(() => schools.id, { onDelete: "cascade" }),
+  sentAt: timestamp("sentAt", { withTimezone: true }),
+  readAt: timestamp("readAt", { withTimezone: true }),
+  status: text("status").notNull(),
+  priority: text("priority"),
+  parentId: text("parentId"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  recipientIdIdx: index("idx_communication_recipientId").on(table.recipientId),
+}));
+
+export type Communication = typeof communication.$inferSelect;
+export type NewCommunication = typeof communication.$inferInsert;
+
+/**
+ * Meetings table
+ * Meeting schedules for parents and staff
+ */
+export const meetings = pgTable("meetings", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description"),
+  meetingType: text("meetingType").notNull(),
+  schoolId: text("schoolId").references(() => schools.id, { onDelete: "cascade" }),
+  scheduledDate: text("scheduledDate").notNull(),
+  startTime: text("startTime"),
+  endTime: text("endTime"),
+  location: text("location"),
+  attendees: text("attendees"),
+  agenda: text("agenda"),
+  minutes: text("minutes"),
+  status: text("status").notNull(),
+  createdBy: text("createdBy").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  schoolIdIdx: index("idx_meetings_schoolId").on(table.schoolId),
+}));
+
+export type Meeting = typeof meetings.$inferSelect;
+export type NewMeeting = typeof meetings.$inferInsert;
+
+/**
+ * Sessions table
+ * Counseling and tutoring sessions
+ */
+export const sessions = pgTable("sessions", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull(),
+  sessionType: text("sessionType").notNull(),
+  studentId: text("studentId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  teacherId: text("teacherId").references(() => users.id, { onDelete: "set null" }),
+  schoolId: text("schoolId").references(() => schools.id, { onDelete: "cascade" }),
+  scheduledDate: text("scheduledDate"),
+  startTime: text("startTime"),
+  endTime: text("endTime"),
+  location: text("location"),
+  notes: text("notes"),
+  outcome: text("outcome"),
+  status: text("status").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  studentIdIdx: index("idx_sessions_studentId").on(table.studentId),
+}));
+
+export type Session = typeof sessions.$inferSelect;
+export type NewSession = typeof sessions.$inferInsert;
+
+/**
+ * Treatment Plans table
+ * Student intervention and support plans
+ */
+export const treatmentPlans = pgTable("treatment_plans", {
+  id: text("id").primaryKey(),
+  studentId: text("studentId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  counselorId: text("counselorId").references(() => users.id, { onDelete: "set null" }),
+  schoolId: text("schoolId").references(() => schools.id, { onDelete: "cascade" }),
+  planType: text("planType").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  goals: text("goals"),
+  interventions: text("interventions"),
+  startDate: text("startDate"),
+  endDate: text("endDate"),
+  status: text("status").notNull(),
+  reviewDate: text("reviewDate"),
+  outcomes: text("outcomes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  studentIdIdx: index("idx_treatment_plans_studentId").on(table.studentId),
+}));
+
+export type TreatmentPlan = typeof treatmentPlans.$inferSelect;
+export type NewTreatmentPlan = typeof treatmentPlans.$inferInsert;
+
+/**
+ * Workforce Data table
+ * Ministry workforce and education data
+ */
+export const workforceData = pgTable("workforce_data", {
+  id: text("id").primaryKey(),
+  schoolId: text("schoolId").notNull().references(() => schools.id, { onDelete: "cascade" }),
+  dataType: text("dataType").notNull(),
+  academicYear: text("academicYear"),
+  data: text("data"),
+  source: text("source"),
+  verifiedBy: text("verifiedBy").references(() => users.id, { onDelete: "set null" }),
+  verifiedAt: timestamp("verifiedAt", { withTimezone: true }),
+  isActive: boolean("isActive").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+}, (table) => ({
+  schoolIdIdx: index("idx_workforce_data_schoolId").on(table.schoolId),
+}));
+
+export type WorkforceData = typeof workforceData.$inferSelect;
+export type NewWorkforceData = typeof workforceData.$inferInsert;

@@ -12,6 +12,9 @@ interface ClassesGridProps {
   onUpdate?: (id: string, field: string, value: string) => Promise<void>;
   onEdit?: (cls: Class) => void;
   onDelete?: (cls: Class) => void;
+  onViewStudents?: (cls: Class) => void;
+  onAssignTeacher?: (cls: Class) => void;
+  onManageSubjects?: (cls: Class) => void;
 }
 
 /**
@@ -22,12 +25,17 @@ interface ClassesGridProps {
  * - Sticky grade headers
  * - Expandable section rows
  * - Staggered animations
+ * - Editable capacity
+ * - 3-dot menu with multiple actions
  */
 export function ClassesGrid({
   classes,
   onUpdate,
   onEdit,
-  onDelete
+  onDelete,
+  onViewStudents,
+  onAssignTeacher,
+  onManageSubjects
 }: ClassesGridProps) {
   // Memoize grouped data
   const grouped = useMemo(() => groupClassesByGradeSection(classes), [classes]);
@@ -91,6 +99,9 @@ export function ClassesGrid({
                 onUpdate={onUpdate}
                 onEdit={onEdit}
                 onDelete={onDelete}
+                onViewStudents={onViewStudents}
+                onAssignTeacher={onAssignTeacher}
+                onManageSubjects={onManageSubjects}
               />
             ))}
           </div>

@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [2.3.0] - Digital Anatomy Dashboard (March 4, 2026)
+
+### Added
+
+**Digital Anatomy Dashboard - Real-time System Health Visualization**
+- Location: `/admin/anatomy`
+- Force-directed graph showing 40+ Unified Features as neural nodes
+- Vital Signs monitoring: Pulse (latency), Breath (CPU/Memory), Synapse (AI healing)
+- Live Terminal Feed with auto-scrolling event log
+- Star-pattern topology: all features → central Universal API node
+- Real-time health checks with color-coded status:
+  - Green (<100ms): Athletic performance
+  - Blue (100-300ms): Normal operation
+  - Yellow (300-1000ms): Degraded performance
+  - Red (>1000ms or errors): Critical failure
+- Auto-refresh every 30 seconds
+- Interactive node clicking to view feature details
+
+**API Endpoints**
+- `GET /api/admin/anatomy/vital-signs` - Ping each resource, return health metrics
+- `GET /api/admin/anatomy/feature-graph` - Return force-directed graph data
+- `GET /api/admin/anatomy/events` - Return recent system events
+
+**Libraries**
+- `react-force-graph-2d` - Force-directed graph visualization
+
+**Components Created**
+- `src/lib/anatomy/vital-signs-calculator.ts` - Latency → color/health score logic
+- `src/lib/anatomy/feature-graph-builder.ts` - Build graph from features/
+- `src/app/admin/anatomy/components/feature-graph.tsx` - Force-directed graph component
+- `src/app/admin/anatomy/components/vital-signs-panel.tsx` - Pulse/Breath/Synapse indicators
+- `src/app/admin/anatomy/components/live-terminal-feed.tsx` - Scrolling event log
+- `src/app/admin/anatomy/components/digital-anatomy-dashboard.tsx` - Main container
+- `src/app/admin/anatomy/page.tsx` - Entry point
+
+**Navigation**
+- Added "Digital Anatomy" to Admin Portal sidebar menu (Heart icon)
+
+### Changed
+
+**Portal Configuration**
+- Updated `src/config/portal-config.ts` to include Digital Anatomy link
+
+### Technical Notes
+
+- Dashboard visualizes the Unified Architecture post-migration
+- Single Universal API (`/api/resources/[resource]`) monitors all features
+- Lazy-loading features pattern from `src/features/index.ts`
+- Vital signs use simulated CPU/Memory metrics (serverless limitation)
+- Event feed pulls from `auditLog` table with mock fallback
+
+---
+
 ## [2.2.2] - Classes Management & Bulk Operations (March 2, 2026)
 
 ### Added

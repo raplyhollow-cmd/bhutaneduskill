@@ -1777,5 +1777,248 @@ npm run db:push    # Create/update notifications tables
 
 ---
 
+## 12. March 2, 2026 - Class-Based Approval System Fixes
+
+**Severity**: CRITICAL (Core approval workflow broken)
+
+### Issue 1: Data Inconsistency - `teacherId` vs `classTeacherId`
+
+**Symptoms**:
+- Teachers cannot see students in "My Students" page
+- Student dashboard shows "Class Teacher: Not Assigned"
+- Approval system not working for class teachers
+
+**Root Cause**:
+The `classes` table has TWO similar fields that were being used inconsistently:
+- `classTeacherId` - The correct field for homeroom/class teacher (used by approval system)
+- `teacherId` - Legacy field that some parts of the system were using
+
+**Permanent Fix**:
+
+**1. API Route - Assign Teacher (`/api/school-admin/classes/[id]/assign-teacher/route.ts`)**:
+```typescript
+// Before (WRONG):
+.set({ teacherId: teacherId || null, updatedAt: new Date() })
+
+// After (CORRECT):
+.set({ classTeacherId: teacherId || null, updatedAt: new Date() })
+```
+
+**2. API Route - Teacher Students (`/api/teacher/students/route.ts`)**:
+```typescript
+// Before (WRONG):
+.where(eq(classes.teacherId, userId))
+
+// After (CORRECT):
+.where(eq(classes.classTeacherId, userId))
+```
+
+**3. API Route - Auto-create Class on Approval (`/api/school-admin/applications/[id]/approve/route.ts`)**:
+```typescript
+// Before (WRONG):
+await db.insert(classes).values({
+  id: classId,
+  schoolId: applicant.schoolId!,
+  name: `Class ${applicant.classGrade} ${studentSection}`,
+  // classTeacherId NOT SET
+  homeroomTeacherName: "To be assigned",
+  classTeacherName: "To be assigned",
+  // ...
+});
+
+// After (CORRECT):
+const approverIsTeacher = user.type === 'teacher';
+await db.insert(classes).values({
+  id: classId,
+  schoolId: applicant.schoolId!,
+  name: `Class ${applicant.classGrade} ${studentSection}`,
+  classTeacherId: approverIsTeacher ? userId : null, // ✅ Set teacher
+  homeroomTeacherName: approverIsTeacher ? user.name : "To be assigned",
+  classTeacherName: approverIsTeacher ? user.name : "To be assigned",
+  // ...
+});
+```
+
+**SQL Migration for Existing Data**:
+```sql
+-- One-time fix: Copy teacher_id to class_teacher_id
+UPDATE classes
+SET class_teacher_id = teacher_id,
+    updated_at = NOW()
+WHERE teacher_id IS NOT NULL
+  AND class_teacher_id IS NULL;
+```
+
+**Files Fixed**:
+- `src/app/api/school-admin/classes/[id]/assign-teacher/route.ts`
+- `src/app/api/teacher/students/route.ts`
+- `src/app/api/school-admin/applications/[id]/approve/route.ts`
+
+---
+
+### Issue 2: Student Dashboard - "Class Teacher: Not Assigned"
+
+**Symptoms**:
+Student dashboard shows "Class Teacher: Not Assigned" even when teacher is assigned to class.
+
+**Root Cause**:
+Dashboard was fetching `classes.classTeacherName` (a static text field containing "To be assigned") instead of fetching the teacher's actual name from the `users` table using `classTeacherId`.
+
+**Permanent Fix** (`src/lib/api/student.ts` - 2 occurrences):
+
+**Before (WRONG)**:
+```typescript
+const [classRecord] = await db
+  .select({
+    name: classes.name,
+    classTeacherName: classes.classTeacherName, // ❌ Static text!
+  })
+  .from(classes)
+  .where(eq(classes.id, enrollment.classId))
+  .limit(1);
+
+if (classRecord) {
+  className = classRecord.name;
+  classTeacherName = classRecord.classTeacherName; // "To be assigned"
+}
+```
+
+**After (CORRECT)**:
+```typescript
+const [classRecord] = await db
+  .select({
+    name: classes.name,
+    classTeacherId: classes.classTeacherId, // ✅ Use ID
+  })
+  .from(classes)
+  .where(eq(classes.id, enrollment.classId))
+  .limit(1);
+
+if (classRecord) {
+  className = classRecord.name;
+  // Fetch teacher name dynamically from users table
+  if (classRecord.classTeacherId) {
+    const [teacher] = await db
+      .select({
+        firstName: users.firstName,
+        lastName: users.lastName,
+      })
+      .from(users)
+      .where(eq(users.id, classRecord.classTeacherId))
+      .limit(1);
+    if (teacher) {
+      classTeacherName = `${teacher.firstName || ""} ${teacher.lastName || ""}`.trim() || null;
+    }
+  }
+}
+```
+
+**Files Fixed**:
+- `src/lib/api/student.ts` - Lines 401-421 and 965-984
+
+---
+
+### Issue 3: Student Classes Page - "No classes found"
+
+**Symptoms**:
+"My Classes" page shows empty state even though API returns correct data.
+
+**Root Cause**:
+The API uses `successResponse()` which wraps data in a `data` property:
+```json
+{
+  "data": {
+    "classes": [...]
+  }
+}
+```
+But the frontend expected `data.classes` directly.
+
+**Permanent Fix** (`src/app/student/classes/page.tsx`):
+
+**Before (WRONG)**:
+```typescript
+fetch("/api/student/classes")
+  .then((res) => res.json() as Promise<ClassesResponse>)
+  .then((data) => {
+    if (data.classes) {  // ❌ Doesn't exist - needs data.data.classes
+      setClassesData(data.classes);
+    }
+  })
+```
+
+**After (CORRECT)**:
+```typescript
+fetch("/api/student/classes")
+  .then((res) => res.json())
+  .then((response) => {
+    const data = response.data || response;  // ✅ Unwrap successResponse
+    if (data.classes) {
+      setClassesData(data.classes);
+    }
+  })
+```
+
+**Files Fixed**:
+- `src/app/student/classes/page.tsx` - Lines 77-88
+
+---
+
+### Issue 4: Student Classes API - 401 Unauthorized
+
+**Symptoms**:
+Student gets 401 error when fetching `/api/student/classes`.
+
+**Root Cause**:
+API was calling `getAuth(request)` directly instead of using the auth parameter from `createApiRoute`.
+
+**Permanent Fix** (`src/app/api/student/classes/route.ts`):
+
+**Before (WRONG)**:
+```typescript
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    // ❌ Not using auth parameter, calling getAuth directly
+    const authData = await getAuth(request);
+    // ...
+  }
+);
+```
+
+**After (CORRECT)**:
+```typescript
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    // ✅ Use auth parameter from createApiRoute
+    const { userId, user } = auth;
+    // ...
+  }
+);
+```
+
+**Files Fixed**:
+- `src/app/api/student/classes/route.ts` - Line 28
+
+---
+
+## Database Schema Notes
+
+### users table - New Columns
+```sql
+approved_by TEXT REFERENCES users(id);  -- Tracks who approved this user
+approved_at TIMESTAMP;                 -- When approval happened
+```
+
+### classes table - Important Columns
+```sql
+class_teacher_id TEXT REFERENCES users(id);  -- ✅ USE THIS (homeroom teacher)
+teacher_id TEXT REFERENCES users(id);         -- ⚠️ LEGACY (avoid using)
+class_teacher_name TEXT;                      -- ⚠️ STATIC FIELD (don't rely on)
+```
+
+**Rule**: Always use `classTeacherId` to get the teacher, then fetch their name from the `users` table. Do NOT use `classTeacherName` as it's a static field that may be outdated.
+
+---
+
 **Last Updated**: March 1, 2026
 **Version**: 2.0

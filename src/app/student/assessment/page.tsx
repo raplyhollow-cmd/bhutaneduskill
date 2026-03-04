@@ -285,8 +285,8 @@ export default function AssessmentCatalogPage() {
                       </div>
                       {isImplemented ? (
                         isCompleted ? (
-                          <Button size="sm" variant="outline" asChild>
-                            <Link href={`/student/assessment/${assessment.slug}`}>
+                          <Button size="sm" asChild>
+                            <Link href={`/student/assessment/${assessment.slug}/results`}>
                               View Results
                               <ArrowRight className="w-4 h-4 ml-1" />
                             </Link>

@@ -5,6 +5,7 @@
  * - Add Subject button opens dropdown with global templates
  * - "Add Custom Subject" option at end for manual entry
  * - NEW: Hierarchical view grouped by grade with inline editing
+ * - NEW: Teacher assignment and management per subject
  */
 
 "use client";
@@ -25,6 +26,10 @@ import {
   Check,
   AlertCircle,
   ChevronDown,
+  Users,
+  UserPlus,
+  X,
+  GraduationCap,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
@@ -35,17 +40,11 @@ import {
   type SubjectFormData,
 } from "../_actions";
 import { SubjectsGrid } from "./components/subjects-grid";
+import type { Subject } from "@/lib/grouping";
 
-interface Subject {
-  id: string;
-  name: string;
-  code: string;
-  type: string;
-  grade: number | null;
-  description: string | null;
-  isActive: boolean;
-  createdAt: Date | string;
-  updatedAt: Date | string;
+// Extend Subject with additional properties for this page
+interface SubjectWithTeachers extends Subject {
+  assignedTeachers?: TeacherAssignment[];
 }
 
 interface GlobalSubject {
@@ -57,6 +56,36 @@ interface GlobalSubject {
   description: string | null;
 }
 
+interface Teacher {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string;
+  employeeId: string | null;
+}
+
+interface TeacherAssignment {
+  id: string;
+  teacherId: string;
+  role: string;
+  isPrimary: boolean;
+  classId: string | null;
+  academicYear: string;
+  teacher: {
+    id: string;
+    firstName: string | null;
+    lastName: string | null;
+    email: string;
+    employeeId: string | null;
+  };
+  class?: {
+    id: string;
+    name: string;
+    grade: number;
+    section: string;
+  } | null;
+}
+
 const gradeOptions = [6, 7, 8, 9, 10, 11, 12];
 const subjectTypes = [
   { value: "core", label: "Core Subject" },
@@ -66,7 +95,7 @@ const subjectTypes = [
 
 export default function SchoolAdminSubjectsPage() {
   const router = useRouter();
-  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [subjects, setSubjects] = useState<SubjectWithTeachers[]>([]);
   const [globalSubjects, setGlobalSubjects] = useState<GlobalSubject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -84,6 +113,17 @@ export default function SchoolAdminSubjectsPage() {
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState<Subject | null>(null);
 
+  // Teacher assignment states
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [teacherAssignments, setTeacherAssignments] = useState<Record<string, TeacherAssignment[]>>({});
+  const [isTeacherModalOpen, setIsTeacherModalOpen] = useState(false);
+  const [selectedSubjectForTeacher, setSelectedSubjectForTeacher] = useState<Subject | null>(null);
+  const [selectedTeacherId, setSelectedTeacherId] = useState("");
+  const [selectedRole, setSelectedRole] = useState<"subject_expert" | "substitute" | "homeroom">("subject_expert");
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const [isPrimary, setIsPrimary] = useState(false);
+  const [classes, setClasses] = useState<{ id: string; name: string; grade: number; section: string }[]>([]);
+
   // Form state for custom subject
   const [formData, setFormData] = useState<SubjectFormData>({
     name: "",
@@ -97,12 +137,17 @@ export default function SchoolAdminSubjectsPage() {
   useEffect(() => {
     loadSchoolSubjects();
     loadGlobalSubjects();
+    loadTeachers();
+    loadClasses();
   }, []);
 
   const loadSchoolSubjects = async () => {
     setIsLoading(true);
     const result = await fetchSubjects({ limit: 100 });
-    setSubjects(result.subjects);
+    const loadedSubjects = result.subjects as SubjectWithTeachers[];
+    setSubjects(loadedSubjects);
+    // Load teachers for each subject
+    await loadTeachersForSubjects(loadedSubjects);
     setIsLoading(false);
   };
 
@@ -114,6 +159,62 @@ export default function SchoolAdminSubjectsPage() {
       setGlobalSubjects(json.data?.subjects || []);
     } catch (err) {
       console.error("Failed to load global subjects:", err);
+    }
+  };
+
+  const loadTeachers = async () => {
+    try {
+      const res = await fetch("/api/school-admin/teachers");
+      const json = await res.json();
+      if (json.data) {
+        setTeachers(json.data?.teachers || []);
+      }
+    } catch (err) {
+      console.error("Failed to load teachers:", err);
+    }
+  };
+
+  const loadClasses = async () => {
+    try {
+      const res = await fetch("/api/school-admin/classes");
+      const json = await res.json();
+      if (json.data) {
+        setClasses(json.data?.classes || []);
+      }
+    } catch (err) {
+      console.error("Failed to load classes:", err);
+    }
+  };
+
+  const loadTeachersForSubjects = async (subjectList: SubjectWithTeachers[]) => {
+    const assignments: Record<string, TeacherAssignment[]> = {};
+    for (const subject of subjectList) {
+      try {
+        const res = await fetch(`/api/school-admin/subjects/${subject.id}/teachers`);
+        const json = await res.json();
+        if (json.data) {
+          assignments[subject.id] = json.data?.assignments || [];
+        }
+      } catch (err) {
+        console.error(`Failed to load teachers for subject ${subject.id}:`, err);
+        assignments[subject.id] = [];
+      }
+    }
+    setTeacherAssignments(assignments);
+  };
+
+  const refreshSubjectTeachers = async (subjectId: string) => {
+    try {
+      const res = await fetch(`/api/school-admin/subjects/${subjectId}/teachers`);
+      const json = await res.json();
+      if (json.data) {
+        setTeacherAssignments(prev => ({
+          ...prev,
+          [subjectId]: json.data?.assignments || []
+        }));
+      }
+    } catch (err) {
+      console.error(`Failed to refresh teachers for subject ${subjectId}:`, err);
     }
   };
 
@@ -335,6 +436,93 @@ export default function SchoolAdminSubjectsPage() {
     }
   };
 
+  // ============================================================================
+  // TEACHER ASSIGNMENT HANDLERS
+  // ============================================================================
+
+  const openTeacherModal = (subject: Subject) => {
+    setSelectedSubjectForTeacher(subject);
+    setSelectedTeacherId("");
+    setSelectedRole("subject_expert");
+    setSelectedClassId(null);
+    setIsPrimary(false);
+    setIsTeacherModalOpen(true);
+    setError(null);
+  };
+
+  const handleAssignTeacher = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSubjectForTeacher || !selectedTeacherId) {
+      setError("Please select a teacher");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`/api/school-admin/subjects/${selectedSubjectForTeacher.id}/teachers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          teacherId: selectedTeacherId,
+          role: selectedRole,
+          isPrimary,
+          classId: selectedClassId,
+        }),
+      });
+
+      const json = await res.json();
+      if (res.ok && json.data) {
+        setSuccess(`Teacher assigned to ${selectedSubjectForTeacher.name} successfully!`);
+        await refreshSubjectTeachers(selectedSubjectForTeacher.id);
+        setIsTeacherModalOpen(false);
+        // Reset form
+        setSelectedTeacherId("");
+        setSelectedRole("subject_expert");
+        setSelectedClassId(null);
+        setIsPrimary(false);
+        setError(null);
+        setTimeout(() => setSuccess(null), 2000);
+      } else {
+        setError(json.error || json.data?.error || "Failed to assign teacher");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to assign teacher");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRemoveTeacher = async (subjectId: string, teacherId: string, classId?: string | null) => {
+    setIsSubmitting(true);
+    try {
+      const res = await fetch(`/api/school-admin/subjects/${subjectId}/teachers`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teacherId, classId }),
+      });
+
+      const json = await res.json();
+      if (res.ok && json.data) {
+        setSuccess("Teacher unassigned successfully!");
+        await refreshSubjectTeachers(subjectId);
+        setTimeout(() => setSuccess(null), 2000);
+      } else {
+        setError(json.error || json.data?.error || "Failed to unassign teacher");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to unassign teacher");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const getTeacherName = (teacher: TeacherAssignment["teacher"]) => {
+    if (teacher.firstName && teacher.lastName) {
+      return `${teacher.firstName} ${teacher.lastName}`;
+    }
+    return teacher.email;
+  };
+
   // Filter subjects
   const filteredSubjects = subjects.filter((s) =>
     s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -541,6 +729,9 @@ export default function SchoolAdminSubjectsPage() {
             onEdit={openEditModal}
             onDelete={(subject) => setShowDeleteDialog(subject)}
             onView={handleViewSubject}
+            teacherAssignments={teacherAssignments}
+            onAssignTeacher={openTeacherModal}
+            onRemoveTeacher={handleRemoveTeacher}
           />
         </>
       )}
@@ -835,6 +1026,184 @@ export default function SchoolAdminSubjectsPage() {
                   )}
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Teacher Assignment Modal */}
+      {isTeacherModalOpen && selectedSubjectForTeacher && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <UserPlus className="w-5 h-5" />
+                    Assign Teacher
+                  </CardTitle>
+                  <CardDescription>
+                    Assign a teacher to {selectedSubjectForTeacher.name}
+                  </CardDescription>
+                </div>
+                <button
+                  onClick={() => setIsTeacherModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleAssignTeacher} className="space-y-4">
+                {/* Teacher Selection */}
+                <div>
+                  <Label htmlFor="teacher-select">Select Teacher *</Label>
+                  <select
+                    id="teacher-select"
+                    value={selectedTeacherId}
+                    onChange={(e) => setSelectedTeacherId(e.target.value)}
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                    required
+                  >
+                    <option value="">Choose a teacher...</option>
+                    {teachers.map((teacher) => {
+                      const name = teacher.firstName && teacher.lastName
+                        ? `${teacher.firstName} ${teacher.lastName}`
+                        : teacher.email;
+                      return (
+                        <option key={teacher.id} value={teacher.id}>
+                          {name} {teacher.employeeId ? `(${teacher.employeeId})` : ""}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                {/* Role Selection */}
+                <div>
+                  <Label htmlFor="role-select">Role *</Label>
+                  <select
+                    id="role-select"
+                    value={selectedRole}
+                    onChange={(e) => setSelectedRole(e.target.value as "subject_expert" | "substitute" | "homeroom")}
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                    required
+                  >
+                    <option value="subject_expert">Subject Teacher (Primary)</option>
+                    <option value="substitute">Substitute Teacher</option>
+                    <option value="homeroom">Homeroom Teacher</option>
+                  </select>
+                </div>
+
+                {/* Class Selection (Optional) */}
+                <div>
+                  <Label htmlFor="class-select">Specific Class (Optional)</Label>
+                  <select
+                    id="class-select"
+                    value={selectedClassId || ""}
+                    onChange={(e) => setSelectedClassId(e.target.value || null)}
+                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                  >
+                    <option value="">All classes for this subject</option>
+                    {classes.map((cls) => (
+                      <option key={cls.id} value={cls.id}>
+                        Grade {cls.grade} - {cls.section} ({cls.name})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Leave empty to assign teacher for all classes teaching this subject
+                  </p>
+                </div>
+
+                {/* Is Primary Checkbox */}
+                {selectedRole === "subject_expert" && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="is-primary"
+                      checked={isPrimary}
+                      onChange={(e) => setIsPrimary(e.target.checked)}
+                      className="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
+                    />
+                    <Label htmlFor="is-primary" className="cursor-pointer">
+                      Mark as primary teacher for this subject
+                    </Label>
+                  </div>
+                )}
+
+                {/* Current Teachers Display */}
+                {teacherAssignments[selectedSubjectForTeacher.id]?.length > 0 && (
+                  <div className="pt-2 border-t border-gray-200">
+                    <p className="text-sm font-medium text-gray-700 mb-2">Currently assigned teachers:</p>
+                    <div className="space-y-2">
+                      {teacherAssignments[selectedSubjectForTeacher.id].map((assignment) => (
+                        <div
+                          key={assignment.id}
+                          className="flex items-center justify-between p-2 bg-gray-50 rounded-lg text-sm"
+                        >
+                          <div className="flex items-center gap-2">
+                            <GraduationCap className="w-4 h-4 text-violet-600" />
+                            <div>
+                              <p className="font-medium">{getTeacherName(assignment.teacher)}</p>
+                              <p className="text-xs text-gray-500">
+                                {assignment.role === "substitute" ? "Substitute" : assignment.role}
+                                {assignment.class && ` • ${assignment.class.name}`}
+                                {assignment.isPrimary && " • Primary"}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveTeacher(selectedSubjectForTeacher.id, assignment.teacherId, assignment.classId)}
+                            className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded"
+                            disabled={isSubmitting}
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {error && (
+                  <div className="text-sm text-red-600 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4" />
+                    {error}
+                  </div>
+                )}
+
+                <div className="flex gap-3 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => setIsTeacherModalOpen(false)}
+                    disabled={isSubmitting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="flex-1 bg-violet-600 hover:bg-violet-700"
+                    disabled={isSubmitting || !selectedTeacherId}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Assigning...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4 mr-2" />
+                        Assign Teacher
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
             </CardContent>
           </Card>
         </div>

@@ -12,8 +12,10 @@
  * - Platform Admin: Technical questions, code locations, system status
  * - Ministry: National analytics, policy guidance, compliance
  *
- * Technical system questions (code, infrastructure, errors) are ONLY answered
- * for platform admins. Other roles receive a polite privilege denial.
+ * Technical system questions (code, infrastructure, errors) are answered for:
+ * - Platform admins (full technical access)
+ * - School admins (need system knowledge to manage effectively)
+ * Other roles receive a polite privilege denial.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -226,7 +228,7 @@ ANSWER FORMAT:
 
   "school-admin": `You are the AI School Admin Assistant for Bhutan EduSkill - a school management platform.
 
-YOUR ROLE: Help school administrators manage their school, staff, students, and operations.
+YOUR ROLE: Help school administrators manage their school, staff, students, and operations. You have FULL ACCESS to system information, code details, and infrastructure documentation.
 
 KNOWLEDGE AREAS:
 - School management and administration
@@ -236,6 +238,10 @@ KNOWLEDGE AREAS:
 - Fee structure and collections
 - Reports and analytics
 - Communication with stakeholders
+- **System Architecture & Code** - You can explain how the platform works
+- **Database Structure** - Tables, relationships, queries
+- **API Endpoints** - How to use and integrate with APIs
+- **Infrastructure** - Hosting, deployment, security
 
 YOUR PORTAL FEATURES:
 - Dashboard: School overview, key metrics, alerts
@@ -247,12 +253,21 @@ YOUR PORTAL FEATURES:
 - Announcements: School-wide communications
 - Settings: School configuration and preferences
 
+TECHNICAL ACCESS (You CAN answer these questions):
+- "How does the system work?" - Explain architecture, APIs, database
+- "Where is X data stored?" - Show tables and relationships
+- "How do I integrate X?" - API endpoints and examples
+- "What's the database schema?" - Explain tables and fields
+- "How do reports work?" - Show query logic and data flow
+- "System status" - Performance, uptime, issues
+
 COMMUNICATION STYLE:
 - Professional and administrative
 - Focus on efficiency and organization
 - Provide clear, actionable steps
 - Reference school management best practices
 - Be solution-oriented
+- For technical questions, be thorough but practical
 
 COMMON TOPICS:
 - School management: "Manage student records" "Teacher assignments"
@@ -260,11 +275,13 @@ COMMON TOPICS:
 - Reports: "Generate attendance report" "Fee collection status"
 - Platform: "Add new student" "View teacher performance"
 - Communications: "Send announcement" "Parent notifications"
+- Technical: "How does the assessment system work?" "Where is student data stored?"
 
 ANSWER FORMAT:
 - Direct answer
-- Step-by-step instructions
+- Step-by-step instructions (if applicable)
 - Administrative best practices
+- For technical questions: Provide relevant file paths, table names, API endpoints
 - Related features to explore`,
 
   admin: `You are the AI Platform Assistant for Bhutan EduSkill - a B2B SaaS school management platform.
@@ -450,8 +467,9 @@ export async function POST(request: NextRequest) {
     // Get role-specific system prompt
     const systemPrompt = ROLE_SYSTEM_PROMPTS[userRole] || ROLE_SYSTEM_PROMPTS.student;
 
-    // Check for technical questions - only platform admins can access these
-    if (userRole !== "admin" && isTechnicalQuestion(message)) {
+    // Check for technical questions - platform admins AND school admins can access these
+    // School admins need full system knowledge to manage their school effectively
+    if (userRole !== "admin" && userRole !== "school-admin" && isTechnicalQuestion(message)) {
       logger.security("technical_question_blocked", {
         userId,
         userRole,
@@ -542,7 +560,7 @@ export async function POST(request: NextRequest) {
 // GET - Check availability
 // ============================================================================
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   // Check if user is authenticated (optional for GET - returns feature info)
   try {
     const authResult = await requireAuth();
@@ -665,6 +683,9 @@ function getRoleBasedSuggestions(role: UserRole): string[] {
       "View teacher performance",
       "Generate attendance report",
       "Manage fee structure",
+      "How does the assessment system work?",
+      "Where is student data stored?",
+      "API integration help",
     ],
     admin: [
       "Where is user auth?",

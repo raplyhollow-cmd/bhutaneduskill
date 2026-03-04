@@ -120,6 +120,20 @@ const ROLE_CONFIG = {
   },
 } as const;
 
+/**
+ * Format message timestamp consistently to avoid hydration mismatches
+ * Uses a consistent format that works the same on server and client
+ */
+function formatMessageTime(timestamp: Date | string): string {
+  const date = typeof timestamp === "string" ? new Date(timestamp) : timestamp;
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  const ampm = hours >= 12 ? "PM" : "AM";
+  const displayHours = hours % 12 || 12; // Convert 0 to 12
+  const displayMinutes = minutes.toString().padStart(2, "0");
+  return `${displayHours}:${displayMinutes} ${ampm}`;
+}
+
 export function PlatformAssistant({
   userId,
   userName = "User",
@@ -381,8 +395,8 @@ function MessageBubble({ message }: MessageBubbleProps) {
       )}
       <div className={cn("rounded-2xl px-4 py-2.5", isUser ? "bg-blue-500 text-white rounded-br-sm" : "bg-white text-gray-800 rounded-bl-sm shadow-sm")}>
         <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
-        <span className={cn("text-[10px] mt-1 block", isUser ? "text-blue-200" : "text-gray-400")}>
-          {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        <span className={cn("text-[10px] mt-1 block", isUser ? "text-blue-200" : "text-gray-400")} suppressHydrationWarning>
+          {formatMessageTime(message.timestamp)}
         </span>
       </div>
     </div>

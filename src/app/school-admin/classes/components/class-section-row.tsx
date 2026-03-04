@@ -2,13 +2,14 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Users, MoreVertical, ChevronDown, ChevronRight } from "lucide-react";
+import { Users, MoreVertical, ChevronDown, ChevronRight, UserPlus, BookOpen, Users as UsersIcon, Eye, Edit, Trash2, GraduationCap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { InlineEdit } from "@/components/ui/inline-edit";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,9 @@ interface ClassSectionRowProps {
   onUpdate?: (id: string, field: string, value: string) => Promise<void>;
   onEdit?: (cls: Class) => void;
   onDelete?: (cls: Class) => void;
+  onViewStudents?: (cls: Class) => void;
+  onAssignTeacher?: (cls: Class) => void;
+  onManageSubjects?: (cls: Class) => void;
 }
 
 /**
@@ -31,6 +35,8 @@ interface ClassSectionRowProps {
  * - Individual class rows with inline editing
  * - Purple left border accent on hover
  * - Status badge (Active/Inactive)
+ * - Editable capacity
+ * - 3-dot menu with multiple actions
  */
 export function ClassSectionRow({
   section,
@@ -38,7 +44,10 @@ export function ClassSectionRow({
   index,
   onUpdate,
   onEdit,
-  onDelete
+  onDelete,
+  onViewStudents,
+  onAssignTeacher,
+  onManageSubjects
 }: ClassSectionRowProps) {
   const [isExpanded, setIsExpanded] = useState(true);
 
@@ -113,6 +122,9 @@ export function ClassSectionRow({
               onUpdate={onUpdate}
               onEdit={onEdit}
               onDelete={onDelete}
+              onViewStudents={onViewStudents}
+              onAssignTeacher={onAssignTeacher}
+              onManageSubjects={onManageSubjects}
             />
           ))}
         </motion.div>
@@ -128,9 +140,21 @@ interface ClassSubRowProps {
   onUpdate?: (id: string, field: string, value: string) => Promise<void>;
   onEdit?: (cls: Class) => void;
   onDelete?: (cls: Class) => void;
+  onViewStudents?: (cls: Class) => void;
+  onAssignTeacher?: (cls: Class) => void;
+  onManageSubjects?: (cls: Class) => void;
 }
 
-function ClassSubRow({ class: cls, index, onUpdate, onEdit, onDelete }: ClassSubRowProps) {
+function ClassSubRow({
+  class: cls,
+  index,
+  onUpdate,
+  onEdit,
+  onDelete,
+  onViewStudents,
+  onAssignTeacher,
+  onManageSubjects
+}: ClassSubRowProps) {
   const handleSave = (field: string) => async (value: string) => {
     if (onUpdate) {
       await onUpdate(cls.id, field, value);
@@ -190,9 +214,17 @@ function ClassSubRow({ class: cls, index, onUpdate, onEdit, onDelete }: ClassSub
           />
         </div>
 
-        {/* Capacity */}
-        <div className="w-20 text-sm" style={{ color: "var(--ceramic-gray-600, #90909d)" }}>
-          {cls.enrolled || 0}/{cls.capacity}
+        {/* Capacity - Inline Editable */}
+        <div className="w-24 flex items-center gap-1">
+          <span className="text-xs" style={{ color: "var(--ceramic-gray-600, #90909d)" }}>
+            {cls.enrolled || 0}/
+          </span>
+          <InlineEdit
+            value={String(cls.capacity || "")}
+            onSave={handleSave("capacity")}
+            placeholder="—"
+            className="text-sm w-14"
+          />
         </div>
 
         {/* Class Teacher - Inline Editable */}
@@ -227,14 +259,35 @@ function ClassSubRow({ class: cls, index, onUpdate, onEdit, onDelete }: ClassSub
               <MoreVertical className="w-4 h-4" style={{ color: "var(--ceramic-gray-500, #adadb7)" }} />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" variant="ceramic">
+          <DropdownMenuContent align="end" variant="ceramic" className="w-48">
+            {onViewStudents && (
+              <DropdownMenuItem onClick={() => onViewStudents(cls)}>
+                <Eye className="w-4 h-4 mr-2" />
+                View Students
+              </DropdownMenuItem>
+            )}
+            {onAssignTeacher && (
+              <DropdownMenuItem onClick={() => onAssignTeacher(cls)}>
+                <UserPlus className="w-4 h-4 mr-2" />
+                Assign Teacher
+              </DropdownMenuItem>
+            )}
+            {onManageSubjects && (
+              <DropdownMenuItem onClick={() => onManageSubjects(cls)}>
+                <BookOpen className="w-4 h-4 mr-2" />
+                Manage Subjects
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => onEdit?.(cls)}>
+              <Edit className="w-4 h-4 mr-2" />
               Edit Details
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onDelete?.(cls)}
               className="text-red-600 focus:text-red-600"
             >
+              <Trash2 className="w-4 h-4 mr-2" />
               Delete
             </DropdownMenuItem>
           </DropdownMenuContent>

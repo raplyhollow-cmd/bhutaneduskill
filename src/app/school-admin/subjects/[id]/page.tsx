@@ -29,6 +29,7 @@ import {
   School,
 } from "lucide-react";
 import Link from "next/link";
+import { SubjectTeacherDropdown } from "@/components/school-admin/subject-teacher-dropdown";
 
 interface Subject {
   id: string;
@@ -54,9 +55,9 @@ interface AssignedTeacher {
   teacherId: string;
   role: string;
   isPrimary: boolean;
-  classId: string | null;
   academicYear: string;
   teacher: Teacher;
+  assignedClasses: GradeClass[];
 }
 
 interface GradeClass {
@@ -89,6 +90,56 @@ export default function SubjectDetailPage({
   const [success, setSuccess] = useState<string | null>(null);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>([]);
+
+  // Handler for inline teacher assignment
+  const handleInlineAssign = async (teacherId: string, classIds: string[], isAllClasses: boolean) => {
+    if (isAllClasses) {
+      // Assign to all classes - create one assignment without specific class
+      const res = await fetch(`/api/school-admin/subjects/${subjectId}/teachers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          teacherId,
+          role: "subject_expert",
+          isPrimary: assignedTeachers.length === 0,
+        }),
+      });
+      const result = await res.json();
+      return res.ok && result.success;
+    } else {
+      // Assign to specific classes - create multiple assignments
+      const promises = classIds.map((classId) =>
+        fetch(`/api/school-admin/subjects/${subjectId}/teachers`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            teacherId,
+            role: "subject_expert",
+            classId,
+            isPrimary: assignedTeachers.length === 0 && classId === classIds[0],
+          }),
+        })
+      );
+      const results = await Promise.all(promises);
+      return results.every((res) => res.ok);
+    }
+  };
+
+  // Handler for inline teacher removal
+  const handleInlineRemove = async (teacherId: string) => {
+    const res = await fetch(`/api/school-admin/subjects/${subjectId}/teachers`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ teacherId }),
+    });
+    const result = await res.json();
+    if (res.ok && result.success) {
+      setSuccess("Teacher removed successfully");
+      await loadSubjectDetail();
+      setTimeout(() => setSuccess(null), 2000);
+    }
+    return res.ok && result.success;
+  };
 
   useEffect(() => {
     loadSubjectDetail();
@@ -314,14 +365,6 @@ export default function SubjectDetailPage({
                     {assignedTeachers.length} teacher(s) assigned to this subject
                   </CardDescription>
                 </div>
-                <Button
-                  onClick={() => setIsAssignModalOpen(true)}
-                  className="bg-violet-600 hover:bg-violet-700"
-                  size="sm"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Assign Teacher
-                </Button>
               </div>
             </CardHeader>
             <CardContent>
@@ -329,60 +372,30 @@ export default function SubjectDetailPage({
                 <div className="text-center py-8 text-gray-500">
                   <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
                   <p className="mb-4">No teachers assigned to this subject yet</p>
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsAssignModalOpen(true)}
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Assign First Teacher
-                  </Button>
+                  <SubjectTeacherDropdown
+                    subjectId={subjectId}
+                    subjectName={subject.name}
+                    assignedTeachers={assignedTeachers}
+                    allClasses={gradeClasses}
+                    availableTeachers={availableTeachers}
+                    onAssign={handleInlineAssign}
+                    onRemove={handleInlineRemove}
+                    onRefresh={loadSubjectDetail}
+                  />
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {assignedTeachers.map((assignment) => (
-                    <div
-                      key={assignment.id}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-violet-100 rounded-full flex items-center justify-center">
-                          <span className="text-violet-600 font-medium text-sm">
-                            {assignment.teacher.firstName?.[0]}
-                            {assignment.teacher.lastName?.[0]}
-                          </span>
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900">
-                            {assignment.teacher.firstName} {assignment.teacher.lastName}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {assignment.teacher.employeeId || "No Employee ID"}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {assignment.isPrimary && (
-                          <Badge className="bg-blue-100 text-blue-700">Primary</Badge>
-                        )}
-                        <Badge variant="outline" className="capitalize">
-                          {assignment.role.replace("_", " ")}
-                        </Badge>
-                        {assignment.classId && (
-                          <Badge variant="outline" className="text-xs">
-                            Class-specific
-                          </Badge>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-600 hover:text-red-700"
-                          onClick={() => handleRemoveTeacher(assignment.teacherId)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-600">Click on a teacher to manage their class assignments:</p>
+                  <SubjectTeacherDropdown
+                    subjectId={subjectId}
+                    subjectName={subject.name}
+                    assignedTeachers={assignedTeachers}
+                    allClasses={gradeClasses}
+                    availableTeachers={availableTeachers}
+                    onAssign={handleInlineAssign}
+                    onRemove={handleInlineRemove}
+                    onRefresh={loadSubjectDetail}
+                  />
                 </div>
               )}
             </CardContent>

@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { UniversalMobileSidebar, UniversalPortalHeader } from "@/components/mobile/universal-mobile-sidebar";
 import { PortalErrorBoundary } from "@/components/error/portal-error-boundary";
 import { UnifiedAIAssistant } from "@/components/ai/unified-ai-assistant";
+import { SetupGuard } from "@/components/school-admin/setup-guard";
 import { cn } from "@/lib/utils";
 import { portal } from "@/styles/design-tokens";
 import { CommandPalette, useCommandPalette } from "@/components/ui/command-palette";
@@ -16,6 +17,7 @@ interface SchoolAdminLayoutClientProps {
   portalType: "school-admin";
   needsSetup?: boolean;
   isPendingApproval?: boolean;
+  schoolId?: string | null;
 }
 
 /**
@@ -27,7 +29,7 @@ interface SchoolAdminLayoutClientProps {
  * The auth check and loading states are handled internally, not by early returns.
  * PORTAL COLOR: Violet (rgb(139, 92, 246))
  */
-export function SchoolAdminLayoutClient({ children, userName, portalType, needsSetup = false, isPendingApproval = false }: SchoolAdminLayoutClientProps) {
+export function SchoolAdminLayoutClient({ children, userName, portalType, needsSetup = false, isPendingApproval = false, schoolId }: SchoolAdminLayoutClientProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -120,15 +122,18 @@ export function SchoolAdminLayoutClient({ children, userName, portalType, needsS
           "min-h-[calc(100dvh-64px)]"
         )}>
           <PortalErrorBoundary portalType={portalType}>
-            {/* ALWAYS render children to avoid hooks mismatch - use visibility to hide */}
-            <div style={{ visibility: !isAuthenticated ? "hidden" : "visible" }}>
-              {children}
-            </div>
-            {!isAuthenticated && (
-              <div className="flex items-center justify-center h-64">
-                <p className="text-gray-500">Verifying your account...</p>
+            {/* SetupGuard checks if school setup is complete and shows wizard if needed */}
+            <SetupGuard schoolId={schoolId || null}>
+              {/* ALWAYS render children to avoid hooks mismatch - use visibility to hide */}
+              <div style={{ visibility: !isAuthenticated ? "hidden" : "visible" }}>
+                {children}
               </div>
-            )}
+              {!isAuthenticated && (
+                <div className="flex items-center justify-center h-64">
+                  <p className="text-gray-500">Verifying your account...</p>
+                </div>
+              )}
+            </SetupGuard>
           </PortalErrorBoundary>
         </main>
       </div>

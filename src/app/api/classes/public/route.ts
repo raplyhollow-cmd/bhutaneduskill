@@ -1,105 +1,57 @@
-import { logger } from "@/lib/logger";
+/**
+ * PUBLIC CLASSES API
+ *
+ * Returns classes for a given school (public, no auth required).
+ * Used by the unified setup wizard.
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { schools, classes } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { classes, schools } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
-/**
- * GET /api/classes/public - Get classes by school code (public endpoint for signup flow)
- *
- * Query params:
- * - schoolCode: The school code (required)
- *
- * This is a public endpoint (no auth) used during student signup.
- * It validates the school code and returns active classes for that school.
- */
-export async function GET(req: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = new URL(request.url);
     const schoolCode = searchParams.get("schoolCode");
 
-    // Validate school code parameter
-    if (!schoolCode || schoolCode.trim().length === 0) {
-      return NextResponse.json(
-        { success: false, error: "School code is required" },
-        { status: 400 }
-      );
+    if (!schoolCode) {
+      return NextResponse.json({ error: "schoolCode is required" }, { status: 400 });
     }
 
-    // Trim and normalize school code
-    const normalizedCode = schoolCode.trim().toUpperCase();
-
-    // Find school by code
-    const schoolRecords = await db
-      .select({
-        id: schools.id,
-        name: schools.name,
-        code: schools.code,
-        isActive: schools.isActive,
-        subscriptionStatus: schools.subscriptionStatus,
-      })
+    // Verify school exists
+    const [school] = await db
+      .select()
       .from(schools)
-      .where(eq(schools.code, normalizedCode))
+      .where(eq(schools.code, schoolCode))
       .limit(1);
 
-    if (schoolRecords.length === 0) {
-      return NextResponse.json(
-        { success: false, error: "School not found" },
-        { status: 404 }
-      );
+    if (!school) {
+      return NextResponse.json({ error: "School not found" }, { status: 404 });
     }
 
-    const school = schoolRecords[0];
-
-    // Check if school is active
-    if (!school.isActive) {
-      return NextResponse.json(
-        { success: false, error: "This school is not currently active. Please contact your school administrator." },
-        { status: 403 }
-      );
-    }
-
-    // Check subscription status (if exists)
-    if (school.subscriptionStatus && school.subscriptionStatus !== "active" && school.subscriptionStatus !== "trial") {
-      return NextResponse.json(
-        { success: false, error: "This school's subscription is not active. Please contact your school administrator." },
-        { status: 403 }
-      );
-    }
-
-    // Fetch active classes for this school
-    const classRecords = await db
-      .select({
-        id: classes.id,
-        name: classes.name,
-        grade: classes.grade,
-        section: classes.section,
-        academicYear: classes.academicYear,
-      })
+    // Get classes for this school
+    const schoolClasses = await db
+      .select()
       .from(classes)
-      .where(
-        and(
-          eq(classes.schoolId, school.id),
-          eq(classes.isActive, true)
-        )
-      )
-      .orderBy(classes.grade, classes.section);
+      .where(eq(classes.schoolId, school.id));
 
-    // Return success with school info and classes
     return NextResponse.json({
       success: true,
       data: {
-        schoolId: school.id,
-        schoolName: school.name,
-        schoolCode: school.code,
-        classes: classRecords,
+        school: {
+          id: school.id,
+          name: school.name,
+          code: school.code,
+        },
+        classes: schoolClasses,
       },
     });
 
-  } catch (error) {
-    logger.error("Failed to fetch classes for school", { error });
+  } catch (error: any) {
+    console.error("Public classes API error:", error);
     return NextResponse.json(
-      { success: false, error: "Failed to load classes. Please try again." },
+      { error: error.message || "Failed to fetch classes" },
       { status: 500 }
     );
   }

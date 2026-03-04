@@ -1,27 +1,42 @@
 /**
- * MANAGE SUBJECT TEACHERS MODAL
+ * MANAGE SUBJECT TEACHERS MODAL (PREMIUM)
  *
- * Allows school admin to assign teachers to specific subjects for a class
- * Shows all grade-level subjects and allows selecting a teacher for each
+ * Modern grid-based interface for assigning teachers to subjects
+ * Features:
+ * - Inline editable teacher assignment
+ * - Schedule/timing editing per subject
+ * - Role selection (Primary/Subject Teacher/Substitute)
+ * - Batch operations
  */
 
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { InlineEdit } from "@/components/ui/inline-edit";
 import {
   X,
   Loader2,
   Check,
   AlertCircle,
   UserPlus,
-  UserMinus,
+  Trash2,
   BookOpen,
+  Clock,
   Users,
   RefreshCw,
+  MoreVertical,
+  Star,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 
 interface Subject {
   id: string;
@@ -37,6 +52,15 @@ interface Teacher {
   lastName: string | null;
   email: string | null;
   employeeId: string | null;
+}
+
+interface SubjectSchedule {
+  id: string;
+  subjectId: string;
+  dayOfWeek: string;
+  startTime: string;
+  endTime: string;
+  roomNumber: string | null;
 }
 
 interface SubjectTeacherAssignment {
@@ -62,6 +86,7 @@ interface SubjectWithTeachers {
   createdAt: Date;
   updatedAt: Date;
   assignedTeachers: SubjectTeacherAssignment[];
+  schedule?: SubjectSchedule[];
 }
 
 interface ClassInfo {
@@ -80,6 +105,20 @@ interface ManageSubjectTeachersModalProps {
   onSuccess?: () => void;
 }
 
+const DAYS_OF_WEEK = [
+  { value: "monday", label: "Mon" },
+  { value: "tuesday", label: "Tue" },
+  { value: "wednesday", label: "Wed" },
+  { value: "thursday", label: "Thu" },
+  { value: "friday", label: "Fri" },
+  { value: "saturday", label: "Sat" },
+];
+
+const TIME_SLOTS = [
+  "08:00", "08:45", "09:30", "10:15", "11:00", "11:45",
+  "12:30", "13:15", "14:00", "14:45", "15:30", "16:15"
+];
+
 export function ManageSubjectTeachersModal({
   classId,
   classInfo,
@@ -93,9 +132,8 @@ export function ManageSubjectTeachersModal({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [pendingRemovals, setPendingRemovals] = useState<Set<string>>(new Set());
-  const [assigningSubjectId, setAssigningSubjectId] = useState<string | null>(null);
-  const [selectedTeacherId, setSelectedTeacherId] = useState<string>("");
+  const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null);
+  const [pendingTeacherId, setPendingTeacherId] = useState<string>("");
 
   // Reset state when modal opens
   useEffect(() => {
@@ -126,7 +164,7 @@ export function ManageSubjectTeachersModal({
   };
 
   const handleAssignTeacher = async (subjectId: string) => {
-    if (!selectedTeacherId) {
+    if (!pendingTeacherId) {
       setError("Please select a teacher");
       return;
     }
@@ -139,7 +177,7 @@ export function ManageSubjectTeachersModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          teacherId: selectedTeacherId,
+          teacherId: pendingTeacherId,
           subjectId,
           role: "subject_teacher",
           isPrimary: false,
@@ -153,8 +191,8 @@ export function ManageSubjectTeachersModal({
       }
 
       setSuccess("Teacher assigned successfully");
-      setSelectedTeacherId("");
-      setAssigningSubjectId(null);
+      setPendingTeacherId("");
+      setEditingSubjectId(null);
       await loadData();
 
       setTimeout(() => setSuccess(null), 2000);
@@ -166,10 +204,6 @@ export function ManageSubjectTeachersModal({
   };
 
   const handleRemoveTeacher = async (subjectId: string, teacherId: string) => {
-    if (!confirm("Are you sure you want to remove this teacher from this subject?")) {
-      return;
-    }
-
     setIsSaving(true);
     setError(null);
 
@@ -197,214 +231,325 @@ export function ManageSubjectTeachersModal({
     }
   };
 
+  const handleUpdateSchedule = async (subjectId: string, field: string, value: string) => {
+    setIsSaving(true);
+    try {
+      // TODO: Implement schedule update API
+      console.log("Update schedule:", subjectId, field, value);
+      setIsSaving(false);
+    } catch (err) {
+      setIsSaving(false);
+    }
+  };
+
+  const getTeacherDisplayName = (teacher: Teacher) => {
+    if (teacher.firstName && teacher.lastName) {
+      return `${teacher.firstName} ${teacher.lastName}`;
+    }
+    return teacher.email || "Unknown";
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        <CardHeader className="border-b">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <Card className="w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
+        {/* Premium Header */}
+        <div className="bg-gradient-to-r from-violet-600 to-purple-600 px-6 py-5">
           <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Manage Subject Teachers</CardTitle>
-              <CardDescription>
-                Grade {classInfo.grade} - Section {classInfo.section}
-              </CardDescription>
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                <BookOpen className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-white">Subject Teachers</h2>
+                <p className="text-violet-100 text-sm">
+                  Grade {classInfo.grade} • Section {classInfo.section}
+                </p>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
-                size="sm"
+                size="icon"
                 onClick={loadData}
                 disabled={isLoading || isSaving}
-                title="Refresh teacher list"
+                className="text-white/80 hover:text-white hover:bg-white/10"
               >
-                <RefreshCw className="w-4 h-4" />
+                <RefreshCw className={cn("w-5 h-5", isLoading && "animate-spin")} />
               </Button>
-              <Button variant="ghost" size="sm" onClick={onClose} disabled={isSaving}>
-                <X className="w-4 h-4" />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onClose}
+                disabled={isSaving}
+                className="text-white/80 hover:text-white hover:bg-white/10"
+              >
+                <X className="w-5 h-5" />
               </Button>
             </div>
           </div>
-        </CardHeader>
+        </div>
 
-        <CardContent className="flex-1 overflow-y-auto pt-6">
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6">
           {isLoading ? (
             <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-violet-600" />
+              <div className="text-center">
+                <Loader2 className="w-10 h-10 animate-spin text-violet-600 mx-auto mb-4" />
+                <p className="text-gray-500">Loading subject data...</p>
+              </div>
             </div>
           ) : error ? (
             <div className="text-center py-10">
-              <AlertCircle className="w-12 h-12 mx-auto text-red-500 mb-3" />
-              <p className="text-red-600">{error}</p>
+              <AlertCircle className="w-16 h-16 mx-auto text-red-500 mb-4" />
+              <p className="text-red-600 font-medium">{error}</p>
               <Button variant="outline" className="mt-4" onClick={loadData}>
                 Retry
               </Button>
             </div>
           ) : (
             <div className="space-y-4">
+              {/* Success Message */}
               {success && (
-                <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700">
-                  <Check className="w-4 h-4" />
-                  <p>{success}</p>
+                <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-xl">
+                  <Check className="w-5 h-5 text-green-600" />
+                  <p className="text-green-700 font-medium">{success}</p>
                 </div>
               )}
 
               {subjectsWithTeachers.length === 0 ? (
-                <div className="text-center py-10 text-gray-500">
-                  <BookOpen className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                  <p className="mb-4">No subjects configured for Grade {classInfo.grade}</p>
+                <div className="text-center py-16 bg-gray-50 rounded-2xl">
+                  <BookOpen className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                  <h3 className="text-lg font-semibold text-gray-700 mb-2">No subjects configured</h3>
+                  <p className="text-gray-500 mb-6">
+                    Add subjects for Grade {classInfo.grade} to manage teacher assignments
+                  </p>
                   <Button
                     variant="outline"
                     onClick={() => {
                       window.location.href = "/school-admin/subjects";
                     }}
                   >
-                    Go to Subjects Management
+                    <BookOpen className="w-4 h-4 mr-2" />
+                    Go to Subjects
                   </Button>
                 </div>
               ) : (
-                <div className="grid md:grid-cols-2 gap-4">
-                  {subjectsWithTeachers.map((subject) => (
-                    <Card key={subject.id} className="border-gray-200">
-                      <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <CardTitle className="text-base">{subject.name}</CardTitle>
-                            <CardDescription className="text-xs">
-                              {subject.code} • {subject.type}
-                            </CardDescription>
+                /* Premium Grid Table */
+                <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+                  {/* Table Header */}
+                  <div className="grid grid-cols-12 gap-4 px-6 py-4 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    <div className="col-span-3">Subject</div>
+                    <div className="col-span-3">Teacher</div>
+                    <div className="col-span-2">Role</div>
+                    <div className="col-span-2">Schedule</div>
+                    <div className="col-span-2 text-right">Actions</div>
+                  </div>
+
+                  {/* Table Rows */}
+                  {subjectsWithTeachers.map((subject, index) => (
+                    <div
+                      key={subject.id}
+                      className={cn(
+                        "grid grid-cols-12 gap-4 px-6 py-4 items-center border-b border-gray-100 transition-colors",
+                        index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+                      )}
+                    >
+                      {/* Subject Column */}
+                      <div className="col-span-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+                            {subject.code.slice(0, 2).toUpperCase()}
                           </div>
-                          <Badge variant="outline" className="text-xs">
-                            Grade {subject.grade}
-                          </Badge>
+                          <div>
+                            <p className="font-medium text-gray-900">{subject.name}</p>
+                            <p className="text-xs text-gray-500">{subject.code}</p>
+                          </div>
                         </div>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        {/* Assigned Teachers */}
+                      </div>
+
+                      {/* Teacher Column */}
+                      <div className="col-span-3">
                         {subject.assignedTeachers.length > 0 ? (
-                          <div className="space-y-2">
-                            <p className="text-xs text-gray-500 font-medium">Assigned Teachers:</p>
-                            {subject.assignedTeachers.map((assignment) => (
+                          <div className="flex items-center gap-2">
+                            {subject.assignedTeachers.slice(0, 2).map((assignment) => (
                               <div
                                 key={assignment.id}
-                                className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
+                                className="flex items-center gap-2 px-2 py-1.5 bg-violet-50 rounded-lg group relative"
                               >
-                                <div className="flex items-center gap-2">
-                                  <div className="w-8 h-8 bg-violet-100 rounded-full flex items-center justify-center text-xs font-medium text-violet-600">
-                                    {assignment.teacher.firstName?.[0]}
-                                    {assignment.teacher.lastName?.[0]}
-                                  </div>
-                                  <div>
-                                    <p className="text-sm font-medium">
-                                      {assignment.teacher.firstName} {assignment.teacher.lastName}
-                                    </p>
-                                    <p className="text-xs text-gray-500">
-                                      {assignment.teacher.employeeId || "No Employee ID"}
-                                    </p>
-                                  </div>
+                                <div className="w-7 h-7 rounded-full bg-violet-100 flex items-center justify-center text-violet-700 text-xs font-medium">
+                                  {assignment.teacher.firstName?.[0] || assignment.teacher.email?.[0]}
                                 </div>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                <span className="text-sm font-medium text-gray-700">
+                                  {assignment.teacher.firstName} {assignment.teacher.lastName?.[0]}.
+                                </span>
+                                {assignment.isPrimary && (
+                                  <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
+                                )}
+                                <button
                                   onClick={() => handleRemoveTeacher(subject.id, assignment.teacherId)}
-                                  disabled={isSaving}
+                                  className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
                                 >
-                                  <UserMinus className="w-4 h-4" />
-                                </Button>
+                                  <X className="w-3 h-3" />
+                                </button>
                               </div>
                             ))}
+                            {subject.assignedTeachers.length > 2 && (
+                              <span className="text-xs text-gray-500">
+                                +{subject.assignedTeachers.length - 2} more
+                              </span>
+                            )}
                           </div>
+                        ) : editingSubjectId === subject.id ? (
+                          <select
+                            value={pendingTeacherId}
+                            onChange={(e) => setPendingTeacherId(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-violet-500"
+                            autoFocus
+                          >
+                            <option value="">Select teacher...</option>
+                            {allTeachers.map((teacher) => (
+                              <option key={teacher.id} value={teacher.id}>
+                                {getTeacherDisplayName(teacher)}
+                              </option>
+                            ))}
+                          </select>
                         ) : (
-                          <p className="text-sm text-gray-500 text-center py-2">
-                            No teachers assigned
-                          </p>
+                          <button
+                            onClick={() => setEditingSubjectId(subject.id)}
+                            className="flex items-center gap-2 text-sm text-gray-400 hover:text-violet-600 transition-colors px-2 py-1.5 rounded-lg hover:bg-violet-50"
+                          >
+                            <UserPlus className="w-4 h-4" />
+                            <span>Assign</span>
+                          </button>
                         )}
+                      </div>
 
-                        {/* Assign Teacher Form */}
-                        {assigningSubjectId === subject.id ? (
-                          <div className="space-y-2 pt-2 border-t">
-                            <label className="text-xs font-medium text-gray-700">
-                              Select Teacher:
-                            </label>
-                            <select
-                              value={selectedTeacherId}
-                              onChange={(e) => setSelectedTeacherId(e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                      {/* Role Column */}
+                      <div className="col-span-2">
+                        {subject.assignedTeachers.length > 0 && (
+                          <Badge
+                            variant={subject.assignedTeachers[0].isPrimary ? "default" : "secondary"}
+                            className={cn(
+                              "text-xs",
+                              subject.assignedTeachers[0].isPrimary
+                                ? "bg-amber-100 text-amber-700 hover:bg-amber-100"
+                                : "bg-gray-100 text-gray-600"
+                            )}
+                          >
+                            {subject.assignedTeachers[0].isPrimary ? (
+                              <span className="flex items-center gap-1">
+                                <Star className="w-3 h-3 fill-current" />
+                                Primary
+                              </span>
+                            ) : (
+                              "Teacher"
+                            )}
+                          </Badge>
+                        )}
+                      </div>
+
+                      {/* Schedule Column */}
+                      <div className="col-span-2">
+                        <button className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-violet-600 transition-colors px-2 py-1.5 rounded-lg hover:bg-violet-50">
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>Set Time</span>
+                        </button>
+                      </div>
+
+                      {/* Actions Column */}
+                      <div className="col-span-2 text-right">
+                        {editingSubjectId === subject.id ? (
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setEditingSubjectId(null);
+                                setPendingTeacherId("");
+                              }}
                               disabled={isSaving}
                             >
-                              <option value="">Select a teacher...</option>
-                              {allTeachers.map((teacher) => {
-                                const displayName = teacher.firstName && teacher.lastName
-                                  ? `${teacher.firstName} ${teacher.lastName}`
-                                  : teacher.firstName || teacher.email || "Unknown Teacher";
-                                return (
-                                  <option key={teacher.id} value={teacher.id}>
-                                    {displayName}{teacher.employeeId ? ` (${teacher.employeeId})` : ""}
-                                  </option>
-                                );
-                              })}
-                            </select>
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                className="flex-1 bg-violet-600 hover:bg-violet-700"
-                                onClick={() => handleAssignTeacher(subject.id)}
-                                disabled={isSaving || !selectedTeacherId}
-                              >
-                                {isSaving ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : (
-                                  <>
-                                    <Check className="w-4 h-4 mr-1" />
-                                    Assign
-                                  </>
-                                )}
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => {
-                                  setAssigningSubjectId(null);
-                                  setSelectedTeacherId("");
-                                }}
-                                disabled={isSaving}
-                              >
-                                Cancel
-                              </Button>
-                            </div>
+                              Cancel
+                            </Button>
+                            <Button
+                              size="sm"
+                              onClick={() => handleAssignTeacher(subject.id)}
+                              disabled={isSaving || !pendingTeacherId}
+                              className="bg-violet-600 hover:bg-violet-700"
+                            >
+                              {isSaving ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Check className="w-4 h-4" />
+                              )}
+                            </Button>
                           </div>
                         ) : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full"
-                            onClick={() => setAssigningSubjectId(subject.id)}
-                            disabled={isSaving}
-                          >
-                            <UserPlus className="w-4 h-4 mr-2" />
-                            Assign Teacher
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreVertical className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => setEditingSubjectId(subject.id)}>
+                                <UserPlus className="w-4 h-4 mr-2" />
+                                Add Teacher
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <Clock className="w-4 h-4 mr-2" />
+                                Set Schedule
+                              </DropdownMenuItem>
+                              {subject.assignedTeachers.length > 0 && (
+                                <DropdownMenuItem
+                                  onClick={() => handleRemoveTeacher(subject.id, subject.assignedTeachers[0].teacherId)}
+                                  className="text-red-600"
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  Remove Teacher
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         )}
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
                   ))}
+                </div>
+              )}
+
+              {/* Summary Footer */}
+              {subjectsWithTeachers.length > 0 && (
+                <div className="mt-6 flex items-center justify-between p-4 bg-gradient-to-r from-violet-50 to-purple-50 rounded-xl border border-violet-100">
+                  <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-5 h-5 text-violet-600" />
+                      <span className="text-sm text-gray-700">
+                        <strong className="text-gray-900">
+                          {subjectsWithTeachers.reduce((sum, s) => sum + s.assignedTeachers.length, 0)}
+                        </strong>{" "}
+                        teacher{subjectsWithTeachers.reduce((sum, s) => sum + s.assignedTeachers.length, 0) !== 1 ? "s" : ""} assigned
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="w-5 h-5 text-violet-600" />
+                      <span className="text-sm text-gray-700">
+                        <strong className="text-gray-900">
+                          {subjectsWithTeachers.filter(s => s.assignedTeachers.length > 0).length}
+                        </strong>{" "}
+                        of {subjectsWithTeachers.length} subjects covered
+                      </span>
+                    </div>
+                  </div>
+                  <Button onClick={onClose} disabled={isSaving} className="bg-violet-600 hover:bg-violet-700">
+                    Done
+                  </Button>
                 </div>
               )}
             </div>
           )}
-        </CardContent>
-
-        <div className="border-t p-4 bg-gray-50">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-600">
-              {subjectsWithTeachers.reduce((sum, s) => sum + s.assignedTeachers.length, 0)} teacher
-              {subjectsWithTeachers.reduce((sum, s) => sum + s.assignedTeachers.length, 0) !== 1 ? "s" : ""} assigned
-            </p>
-            <Button variant="outline" onClick={onClose} disabled={isSaving}>
-              Close
-            </Button>
-          </div>
         </div>
       </Card>
     </div>

@@ -10,7 +10,7 @@
 
 import { db } from "@/lib/db";
 import { careers, careerMatches, riasecResults, mbtiResults, discResults, workValuesResults } from "@/lib/db/schema";
-import { eq, and, desc, inArray } from "drizzle-orm";
+import { eq, and, desc, inArray, sql } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import type { RIASECScores, MBTIScores, DISCScores } from "./assessment.service";
 
@@ -879,5 +879,214 @@ export async function deleteCareerMatches(
   } catch (error) {
     logger.error(error, { userId, assessmentType });
     throw new Error("Failed to delete career matches");
+  }
+}
+
+// ============================================================================
+// SKILLS GAP ANALYSIS
+// ============================================================================
+
+/**
+ * Calculate skills gap between student's skills and career requirements
+ *
+ * @param userId - The database user ID
+ * @param careerId - Optional specific career to analyze
+ * @returns Skills gap analysis for matched careers
+ */
+export async function calculateSkillsGap(
+  userId: string,
+  careerId?: string
+): Promise<Array<{
+  careerId: string;
+  careerTitle: string;
+  requiredSkills: string[];
+  studentSkills: string[];
+  matchingSkills: string[];
+  missingSkills: string[];
+  readiness: number;
+  gap: number;
+}>> {
+  try {
+    // Import student skills table
+    const { studentSkills: studentSkillsTable } = await import("@/lib/db/schema");
+
+    // Get student's approved skills
+    const studentSkillsData = await db
+      .select({ skillName: studentSkillsTable.skillName })
+      .from(studentSkillsTable)
+      .where(
+        and(
+          eq(studentSkillsTable.userId, userId),
+          eq(studentSkillsTable.status, "approved")
+        )
+      );
+
+    const studentSkillNames = studentSkillsData.map(s => s.skillName.toLowerCase());
+
+    // Get career matches for this student
+    const matches = await db
+      .select()
+      .from(careerMatches)
+      .where(eq(careerMatches.studentId, userId))
+      .orderBy(desc(careerMatches.matchScore))
+      .limit(careerId ? 1 : 5);
+
+    // Get career details with skills
+    const careerIds = matches.map(m => m.careerId);
+    const careersData = await db
+      .select({ id: careers.id, title: careers.title, skills: careers.skills })
+      .from(careers)
+      .where(
+        careerId
+          ? eq(careers.id, careerId)
+          : careerIds.length > 0
+            ? sql`${careers.id} = ANY(${careerIds})`
+            : sql`FALSE`
+      );
+
+    // Calculate gaps
+    const gaps = careersData.map((career) => {
+      const careerSkills = (career.skills as string[]) || [];
+      const careerSkillsLower = careerSkills.map(s => s.toLowerCase());
+
+      // Find matching skills
+      const matchingSkills = careerSkills.filter(requiredSkill =>
+        studentSkillNames.some(studentSkill =>
+          studentSkill.includes(requiredSkill.toLowerCase()) ||
+          requiredSkill.toLowerCase().includes(studentSkill)
+        )
+      );
+
+      // Find missing skills
+      const missingSkills = careerSkills.filter(requiredSkill =>
+        !studentSkillNames.some(studentSkill =>
+          studentSkill.includes(requiredSkill.toLowerCase()) ||
+          requiredSkill.toLowerCase().includes(studentSkill)
+        )
+      );
+
+      const readiness = careerSkills.length > 0
+        ? Math.round((matchingSkills.length / careerSkills.length) * 100)
+        : 0;
+
+      const gap = careerSkills.length - matchingSkills.length;
+
+      return {
+        careerId: career.id,
+        careerTitle: career.title,
+        requiredSkills: careerSkills,
+        studentSkills: studentSkillNames,
+        matchingSkills,
+        missingSkills,
+        readiness,
+        gap,
+      };
+    });
+
+    return gaps;
+  } catch (error) {
+    logger.error("Failed to calculate skills gap", { userId, careerId, error });
+    throw new Error("Failed to calculate skills gap");
+  }
+}
+
+/**
+ * Get learning path recommendations based on skills gap
+ *
+ * @param userId - The database user ID
+ * @returns Learning resources recommendations
+ */
+export async function getLearningPathRecommendations(
+  userId: string
+): Promise<Array<{
+  skill: string;
+  career: string;
+  priority: "high" | "medium" | "low";
+  resources: Array<{
+    title: string;
+    url: string;
+    type: string;
+    description: string;
+  }>;
+}>> {
+  try {
+    const gaps = await calculateSkillsGap(userId);
+
+    // Learning resources map
+    const resourcesMap: Record<string, Array<{
+      title: string;
+      url: string;
+      type: string;
+      description: string;
+    }>> = {
+      mathematics: [
+        { title: "Khan Academy Math", url: "https://khanacademy.org/math", type: "free", description: "Complete math curriculum" },
+        { title: "Brilliant", url: "https://brilliant.org", type: "freemium", description: "Interactive math lessons" },
+      ],
+      programming: [
+        { title: "FreeCodeCamp", url: "https://freecodecamp.org", type: "free", description: "Learn to code for free" },
+        { title: "Codecademy", url: "https://codecademy.com", type: "freemium", description: "Interactive coding lessons" },
+      ],
+      painting: [
+        { title: "YouTube - Painting Tutorials", url: "https://youtube.com", type: "free", description: "Video tutorials" },
+        { title: "Coursera Art & Design", url: "https://coursera.org", type: "freemium", description: "Professional courses" },
+      ],
+      carpentry: [
+        { title: "TTI Thimphu", url: "https://tti.gov.bt", type: "in-person", description: "Vocational training" },
+        { title: "YouTube - Woodworking", url: "https://youtube.com", type: "free", description: "Video tutorials" },
+      ],
+      communication: [
+        { title: "TED-Ed", url: "https://ed.ted.com", type: "free", description: "Educational videos" },
+        { title: "Toastmasters", url: "https://toastmasters.org", type: "free", description: "Public speaking practice" },
+      ],
+      leadership: [
+        { title: "Student Leadership Programs", url: "https://trustarts.org", type: "free", description: "Build leadership skills" },
+      ],
+      writing: [
+        { title: "Duolingo", url: "https://duolingo.com", type: "freemium", description: "Language learning" },
+        { title: "Coursera Writing", url: "https://coursera.org", type: "freemium", description: "Writing courses" },
+      ],
+      default: [
+        { title: "Khan Academy", url: "https://khanacademy.org", type: "free", description: "Various subjects" },
+        { title: "Coursera", url: "https://coursera.org", type: "freemium", description: "Professional courses" },
+      ],
+    };
+
+    // Build recommendations array
+    const recommendations: Array<{
+      skill: string;
+      career: string;
+      priority: "low" | "medium" | "high";
+      resources: Array<{ title: string; url: string; type: string; description: string }>;
+    }> = [];
+
+    for (const gap of gaps) {
+      const priority = gap.readiness < 30 ? "high" : gap.readiness < 60 ? "medium" : "low";
+
+      for (const missingSkill of gap.missingSkills) {
+        const key = missingSkill.toLowerCase();
+        const resources = resourcesMap[key as keyof typeof resourcesMap] || resourcesMap.default;
+
+        recommendations.push({
+          skill: missingSkill,
+          career: gap.careerTitle,
+          priority,
+          resources,
+        });
+      }
+    }
+
+    // Sort by priority and deduplicate
+    return recommendations
+      .sort((a, b) => {
+        const priorityOrder = { high: 0, medium: 1, low: 2 };
+        return priorityOrder[a.priority] - priorityOrder[b.priority];
+      })
+      .filter((rec, index, self) =>
+        index === self.findIndex(r => r.skill === rec.skill && r.career === rec.career)
+      );
+  } catch (error) {
+    logger.error("Failed to get learning path recommendations", { userId, error });
+    throw new Error("Failed to get learning path recommendations");
   }
 }

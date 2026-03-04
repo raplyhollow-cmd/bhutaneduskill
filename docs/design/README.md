@@ -6,7 +6,8 @@ UI/UX standards, design patterns, and component guidelines.
 
 | Document | Description |
 |----------|-------------|
-| **[Smart UX Components](SMART_UX_COMPONENTS.md)** | ⭐ Complete reference for all Smart UX components |
+| **[Homepage Redesign](HOMEPAGE_REDESIGN.md)** | ⭐ Latest: User selector, social proof, quick start guide |
+| **[Smart UX Components](SMART_UX_COMPONENTS.md)** | Complete reference for all Smart UX components |
 | [UX Revolution](UX_REVOLUTION_COMPONENTS.md) | Progressive UX components (in-place editing, etc.) |
 | [UX Standards](ux-standards.md) | Comprehensive UX design standards |
 | [Portal Colors](portal-colors.md) | Color schemes for each portal |

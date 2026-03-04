@@ -13,6 +13,9 @@ interface SubjectsGridProps {
   onEdit?: (subject: Subject) => void;
   onDelete?: (subject: Subject) => void;
   onView?: (subject: Subject) => void;
+  teacherAssignments?: Record<string, any[]>;
+  onAssignTeacher?: (subject: Subject) => void;
+  onRemoveTeacher?: (subjectId: string, teacherId: string, classId?: string | null) => void;
 }
 
 /**
@@ -23,8 +26,18 @@ interface SubjectsGridProps {
  * - Sticky grade headers
  * - Staggered row animations
  * - Empty state handling
+ * - Teacher assignment display and management
  */
-export function SubjectsGrid({ subjects, onUpdate, onEdit, onDelete, onView }: SubjectsGridProps) {
+export function SubjectsGrid({
+  subjects,
+  onUpdate,
+  onEdit,
+  onDelete,
+  onView,
+  teacherAssignments,
+  onAssignTeacher,
+  onRemoveTeacher,
+}: SubjectsGridProps) {
   // Memoize grouped data to avoid re-computation
   const grouped = useMemo(() => groupSubjectsByGrade(subjects), [subjects]);
   const sortedGrades = useMemo(() => getSortedGrades(grouped), [grouped]);
@@ -86,6 +99,9 @@ export function SubjectsGrid({ subjects, onUpdate, onEdit, onDelete, onView }: S
                 onEdit={onEdit}
                 onDelete={onDelete}
                 onView={onView}
+                teacherAssignments={teacherAssignments}
+                onAssignTeacher={onAssignTeacher}
+                onRemoveTeacher={onRemoveTeacher}
               />
             ))}
           </div>

@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, CheckCircle2, UserPlus, GraduationCap, Users, BookOpen, School, ChevronRight, Sparkles, MapPin } from "lucide-react";
+import { Loader2, CheckCircle2, UserPlus, GraduationCap, Users, BookOpen, School, ChevronRight, Sparkles, MapPin, Shield } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -58,6 +58,14 @@ const ROLES = [
     icon: School,
     gradient: "from-violet-500 to-violet-600",
     steps: ["Role", "School", "Details", "Done"],
+  },
+  {
+    id: "admin",
+    name: "Platform Admin",
+    description: "Manage the entire platform - all schools, users, and settings",
+    icon: Shield,
+    gradient: "from-cyan-500 to-cyan-600",
+    steps: ["Role", "Details", "Done"],
   },
 ];
 
@@ -258,6 +266,9 @@ export default function UnifiedSetupWizard() {
         if (currentStep === 2) return verifiedSchool !== null;
         if (currentStep === 3) return !!(fullName && email && phone && position);
         return true;
+      case "admin":
+        if (currentStep === 2) return !!(fullName && email && phone);
+        return true;
       default:
         return true;
     }
@@ -319,6 +330,11 @@ export default function UnifiedSetupWizard() {
           body.data.adminEmail = email;
           body.data.adminPhone = phone;
           body.data.position = position;
+          break;
+        case "admin":
+          body.data.name = fullName;
+          body.data.email = email;
+          body.data.phone = phone;
           break;
       }
       const response = await fetch(endpoint, {

@@ -1,8 +1,96 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, User, ClipboardCheck, Sparkles, GraduationCap, Trophy } from "lucide-react";
-import { motion } from "framer-motion";
+import { ArrowRight, User, ClipboardCheck, Sparkles, GraduationCap, Trophy, GraduationCap as StudentIcon, BookOpen, Users, Building2, CheckCircle2, Target, ChevronDown, } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState } from "react";
+import { cn } from "@/lib/utils";
+
+// User type selector data
+export type UserType = "student" | "teacher" | "parent" | "school";
+
+interface UserTypeInfo {
+  id: UserType;
+  label: string;
+  icon: any;
+  color: string;
+  headline: string;
+  subtext: string;
+  benefits: string[];
+  ctaText: string;
+  gradient: string;
+}
+
+const userTypes: UserTypeInfo[] = [
+  {
+    id: "student",
+    label: "Student",
+    icon: StudentIcon,
+    color: "rgb(249 115 22)",
+    headline: "Discover Your Perfect Career Path",
+    subtext: "Take free assessments, get matched to RUB colleges, and plan your future with confidence.",
+    benefits: [
+      "Free RIASEC career assessment",
+      "AI-powered college matching",
+      "Subject selection guidance for Class 11-12",
+    ],
+    ctaText: "Start Free Assessment",
+    gradient: "from-orange-600 to-red-600",
+  },
+  {
+    id: "teacher",
+    label: "Teacher",
+    icon: BookOpen,
+    color: "rgb(59 130 246)",
+    headline: "Teach More, Grade Less",
+    subtext: "Auto-grade homework in seconds, track student progress, and identify learning gaps early.",
+    benefits: [
+      "8 homework question types with auto-grading",
+      "Real-time student performance insights",
+      "Learning module creation tools",
+    ],
+    ctaText: "Try as Teacher",
+    gradient: "from-blue-600 to-cyan-600",
+  },
+  {
+    id: "parent",
+    label: "Parent",
+    icon: Users,
+    color: "rgb(107 114 128)",
+    headline: "Stay Connected to Your Child's Learning",
+    subtext: "See homework, attendance, and progress daily. No more surprises at report card time.",
+    benefits: [
+      "Real-time homework and attendance tracking",
+      "Direct messaging with teachers",
+      "Pay school fees securely online",
+    ],
+    ctaText: "Monitor Progress",
+    gradient: "from-gray-600 to-gray-700",
+  },
+  {
+    id: "school",
+    label: "School",
+    icon: Building2,
+    color: "rgb(139 92 246)",
+    headline: "Complete School Management Platform",
+    subtext: "One system for attendance, homework, fees, reports, and career guidance for all students.",
+    benefits: [
+      "Paperless administration in one dashboard",
+      "Integrated career guidance for Classes 9-12",
+      "Bulk operations to save teacher time",
+    ],
+    ctaText: "Request Demo",
+    gradient: "from-purple-600 to-violet-600",
+  },
+];
+
+// Social proof stats
+const socialProofStats = [
+  { value: "11", label: "RUB Colleges", icon: GraduationCap },
+  { value: "50+", label: "Career Paths", icon: Target },
+  { value: "50+", label: "Schools", icon: Building2 },
+  { value: "10K+", label: "Students", icon: StudentIcon },
+];
 
 // Flow step data
 const flowSteps = [
@@ -104,14 +192,73 @@ function FlowStep({
 }
 
 export function HeroSection() {
+  const [selectedUser, setSelectedUser] = useState<UserType>("student");
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  const currentUser = userTypes.find((u) => u.id === selectedUser) || userTypes[0];
+
   return (
-    <section className="relative min-h-[85vh] flex items-center bg-white dark:bg-gray-950">
-      <div className="max-w-7xl mx-auto px-6 py-20 w-full">
+    <section className="relative min-h-[90vh] flex items-center bg-white dark:bg-gray-950">
+      <div className="max-w-7xl mx-auto px-6 py-16 w-full">
+        {/* User Type Selector - Above everything */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.5 }}
+          className="flex justify-center mb-8"
+        >
+          <div className="inline-flex items-center gap-2 px-2 py-1.5 rounded-full bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
+            <span className="text-sm font-medium text-gray-600 dark:text-gray-400 px-2">I am a:</span>
+            {userTypes.map((user) => (
+              <button
+                key={user.id}
+                onClick={() => setSelectedUser(user.id)}
+                className={cn(
+                  "px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200",
+                  selectedUser === user.id
+                    ? "text-white shadow-md"
+                    : "text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-800"
+                )}
+                style={selectedUser === user.id ? { background: `linear-gradient(135deg, ${user.color} 0%, ${user.color} 100%)` } : {}}
+              >
+                {user.label}
+              </button>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Social Proof Bar */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2, duration: 0.5 }}
+          className="flex flex-wrap items-center justify-center gap-6 mb-10 text-sm"
+        >
+          {socialProofStats.map((stat, index) => {
+            const Icon = stat.icon;
+            return (
+              <motion.div
+                key={stat.label}
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 + index * 0.05, duration: 0.4 }}
+                className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400"
+              >
+                <Icon className="w-4 h-4" style={{ color: index === 0 ? "rgb(34 197 94)" : index === 1 ? "rgb(249 115 22)" : index === 2 ? "rgb(139 92 246)" : "rgb(59 130 246)" }} />
+                <span className="font-semibold text-gray-900 dark:text-gray-100">{stat.value}</span>
+                <span>{stat.label}</span>
+                {index < socialProofStats.length - 1 && <span className="text-gray-300 dark:text-gray-700">•</span>}
+              </motion.div>
+            );
+          })}
+        </motion.div>
+
         <div className="grid lg:grid-cols-5 gap-12 items-center">
           {/* Left Side - Content (3/5) */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
+            key={selectedUser}
             transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
             className="lg:col-span-3"
           >
@@ -119,49 +266,80 @@ export function HeroSection() {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.2, duration: 0.5 }}
               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 mb-8"
             >
-              <div className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+              <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: currentUser.color }} />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                One platform for education
+                {selectedUser === "school" ? "For Schools & Institutions" : "Free for " + currentUser.label + "s"}
               </span>
             </motion.div>
 
-            {/* Headline */}
-            <motion.h1
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.6 }}
-              className="text-5xl sm:text-6xl lg:text-7xl font-semibold tracking-tight text-gray-950 dark:text-white leading-[1.1] mb-6"
-            >
-              Everything you need
-              <br />
-              <span className="bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
-                for education
-              </span>
-            </motion.h1>
+            {/* Headline - Dynamic based on user type */}
+            <AnimatePresence mode="wait">
+              <motion.h1
+                key={`heading-${selectedUser}`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.4 }}
+                className="text-5xl sm:text-6xl lg:text-7xl font-semibold tracking-tight text-gray-950 dark:text-white leading-[1.1] mb-6"
+              >
+                {currentUser.headline}
+              </motion.h1>
+            </AnimatePresence>
 
-            {/* Supporting text */}
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5, duration: 0.6 }}
-              className="text-lg text-gray-500 dark:text-gray-400 mb-10 max-w-lg leading-relaxed"
-            >
-              From career discovery to school management. One platform for students,
-              teachers, parents, and schools.
-            </motion.p>
+            {/* Supporting text - Dynamic */}
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={`subtext-${selectedUser}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ delay: 0.1, duration: 0.4 }}
+                className="text-lg text-gray-500 dark:text-gray-400 mb-8 max-w-lg leading-relaxed"
+              >
+                {currentUser.subtext}
+              </motion.p>
+            </AnimatePresence>
 
-            {/* CTA Button */}
+            {/* Benefits list - Dynamic */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={`benefits-${selectedUser}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ delay: 0.2, duration: 0.4 }}
+                className="mb-10 space-y-3"
+              >
+                {currentUser.benefits.map((benefit, index) => (
+                  <motion.div
+                    key={benefit}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.3 + index * 0.1, duration: 0.3 }}
+                    className="flex items-center gap-3"
+                  >
+                    <CheckCircle2 className="w-5 h-5 flex-shrink-0" style={{ color: currentUser.color }} />
+                    <span className="text-gray-700 dark:text-gray-300">{benefit}</span>
+                  </motion.div>
+                ))}
+              </motion.div>
+            </AnimatePresence>
+
+            {/* CTA Button - Dynamic */}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6, duration: 0.5 }}
+              key={`cta-${selectedUser}`}
+              transition={{ delay: 0.5, duration: 0.5 }}
             >
               <Link href="/sign-up">
-                <button className="group inline-flex items-center gap-2 px-6 py-3 bg-gray-950 dark:bg-white text-white dark:text-gray-950 rounded-lg font-medium text-base hover:bg-gray-900 dark:hover:bg-gray-100 transition-all duration-200">
-                  Get Started
+                <button
+                  className="group inline-flex items-center gap-2 px-6 py-3 text-white rounded-lg font-medium text-base transition-all duration-200 shadow-lg hover:shadow-xl"
+                  style={{ background: `linear-gradient(135deg, ${currentUser.color} 0%, ${currentUser.color} 100%)` }}
+                >
+                  {currentUser.ctaText}
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                 </button>
               </Link>

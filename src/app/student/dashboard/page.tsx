@@ -44,7 +44,10 @@ import { AssessmentProfileCard } from "@/components/student/assessment-profile-c
 import { AICareerCoachWidget } from "@/components/student/ai-career-coach-widget";
 import { RoadmapTracker } from "@/components/student/roadmap-tracker";
 import { MarksOverviewCard } from "@/components/student/marks-overview-card";
+import { InsightDashboard } from "@/components/intelligence/insight-dashboard";
+import { StudentRoadmap } from "@/components/intelligence/student-roadmap";
 import { useRealtime } from "@/hooks/use-realtime";
+import { AssessmentOnboarding } from "@/components/student/assessment-onboarding";
 import type { StudentDashboardData } from "@/lib/api/student";
 import type { LucideIcon } from "lucide-react";
 
@@ -166,6 +169,8 @@ export default function StudentDashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showUpdated, setShowUpdated] = useState(false);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const [checkingOnboarding, setCheckingOnboarding] = useState(true);
 
   const hasFetched = useRef(false);
   const { isConnected, bind } = useRealtime();
@@ -193,6 +198,19 @@ export default function StudentDashboardPage() {
 
     async function loadData() {
       try {
+        // Check onboarding status first
+        const onboardingRes = await fetch("/api/student/assessment-status");
+        const onboardingData = await onboardingRes.json();
+
+        if (onboardingData.data && !onboardingData.data.isComplete) {
+          setNeedsOnboarding(true);
+          setCheckingOnboarding(false);
+          setIsLoading(false);
+          return;
+        }
+
+        setCheckingOnboarding(false);
+
         const data = await fetchStudentDashboard();
         setDashboardData(data);
         setIsLoading(false);
@@ -200,6 +218,7 @@ export default function StudentDashboardPage() {
         logger.error("Dashboard error:", err);
         setError("Failed to load dashboard");
         setIsLoading(false);
+        setCheckingOnboarding(false);
       }
     }
 
@@ -242,7 +261,11 @@ export default function StudentDashboardPage() {
     };
   }, [dashboardData?.student?.schoolId, dashboardData?.student?.id, bind, refreshData]);
 
-  if (isLoading) return <DashboardSkeleton />;
+  if (isLoading || checkingOnboarding) return <DashboardSkeleton />;
+
+  if (needsOnboarding) {
+    return <AssessmentOnboarding userId={dashboardData?.student?.id || ""} onComplete={() => setNeedsOnboarding(false)} />;
+  }
 
   if (error || !dashboardData) {
     return (
@@ -451,6 +474,9 @@ export default function StudentDashboardPage() {
       {/* AI Chat Section - Expandable Bubble */}
       <AICareerCoachWidget />
 
+      {/* Intelligence Insights */}
+      <InsightDashboard portal="student" limit={3} />
+
       {/* Recommended Actions - Bubble Style */}
       {recommendedActions.length > 0 && (
         <div>
@@ -476,8 +502,8 @@ export default function StudentDashboardPage() {
 
       {/* Two Column Layout */}
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Roadmap Tracker */}
-        <RoadmapTracker />
+        {/* Student Roadmap - Bhutan-Specific Intelligence */}
+        <StudentRoadmap />
 
         {/* Marks Overview */}
         <MarksOverviewCard />

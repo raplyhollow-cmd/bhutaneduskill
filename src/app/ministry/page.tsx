@@ -19,6 +19,7 @@ import Link from "next/link";
 import { NationalPulseCard } from "@/components/ministry/national-pulse-card";
 import { PolicyBriefingCard } from "@/components/ministry/policy-briefing-card";
 import { WorkforceAlignmentCard } from "@/components/ministry/workforce-alignment-card";
+import { WorkforceIntelligenceCard } from "@/components/ministry/workforce-intelligence-card";
 
 // ============================================================================
 // TYPES
@@ -178,6 +179,11 @@ export default function MinistryDashboard() {
             isLoading={isLoading}
           />
         </div>
+
+        {/* Row 4: Workforce Intelligence (NEW - spans 2 cols) */}
+        <div className="lg:col-span-2">
+          <WorkforceIntelligenceCard targetYear={2028} isLoading={isLoading} />
+        </div>
       </div>
 
       {/* Quick Access Cards */}
@@ -222,8 +228,8 @@ export default function MinistryDashboard() {
                   <Building2 className="w-5 h-5 text-cyan-600" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-900">Labor Market</p>
-                  <p className="text-xs text-gray-500">Workforce Analysis</p>
+                  <p className="text-sm font-medium text-gray-900">Workforce 2028</p>
+                  <p className="text-xs text-gray-500">AI Projections</p>
                 </div>
               </div>
             </CardContent>

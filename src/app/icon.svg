@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FF6D00;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FF9500;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1E40AF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3B82F6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle with gradient -->
+  <circle cx="256" cy="256" r="240" fill="url(#grad2)"/>
+
+  <!-- Book/Education symbol -->
+  <path d="M120 160 Q120 140, 140 140 L200 140 L200 320 L140 320 Q120 320, 120 300 Z" fill="#fff" opacity="0.95"/>
+  <path d="M312 140 L372 140 Q392 140, 392 160 L392 300 Q392 320, 372 320 L312 320 Z" fill="#fff" opacity="0.95"/>
+  <path d="M200 140 L200 320 L312 320 L312 140 Z" fill="#fff"/>
+
+  <!-- Book spine detail -->
+  <rect x="252" y="140" width="8" height="180" fill="url(#grad1)" opacity="0.8"/>
+
+  <!-- BES letters on book -->
+  <text x="256" y="250" font-family="Arial, sans-serif" font-size="72" font-weight="bold" text-anchor="middle" fill="url(#grad1)">BES</text>
+
+  <!-- Growth/arrow rising from book -->
+  <path d="M256 100 L280 130 L272 130 L272 160 L240 160 L240 130 L232 130 Z" fill="#FFD700" opacity="0.9"/>
+
+  <!-- Small decorative dots (Bhutanese pattern inspiration) -->
+  <circle cx="160" cy="380" r="8" fill="#FFD700" opacity="0.7"/>
+  <circle cx="352" cy="380" r="8" fill="#FFD700" opacity="0.7"/>
+</svg>

@@ -37,6 +37,7 @@ export default async function SchoolAdminLayout({
   // Get user data regardless of onboarding status
   const userName = user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() : "School Admin";
   const portalType = "school-admin" as const;
+  const schoolId = user?.schoolId || null;
 
   // School admins need to complete setup AND be approved
   // If they're pending_approval or pending_enrollment, they've completed setup but need platform admin approval
@@ -52,7 +53,7 @@ export default async function SchoolAdminLayout({
   });
 
   return (
-    <SchoolAdminLayoutClient userName={userName} portalType={portalType} needsSetup={needsSetup} isPendingApproval={isPendingApproval}>
+    <SchoolAdminLayoutClient userName={userName} portalType={portalType} needsSetup={needsSetup} isPendingApproval={isPendingApproval} schoolId={schoolId}>
       {children}
     </SchoolAdminLayoutClient>
   );

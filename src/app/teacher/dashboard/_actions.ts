@@ -93,7 +93,7 @@ export async function getTeacherDashboardData(): Promise<TeacherDashboardData | 
     const teacherClasses = await db
       .select()
       .from(classes)
-      .where(eq(classes.teacherId, userId))
+      .where(eq(classes.classTeacherId, userId))
       .orderBy(desc(classes.createdAt));
 
     const classIds = teacherClasses.map((c) => c.id);

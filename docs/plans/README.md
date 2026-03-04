@@ -2,6 +2,12 @@
 
 Active implementation plans and feature roadmap.
 
+## 🚀 MASTER PLAN (Start Here)
+
+| Plan | Status | Description |
+|------|--------|-------------|
+| **[STRATEGIC COMPETITIVE ADVANTAGE PLAN](STRATEGIC_COMPETITIVE_ADVANTAGE_PLAN.md)** | **🔥 ACTIVE** | **Complete roadmap to make platform intelligent, fix chaos, achieve commercial success** |
+
 ## Plans
 
 | Plan | Status | Description |

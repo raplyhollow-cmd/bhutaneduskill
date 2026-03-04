@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "next-themes";
 import { ToastProvider } from "@/components/ui/toaster";
+import { NotificationProvider } from "@/components/unified/Notifications";
 import { UnifiedAIAssistant } from "@/components/ai/unified-ai-assistant";
 import { UserProvider } from "@/hooks/use-current-user";
 import { AppErrorBoundary } from "@/components/error/app-error-boundary";
@@ -25,6 +26,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Bhutan EduSkill - Career Guidance & School Management",
   description: "Comprehensive career guidance and school management platform for Bhutan schools",
+  icons: {
+    icon: "/icon.svg",
+    apple: "/icon.svg",
+  },
 };
 
 export default function RootLayout({
@@ -41,6 +46,7 @@ export default function RootLayout({
         <body
           className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         >
+    <NotificationProvider>
           <AppErrorBoundary>
             <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
               <UserProvider>
@@ -57,7 +63,7 @@ export default function RootLayout({
                 </QueryProvider>
               </UserProvider>
             </ThemeProvider>
-          </AppErrorBoundary>
+          </AppErrorBoundary></NotificationProvider>
         </body>
       </html>
     </ClerkProvider>

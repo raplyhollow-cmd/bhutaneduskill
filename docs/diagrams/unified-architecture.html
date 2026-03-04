@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unified Architecture - Bhutan EduSkill</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .glow { box-shadow: 0 0 40px rgba(59, 130, 246, 0.3); }
+        .arrow-down { animation: bounce 2s infinite; }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(10px); }
+        }
+        .card-hover:hover { transform: translateY(-5px); box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+        .pulse { animation: pulse 2s infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .flow-line {
+            stroke-dasharray: 5;
+            animation: dash 1s linear infinite;
+        }
+        @keyframes dash {
+            to { stroke-dashoffset: -10; }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 py-8 px-6">
+        <div class="max-w-7xl mx-auto">
+            <h1 class="text-4xl font-bold mb-2">Unified Architecture</h1>
+            <p class="text-blue-100 text-lg">Component + Schema + Route = 1</p>
+            <div class="flex gap-4 mt-4">
+                <span class="bg-white/20 px-3 py-1 rounded-full text-sm">50+ Features</span>
+                <span class="bg-white/20 px-3 py-1 rounded-full text-sm">1 Universal API</span>
+                <span class="bg-white/20 px-3 py-1 rounded-full text-sm">GEMINI Layer</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Diagram -->
+    <main class="max-w-7xl mx-auto px-6 py-12">
+        <!-- Before vs After -->
+        <section class="mb-16">
+            <h2 class="text-2xl font-bold mb-8 text-center">The Transformation</h2>
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Before -->
+                <div class="bg-gray-800 rounded-xl p-6 border-2 border-red-500/50">
+                    <h3 class="text-xl font-semibold text-red-400 mb-4">❌ Before: Traditional</h3>
+                    <div class="space-y-3">
+                        <div class="bg-gray-700 p-3 rounded-lg flex items-center gap-3">
+                            <span class="text-red-400">📄</span>
+                            <code>drizzle/schema.ts</code>
+                        </div>
+                        <div class="bg-gray-700 p-3 rounded-lg flex items-center gap-3">
+                            <span class="text-red-400">📄</span>
+                            <code>app/api/students/route.ts</code>
+                        </div>
+                        <div class="bg-gray-700 p-3 rounded-lg flex items-center gap-3">
+                            <span class="text-red-400">📄</span>
+                            <code>components/students-grid.tsx</code>
+                        </div>
+                        <div class="bg-gray-700 p-3 rounded-lg flex items-center gap-3">
+                            <span class="text-red-400">📄</span>
+                            <code>types/students.ts</code>
+                        </div>
+                    </div>
+                    <p class="text-gray-400 mt-4 text-sm">4+ files per resource × 50 resources = 200+ files</p>
+                </div>
+
+                <!-- After -->
+                <div class="bg-gray-800 rounded-xl p-6 border-2 border-green-500/50 glow">
+                    <h3 class="text-xl font-semibold text-green-400 mb-4">✅ After: Unified</h3>
+                    <div class="bg-gradient-to-r from-blue-600 to-purple-600 p-6 rounded-xl text-center">
+                        <code class="text-xl font-bold">src/features/students.feature.ts</code>
+                        <p class="text-blue-100 mt-2">Everything in ONE file</p>
+                    </div>
+                    <p class="text-gray-400 mt-4 text-sm">1 file per resource × 50 resources = 50 files</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Core System Diagram -->
+        <section class="mb-16">
+            <h2 class="text-2xl font-bold mb-8 text-center">Core System Architecture</h2>
+
+            <div class="relative">
+                <!-- Feature Definition -->
+                <div class="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-6 mb-4 mx-auto max-w-2xl text-center card-hover transition-all duration-300">
+                    <div class="text-4xl mb-2">🎯</div>
+                    <h3 class="text-xl font-bold mb-2">Feature Definition</h3>
+                    <code class="bg-blue-800/50 px-3 py-1 rounded">src/features/*.feature.ts</code>
+                    <div class="grid grid-cols-4 gap-2 mt-4 text-sm">
+                        <div class="bg-blue-800/50 p-2 rounded">Schema</div>
+                        <div class="bg-blue-800/50 p-2 rounded">Permissions</div>
+                        <div class="bg-blue-800/50 p-2 rounded">UI Config</div>
+                        <div class="bg-blue-800/50 p-2 rounded">Handlers</div>
+                    </div>
+                </div>
+
+                <!-- Arrow -->
+                <div class="flex justify-center my-4">
+                    <svg class="w-8 h-8 text-blue-400 arrow-down" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+                    </svg>
+                </div>
+
+                <!-- defineFeature Function -->
+                <div class="bg-gray-800 rounded-2xl p-6 mb-4 mx-auto max-w-3xl card-hover transition-all duration-300 border border-purple-500/50">
+                    <div class="flex items-center justify-center gap-4 mb-4">
+                        <div class="text-3xl">⚙️</div>
+                        <h3 class="text-xl font-bold">defineFeature() Function</h3>
+                    </div>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div class="bg-gray-700 p-3 rounded-lg text-center">
+                            <div class="text-2xl mb-1">📊</div>
+                            <p class="text-sm">Generate Drizzle Schema</p>
+                        </div>
+                        <div class="bg-gray-700 p-3 rounded-lg text-center">
+                            <div class="text-2xl mb-1">🔌</div>
+                            <p class="text-sm">Generate API Handlers</p>
+                        </div>
+                        <div class="bg-gray-700 p-3 rounded-lg text-center">
+                            <div class="text-2xl mb-1">🎨</div>
+                            <p class="text-sm">Generate Components</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Arrow -->
+                <div class="flex justify-center my-4">
+                    <svg class="w-8 h-8 text-purple-400 arrow-down" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path>
+                    </svg>
+                </div>
+
+                <!-- Outputs -->
+                <div class="grid md:grid-cols-3 gap-6">
+                    <!-- Universal API -->
+                    <div class="bg-gradient-to-br from-green-600 to-green-700 rounded-2xl p-6 card-hover transition-all duration-300">
+                        <div class="text-3xl mb-2">🌐</div>
+                        <h3 class="text-lg font-bold mb-3">Universal API</h3>
+                        <div class="bg-green-800/50 rounded-lg p-3 text-sm space-y-1">
+                            <p><span class="text-green-300">GET</span> /api/resources/[resource]</p>
+                            <p><span class="text-green-300">POST</span> /api/resources/[resource]</p>
+                            <p><span class="text-green-300">PUT</span> /api/resources/[resource]/:id</p>
+                            <p><span class="text-green-300">DELETE</span> /api/resources/[resource]/:id</p>
+                        </div>
+                    </div>
+
+                    <!-- Unified Components -->
+                    <div class="bg-gradient-to-br from-orange-600 to-orange-700 rounded-2xl p-6 card-hover transition-all duration-300">
+                        <div class="text-3xl mb-2">🧩</div>
+                        <h3 class="text-lg font-bold mb-3">Unified Components</h3>
+                        <div class="bg-orange-800/50 rounded-lg p-3 text-sm space-y-1">
+                            <p>• FeatureDataGrid</p>
+                            <p>• FeatureForm</p>
+                            <p>• FeatureListPage</p>
+                            <p>• UnifiedSearch</p>
+                        </div>
+                    </div>
+
+                    <!-- TypeScript Types -->
+                    <div class="bg-gradient-to-br from-cyan-600 to-cyan-700 rounded-2xl p-6 card-hover transition-all duration-300">
+                        <div class="text-3xl mb-2">📝</div>
+                        <h3 class="text-lg font-bold mb-3">Auto-Generated Types</h3>
+                        <div class="bg-cyan-800/50 rounded-lg p-3 text-sm space-y-1">
+                            <p>• Select&lt;T&gt;</p>
+                            <p>• Insert&lt;T&gt;</p>
+                            <p>• Update&lt;T&gt;</p>
+                            <p>• React Hooks</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Data Flow -->
+        <section class="mb-16">
+            <h2 class="text-2xl font-bold mb-8 text-center">Request Flow</h2>
+
+            <div class="bg-gray-800 rounded-2xl p-8">
+                <div class="flex flex-wrap items-center justify-center gap-4 text-sm md:text-base">
+                    <div class="bg-blue-600 px-4 py-2 rounded-lg">👤 User</div>
+                    <span class="text-gray-400">→</span>
+                    <div class="bg-purple-600 px-4 py-2 rounded-lg">📝 FeatureForm</div>
+                    <span class="text-gray-400">→</span>
+                    <div class="bg-green-600 px-4 py-2 rounded-lg">🌐 Universal API</div>
+                    <span class="text-gray-400">→</span>
+                    <div class="bg-yellow-600 px-4 py-2 rounded-lg">⚙️ defineFeature()</div>
+                    <span class="text-gray-400">→</span>
+                    <div class="bg-orange-600 px-4 py-2 rounded-lg">🗄️ PostgreSQL</div>
+                </div>
+
+                <div class="flex flex-wrap items-center justify-center gap-4 text-sm md:text-base mt-4">
+                    <div class="bg-orange-600 px-4 py-2 rounded-lg">🗄️ PostgreSQL</div>
+                    <span class="text-gray-400">→</span>
+                    <div class="bg-green-600 px-4 py-2 rounded-lg">📦 JSON Response</div>
+                    <span class="text-gray-400">→</span>
+                    <div class="bg-blue-600 px-4 py-2 rounded-lg">🖥️ Update UI</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- GEMINI Layer -->
+        <section class="mb-16">
+            <h2 class="text-2xl font-bold mb-8 text-center">GEMINI Layer - AI Integration</h2>
+
+            <div class="bg-gradient-to-br from-purple-900 to-indigo-900 rounded-2xl p-8 border border-purple-500/50">
+                <div class="grid md:grid-cols-3 gap-6">
+                    <div class="bg-purple-800/50 rounded-xl p-6 text-center card-hover transition-all duration-300">
+                        <div class="text-4xl mb-3">🧠</div>
+                        <h3 class="text-lg font-bold mb-2">System Awareness</h3>
+                        <p class="text-purple-200 text-sm">AI reads feature configurations to understand system structure</p>
+                        <code class="block bg-purple-900/50 mt-3 p-2 rounded text-xs">extractFeatureMetadata()</code>
+                    </div>
+
+                    <div class="bg-purple-800/50 rounded-xl p-6 text-center card-hover transition-all duration-300">
+                        <div class="text-4xl mb-3">🔍</div>
+                        <h3 class="text-lg font-bold mb-2">Autonomous Querying</h3>
+                        <p class="text-purple-200 text-sm">AI queries universal API independently</p>
+                        <code class="block bg-purple-900/50 mt-3 p-2 rounded text-xs">autonomousQuery()</code>
+                    </div>
+
+                    <div class="bg-purple-800/50 rounded-xl p-6 text-center card-hover transition-all duration-300">
+                        <div class="text-4xl mb-3">🔧</div>
+                        <h3 class="text-lg font-bold mb-2">Self-Healing</h3>
+                        <p class="text-purple-200 text-sm">AI suggests fixes based on feature patterns</p>
+                        <code class="block bg-purple-900/50 mt-3 p-2 rounded text-xs">selfHealingSuggestions()</code>
+                    </div>
+                </div>
+
+                <div class="mt-6 bg-purple-800/30 rounded-xl p-4">
+                    <p class="text-center text-purple-200">
+                        <span class="font-mono bg-purple-700 px-2 py-1 rounded">src/lib/intelligence/gemini-layer.ts</span>
+                        <span class="mx-2">↔</span>
+                        <span class="font-mono bg-purple-700 px-2 py-1 rounded">src/features/*.feature.ts</span>
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Feature List -->
+        <section class="mb-16">
+            <h2 class="text-2xl font-bold mb-8 text-center">Available Features (50+)</h2>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                <div class="bg-blue-600/20 border border-blue-500/50 rounded-lg p-3 text-center text-sm">users</div>
+                <div class="bg-blue-600/20 border border-blue-500/50 rounded-lg p-3 text-center text-sm">schools</div>
+                <div class="bg-blue-600/20 border border-blue-500/50 rounded-lg p-3 text-center text-sm">students</div>
+                <div class="bg-blue-600/20 border border-blue-500/50 rounded-lg p-3 text-center text-sm">teachers</div>
+                <div class="bg-blue-600/20 border border-blue-500/50 rounded-lg p-3 text-center text-sm">classes</div>
+                <div class="bg-blue-600/20 border border-blue-500/50 rounded-lg p-3 text-center text-sm">subjects</div>
+                <div class="bg-green-600/20 border border-green-500/50 rounded-lg p-3 text-center text-sm">attendance</div>
+                <div class="bg-green-600/20 border border-green-500/50 rounded-lg p-3 text-center text-sm">homework</div>
+                <div class="bg-green-600/20 border border-green-500/50 rounded-lg p-3 text-center text-sm">lessons</div>
+                <div class="bg-green-600/20 border border-green-500/50 rounded-lg p-3 text-center text-sm">exams</div>
+                <div class="bg-green-600/20 border border-green-500/50 rounded-lg p-3 text-center text-sm">results</div>
+                <div class="bg-green-600/20 border border-green-500/50 rounded-lg p-3 text-center text-sm">assessments</div>
+                <div class="bg-purple-600/20 border border-purple-500/50 rounded-lg p-3 text-center text-sm">skills</div>
+                <div class="bg-purple-600/20 border border-purple-500/50 rounded-lg p-3 text-center text-sm">careers</div>
+                <div class="bg-purple-600/20 border border-purple-500/50 rounded-lg p-3 text-center text-sm">roadmaps</div>
+                <div class="bg-purple-600/20 border border-purple-500/50 rounded-lg p-3 text-center text-sm">learning_paths</div>
+                <div class="bg-orange-600/20 border border-orange-500/50 rounded-lg p-3 text-center text-sm">behavior_records</div>
+                <div class="bg-orange-600/20 border border-orange-500/50 rounded-lg p-3 text-center text-sm">interventions</div>
+                <div class="bg-orange-600/20 border border-orange-500/50 rounded-lg p-3 text-center text-sm">counselor_notes</div>
+                <div class="bg-orange-600/20 border border-orange-500/50 rounded-lg p-3 text-center text-sm">treatment_plans</div>
+                <div class="bg-cyan-600/20 border border-cyan-500/50 rounded-lg p-3 text-center text-sm">transport</div>
+                <div class="bg-cyan-600/20 border border-cyan-500/50 rounded-lg p-3 text-center text-sm">library_books</div>
+                <div class="bg-cyan-600/20 border border-cyan-500/50 rounded-lg p-3 text-center text-sm">library_loans</div>
+                <div class="bg-cyan-600/20 border border-cyan-500/50 rounded-lg p-3 text-center text-sm">fees</div>
+                <div class="bg-pink-600/20 border border-pink-500/50 rounded-lg p-3 text-center text-sm">announcements</div>
+                <div class="bg-pink-600/20 border border-pink-500/50 rounded-lg p-3 text-center text-sm">notifications</div>
+                <div class="bg-pink-600/20 border border-pink-500/50 rounded-lg p-3 text-center text-sm">messages</div>
+                <div class="bg-yellow-600/20 border border-yellow-500/50 rounded-lg p-3 text-center text-sm">reports</div>
+                <div class="bg-yellow-600/20 border border-yellow-500/50 rounded-lg p-3 text-center text-sm">analytics</div>
+                <div class="bg-gray-600/20 border border-gray-500/50 rounded-lg p-3 text-center text-sm">...and 20+ more</div>
+            </div>
+        </section>
+
+        <!-- Stats -->
+        <section class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-8">
+            <h2 class="text-2xl font-bold mb-6 text-center">Impact</h2>
+            <div class="grid md:grid-cols-4 gap-6 text-center">
+                <div>
+                    <div class="text-4xl font-bold">75%</div>
+                    <p class="text-blue-100">Fewer Files</p>
+                </div>
+                <div>
+                    <div class="text-4xl font-bold">1</div>
+                    <p class="text-blue-100">API Route</p>
+                </div>
+                <div>
+                    <div class="text-4xl font-bold">50+</div>
+                    <p class="text-blue-100">Features</p>
+                </div>
+                <div>
+                    <div class="text-4xl font-bold">0</div>
+                    <p class="text-blue-100">TS Errors</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center py-8 text-gray-400">
+        <p>Bhutan EduSkill - Unified Architecture Documentation</p>
+        <p class="text-sm mt-2">Generated from <code>docs/diagrams/unified-architecture.mmd</code></p>
+    </footer>
+</body>
+</html>

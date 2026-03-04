@@ -88,7 +88,7 @@ async function getStudentData(studentId: string, teacherUserId: string) {
   const teacherClasses = await db
     .select({ id: classes.id })
     .from(classes)
-    .where(eq(classes.teacherId, teacherUserId));
+    .where(eq(classes.classTeacherId, teacherUserId));
 
   const teacherClassIds = teacherClasses.map((c) => c.id);
 

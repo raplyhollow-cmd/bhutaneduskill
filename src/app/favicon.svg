@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Background -->
+  <rect width="32" height="32" rx="6" fill="#1E40AF"/>
+
+  <!-- Simplified book symbol for favicon -->
+  <rect x="6" y="10" width="9" height="14" fill="#fff" rx="1"/>
+  <rect x="17" y="10" width="9" height="14" fill="#fff" rx="1"/>
+  <rect x="15" y="10" width="2" height="14" fill="#FF6D00"/>
+
+  <!-- Small B on book -->
+  <rect x="11" y="14" width="2" height="6" fill="#FF6D00" rx="0.5"/>
+  <rect x="13" y="14" width="3" height="2" fill="#FF6D00" rx="0.5"/>
+  <rect x="13" y="18" width="3" height="2" fill="#FF6D00" rx="0.5"/>
+
+  <!-- Growth arrow -->
+  <path d="M16 4 L18 7 L17 7 L17 9 L15 9 L15 7 L14 7 Z" fill="#FFD700"/>
+</svg>

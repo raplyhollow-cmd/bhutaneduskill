@@ -82,7 +82,7 @@ export function MobileMenuSheet({ isOpen, onClose }: MobileMenuSheetProps) {
                           <Link
                             href={item.href}
                             onClick={onClose}
-                            className="flex items-center gap-4 p-4 rounded-xl text-gray-700 dark:text-gray-300 hover:bg-orange-50 dark:hover:bg-orange-950/30 hover:text-orange-600 dark:hover:text-orange-400 transition-all duration-200 group"
+                            className="flex items-center gap-4 p-4 rounded-xl text-gray-900 dark:text-gray-100 hover:bg-orange-50 dark:hover:bg-orange-950/30 hover:text-orange-600 dark:hover:text-orange-400 transition-all duration-200 group active:scale-95 active:bg-orange-100 dark:active:bg-orange-900/50"
                           >
                             <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center group-hover:bg-orange-100 dark:group-hover:bg-orange-900/30 transition-colors">
                               <Icon className="w-5 h-5" />

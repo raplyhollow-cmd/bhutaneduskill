@@ -1,39 +1,41 @@
 # Documentation TOR (Table of Rules)
 # Bhutan EduSkill Project
 
-**Last Updated:** March 2, 2026 - **POST REORGANIZATION**
-**Total Files Catalogued:** 200+ MD files
+**Last Updated:** March 4, 2026 - **COMPREHENSIVE EVOLUTION ROADMAP ADDED**
+**Total Files Catalogued:** 220+ MD files
 **Purpose:** Single source of truth for ALL project documentation with metadata
 
 ---
 
-## 📁 NEW FOLDER STRUCTURE (March 2, 2026)
+## 📁 NEW FOLDER STRUCTURE (March 3, 2026)
 
 ```
 docs/
+├── AGENT_QUICKREF.md           ← 🚀 START HERE - Just say "start"
 ├── TOR_DOCUMENTATION_INDEX.md  ← YOU ARE HERE (MAIN TOR)
-├── core/           (12 files) - Core framework, README, CLAUDE, MEMORY
-├── agents/         (9 files)  - Agent docs, AI office, handshake
-├── reports/        (29 files) - Sprint/office/status reports
-├── sessions/       (11 files) - Session handoffs, progress tracking
-├── testing/        (7 files)  - Test reports
-├── qa/             (8 files)  - QA audits & reports
-├── debug/          (10 files) - Error logs, fixes, scalability prediction
-├── design/         (14 files) - UX, design sync
-├── audits/         (4 files)  - Security, technical debt, legal audits
-├── competitive/    (3 files)  - Competitive analysis
-├── workflow/       (4 files)  - Workflow specs & diagrams
-├── integration/    (4 files)  - Integration docs
-├── flows/          (2 files)  - Flow diagrams
-├── ai/             (1 file)   - AI strategy
-├── database/       (2 files)  - Database docs
-├── deployment/     (2 files)  - Deployment guides
-├── guides/         (7 files)  - User guides
-├── plans/          (16 files) - Roadmaps
-├── architecture/   (8 files)  - System architecture
-├── memory/         (5 files)  - Code patterns & anti-patterns
-├── legal/          (4 files)  - Privacy, terms, consent
-└── archive/        (35+ files)- Historical docs
+├── core/           (12 files)  - Core framework, README, CLAUDE, MEMORY
+├── agents/         (11 files)  - Agent docs, autonomous workflow
+├── intelligence/    (1 file)    - 🆕 Intelligence System documentation
+├── reports/        (29 files)  - Sprint/office/status reports
+├── sessions/       (13+ files) - Session handoffs, progress tracking
+├── testing/        (7 files)   - Test reports
+├── qa/             (8 files)   - QA audits & reports
+├── debug/          (10 files)  - Error logs, fixes, scalability prediction
+├── design/         (14 files)  - UX, design sync
+├── audits/         (4 files)   - Security, technical debt, legal audits
+├── competitive/    (3 files)   - Competitive analysis
+├── workflow/       (4 files)   - Workflow specs & diagrams
+├── integration/    (4 files)   - Integration docs
+├── flows/          (2 files)   - Flow diagrams
+├── ai/             (1 file)    - AI strategy
+├── database/       (2 files)   - Database docs
+├── deployment/     (2 files)   - Deployment guides
+├── guides/         (7 files)   - User guides
+├── plans/          (17 files)  - Roadmaps, strategic plan
+├── architecture/   (8 files)   - System architecture
+├── memory/         (5 files)   - Code patterns & anti-patterns
+├── legal/          (4 files)   - Privacy, terms, consent
+└── archive/        (35+ files) - Historical docs
 ```
 
 ---
@@ -42,10 +44,13 @@ docs/
 
 | Category | Files | Priority | Path |
 |----------|-------|----------|------|
+| **[🚀 AGENT_QUICKREF](../AGENT_QUICKREF.md)** | 1 | ⭐⭐⭐ | `docs/` **START HERE** |
 | **[Core Framework](#category-core-framework-critical)** | 12 | ⭐⭐⭐ | `docs/core/` |
-| **[Agent Documentation](#category-agent-documentation)** | 9 | ⭐⭐ | `docs/agents/` |
+| **[Intelligence System](#category-intelligence-system-new)** | 1 | ⭐⭐⭐ | `docs/intelligence/` **NEW** |
+| **[Unified Architecture](#category-unified-architecture-new)** | 1 | ⭐⭐⭐ | `docs/` **NEWEST** |
+| **[Agent Documentation](#category-agent-documentation)** | 11 | ⭐⭐ | `docs/agents/` |
 | **[Reports](#category-reports)** | 29 | ⭐⭐ | `docs/reports/` |
-| **[Sessions](#category-sessions)** | 11 | ⭐⭐ | `docs/sessions/` |
+| **[Sessions](#category-sessions)** | 13 | ⭐⭐ | `docs/sessions/` |
 | **[Testing](#category-testing)** | 7 | ⭐ | `docs/testing/` |
 | **[QA](#category-qa)** | 8 | ⭐⭐ | `docs/qa/` |
 | **[Debug & Errors](#category-debug--errors)** | 10 | ⭐⭐⭐ | `docs/debug/` |
@@ -99,14 +104,82 @@ docs/
 
 ---
 
+## Category: Unified Architecture (NEWEST)
+
+**Priority:** ⭐⭐⭐ CRITICAL - Modern development pattern
+**Location:** `docs/`
+**Last Updated:** March 4, 2026
+
+| File | Size | Purpose |
+|------|------|---------|
+| **[UNIFIED_ARCHITECTURE.md](UNIFIED_ARCHITECTURE.md)** | 22KB | **Component + Schema + Route = 1** - Complete unified system |
+
+**What It Covers:**
+- `defineFeature()` - Function that generates schema + API + hooks
+- Feature definitions for: students, teachers, classes, subjects, schools, assessments
+- Universal API route: `/api/resources/[resource]`
+- Universal components: DataGrid, Form, ListPage
+- Usage examples and migration guide
+
+**Key Benefits:**
+- **1 file per resource** instead of 3+ files
+- **~50 lines** instead of ~300 lines per resource
+- Auto-generated types, API handlers, React hooks
+- Consistent patterns across all resources
+
+---
+
+## Category: Intelligence System (NEW)
+
+**Priority:** ⭐⭐⭐ CRITICAL - AI-powered insights across all portals
+**Location:** `src/lib/intelligence/`
+**Last Updated:** March 3, 2026
+
+**The Intelligence Layer transforms raw student data into actionable insights:**
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| **Skills Inference** | `skills-inference-engine.ts` | Infer skills from homework, attendance, journals, portfolios |
+| **Early Warning** | `early-warning-system.ts` | Detect at-risk students BEFORE they fail |
+| **AI Insights** | `ai-insights-generator.ts` | Teaching recommendations, class intelligence |
+| **Learning Paths** | `learning-path-generator.ts` | Personalized roadmaps to career readiness |
+| **Predictive** | `predictive-engine.ts` | Dropout risk, career success forecasting |
+
+**API Endpoints Created:**
+
+| Endpoint | Purpose | Access |
+|----------|---------|--------|
+| `/api/student/skills/inferred` | Get student's inferred skills + career gaps | Student |
+| `/api/student/skills/self-report` | Add self-reported skills | Student |
+| `/api/student/learning-path` | Get personalized learning roadmap | Student |
+| `/api/teacher/intelligence` | Class intelligence summary | Teacher |
+| `/api/teacher/interventions` | Intervention recommendations | Teacher, Counselor |
+| `/api/analytics/predictions` | Dropout/career/workforce predictions | All portals |
+
+**What Each Portal Gets:**
+- **Student:** Inferred skills, career gaps, week-by-week learning path with resources & projects
+- **Teacher:** At-risk alerts, teaching recommendations, parent meeting prep, student grouping suggestions
+- **School Admin:** Skills dashboard, at-risk student tracking, intervention management
+- **Ministry:** Workforce projections (2030), emerging skills, regional readiness data
+
+**Key Features:**
+1. **Skills Inference** - Derive skills from existing behavior (no separate assessment needed)
+2. **Early Warning** - Detect declining grades, attendance issues, journal distress signals
+3. **Personalized Learning** - Week-by-week roadmap with Bhutan-specific resources (TVET, YouTube, etc.)
+4. **Predictive Analytics** - Dropout risk %, career success probability, national workforce gaps
+
+---
+
 ## Category: Agent Documentation
 
 **Priority:** ⭐⭐ Reference for AI agent work
 **Location:** `docs/agents/`
-**Last Updated:** March 2, 2026
+**Last Updated:** March 3, 2026
 
 | File | Size | Purpose |
 |------|------|---------|
+| **AGENT_QUICKREF.md** | 2KB | **🔥 START HERE** - Just say "start" for autonomous execution |
+| **AGENT_AUTONOMOUS_WORKFLOW.md** | 15KB | **🔥 MAIN WORKFLOW** - Sequential agent handoffs, 200k chunks |
 | **AGENT_TEAM.md** | 20KB | **AI Office Org Chart** - 20 specialized agent roles |
 | **AGENT_SOP.md** | 18KB | Standard Operating Procedures for agents |
 | **PARALLEL_AGENT_WORKFLOW.md** | 11KB | Parallel work strategy for agents |
@@ -163,10 +236,13 @@ docs/
 
 **Priority:** ⭐⭐ Reference for session tracking
 **Location:** `docs/sessions/`
-**Last Updated:** March 2, 2026
+**Last Updated:** March 3, 2026
 
 | File | Size | Purpose |
 |------|------|---------|
+| **ACTIVE_TASKS.md** | 2KB | **🔥 LIVE** - Autonomous execution progress tracker |
+| **README.md** | 2KB | Sessions folder overview |
+| 2026-03-02-class-based-teacher-approval-fix.md | 12KB | Class-based approval system fixes |
 | BATCH_FILE_LIST.md | 3KB | Batch file list |
 | NEW_SESSION_EXECUTION_PLAN.md | 9KB | New session execution plan |
 | PROGRESS_TRACKER.md | 5KB | Progress tracking |
@@ -176,6 +252,8 @@ docs/
 | SESSION_COMPLETE_FEB27.md | 3KB | Session complete |
 | SESSION_HANDOFF_FEB27.md | 11KB | Session handoff |
 | STATUS_FEB27.md | 1KB | February 27 status |
+
+**Autonomous Workflow:** Individual task sessions created as `session-YYYY-MM-DD-task-name.md`
 | STATUS_FEB27_SESSION2.md | 6KB | Session 2 status |
 | STATUS_SESSION_FINAL_FEB27.md | 2KB | Final session status |
 
@@ -434,6 +512,7 @@ docs/
 
 | File | Size | Purpose |
 |------|------|---------|
+| **plans/COMPREHENSIVE_EVOLUTION_ROADMAP.md** | 55KB | **NEW** - 11 phases, 320-415h, complete evolution plan |
 | plans/roadmap.md | 5KB | Project roadmap |
 | plans/mobile-app.md | 3KB | Mobile application plan |
 | plans/mobile-progress.md | 2KB | Mobile development progress |
@@ -464,6 +543,34 @@ docs/
 | architecture/portal-routes.md | 1KB | Portal routes |
 | architecture/technology-stack.md | 13KB | Technology stack |
 | architecture/vision-objectives.md | 9KB | Vision & objectives |
+
+---
+
+## Category: Diagrams (Visual Documentation)
+
+**Priority:** ⭐⭐⭐ Visual reference for system understanding
+**Location:** `docs/diagrams/`
+**Last Updated:** March 4, 2026
+
+| File | Type | Purpose |
+|------|------|---------|
+| **unified-architecture.html** | Interactive | 🆕 **START HERE** - Unified System visual overview |
+| **unified-architecture.mmd** | Mermaid | 🆕 Mermaid source for diagrams |
+| flowdiagram.html | Interactive | System flow diagrams |
+| ai-data-pipeline.html | Interactive | AI data pipeline visualization |
+| api-routes-map.mmd | Mermaid | API routes mapping |
+| auth-flow.mmd | Mermaid | Authentication flow |
+| data-flows.mmd | Mermaid | Data flow diagrams |
+| entity-relationship-diagram.mmd | Mermaid | Entity relationships |
+| portal-architecture.mmd | Mermaid | Portal architecture |
+| system-architecture.mmd | Mermaid | System architecture |
+
+**🆕 Unified Architecture Diagram Features:**
+- Before vs After comparison
+- Core system architecture visualization
+- Request flow diagrams
+- GEMINI Layer integration
+- All 50+ features catalog
 
 ---
 
@@ -503,30 +610,46 @@ docs/
 
 ## Documentation Statistics
 
-**Total Files:** 200+ MD files
-**Total Size:** ~1.5 MB
-**Active Documentation:** 120+ files (60%)
-**Archive Documentation:** 80+ files (40%)
+**Total Files:** 220+ MD files
+**Total Size:** ~1.7 MB
+**Active Documentation:** 135+ files (61%)
+**Archive Documentation:** 85+ files (39%)
 
 **Documentation by Status:**
-- 🟢 Active: 120+ files (60%)
-- 🟡 Partial: 35 files (18%)
-- ⚪ Archived: 80+ files (40%)
+- 🟢 Active: 130+ files (60%)
+- 🟡 Partial: 35 files (16%)
+- ⚪ Archived: 85+ files (40%)
+
+**Latest Additions (March 4, 2026):**
+- ✨ **Comprehensive Evolution Roadmap** - 11 phases, 320-415h complete task breakdown
+- ✨ **Unified Architecture** - Component + Schema + Route = 1
+- ✨ defineFeature() system
+- ✨ Universal API: `/api/resources/[resource]`
+- ✨ Universal components: DataGrid, Form, ListPage
+- ✨ 6 feature definitions (students, teachers, classes, subjects, schools, assessments)
+- ✨ **NEXT: Gemini Layer (AI Kernel)** - Intent analysis + Tool use for autonomous queries
+
+**Previous Additions (March 3, 2026):**
+- ✨ Intelligence System (4 phases complete)
+- ✨ Skills Inference Engine
+- ✨ Early Warning System
+- ✨ Learning Path Generator
+- ✨ Predictive Analytics Engine
 
 ---
 
 ## Most Critical Files (Read First)
 
 1. `docs/core/DEVELOPMENT_FRAMEWORK.md` - Single source of truth
-2. `docs/debug/ERRORS_AND_FIXES.md` - All error fixes
-3. `docs/debug/PRODUCTION_ERROR_LOG.md` - Production errors with dates
-4. `docs/debug/SCALABILITY_ERROR_PREDICTION.md` - Future error prediction
-5. `docs/memory/database-patterns.md` - Database rules
-6. `docs/memory/api-patterns.md` - API patterns
-7. `docs/memory/common-mistakes.md` - Anti-patterns
-8. `docs/core/README.md` - Project overview
-9. `docs/core/CLAUDE.md` - Agent instructions
-10. `docs/core/MEMORY.md` - Project memory
+2. `docs/UNIFIED_ARCHITECTURE.md` - Component + Schema + Route = 1
+3. `docs/plans/COMPREHENSIVE_EVOLUTION_ROADMAP.md` - **NEW** - 11-phase evolution plan
+4. `docs/intelligence/INTELLIGENCE_SYSTEM.md` - Complete AI system documentation
+5. `docs/debug/ERRORS_AND_FIXES.md` - All error fixes
+6. `docs/debug/PRODUCTION_ERROR_LOG.md` - Production errors with dates
+7. `docs/debug/SCALABILITY_ERROR_PREDICTION.md` - Future error prediction
+8. `docs/memory/database-patterns.md` - Database rules
+9. `docs/memory/api-patterns.md` - API patterns
+10. `docs/core/README.md` - Project overview
 
 ---
 
@@ -534,6 +657,6 @@ docs/
 
 **This is the MAIN TOR file for all Bhutan EduSkill documentation.**
 
-*Last Updated: March 2, 2026 - Post Reorganization*
-*Next Review: April 2, 2026*
+*Last Updated: March 3, 2026 - Intelligence System Added*
+*Next Review: April 3, 2026*
 *Maintainer: Documentation Specialist Agent*

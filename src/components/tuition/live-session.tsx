@@ -73,6 +73,19 @@ interface LiveSessionProps {
   onEnd?: () => void | Promise<void>;
 }
 
+/**
+ * Format message timestamp consistently to avoid hydration mismatches
+ */
+function formatMessageTime(timestamp: Date | string): string {
+  const date = typeof timestamp === "string" ? new Date(timestamp) : timestamp;
+  const hours = date.getHours();
+  const minutes = date.getMinutes();
+  const ampm = hours >= 12 ? "PM" : "AM";
+  const displayHours = hours % 12 || 12;
+  const displayMinutes = minutes.toString().padStart(2, "0");
+  return `${displayHours}:${displayMinutes} ${ampm}`;
+}
+
 export function LiveSession({ session, currentUserId, onEnd }: LiveSessionProps) {
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
@@ -387,11 +400,8 @@ export function LiveSession({ session, currentUserId, onEnd }: LiveSessionProps)
                         <span className="text-sm font-medium text-white">
                           {msg.senderName}
                         </span>
-                        <span className="text-xs text-gray-500">
-                          {new Date(msg.timestamp).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
+                        <span className="text-xs text-gray-500" suppressHydrationWarning>
+                          {formatMessageTime(msg.timestamp)}
                         </span>
                       </div>
                       <p className="text-sm text-gray-300 mt-1">{msg.message}</p>

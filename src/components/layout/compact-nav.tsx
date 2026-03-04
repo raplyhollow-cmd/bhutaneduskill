@@ -36,10 +36,10 @@ export function CompactNav() {
           <Link
             href="/"
             className={cn(
-              "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 min-w-[60px]",
+              "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 min-w-[60px] active:scale-95 active:bg-gray-100",
               pathname === "/"
-                ? "text-ceramic-brand"
-                : "text-ceramic-secondary"
+                ? "text-orange-600"
+                : "text-gray-900"
             )}
           >
             <Home className={cn("w-5 h-5", pathname === "/" && "fill-current")} />
@@ -52,10 +52,10 @@ export function CompactNav() {
           <Link
             href="/about"
             className={cn(
-              "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 min-w-[60px]",
+              "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 min-w-[60px] active:scale-95 active:bg-gray-100",
               pathname === "/about"
-                ? "text-ceramic-brand"
-                : "text-ceramic-secondary"
+                ? "text-orange-600"
+                : "text-gray-900"
             )}
           >
             <User className={cn("w-5 h-5", pathname === "/about" && "fill-current")} />
@@ -68,10 +68,10 @@ export function CompactNav() {
           <Link
             href="/portals"
             className={cn(
-              "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 min-w-[60px]",
+              "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 min-w-[60px] active:scale-95 active:bg-gray-100",
               pathname === "/portals"
-                ? "text-ceramic-brand"
-                : "text-ceramic-secondary"
+                ? "text-orange-600"
+                : "text-gray-900"
             )}
           >
             <Compass className={cn("w-5 h-5", pathname === "/portals" && "fill-current")} />
@@ -84,10 +84,10 @@ export function CompactNav() {
           <Link
             href="/sign-in"
             className={cn(
-              "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 min-w-[60px]",
+              "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 min-w-[60px] active:scale-95 active:bg-gray-100",
               pathname?.startsWith("/sign-in")
-                ? "text-ceramic-brand"
-                : "text-ceramic-secondary"
+                ? "text-orange-600"
+                : "text-gray-900"
             )}
           >
             <LogIn className={cn("w-5 h-5", pathname?.startsWith("/sign-in") && "fill-current")} />
@@ -99,10 +99,10 @@ export function CompactNav() {
         <motion.button
           onClick={() => setMenuOpen(true)}
           className={cn(
-            "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 min-w-[60px]",
+            "flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all duration-200 min-w-[60px] active:scale-95 active:bg-gray-100",
             menuOpen
-              ? "text-ceramic-brand"
-              : "text-ceramic-secondary"
+              ? "text-orange-600"
+              : "text-gray-900"
           )}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
