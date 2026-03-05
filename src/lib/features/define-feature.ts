@@ -19,6 +19,9 @@ import { successResponse, errorResponse, notFoundResponse, badRequestResponse, c
 import { logger } from "@/lib/logger";
 import { nanoid } from "nanoid";
 
+// Re-export createApiRoute for convenience - it's defined in route-handler.ts
+export { createApiRoute, type UserType, type AuthContext, type AuthenticatedRequest } from "@/lib/api/route-handler";
+
 // React hooks types (for type definitions only)
 // Note: These are type-only imports - actual hook implementations are client-side
 type useEffect = void;
@@ -90,6 +93,81 @@ type UIConfig = {
   basePath?: string;
 };
 
+// ============================================================================
+// ACTION, WEBHOOK, AND PUBLIC ENDPOINT TYPES
+// ============================================================================
+
+/**
+ * Action Handler - Non-CRUD operations
+ * Accessed via: POST /api/resources/{resource}/actions/{actionName}
+ *
+ * @param id - Optional resource ID (if action is on a specific record)
+ * @param data - Request body data
+ * @param auth - Auth context with user info
+ * @returns API response object
+ */
+type ActionHandler = (
+  id: string | undefined,
+  data: any,
+  auth: any
+) => Promise<any>;
+
+/**
+ * Webhook Handler - External service callbacks
+ * Accessed via: POST /api/resources/{resource}/webhook/{webhookName}
+ *
+ * @param data - Webhook payload from external service
+ * @param request - Original NextRequest object for headers/signature verification
+ * @returns API response object
+ */
+type WebhookHandler = (
+  data: any,
+  request: Request
+) => Promise<any>;
+
+/**
+ * Public Endpoint Handler - No authentication required
+ * Accessed via: GET/POST /api/resources/{resource}/public/{endpointName}
+ *
+ * @param params - Query parameters or request body
+ * @param request - Original NextRequest object
+ * @returns API response object
+ */
+type PublicEndpoint = (
+  params: any,
+  request: Request
+) => Promise<any>;
+
+/**
+ * Action Configuration
+ */
+type ActionConfig = {
+  handler: ActionHandler;
+  allowedRoles?: UserRole[];
+  description?: string;
+  requireId?: boolean; // Whether action requires a resource ID
+};
+
+/**
+ * Webhook Configuration
+ */
+type WebhookConfig = {
+  handler: WebhookHandler;
+  source: string; // External service name (e.g., "clerk", "stripe", "rma")
+  verifySignature?: boolean; // Whether to verify webhook signature
+  secretHeader?: string; // Header name containing signature (e.g., "webhook-signature")
+};
+
+/**
+ * Public Endpoint Configuration
+ */
+type PublicEndpointConfig = {
+  handler: PublicEndpoint;
+  method?: "GET" | "POST" | "PUT" | "DELETE";
+  description?: string;
+  rateLimit?: number; // Max requests per window
+};
+
 type FeatureConfig = {
   name: string;
   schema: SchemaDefinition;
@@ -114,6 +192,12 @@ type FeatureConfig = {
       unique?: boolean;
     }>;
   };
+  // NEW: Actions (non-CRUD operations)
+  actions?: Record<string, ActionHandler | ActionConfig>;
+  // NEW: Webhooks (external service callbacks)
+  webhooks?: Record<string, WebhookHandler | WebhookConfig>;
+  // NEW: Public endpoints (no auth required)
+  public?: Record<string, PublicEndpoint | PublicEndpointConfig>;
 };
 
 type GeneratedTypes<T extends SchemaDefinition> = {
@@ -144,6 +228,15 @@ export function defineFeature<T extends SchemaDefinition>(config: FeatureConfig 
   // Generate types
   const types = generateTypes(config);
 
+  // Normalize actions (convert simple handlers to config objects)
+  const normalizedActions = normalizeActions(config.actions || {});
+
+  // Normalize webhooks (convert simple handlers to config objects)
+  const normalizedWebhooks = normalizeWebhooks(config.webhooks || {});
+
+  // Normalize public endpoints (convert simple handlers to config objects)
+  const normalizedPublic = normalizePublicEndpoints(config.public || {});
+
   // Return complete feature object
   const feature = {
     name: config.name,
@@ -153,10 +246,18 @@ export function defineFeature<T extends SchemaDefinition>(config: FeatureConfig 
     types,
     config,
     bulkOperations: config.bulkOperations || {},
+    // NEW: Extended handlers
+    actions: normalizedActions,
+    webhooks: normalizedWebhooks,
+    public: normalizedPublic,
   };
 
   // Register API routes (side effect)
-  registerFeatureRoutes(config.name, api, config.permissions);
+  registerFeatureRoutes(config.name, api, config.permissions, {
+    actions: normalizedActions,
+    webhooks: normalizedWebhooks,
+    public: normalizedPublic,
+  });
 
   return feature;
 }
@@ -427,27 +528,62 @@ function getTable(tableName: string) {
 
 const registeredRoutes = new Map<string, any>();
 
-function registerFeatureRoutes(featureName: string, api: any, permissions?: PermissionConfig) {
+interface ExtendedHandlers {
+  actions?: Record<string, ActionConfig>;
+  webhooks?: Record<string, WebhookConfig>;
+  public?: Record<string, PublicEndpointConfig>;
+}
+
+function registerFeatureRoutes(
+  featureName: string,
+  api: any,
+  permissions?: PermissionConfig,
+  extended?: ExtendedHandlers
+) {
   if (registeredRoutes.has(featureName)) {
     return; // Already registered
   }
 
-  // Create route handler
-  const routeHandler = createRouteHandler(featureName, api, permissions);
+  // Create route handler with extended support
+  const routeHandler = createRouteHandler(featureName, api, permissions, extended);
   registeredRoutes.set(featureName, routeHandler);
 
   // Log route registration
-  logger.info(`Feature routes registered`, { feature: featureName });
+  const extraRoutes: string[] = [];
+  if (extended?.actions) extraRoutes.push(`${Object.keys(extended.actions).length} actions`);
+  if (extended?.webhooks) extraRoutes.push(`${Object.keys(extended.webhooks).length} webhooks`);
+  if (extended?.public) extraRoutes.push(`${Object.keys(extended.public).length} public endpoints`);
+
+  logger.info(`Feature routes registered`, {
+    feature: featureName,
+    extra: extraRoutes.join(', ') || 'standard CRUD only'
+  });
 }
 
-function createRouteHandler(featureName: string, api: any, permissions?: PermissionConfig) {
+function createRouteHandler(
+  featureName: string,
+  api: any,
+  permissions?: PermissionConfig,
+  extended?: ExtendedHandlers
+) {
   return {
     GET: async (request: Request, auth: any) => {
       const url = new URL(request.url);
       const id = url.pathname.split("/").pop();
       const type = url.searchParams.get("type") || (id && id !== featureName ? "get" : "list");
 
-      // Check permissions
+      // Check for public endpoint
+      const publicEndpoint = url.searchParams.get("public");
+      if (publicEndpoint && extended?.public?.[publicEndpoint]) {
+        const endpointConfig = extended.public[publicEndpoint];
+        if (endpointConfig.method === "GET") {
+          const params = Object.fromEntries(url.searchParams);
+          return await endpointConfig.handler(params, request);
+        }
+        return badRequestResponse(`Public endpoint ${publicEndpoint} does not support GET`);
+      }
+
+      // Check permissions for standard endpoints
       const allowedRoles = permissions?.read || ["school-admin", "admin"];
       if (!auth.user || !hasPermission(auth.user.type, allowedRoles)) {
         return errorResponse("Unauthorized", 401);
@@ -462,36 +598,89 @@ function createRouteHandler(featureName: string, api: any, permissions?: Permiss
     },
 
     POST: async (request: Request, auth: any) => {
+      const url = new URL(request.url);
+      const id = url.pathname.split("/").pop();
+      const data = await request.json();
+
+      // Check for action endpoint
+      const action = url.searchParams.get("action");
+      if (action && extended?.actions?.[action]) {
+        const actionConfig = extended.actions[action];
+        const allowedRoles = actionConfig.allowedRoles || permissions?.update || ["school-admin", "admin"];
+        if (!auth.user || !hasPermission(auth.user.type, allowedRoles)) {
+          return errorResponse("Unauthorized for action: " + action, 401);
+        }
+        return await actionConfig.handler(id, data, auth);
+      }
+
+      // Check for webhook endpoint (no auth)
+      const webhook = url.searchParams.get("webhook");
+      if (webhook && extended?.webhooks?.[webhook]) {
+        const webhookConfig = extended.webhooks[webhook];
+        // TODO: Add signature verification if configured
+        return await webhookConfig.handler(data, request);
+      }
+
+      // Check for public endpoint
+      const publicEndpoint = url.searchParams.get("public");
+      if (publicEndpoint && extended?.public?.[publicEndpoint]) {
+        const endpointConfig = extended.public[publicEndpoint];
+        if (endpointConfig.method === "POST") {
+          return await endpointConfig.handler(data, request);
+        }
+        return badRequestResponse(`Public endpoint ${publicEndpoint} does not support POST`);
+      }
+
+      // Standard CREATE endpoint
       const allowedRoles = permissions?.create || ["school-admin", "admin"];
       if (!auth.user || !hasPermission(auth.user.type, allowedRoles)) {
         return errorResponse("Unauthorized", 401);
       }
 
-      const data = await request.json();
       return await api.create(data, auth);
     },
 
     PUT: async (request: Request, auth: any) => {
+      const url = new URL(request.url);
+      const id = url.pathname.split("/").pop();
+      const data = await request.json();
+
+      // Check for public endpoint
+      const publicEndpoint = url.searchParams.get("public");
+      if (publicEndpoint && extended?.public?.[publicEndpoint]) {
+        const endpointConfig = extended.public[publicEndpoint];
+        if (endpointConfig.method === "PUT") {
+          return await endpointConfig.handler(data, request);
+        }
+        return badRequestResponse(`Public endpoint ${publicEndpoint} does not support PUT`);
+      }
+
       const allowedRoles = permissions?.update || ["school-admin", "admin"];
       if (!auth.user || !hasPermission(auth.user.type, allowedRoles)) {
         return errorResponse("Unauthorized", 401);
       }
 
-      const url = new URL(request.url);
-      const id = url.pathname.split("/").pop();
-      const data = await request.json();
-
       return await api.update(id, data, auth);
     },
 
     DELETE: async (request: Request, auth: any) => {
+      const url = new URL(request.url);
+      const id = url.pathname.split("/").pop();
+
+      // Check for public endpoint
+      const publicEndpoint = url.searchParams.get("public");
+      if (publicEndpoint && extended?.public?.[publicEndpoint]) {
+        const endpointConfig = extended.public[publicEndpoint];
+        if (endpointConfig.method === "DELETE") {
+          return await endpointConfig.handler({ id }, request);
+        }
+        return badRequestResponse(`Public endpoint ${publicEndpoint} does not support DELETE`);
+      }
+
       const allowedRoles = permissions?.delete || ["school-admin", "admin"];
       if (!auth.user || !hasPermission(auth.user.type, allowedRoles)) {
         return errorResponse("Unauthorized", 401);
       }
-
-      const url = new URL(request.url);
-      const id = url.pathname.split("/").pop();
 
       return await api.delete(id, auth);
     },
@@ -500,6 +689,66 @@ function createRouteHandler(featureName: string, api: any, permissions?: Permiss
 
 function hasPermission(userRole: string, allowedRoles: string[]): boolean {
   return allowedRoles.includes(userRole);
+}
+
+// ============================================================================
+// NORMALIZATION HELPERS
+// ============================================================================
+
+/**
+ * Normalize action definitions - convert simple handlers to config objects
+ */
+function normalizeActions(actions: Record<string, ActionHandler | ActionConfig>): Record<string, ActionConfig> {
+  const normalized: Record<string, ActionConfig> = {};
+  for (const [name, handlerOrConfig] of Object.entries(actions)) {
+    if (typeof handlerOrConfig === 'function') {
+      normalized[name] = {
+        handler: handlerOrConfig as ActionHandler,
+        allowedRoles: undefined, // Will use default permissions
+        requireId: false,
+      };
+    } else {
+      normalized[name] = handlerOrConfig as ActionConfig;
+    }
+  }
+  return normalized;
+}
+
+/**
+ * Normalize webhook definitions - convert simple handlers to config objects
+ */
+function normalizeWebhooks(webhooks: Record<string, WebhookHandler | WebhookConfig>): Record<string, WebhookConfig> {
+  const normalized: Record<string, WebhookConfig> = {};
+  for (const [name, handlerOrConfig] of Object.entries(webhooks)) {
+    if (typeof handlerOrConfig === 'function') {
+      normalized[name] = {
+        handler: handlerOrConfig as WebhookHandler,
+        source: name,
+        verifySignature: false,
+      };
+    } else {
+      normalized[name] = handlerOrConfig as WebhookConfig;
+    }
+  }
+  return normalized;
+}
+
+/**
+ * Normalize public endpoint definitions - convert simple handlers to config objects
+ */
+function normalizePublicEndpoints(publicEndpoints: Record<string, PublicEndpoint | PublicEndpointConfig>): Record<string, PublicEndpointConfig> {
+  const normalized: Record<string, PublicEndpointConfig> = {};
+  for (const [name, handlerOrConfig] of Object.entries(publicEndpoints)) {
+    if (typeof handlerOrConfig === 'function') {
+      normalized[name] = {
+        handler: handlerOrConfig as PublicEndpoint,
+        method: "GET",
+      };
+    } else {
+      normalized[name] = handlerOrConfig as PublicEndpointConfig;
+    }
+  }
+  return normalized;
 }
 
 // ============================================================================

@@ -122,7 +122,7 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
    */
   const fetchUnreadCount = useCallback(async () => {
     try {
-      const response = await fetch("/api/notifications/my-notifications/unread-count");
+      const response = await fetch("/api/resources/notifications/actions/unread-count");
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
@@ -154,7 +154,16 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
         status: unreadOnly ? "unread" : "all",
       });
 
-      const response = await fetch(`/api/notifications/my-notifications?${params}`);
+      // Use unified API - POST to action endpoint with data
+      const response = await fetch("/api/resources/notifications/actions/my-notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          limit,
+          status: unreadOnly ? "unread" : "all",
+          page: 1,
+        }),
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -182,7 +191,8 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
    */
   const markAsRead = useCallback(async (deliveryId: string) => {
     try {
-      const response = await fetch("/api/notifications/my-notifications", {
+      // Use unified API - POST to mark-read action
+      const response = await fetch("/api/resources/notifications/actions/mark-read", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ deliveryIds: [deliveryId] }),
@@ -211,7 +221,8 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
    */
   const markAllAsRead = useCallback(async () => {
     try {
-      const response = await fetch("/api/notifications/my-notifications", {
+      // Use unified API - POST to mark-read action
+      const response = await fetch("/api/resources/notifications/actions/mark-read", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ markAll: true }),
@@ -271,7 +282,7 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
     // Inline fetch logic to avoid dependency on external functions
     const fetchCount = async () => {
       try {
-        const response = await fetch("/api/notifications/my-notifications/unread-count");
+        const response = await fetch("/api/resources/notifications/actions/unread-count");
         if (response.ok) {
           const data = await response.json();
           const count = data.data?.unreadCount || 0;
@@ -296,7 +307,16 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
           status: optionsRef.current.unreadOnly ? "unread" : "all",
         });
 
-        const response = await fetch(`/api/notifications/my-notifications?${params}`);
+        // Use unified API - POST to action endpoint with data
+      const response = await fetch("/api/resources/notifications/actions/my-notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          limit,
+          status: unreadOnly ? "unread" : "all",
+          page: 1,
+        }),
+      });
         if (response.ok) {
           const data = await response.json();
           const responseData = data.data || {};
@@ -386,7 +406,7 @@ export function useUnreadCount(options: { pollingInterval?: number } = {}) {
     // Inline fetch to avoid dependency issues
     const fetchCount = async () => {
       try {
-        const response = await fetch("/api/notifications/my-notifications/unread-count");
+        const response = await fetch("/api/resources/notifications/actions/unread-count");
         if (response.ok) {
           const data = await response.json();
           setUnreadCount(data.data?.unreadCount || 0);
@@ -407,7 +427,7 @@ export function useUnreadCount(options: { pollingInterval?: number } = {}) {
   // Provide a refresh function
   const refresh = useCallback(async () => {
     try {
-      const response = await fetch("/api/notifications/my-notifications/unread-count");
+      const response = await fetch("/api/resources/notifications/actions/unread-count");
       if (response.ok) {
         const data = await response.json();
         setUnreadCount(data.data?.unreadCount || 0);

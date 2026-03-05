@@ -41,64 +41,54 @@ export function usePortalAuth(portalType: string): PortalAuthState {
 
     const checkAuth = async () => {
       try {
-        // Parallel fetch for performance
-        const [roleRes, profileRes] = await Promise.all([
-          fetch("/api/auth/set-role"),
-          fetch("/api/user/profile").catch(() => ({ ok: false, json: async () => ({ needsSetup: true, profile: null }) }))
-        ]);
+        // Use unified API for role check
+        const roleRes = await fetch("/api/resources/users/actions/get-role");
+        const roleResData = await roleRes.json();
 
-        const roleData = await roleRes.json();
-        const profileData = await profileRes.json();
+        // Extract user data from response
+        const userType = roleResData.data?.userType || roleResData.userType;
+        const onboardingStatus = roleResData.data?.onboardingStatus || roleResData.onboardingStatus;
+        const userName = roleResData.data?.name || `${roleResData.data?.firstName || ""} ${roleResData.data?.lastName || ""}`.trim() || "User";
 
-        // GUARD 0: Profile API indicates needsSetup (new user in Clerk, not in DB)
-        if (profileData.needsSetup || !profileData.profile) {
-          logger.info("User needs setup (no profile in DB)", { portalType });
+        // GUARD 0: User needs setup (new user or restricted)
+        if (!userType || onboardingStatus === "restricted" || onboardingStatus === "pending_approval") {
+          logger.info("User needs setup", { portalType, userType, onboardingStatus });
           router.push("/setup/unified");
           return;
         }
 
         // GUARD 1: Onboarding Status Check
-        const status = profileData?.profile?.onboardingStatus;
-        const blockedStatuses = ["restricted", "rejected", "pending_approval", "pending_enrollment"] as const;
+        const blockedStatuses = ["rejected", "pending_enrollment"] as const;
 
-        if (status && blockedStatuses.includes(status as typeof blockedStatuses[number])) {
-          logger.info("User blocked by onboarding status", { status, portalType });
+        if (onboardingStatus && blockedStatuses.includes(onboardingStatus as typeof blockedStatuses[number])) {
+          logger.info("User blocked by onboarding status", { status: onboardingStatus, portalType });
           // Map pending_enrollment to pending-approval page
-          const redirectPage = status === "pending_enrollment" ? "pending-approval" : status.replace('_', '-');
+          const redirectPage = onboardingStatus === "pending_enrollment" ? "pending-approval" : onboardingStatus.replace('_', '-');
           router.push(`/${redirectPage}`);
           return;
         }
 
         // GUARD 2: Portal Type Cross-Check
-        if (roleData.userType && roleData.userType !== portalType) {
+        if (userType && userType !== portalType) {
           logger.info("User redirected to correct portal", {
             expected: portalType,
-            actual: roleData.userType
+            actual: userType
           });
-          router.push(`/${roleData.userType}`);
-          return;
-        }
-
-        // GUARD 3: Setup Required
-        if (roleData.needsSetup || !roleData.userType) {
-          logger.info("User needs setup", { portalType, needsSetup: roleData.needsSetup });
-          router.push("/setup/unified");
+          router.push(`/${userType}`);
           return;
         }
 
         // All guards passed - user is authenticated
-        const userName = `${profileData?.profile?.firstName || ""} ${profileData?.profile?.lastName || ""}`.trim();
-
         setState({
-          userType: roleData.userType,
-          userName: userName || "User",
+          userType,
+          userName,
           isLoading: false,
           isAuthenticated: true,
         });
 
         logger.info("User authenticated successfully", {
           portalType,
-          userType: roleData.userType
+          userType
         });
 
       } catch (error) {

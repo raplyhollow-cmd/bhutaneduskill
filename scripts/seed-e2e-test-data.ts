@@ -112,7 +112,7 @@ function generateId(prefix: string): string {
  * Create or find test school
  */
 async function createTestSchool() {
-  console.log("\n[Creating Test School]");
+  console.log("\n[Finding Test School]");
 
   // Check if test school already exists
   const existing = await sql`
@@ -124,10 +124,39 @@ async function createTestSchool() {
     return existing[0].id;
   }
 
+  // Try to find any existing active school to use for testing
+  const anySchool = await sql`
+    SELECT id, name FROM schools WHERE is_active = true AND subscription_status = 'active' LIMIT 1
+  `;
+
+  if (anySchool.length > 0) {
+    console.log(`  ✓ Using existing active school: ${anySchool[0].id} (${anySchool[0].name})`);
+    return anySchool[0].id;
+  }
+
+  // Create minimal test school with all required fields
   const schoolId = generateId("school");
   await sql`
-    INSERT INTO schools (id, name, code, is_active, setup_complete, subscription_status, created_at, updated_at)
-    VALUES (${schoolId}, ${TEST_SCHOOL.name}, ${TEST_SCHOOL.code}, ${TEST_SCHOOL.isActive}, ${TEST_SCHOOL.setupComplete}, ${TEST_SCHOOL.subscriptionStatus}, NOW(), NOW())
+    INSERT INTO schools (
+      id, name, code, type, address, city, state, country, postal_code, phone, email, website, logo,
+      established_year, accreditation_status, max_students, campus_size, board,
+      principal_name, principal_email, principal_phone,
+      counselor_name, counselor_email, counselor_phone,
+      vice_principal_name, school_type, level,
+      is_active, subscription_status, setup_complete,
+      created_at, updated_at
+    )
+    VALUES (
+      ${schoolId}, ${TEST_SCHOOL.name}, ${TEST_SCHOOL.code}, 'public',
+      'Test Address', 'Thimphu', 'Thimphu', 'Bhutan', '11001',
+      '+975-2-123456', 'test@bhutaneduskill.bt', 'https://bhutaneduskill.bt', '',
+      2020, 'accredited', 500, '10 acres', 'BCSEB',
+      'Test Principal', 'principal@test.bt', '+975-2-123456',
+      'Test Counselor', 'counselor@test.bt', '+975-2-123456',
+      'Test VP', 'public', 'middle',
+      ${TEST_SCHOOL.isActive}, ${TEST_SCHOOL.subscriptionStatus}, ${TEST_SCHOOL.setupComplete},
+      NOW(), NOW()
+    )
   `;
 
   console.log(`  ✓ Created test school: ${schoolId}`);
@@ -155,14 +184,16 @@ async function createTestUsers(schoolId: string) {
     }
 
     const userId = generateId(user.type);
+    const fullName = `${user.firstName} ${user.lastName}`;
+
     await sql`
       INSERT INTO users (
-        id, clerk_user_id, type, first_name, last_name, email,
+        id, clerk_user_id, type, role, name, first_name, last_name, email, phone, grade,
         school_id, onboarding_status, onboarding_complete,
         created_at, updated_at
       )
       VALUES (
-        ${userId}, ${user.clerkUserId}, ${user.type}, ${user.firstName}, ${user.lastName}, ${user.email},
+        ${userId}, ${user.clerkUserId}, ${user.type}, ${user.type}, ${fullName}, ${user.firstName}, ${user.lastName}, ${user.email}, '+975-2-123456', 8,
         ${schoolId}, ${user.onboardingStatus}, ${user.onboardingComplete},
         NOW(), NOW()
       )

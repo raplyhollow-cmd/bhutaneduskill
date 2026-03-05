@@ -10,14 +10,18 @@
     "grep": {},
     "grepInvert": null,
     "maxFailures": 0,
-    "metadata": {},
+    "metadata": {
+      "actualWorkers": 1
+    },
     "preserveOutput": "always",
     "projects": [
       {
         "outputDir": "D:/VS STUDIO PROJECT/bhutaneduskill/test-results",
         "repeatEach": 1,
         "retries": 0,
-        "metadata": {},
+        "metadata": {
+          "actualWorkers": 1
+        },
         "id": "chromium",
         "name": "chromium",
         "testDir": "D:/VS STUDIO PROJECT/bhutaneduskill/src/tests/e2e",
@@ -31,7 +35,9 @@
         "outputDir": "D:/VS STUDIO PROJECT/bhutaneduskill/test-results",
         "repeatEach": 1,
         "retries": 0,
-        "metadata": {},
+        "metadata": {
+          "actualWorkers": 1
+        },
         "id": "firefox",
         "name": "firefox",
         "testDir": "D:/VS STUDIO PROJECT/bhutaneduskill/src/tests/e2e",
@@ -45,7 +51,9 @@
         "outputDir": "D:/VS STUDIO PROJECT/bhutaneduskill/test-results",
         "repeatEach": 1,
         "retries": 0,
-        "metadata": {},
+        "metadata": {
+          "actualWorkers": 1
+        },
         "id": "webkit",
         "name": "webkit",
         "testDir": "D:/VS STUDIO PROJECT/bhutaneduskill/src/tests/e2e",
@@ -59,7 +67,9 @@
         "outputDir": "D:/VS STUDIO PROJECT/bhutaneduskill/test-results",
         "repeatEach": 1,
         "retries": 0,
-        "metadata": {},
+        "metadata": {
+          "actualWorkers": 1
+        },
         "id": "Mobile Chrome",
         "name": "Mobile Chrome",
         "testDir": "D:/VS STUDIO PROJECT/bhutaneduskill/src/tests/e2e",
@@ -73,7 +83,9 @@
         "outputDir": "D:/VS STUDIO PROJECT/bhutaneduskill/test-results",
         "repeatEach": 1,
         "retries": 0,
-        "metadata": {},
+        "metadata": {
+          "actualWorkers": 1
+        },
         "id": "Mobile Safari",
         "name": "Mobile Safari",
         "testDir": "D:/VS STUDIO PROJECT/bhutaneduskill/src/tests/e2e",
@@ -114,26 +126,90 @@
     "updateSourceMethod": "patch",
     "version": "1.58.2",
     "workers": 2,
-    "webServer": {
-      "command": "npm run dev",
-      "url": "http://localhost:3003",
-      "reuseExistingServer": true,
-      "timeout": 120000
-    }
+    "webServer": null
   },
-  "suites": [],
-  "errors": [
+  "suites": [
     {
-      "message": "Error: Timed out waiting 120000ms from config.webServer.",
-      "stack": "Error: Timed out waiting 120000ms from config.webServer."
+      "title": "expanded.spec.ts",
+      "file": "expanded.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Authentication Flow",
+          "file": "expanded.spec.ts",
+          "line": 65,
+          "column": 6,
+          "specs": [
+            {
+              "title": "sign in page is minimal",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "timedOut",
+                      "duration": 49506,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                      },
+                      "errors": [
+                        {
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                        },
+                        {
+                          "location": {
+                            "file": "D:\\VS STUDIO PROJECT\\bhutaneduskill\\src\\tests\\e2e\\expanded.spec.ts",
+                            "column": 16,
+                            "line": 67
+                          },
+                          "message": "Error: page.goto: net::ERR_ABORTED; maybe frame was detached?\nCall log:\n\u001b[2m  - navigating to \"http://localhost:3000/sign-in\", waiting until \"load\"\u001b[22m\n\n\n  65 | test.describe(\"Authentication Flow\", () => {\n  66 |   test(\"sign in page is minimal\", async ({ page }) => {\n> 67 |     await page.goto(\"/sign-in\");\n     |                ^\n  68 |\n  69 |     // Check no unnecessary elements\n  70 |     const hasBackButton = await page.locator(\"button:has-text('Back')\").count();\n    at D:\\VS STUDIO PROJECT\\bhutaneduskill\\src\\tests\\e2e\\expanded.spec.ts:67:16"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-03-04T16:43:55.917Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "D:\\VS STUDIO PROJECT\\bhutaneduskill\\test-results\\expanded-Authentication-Flow-sign-in-page-is-minimal-chromium\\video.webm"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "8ea93eaff41255154881-8852440ba43927bd3faf",
+              "file": "expanded.spec.ts",
+              "line": 66,
+              "column": 7
+            }
+          ]
+        }
+      ]
     }
   ],
+  "errors": [],
   "stats": {
-    "startTime": "2026-03-03T01:13:58.536Z",
-    "duration": 171532.77300000002,
+    "startTime": "2026-03-04T16:43:52.974Z",
+    "duration": 53116.515,
     "expected": 0,
     "skipped": 0,
-    "unexpected": 0,
+    "unexpected": 1,
     "flaky": 0
   }
 }

@@ -1,0 +1,584 @@
+
+> career-guidance@0.1.0 build
+> next build
+
+   ▲ Next.js 15.5.12
+   - Environments: .env
+   - Experiments (use with caution):
+     · cpus: 2
+
+   Creating an optimized production build ...
+ ⚠ Compiled with warnings in 4.7min
+
+./src/app/admin/library_fines/new/page.tsx
+Attempted import error: 'LibraryFineFeature' is not exported from '@/features' (imported as 'LibraryFineFeature').
+
+Import trace for requested module:
+./src/app/admin/library_fines/new/page.tsx
+
+./src/app/admin/library_fines/page.tsx
+Attempted import error: 'LibraryFineFeature' is not exported from '@/features' (imported as 'LibraryFineFeature').
+
+Import trace for requested module:
+./src/app/admin/library_fines/page.tsx
+
+./src/app/admin/library_loans/new/page.tsx
+Attempted import error: 'LibraryLoanFeature' is not exported from '@/features' (imported as 'LibraryLoanFeature').
+
+Import trace for requested module:
+./src/app/admin/library_loans/new/page.tsx
+
+./src/app/admin/library_loans/page.tsx
+Attempted import error: 'LibraryLoanFeature' is not exported from '@/features' (imported as 'LibraryLoanFeature').
+
+Import trace for requested module:
+./src/app/admin/library_loans/page.tsx
+
+./src/app/admin/messages/new/page.tsx
+Attempted import error: 'MessageFeature' is not exported from '@/features' (imported as 'MessageFeature').
+
+Import trace for requested module:
+./src/app/admin/messages/new/page.tsx
+
+./src/app/admin/messages/page.tsx
+Attempted import error: 'MessageFeature' is not exported from '@/features' (imported as 'MessageFeature').
+
+Import trace for requested module:
+./src/app/admin/messages/page.tsx
+
+./src/app/admin/notifications/new/page.tsx
+Attempted import error: 'NotificationFeature' is not exported from '@/features' (imported as 'NotificationFeature').
+
+Import trace for requested module:
+./src/app/admin/notifications/new/page.tsx
+
+./src/app/admin/resource_shares/new/page.tsx
+Attempted import error: 'ResourceShareFeature' is not exported from '@/features' (imported as 'ResourceShareFeature').
+
+Import trace for requested module:
+./src/app/admin/resource_shares/new/page.tsx
+
+./src/app/admin/resource_shares/page.tsx
+Attempted import error: 'ResourceShareFeature' is not exported from '@/features' (imported as 'ResourceShareFeature').
+
+Import trace for requested module:
+./src/app/admin/resource_shares/page.tsx
+
+./src/app/admin/roadmaps/new/page.tsx
+Attempted import error: 'RoadmapFeature' is not exported from '@/features' (imported as 'RoadmapFeature').
+
+Import trace for requested module:
+./src/app/admin/roadmaps/new/page.tsx
+
+./src/app/admin/roadmaps/page.tsx
+Attempted import error: 'RoadmapFeature' is not exported from '@/features' (imported as 'RoadmapFeature').
+
+Import trace for requested module:
+./src/app/admin/roadmaps/page.tsx
+
+./src/app/admin/rubrics/new/page.tsx
+Attempted import error: 'RubricFeature' is not exported from '@/features' (imported as 'RubricFeature').
+
+Import trace for requested module:
+./src/app/admin/rubrics/new/page.tsx
+
+./src/app/admin/rubrics/page.tsx
+Attempted import error: 'RubricFeature' is not exported from '@/features' (imported as 'RubricFeature').
+
+Import trace for requested module:
+./src/app/admin/rubrics/page.tsx
+
+./src/app/admin/schedule_exceptions/new/page.tsx
+Attempted import error: 'ScheduleExceptionFeature' is not exported from '@/features' (imported as 'ScheduleExceptionFeature').
+
+Import trace for requested module:
+./src/app/admin/schedule_exceptions/new/page.tsx
+
+./src/app/admin/schedule_exceptions/page.tsx
+Attempted import error: 'ScheduleExceptionFeature' is not exported from '@/features' (imported as 'ScheduleExceptionFeature').
+
+Import trace for requested module:
+./src/app/admin/schedule_exceptions/page.tsx
+
+./src/app/admin/schools/new/page.tsx
+Attempted import error: 'SchoolFeature' is not exported from '@/features' (imported as 'SchoolFeature').
+
+Import trace for requested module:
+./src/app/admin/schools/new/page.tsx
+
+./src/app/admin/sections/new/page.tsx
+Attempted import error: 'SectionFeature' is not exported from '@/features' (imported as 'SectionFeature').
+
+Import trace for requested module:
+./src/app/admin/sections/new/page.tsx
+
+./src/app/admin/sections/page.tsx
+Attempted import error: 'SectionFeature' is not exported from '@/features' (imported as 'SectionFeature').
+
+Import trace for requested module:
+./src/app/admin/sections/page.tsx
+
+./src/app/admin/skill_gaps/new/page.tsx
+Attempted import error: 'SkillGapFeature' is not exported from '@/features' (imported as 'SkillGapFeature').
+
+Import trace for requested module:
+./src/app/admin/skill_gaps/new/page.tsx
+
+./src/app/admin/skill_gaps/page.tsx
+Attempted import error: 'SkillGapFeature' is not exported from '@/features' (imported as 'SkillGapFeature').
+
+Import trace for requested module:
+./src/app/admin/skill_gaps/page.tsx
+
+./src/app/admin/students/new/page.tsx
+Attempted import error: 'StudentFeature' is not exported from '@/features' (imported as 'StudentFeature').
+
+Import trace for requested module:
+./src/app/admin/students/new/page.tsx
+
+./src/app/admin/students/page.tsx
+Attempted import error: 'StudentFeature' is not exported from '@/features' (imported as 'StudentFeature').
+
+Import trace for requested module:
+./src/app/admin/students/page.tsx
+
+./src/app/admin/subjects/new/page.tsx
+Attempted import error: 'SubjectFeature' is not exported from '@/features' (imported as 'SubjectFeature').
+
+Import trace for requested module:
+./src/app/admin/subjects/new/page.tsx
+
+./src/app/admin/submissions/new/page.tsx
+Attempted import error: 'SubmissionFeature' is not exported from '@/features' (imported as 'SubmissionFeature').
+
+Import trace for requested module:
+./src/app/admin/submissions/new/page.tsx
+
+./src/app/admin/submissions/page.tsx
+Attempted import error: 'SubmissionFeature' is not exported from '@/features' (imported as 'SubmissionFeature').
+
+Import trace for requested module:
+./src/app/admin/submissions/page.tsx
+
+./src/app/admin/subscriptions/new/page.tsx
+Attempted import error: 'SubscriptionFeature' is not exported from '@/features' (imported as 'SubscriptionFeature').
+
+Import trace for requested module:
+./src/app/admin/subscriptions/new/page.tsx
+
+./src/app/admin/subscriptions/page.tsx
+Attempted import error: 'SubscriptionFeature' is not exported from '@/features' (imported as 'SubscriptionFeature').
+
+Import trace for requested module:
+./src/app/admin/subscriptions/page.tsx
+
+./src/app/admin/teachers/new/page.tsx
+Attempted import error: 'TeacherFeature' is not exported from '@/features' (imported as 'TeacherFeature').
+
+Import trace for requested module:
+./src/app/admin/teachers/new/page.tsx
+
+./src/app/admin/teaching_resources/new/page.tsx
+Attempted import error: 'TeachingResourceFeature' is not exported from '@/features' (imported as 'TeachingResourceFeature').
+
+Import trace for requested module:
+./src/app/admin/teaching_resources/new/page.tsx
+
+./src/app/admin/teaching_resources/page.tsx
+Attempted import error: 'TeachingResourceFeature' is not exported from '@/features' (imported as 'TeachingResourceFeature').
+
+Import trace for requested module:
+./src/app/admin/teaching_resources/page.tsx
+
+./src/app/admin/timetable_slots/new/page.tsx
+Attempted import error: 'TimetableSlotFeature' is not exported from '@/features' (imported as 'TimetableSlotFeature').
+
+Import trace for requested module:
+./src/app/admin/timetable_slots/new/page.tsx
+
+./src/app/admin/timetable_slots/page.tsx
+Attempted import error: 'TimetableSlotFeature' is not exported from '@/features' (imported as 'TimetableSlotFeature').
+
+Import trace for requested module:
+./src/app/admin/timetable_slots/page.tsx
+
+./src/app/admin/timetables/new/page.tsx
+Attempted import error: 'TimetableFeature' is not exported from '@/features' (imported as 'TimetableFeature').
+
+Import trace for requested module:
+./src/app/admin/timetables/new/page.tsx
+
+./src/app/admin/timetables/page.tsx
+Attempted import error: 'TimetableFeature' is not exported from '@/features' (imported as 'TimetableFeature').
+
+Import trace for requested module:
+./src/app/admin/timetables/page.tsx
+
+./src/app/admin/transport_allocations/new/page.tsx
+Attempted import error: 'TransportAllocationFeature' is not exported from '@/features' (imported as 'TransportAllocationFeature').
+
+Import trace for requested module:
+./src/app/admin/transport_allocations/new/page.tsx
+
+./src/app/admin/transport_allocations/page.tsx
+Attempted import error: 'TransportAllocationFeature' is not exported from '@/features' (imported as 'TransportAllocationFeature').
+
+Import trace for requested module:
+./src/app/admin/transport_allocations/page.tsx
+
+./src/app/admin/transport_routes/new/page.tsx
+Attempted import error: 'TransportRouteFeature' is not exported from '@/features' (imported as 'TransportRouteFeature').
+
+Import trace for requested module:
+./src/app/admin/transport_routes/new/page.tsx
+
+./src/app/admin/transport_routes/page.tsx
+Attempted import error: 'TransportRouteFeature' is not exported from '@/features' (imported as 'TransportRouteFeature').
+
+Import trace for requested module:
+./src/app/admin/transport_routes/page.tsx
+
+./src/app/admin/treatment_plans/new/page.tsx
+Attempted import error: 'TreatmentPlanFeature' is not exported from '@/features' (imported as 'TreatmentPlanFeature').
+
+Import trace for requested module:
+./src/app/admin/treatment_plans/new/page.tsx
+
+./src/app/admin/treatment_plans/page.tsx
+Attempted import error: 'TreatmentPlanFeature' is not exported from '@/features' (imported as 'TreatmentPlanFeature').
+
+Import trace for requested module:
+./src/app/admin/treatment_plans/page.tsx
+
+./src/app/admin/users/new/page.tsx
+Attempted import error: 'UserFeature' is not exported from '@/features' (imported as 'UserFeature').
+
+Import trace for requested module:
+./src/app/admin/users/new/page.tsx
+
+./src/app/sync-clerk/page.tsx
+Attempted import error: 'Sync' is not exported from '__barrel_optimize__?names=CheckCircle2,Loader2,Sync!=!lucide-react' (imported as 'Sync').
+
+Import trace for requested module:
+./src/app/sync-clerk/page.tsx
+
+./src/app/sync-clerk/page.tsx
+Attempted import error: 'Sync' is not exported from '__barrel_optimize__?names=CheckCircle2,Loader2,Sync!=!lucide-react' (imported as 'Sync').
+
+Import trace for requested module:
+./src/app/sync-clerk/page.tsx
+
+./src/app/admin/library_fines/new/page.tsx
+Attempted import error: 'LibraryFineFeature' is not exported from '@/features' (imported as 'LibraryFineFeature').
+
+Import trace for requested module:
+./src/app/admin/library_fines/new/page.tsx
+
+./src/app/admin/library_fines/page.tsx
+Attempted import error: 'LibraryFineFeature' is not exported from '@/features' (imported as 'LibraryFineFeature').
+
+Import trace for requested module:
+./src/app/admin/library_fines/page.tsx
+
+./src/app/admin/library_loans/new/page.tsx
+Attempted import error: 'LibraryLoanFeature' is not exported from '@/features' (imported as 'LibraryLoanFeature').
+
+Import trace for requested module:
+./src/app/admin/library_loans/new/page.tsx
+
+./src/app/admin/library_loans/page.tsx
+Attempted import error: 'LibraryLoanFeature' is not exported from '@/features' (imported as 'LibraryLoanFeature').
+
+Import trace for requested module:
+./src/app/admin/library_loans/page.tsx
+
+./src/app/admin/messages/new/page.tsx
+Attempted import error: 'MessageFeature' is not exported from '@/features' (imported as 'MessageFeature').
+
+Import trace for requested module:
+./src/app/admin/messages/new/page.tsx
+
+./src/app/admin/messages/page.tsx
+Attempted import error: 'MessageFeature' is not exported from '@/features' (imported as 'MessageFeature').
+
+Import trace for requested module:
+./src/app/admin/messages/page.tsx
+
+./src/app/admin/notifications/new/page.tsx
+Attempted import error: 'NotificationFeature' is not exported from '@/features' (imported as 'NotificationFeature').
+
+Import trace for requested module:
+./src/app/admin/notifications/new/page.tsx
+
+./src/app/admin/resource_shares/new/page.tsx
+Attempted import error: 'ResourceShareFeature' is not exported from '@/features' (imported as 'ResourceShareFeature').
+
+Import trace for requested module:
+./src/app/admin/resource_shares/new/page.tsx
+
+./src/app/admin/resource_shares/page.tsx
+Attempted import error: 'ResourceShareFeature' is not exported from '@/features' (imported as 'ResourceShareFeature').
+
+Import trace for requested module:
+./src/app/admin/resource_shares/page.tsx
+
+./src/app/admin/roadmaps/new/page.tsx
+Attempted import error: 'RoadmapFeature' is not exported from '@/features' (imported as 'RoadmapFeature').
+
+Import trace for requested module:
+./src/app/admin/roadmaps/new/page.tsx
+
+./src/app/admin/roadmaps/page.tsx
+Attempted import error: 'RoadmapFeature' is not exported from '@/features' (imported as 'RoadmapFeature').
+
+Import trace for requested module:
+./src/app/admin/roadmaps/page.tsx
+
+./src/app/admin/rubrics/new/page.tsx
+Attempted import error: 'RubricFeature' is not exported from '@/features' (imported as 'RubricFeature').
+
+Import trace for requested module:
+./src/app/admin/rubrics/new/page.tsx
+
+./src/app/admin/rubrics/page.tsx
+Attempted import error: 'RubricFeature' is not exported from '@/features' (imported as 'RubricFeature').
+
+Import trace for requested module:
+./src/app/admin/rubrics/page.tsx
+
+./src/app/admin/schedule_exceptions/new/page.tsx
+Attempted import error: 'ScheduleExceptionFeature' is not exported from '@/features' (imported as 'ScheduleExceptionFeature').
+
+Import trace for requested module:
+./src/app/admin/schedule_exceptions/new/page.tsx
+
+./src/app/admin/schedule_exceptions/page.tsx
+Attempted import error: 'ScheduleExceptionFeature' is not exported from '@/features' (imported as 'ScheduleExceptionFeature').
+
+Import trace for requested module:
+./src/app/admin/schedule_exceptions/page.tsx
+
+./src/app/admin/schools/new/page.tsx
+Attempted import error: 'SchoolFeature' is not exported from '@/features' (imported as 'SchoolFeature').
+
+Import trace for requested module:
+./src/app/admin/schools/new/page.tsx
+
+./src/app/admin/sections/new/page.tsx
+Attempted import error: 'SectionFeature' is not exported from '@/features' (imported as 'SectionFeature').
+
+Import trace for requested module:
+./src/app/admin/sections/new/page.tsx
+
+./src/app/admin/sections/page.tsx
+Attempted import error: 'SectionFeature' is not exported from '@/features' (imported as 'SectionFeature').
+
+Import trace for requested module:
+./src/app/admin/sections/page.tsx
+
+./src/app/admin/skill_gaps/new/page.tsx
+Attempted import error: 'SkillGapFeature' is not exported from '@/features' (imported as 'SkillGapFeature').
+
+Import trace for requested module:
+./src/app/admin/skill_gaps/new/page.tsx
+
+./src/app/admin/skill_gaps/page.tsx
+Attempted import error: 'SkillGapFeature' is not exported from '@/features' (imported as 'SkillGapFeature').
+
+Import trace for requested module:
+./src/app/admin/skill_gaps/page.tsx
+
+./src/app/admin/students/new/page.tsx
+Attempted import error: 'StudentFeature' is not exported from '@/features' (imported as 'StudentFeature').
+
+Import trace for requested module:
+./src/app/admin/students/new/page.tsx
+
+./src/app/admin/students/page.tsx
+Attempted import error: 'StudentFeature' is not exported from '@/features' (imported as 'StudentFeature').
+
+Import trace for requested module:
+./src/app/admin/students/page.tsx
+
+./src/app/admin/subjects/new/page.tsx
+Attempted import error: 'SubjectFeature' is not exported from '@/features' (imported as 'SubjectFeature').
+
+Import trace for requested module:
+./src/app/admin/subjects/new/page.tsx
+
+./src/app/admin/submissions/new/page.tsx
+Attempted import error: 'SubmissionFeature' is not exported from '@/features' (imported as 'SubmissionFeature').
+
+Import trace for requested module:
+./src/app/admin/submissions/new/page.tsx
+
+./src/app/admin/submissions/page.tsx
+Attempted import error: 'SubmissionFeature' is not exported from '@/features' (imported as 'SubmissionFeature').
+
+Import trace for requested module:
+./src/app/admin/submissions/page.tsx
+
+./src/app/admin/subscriptions/new/page.tsx
+Attempted import error: 'SubscriptionFeature' is not exported from '@/features' (imported as 'SubscriptionFeature').
+
+Import trace for requested module:
+./src/app/admin/subscriptions/new/page.tsx
+
+./src/app/admin/subscriptions/page.tsx
+Attempted import error: 'SubscriptionFeature' is not exported from '@/features' (imported as 'SubscriptionFeature').
+
+Import trace for requested module:
+./src/app/admin/subscriptions/page.tsx
+
+./src/app/admin/teachers/new/page.tsx
+Attempted import error: 'TeacherFeature' is not exported from '@/features' (imported as 'TeacherFeature').
+
+Import trace for requested module:
+./src/app/admin/teachers/new/page.tsx
+
+./src/app/admin/teaching_resources/new/page.tsx
+Attempted import error: 'TeachingResourceFeature' is not exported from '@/features' (imported as 'TeachingResourceFeature').
+
+Import trace for requested module:
+./src/app/admin/teaching_resources/new/page.tsx
+
+./src/app/admin/teaching_resources/page.tsx
+Attempted import error: 'TeachingResourceFeature' is not exported from '@/features' (imported as 'TeachingResourceFeature').
+
+Import trace for requested module:
+./src/app/admin/teaching_resources/page.tsx
+
+./src/app/admin/timetable_slots/new/page.tsx
+Attempted import error: 'TimetableSlotFeature' is not exported from '@/features' (imported as 'TimetableSlotFeature').
+
+Import trace for requested module:
+./src/app/admin/timetable_slots/new/page.tsx
+
+./src/app/admin/timetable_slots/page.tsx
+Attempted import error: 'TimetableSlotFeature' is not exported from '@/features' (imported as 'TimetableSlotFeature').
+
+Import trace for requested module:
+./src/app/admin/timetable_slots/page.tsx
+
+./src/app/admin/timetables/new/page.tsx
+Attempted import error: 'TimetableFeature' is not exported from '@/features' (imported as 'TimetableFeature').
+
+Import trace for requested module:
+./src/app/admin/timetables/new/page.tsx
+
+./src/app/admin/timetables/page.tsx
+Attempted import error: 'TimetableFeature' is not exported from '@/features' (imported as 'TimetableFeature').
+
+Import trace for requested module:
+./src/app/admin/timetables/page.tsx
+
+./src/app/admin/transport_allocations/new/page.tsx
+Attempted import error: 'TransportAllocationFeature' is not exported from '@/features' (imported as 'TransportAllocationFeature').
+
+Import trace for requested module:
+./src/app/admin/transport_allocations/new/page.tsx
+
+./src/app/admin/transport_allocations/page.tsx
+Attempted import error: 'TransportAllocationFeature' is not exported from '@/features' (imported as 'TransportAllocationFeature').
+
+Import trace for requested module:
+./src/app/admin/transport_allocations/page.tsx
+
+./src/app/admin/transport_routes/new/page.tsx
+Attempted import error: 'TransportRouteFeature' is not exported from '@/features' (imported as 'TransportRouteFeature').
+
+Import trace for requested module:
+./src/app/admin/transport_routes/new/page.tsx
+
+./src/app/admin/transport_routes/page.tsx
+Attempted import error: 'TransportRouteFeature' is not exported from '@/features' (imported as 'TransportRouteFeature').
+
+Import trace for requested module:
+./src/app/admin/transport_routes/page.tsx
+
+./src/app/admin/treatment_plans/new/page.tsx
+Attempted import error: 'TreatmentPlanFeature' is not exported from '@/features' (imported as 'TreatmentPlanFeature').
+
+Import trace for requested module:
+./src/app/admin/treatment_plans/new/page.tsx
+
+./src/app/admin/treatment_plans/page.tsx
+Attempted import error: 'TreatmentPlanFeature' is not exported from '@/features' (imported as 'TreatmentPlanFeature').
+
+Import trace for requested module:
+./src/app/admin/treatment_plans/page.tsx
+
+./src/app/admin/users/new/page.tsx
+Attempted import error: 'UserFeature' is not exported from '@/features' (imported as 'UserFeature').
+
+Import trace for requested module:
+./src/app/admin/users/new/page.tsx
+
+./src/app/sync-clerk/page.tsx
+Attempted import error: 'Sync' is not exported from '__barrel_optimize__?names=CheckCircle2,Loader2,Sync!=!lucide-react' (imported as 'Sync').
+
+Import trace for requested module:
+./src/app/sync-clerk/page.tsx
+
+./src/app/sync-clerk/page.tsx
+Attempted import error: 'Sync' is not exported from '__barrel_optimize__?names=CheckCircle2,Loader2,Sync!=!lucide-react' (imported as 'Sync').
+
+Import trace for requested module:
+./src/app/sync-clerk/page.tsx
+
+   Skipping validation of types
+   Skipping linting
+   Collecting page data ...
+   Generating static pages (0/396) ...
+[BhutanEduSkill] [ERROR] getCurrentSchoolId failed Error: Dynamic server usage: Route /school-admin/announcements couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at s (d:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\25745.js:1:29061)
+    at m (d:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\86802.js:1:11038)
+    at f (d:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\76006.js:1:1269)
+    at async y (d:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\50698.js:1:8551)
+    at async e (d:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\14911.js:7:15272)
+    at async l (d:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\14911.js:1:329)
+    at async v (d:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\30073.js:1:3263)
+    at async m (d:\VS STUDIO PROJECT\bhutaneduskill\.next\server\app\school-admin\announcements\page.js:2:21701) {
+  description: "Route /school-admin/announcements couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+} 
+[BhutanEduSkill] [ERROR] getCurrentSchoolId failed Error: Dynamic server usage: Route /school-admin/analytics couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at s (d:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\25745.js:1:29061)
+    at m (d:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\86802.js:1:11038)
+    at f (d:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\76006.js:1:1269)
+    at async y (d:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\50698.js:1:8551)
+    at async e (d:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\14911.js:7:15272)
+    at async l (d:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\14911.js:1:329)
+    at async g (d:\VS STUDIO PROJECT\bhutaneduskill\.next\server\app\school-admin\analytics\page.js:1:5794) {
+  description: "Route /school-admin/analytics couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+} 
+[BhutanEduSkill] [ERROR] getCurrentSchoolId failed Error: Dynamic server usage: Route /school-admin/counselors couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at s (d:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\25745.js:1:29061)
+    at m (d:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\86802.js:1:11038)
+    at f (d:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\76006.js:1:1269)
+    at async y (d:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\50698.js:1:8551)
+    at async e (d:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\14911.js:7:15272)
+    at async l (d:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\14911.js:1:329)
+    at async s (d:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\30073.js:1:3071)
+    at async g (d:\VS STUDIO PROJECT\bhutaneduskill\.next\server\app\school-admin\counselors\page.js:1:2143) {
+  description: "Route /school-admin/counselors couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+} 
+[BhutanEduSkill] [ERROR] getCurrentSchoolId failed Error: Dynamic server usage: Route /school-admin/fees couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error
+    at s (d:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\25745.js:1:29061)
+    at m (d:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\86802.js:1:11038)
+    at f (d:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\76006.js:1:1269)
+    at async y (d:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\50698.js:1:8551)
+    at async e (d:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\14911.js:7:15272)
+    at async l (d:\VS STUDIO PROJECT\bhutaneduskill\.next\server\chunks\14911.js:1:329)
+    at async g (d:\VS STUDIO PROJECT\bhutaneduskill\.next\server\app\school-admin\fees\page.js:1:15350) {
+  description: "Route /school-admin/fees couldn't be rendered statically because it used `headers`. See more info here: https://nextjs.org/docs/messages/dynamic-server-error",
+  digest: 'DYNAMIC_SERVER_USAGE'
+} 
+Error occurred prerendering page "/sync-clerk". Read more: https://nextjs.org/docs/messages/prerender-error
+[Error: Element type is invalid: expected a string (for built-in components) or a class/function (for composite components) but got: undefined.] {
+  digest: '4054573238'
+}
+Export encountered an error on /sync-clerk/page: /sync-clerk, exiting the build.
+ ⨯ Next.js build worker exited with code: 1 and signal: null

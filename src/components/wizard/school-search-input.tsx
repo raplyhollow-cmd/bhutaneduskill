@@ -121,8 +121,9 @@ export function SchoolSearchInput({
     try {
       searchAbortRef.current = new AbortController();
 
+      // Using unified API pattern for public school search
       const response = await fetch(
-        `/api/schools/search?name=${encodeURIComponent(query)}`,
+        `/api/resources/schools/public?public=search&q=${encodeURIComponent(query)}`,
         {
           signal: searchAbortRef.current.signal,
         }
@@ -134,9 +135,8 @@ export function SchoolSearchInput({
 
       const data = await response.json();
 
-      // Handle both old format { success: true, schools: [...] }
-      // and new format { data: { schools: [...] } }
-      const schools = data.data?.schools || data.schools;
+      // Handle unified API format { data: [...] }
+      const schools = data.data || [];
 
       if (schools) {
         setResults(schools);

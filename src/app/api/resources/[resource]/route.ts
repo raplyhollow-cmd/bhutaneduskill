@@ -3,12 +3,18 @@
  *
  * Single route that handles ALL resources using the feature system.
  *
- * Routes:
- * GET    /api/resources/students         → list students
- * GET    /api/resources/students/123     → get student
- * POST   /api/resources/students         → create student
- * PUT    /api/resources/students/123     → update student
- * DELETE /api/resources/students/123     → delete student
+ * Standard CRUD Routes:
+ * GET    /api/resources/students              → list students
+ * GET    /api/resources/students/123          → get student
+ * POST   /api/resources/students              → create student
+ * PUT    /api/resources/students/123          → update student
+ * DELETE /api/resources/students/123          → delete student
+ *
+ * Extended Routes (Actions, Webhooks, Public):
+ * POST   /api/resources/students?action=set-role      → execute action
+ * POST   /api/resources/users?webhook=clerk           → webhook handler
+ * GET    /api/resources/schools?public=search         → public endpoint (no auth)
+ * POST   /api/resources/schools?public=validate-code  → public endpoint (no auth)
  *
  * Same pattern for: teachers, classes, subjects, schools, assessments, etc.
  */
@@ -52,7 +58,7 @@ function getFeatureFromResource(resource: string) {
   return undefined;
 }
 
-// GET handler - list or get single
+// GET handler - list, get single, or public endpoint
 export const GET = createApiRoute(
   async (request: NextRequest, auth, context: RouteContext) => {
     const { resource, id } = await context.params;
@@ -62,16 +68,26 @@ export const GET = createApiRoute(
       return notFoundResponse(`Resource "${resource}" not found`);
     }
 
-    // Check permissions
-    const { user } = auth;
-    const permissions = feature.config.permissions?.read || ["school-admin", "admin"];
-    if (!user || !permissions.includes(user.type as any)) {
-      return errorResponse("Unauthorized", 401);
-    }
-
     try {
       const url = new URL(request.url);
       const params = Object.fromEntries(url.searchParams);
+
+      // Check for public endpoint (no auth required)
+      const publicEndpoint = url.searchParams.get("public");
+      if (publicEndpoint && feature.public?.[publicEndpoint]) {
+        const endpointConfig = feature.public[publicEndpoint];
+        if (endpointConfig.method === "GET") {
+          return await endpointConfig.handler(params, request);
+        }
+        return errorResponse(`Public endpoint "${publicEndpoint}" does not support GET`, 405);
+      }
+
+      // Check permissions for standard endpoints
+      const { user } = auth;
+      const permissions = feature.config.permissions?.read || ["school-admin", "admin"];
+      if (!user || !permissions.includes(user.type as any)) {
+        return errorResponse("Unauthorized", 401);
+      }
 
       if (id && id.length > 0) {
         // Get single record

@@ -81,7 +81,9 @@
       "Bash(./node_modules/.bin/playwright test src/tests/e2e/teacher --reporter=list --project=chromium)",
       "Bash(./node_modules/.bin/playwright test src/tests/e2e/teacher/authentication.spec.ts --reporter=list --project=chromium)",
       "Bash(./node_modules/.bin/playwright test src/tests/e2e/teacher/simple.spec.ts --reporter=list --project=chromium)",
-      "Bash(cmd //c \"taskkill /F /PID 67352\")"
+      "Bash(cmd //c \"taskkill /F /PID 67352\")",
+      "Bash(cmd.exe /c \"tasklist | findstr chrome\")",
+      "Bash(cmd.exe /c \"tasklist | findstr edge\")"
     ]
   }
 }
