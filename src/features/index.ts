@@ -24,23 +24,18 @@ export { SectionsFeature } from "./sections.feature";
 export { SectionsFeature as SectionFeature } from "./sections.feature"; // Singular alias
 
 // Academic
-export { AttendanceFeature } from "./attendance.feature";
 export { HomeworkFeature } from "./homework.feature";
 export { LessonFeature } from "./lessons.feature";
 export { LessonFeature as TimetableFeature } from "./lessons.feature"; // Alias for timetables
 export { ExamFeature } from "./exams.feature";
-export { ResultFeature } from "./results.feature";
 export { AssessmentsFeature as AssessmentFeature } from "./assessments.feature"; // Singular alias
 
 // Skills & Career
 export { SkillFeature } from "./skills.feature";
-export { StudentSkillFeature } from "./student-skills.feature";
 export { CareerFeature } from "./career.feature";
 export { LearningPathFeature } from "./learningPath.feature";
 
 // Behavior & Support
-export { BehaviorRecordFeature } from "./behavior-records.feature";
-export { InterventionFeature } from "./interventions.feature";
 export { CounselorNoteFeature } from "./counselor-notes.feature";
 
 // Transport
@@ -196,18 +191,13 @@ export const features: Record<string, any> = {
   departments: () => require("./departments.feature").DepartmentFeature,
   batches: () => require("./batches.feature").BatchFeature,
   sections: () => require("./sections.feature").SectionsFeature,
-  attendance: () => require("./attendance.feature").AttendanceFeature,
   homework: () => require("./homework.feature").HomeworkFeature,
   lessons: () => require("./lessons.feature").LessonFeature,
   exams: () => require("./exams.feature").ExamFeature,
-  results: () => require("./results.feature").ResultFeature,
   assessments: () => require("./assessments.feature").AssessmentsFeature,
   skills: () => require("./skills.feature").SkillFeature,
-  student_skills: () => require("./student-skills.feature").StudentSkillFeature,
   careers: () => require("./career.feature").CareerFeature,
   learning_paths: () => require("./learningPath.feature").LearningPathFeature,
-  behavior_records: () => require("./behavior-records.feature").BehaviorRecordFeature,
-  interventions: () => require("./interventions.feature").InterventionFeature,
   counselor_notes: () => require("./counselor-notes.feature").CounselorNoteFeature,
   transport: () => require("./transport.feature").TransportFeature,
   transport_allocations: () => require("./transport-allocations.feature").TransportAllocationFeature,

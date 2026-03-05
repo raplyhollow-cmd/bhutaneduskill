@@ -83,7 +83,12 @@
       "Bash(./node_modules/.bin/playwright test src/tests/e2e/teacher/simple.spec.ts --reporter=list --project=chromium)",
       "Bash(cmd //c \"taskkill /F /PID 67352\")",
       "Bash(cmd.exe /c \"tasklist | findstr chrome\")",
-      "Bash(cmd.exe /c \"tasklist | findstr edge\")"
+      "Bash(cmd.exe /c \"tasklist | findstr edge\")",
+      "Bash(mv attendance.feature.ts attendance.feature.tsx.bak)",
+      "Bash(mv behavior-records.feature.ts behavior-records.feature.tsx.bak)",
+      "Bash(mv interventions.feature.ts interventions.feature.tsx.bak)",
+      "Bash(mv results.feature.ts results.feature.tsx.bak)",
+      "Bash(mv student-skills.feature.ts student-skills.feature.tsx.bak)"
     ]
   }
 }

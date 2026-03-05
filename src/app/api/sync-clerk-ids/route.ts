@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     console.log("🔄 Syncing Clerk User IDs...\n");
 
     // Import Clerk dynamically
-    const { Clerk } = await import("@clerk/backend-api");
+    const { Clerk } = await import("@clerk/backend");
     const clerkClient = new Clerk(process.env.CLERK_SECRET_KEY!);
 
     // Get all users from Clerk

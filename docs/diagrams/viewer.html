@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bhutan EduSkill - Workflow Diagrams Viewer</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #e4e4e7;
+            padding: 2rem;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .header h1 {
+            font-size: 1.8rem;
+            color: #fff;
+            margin-bottom: 0.5rem;
+        }
+        .header p {
+            color: #a1a1aa;
+            font-size: 0.9rem;
+        }
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+        .stat-card {
+            background: rgba(255,255,255,0.05);
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #10b981;
+        }
+        .stat-label {
+            color: #a1a1aa;
+            font-size: 0.8rem;
+        }
+        .diagram-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        .diagram-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #10b981;
+        }
+        .mermaid {
+            background: #fff;
+            padding: 1rem;
+        }
+        .toc {
+            max-width: 1200px;
+            margin: 0 auto 2rem;
+            background: rgba(255,255,255,0.05);
+            padding: 1.5rem;
+            border-radius: 8px;
+        }
+        .toc-title {
+            color: #fff;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+        .toc-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .toc-link {
+            color: #10b981;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            background: rgba(16,185,129,0.1);
+            border-radius: 6px;
+            font-size: 0.85rem;
+        }
+        .toc-link:hover {
+            background: rgba(16,185,129,0.2);
+        }
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+        .badge-new { background: #8b5cf6; color: #fff; }
+        .badge-core { background: #10b981; color: #fff; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Bhutan EduSkill Workflow Diagrams</h1>
+        <p>Interactive viewer for system architecture, API routes, and data flow diagrams</p>
+    </div>
+
+    <div class="stats">
+        <div class="stat-card">
+            <div class="stat-value">388+</div>
+            <div class="stat-label">Total API Routes</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">22</div>
+            <div class="stat-label">New APIs v3.0</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">7</div>
+            <div class="stat-label">Portals</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">145+</div>
+            <div class="stat-label">Database Tables</div>
+        </div>
+    </div>
+
+    <div class="toc">
+        <div class="toc-title">Quick Navigation</div>
+        <div class="toc-links">
+            <a href="#overview" class="toc-link">System Overview</a>
+            <a href="#unified" class="toc-link">Unified API</a>
+            <a href="#leave" class="toc-link">Leave Management</a>
+            <a href="#journal" class="toc-link">Student Journal</a>
+            <a href="#skills" class="toc-link">Skills & Learning</a>
+            <a href="#transport" class="toc-link">Transport</a>
+            <a href="#flows" class="toc-link">Data Flows</a>
+            <a href="#portals" class="toc-link">Portals</a>
+        </div>
+    </div>
+
+    <!-- System Overview -->
+    <div class="diagram-container" id="overview">
+        <div class="diagram-title">System Architecture</div>
+        <div class="mermaid">
+flowchart TB
+    A[Student Portal] --> U[Unified API Layer]
+    B[Teacher Portal] --> U
+    C[School Admin Portal] --> U
+    D[Platform Admin Portal] --> U
+    E[Parent Portal] --> U
+    F[Counselor Portal] --> U
+    G[Ministry Portal] --> U
+
+    U --> FEAT[Feature System]
+    FEAT --> DB[(PostgreSQL 145+ Tables)]
+
+    U --> AUTH[Clerk Authentication]
+    U --> EXT[External APIs]
+
+    style U fill:#10b981,color:#fff
+    style DB fill:#f59e0b,color:#fff
+    style AUTH fill:#3b82f6,color:#fff
+        </div>
+    </div>
+
+    <!-- Unified API -->
+    <div class="diagram-container" id="unified">
+        <div class="diagram-title">Unified Route Structure <span class="badge badge-core">Core</span></div>
+        <div class="mermaid">
+flowchart TB
+    A[Client Request] --> B{Route Type}
+
+    B -->|List/Create| C["CRUD Route"]
+    B -->|Custom Action| D["Actions Route"]
+    B -->|Public Data| E["Public Route"]
+
+    C --> G[Unified CRUD Handler]
+    D --> H[Action Router]
+    E --> I[Public Handler]
+
+    G --> K[Database Operations]
+    H --> K
+    I --> K
+
+    style C fill:#10b981,color:#fff
+    style D fill:#f59e0b,color:#fff
+    style K fill:#8b5cf6,color:#fff
+        </div>
+    </div>
+
+    <div class="diagram-container">
+        <div class="diagram-title">Feature Definition Flow <span class="badge badge-core">Core</span></div>
+        <div class="mermaid">
+flowchart LR
+    A[feature.ts file] --> B[defineFeature]
+    B --> C[schema]
+    B --> D[dbSchema]
+    B --> E[actions]
+    B --> P[permissions]
+
+    C --> F[FeatureForm]
+    C --> G[FeatureDataGrid]
+    E --> H[API Handlers]
+
+    H --> DB[(Database)]
+
+    style A fill:#3b82f6,color:#fff
+    style H fill:#10b981,color:#fff
+    style DB fill:#f59e0b,color:#fff
+        </div>
+    </div>
+
+    <!-- Leave Management -->
+    <div class="diagram-container" id="leave">
+        <div class="diagram-title">Leave Request & Approval Flow <span class="badge badge-new">NEW v3.0</span></div>
+        <div class="mermaid">
+flowchart TB
+    subgraph REQUEST
+        A[Student Teacher] --> B[Request Leave]
+        B --> C[POST api-leave]
+        C --> D[Validate Balance]
+        D -->|Sufficient| E[status pending]
+        D -->|Insufficient| F[Error]
+        E --> G[Success]
+    end
+
+    subgraph APPROVAL
+        H[Admin] --> I[GET api-leave status-pending]
+        I --> J{Action}
+        J -->|Approve| K[PATCH approve]
+        J -->|Reject| L[PATCH reject]
+        K --> M[Status approved]
+        L --> N[Status rejected]
+        M --> O[Notify User]
+        N --> O
+    end
+
+    subgraph CANCEL
+        P[Applicant] --> Q[PATCH cancel]
+        Q --> R{Status pending}
+        R -->|Yes| S[Status cancelled]
+        R -->|No| T[Error]
+    end
+
+    style E fill:#10b981,color:#fff
+    style M fill:#10b981,color:#fff
+    style N fill:#ef4444,color:#fff
+    style S fill:#fff3c7
+        </div>
+    </div>
+
+    <!-- Student Journal -->
+    <div class="diagram-container" id="journal">
+        <div class="diagram-title">Journal CRUD Flow JSONB Pattern <span class="badge badge-new">NEW v3.0</span></div>
+        <div class="mermaid">
+flowchart TD
+    A[Student] --> B[GET api-journal]
+    B --> C[Extract users.settings]
+    C --> D[Return journalEntries]
+
+    D --> E{Action}
+
+    E -->|Create| F[POST api-journal]
+    F --> G[Validate 1 per day]
+    G --> H[Append to JSONB]
+    H --> I[UPDATE users.settings]
+
+    E -->|Update| J[PUT api-journal-id]
+    J --> K[Find and Update]
+    K --> I
+
+    E -->|Delete| L[DELETE api-journal-id]
+    L --> M[Filter out]
+    M --> I
+
+    style C fill:#9c27b0,color:#fff
+    style H fill:#10b981,color:#fff
+    style I fill:#10b981,color:#fff
+        </div>
+    </div>
+
+    <!-- Skills & Learning -->
+    <div class="diagram-container" id="skills">
+        <div class="diagram-title">Student Skills & Career Matching <span class="badge badge-new">NEW v3.0</span></div>
+        <div class="mermaid">
+flowchart TD
+    A[Student] --> B{Skill Source}
+
+    B -->|Self-Report| C[POST skills-self-report]
+    B -->|AI Inferred| D[POST skills-inferred]
+
+    C --> E[(student_skills)]
+    D --> E
+
+    E --> F[GET learning-path]
+    F --> G[Analyze Skill Gaps]
+    G --> H[Match Modules]
+
+    H --> I[GET career-matches]
+    I --> J[Career Catalog]
+    J --> K[Calculate Match Score]
+    K --> L[Return Top 10]
+
+    style E fill:#e1f5fe
+    style H fill:#fff3c7
+    style L fill:#f3e5f5
+        </div>
+    </div>
+
+    <!-- Transport -->
+    <div class="diagram-container" id="transport">
+        <div class="diagram-title">Real-Time Vehicle Tracking <span class="badge badge-new">NEW v3.0</span></div>
+        <div class="mermaid">
+flowchart TD
+    A[Parent Student] --> B[GET transport-tracking-vehicleId]
+    B --> C[Get Vehicle Details]
+    C --> D[Get Driver Info]
+
+    D --> E{Data Source}
+    E -->|GPS| F[Current Location]
+    E -->|Mock| G[Demo Data]
+
+    F --> H[Calculate ETA]
+    G --> H
+
+    H --> I[Return location route passengers]
+
+    style B fill:#e1f5fe
+    style I fill:#10b981,color:#fff
+        </div>
+    </div>
+
+    <div class="diagram-container">
+        <div class="diagram-title">JSONB vs Table Storage Pattern</div>
+        <div class="mermaid">
+graph TB
+    subgraph TABLE[Table Pattern Leave]
+        T1[leave_requests table]
+        T2[Indexed columns]
+        T3[Complex queries]
+    end
+
+    subgraph JSONB[JSONB Pattern Journal]
+        J1[users.settings]
+        J2[Flexible schema]
+        J3[User scoped]
+    end
+
+    style T1 fill:#10b981,color:#fff
+    style J1 fill:#9c27b0,color:#fff
+        </div>
+    </div>
+
+    <!-- Data Flows -->
+    <div class="diagram-container" id="flows">
+        <div class="diagram-title">Complete API Request Flow</div>
+        <div class="mermaid">
+sequenceDiagram
+    participant C as Client
+    participant R as Router
+    participant A as createApiRoute
+    participant AU as requireAuth
+    participant F as Feature Handler
+    participant DB as Database
+
+    C->>R: GET api-resources-users
+    R->>A: Invoke handler
+
+    A->>AU: await requireAuth
+    AU->>DB: SELECT user
+    DB-->>AU: User data
+    AU-->>A: userId user
+
+    A->>A: Check roles
+    A->>F: Feature.handlers.list
+
+    F->>DB: SELECT with relations
+    DB-->>F: Results
+
+    F->>F: Transform
+    F-->>A: Data
+
+    A->>A: successResponse
+    A-->>C: JSON success
+        </div>
+    </div>
+
+    <!-- Portal Workflows -->
+    <div class="diagram-container" id="portals">
+        <div class="diagram-title">Portal Workflows Overview</div>
+        <div class="mermaid">
+flowchart TD
+    subgraph Student
+        S1[Dashboard]
+        S1 --> S2[Classes]
+        S1 --> S3[Homework]
+        S1 --> S4[Skills]
+        S1 --> S5[Journal]
+        S1 --> S6[Leave]
+    end
+
+    subgraph Teacher
+        T1[Dashboard]
+        T1 --> T2[Classes]
+        T1 --> T3[Students]
+        T1 --> T4[Homework]
+        T1 --> T5[Leave]
+    end
+
+    subgraph Admin
+        A1[Dashboard]
+        A1 --> A2[Users]
+        A1 --> A3[Classes]
+        A1 --> A4[Leave Approvals]
+    end
+
+    style S1 fill:#4caf50,color:#fff
+    style T1 fill:#2196f3,color:#fff
+    style A1 fill:#ff9800,color:#fff
+        </div>
+    </div>
+
+    <!-- API Distribution -->
+    <div class="diagram-container">
+        <div class="diagram-title">New API Routes Distribution v3.0 <span class="badge badge-new">22 NEW</span></div>
+        <div class="mermaid">
+pie showData
+    title New v3.0 API Routes
+    "Leave Management" : 4
+    "Student Journal" : 5
+    "Student Skills" : 4
+    "Student Modules" : 6
+    "Transport" : 1
+    "ID Card" : 1
+    "Homework" : 1
+        </div>
+    </div>
+
+    <div style="text-align: center; color: #71717a; font-size: 0.85rem; margin-top: 2rem;">
+        <p>Bhutan EduSkill v3.0.0 | March 5, 2026</p>
+        <p>Total APIs: 388+ | Tables: 145+ | Portals: 7</p>
+    </div>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            securityLevel: 'loose'
+        });
+
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) target.scrollIntoView({ behavior: 'smooth' });
+            });
+        });
+    </script>
+</body>
+</html>

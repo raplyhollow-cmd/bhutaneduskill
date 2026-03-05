@@ -1,8 +1,8 @@
 # Documentation TOR (Table of Rules)
 # Bhutan EduSkill Project
 
-**Last Updated:** March 4, 2026 - **COMPREHENSIVE EVOLUTION ROADMAP ADDED**
-**Total Files Catalogued:** 220+ MD files
+**Last Updated:** March 5, 2026 - **CAREER COUNSELING TOR ADDED**
+**Total Files Catalogued:** 221+ MD files
 **Purpose:** Single source of truth for ALL project documentation with metadata
 
 ---
@@ -35,6 +35,7 @@ docs/
 ├── architecture/   (8 files)   - System architecture
 ├── memory/         (5 files)   - Code patterns & anti-patterns
 ├── legal/          (4 files)   - Privacy, terms, consent
+├── career-counseling/ (1 file) - 🆕 AI Career Counseling TOR
 └── archive/        (35+ files) - Historical docs
 ```
 
@@ -68,6 +69,7 @@ docs/
 | **[Memory](#category-memory-patterns)** | 5 | ⭐⭐⭐ | `docs/memory/` |
 | **[Architecture](#category-architecture)** | 8 | ⭐⭐ | `docs/architecture/` |
 | **[Legal](#category-legal)** | 4 | ⭐⭐ | `docs/legal/` |
+| **[Career Counseling](#category-career-counseling-new)** | 1 | ⭐⭐⭐ | `docs/career-counseling/` **NEW** |
 | **[Archive](#category-archive)** | 35+ | ⚪ | `docs/archive/` |
 
 ---
@@ -586,6 +588,37 @@ docs/
 | legal/privacy-policy-template.md | 8KB | Privacy policy template |
 | legal/terms-of-service-template.md | 6KB | Terms of service template |
 | legal/parental-consent-template.md | 3KB | Parental consent template |
+
+---
+
+## Category: Career Counseling (NEW)
+
+**Priority:** ⭐⭐⭐ CRITICAL - Primary feature of the platform
+**Location:** `docs/career-counseling/`
+**Last Updated:** March 5, 2026
+
+| File | Size | Purpose |
+|------|------|---------|
+| **CAREER_COUNSELING_TOR.md** | 35KB | **Complete Terms of Reference for AI Career Counseling** |
+
+**What It Covers:**
+- Project vision and objectives
+- Current state analysis (assessments, matching engine, AI coach, RUB integration)
+- System architecture and data flow
+- 7-phase implementation roadmap
+- Complete data models (CareerMatchProfile, CareerMatchResult, CareerRoadmap)
+- User workflows (Student journey, Counselor workflow, Parent involvement)
+- Technical specifications (matching algorithm, AI prompts, RUB integration)
+- Success metrics and KPIs
+
+**Key Features Documented:**
+1. **Assessment System** - RIASEC, MBTI, DISC, Work Values
+2. **Career Matching Engine** - Multi-factor algorithm with 40/25/20/15 scoring
+3. **AI Career Coach** - Proactive guidance with Google Gemini
+4. **RUB Integration** - Complete college and program matching
+5. **Visual Roadmap** - Class 6-12 to career timeline
+6. **Counselor Workflow** - Review, approval, planning sessions
+7. **Portfolio System** - Skills and achievement showcase
 
 ---
 

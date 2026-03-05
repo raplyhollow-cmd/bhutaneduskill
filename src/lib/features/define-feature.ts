@@ -19,9 +19,6 @@ import { successResponse, errorResponse, notFoundResponse, badRequestResponse, c
 import { logger } from "@/lib/logger";
 import { nanoid } from "nanoid";
 
-// Re-export createApiRoute for convenience - it's defined in route-handler.ts
-// This allows imports from @/lib/features/define-feature to access createApiRoute
-export { createApiRoute, type UserType, type AuthContext, type AuthenticatedRequest } from "@/lib/api/route-handler";
 
 // React hooks types (for type definitions only)
 // Note: These are type-only imports - actual hook implementations are client-side
