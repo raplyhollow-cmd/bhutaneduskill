@@ -7,7 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added - March 4, 2026
+### Added - March 5, 2026
+
+#### New API Routes (22 endpoints)
+- **Leave Management (4 endpoints)**
+  - `GET/POST /api/leave` - List and create leave requests
+  - `PATCH /api/leave/[id]` - Approve, reject, or cancel requests
+  - `DELETE /api/leave/[id]` - Delete pending/rejected requests
+  - Feature: `leave.feature.ts` with actions: approve, reject, cancel, getBalance
+
+- **Student Journal (5 endpoints)**
+  - `GET/POST /api/journal` - List and create journal entries
+  - `GET/PUT/DELETE /api/journal/[id]` - Single entry CRUD
+  - Storage: JSONB in `users.settings.journalEntries[]`
+  - Feature: `journal.feature.ts` with daily limit enforcement
+
+- **Student Skills (4 endpoints)**
+  - `POST /api/student/skills/self-report` - Add self-reported skills
+  - `POST /api/student/skills/inferred` - Add AI-inferred skills
+  - `GET /api/student/learning-path` - Get personalized learning path
+  - `GET /api/student/career-matches` - Get career recommendations
+
+- **Student Modules (6 endpoints)**
+  - `GET /api/student/modules` - List available modules
+  - `GET /api/student/modules/[id]` - Get module details
+  - `POST /api/student/modules/[id]/progress` - Update progress
+  - `POST /api/student/modules/[id]/complete` - Mark complete
+  - `GET /api/student/modules/[id]/certificate` - Generate certificate
+  - `GET /api/student/modules/recommendations` - Get recommendations
+
+- **Transport (1 endpoint)**
+  - `GET /api/transport/tracking/[vehicleId]` - Real-time GPS tracking
+
+- **ID Card (1 endpoint)**
+  - `POST /api/id-card/generate` - Generate student ID card
+
+- **Homework (1 endpoint)**
+  - `GET /api/student/homework/[id]/feedback` - Get homework feedback
+
+#### Workflow Documentation
+- **[workflow-system-architecture.md](diagrams/workflow-system-architecture.md)** - Complete system architecture
+- **[unified-architecture.mmd](diagrams/unified-architecture.mmd)** - Updated v3.0 with new features
+- **[api-routes-map.mmd](diagrams/api-routes-map.mmd)** - Updated to 388+ routes
+- **[data-flows.mmd](diagrams/data-flows.mmd)** - Added v3.0 data flows
+
+### Changed - March 5, 2026
+- API Statistics: Total APIs 388+ (was 369), Student routes 62 (was 40)
+
+---
+
+## [3.0.0-beta] - March 4, 2026
 
 #### Unified API System (Complete Migration)
 - **11 New Feature Files** - Complete feature definitions with schema, permissions, and actions:

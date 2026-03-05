@@ -9,7 +9,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { FeatureView } from "@/components/unified";
-import { LessonFeature } from "@/features";
+import { LessonFeature } from "@/features/lessons.feature";
 import { ArrowLeft, Pencil, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";

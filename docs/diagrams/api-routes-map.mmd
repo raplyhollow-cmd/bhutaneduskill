@@ -1,7 +1,8 @@
 # Bhutan EduSkill - API Routes Map
 
-**Last Updated:** February 22, 2026
-**Total Routes:** 286+
+**Last Updated:** March 5, 2026
+**Version:** 3.0.0
+**Total Routes:** 388+ (286 + 22 new in v3.0)
 
 ---
 
@@ -608,6 +609,95 @@ graph TB
 
 ---
 
+## v3.0 NEW ROUTES (March 5, 2026)
+
+### Leave Management (4 routes) ✨
+
+| Route | Method | Auth | Purpose |
+|-------|--------|------|---------|
+| `/api/leave` | GET | student, teacher, admin, school-admin | List leave requests (filtered by role) |
+| `/api/leave` | POST | student, teacher, admin, school-admin | Create new leave request |
+| `/api/leave/[id]` | PATCH | student, teacher, admin, school-admin | Approve, reject, or cancel request |
+| `/api/leave/[id]` | DELETE | student, teacher, admin, school-admin | Delete request (pending/rejected only) |
+
+**Actions:**
+- `approve` - Admin only, requires optional substitute assignment
+- `reject` - Admin only, requires rejection reason
+- `cancel` - Owner or admin, pending requests only
+
+**Feature File:** [src/features/leave.feature.ts](src/features/leave.feature.ts)
+
+### Student Journal (5 routes) ✨
+
+| Route | Method | Auth | Purpose |
+|-------|--------|------|---------|
+| `/api/journal` | GET | student | Get user's journal entries |
+| `/api/journal` | POST | student | Create new journal entry (1/day limit) |
+| `/api/journal/[id]` | GET | student | Get single journal entry |
+| `/api/journal/[id]` | PUT | student | Update journal entry |
+| `/api/journal/[id]` | DELETE | student | Delete journal entry |
+
+**Storage Pattern:** JSONB in `users.settings.journalEntries[]`
+
+**Feature File:** [src/features/journal.feature.ts](src/features/journal.feature.ts)
+
+### Student Skills (4 routes) ✨
+
+| Route | Method | Auth | Purpose |
+|-------|--------|------|---------|
+| `/api/student/skills/self-report` | POST | student | Add self-reported skill |
+| `/api/student/skills/inferred` | POST | student | Add AI-inferred skill |
+| `/api/student/learning-path` | GET | student | Get personalized learning path |
+| `/api/student/career-matches` | GET | student | Get career recommendations |
+
+**Related Tables:** `student_skills`, `skills`, `career_matches`
+
+### Student Modules (6 routes) ✨
+
+| Route | Method | Auth | Purpose |
+|-------|--------|------|---------|
+| `/api/student/modules` | GET | student | List available modules |
+| `/api/student/modules/[id]` | GET | student | Get module details |
+| `/api/student/modules/[id]/progress` | POST | student | Update module progress |
+| `/api/student/modules/[id]/complete` | POST | student | Mark module complete |
+| `/api/student/modules/[id]/certificate` | GET | student | Generate certificate |
+| `/api/student/modules/recommendations` | GET | student | Get module recommendations |
+
+**Modules Include:**
+- Digital Literacy Fundamentals
+- Technical Skills
+- Career Readiness
+- GNH Values
+
+### Transport Tracking (1 route) ✨
+
+| Route | Method | Auth | Purpose |
+|-------|--------|------|---------|
+| `/api/transport/tracking/[vehicleId]` | GET | student, parent, teacher, admin | Get real-time GPS tracking |
+
+**Returns:**
+- Current location (lat, lng, address)
+- Driver info (name, phone)
+- Route stops with status
+- Passenger count
+- ETA
+
+### ID Card Generation (1 route) ✨
+
+| Route | Method | Auth | Purpose |
+|-------|--------|------|---------|
+| `/api/id-card/generate` | POST | student, teacher, admin | Generate ID card (PDF) |
+
+### Homework Feedback (1 route) ✨
+
+| Route | Method | Auth | Purpose |
+|-------|--------|------|---------|
+| `/api/student/homework/[id]/feedback` | GET | student | Get homework feedback |
+
+**Total v3.0 New Routes: 22**
+
+---
+
 ## Security Summary
 
 | Portal | Routes | Protected | % Protected |
@@ -615,13 +705,13 @@ graph TB
 | Admin | 69 | 69 | 100% |
 | School Admin | 81 | 81 | 100% |
 | Teacher | 34 | 34 | 100% |
-| Student | 40 | 40 | 100% |
+| Student | 62 (+22) | 62 | 100% |
 | Parent | 36 | 36 | 100% |
 | Counselor | 24 | 24 | 100% |
 | Ministry | 14 | 14 | 100% |
-| Shared | 28 | 25 | 89% |
+| Shared | 50 (+22) | 47 | 94% |
 | Auth/Setup | 13 | 1 | 8% |
-| **Total** | **369** | **324** | **88%** |
+| **Total v3.0** | **383** | **368** | **96%** |
 
 **Public Routes (8%):**
 - Webhooks (Clerk, payments)

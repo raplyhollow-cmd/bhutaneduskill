@@ -1,6 +1,7 @@
 # Bhutan EduSkill - Data Flow Diagrams
 
-**Last Updated:** February 22, 2026
+**Last Updated:** March 5, 2026
+**Version:** 3.0.0 (+22 New APIs)
 
 ---
 
@@ -493,3 +494,439 @@ flowchart TD
     style K fill:#f8d7da
     style L fill:#d4edda
 ```
+
+---
+
+# v3.0 NEW DATA FLOWS (March 5, 2026)
+
+## 8. Leave Request & Approval Flow
+
+```mermaid
+flowchart TD
+    subgraph "REQUEST FLOW"
+        A[Student/Teacher] --> B[Click Request Leave]
+        B --> C[FeatureForm: LeaveFeature]
+        C --> D[Fill: type, dates, reason]
+        D --> E[POST /api/leave]
+
+        E --> F[Validate leave balance]
+        F --> G{Balance sufficient?}
+        G -->|No| H[Return error: Insufficient leave]
+        G -->|Yes| I[CREATE leave_requests<br/>status: pending]
+
+        I --> J[Return success]
+        J --> K[Show pending status]
+    end
+
+    subgraph "APPROVAL FLOW"
+        L[School Admin] --> M[GET /api/leave?status=pending]
+        M --> N[Display pending requests]
+
+        N --> O{Admin Action}
+        O -->|Approve| P[PATCH /api/leave/[id]<br/>action: approve]
+        O -->|Reject| Q[PATCH /api/leave/[id]<br/>action: reject]
+
+        P --> R[Update status: approved<br/>Set approvedBy, approvedAt<br/>Set substitute if provided]
+        Q --> S[Update status: rejected<br/>Set rejectionReason]
+
+        R --> T[Notify applicant]
+        S --> T
+        T --> U[Update dashboard]
+    end
+
+    subgraph "CANCEL FLOW"
+        V[Applicant] --> W[PATCH /api/leave/[id]<br/>action: cancel]
+        W --> X{Status = pending?}
+        X -->|No| Y[Return error: Cannot cancel]
+        X -->|Yes| Z[Update status: cancelled]
+        Z --> AA[Return success]
+    end
+
+    style C fill:#e1f5ff
+    style I fill:#d4edda
+    style R fill:#d4edda
+    style S fill:#f8d7da
+    style Y fill:#f8d7da
+    style Z fill:#fff3cd
+```
+
+**API Endpoints:**
+- `GET /api/leave` - List requests (filtered by role)
+- `POST /api/leave` - Create request
+- `PATCH /api/leave/[id]` - Approve/Reject/Cancel
+- `DELETE /api/leave/[id]` - Delete (pending/rejected only)
+
+**Database Tables:**
+1. `leave_requests` - Request records
+2. `users` - Applicant and approver linkage
+
+**Leave Types:**
+- sick, vacation, emergency, family, casual, official, other
+
+---
+
+## 9. Student Journal Flow (JSONB Pattern)
+
+```mermaid
+flowchart TD
+    A[Student] --> B[Open Journal Page]
+    B --> C[GET /api/journal]
+
+    C --> D[Extract from users.settings]
+    D --> E["Parse: settings.journalEntries[]"]
+    E --> F[Return entries array]
+
+    F --> G{Student Action}
+
+    G -->|New Entry| H[Click New Entry]
+    H --> I[Check: Entry for today exists?]
+    I -->|Yes| J[Disable button: One per day]
+    I -->|No| K[Show form]
+
+    K --> L[POST /api/journal]
+    L --> M["Validate: { date, title, content, mood, tags }"]
+    M --> N[Parse existing journalEntries]
+    N --> O["Push: { id, date, title, content, mood, tags, createdAt }"]
+    O --> P["UPDATE users.settings = { ...settings, journalEntries }"]
+    P --> Q[Return new entry]
+
+    G -->|Edit| R[Click entry]
+    R --> S[PUT /api/journal/[id]]
+    S --> T["Find entry: journalEntries.find(e => e.id === id)"]
+    T --> U["Update: { title, content, mood, tags, updatedAt }"]
+    U --> V[UPDATE users.settings]
+    V --> W[Return updated entry]
+
+    G -->|Delete| X[Click delete]
+    X --> Y[DELETE /api/journal/[id]]
+    Y --> Z["Filter: journalEntries.filter(e => e.id !== id)"]
+    Z --> AA[UPDATE users.settings]
+    AA --> AB[Return success]
+
+    style D fill:#9c27b0
+    style E fill:#f3e5f5
+    style P fill:#d4edda
+    style J fill:#fff3cd
+    style Q fill:#c3e6cb
+```
+
+**API Endpoints:**
+- `GET /api/journal` - Get all entries
+- `POST /api/journal` - Create entry (1/day limit)
+- `GET /api/journal/[id]` - Get single entry
+- `PUT /api/journal/[id]` - Update entry
+- `DELETE /api/journal/[id]` - Delete entry
+
+**Storage Pattern:**
+```typescript
+// users.settings (JSONB)
+{
+  journalEntries: [
+    {
+      id: "uuid",
+      date: "2026-03-05",
+      title: "My Day",
+      content: "Today was...",
+      mood: "happy",
+      tags: ["school", "friends"],
+      createdAt: "2026-03-05T10:00:00Z",
+      updatedAt: "2026-03-05T10:00:00Z"
+    }
+  ]
+}
+```
+
+---
+
+## 10. Student Skills & Learning Path Flow
+
+```mermaid
+flowchart TD
+    subgraph "SKILL COLLECTION"
+        A[Student] --> B{Skill Source}
+        B -->|Self-Report| C[POST /api/student/skills/self-report]
+        B -->|AI Inferred| D[POST /api/student/skills/inferred]
+
+        C --> E["CREATE student_skills<br/>{ studentId, skillId, level: 'beginner', source: 'self' }"]
+        D --> F["CREATE student_skills<br/>{ studentId, skillId, level: 'intermediate', source: 'ai' }"]
+
+        E --> G[Return skill record]
+        F --> G
+    end
+
+    subgraph "LEARNING PATH GENERATION"
+        G --> H[GET /api/student/learning-path]
+        H --> I[Query student_skills]
+        I --> J[Analyze skill gaps]
+
+        J --> K[Cross-reference modules]
+        K --> L["Match: skills → modules.learningObjectives"]
+
+        L --> M[Generate path]
+        M --> N["Sort by: dependency order<br/>Filter: not completed"]
+
+        N --> O[Return recommended modules]
+    end
+
+    subgraph "CAREER MATCHING"
+        O --> P[GET /api/student/career-matches]
+        P --> Q[Get student_skills]
+        Q --> R[Get academic performance]
+
+        R --> S[Query careers catalog]
+        S --> T["Match: career.requiredSkills ∩ student.skills"]
+
+        T --> U[Calculate match score]
+        U --> V[Sort by match score]
+        V --> W[Return top 10 careers]
+    end
+
+    subgraph "MODULE PROGRESS"
+        W --> X[Student starts module]
+        X --> Y[POST /api/student/modules/[id]/progress]
+        Y --> Z["CREATE/UPDATE module_progress<br/>{ studentId, moduleId, progress: 25 }"]
+
+        Z --> AA{Progress = 100%?}
+        AA -->|Yes| AB[POST /api/student/modules/[id]/complete]
+        AA -->|No| AC[Continue module]
+
+        AB --> AD["UPDATE module_progress.status: 'completed'<br/>SET completedAt"]
+        AD --> AE[GET /api/student/modules/[id]/certificate]
+        AE --> AF[Generate certificate PDF]
+    end
+
+    style E fill:#d4edda
+    style M fill:#fff3c7
+    style U fill:#e1f5ff
+    style AD fill:#c3e6cb
+    style AF fill:#a7f3d0
+```
+
+**API Endpoints:**
+- `POST /api/student/skills/self-report` - Add self-reported skill
+- `POST /api/student/skills/inferred` - Add AI-inferred skill
+- `GET /api/student/learning-path` - Get learning path
+- `GET /api/student/career-matches` - Get career matches
+- `POST /api/student/modules/[id]/progress` - Update progress
+- `POST /api/student/modules/[id]/complete` - Mark complete
+- `GET /api/student/modules/[id]/certificate` - Get certificate
+- `GET /api/student/modules/recommendations` - Get recommendations
+
+**Database Tables:**
+1. `student_skills` - Skill records
+2. `skills` - Skill catalog
+3. `modules` - Learning modules
+4. `module_progress` - Progress tracking
+5. `careers` - Career catalog
+6. `career_matches` - Match results
+
+---
+
+## 11. Transport Real-Time Tracking Flow
+
+```mermaid
+flowchart TD
+    A[Parent/Student] --> B[GET /api/transport/tracking/[vehicleId]]
+    B --> C[Query transport_allocations]
+
+    C --> D[Get vehicle details]
+    D --> E[Get driver info]
+    E --> F[Get route configuration]
+
+    F --> G{Real-time data source}
+    G -->|GPS System| H[Fetch current location]
+    G -->|Mock| I[Return demo data]
+
+    H --> J["Calculate: lat, lng, address"]
+    I --> J
+
+    J --> K[Get route stops]
+    K --> L["Determine: current stop status<br/>{ completed, current, pending }"]
+
+    L --> M[Get passenger manifest]
+    M --> N["Count: capacity, onBoard, pickedUp, droppedOff"]
+
+    N --> O[Calculate ETA]
+    O --> P["Estimate: next stop arrival time"]
+
+    P --> Q["Return: {<br/>  vehicleId, driver, location,<br/>  status, route, passengers, eta<br/>}"]
+
+    Q --> R[Display on map]
+
+    style B fill:#e1f5ff
+    style J fill:#fff3c7
+    style L fill:#d4edda
+    style O fill:#f3e5f5
+    style R fill:#c3e6cb
+```
+
+**API Endpoint:**
+- `GET /api/transport/tracking/[vehicleId]` - Get tracking data
+
+**Response Structure:**
+```typescript
+{
+  vehicleId: string,
+  vehicleNumber: string,
+  driverName: string,
+  driverPhone: string,
+  currentLocation: {
+    latitude: number,
+    longitude: number,
+    address: string
+  },
+  status: "en_route" | "at_stop" | "at_school" | "completed",
+  estimatedArrival: ISOString,
+  route: {
+    id: string,
+    name: string,
+    stops: Array<{
+      id: string,
+      name: string,
+      time: string,
+      status: "completed" | "current" | "pending"
+    }>
+  },
+  passengers: {
+    capacity: number,
+    onBoard: number,
+    pickedUp: number,
+    droppedOff: number
+  }
+}
+```
+
+---
+
+## 12. Feature Definition to API Flow
+
+```mermaid
+flowchart LR
+    subgraph "DEVELOPER"
+        D[Write Feature] --> F[".feature.ts file"]
+    end
+
+    subgraph "FEATURE SYSTEM"
+        F --> DF[defineFeature]
+        DF --> S["schema: SchemaDefinition"]
+        DF --> DS["dbSchema: Drizzle Table"]
+        DF --> A["actions: Action Handlers"]
+        DF --> P["permissions: Role Access"]
+    end
+
+    subgraph "GENERATED API"
+        S --> G["GET /api/resources/[name]<br/>.list()"]
+        S --> PO["POST /api/resources/[name]<br/>.create()"]
+        S --> PU["PUT /api/resources/[name]/[id]<br/>.update()"]
+        S --> DEL["DELETE /api/resources/[name]/[id]<br/>.delete()"]
+
+        A --> ACT["POST /api/resources/[name]/actions<br/>.actionName()"]
+    end
+
+    subgraph "FRONTEND COMPONENTS"
+        S --> FG["FeatureForm<br/>(auto-generated fields)"]
+        S --> DG["FeatureDataGrid<br/>(auto-generated columns)"]
+        P --> AUTH["Permission Gates"]
+    end
+
+    G --> DB[(PostgreSQL)]
+    PO --> DB
+    PU --> DB
+    DEL --> DB
+    ACT --> DB
+
+    style F fill:#3b82f6,color:#fff
+    style S fill:#10b981,color:#fff
+    style DB fill:#f59e0b
+```
+
+---
+
+## 13. Unified API Request Flow (v3.0)
+
+```mermaid
+sequenceDiagram
+    participant C as Client
+    participant R as Router
+    participant CR as createApiRoute
+    participant AU as requireAuth
+    participant F as Feature Handler
+    participant DB as Database
+
+    C->>R: GET /api/resources/users
+    R->>CR: Invoke handler
+
+    CR->>AU: await requireAuth(request)
+    AU->>DB: SELECT user BY clerkUserId
+    DB-->>AU: User data
+    AU-->>CR: { userId, user }
+
+    CR->>CR: Check allowedRoles
+    CR->>F: Feature.handlers.list(params)
+
+    F->>DB: SELECT with relations
+    DB-->>F: Results
+
+    F->>F: Transform & format
+    F-->>CR: Processed data
+
+    CR->>CR: successResponse(data)
+    CR-->>C: JSON { success: true, data }
+```
+
+---
+
+## 14. JSONB vs Table Storage Pattern
+
+```mermaid
+graph TB
+    subgraph "TABLE STORAGE PATTERN<br/>(Leave Requests)"
+        direction TB
+        T1["Separate table: leave_requests"]
+        T2["Columns: id, type, status, dates..."]
+        T3["Indexed: applicantId, status, dates"]
+        T4["Query: db.select().from(leave_requests)"]
+
+        T1 --> T2 --> T3 --> T4
+    end
+
+    subgraph "JSONB STORAGE PATTERN<br/>(Journal Entries)"
+        direction TB
+        J1["User table: users"]
+        J2["Column: settings (JSONB)"]
+        J3["Structure: settings.journalEntries[]"]
+        J4["Query: Extract from JSONB in code"]
+
+        J1 --> J2 --> J3 --> J4
+    end
+
+    subgraph "WHEN TO USE"
+        W1["Table Pattern:<br/>- Complex queries<br/>- Foreign keys<br/>- Indexing needed<br/>- Multi-user access"]
+        W2["JSONB Pattern:<br/>- User-scoped data<br/>- Simple CRUD<br/>- Flexible schema<br/>- One-to-user relation"]
+    end
+
+    style T1 fill:#10b981,color:#fff
+    style J1 fill:#9c27b0,color:#fff
+```
+
+---
+
+## v3.0 Summary
+
+**New Features Added:**
+1. Leave Management System (4 APIs)
+2. Student Journal (5 APIs)
+3. Student Skills Tracking (4 APIs)
+4. Learning Modules System (6 APIs)
+5. Transport Tracking (1 API)
+6. ID Card Generation (1 API)
+7. Homework Feedback (1 API)
+
+**Total New APIs: 22**
+**Total APIs: 388+**
+
+**New Patterns Documented:**
+- JSONB storage pattern (Journal)
+- Action-based state transitions (Leave)
+- Learning path generation
+- Real-time tracking mock pattern

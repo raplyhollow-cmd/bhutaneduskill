@@ -1,5 +1,6 @@
 # UNIFIED ARCHITECTURE DIAGRAM
 # Bhutan EduSkill - Component + Schema + Route = 1
+# Version 3.0 - March 5, 2026
 
 ```mermaid
 graph TB
@@ -9,6 +10,14 @@ graph TB
         F --> P["Permissions"]
         F --> U["UI Config"]
         F --> H["Custom Handlers"]
+
+        L[leave.feature.ts]
+        L --> LS["Schema: type, status, dates"]
+        L --> LA["Actions: approve, reject, cancel"]
+
+        J[journal.feature.ts]
+        J --> JS["Schema: title, content, mood"]
+        J --> JL["JSONB Storage Pattern"]
     end
 
     subgraph "GENERATED OUTPUTS"
@@ -16,6 +25,9 @@ graph TB
         S --> TS["TypeScript Types"]
 
         F --> API["API Handlers"]
+        L --> API
+        J --> API
+
         F --> CMP["Components"]
         F --> HOOKS["React Hooks"]
     end
@@ -26,6 +38,35 @@ graph TB
         UA --> POST["POST /api/resources/students"]
         UA --> PUT["PUT /api/resources/students/:id"]
         UA --> DEL["DELETE /api/resources/students/:id"]
+
+        LA --> LEAVE["/api/leave - Specialized Route"]
+        LEAVE --> LG["GET: List requests"]
+        LEAVE --> LP["POST: Create request"]
+        LEAVE --> LPA["PATCH: Approve/Reject/Cancel"]
+
+        JL --> JOURNAL["/api/journal - JSONB Route"]
+        JOURNAL --> JG["GET: User entries"]
+        JOURNAL --> JP["POST: Create entry"]
+        JOURNAL --> JPU["PUT: Update entry"]
+    end
+
+    subgraph "NEW API ROUTES (v3.0)"
+        direction LR
+        NA["/api/leave - 4 endpoints"]
+        NB["/api/journal - 5 endpoints"]
+        NC["/api/student/skills/* - 4 endpoints"]
+        ND["/api/student/modules/* - 6 endpoints"]
+        NE["/api/transport/tracking/* - 1 endpoint"]
+        NF["/api/id-card/* - 1 endpoint"]
+        NG["/api/student/homework/* - 1 endpoint"]
+
+        NA --> TOTAL["Total: 19 New APIs"]
+        NB --> TOTAL
+        NC --> TOTAL
+        ND --> TOTAL
+        NE --> TOTAL
+        NF --> TOTAL
+        NG --> TOTAL
     end
 
     subgraph "UNIFIED COMPONENTS"
@@ -33,36 +74,38 @@ graph TB
         CMP --> FM["FeatureForm"]
         CMP --> LP["FeatureListPage"]
         CMP --> US["UnifiedSearch"]
-    end
-
-    subgraph "GEMINI LAYER (AI Integration)"
-        GL["gemini-layer.ts"]
-        GL --> SA["System Awareness"]
-        GL --> AQ["Autonomous Querying"]
-        GL --> SH["Self-Healing"]
+        CMP --> UM["UniversalModal"]
     end
 
     subgraph "DATABASE"
-        DB[(PostgreSQL)]
+        DB[(PostgreSQL - 145+ Tables)]
         GET --> DB
         POST --> DB
         PUT --> DB
         DEL --> DB
+        LEAVE --> DB
+        JOURNAL --> USR["users.settings JSONB"]
+        USR --> DB
     end
 
-    subgraph "FRONTEND"
-        DG --> FE["React Pages"]
-        FM --> FE
-        LP --> FE
-    end
+    subgraph "FRONTEND PORTALS"
+        direction LR
+        ST["Student Portal"]
+        TC["Teacher Portal"]
+        AD["Admin Portal"]
+        SA["School Admin Portal"]
 
-    GL --> UA
-    GL --> DS
+        DG --> ST & TC & AD & SA
+        FM --> ST & TC & AD & SA
+        LP --> ST & TC & AD & SA
+    end
 
     style F fill:#3b82f6
     style UA fill:#10b981
-    style GL fill:#8b5cf6
-    style DB fill:#f59e0b
+    style LEAVE fill:#f59e0b
+    style JOURNAL fill:#9c27b0
+    style DB fill:#f97316
+    style TOTAL fill:#ef4444,color:#fff
 ```
 
 ```mermaid
@@ -91,7 +134,6 @@ sequenceDiagram
     participant D as defineFeature()
     participant A as API Route
     participant C as Components
-    participant G as GEMINI Layer
 
     Dev->>F: Write students.feature.ts
     F->>D: defineFeature({ schema, permissions, ui })
@@ -101,17 +143,12 @@ sequenceDiagram
     D->>C: Generate FeatureDataGrid
     D->>C: Generate FeatureForm
 
-    Note over A,G: Runtime Execution
+    Note over A: Runtime Execution
 
     Client->>A: GET /api/resources/students
     A->>A: Check Permissions
     A->>A: Execute Query
     A-->>Client: JSON Response
-
-    G->>F: Read Feature Config
-    G->>A: Autonomous Query
-    A-->>G: Data
-    G->>G: AI Analysis
 ```
 
 ```mermaid
@@ -125,6 +162,8 @@ graph TD
             F3[classes.feature.ts]
             F4[subjects.feature.ts]
             F5[assessments.feature.ts]
+            F6[leave.feature.ts ✨ NEW]
+            F7[journal.feature.ts ✨ NEW]
             FN[... 45+ more]
         end
 
@@ -137,6 +176,10 @@ graph TD
             UAR --> U5["delete(id)"]
         end
 
+        subgraph "Specialized Routes (v3.0)"
+            SR["/api/leave, /api/journal,<br/>/api/student/*"]
+        end
+
         subgraph "Unified Components"
             UC1["FeatureDataGrid"]
             UC2["FeatureForm"]
@@ -144,21 +187,14 @@ graph TD
             UC4["UnifiedSearch"]
             UC5["UniversalModal"]
         end
-
-        subgraph "GEMINI Layer"
-            GL["gemini-layer.ts"]
-            GL --> GL1["extractFeatureMetadata()"]
-            GL --> GL2["autonomousQuery()"]
-            GL --> GL3["selfHealingSuggestions()"]
-        end
     end
 
-    F1 & F2 & F3 & F4 & F5 & FN --> UAR
-    F1 & F2 & F3 & F4 & F5 & FN --> UC1 & UC2 & UC3
-    F1 & F2 & F3 & F4 & F5 & FN --> GL
+    F1 & F2 & F3 & F4 & F5 & F6 & F7 & FN --> UAR
+    F6 & F7 --> SR
+    F1 & F2 & F3 & F4 & F5 & F6 & F7 & FN --> UC1 & UC2 & UC3
 
     style UAR fill:#10b981,color:#fff
-    style GL fill:#8b5cf6,color:#fff
+    style SR fill:#f59e0b,color:#fff
 ```
 
 ```mermaid
@@ -172,4 +208,92 @@ graph LR
         F --> G[Return created student]
         G --> H[Update UI]
     end
+```
+
+```mermaid
+sequenceDiagram
+    participant S as Student
+    participant UI as Leave Form
+    participant API as /api/leave
+    participant DB as Database
+    participant A as Admin
+    participant N as Notification
+
+    S->>UI: Request Leave
+    UI->>API: POST /api/leave
+    API->>DB: INSERT (status: pending)
+    DB-->>API: Created
+    API-->>S: Request submitted
+
+    A->>API: GET /api/leave?status=pending
+    API-->>A: Show pending requests
+
+    A->>API: PATCH /api/leave/[id] {action: approve}
+    API->>DB: UPDATE status=approved
+    DB-->>API: Success
+    API->>N: Send notification
+    N-->>S: Leave approved!
+```
+
+```mermaid
+sequenceDiagram
+    participant S as Student
+    participant UI as Journal Page
+    participant API as /api/journal
+    participant DB as users.settings (JSONB)
+
+    S->>UI: Open Journal
+    UI->>API: GET /api/journal
+    API->>DB: Extract journalEntries
+    DB-->>API: Return entries
+    API-->>UI: Display entries
+
+    S->>UI: New Entry
+    UI->>UI: Check daily limit
+    S->>API: POST /api/journal
+    API->>API: Validate (one per day)
+    API->>DB: Append to journalEntries
+    DB-->>API: Success
+    API-->>S: Entry created
+```
+
+```mermaid
+graph TD
+    subgraph "Student Skills Workflow"
+        A[Student] --> B[Self-Assessment]
+        A --> C[AI Inferred Skills]
+
+        B --> D[POST /api/student/skills/self-report]
+        C --> E[POST /api/student/skills/inferred]
+
+        D --> F[(student_skills)]
+        E --> F
+
+        F --> G[Learning Path Engine]
+        G --> H[GET /api/student/learning-path]
+        H --> I[Recommended Modules]
+
+        I --> J[Career Matching]
+        J --> K[GET /api/student/career-matches]
+        K --> L[Career Recommendations]
+    end
+
+    style F fill:#e1f5fe
+    style G fill:#fff3e0
+    style J fill:#f3e5f5
+```
+
+```mermaid
+graph LR
+    subgraph "Portal-Specific Feature Access"
+        P1["Student Portal"] --> F1["Journal ✨<br/>Leave ✨<br/>Skills ✨<br/>Modules ✨<br/>Career Matches ✨"]
+        P2["Teacher Portal"] --> F2["Leave ✨<br/>Classes<br/>Students<br/>Assessments"]
+        P3["School Admin"] --> F3["Leave Approvals ✨<br/>Users<br/>Settings<br/>Reports"]
+        P4["Platform Admin"] --> F4["Schools<br/>Subscriptions<br/>Global Settings"]
+    end
+
+    style F1 fill:#4caf50,color:#fff
+    style F2 fill:#2196f3,color:#fff
+    style F3 fill:#ff9800,color:#fff
+    style F4 fill:#9c27b0,color:#fff
 ```

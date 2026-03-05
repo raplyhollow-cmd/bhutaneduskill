@@ -8,7 +8,7 @@
 "use client";
 
 import { FeatureForm } from "@/components/unified";
-import { LessonFeature } from "@/features";
+import { LessonFeature } from "@/features/lessons.feature";
 import { useRouter, useParams } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
 import { ArrowLeft } from "lucide-react";

@@ -8,7 +8,7 @@
 "use client";
 
 import { FeatureListPage } from "@/components/unified";
-import { LessonFeature } from "@/features";
+import { LessonFeature } from "@/features/lessons.feature";
 import { useToast } from "@/components/ui/toast";
 import { useRouter } from "next/navigation";
 
