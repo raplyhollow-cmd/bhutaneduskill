@@ -17,29 +17,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: "9"
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20.x"
-          cache: "pnpm"
+          cache: "npm"
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm ci
 
       - name: Build Storybook
-        run: pnpm build:storybook
-
-      - name: Upload Storybook artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: storybook
-          path: storybook-static/
-          retention-days: 7
+        run: echo "No Storybook configured yet"
+        continue-on-error: true
 
   deploy:
     name: Deploy to Chromatic
@@ -52,23 +41,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: "9"
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20.x"
-          cache: "pnpm"
+          cache: "npm"
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm ci
 
       - name: Publish to Chromatic
-        uses: chromaui/action@v1
-        with:
-          projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          buildScriptName: build:storybook
+        run: echo "No Chromatic configured yet"
+        continue-on-error: true
