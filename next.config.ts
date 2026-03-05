@@ -7,9 +7,13 @@ const nextConfig: NextConfig = {
   experimental: {
     // Reduce memory usage during builds
     workerThreads: false,
-    cpus: 2, // Limit to your physical cores
-    // Speed up dev server with turbo
-    turbo: undefined, // Use Turbo for faster rebuilds
+    cpus: 1, // Use only 1 CPU core to reduce memory
+    // Optimize Turbopack memory
+    turbo: {
+      rules: {},
+    },
+    // Disable memory-heavy features
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
   },
 
   // Speed up builds by skipping source maps in development

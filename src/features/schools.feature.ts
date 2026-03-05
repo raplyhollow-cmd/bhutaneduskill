@@ -53,6 +53,131 @@ export const SchoolFeature = defineFeature({
     ],
   },
 
+  // Public endpoints (no auth required)
+  public: {
+    // Search schools by name (used in setup wizard)
+    search: {
+      method: "GET" as const,
+      handler: async (params: any, request: Request) => {
+        const { db } = await import("@/lib/db");
+        const { schools } = await import("@/lib/db/schema");
+        const { ilike, or, and, eq } = await import("drizzle-orm");
+        const { successResponse } = await import("@/lib/api/response-helpers");
+
+        const { q, city, type } = params;
+
+        if (!q || q.length < 2) {
+          return successResponse({ data: [] });
+        }
+
+        // Build search conditions
+        const conditions = [
+          eq(schools.isActive, true),
+          ilike(schools.name, `%${q}%`)
+        ];
+
+        if (city) {
+          conditions.push(eq(schools.city, city));
+        }
+        if (type) {
+          conditions.push(eq(schools.type, type));
+        }
+
+        const results = await db
+          .select({
+            id: schools.id,
+            name: schools.name,
+            code: schools.code,
+            city: schools.city,
+            type: schools.type,
+          })
+          .from(schools)
+          .where(and(...conditions))
+          .limit(10);
+
+        return successResponse({ data: results });
+      },
+    },
+
+    // Validate school code (used in setup wizard)
+    "validate-code": {
+      method: "POST" as const,
+      handler: async (data: any, request: Request) => {
+        const { db } = await import("@/lib/db");
+        const { schools } = await import("@/lib/db/schema");
+        const { eq } = await import("drizzle-orm");
+        const { successResponse, errorResponse } = await import("@/lib/api/response-helpers");
+
+        const { schoolCode } = data;
+
+        if (!schoolCode) {
+          return errorResponse("schoolCode is required", 400);
+        }
+
+        const [school] = await db
+          .select()
+          .from(schools)
+          .where(eq(schools.code, schoolCode))
+          .limit(1);
+
+        if (!school) {
+          return errorResponse("Invalid school code", 404);
+        }
+
+        if (!school.isActive) {
+          return errorResponse("School is not active", 403);
+        }
+
+        return successResponse({
+          data: {
+            id: school.id,
+            name: school.name,
+            code: school.code,
+            city: school.city,
+            type: school.type,
+          },
+        });
+      },
+    },
+
+    // Look up school by code (used in various places)
+    lookup: {
+      method: "GET" as const,
+      handler: async (params: any, request: Request) => {
+        const { db } = await import("@/lib/db");
+        const { schools } = await import("@/lib/db/schema");
+        const { eq } = await import("drizzle-orm");
+        const { successResponse, errorResponse } = await import("@/lib/api/response-helpers");
+
+        const { code } = params;
+
+        if (!code) {
+          return errorResponse("code is required", 400);
+        }
+
+        const [school] = await db
+          .select()
+          .from(schools)
+          .where(eq(schools.code, code))
+          .limit(1);
+
+        if (!school) {
+          return errorResponse("School not found", 404);
+        }
+
+        return successResponse({
+          data: {
+            id: school.id,
+            name: school.name,
+            code: school.code,
+            city: school.city,
+            type: school.type,
+          },
+        });
+      },
+    },
+  },
+
   customHandlers: {
     list: async (params: any, auth: any) => {
       const { db } = await import("@/lib/db");

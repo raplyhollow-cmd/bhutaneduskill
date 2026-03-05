@@ -88,6 +88,84 @@ export const UsersFeature = defineFeature({
     ],
   },
 
+  // Actions (non-CRUD operations)
+  actions: {
+    // Set user role (used in setup wizard)
+    "set-role": {
+      handler: async (id: string | undefined, data: any, auth: any) => {
+        const { NextResponse } = await import("next/server");
+        const { logger } = await import("@/lib/logger");
+
+        const { user } = auth;
+        const userType = data.userType;
+
+        if (!userType || !["student", "teacher", "parent", "counselor", "school-admin", "admin", "ministry"].includes(userType)) {
+          return { error: "Invalid user type", status: 400 };
+        }
+
+        // Update user record if exists
+        if (user?.userId) {
+          const { db } = await import("@/lib/db");
+          const { users: usersTable } = await import("@/lib/db/schema");
+          const { eq } = await import("drizzle-orm");
+
+          await db
+            .update(usersTable)
+            .set({
+              type: userType,
+              onboardingStatus: "completed",
+              updatedAt: new Date(),
+            })
+            .where(eq(usersTable.clerkUserId, user.userId));
+        }
+
+        logger.info("User role set", { userType, userId: user?.userId });
+
+        // Return success with cookie setting instructions
+        // Note: Cookie setting must be done by the API route wrapper
+        return {
+          success: true,
+          userType,
+          setCookie: {
+            name: "userType",
+            value: userType,
+            options: {
+              httpOnly: true,
+              secure: process.env.NODE_ENV === "production",
+              sameSite: "lax",
+              maxAge: 60 * 60 * 24 * 7, // 1 week
+            },
+          },
+        };
+      },
+      allowedRoles: ["student", "teacher", "parent", "counselor", "school-admin", "admin", "ministry"] as any[],
+    },
+
+    // Get current user's role
+    "get-role": {
+      handler: async (id: string | undefined, data: any, auth: any) => {
+        const { user } = auth;
+
+        if (!user) {
+          return { error: "Unauthorized", status: 401 };
+        }
+
+        return {
+          success: true,
+          data: {
+            userType: user.type,
+            userId: user.id,
+            name: user.name,
+            email: user.email,
+            onboardingStatus: user.onboardingStatus,
+            schoolId: user.schoolId,
+          },
+        };
+      },
+      allowedRoles: undefined, // Allow all authenticated users
+    },
+  },
+
   api: {
     async list(params: any, auth: any) {
       const { page = "1", limit = "10", search } = params;
@@ -162,6 +240,134 @@ export const UsersFeature = defineFeature({
         throw new Error("User not found");
       }
       return deletedUser;
+    },
+  },
+
+  // Webhooks (external service callbacks)
+  webhooks: {
+    // Clerk webhook for user synchronization
+    // Note: Primary implementation at /api/webhooks/clerk
+    // This definition documents the webhook for the unified system
+    clerk: {
+      source: "clerk",
+      verifySignature: true,
+      secretHeader: "svix-signature",
+      handler: async (data: any, request: Request) => {
+        const { NextResponse } = await import("next/server");
+        const { logger } = await import("@/lib/logger");
+        const { nanoid } = await import("nanoid");
+        const { db: dbImport } = await import("@/lib/db");
+        const { users: usersTable } = await import("@/lib/db/schema");
+        const { eq } = await import("drizzle-orm");
+
+        const eventType = data.type;
+        const eventData = data.data;
+
+        logger.info("Clerk webhook received", { eventType });
+
+        switch (eventType) {
+          case "user.created": {
+            const clerkUserId = eventData.id;
+            const firstName = eventData.first_name || "";
+            const lastName = eventData.last_name || "";
+            const email = eventData.email_addresses?.[0]?.email_address || "";
+            const imageUrl = eventData.profile_image_url || null;
+
+            // Check if user exists
+            const existing = await dbImport
+              .select()
+              .from(usersTable)
+              .where(eq(usersTable.clerkUserId, clerkUserId))
+              .limit(1);
+
+            if (existing.length > 0) {
+              return { success: true, message: "User already exists" };
+            }
+
+            // Create placeholder user
+            const userId = `user-${nanoid()}`;
+            const name = `${firstName} ${lastName}`.trim() || email.split("@")[0] || "User";
+
+            await dbImport.insert(usersTable).values({
+              id: userId,
+              clerkUserId,
+              type: "pending",
+              role: "pending",
+              name,
+              firstName,
+              lastName,
+              email,
+              phone: "",
+              grade: 0,
+              section: null,
+              country: "Bhutan",
+              enrollmentDate: new Date().toISOString(),
+              profileImage: imageUrl,
+              isActive: true,
+              emailVerified: eventData.email_addresses?.[0]?.verification?.status === "verified",
+              onboardingComplete: false,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            });
+
+            return { success: true, userId, message: "User created" };
+          }
+
+          case "user.updated": {
+            const clerkUserId = eventData.id;
+
+            const existing = await dbImport
+              .select()
+              .from(usersTable)
+              .where(eq(usersTable.clerkUserId, clerkUserId))
+              .limit(1);
+
+            if (existing.length === 0) {
+              return { success: false, message: "User not found" };
+            }
+
+            const firstName = eventData.first_name || existing[0].firstName;
+            const lastName = eventData.last_name || existing[0].lastName;
+            const email = eventData.email_addresses?.[0]?.email_address || existing[0].email;
+            const imageUrl = eventData.profile_image_url;
+            const isEmailVerified = eventData.email_addresses?.[0]?.verification?.status === "verified";
+
+            const updates: any = {
+              firstName,
+              lastName,
+              name: `${firstName} ${lastName}`.trim(),
+              email,
+              emailVerified: isEmailVerified,
+              updatedAt: new Date(),
+            };
+
+            if (imageUrl) {
+              updates.profileImage = imageUrl;
+            }
+
+            await dbImport
+              .update(usersTable)
+              .set(updates)
+              .where(eq(usersTable.clerkUserId, clerkUserId));
+
+            return { success: true, message: "User updated" };
+          }
+
+          case "user.deleted": {
+            const clerkUserId = eventData.id;
+
+            await dbImport
+              .update(usersTable)
+              .set({ isActive: false, updatedAt: new Date() })
+              .where(eq(usersTable.clerkUserId, clerkUserId));
+
+            return { success: true, message: "User soft deleted" };
+          }
+
+          default:
+            return { success: true, message: "Event acknowledged" };
+        }
+      },
     },
   },
 });
