@@ -162,31 +162,12 @@ export const ResultFeature = defineFeature({
         label: "Grade",
         sortable: true,
         filterable: true,
-        render: (value: string) => {
-          if (!value) return "-";
-          const gradeColors: Record<string, string> = {
-            A: "bg-green-100 text-green-700",
-            B: "bg-blue-100 text-blue-700",
-            C: "bg-yellow-100 text-yellow-700",
-            D: "bg-orange-100 text-orange-700",
-            F: "bg-red-100 text-red-700",
-          };
-          const color = gradeColors[value] || "bg-gray-100 text-gray-700";
-          return (
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${color}`}>
-              {value}
-            </span>
-          );
-        },
       },
       {
         key: "status",
         label: "Status",
         sortable: true,
         filterable: true,
-        render: (value: string) => {
-          const statusConfig = {
-            pass: { label: "Pass", color: "bg-green-100 text-green-700" },
             fail: { label: "Fail", color: "bg-red-100 text-red-700" },
             pending: { label: "Pending", color: "bg-yellow-100 text-yellow-700" },
           };

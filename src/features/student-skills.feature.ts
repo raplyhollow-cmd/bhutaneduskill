@@ -146,9 +146,6 @@ export const StudentSkillFeature = defineFeature({
         label: "Category",
         sortable: true,
         filterable: true,
-        render: (value: string) => {
-          const categoryConfig = {
-            academic: { label: "Academic", color: "bg-blue-100 text-blue-700" },
             soft: { label: "Soft Skills", color: "bg-purple-100 text-purple-700" },
             technical: { label: "Technical", color: "bg-green-100 text-green-700" },
             creative: { label: "Creative", color: "bg-pink-100 text-pink-700" },
@@ -169,9 +166,6 @@ export const StudentSkillFeature = defineFeature({
         label: "Proficiency",
         sortable: true,
         filterable: true,
-        render: (value: string) => {
-          const levelConfig = {
-            beginner: { label: "Beginner", color: "bg-gray-100 text-gray-700", bar: 1 },
             intermediate: { label: "Intermediate", color: "bg-blue-100 text-blue-700", bar: 2 },
             advanced: { label: "Advanced", color: "bg-green-100 text-green-700", bar: 3 },
             expert: { label: "Expert", color: "bg-purple-100 text-purple-700", bar: 4 },
@@ -199,9 +193,6 @@ export const StudentSkillFeature = defineFeature({
         label: "Status",
         sortable: true,
         filterable: true,
-        render: (value: string) => {
-          const statusConfig = {
-            pending: { label: "Pending", color: "bg-yellow-100 text-yellow-700" },
             approved: { label: "Approved", color: "bg-green-100 text-green-700" },
             rejected: { label: "Rejected", color: "bg-red-100 text-red-700" },
           };
@@ -218,9 +209,6 @@ export const StudentSkillFeature = defineFeature({
         label: "Source",
         sortable: true,
         filterable: true,
-        render: (value: string) => {
-          const sourceConfig = {
-            inferred: { label: "Inferred", color: "bg-indigo-100 text-indigo-700" },
             self_report: { label: "Self-Report", color: "bg-blue-100 text-blue-700" },
             teacher_assigned: { label: "Teacher Assigned", color: "bg-green-100 text-green-700" },
           };

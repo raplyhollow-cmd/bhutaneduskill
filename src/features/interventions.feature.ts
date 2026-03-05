@@ -136,9 +136,6 @@ export const InterventionFeature = defineFeature({
         label: "Type",
         sortable: true,
         filterable: true,
-        render: (value: string) => {
-          const typeConfig = {
-            academic: { label: "Academic", color: "bg-blue-100 text-blue-700" },
             behavioral: { label: "Behavioral", color: "bg-amber-100 text-amber-700" },
             counseling: { label: "Counseling", color: "bg-purple-100 text-purple-700" },
           };
@@ -155,9 +152,6 @@ export const InterventionFeature = defineFeature({
         label: "Severity",
         sortable: true,
         filterable: true,
-        render: (value: string) => {
-          const severityConfig = {
-            low: { label: "Low", color: "bg-green-100 text-green-700" },
             medium: { label: "Medium", color: "bg-yellow-100 text-yellow-700" },
             high: { label: "High", color: "bg-red-100 text-red-700" },
           };
@@ -174,9 +168,6 @@ export const InterventionFeature = defineFeature({
         label: "Status",
         sortable: true,
         filterable: true,
-        render: (value: string) => {
-          const statusConfig = {
-            planned: { label: "Planned", color: "bg-gray-100 text-gray-700" },
             active: { label: "Active", color: "bg-blue-100 text-blue-700" },
             completed: { label: "Completed", color: "bg-green-100 text-green-700" },
             cancelled: { label: "Cancelled", color: "bg-red-100 text-red-700" },

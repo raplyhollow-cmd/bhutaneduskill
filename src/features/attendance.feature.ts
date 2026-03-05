@@ -137,9 +137,6 @@ export const AttendanceFeature = defineFeature({
         label: "Status",
         sortable: true,
         filterable: true,
-        render: (value: string) => {
-          const statusConfig = {
-            present: { label: "Present", color: "bg-green-100 text-green-700" },
             absent: { label: "Absent", color: "bg-red-100 text-red-700" },
             late: { label: "Late", color: "bg-amber-100 text-amber-700" },
             excused: { label: "Excused", color: "bg-blue-100 text-blue-700" },
