@@ -36,6 +36,7 @@ import {
   Plus,
   Trash2,
   School,
+  Sparkles,
 } from "lucide-react";
 
 interface SetupWizardProps {
@@ -247,6 +248,66 @@ export function InitialSetupWizard({ schoolId, schoolName: prePopulatedName, sch
     newTerms[index].startDate = newStartDate;
     newTerms[index].endDate = endDate.toISOString().split('T')[0];
     setData({ ...data, terms: newTerms });
+  };
+
+  // Schedule generator settings
+  const [scheduleConfig, setScheduleConfig] = useState({
+    schoolStartTime: "08:00",
+    classStartTime: "08:00",
+    numberOfPeriods: 8,
+    periodMinutes: 45,
+    breakMinutes: 5,
+    lunchBreakMinutes: 45,
+    schoolEndTime: "13:30",
+  });
+
+  // Auto-generate schedule from config
+  const generateSchedule = () => {
+    const {
+      schoolStartTime,
+      numberOfPeriods,
+      periodMinutes,
+      breakMinutes,
+      lunchBreakMinutes,
+    } = scheduleConfig;
+
+    const [startH, startM] = schoolStartTime.split(':').map(Number);
+    let currentMinutes = startH * 60 + startM;
+
+    const newSchedule: typeof data.regularSchedule = [];
+    let lunchAdded = false;
+    const lunchAfterPeriod = Math.floor(numberOfPeriods / 2);
+
+    for (let i = 1; i <= numberOfPeriods; i++) {
+      const periodStartMinutes = currentMinutes;
+      const periodEndMinutes = currentMinutes + periodMinutes;
+
+      // Add lunch break in the middle
+      if (i === lunchAfterPeriod && !lunchAdded) {
+        newSchedule.push({
+          periodNumber: i,
+          name: "Lunch Break",
+          startTime: `${String(Math.floor(periodStartMinutes / 60)).padStart(2, '0')}:${String(periodStartMinutes % 60).padStart(2, '0')}`,
+          endTime: `${String(Math.floor(periodStartMinutes / 60)).padStart(2, '0')}:${String(periodStartMinutes % 60).padStart(2, '0')}`,
+          type: "lunch",
+        });
+
+        currentMinutes += lunchBreakMinutes;
+        lunchAdded = true;
+      }
+
+      newSchedule.push({
+        periodNumber: i,
+        name: `Period ${i}`,
+        startTime: `${String(Math.floor(currentMinutes / 60)).padStart(2, '0')}:${String(currentMinutes % 60).padStart(2, '0')}`,
+        endTime: `${String(Math.floor((currentMinutes + periodMinutes) / 60)).padStart(2, '0')}:${String((currentMinutes + periodMinutes) % 60).padStart(2, '0')}`,
+        type: "class",
+      });
+
+      currentMinutes += periodMinutes + breakMinutes;
+    }
+
+    setData({ ...data, regularSchedule: newSchedule });
   };
 
   // Auto-update period times when start time changes (maintain 45min duration, 5min breaks)
@@ -510,6 +571,106 @@ export function InitialSetupWizard({ schoolId, schoolName: prePopulatedName, sch
               </p>
             </div>
 
+            {/* Smart Schedule Generator */}
+            <div className="bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200 rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <Sparkles className="w-5 h-5 text-violet-600" />
+                <h3 className="font-semibold text-violet-900">Smart Schedule Generator</h3>
+              </div>
+              <p className="text-sm text-violet-700 mb-4">Configure your timings and auto-generate the schedule</p>
+
+              <div className="grid md:grid-cols-4 gap-4">
+                <div>
+                  <Label htmlFor="schoolStartTime" className="text-xs">School Start Time</Label>
+                  <Input
+                    id="schoolStartTime"
+                    type="time"
+                    value={scheduleConfig.schoolStartTime}
+                    onChange={(e) => setScheduleConfig({ ...scheduleConfig, schoolStartTime: e.target.value })}
+                    className="h-10"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="numberOfPeriods" className="text-xs">Number of Periods</Label>
+                  <Input
+                    id="numberOfPeriods"
+                    type="number"
+                    min="1"
+                    max="12"
+                    value={scheduleConfig.numberOfPeriods}
+                    onChange={(e) => setScheduleConfig({ ...scheduleConfig, numberOfPeriods: parseInt(e.target.value) || 8 })}
+                    className="h-10"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="periodMinutes" className="text-xs">Period Duration (min)</Label>
+                  <Input
+                    id="periodMinutes"
+                    type="number"
+                    min="15"
+                    max="90"
+                    value={scheduleConfig.periodMinutes}
+                    onChange={(e) => setScheduleConfig({ ...scheduleConfig, periodMinutes: parseInt(e.target.value) || 45 })}
+                    className="h-10"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="breakMinutes" className="text-xs">Break Interval (min)</Label>
+                  <Input
+                    id="breakMinutes"
+                    type="number"
+                    min="0"
+                    max="30"
+                    value={scheduleConfig.breakMinutes}
+                    onChange={(e) => setScheduleConfig({ ...scheduleConfig, breakMinutes: parseInt(e.target.value) || 5 })}
+                    className="h-10"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="lunchBreakMinutes" className="text-xs">Lunch Break (min)</Label>
+                  <Input
+                    id="lunchBreakMinutes"
+                    type="number"
+                    min="15"
+                    max="90"
+                    value={scheduleConfig.lunchBreakMinutes}
+                    onChange={(e) => setScheduleConfig({ ...scheduleConfig, lunchBreakMinutes: parseInt(e.target.value) || 45 })}
+                    className="h-10"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="schoolEndTime" className="text-xs">School End (approx)</Label>
+                  <Input
+                    id="schoolEndTime"
+                    type="time"
+                    value={scheduleConfig.schoolEndTime}
+                    onChange={(e) => setScheduleConfig({ ...scheduleConfig, schoolEndTime: e.target.value })}
+                    className="h-10"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-4 flex gap-2">
+                <Button
+                  type="button"
+                  onClick={generateSchedule}
+                  className="bg-violet-600 hover:bg-violet-700"
+                >
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Generate Schedule
+                </Button>
+                {data.regularSchedule.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setData({ ...data, regularSchedule: [] })}
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+            </div>
+
             {/* Only show PP checkbox if school has PP classes */}
             {hasPrePrimary && (
               <div className="flex items-center gap-2">
@@ -526,88 +687,107 @@ export function InitialSetupWizard({ schoolId, schoolName: prePopulatedName, sch
               </div>
             )}
 
-            <div>
-              <Label>Regular Class Schedule</Label>
-              <p className="text-xs text-gray-500 mb-2">Changing start time auto-shifts all later periods</p>
-              <div className="mt-2 space-y-2">
-                {data.regularSchedule.map((period, index) => (
-                  <div key={index} className="grid grid-cols-5 gap-2 items-center">
-                    <Input
-                      value={period.name}
-                      onChange={(e) => {
-                        const newSchedule = [...data.regularSchedule];
-                        newSchedule[index].name = e.target.value;
-                        setData({ ...data, regularSchedule: newSchedule });
-                      }}
-                      placeholder="Period name"
-                    />
-                    <Input
-                      type="time"
-                      value={period.startTime}
-                      onChange={(e) => updatePeriodStartTime(index, e.target.value, "regular")}
-                    />
-                    <Input
-                      type="time"
-                      value={period.endTime}
-                      onChange={(e) => {
-                        const newSchedule = [...data.regularSchedule];
-                        newSchedule[index].endTime = e.target.value;
-                        setData({ ...data, regularSchedule: newSchedule });
-                      }}
-                    />
-                    <select
-                      value={period.type}
-                      onChange={(e) => {
-                        const newSchedule = [...data.regularSchedule];
-                        newSchedule[index].type = e.target.value as any;
-                        setData({ ...data, regularSchedule: newSchedule });
-                      }}
-                      className="px-3 py-2 border rounded-lg"
-                    >
-                      <option value="class">Class</option>
-                      <option value="break">Break</option>
-                      <option value="lunch">Lunch</option>
-                    </select>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setData({
-                          ...data,
-                          regularSchedule: data.regularSchedule.filter((_, i) => i !== index),
-                        });
-                      }}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    setData({
-                      ...data,
-                      regularSchedule: [
-                        ...data.regularSchedule,
-                        {
-                          periodNumber: data.regularSchedule.length + 1,
-                          name: "",
-                          startTime: "",
-                          endTime: "",
-                          type: "class",
-                        },
-                      ],
-                    })
-                  }
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Period
-                </Button>
+            {/* Generated Schedule - Editable */}
+            {data.regularSchedule.length > 0 && (
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <Label>Class Schedule (Editable)</Label>
+                  <p className="text-xs text-gray-500">Click any time to edit. Changes auto-shift later periods.</p>
+                </div>
+                <div className="bg-white border rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-3 py-2 text-left">Period</th>
+                        <th className="px-3 py-2 text-left">Start Time</th>
+                        <th className="px-3 py-2 text-left">End Time</th>
+                        <th className="px-3 py-2 text-left">Type</th>
+                        <th className="px-3 py-2 text-left">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.regularSchedule.map((period, index) => (
+                        <tr key={index} className="border-t">
+                          <td className="px-3 py-2">
+                            <Input
+                              value={period.name}
+                              onChange={(e) => {
+                                const newSchedule = [...data.regularSchedule];
+                                newSchedule[index].name = e.target.value;
+                                setData({ ...data, regularSchedule: newSchedule });
+                              }}
+                              className="h-8"
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <Input
+                              type="time"
+                              value={period.startTime}
+                              onChange={(e) => updatePeriodStartTime(index, e.target.value, "regular")}
+                              className="h-8"
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <Input
+                              type="time"
+                              value={period.endTime}
+                              onChange={(e) => {
+                                const newSchedule = [...data.regularSchedule];
+                                newSchedule[index].endTime = e.target.value;
+                                setData({ ...data, regularSchedule: newSchedule });
+                              }}
+                              className="h-8"
+                            />
+                          </td>
+                          <td className="px-3 py-2">
+                            <select
+                              value={period.type}
+                              onChange={(e) => {
+                                const newSchedule = [...data.regularSchedule];
+                                newSchedule[index].type = e.target.value as any;
+                                setData({ ...data, regularSchedule: newSchedule });
+                              }}
+                              className="h-8 px-2 py-1 border rounded text-xs"
+                            >
+                              <option value="class">Class</option>
+                              <option value="break">Break</option>
+                              <option value="lunch">Lunch</option>
+                            </select>
+                          </td>
+                          <td className="px-3 py-2">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setData({
+                                  ...data,
+                                  regularSchedule: data.regularSchedule.filter((_, i) => i !== index),
+                                });
+                              }}
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Summary */}
+                <div className="mt-3 flex items-center gap-4 text-xs text-gray-500">
+                  <span>{data.regularSchedule.length} periods</span>
+                  <span>{data.regularSchedule.filter(p => p.type === 'break').length} breaks</span>
+                  <span>{data.regularSchedule.filter(p => p.type === 'lunch').length} lunch</span>
+                  {data.regularSchedule.length > 0 && (
+                    <span className="text-violet-600">
+                      School day: {data.regularSchedule[0].startTime} - {data.regularSchedule[data.regularSchedule.length - 1].endTime}
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Only show PP schedule if school has PP classes AND option is enabled */}
             {hasPrePrimary && data.ppDifferentSchedule && (

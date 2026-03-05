@@ -122,7 +122,7 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
    */
   const fetchUnreadCount = useCallback(async () => {
     try {
-      const response = await fetch("/api/resources/notifications/actions/unread-count");
+      const response = await fetch("/api/resources/notifications/actions?action=unread-count");
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
@@ -155,7 +155,7 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
       });
 
       // Use unified API - POST to action endpoint with data
-      const response = await fetch("/api/resources/notifications/actions/my-notifications", {
+      const response = await fetch("/api/resources/notifications/actions?action=my-notifications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -192,7 +192,7 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
   const markAsRead = useCallback(async (deliveryId: string) => {
     try {
       // Use unified API - POST to mark-read action
-      const response = await fetch("/api/resources/notifications/actions/mark-read", {
+      const response = await fetch("/api/resources/notifications/actions?action=mark-read", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ deliveryIds: [deliveryId] }),
@@ -222,7 +222,7 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
   const markAllAsRead = useCallback(async () => {
     try {
       // Use unified API - POST to mark-read action
-      const response = await fetch("/api/resources/notifications/actions/mark-read", {
+      const response = await fetch("/api/resources/notifications/actions?action=mark-read", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ markAll: true }),
@@ -282,7 +282,7 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
     // Inline fetch logic to avoid dependency on external functions
     const fetchCount = async () => {
       try {
-        const response = await fetch("/api/resources/notifications/actions/unread-count");
+        const response = await fetch("/api/resources/notifications/actions?action=unread-count");
         if (response.ok) {
           const data = await response.json();
           const count = data.data?.unreadCount || 0;
@@ -308,7 +308,7 @@ export function useNotifications(options: UseNotificationsOptions = {}): UseNoti
         });
 
         // Use unified API - POST to action endpoint with data
-      const response = await fetch("/api/resources/notifications/actions/my-notifications", {
+      const response = await fetch("/api/resources/notifications/actions?action=my-notifications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -406,7 +406,7 @@ export function useUnreadCount(options: { pollingInterval?: number } = {}) {
     // Inline fetch to avoid dependency issues
     const fetchCount = async () => {
       try {
-        const response = await fetch("/api/resources/notifications/actions/unread-count");
+        const response = await fetch("/api/resources/notifications/actions?action=unread-count");
         if (response.ok) {
           const data = await response.json();
           setUnreadCount(data.data?.unreadCount || 0);
@@ -427,7 +427,7 @@ export function useUnreadCount(options: { pollingInterval?: number } = {}) {
   // Provide a refresh function
   const refresh = useCallback(async () => {
     try {
-      const response = await fetch("/api/resources/notifications/actions/unread-count");
+      const response = await fetch("/api/resources/notifications/actions?action=unread-count");
       if (response.ok) {
         const data = await response.json();
         setUnreadCount(data.data?.unreadCount || 0);
