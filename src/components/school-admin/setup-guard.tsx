@@ -59,7 +59,14 @@ export function SetupGuard({ schoolId, children }: SetupGuardProps) {
   }
 
   if (needsSetup && schoolData) {
-    return <InitialSetupWizard schoolId={schoolId} onComplete={() => setNeedsSetup(false)} />;
+    return (
+      <InitialSetupWizard
+        schoolId={schoolId}
+        schoolName={schoolData.name}
+        schoolCode={schoolData.code}
+        onComplete={() => setNeedsSetup(false)}
+      />
+    );
   }
 
   return <>{children}</>;

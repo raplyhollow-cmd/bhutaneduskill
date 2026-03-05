@@ -40,13 +40,15 @@ import {
 
 interface SetupWizardProps {
   schoolId: string;
+  schoolName?: string; // Pre-populated from platform admin
+  schoolCode?: string; // Pre-populated from platform admin
   onComplete?: () => void;
 }
 
 interface WizardData {
-  // Step 1: School Profile
-  schoolName: string;
-  schoolCode: string;
+  // Step 1: School Profile (read-only name/code from platform admin, editable contact info)
+  schoolName: string; // Read-only, pre-populated
+  schoolCode: string; // Read-only, pre-populated
   email: string;
   phone: string;
   address: string;
@@ -107,7 +109,7 @@ const gradingPresets: Record<string, Array<{ grade: string; minScore: number; ma
   ],
 };
 
-export function InitialSetupWizard({ schoolId, onComplete }: SetupWizardProps) {
+export function InitialSetupWizard({ schoolId, schoolName: prePopulatedName, schoolCode: prePopulatedCode, onComplete }: SetupWizardProps) {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 5;
@@ -116,11 +118,11 @@ export function InitialSetupWizard({ schoolId, onComplete }: SetupWizardProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  // Wizard data state
+  // Wizard data state - initialize with pre-populated values from platform admin
   const [data, setData] = useState<WizardData>({
-    // Step 1
-    schoolName: "",
-    schoolCode: "",
+    // Step 1 - Pre-populated from platform admin
+    schoolName: prePopulatedName || "",
+    schoolCode: prePopulatedCode || "",
     email: "",
     phone: "",
     address: "",
@@ -239,29 +241,29 @@ export function InitialSetupWizard({ schoolId, onComplete }: SetupWizardProps) {
             <div>
               <h2 className="text-2xl font-bold mb-2">Welcome to Bhutan EduSkill!</h2>
               <p className="text-gray-600">
-                Let's set up your school's basic information. This will only take a few minutes.
+                Your school has been created by the platform administrator. Let's complete your school profile.
               </p>
             </div>
 
+            {/* School Info - Read Only (from Platform Admin) */}
+            <div className="bg-violet-50 border border-violet-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <School className="w-5 h-5 text-violet-600" />
+                <h3 className="font-semibold text-violet-900">School Information (Verified)</h3>
+              </div>
+              <div className="grid md:grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-violet-600">School Name:</span>
+                  <span className="ml-2 font-medium text-violet-900">{data.schoolName || "Loading..."}</span>
+                </div>
+                <div>
+                  <span className="text-violet-600">School Code:</span>
+                  <span className="ml-2 font-mono font-medium text-violet-900">{data.schoolCode || "Loading..."}</span>
+                </div>
+              </div>
+            </div>
+
             <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="schoolName">School Name *</Label>
-                <Input
-                  id="schoolName"
-                  value={data.schoolName}
-                  onChange={(e) => setData({ ...data, schoolName: e.target.value })}
-                  placeholder="Enter school name"
-                />
-              </div>
-              <div>
-                <Label htmlFor="schoolCode">School Code *</Label>
-                <Input
-                  id="schoolCode"
-                  value={data.schoolCode}
-                  onChange={(e) => setData({ ...data, schoolCode: e.target.value })}
-                  placeholder="e.g., THI-001"
-                />
-              </div>
               <div>
                 <Label htmlFor="email">School Email *</Label>
                 <Input
@@ -794,7 +796,8 @@ export function InitialSetupWizard({ schoolId, onComplete }: SetupWizardProps) {
   const canProceed = () => {
     switch (currentStep) {
       case 1:
-        return data.schoolName && data.schoolCode && data.email && data.phone && data.address && data.city;
+        // schoolName and schoolCode are pre-populated, only require contact info
+        return data.email && data.phone && data.address && data.city;
       case 2:
         return data.academicYearStart && data.academicYearEnd && data.terms.length > 0 && data.workingDays.length > 0;
       case 3:
