@@ -17,6 +17,13 @@ interface SetupGuardProps {
   children: React.ReactNode;
 }
 
+interface SchoolData {
+  setupComplete: boolean;
+  name?: string;
+  code?: string;
+  grades?: string[];
+}
+
 export function SetupGuard({ schoolId, children }: SetupGuardProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
@@ -64,6 +71,7 @@ export function SetupGuard({ schoolId, children }: SetupGuardProps) {
         schoolId={schoolId}
         schoolName={schoolData.name}
         schoolCode={schoolData.code}
+        grades={schoolData.grades || []}
         onComplete={() => setNeedsSetup(false)}
       />
     );

@@ -42,6 +42,8 @@ interface SetupWizardProps {
   schoolId: string;
   schoolName?: string; // Pre-populated from platform admin
   schoolCode?: string; // Pre-populated from platform admin
+  hasPPClasses?: boolean; // Whether school has pre-primary classes
+  grades?: string[]; // Available grades (to determine if PP exists)
   onComplete?: () => void;
 }
 
@@ -109,7 +111,7 @@ const gradingPresets: Record<string, Array<{ grade: string; minScore: number; ma
   ],
 };
 
-export function InitialSetupWizard({ schoolId, schoolName: prePopulatedName, schoolCode: prePopulatedCode, onComplete }: SetupWizardProps) {
+export function InitialSetupWizard({ schoolId, schoolName: prePopulatedName, schoolCode: prePopulatedCode, hasPPClasses = false, grades = [], onComplete }: SetupWizardProps) {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 5;
@@ -117,6 +119,9 @@ export function InitialSetupWizard({ schoolId, schoolName: prePopulatedName, sch
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  // Check if school has PP classes based on grades
+  const hasPrePrimary = hasPPClasses || grades.some(g => g.toLowerCase().includes('pp') || g.toLowerCase().includes('pre-primary'));
 
   // Wizard data state - initialize with pre-populated values from platform admin
   const [data, setData] = useState<WizardData>({
@@ -230,6 +235,63 @@ export function InitialSetupWizard({ schoolId, schoolName: prePopulatedName, sch
       gradingSystem: system as any,
       grades: gradingPresets[system] || prev.grades,
     }));
+  };
+
+  // Auto-update term end date when start date changes (maintain ~4 month duration)
+  const updateTermStartDate = (index: number, newStartDate: string) => {
+    const startDate = new Date(newStartDate);
+    const endDate = new Date(startDate);
+    endDate.setMonth(endDate.getMonth() + 4); // Add 4 months
+
+    const newTerms = [...data.terms];
+    newTerms[index].startDate = newStartDate;
+    newTerms[index].endDate = endDate.toISOString().split('T')[0];
+    setData({ ...data, terms: newTerms });
+  };
+
+  // Auto-update period times when start time changes (maintain 45min duration, 5min breaks)
+  const updatePeriodStartTime = (index: number, newStartTime: string, schedule: "regular" | "pp") => {
+    const targetSchedule = schedule === "regular" ? data.regularSchedule : data.ppSchedule;
+    const period = targetSchedule[index];
+
+    if (!period) return;
+
+    // Calculate duration from original
+    const [startH, startM] = period.startTime.split(':').map(Number);
+    const [endH, endM] = period.endTime.split(':').map(Number);
+    const durationMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+
+    // Calculate new end time
+    const [newStartH, newStartM] = newStartTime.split(':').map(Number);
+    const newEndMinutes = (newStartH * 60 + newStartM) + durationMinutes;
+    const newEndH = Math.floor(newEndMinutes / 60);
+    const newEndM = newEndMinutes % 60;
+    const newEndTime = `${String(newEndH).padStart(2, '0')}:${String(newEndM).padStart(2, '0')}`;
+
+    // Update all subsequent periods to maintain gaps
+    const updatedSchedule = [...targetSchedule];
+    updatedSchedule[index] = { ...period, startTime: newStartTime, endTime: newEndTime };
+
+    // Shift all later periods
+    const timeDiff = (newStartH * 60 + newStartM) - (startH * 60 + startM);
+    for (let i = index + 1; i < updatedSchedule.length; i++) {
+      const p = updatedSchedule[i];
+      const [pH, pM] = p.startTime.split(':').map(Number);
+      const [peH, peM] = p.endTime.split(':').map(Number);
+      const pStartMinutes = (pH * 60 + pM) + timeDiff;
+      const pEndMinutes = (peH * 60 + peM) + timeDiff;
+      updatedSchedule[i] = {
+        ...p,
+        startTime: `${String(Math.floor(pStartMinutes / 60)).padStart(2, '0')}:${String(pStartMinutes % 60).padStart(2, '0')}`,
+        endTime: `${String(Math.floor(pEndMinutes / 60)).padStart(2, '0')}:${String(pEndMinutes % 60).padStart(2, '0')}`
+      };
+    }
+
+    if (schedule === "regular") {
+      setData({ ...data, regularSchedule: updatedSchedule });
+    } else {
+      setData({ ...data, ppSchedule: updatedSchedule });
+    }
   };
 
   // Step components
@@ -350,6 +412,7 @@ export function InitialSetupWizard({ schoolId, schoolName: prePopulatedName, sch
 
             <div>
               <Label>Academic Terms</Label>
+              <p className="text-xs text-gray-500 mb-2">Changing start date auto-updates end date (~4 months)</p>
               <div className="mt-2 space-y-2">
                 {data.terms.map((term, index) => (
                   <div key={index} className="grid grid-cols-3 gap-2 items-center">
@@ -365,11 +428,7 @@ export function InitialSetupWizard({ schoolId, schoolName: prePopulatedName, sch
                     <Input
                       type="date"
                       value={term.startDate}
-                      onChange={(e) => {
-                        const newTerms = [...data.terms];
-                        newTerms[index].startDate = e.target.value;
-                        setData({ ...data, terms: newTerms });
-                      }}
+                      onChange={(e) => updateTermStartDate(index, e.target.value)}
                     />
                     <div className="flex gap-2">
                       <Input
@@ -447,25 +506,29 @@ export function InitialSetupWizard({ schoolId, schoolName: prePopulatedName, sch
                 Bell Schedule
               </h2>
               <p className="text-gray-600">
-                Configure your daily bell schedule. PP (Pre-primary) classes can have different schedules.
+                Configure your daily bell schedule{hasPrePrimary ? ". PP (Pre-primary) classes can have different schedules." : "."}
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="ppDifferent"
-                checked={data.ppDifferentSchedule}
-                onChange={(e) => setData({ ...data, ppDifferentSchedule: e.target.checked })}
-                className="w-4 h-4"
-              />
-              <Label htmlFor="ppDifferent" className="cursor-pointer">
-                PP classes have different schedule (shorter hours, more breaks)
-              </Label>
-            </div>
+            {/* Only show PP checkbox if school has PP classes */}
+            {hasPrePrimary && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="ppDifferent"
+                  checked={data.ppDifferentSchedule}
+                  onChange={(e) => setData({ ...data, ppDifferentSchedule: e.target.checked })}
+                  className="w-4 h-4"
+                />
+                <Label htmlFor="ppDifferent" className="cursor-pointer">
+                  PP classes have different schedule (shorter hours, more breaks)
+                </Label>
+              </div>
+            )}
 
             <div>
               <Label>Regular Class Schedule</Label>
+              <p className="text-xs text-gray-500 mb-2">Changing start time auto-shifts all later periods</p>
               <div className="mt-2 space-y-2">
                 {data.regularSchedule.map((period, index) => (
                   <div key={index} className="grid grid-cols-5 gap-2 items-center">
@@ -481,11 +544,7 @@ export function InitialSetupWizard({ schoolId, schoolName: prePopulatedName, sch
                     <Input
                       type="time"
                       value={period.startTime}
-                      onChange={(e) => {
-                        const newSchedule = [...data.regularSchedule];
-                        newSchedule[index].startTime = e.target.value;
-                        setData({ ...data, regularSchedule: newSchedule });
-                      }}
+                      onChange={(e) => updatePeriodStartTime(index, e.target.value, "regular")}
                     />
                     <Input
                       type="time"
@@ -550,7 +609,8 @@ export function InitialSetupWizard({ schoolId, schoolName: prePopulatedName, sch
               </div>
             </div>
 
-            {data.ppDifferentSchedule && (
+            {/* Only show PP schedule if school has PP classes AND option is enabled */}
+            {hasPrePrimary && data.ppDifferentSchedule && (
               <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
                 <Label className="text-blue-900">PP Class Schedule (Pre-Primary)</Label>
                 <p className="text-xs text-blue-700 mb-3">
@@ -571,11 +631,7 @@ export function InitialSetupWizard({ schoolId, schoolName: prePopulatedName, sch
                       <Input
                         type="time"
                         value={period.startTime}
-                        onChange={(e) => {
-                          const newSchedule = [...data.ppSchedule];
-                          newSchedule[index].startTime = e.target.value;
-                          setData({ ...data, ppSchedule: newSchedule });
-                        }}
+                        onChange={(e) => updatePeriodStartTime(index, e.target.value, "pp")}
                       />
                       <Input
                         type="time"

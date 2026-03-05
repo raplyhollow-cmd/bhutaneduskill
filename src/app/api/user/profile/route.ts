@@ -1,4 +1,4 @@
-import { createApiRoute } from "@/lib/features/define-feature";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";

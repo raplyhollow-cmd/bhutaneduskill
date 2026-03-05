@@ -32,20 +32,46 @@ const resourceMapping: Record<string, FeatureName> = {
   billing: "billing",
 };
 
-export const POST = createApiRoute(
+// Helper function to execute an action
+async function executeAction(
+  resource: string,
+  actionName: string,
+  data: Record<string, unknown>,
+  auth: any
+) {
+  const featureName = resourceMapping[resource];
+  if (!featureName) {
+    return notFoundResponse(`Resource "${resource}" not found`);
+  }
+
+  const feature = getFeature(featureName);
+  if (!feature) {
+    return notFoundResponse(`Feature "${featureName}" not found`);
+  }
+
+  const action = feature.actions?.[actionName];
+  if (!action) {
+    return notFoundResponse(`Action "${actionName}" not found`);
+  }
+
+  // Check action-specific permissions
+  const { user } = auth;
+  const allowedRoles = action.allowedRoles;
+  if (allowedRoles && user && !allowedRoles.includes(user.type as any)) {
+    return errorResponse("Unauthorized for this action", 403);
+  }
+
+  try {
+    return await action.handler(undefined, data, auth);
+  } catch (error) {
+    logger.error(`Action ${actionName} error for ${resource}`, { error });
+    return errorResponse(error instanceof Error ? error.message : "Action failed", 500);
+  }
+}
+
+export const GET = createApiRoute(
   async (request: NextRequest, auth, context: RouteContext) => {
     const { resource } = await context.params;
-    const featureName = resourceMapping[resource];
-
-    if (!featureName) {
-      return notFoundResponse(`Resource "${resource}" not found`);
-    }
-
-    const feature = getFeature(featureName);
-    if (!feature) {
-      return notFoundResponse(`Feature "${featureName}" not found`);
-    }
-
     const url = new URL(request.url);
     const actionName = url.searchParams.get("action");
 
@@ -53,22 +79,32 @@ export const POST = createApiRoute(
       return errorResponse("Missing 'action' query parameter", 400);
     }
 
-    const action = feature.actions?.[actionName];
-    if (!action) {
-      return notFoundResponse(`Action "${actionName}" not found`);
+    // For GET requests, parse query params as data
+    const data: Record<string, unknown> = {};
+    for (const [key, value] of url.searchParams.entries()) {
+      if (key !== "action") {
+        data[key] = value;
+      }
     }
 
-    // Check action-specific permissions
-    const { user } = auth;
-    const allowedRoles = action.allowedRoles;
-    if (allowedRoles && user && !allowedRoles.includes(user.type as any)) {
-      return errorResponse("Unauthorized for this action", 403);
+    return executeAction(resource, actionName, data, auth);
+  },
+  ["school-admin", "admin", "teacher", "student", "counselor", "parent"]
+);
+
+export const POST = createApiRoute(
+  async (request: NextRequest, auth, context: RouteContext) => {
+    const { resource } = await context.params;
+    const url = new URL(request.url);
+    const actionName = url.searchParams.get("action");
+
+    if (!actionName) {
+      return errorResponse("Missing 'action' query parameter", 400);
     }
 
     try {
       const data = await request.json();
-      // Actions can be called with or without an ID
-      return await action.handler(undefined, data, auth);
+      return executeAction(resource, actionName, data, auth);
     } catch (error) {
       logger.error(`Action ${actionName} error for ${resource}`, { error });
       return errorResponse(error instanceof Error ? error.message : "Action failed", 500);
