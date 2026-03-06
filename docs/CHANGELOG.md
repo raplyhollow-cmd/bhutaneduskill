@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed - March 6, 2026
+- **Clerk SSR Build Errors** - Removed Clerk hooks (`useUser`, `useClerk`, `useAuth`) from pages that render during server-side rendering
+  - Fixed pages: `debug-login`, `pending-approval`, `rejected`, `setup/unified`, `sign-in/[[...sign-in]]`, `student/insights`
+  - Replaced hooks with API calls to `/api/user/profile` and `window.location.href` navigation
+  - Build now completes successfully with all 430 routes generated
+  - No more "useUser can only be used within ClerkProvider" errors during static generation
+
+### Changed - March 6, 2026
+- **Feature File Extensions** - Renamed `.ts` to `.tsx` for consistency:
+  - `attendance.feature.ts` → `attendance.feature.tsx`
+  - `behavior-records.feature.ts` → `behavior-records.feature.tsx`
+  - `interventions.feature.ts` → `interventions.feature.tsx`
+  - `results.feature.ts` → `results.feature.tsx`
+  - `student-skills.feature.ts` → `student-skills.feature.tsx`
+  - `timetables.feature.ts` → `timetables.feature.tsx`
+
 ### Added - March 5, 2026
 
 #### New API Routes (22 endpoints)
