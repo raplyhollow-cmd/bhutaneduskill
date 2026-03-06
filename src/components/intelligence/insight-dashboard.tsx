@@ -21,7 +21,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AlertTriangle, ChevronRight, Loader2, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useAuth } from "@clerk/nextjs";
 
 type PortalType = "student" | "teacher" | "school-admin" | "parent" | "counselor" | "admin" | "ministry";
 
@@ -54,11 +53,7 @@ export function InsightDashboard({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const { userId } = useAuth();
-
   useEffect(() => {
-    if (!userId) return;
-
     async function fetchInsights() {
       try {
         setIsLoading(true);
@@ -98,7 +93,7 @@ export function InsightDashboard({
     }
 
     fetchInsights();
-  }, [userId, portal, limit]);
+  }, [portal, limit]);
 
   async function handleDismiss(id: string) {
     try {

@@ -17,7 +17,7 @@ import {
   Search,
 } from "lucide-react";
 import { PORTAL_CONFIG, MOBILE_SETTINGS, type PortalType, type NavigationItem } from "@/config/portal-config";
-import { useAuth } from "@clerk/nextjs";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -509,12 +509,13 @@ export function UniversalPortalHeader({
   subtitle?: string;
 }) {
   const config = PORTAL_CONFIG[portalType];
-  const { signOut } = useAuth();
+  // Handle sign out via direct navigation instead of Clerk hook
+  const handleSignOut = () => {
+    window.location.href = '/sign-out';
+  };
   const { open: openCommandPalette } = useCommandPalette();
 
-  const handleSignOut = async () => {
-    await signOut({ redirectUrl: '/' });
-  };
+
 
   // Get user initials
   const getUserInitials = () => {

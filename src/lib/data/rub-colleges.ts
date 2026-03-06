@@ -1,7 +1,7 @@
 /**
  * RUB (Royal University of Bhutan) Colleges Complete Data
  *
- * This file contains comprehensive data for all 5 RUB constituent colleges
+ * This file contains comprehensive data for all 6 RUB constituent colleges
  * with their programs, eligibility criteria, fees, and career prospects.
  *
  * Last Updated: March 5, 2026
@@ -49,7 +49,7 @@ export interface RUBCollege {
 }
 
 /**
- * Complete RUB Colleges Data
+ * Complete RUB Colleges Data - All 6 Constituent Colleges
  */
 export const rubCollegesData: RUBCollege[] = [
   {
@@ -929,6 +929,136 @@ export const rubCollegesData: RUBCollege[] = [
         ],
         riasecCodes: ["S", "I"],
         description: "Advanced teacher education with specializations in educational leadership, curriculum, and pedagogy.",
+      },
+    ],
+  },
+  {
+    id: "rub_nrcp",
+    name: "Norbu Rigsel College of Paro",
+    code: "NRCP",
+    type: "constituent",
+    dzongkhag: "Paro",
+    location: "Ngaba, Paro",
+    website: "www.nrcp.edu.bt",
+    email: "info@nrcp.edu.bt",
+    phone: "+975-02-271468",
+    facilities: {
+      hasHostel: true,
+      hasLibrary: true,
+      hasLab: false,
+      hasSports: true,
+    },
+    description: "The newest RUB college established in 2023, focusing on business, management, and entrepreneurship studies. Named after the renowned Bhutanese scholar Norbu Rigsel.",
+    programs: [
+      {
+        code: "BBADs",
+        name: "Bachelor of Business Administration in Digital Business",
+        level: "bachelor",
+        duration: 4,
+        eligibility: {
+          minPercentage: 50,
+          requiredSubjects: ["English", "Mathematics", "Economics", "Computer Science"],
+          stream: "Any",
+        },
+        fees: { tuition: 30000, hostel: 8000 },
+        capacity: 40,
+        careerProspects: [
+          "Digital Marketing Manager",
+          "E-commerce Entrepreneur",
+          "Social Media Manager",
+          "Digital Business Analyst",
+          "Tech Startup Founder",
+        ],
+        riasecCodes: ["E", "I"],
+        description: "Focus on digital business models, e-commerce, digital marketing, social media strategy, and technology entrepreneurship.",
+      },
+      {
+        code: "BBAMark",
+        name: "Bachelor of Business Administration in Marketing Management",
+        level: "bachelor",
+        duration: 4,
+        eligibility: {
+          minPercentage: 50,
+          requiredSubjects: ["English", "Mathematics", "Economics"],
+          stream: "Any",
+        },
+        fees: { tuition: 25000, hostel: 8000 },
+        capacity: 40,
+        careerProspects: [
+          "Marketing Manager",
+          "Brand Manager",
+          "Market Research Analyst",
+          "Advertising Executive",
+          "Sales Manager",
+        ],
+        riasecCodes: ["E", "A"],
+        description: "Study of marketing principles, consumer behavior, digital marketing, brand management, and marketing strategy.",
+      },
+      {
+        code: "BBAEnt",
+        name: "Bachelor of Business Administration in Entrepreneurship",
+        level: "bachelor",
+        duration: 4,
+        eligibility: {
+          minPercentage: 50,
+          requiredSubjects: ["English", "Mathematics", "Economics", "Business Studies"],
+          stream: "Any",
+        },
+        fees: { tuition: 25000, hostel: 8000 },
+        capacity: 30,
+        careerProspects: [
+          "Entrepreneur",
+          "Business Consultant",
+          "Startup Founder",
+          "Business Development Manager",
+          "Innovation Manager",
+        ],
+        riasecCodes: ["E", "I"],
+        description: "Focus on entrepreneurial mindset, business planning, startup ecosystems, innovation management, and venture creation.",
+      },
+      {
+        code: "BBALead",
+        name: "Bachelor of Business Administration in Leadership and Management",
+        level: "bachelor",
+        duration: 4,
+        eligibility: {
+          minPercentage: 50,
+          requiredSubjects: ["English", "Mathematics", "Economics"],
+          stream: "Any",
+        },
+        fees: { tuition: 25000, hostel: 8000 },
+        capacity: 30,
+        careerProspects: [
+          "Team Leader",
+          "Project Manager",
+          "Operations Manager",
+          "HR Manager",
+          "Management Consultant",
+        ],
+        riasecCodes: ["E", "S"],
+        description: "Study of leadership principles, organizational behavior, team dynamics, strategic management, and human resources.",
+      },
+      {
+        code: "BComFintech",
+        name: "Bachelor of Commerce in Financial Technology",
+        level: "bachelor",
+        duration: 4,
+        eligibility: {
+          minPercentage: 55,
+          requiredSubjects: ["English", "Mathematics", "Economics", "Accountancy"],
+          stream: "Commerce",
+        },
+        fees: { tuition: 30000, hostel: 8000 },
+        capacity: 30,
+        careerProspects: [
+          "FinTech Analyst",
+          "Financial Analyst",
+          "Banking Officer",
+          "Investment Analyst",
+          "Cryptocurrency Analyst",
+        ],
+        riasecCodes: ["I", "C"],
+        description: "Study of financial technology, digital payments, blockchain applications, banking technology, and financial analytics.",
       },
     ],
   },

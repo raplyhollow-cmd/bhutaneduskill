@@ -13,7 +13,6 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sparkles, Filter, CheckCircle2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useAuth } from "@clerk/nextjs";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function StudentInsightsPage() {
@@ -21,8 +20,6 @@ export default function StudentInsightsPage() {
   const [filteredInsights, setFilteredInsights] = useState<Insight[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<"all" | "unread" | "alerts" | "achievements">("all");
-
-  const { userId } = useAuth();
 
   useEffect(() => {
     async function fetchInsights() {
@@ -40,7 +37,7 @@ export default function StudentInsightsPage() {
     }
 
     fetchInsights();
-  }, [userId]);
+  }, []);
 
   useEffect(() => {
     let filtered = insights;

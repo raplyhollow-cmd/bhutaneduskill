@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useUser } from "@clerk/nextjs";
 import { PlatformAssistant } from "./platform-assistant";
 
 /**
@@ -20,7 +19,6 @@ export interface UnifiedAIAssistantProps {
 }
 
 export function UnifiedAIAssistant({ userId, userName, userRole }: UnifiedAIAssistantProps) {
-  const { isLoaded, isSignedIn } = useUser();
   const [resolvedUserId, setResolvedUserId] = useState<string | undefined>(userId);
   const [resolvedUserName, setResolvedUserName] = useState<string | undefined>(userName);
   const [resolvedUserRole, setResolvedUserRole] = useState<"student" | "teacher" | "parent" | "counselor" | "school-admin" | "admin" | "ministry" | undefined>(userRole);
@@ -43,10 +41,6 @@ export function UnifiedAIAssistant({ userId, userName, userRole }: UnifiedAIAssi
       return;
     }
 
-    if (!isLoaded || !isSignedIn) {
-      return;
-    }
-
     // Fetch user role from API
     fetch("/api/user/profile")
       .then((res) => res.json())
@@ -60,7 +54,7 @@ export function UnifiedAIAssistant({ userId, userName, userRole }: UnifiedAIAssi
         if (!resolvedUserName) {
           const name = profile.firstName && profile.lastName
             ? `${profile.firstName} ${profile.lastName}`
-            : profile.firstName || profile.lastName || "User";
+            : profile.firstName || profile.lastName || profile.name || "User";
           setResolvedUserName(name);
         }
         if (!resolvedUserRole && profile.type) {
@@ -72,7 +66,7 @@ export function UnifiedAIAssistant({ userId, userName, userRole }: UnifiedAIAssi
         if (!resolvedUserName) setResolvedUserName("User");
         if (!resolvedUserRole) setResolvedUserRole("student");
       });
-  }, [isLoaded, isSignedIn, userId, userName, userRole, resolvedUserId, resolvedUserName, resolvedUserRole]);
+  }, [userId, userName, userRole, resolvedUserId, resolvedUserName, resolvedUserRole]);
 
   // Don't render until we have the required data
   if (!resolvedUserRole) {

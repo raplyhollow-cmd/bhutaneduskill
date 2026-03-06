@@ -148,14 +148,15 @@ export const StudentSkillFeature = defineFeature({
         filterable: true,
         render: (value: string) => {
           const categoryConfig = {
-            soft: { label: "Soft Skills", color: "bg-purple-100 text-purple-700" },
+            academic: { label: "Academic", color: "bg-blue-100 text-blue-700" },
+            soft: { label: "Soft", color: "bg-purple-100 text-purple-700" },
             technical: { label: "Technical", color: "bg-green-100 text-green-700" },
             creative: { label: "Creative", color: "bg-pink-100 text-pink-700" },
             service: { label: "Service", color: "bg-amber-100 text-amber-700" },
             vocational: { label: "Vocational", color: "bg-cyan-100 text-cyan-700" },
             other: { label: "Other", color: "bg-gray-100 text-gray-700" },
           };
-          const config = categoryConfig[value as keyof typeof categoryConfig] || categoryConfig.other;
+          const config = categoryConfig[value] || categoryConfig.other;
           return (
             <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
               {config.label}
@@ -168,6 +169,9 @@ export const StudentSkillFeature = defineFeature({
         label: "Proficiency",
         sortable: true,
         filterable: true,
+        render: (value: string) => {
+          const levelConfig = {
+            beginner: { label: "Beginner", color: "bg-gray-100 text-gray-700", bar: 1 },
             intermediate: { label: "Intermediate", color: "bg-blue-100 text-blue-700", bar: 2 },
             advanced: { label: "Advanced", color: "bg-green-100 text-green-700", bar: 3 },
             expert: { label: "Expert", color: "bg-purple-100 text-purple-700", bar: 4 },
@@ -182,7 +186,7 @@ export const StudentSkillFeature = defineFeature({
                 {[1, 2, 3, 4].map((i) => (
                   <div
                     key={i}
-                    className={`h-1 w-3 rounded-full ${i <= config.bar ? "bg-current" : "bg-gray-200"}`}
+                    className={`h-1 w-3 rounded-full ${i <= (config.bar || 1) ? "bg-current" : "bg-gray-200"}`}
                   />
                 ))}
               </div>
@@ -195,6 +199,9 @@ export const StudentSkillFeature = defineFeature({
         label: "Status",
         sortable: true,
         filterable: true,
+        render: (value: string) => {
+          const statusConfig = {
+            pending: { label: "Pending", color: "bg-yellow-100 text-yellow-700" },
             approved: { label: "Approved", color: "bg-green-100 text-green-700" },
             rejected: { label: "Rejected", color: "bg-red-100 text-red-700" },
           };
@@ -211,10 +218,13 @@ export const StudentSkillFeature = defineFeature({
         label: "Source",
         sortable: true,
         filterable: true,
+        render: (value: string) => {
+          const sourceConfig = {
+            inferred: { label: "Inferred", color: "bg-gray-100 text-gray-700" },
             self_report: { label: "Self-Report", color: "bg-blue-100 text-blue-700" },
             teacher_assigned: { label: "Teacher Assigned", color: "bg-green-100 text-green-700" },
           };
-          const config = sourceConfig[value as keyof typeof sourceConfig] || sourceConfig.self_report;
+          const config = sourceConfig[value as keyof typeof sourceConfig] || sourceConfig.inferred;
           return (
             <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
               {config.label}

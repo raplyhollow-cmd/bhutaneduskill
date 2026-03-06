@@ -1,6 +1,7 @@
 import { pgTable, text, integer, boolean, timestamp, json, jsonb, index, decimal, primaryKey } from "drizzle-orm/pg-core";
 import { relations, sql, eq, and, or, desc, like, inArray } from "drizzle-orm";
 import { rubColleges, rubScholarships } from "./rub-schema";
+import { careerInterests, careerRoadmaps, skillEvidence, careerExplorationActivities, mentorshipConnections, careerCounselingSessions, careerMilestones, careerRecommendations, careerReviewNotes } from "./career-roadmaps-schema";
 import { tenants } from "./tenancy-schema";
 import type { CounselorContent, LearningModuleContent, HomeworkContent, QuestionData } from "@/types";
 
@@ -32,6 +33,39 @@ export {
   type BCSEPerformanceTracking,
   type BCSESubjectCombination,
 } from "./bcse-schema";
+
+// Career Counseling & Roadmap tables
+export {
+  careerRoadmaps,
+  careerInterests,
+  skillEvidence,
+  careerExplorationActivities,
+  mentorshipConnections,
+  careerCounselingSessions,
+  careerMilestones,
+  careerRecommendations,
+  careerReviewNotes,
+};
+
+// Type exports (using different names to avoid duplicates)
+export type CareerRoadmap = typeof careerRoadmaps.$inferSelect;
+export type NewCareerRoadmap = typeof careerRoadmaps.$inferInsert;
+export type CareerInterest = typeof careerInterests.$inferSelect;
+export type NewCareerInterest = typeof careerInterests.$inferInsert;
+export type SkillEvidence = typeof skillEvidence.$inferSelect;
+export type NewSkillEvidence = typeof skillEvidence.$inferInsert;
+export type CareerExplorationActivity = typeof careerExplorationActivities.$inferSelect;
+export type NewCareerExplorationActivity = typeof careerExplorationActivities.$inferInsert;
+export type MentorshipConnection = typeof mentorshipConnections.$inferSelect;
+export type NewMentorshipConnection = typeof mentorshipConnections.$inferInsert;
+export type CareerCounselingSession = typeof careerCounselingSessions.$inferSelect;
+export type NewCareerCounselingSession = typeof careerCounselingSessions.$inferInsert;
+export type CareerMilestone = typeof careerMilestones.$inferSelect;
+export type NewCareerMilestone = typeof careerMilestones.$inferInsert;
+export type CareerRecommendation = typeof careerRecommendations.$inferSelect;
+export type NewCareerRecommendation = typeof careerRecommendations.$inferInsert;
+export type CareerReviewNote = typeof careerReviewNotes.$inferSelect;
+export type NewCareerReviewNote = typeof careerReviewNotes.$inferInsert;
 
 export {
   busAttendance,

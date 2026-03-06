@@ -162,14 +162,31 @@ export const ResultFeature = defineFeature({
         label: "Grade",
         sortable: true,
         filterable: true,
+        render: (value: string) => {
+          const gradeConfig = {
+            a: { label: "A", color: "bg-green-100 text-green-700" },
+            b: { label: "B", color: "bg-blue-100 text-blue-700" },
+            c: { label: "C", color: "bg-yellow-100 text-yellow-700" },
+            d: { label: "D", color: "bg-orange-100 text-orange-700" },
+            fail: { label: "Fail", color: "bg-red-100 text-red-700" },
+            pending: { label: "Pending", color: "bg-yellow-100 text-yellow-700" },
+          };
+          const config = gradeConfig[value] || gradeConfig.pending;
+          return (
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
+              {config.label}
+            </span>
+          );
+        },
       },
       {
         key: "status",
         label: "Status",
+        sortable: true,
         filterable: true,
         render: (value: string) => {
-          const gradeConfig = {
-        filterable: true,
+          const statusConfig = {
+            pass: { label: "Pass", color: "bg-green-100 text-green-700" },
             fail: { label: "Fail", color: "bg-red-100 text-red-700" },
             pending: { label: "Pending", color: "bg-yellow-100 text-yellow-700" },
           };

@@ -1,22 +1,15 @@
 "use client";
+export const dynamic = "force-dynamic";
 
-import { SignIn, useUser } from "@clerk/nextjs";
+import { SignIn } from "@clerk/nextjs";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 
-export default function SignInPage() {
+function SignInPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { isLoaded, isSignedIn } = useUser();
 
-  // Handle redirect after sign-in
-  useEffect(() => {
-    if (isLoaded && isSignedIn) {
-      // Get the redirect URL from query params, default to dashboard
-      const redirectUrl = searchParams.get("redirect_url");
-      router.push(redirectUrl || "/");
-    }
-  }, [isLoaded, isSignedIn, router, searchParams]);
+
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-orange-50 via-white to-blue-50 px-4 py-6">
@@ -142,4 +135,21 @@ export default function SignInPage() {
       </div>
     </div>
   );
+}
+
+export default function SignInPage() {
+  const hasClerk = typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+
+  if (!hasClerk) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Authentication Required</h1>
+          <p className="text-gray-600">This page requires Clerk authentication to be configured.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return <SignInPageContent />;
 }

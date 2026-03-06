@@ -1,0 +1,1040 @@
+/**
+ * ADVANCED CAREER MATCHING SERVICE
+ *
+ * Multi-factor career matching algorithm that combines:
+ * - 40% Assessments (RIASEC, MBTI, DISC, Work Values)
+ * - 25% Academic Performance
+ * - 20% Skills
+ * - 15% Interests & Goals
+ *
+ * Last Updated: March 5, 2026
+ */
+
+import { db } from "@/lib/db";
+import { users, subjects, enrollments, studentSkills } from "@/lib/db/schema";
+import { eq, and, sql } from "drizzle-orm";
+import { expandedCareersData, type ExpandedCareer } from "@/lib/data/careers-expanded";
+import { rubCollegesData, type RUBCollege, type RUBProgram } from "@/lib/data/rub-colleges";
+import { getSkillsForCareer, getSkillsGapForCareer, type SkillsGap } from "@/lib/data/skills-ontology";
+
+// ============================================================================
+// TYPE DEFINITIONS
+// ============================================================================
+
+export interface AssessmentProfile {
+  // RIASEC Holland Code (6 letters: R, I, A, S, E, C)
+  riasec?: {
+    code: string; // e.g., "RIASEC", "IAS", "CSR"
+    scores?: Record<string, number>; // Individual dimension scores
+  };
+
+  // MBTI Personality (16 types)
+  mbti?: {
+    type: string; // e.g., "INTJ", "ENFP"
+    scores?: Record<string, number>;
+  };
+
+  // DISC Profile (4 types)
+  disc?: {
+    type: string; // e.g., "D", "I", "S", "C", "DI", "SC"
+    scores?: Record<string, number>;
+  };
+
+  // Work Values
+  workValues?: {
+    topValues: string[]; // e.g., ["achievement", "independence", "security"]
+  };
+}
+
+export interface AcademicProfile {
+  // Subject grades
+  subjects: Array<{
+    subjectId: string;
+    subjectName: string;
+    grade: number; // 0-100
+    credits?: number;
+  }>;
+
+  // Overall performance
+  overallPercentage: number;
+  classRank?: number;
+  classSize?: number;
+
+  // Stream
+  stream?: "Science" | "Arts" | "Commerce" | "Vocational";
+  grade: number; // Class 6-12
+}
+
+export interface SkillProfile {
+  skills: Array<{
+    skillId: string;
+    skillName: string;
+    level: "beginner" | "intermediate" | "advanced" | "expert";
+    source: "inferred" | "self-report" | "teacher-assigned" | "project-evidence";
+    validated: boolean;
+  }>;
+}
+
+export interface InterestProfile {
+  statedInterests: string[]; // Career interests mentioned by student
+  careerGoals: string[]; // Specific career goals
+  journalTopics: string[]; // Topics from journal entries
+  extracurricular: string[]; // Activities and clubs
+}
+
+export interface StudentCareerProfile {
+  studentId: string;
+  name: string;
+
+  // Multi-factor components
+  assessments: AssessmentProfile;
+  academics: AcademicProfile;
+  skills: SkillProfile;
+  interests: InterestProfile;
+
+  // Context
+  grade: number;
+  school: string;
+  location: string;
+}
+
+export interface CareerMatchResult {
+  // Core match info
+  careerId: string;
+  careerTitle: string;
+  category: string;
+  industry: string;
+
+  // Match scores
+  matchScore: number; // 0-100 overall
+  confidence: "high" | "medium" | "low";
+
+  // Score breakdown
+  scores: {
+    assessment: number; // 0-100, weighted 40%
+    academic: number; // 0-100, weighted 25%
+    skills: number; // 0-100, weighted 20%
+    interests: number; // 0-100, weighted 15%
+  };
+
+  // RUB Connection
+  rubPrograms?: Array<{
+    collegeId: string;
+    collegeName: string;
+    collegeCode: string;
+    collegeLocation: string;
+    programCode: string;
+    programName: string;
+    programLevel: string;
+    matchScore: number; // How well this program fits
+    admissionProbability: number; // 0-100 chance of admission
+    eligibility: {
+      meetsRequirements: boolean;
+      missingSubjects?: string[];
+      minPercentageMet: boolean;
+    };
+  }>;
+
+  // Skills Gap Analysis
+  skillsGap: {
+    missing: string[];
+    have: string[];
+    readiness: number; // 0-100
+    gaps: SkillsGap[];
+  };
+
+  // Recommendations
+  nextSteps: string[];
+  recommendedActions: Array<{
+    priority: "high" | "medium" | "low";
+    action: string;
+    timeline?: string;
+  }>;
+
+  // Bhutan Context
+  bhutanDemand: "high" | "medium" | "low";
+  bhutanOutlook: "Growing" | "Stable" | "Declining" | "Emerging";
+  salaryRange: string;
+  educationRequired: string;
+  workEnvironment: string;
+
+  // Description
+  description: string;
+}
+
+// ============================================================================
+// MATCHING ALGORITHM
+// ============================================================================
+
+/**
+ * Calculate career matches using multi-factor algorithm
+ */
+export async function calculateCareerMatches(
+  profile: StudentCareerProfile,
+  options: {
+    maxResults?: number;
+    minScore?: number;
+    includeDeclining?: boolean;
+  } = {}
+): Promise<CareerMatchResult[]> {
+  const {
+    maxResults = 15,
+    minScore = 30,
+    includeDeclining = false,
+  } = options;
+
+  const results: CareerMatchResult[] = [];
+
+  // Score each career
+  for (const career of expandedCareersData) {
+    // Filter out declining careers if requested
+    if (!includeDeclining && career.bhutanOutlook === "Declining") {
+      continue;
+    }
+
+    const matchResult = await scoreCareerMatch(profile, career);
+
+    if (matchResult.matchScore >= minScore) {
+      results.push(matchResult);
+    }
+  }
+
+  // Sort by match score (descending)
+  results.sort((a, b) => b.matchScore - a.matchScore);
+
+  // Return top results
+  return results.slice(0, maxResults);
+}
+
+/**
+ * Score a single career against a student profile
+ */
+async function scoreCareerMatch(
+  profile: StudentCareerProfile,
+  career: ExpandedCareer
+): Promise<CareerMatchResult> {
+  // Calculate individual scores
+  const assessmentScore = calculateAssessmentScore(profile.assessments, career);
+  const academicScore = calculateAcademicScore(profile.academics, career);
+  const skillsScore = await calculateSkillsScore(profile.skills, career);
+  const interestsScore = calculateInterestsScore(profile.interests, career);
+
+  // Weighted composite score
+  const matchScore = Math.round(
+    assessmentScore * 0.40 +
+    academicScore * 0.25 +
+    skillsScore * 0.20 +
+    interestsScore * 0.15
+  );
+
+  // Determine confidence level
+  const confidence = determineConfidence(matchScore, {
+    hasAssessments: !!profile.assessments.riasec || !!profile.assessments.mbti,
+    hasAcademics: profile.academics.subjects.length > 0,
+    hasSkills: profile.skills.skills.length > 0,
+    hasInterests: profile.interests.statedInterests.length > 0,
+  });
+
+  // Find matching RUB programs
+  const rubPrograms = findMatchingRUBPrograms(profile, career);
+
+  // Skills gap analysis
+  const skillsGap = await analyzeSkillsGap(profile.skills, career);
+
+  // Generate recommendations
+  const nextSteps = generateNextSteps(career, skillsGap, rubPrograms);
+  const recommendedActions = generateRecommendedActions(career, skillsGap, rubPrograms);
+
+  return {
+    careerId: career.id,
+    careerTitle: career.title,
+    category: career.category,
+    industry: career.industry,
+    matchScore,
+    confidence,
+    scores: {
+      assessment: assessmentScore,
+      academic: academicScore,
+      skills: skillsScore,
+      interests: interestsScore,
+    },
+    rubPrograms,
+    skillsGap,
+    nextSteps,
+    recommendedActions,
+    bhutanDemand: career.bhutanDemand,
+    bhutanOutlook: career.bhutanOutlook,
+    salaryRange: career.typicalSalary,
+    educationRequired: career.educationLevel,
+    workEnvironment: career.workEnvironment,
+    description: career.description,
+  };
+}
+
+/**
+ * Calculate assessment score (40% weight)
+ * Based on RIASEC, MBTI, DISC, Work Values compatibility
+ */
+function calculateAssessmentScore(
+  assessments: AssessmentProfile,
+  career: ExpandedCareer
+): number {
+  let score = 50; // Base score
+  let factors = 0;
+
+  // RIASEC Match (highest priority)
+  if (assessments.riasec?.code) {
+    const riasecScore = calculateRIASECMatch(
+      assessments.riasec.code,
+      career.riasecCode,
+      career.hollandCodes
+    );
+    score = score * 0.4 + riasecScore * 0.6;
+    factors++;
+  }
+
+  // MBTI Match
+  if (assessments.mbti?.type) {
+    const mbtiScore = calculateMBTIMatch(assessments.mbti.type, career);
+    score = score * 0.7 + mbtiScore * 0.3;
+    factors++;
+  }
+
+  // Work Values Match
+  if (assessments.workValues?.topValues) {
+    const valuesScore = calculateWorkValuesMatch(assessments.workValues.topValues, career);
+    score = score * 0.8 + valuesScore * 0.2;
+    factors++;
+  }
+
+  // Adjust if no assessment data
+  if (factors === 0) {
+    return 50; // Neutral score
+  }
+
+  return Math.round(Math.min(100, Math.max(0, score)));
+}
+
+/**
+ * Calculate RIASEC Holland Code match score
+ */
+function calculateRIASECMatch(
+  studentRIASEC: string,
+  careerRIASEC: string,
+  careerHollandCodes: string[]
+): number {
+  // Normalize codes
+  const studentCodes = studentRIASEC.toUpperCase().split("");
+  const careerPrimary = careerRIASEC.charAt(0).toUpperCase();
+
+  // Full match (100 points)
+  if (studentRIASEC === careerRIASEC) {
+    return 100;
+  }
+
+  // Primary letter match (80 points)
+  if (studentCodes[0] === careerPrimary) {
+    return 80;
+  }
+
+  // First two letters match in any order (70 points)
+  const studentTop2 = studentCodes.slice(0, 2).sort().join("");
+  const careerTop2 = careerRIASEC.slice(0, 2).toUpperCase().split("").sort().join("");
+  if (studentTop2 === careerTop2) {
+    return 70;
+  }
+
+  // Any letter match (50 points)
+  if (studentCodes.includes(careerPrimary)) {
+    return 50;
+  }
+
+  // Adjacent RIASEC letters (30 points)
+  const riasecOrder = ["R", "I", "A", "S", "E", "C"];
+  const studentIdx = riasecOrder.indexOf(studentCodes[0]);
+  const careerIdx = riasecOrder.indexOf(careerPrimary);
+
+  if (studentIdx >= 0 && careerIdx >= 0) {
+    const distance = Math.abs(studentIdx - careerIdx);
+    if (distance === 1 || distance === 5) { // Adjacent on the hexagon
+      return 30;
+    }
+  }
+
+  return 20; // Low compatibility
+}
+
+/**
+ * Calculate MBTI match score for a career
+ */
+function calculateMBTIMatch(mbti: string, career: ExpandedCareer): number {
+  // Career category preferences based on MBTI research
+  const mbtiCareerMap: Record<string, string[]> = {
+    "Technology": ["INTJ", "INTP", "ENTJ", "ENTP"],
+    "Engineering": ["ISTJ", "INTJ", "ESTJ", "INTP"],
+    "Healthcare": ["ISFJ", "ESFJ", "INFJ", "ENFJ"],
+    "Education": ["INFJ", "ENFJ", "ISFJ", "ESFJ"],
+    "Business": ["ENTJ", "ESTJ", "ENTP", "ESTP"],
+    "Arts": ["ISFP", "ESFP", "INFP", "ENFP"],
+    "Science": ["INTJ", "INTP", "ISTJ", "INFJ"],
+    "Social Service": ["INFJ", "ENFJ", "ISFJ", "ESFJ"],
+    "Legal": ["INTJ", "ENTJ", "ISTJ", "INFJ"],
+    "Hospitality": ["ESFJ", "ENFJ", "ESTP", "ESFP"],
+  };
+
+  const preferredTypes = mbtiCareerMap[career.category];
+  if (!preferredTypes) {
+    return 50; // Neutral
+  }
+
+  if (preferredTypes.includes(mbti)) {
+    return 85; // Strong match
+  }
+
+  // Check for partial matches (same S/N preference, etc.)
+  const studentLetters = mbti.split("");
+  for (const type of preferredTypes) {
+    const typeLetters = type.split("");
+    const matches = studentLetters.filter((l, i) => l === typeLetters[i]).length;
+    if (matches >= 2) {
+      return 60; // Moderate match
+    }
+  }
+
+  return 40; // Low match
+}
+
+/**
+ * Calculate Work Values match score
+ */
+function calculateWorkValuesMatch(topValues: string[], career: ExpandedCareer): number {
+  // Map careers to work values
+  const careerValueMap: Record<string, string[]> = {
+    "Technology": ["innovation", "autonomy", "achievement"],
+    "Healthcare": ["helping", "security", "achievement"],
+    "Education": ["helping", "achievement", "social"],
+    "Business": ["achievement", "autonomy", "recognition"],
+    "Arts": ["creativity", "autonomy", "self-expression"],
+    "Engineering": ["achievement", "precision", "autonomy"],
+    "Social Service": ["helping", "social", "security"],
+    "Legal": ["achievement", "autonomy", "justice"],
+    "Public Service": ["security", "helping", "social"],
+  };
+
+  const careerValues = careerValueMap[career.category] || [];
+
+  if (careerValues.length === 0) {
+    return 50;
+  }
+
+  // Count matches
+  const matches = topValues.filter((v) => careerValues.includes(v.toLowerCase())).length;
+  const matchRatio = matches / Math.max(topValues.length, 1);
+
+  return Math.round(50 + matchRatio * 50);
+}
+
+/**
+ * Calculate academic score (25% weight)
+ * Based on grades in relevant subjects
+ */
+function calculateAcademicScore(
+  academics: AcademicProfile,
+  career: ExpandedCareer
+): number {
+  if (academics.subjects.length === 0) {
+    return 50; // Neutral if no data
+  }
+
+  // Get relevant subjects for the career
+  const relevantSubjects = career.subjects.map((s) => s.toLowerCase());
+
+  if (relevantSubjects.length === 0) {
+    // Use overall percentage if no specific subjects
+    return academics.overallPercentage;
+  }
+
+  // Find grades in relevant subjects
+  const relevantGrades = academics.subjects
+    .filter((s) => relevantSubjects.some((rs) => s.subjectName.toLowerCase().includes(rs)))
+    .map((s) => s.grade);
+
+  // Also consider overall percentage
+  const gradesToAverage = [...relevantGrades, academics.overallPercentage];
+
+  // Calculate average
+  const averageGrade = gradesToAverage.reduce((a, b) => a + b, 0) / gradesToAverage.length;
+
+  return Math.round(averageGrade);
+}
+
+/**
+ * Calculate skills score (20% weight)
+ * Based on skill overlap and proficiency
+ */
+async function calculateSkillsScore(
+  skills: SkillProfile,
+  career: ExpandedCareer
+): Promise<number> {
+  if (skills.skills.length === 0) {
+    return 50; // Neutral if no data
+  }
+
+  const careerSkillsLower = career.skills.map((s) => s.toLowerCase());
+
+  // Count matching skills
+  let matchCount = 0;
+  let totalScore = 0;
+
+  for (const studentSkill of skills.skills) {
+    const skillLower = studentSkill.skillName.toLowerCase();
+
+    if (careerSkillsLower.some((cs) => cs.includes(skillLower) || skillLower.includes(cs))) {
+      matchCount++;
+
+      // Score based on proficiency
+      const proficiencyScore = {
+        "beginner": 50,
+        "intermediate": 75,
+        "advanced": 90,
+        "expert": 100,
+      }[studentSkill.level] || 50;
+
+      totalScore += proficiencyScore;
+    }
+  }
+
+  if (matchCount === 0) {
+    return 30; // Low if no skill overlap
+  }
+
+  const averageScore = totalScore / matchCount;
+
+  // Adjust based on coverage (how many required skills they have)
+  const coverage = matchCount / Math.max(career.skills.length, 1);
+  const coverageBonus = Math.min(20, coverage * 20);
+
+  return Math.round(Math.min(100, averageScore * 0.8 + coverageBonus));
+}
+
+/**
+ * Calculate interests score (15% weight)
+ * Based on stated interests, goals, and activities
+ */
+function calculateInterestsScore(
+  interests: InterestProfile,
+  career: ExpandedCareer
+): number {
+  let score = 0;
+  let factors = 0;
+
+  // Check stated interests
+  if (interests.statedInterests.length > 0) {
+    const interestLower = interests.statedInterests.join(" ").toLowerCase();
+    const careerLower = career.title.toLowerCase();
+    const categoryLower = career.category.toLowerCase();
+    const industryLower = career.industry.toLowerCase();
+
+    if (interestLower.includes(careerLower) ||
+        careerLower.includes(interestLower) ||
+        interestLower.includes(categoryLower) ||
+        interestLower.includes(industryLower)) {
+      score += 80;
+    } else if (interests.statedInterests.some((i) =>
+        career.skills.some((s) => s.toLowerCase().includes(i.toLowerCase())))) {
+      score += 50;
+    } else {
+      score += 30;
+    }
+    factors++;
+  }
+
+  // Check career goals
+  if (interests.careerGoals.length > 0) {
+    const goalsLower = interests.careerGoals.join(" ").toLowerCase();
+    const careerLower = career.title.toLowerCase();
+
+    if (goalsLower.includes(careerLower) || careerLower.includes(goalsLower)) {
+      score = Math.max(score, 90);
+    }
+    factors++;
+  }
+
+  // Check extracurricular alignment
+  if (interests.extracurricular.length > 0) {
+    const extraLower = interests.extracurricular.join(" ").toLowerCase();
+    const relevantActivities = career.category.toLowerCase();
+
+    if (extraLower.includes(relevantActivities)) {
+      score = Math.min(100, score + 10);
+    }
+    factors++;
+  }
+
+  if (factors === 0) {
+    return 50; // Neutral if no data
+  }
+
+  return Math.round(Math.min(100, score / factors));
+}
+
+/**
+ * Determine confidence level based on data completeness
+ */
+function determineConfidence(
+  matchScore: number,
+  dataCompleteness: {
+    hasAssessments: boolean;
+    hasAcademics: boolean;
+    hasSkills: boolean;
+    hasInterests: boolean;
+  }
+): "high" | "medium" | "low" {
+  const factorsPresent = [
+    dataCompleteness.hasAssessments,
+    dataCompleteness.hasAcademics,
+    dataCompleteness.hasSkills,
+    dataCompleteness.hasInterests,
+  ].filter(Boolean).length;
+
+  if (factorsPresent >= 3 && matchScore >= 70) {
+    return "high";
+  } else if (factorsPresent >= 2) {
+    return "medium";
+  }
+  return "low";
+}
+
+interface RUBProgramMatch {
+  collegeId: string;
+  collegeName: string;
+  collegeCode: string;
+  collegeLocation: string;
+  programCode: string;
+  programName: string;
+  programLevel: string;
+  matchScore: number;
+  admissionProbability: number;
+  eligibility: {
+    minPercentage: number;
+    requiredSubjects: string[];
+    stream?: "Science" | "Arts" | "Commerce" | "Any";
+    meetsRequirements: boolean;
+    missingSubjects?: string[];
+    minPercentageMet: boolean;
+  };
+}
+
+/**
+ * Find matching RUB programs for a career
+ */
+function findMatchingRUBPrograms(
+  profile: StudentCareerProfile,
+  career: ExpandedCareer,
+): RUBProgramMatch[] {
+  const programs: RUBProgramMatch[] = [];
+
+  // Find programs related to the career
+  for (const college of rubCollegesData) {
+    for (const program of college.programs) {
+      // Check if program relates to career
+      const careerKeywords = [
+        career.title.toLowerCase(),
+        career.category.toLowerCase(),
+        career.industry.toLowerCase(),
+        ...career.skills.map((s) => s.toLowerCase()),
+      ];
+
+      const programKeywords = [
+        program.name.toLowerCase(),
+        program.description?.toLowerCase() || "",
+        ...(program.careerProspects || []).map((c) => c.toLowerCase()),
+      ];
+
+      const hasKeywordMatch = careerKeywords.some((kw) =>
+        programKeywords.some((pk) => pk.includes(kw) || kw.includes(pk))
+      );
+
+      if (!hasKeywordMatch) {
+        continue;
+      }
+
+      // Calculate program match score
+      let programScore = 70;
+
+      // Check RIASEC alignment
+      if (profile.assessments.riasec?.code && program.riasecCodes) {
+        const studentRIASEC = profile.assessments.riasec.code;
+        if (program.riasecCodes.some((rc) => studentRIASEC.includes(rc))) {
+          programScore += 15;
+        }
+      }
+
+      // Check eligibility
+      const meetsRequirements = checkEligibility(profile, program);
+
+      // Calculate admission probability
+      const admissionProbability = calculateAdmissionProbability(
+        profile,
+        program,
+        meetsRequirements
+      );
+
+      programs.push({
+        collegeId: college.id,
+        collegeName: college.name,
+        collegeCode: college.code,
+        collegeLocation: college.location,
+        programCode: program.code,
+        programName: program.name,
+        programLevel: program.level,
+        matchScore: Math.min(100, programScore),
+        admissionProbability,
+        eligibility: {
+          minPercentage: program.eligibility.minPercentage || 0,
+          requiredSubjects: program.eligibility.requiredSubjects || [],
+          stream: program.eligibility.stream || "Any",
+          meetsRequirements: meetsRequirements.meetsRequirements,
+          missingSubjects: meetsRequirements.missingSubjects,
+          minPercentageMet: meetsRequirements.minPercentageMet,
+        },
+      });
+    }
+  }
+
+  // Sort by match score
+  programs.sort((a, b) => b.matchScore - a.matchScore);
+
+  return programs.slice(0, 3); // Top 3 programs
+}
+
+/**
+ * Check if student meets program eligibility requirements
+ */
+function checkEligibility(
+  profile: StudentCareerProfile,
+  program: RUBProgram
+): {
+  meetsRequirements: boolean;
+  missingSubjects?: string[];
+  minPercentageMet: boolean;
+} {
+  const missingSubjects: string[] = [];
+  let meetsRequirements = true;
+  let minPercentageMet = true;
+
+  // Check stream requirement
+  if (program.eligibility.stream && program.eligibility.stream !== "Any") {
+    if (profile.academics.stream !== program.eligibility.stream) {
+      meetsRequirements = false;
+    }
+  }
+
+  // Check required subjects
+  if (program.eligibility.requiredSubjects) {
+    const studentSubjects = profile.academics.subjects.map((s) =>
+      s.subjectName.toLowerCase()
+    );
+
+    for (const required of program.eligibility.requiredSubjects) {
+      if (!studentSubjects.some((ss) => ss.includes(required.toLowerCase()))) {
+        missingSubjects.push(required);
+      }
+    }
+
+    if (missingSubjects.length > 0) {
+      meetsRequirements = false;
+    }
+  }
+
+  // Check minimum percentage
+  if (program.eligibility.minPercentage) {
+    minPercentageMet = profile.academics.overallPercentage >= program.eligibility.minPercentage;
+    if (!minPercentageMet) {
+      meetsRequirements = false;
+    }
+  }
+
+  return {
+    meetsRequirements,
+    missingSubjects: missingSubjects.length > 0 ? missingSubjects : undefined,
+    minPercentageMet,
+  };
+}
+
+/**
+ * Calculate admission probability (0-100)
+ */
+function calculateAdmissionProbability(
+  profile: StudentCareerProfile,
+  program: RUBProgram,
+  eligibility: { meetsRequirements: boolean; minPercentageMet: boolean }
+): number {
+  if (!eligibility.meetsRequirements) {
+    return 10; // Low but not zero - sometimes exceptions made
+  }
+
+  let probability = 70; // Base probability for eligible students
+
+  // Boost based on percentage above minimum
+  if (program.eligibility.minPercentage) {
+    const percentageAbove = profile.academics.overallPercentage - program.eligibility.minPercentage;
+    probability += Math.min(20, percentageAbove * 0.5);
+  }
+
+  // Boost for class rank
+  if (profile.academics.classRank && profile.academics.classSize) {
+    const percentile = 1 - (profile.academics.classRank / profile.academics.classSize);
+    if (percentile >= 0.9) probability += 15;
+    else if (percentile >= 0.75) probability += 10;
+    else if (percentile >= 0.5) probability += 5;
+  }
+
+  return Math.round(Math.min(95, Math.max(10, probability)));
+}
+
+/**
+ * Analyze skills gap for a career
+ */
+async function analyzeSkillsGap(
+  skills: SkillProfile,
+  career: ExpandedCareer
+): Promise<{
+  missing: string[];
+  have: string[];
+  readiness: number;
+  gaps: SkillsGap[];
+}> {
+  // Map student skills to the format expected by getSkillsGapForCareer
+  const currentSkills = skills.skills.map((s) => ({
+    skillId: s.skillId,
+    level: s.level,
+  }));
+
+  // Get skills gap analysis
+  const gaps = getSkillsGapForCareer(career.id, currentSkills);
+
+  // Extract missing and have skills
+  const missing: string[] = [];
+  const have: string[] = [];
+
+  for (const gap of gaps) {
+    if (gap.gap === "full") {
+      missing.push(gap.skillName);
+    } else {
+      have.push(gap.skillName);
+    }
+  }
+
+  // Calculate readiness
+  const readyCount = gaps.filter((g) => g.gap === "none").length;
+  const readiness = gaps.length > 0 ? Math.round((readyCount / gaps.length) * 100) : 50;
+
+  return {
+    missing,
+    have,
+    readiness,
+    gaps,
+  };
+}
+
+/**
+ * Generate next steps for pursuing a career
+ */
+function generateNextSteps(
+  career: ExpandedCareer,
+  skillsGap: Awaited<ReturnType<typeof analyzeSkillsGap>>,
+  rubPrograms: ReturnType<typeof findMatchingRUBPrograms>
+): string[] {
+  const steps: string[] = [];
+
+  // Education step
+  if (career.educationLevel === "Master") {
+    steps.push(`Pursue a Master's degree in ${career.industry} or related field`);
+  } else if (career.educationLevel === "Bachelor") {
+    steps.push(`Complete a Bachelor's degree in ${career.industry} or related field`);
+  } else if (career.educationLevel === "Diploma") {
+    steps.push(`Complete a Diploma program in ${career.industry}`);
+  } else if (career.educationLevel === "Certificate") {
+    steps.push(`Complete a Certificate course in ${career.industry}`);
+  }
+
+  // Subject focus
+  if (career.subjects.length > 0) {
+    steps.push(`Focus on ${career.subjects.slice(0, 3).join(", ")} in your current studies`);
+  }
+
+  // Skills to develop
+  if (skillsGap.missing.length > 0) {
+    steps.push(`Develop key skills: ${skillsGap.missing.slice(0, 3).join(", ")}`);
+  }
+
+  // RUB programs
+  if (rubPrograms.length > 0) {
+    const topProgram = rubPrograms[0];
+    steps.push(`Consider applying to ${topProgram.programName} at ${topProgram.collegeName}`);
+  }
+
+  // Experience
+  steps.push(`Gain practical experience through internships or projects`);
+
+  return steps;
+}
+
+/**
+ * Generate recommended actions with priority
+ */
+function generateRecommendedActions(
+  career: ExpandedCareer,
+  skillsGap: Awaited<ReturnType<typeof analyzeSkillsGap>>,
+  rubPrograms: ReturnType<typeof findMatchingRUBPrograms>
+): Array<{
+  priority: "high" | "medium" | "low";
+  action: string;
+  timeline?: string;
+}> {
+  const actions: Array<{ priority: "high" | "medium" | "low"; action: string; timeline?: string }> = [];
+
+  // High priority: Academic foundation
+  actions.push({
+    priority: "high",
+    action: `Maintain strong grades in ${career.subjects.slice(0, 2).join(" and ")}`,
+    timeline: "Ongoing",
+  });
+
+  // High priority: Subject requirements
+  if (rubPrograms.length > 0) {
+    const missing = rubPrograms[0].eligibility.missingSubjects;
+    if (missing && missing.length > 0) {
+      actions.push({
+        priority: "high",
+        action: `Ensure you have taken: ${missing.join(", ")}`,
+        timeline: "This academic year",
+      });
+    }
+  }
+
+  // Medium priority: Skills development
+  if (skillsGap.missing.length > 0) {
+    actions.push({
+      priority: "medium",
+      action: `Learn ${skillsGap.missing[0]} through online courses or workshops`,
+      timeline: "Next 3-6 months",
+    });
+  }
+
+  // Medium priority: Explore the career
+  actions.push({
+    priority: "medium",
+    action: `Research ${career.title} career paths and talk to professionals`,
+    timeline: "Next 1-2 months",
+  });
+
+  // Low priority: Extracurricular
+  actions.push({
+    priority: "low",
+    action: `Join clubs or activities related to ${career.category}`,
+    timeline: "Ongoing",
+  });
+
+  return actions;
+}
+
+// ============================================================================
+// DATA FETCHING HELPERS
+// ============================================================================
+
+/**
+ * Build a complete student career profile from database
+ */
+export async function buildStudentCareerProfile(
+  studentId: string
+): Promise<StudentCareerProfile | null> {
+  // Get user info
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, studentId),
+  });
+
+  if (!user) {
+    return null;
+  }
+
+  // Get academic data
+  const enrollmentData = await db.query.enrollments.findMany({
+    where: eq(enrollments.studentId, studentId),
+  });
+
+  // For now, use placeholder data - actual grades would come from results table
+  const subjects = enrollmentData.map((e) => ({
+    subjectId: e.classId,
+    subjectName: "Class " + e.classId, // Placeholder
+    grade: 70, // Placeholder - would come from actual grades
+    credits: 1,
+  }));
+
+  const overallPercentage = subjects.length > 0
+    ? Math.round(subjects.reduce((sum, s) => sum + s.grade, 0) / subjects.length)
+    : 0;
+
+  // Get skills
+  const skillData = await db.query.studentSkills.findMany({
+    where: eq(studentSkills.userId, studentId),
+  });
+
+  const skills = skillData.map((s) => ({
+    skillId: s.id,
+    skillName: s.skillName,
+    level: s.level as "beginner" | "intermediate" | "advanced" | "expert",
+    source: (s.source === "self_report" ? "self-report" : s.source === "teacher_assigned" ? "teacher-assigned" : s.source) as "inferred" | "self-report" | "teacher-assigned" | "project-evidence",
+    validated: s.status === "approved",
+  }));
+
+  // Get assessment results (would need to query assessment result tables)
+  // For now, placeholder
+  const assessments: AssessmentProfile = {};
+
+  // Build interests profile (would need to query interest tables)
+  // For now, placeholder
+  const interests: InterestProfile = {
+    statedInterests: [],
+    careerGoals: [],
+    journalTopics: [],
+    extracurricular: [],
+  };
+
+  return {
+    studentId,
+    name: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+    assessments,
+    academics: {
+      subjects,
+      overallPercentage,
+      grade: user.grade || 10,
+      stream: (user as any).stream,
+    },
+    skills: { skills },
+    interests,
+    grade: user.grade || 10,
+    school: (user as any).schoolId || "",
+    location: "",
+  };
+}
+
+/**
+ * Quick match for a student (returns top matches)
+ */
+export async function getQuickCareerMatches(
+  studentId: string,
+  options: { maxResults?: number } = {}
+): Promise<CareerMatchResult[]> {
+  const profile = await buildStudentCareerProfile(studentId);
+  if (!profile) {
+    return [];
+  }
+
+  return calculateCareerMatches(profile, {
+    maxResults: options.maxResults || 10,
+    minScore: 40,
+  });
+}
+

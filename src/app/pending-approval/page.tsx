@@ -1,4 +1,5 @@
 "use client";
+export const dynamic = "force-dynamic";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -7,7 +8,6 @@ import { PremiumCard, PremiumCardHeader, PremiumCardTitle, PremiumCardDescriptio
 import { Button } from "@/components/ui/button";
 import { Clock, Mail, School, LogOut, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
-import { useClerk } from "@clerk/nextjs";
 import { portal } from "@/styles/design-tokens";
 
 interface UserProfile {
@@ -25,9 +25,8 @@ interface UserProfile {
   };
 }
 
-export default function PendingApprovalPage() {
+function PendingApprovalContent() {
   const router = useRouter();
-  const { signOut } = useClerk();
   const { toast } = useToast();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -100,16 +99,8 @@ export default function PendingApprovalPage() {
   };
 
   const handleLogout = async () => {
-    try {
-      await signOut();
-      router.push("/sign-in");
-    } catch (error) {
-      toast({
-        title: "Logout failed",
-        description: "Please try again",
-        variant: "error",
-      });
-    }
+    // Simply redirect to sign-in - Clerk will handle the session
+    window.location.href = "/sign-in";
   };
 
   if (isLoading) {
@@ -306,4 +297,8 @@ export default function PendingApprovalPage() {
       </div>
     </div>
   );
+}
+
+export default function PendingApprovalPage() {
+  return <PendingApprovalContent />;
 }

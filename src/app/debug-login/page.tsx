@@ -4,11 +4,10 @@
  * Visit this page while signed in to diagnose login issues
  * and fix the clerkUserId mismatch
  */
-
 "use client";
+export const dynamic = "force-dynamic";
 
 import { useState, useEffect } from "react";
-import { useUser } from "@clerk/nextjs";
 import { Loader2, CheckCircle2, AlertCircle, Wrench } from "lucide-react";
 
 interface UserStatus {
@@ -30,25 +29,42 @@ interface UserStatus {
 }
 
 export default function DebugLoginPage() {
-  const { user: clerkUser, isLoaded } = useUser();
   const [status, setStatus] = useState<UserStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [fixing, setFixing] = useState(false);
   const [fixResult, setFixResult] = useState<any>(null);
-  const [emailToCheck, setEmailToCheck] = useState("");
+  const [clerkUser, setClerkUser] = useState<any>(null);
 
   useEffect(() => {
-    if (isLoaded && clerkUser) {
-      setEmailToCheck(clerkUser.primaryEmailAddress?.emailAddress || "");
-      checkStatus();
-    }
-  }, [isLoaded, clerkUser]);
+    const fetchUserData = async () => {
+      try {
+        // Fetch Clerk user info via API endpoint instead of using hooks
+        const response = await fetch("/api/debug/auth-check");
+        if (response.ok) {
+          const data = await response.json();
+          setClerkUser(data.clerkUser);
+          if (data.clerkUser?.email) {
+            await checkStatus(data.clerkUser.email);
+          }
+        } else {
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("Error fetching auth data:", error);
+        setLoading(false);
+      }
+    };
 
-  const checkStatus = async () => {
+    fetchUserData();
+  }, []);
+
+  const checkStatus = async (email?: string) => {
+    const emailToUse = email || clerkUser?.email;
+    if (!emailToUse) return;
+
     setLoading(true);
     try {
-      const email = clerkUser?.primaryEmailAddress?.emailAddress;
-      const response = await fetch(`/api/debug/user-status?email=${email}`);
+      const response = await fetch(`/api/debug/user-status?email=${emailToUse}`);
       const data = await response.json();
       setStatus(data);
     } catch (error) {
@@ -62,11 +78,10 @@ export default function DebugLoginPage() {
     setFixing(true);
     setFixResult(null);
     try {
-      const email = clerkUser?.primaryEmailAddress?.emailAddress;
       const response = await fetch("/api/debug/fix-user", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: clerkUser?.email }),
       });
       const data = await response.json();
       setFixResult(data);
@@ -84,7 +99,7 @@ export default function DebugLoginPage() {
     }
   };
 
-  if (!isLoaded) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
@@ -116,9 +131,9 @@ export default function DebugLoginPage() {
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
             <h2 className="font-semibold text-blue-900 mb-2">Your Clerk Account</h2>
             <div className="text-sm text-blue-800 space-y-1">
-              <p><span className="font-medium">Email:</span> {clerkUser.primaryEmailAddress?.emailAddress}</p>
+              <p><span className="font-medium">Email:</span> {clerkUser.email}</p>
               <p><span className="font-medium">Clerk ID:</span> {clerkUser.id}</p>
-              <p><span className="font-medium">Name:</span> {clerkUser.fullName || "Not set"}</p>
+              <p><span className="font-medium">Name:</span> {clerkUser.name || "Not set"}</p>
             </div>
           </div>
 
@@ -239,7 +254,7 @@ export default function DebugLoginPage() {
                 Try Admin Portal
               </a>
               <button
-                onClick={checkStatus}
+                onClick={() => checkStatus()}
                 className="text-sm px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
               >
                 Refresh Status

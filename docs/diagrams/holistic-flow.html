@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bhutan EduSkill - Holistic System Flow</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e4e4e7;
+            padding: 2rem;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .header h1 {
+            font-size: 1.8rem;
+            color: #fff;
+            margin-bottom: 0.5rem;
+        }
+        .header p {
+            color: #a1a1aa;
+            font-size: 0.9rem;
+        }
+        .diagram-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        .diagram-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #10b981;
+        }
+        .mermaid {
+            background: #fff;
+        }
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+        .badge-flow { background: #3b82f6; color: #fff; }
+        .badge-new { background: #8b5cf6; color: #fff; }
+        .badge-core { background: #10b981; color: #fff; }
+        .footer {
+            text-align: center;
+            color: #71717a;
+            font-size: 0.85rem;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Bhutan EduSkill - Holistic System Flow</h1>
+        <p>Complete workflow visualization from user onboarding to career outcomes</p>
+    </div>
+
+    <!-- PART 1: User Onboarding Flow -->
+    <div class="diagram-container">
+        <div class="diagram-title">Part 1: User Onboarding Journey <span class="badge badge-flow">FLOW</span></div>
+        <div class="mermaid">
+flowchart LR
+    A[New User Visits] --> B{Has School Code?}
+    B -->|Yes| C[Enter School Code]
+    B -->|No| D[Contact School Admin]
+
+    C --> E{School Exists?}
+    E -->|No| F[Error Invalid Code]
+    E -->|Yes| G[Verify School]
+
+    G --> H{User Type?}
+    H -->|Student| I1[Student Setup]
+    H -->|Teacher| I2[Teacher Setup]
+    H -->|Parent| I3[Parent Setup]
+    H -->|School Admin| I4[School Admin Setup]
+
+    I1 --> J1[Create Student Record]
+    I2 --> J2[Create Teacher Record]
+    I3 --> J3[Link to Students]
+    I4 --> J4[Verify Admin Access]
+
+    J1 --> K[Create Clerk Account]
+    J2 --> K
+    J3 --> K
+    J4 --> K
+
+    K --> L[Sync Clerk ID to Database]
+    L --> M[Send Welcome Email]
+    M --> N[Redirect to Portal Dashboard]
+
+    style A fill:#e1f5fe
+    style N fill:#10b981,color:#fff
+    style F fill:#ef4444,color:#fff
+    style K fill:#3b82f6,color:#fff
+        </div>
+    </div>
+
+    <!-- PART 2: Authentication & Portal Access -->
+    <div class="diagram-container">
+        <div class="diagram-title">Part 2: Authentication & Portal Routing <span class="badge badge-core">CORE</span></div>
+        <div class="mermaid">
+flowchart LR
+    A[User Signs In] --> B[Clerk Authentication]
+    B --> C[Auth Token Generated]
+    C --> D[Next.js Middleware]
+    D --> E{Check Role Claim}
+
+    E -->|admin| F1[Platform Admin Portal]
+    E -->|school_admin| F2[School Admin Portal]
+    E -->|teacher| F3[Teacher Portal]
+    E -->|student| F4[Student Portal]
+    E -->|parent| F5[Parent Portal]
+    E -->|counselor| F6[Counselor Portal]
+    E -->|ministry| F7[Ministry Portal]
+
+    F1 --> G{Setup Complete?}
+    F2 --> G
+    F3 --> G
+    F4 --> G
+    F5 --> G
+    F6 --> G
+    F7 --> G
+
+    G -->|No| H[Setup Wizard]
+    H --> I[Complete Profile]
+    I --> J[Save to Database]
+    J --> K[Enter Dashboard]
+
+    G -->|Yes| K
+
+    style B fill:#3b82f6,color:#fff
+    style D fill:#f59e0b,color:#fff
+    style H fill:#8b5cf6,color:#fff
+    style K fill:#10b981,color:#fff
+        </div>
+    </div>
+
+    <!-- PART 3: Student Daily Workflow -->
+    <div class="diagram-container">
+        <div class="diagram-title">Part 3: Student Daily Workflow <span class="badge badge-flow">FLOW</span></div>
+        <div class="mermaid">
+flowchart TD
+    A[Student Logs In] --> B[View Dashboard]
+    B --> C{What to do?}
+
+    C -->|Check Classes| D1[My Classes]
+    D1 --> D2[View Today Schedule]
+    D2 --> D3[Join Online Class]
+    D2 --> D4[View Homework]
+
+    C -->|Do Homework| E1[Homework List]
+    E1 --> E2[Select Assignment]
+    E2 --> E3[Upload Work]
+    E3 --> E4[Submit for Grading]
+
+    C -->|Write Journal| F1[Daily Journal]
+    F1 --> F2[Write Entry]
+    F2 --> F3{Already wrote today?}
+    F3 -->|Yes| F4[View Past Entry]
+    F3 -->|No| F5[Save to JSONB]
+    F5 --> F6[Stored in users.settings]
+
+    C -->|Check Skills| G1[My Skills]
+    G1 --> G2[Self Reported Skills]
+    G1 --> G3[AI Inferred Skills]
+    G2 --> G4[Add New Skill]
+    G3 --> G5[Take Assessment]
+    G4 --> G6[Learning Path Update]
+    G5 --> G6
+
+    C -->|Request Leave| H1[Leave Request]
+    H1 --> H2[Select Dates]
+    H2 --> H3[Check Balance]
+    H3 -->|Sufficient| H4[Submit Request]
+    H3 -->|Insufficient| H5[Error]
+    H4 --> H6[Status Pending]
+
+    C -->|View Career| I1[Career Dashboard]
+    I1 --> I2[Skill Gaps Analysis]
+    I1 --> I3[Career Matches]
+    I3 --> I4[Explore Careers]
+    I2 --> I5[Recommended Modules]
+    I5 --> I6[Start Learning]
+
+    style A fill:#4caf50,color:#fff
+    style F6 fill:#9c27b0,color:#fff
+    style H6 fill:#fff3c7
+    style I6 fill:#10b981,color:#fff
+        </div>
+    </div>
+
+    <!-- PART 4: Teacher Workflow -->
+    <div class="diagram-container">
+        <div class="diagram-title">Part 4: Teacher Classroom Workflow <span class="badge badge-flow">FLOW</span></div>
+        <div class="mermaid">
+flowchart TD
+    A[Teacher Logs In] --> B[Dashboard]
+    B --> C{Task?}
+
+    C -->|Manage Class| D1[My Classes]
+    D1 --> D2[Select Class]
+    D2 --> D3{Action?}
+
+    D3 -->|Take Attendance| E1[Attendance Sheet]
+    E1 --> E2[Mark Present Absent]
+    E2 --> E3[Save to Database]
+    E3 --> E4[Notify Parents]
+
+    D3 -->|Assign Homework| F1[Create Homework]
+    F1 --> F2[Set Due Date]
+    F2 --> F3[Attach Resources]
+    F3 --> F4[Assign to Students]
+    F4 --> F5[Notifications Sent]
+
+    D3 -->|Grade Submissions| G1[Pending Submissions]
+    G1 --> G2[Student Work]
+    G2 --> G3[Add Feedback]
+    G3 --> G4[Enter Grade]
+    G4 --> G5[Student Notified]
+    G5 --> G6[Parent Notified]
+
+    C -->|View Students| H1[Student List]
+    H1 --> H2[Select Student]
+    H2 --> H3[View Profile]
+    H3 --> H4[Academic Progress]
+    H3 --> H5[Attendance Record]
+    H3 --> H6[Behavior Notes]
+
+    C -->|Leave Requests| I1[Pending Requests]
+    I1 --> I2[Review Request]
+    I2 --> I3{Decision}
+    I3 -->|Approve| I4[Assign Substitute]
+    I3 -->|Reject| I5[Add Reason]
+    I4 --> I6[Notify Teacher]
+    I5 --> I6
+
+    style A fill:#2196f3,color:#fff
+    style E4 fill:#10b981,color:#fff
+    style F5 fill:#10b981,color:#fff
+    style G6 fill:#10b981,color:#fff
+    style I6 fill:#10b981,color:#fff
+        </div>
+    </div>
+
+    <!-- PART 5: Leave Management Flow -->
+    <div class="diagram-container">
+        <div class="diagram-title">Part 5: Leave Management System <span class="badge badge-new">NEW v3.0</span></div>
+        <div class="mermaid">
+flowchart TD
+    subgraph REQUEST[Leave Request Process]
+        A[User Portal] --> B[Click Request Leave]
+        B --> C[Select Date Range]
+        C --> D[Select Reason Type]
+        D --> E[Add Notes]
+        E --> F{Check Leave Balance}
+        F -->|Insufficient| G[Show Error]
+        F -->|Available| H[Confirm Request]
+        H --> I[Create leave_request Record]
+        I --> J[Status Pending]
+    end
+
+    subgraph APPROVAL[Approval Process]
+        J --> K[Admin Sees Request]
+        K --> L{Review Request}
+        L -->|Approve| M[Update Status Approved]
+        L -->|Reject| N[Update Status Rejected]
+        L -->|Need Info| O[Request Clarification]
+
+        M --> P[Deduct Balance]
+        P --> Q[Notify User]
+        N --> Q
+        O --> R[User Responds]
+        R --> K
+    end
+
+    subgraph CANCEL[Cancel Process]
+        J --> S{User Wants to Cancel?}
+        S -->|Yes| T{Still Pending?}
+        T -->|Yes| U[Cancel Request]
+        T -->|No| V[Contact Admin]
+        U --> W[Delete Record]
+        W --> X[Balance Restored]
+    end
+
+    style J fill:#fff3c7
+    style M fill:#10b981,color:#fff
+    style N fill:#ef4444,color:#fff
+    style Q fill:#3b82f6,color:#fff
+    style X fill:#10b981,color:#fff
+        </div>
+    </div>
+
+    <!-- PART 6: Career Counselling Flow -->
+    <div class="diagram-container">
+        <div class="diagram-title">Part 6: Career Counselling & Skills System <span class="badge badge-new">NEW v3.0</span></div>
+        <div class="mermaid">
+flowchart TD
+    subgraph ASSESSMENT[Skill Assessment]
+        A[Student] --> B[Take RIASEC Test]
+        B --> C[Take MBTI Test]
+        C --> D[Results Stored]
+    end
+
+    subgraph SKILLS[Skills Collection]
+        E[Self Report Skills] --> F[student_skills Table]
+        G[AI Analysis] --> H[Inferred Skills]
+        H --> F
+        D --> F
+    end
+
+    subgraph ANALYSIS[Gap Analysis]
+        F --> I[Learning Path Engine]
+        I --> J[Compare Career Requirements]
+        J --> K[Identify Skill Gaps]
+        K --> L[Generate Learning Path]
+    end
+
+    subgraph MATCHING[Career Matching]
+        L --> M[Career Catalog]
+        M --> N[Match Score Algorithm]
+        N --> O[Top 10 Careers]
+        O --> P[Student Reviews]
+    end
+
+    subgraph LEARNING[Module Learning]
+        P --> Q{Select Career?}
+        Q -->|Yes| R[Get Recommended Modules]
+        R --> S[Enroll in Module]
+        S --> T[Track Progress]
+        T --> U[Complete Module]
+        U --> V[Generate Certificate]
+        Q -->|Explore| W[Browse All Modules]
+        W --> S
+    end
+
+    style F fill:#e1f5fe
+    style I fill:#fff3c7
+    style N fill:#f3e5f5
+    style O fill:#10b981,color:#fff
+    style V fill:#a7f3d0
+        </div>
+    </div>
+
+    <!-- PART 7: API Request Flow -->
+    <div class="diagram-container">
+        <div class="diagram-title">Part 7: Unified API Request Flow <span class="badge badge-core">CORE</span></div>
+        <div class="mermaid">
+sequenceDiagram
+    participant C as Client Browser
+    participant M as Next.js Router
+    participant A as createApiRoute
+    participant AU as requireAuth
+    participant CL as Clerk
+    participant DB as PostgreSQL
+    participant FE as Feature Handler
+
+    C->>M: GET /api/resources/students
+    M->>A: Invoke Handler
+
+    A->>AU: Check Authentication
+    AU->>CL: Verify Token
+    CL-->>AU: User Data
+    AU-->>A: userId, role
+
+    A->>A: Check Permissions
+    A->>FE: Call feature.handlers.list
+
+    FE->>DB: SELECT * FROM students
+    DB-->>FE: Results
+
+    FE->>FE: Transform Data
+    FE-->>A: Processed Data
+
+    A->>A: successResponse
+    A-->>C: JSON Response
+        </div>
+    </div>
+
+    <!-- PART 8: Parent Notifications Flow -->
+    <div class="diagram-container">
+        <div class="diagram-title">Part 8: Parent Communication Flow <span class="badge badge-flow">FLOW</span></div>
+        <div class="mermaid">
+flowchart LR
+    A[Event Occurs] --> B{Event Type}
+
+    B -->|Homework Graded| C1[Teacher Grades]
+    C1 --> C2[Student Notified]
+    C2 --> C3[Parent Notified]
+
+    B -->|Absent Today| D1[Teacher Marks Absent]
+    D1 --> D2[Record in Database]
+    D2 --> D3[Parent SMS]
+
+    B -->|Fee Due| E1[System Checks]
+    E1 --> E2[Generate Reminder]
+    E2 --> E3[Parent Notified]
+
+    B -->|Leave Approved| F1[Admin Approves]
+    F1 --> F2[Student Notified]
+    F2 --> F3[Parent Notified]
+
+    C3 --> G[Parent Logs In]
+    D3 --> G
+    E3 --> G
+    F3 --> G
+
+    G --> H[View Dashboard]
+    H --> I[See Child Progress]
+    I --> J[Review Notifications]
+    J --> K[Contact Teacher if Needed]
+
+    style A fill:#e1f5fe
+    style G fill:#10b981,color:#fff
+    style K fill:#3b82f6,color:#fff
+        </div>
+    </div>
+
+    <!-- PART 9: School Admin Management -->
+    <div class="diagram-container">
+        <div class="diagram-title">Part 9: School Administration Flow <span class="badge badge-flow">FLOW</span></div>
+        <div class="mermaid">
+flowchart TD
+    A[School Admin Logs In] --> B[Dashboard]
+    B --> C{Management Area}
+
+    C -->|Users| D1[User Management]
+    D1 --> D2[Add New User]
+    D1 --> D3[Edit User]
+    D1 --> D4[Deactivate User]
+    D2 --> D5[Send Invitation]
+    D3 --> D6[Update Record]
+    D4 --> D7[Revoke Access]
+
+    C -->|Classes| E1[Class Management]
+    E1 --> E2[Create Class]
+    E1 --> E3[Assign Teacher]
+    E1 --> E4[Add Students]
+    E2 --> E5[Set Schedule]
+    E4 --> E6[Bulk Import]
+
+    C -->|Academic| F1[Academic Settings]
+    F1 --> F2[Set Academic Year]
+    F1 --> F3[Define Terms]
+    F1 --> F4[Bell Schedule]
+
+    C -->|Reports| G1[Generate Reports]
+    G1 --> G2[Attendance Report]
+    G1 --> G3[Fee Collection]
+    G1 --> G4[Performance Analysis]
+
+    C -->|Approvals| H1[Pending Approvals]
+    H1 --> H2[Student Applications]
+    H1 --> H3[Leave Requests]
+    H2 --> H4[Review and Approve]
+    H3 --> H4
+
+    style A fill:#ff9800,color:#fff
+    style D5 fill:#10b981,color:#fff
+    style E6 fill:#10b981,color:#fff
+    style H4 fill:#10b981,color:#fff
+        </div>
+    </div>
+
+    <!-- PART 10: Platform Admin Operations -->
+    <div class="diagram-container">
+        <div class="diagram-title">Part 10: Platform Admin (Bhutan EduSkill) Operations <span class="badge badge-flow">FLOW</span></div>
+        <div class="mermaid">
+flowchart TD
+    A[Platform Admin] --> B[Dashboard]
+    B --> C{Operation}
+
+    C -->|Schools| D1[School Management]
+    D1 --> D2{Action}
+    D2 -->|New| D3[Review Application]
+    D2 -->|Existing| D4[View School Details]
+    D3 --> D5{Approve?}
+    D5 -->|Yes| D6[Activate School]
+    D5 -->|No| D7[Reject with Reason]
+    D4 --> D8[Manage Subscription]
+    D8 --> D9[View Seat Usage]
+    D9 --> D10[Adjust Tier]
+
+    C -->|Billing| E1[Billing Operations]
+    E1 --> E2[Generate Invoices]
+    E2 --> E3[Send to Schools]
+    E3 --> E4[Track Payments]
+    E4 --> E5{Overdue?}
+    E5 -->|Yes| E6[Send Reminder]
+    E5 -->|No| E7[Mark Paid]
+
+    C -->|Content| F1[Content Management]
+    F1 --> F2[Colleges Database]
+    F1 --> F3[Scholarships]
+    F1 --> F4[Career Catalog]
+
+    C -->|Analytics| G1[Platform Analytics]
+    G1 --> G2[Total Schools]
+    G1 --> G3[Active Users]
+    G1 --> G4[Revenue Metrics]
+    G1 --> G5[Feature Usage]
+
+    C -->|Support| H1[Support Tickets]
+    H1 --> H2[Assign Agent]
+    H2 --> H3[Track Resolution]
+
+    style A fill:#9c27b0,color:#fff
+    style D6 fill:#10b981,color:#fff
+    style E7 fill:#10b981,color:#fff
+    style G5 fill:#3b82f6,color:#fff
+        </div>
+    </div>
+
+    <!-- PART 11: Ministry Analytics -->
+    <div class="diagram-container">
+        <div class="diagram-title">Part 11: Ministry of Education Analytics <span class="badge badge-flow">FLOW</span></div>
+        <div class="mermaid">
+flowchart LR
+    A[Ministry Official] --> B[Analytics Dashboard]
+    B --> C{Data View}
+
+    C -->|National| D1[All Schools Data]
+    D1 --> D2[Total Students]
+    D1 --> D3[Total Teachers]
+    D1 --> D4[School Performance]
+
+    C -->|Regional| E1[By Dzongkhag]
+    E1 --> E2[Compare Regions]
+    E2 --> E3[Identify Gaps]
+
+    C -->|GNH| F1[Gross National Happiness]
+    F1 --> F2[Values Integration]
+    F1 --> F3[Wellbeing Metrics]
+    F1 --> F4[Community Service]
+
+    C -->|EMIS| G1[EMIS Integration]
+    G1 --> G2[Export Reports]
+    G2 --> G3[Government Format]
+
+    C -->|Reports| H1[Generate Reports]
+    H1 --> H2[Attendance Statistics]
+    H1 --> H3[Exam Results]
+    H1 --> H4[Graduation Rates]
+
+    style A fill:#6366f1,color:#fff
+    style G3 fill:#10b981,color:#fff
+        </div>
+    </div>
+
+    <!-- PART 12: End-to-End Student Journey -->
+    <div class="diagram-container">
+        <div class="diagram-title">Part 12: Complete Student Journey (Onboarding to Career) <span class="badge badge-core">COMPLETE</span></div>
+        <div class="mermaid">
+flowchart TD
+    START(("Student Onboarding"))
+    START --> A[Create Account]
+    A --> B[Complete Profile]
+    B --> C[Join Classes]
+
+    C --> D[Daily Learning Loop]
+
+    subgraph DAILY[Daily Activities]
+        D --> D1[Attend Classes]
+        D --> D2[Submit Homework]
+        D --> D3[Write Journal]
+        D --> D4[Build Skills]
+    end
+
+    D4 --> E[Skill Assessment]
+    E --> F[Skill Gaps Identified]
+    F --> G[Get Learning Path]
+
+    G --> H[Take Modules]
+    H --> I[Complete Assessments]
+    I --> J[Earn Certificates]
+
+    J --> K[Career Matching]
+    K --> L[Explore Careers]
+    L --> M{Ready for College?}
+
+    M -->|No| N[Continue Learning]
+    N --> D4
+
+    M -->|Yes| O[College Applications]
+    O --> P[Scholarship Search]
+    P --> Q[Apply to Colleges]
+    Q --> R[Track Applications]
+    R --> S[Get Accepted]
+    S --> T(("Career Start"))
+
+    style START fill:#e1f5fe
+    style D fill:#f3e5f5
+    style T fill:#10b981,color:#fff
+    style S fill:#a7f3d0
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Bhutan EduSkill v3.0.0 | March 5, 2026</p>
+        <p>Holistic System Flow - 12 Parts Covering Complete Platform Operations</p>
+    </div>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            securityLevel: 'loose',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            },
+            sequence: {
+                useMaxWidth: true,
+                htmlLabels: true
+            }
+        });
+    </script>
+</body>
+</html>

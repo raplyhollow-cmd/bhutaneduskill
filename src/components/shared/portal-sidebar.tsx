@@ -54,7 +54,7 @@ import {
   User,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAuth } from "@clerk/nextjs";
+
 import { portal } from "@/styles/design-tokens";
 
 interface SidebarProps {
@@ -857,10 +857,10 @@ export function PortalHeader({
   subtitle?: string;
 }) {
   const portalStyle = portalStyles[userType];
-  const { signOut } = useAuth();
+  // Handle sign out via direct navigation instead of Clerk hook
 
-  const handleSignOut = async () => {
-    await signOut({ redirectUrl: '/' });
+  const handleSignOut = () => {
+    window.location.href = '/';
   };
 
   // Get user initials for avatar

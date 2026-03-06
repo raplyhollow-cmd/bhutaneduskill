@@ -19,8 +19,8 @@ export async function POST(request: NextRequest) {
     console.log("🔄 Syncing Clerk User IDs...\n");
 
     // Import Clerk dynamically
-    const { Clerk } = await import("@clerk/backend");
-    const clerkClient = new Clerk(process.env.CLERK_SECRET_KEY!);
+    const { createClerkClient } = await import("@clerk/backend");
+    const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY! });
 
     // Get all users from Clerk
     const response = await clerkClient.users.getUserList();

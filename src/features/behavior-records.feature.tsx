@@ -135,16 +135,17 @@ export const BehaviorRecordFeature = defineFeature({
         label: "Incident Date",
         sortable: true,
         type: "date",
-        filterable: true,
-        render: (value: string) => {
-          const typeConfig = {
+      },
       {
         key: "incidentType",
         label: "Type",
         sortable: true,
         filterable: true,
+        render: (value: string) => {
+          const typeConfig = {
             negative: { label: "Negative", color: "bg-red-100 text-red-700" },
             neutral: { label: "Neutral", color: "bg-gray-100 text-gray-700" },
+            positive: { label: "Positive", color: "bg-green-100 text-green-700" },
           };
           const config = typeConfig[value as keyof typeof typeConfig] || typeConfig.neutral;
           return (
@@ -159,6 +160,9 @@ export const BehaviorRecordFeature = defineFeature({
         label: "Severity",
         sortable: true,
         filterable: true,
+        render: (value: string) => {
+          const severityConfig = {
+            low: { label: "Low", color: "bg-green-100 text-green-700" },
             medium: { label: "Medium", color: "bg-amber-100 text-amber-700" },
             high: { label: "High", color: "bg-red-100 text-red-700" },
           };
@@ -175,6 +179,9 @@ export const BehaviorRecordFeature = defineFeature({
         label: "Status",
         sortable: true,
         filterable: true,
+        render: (value: string) => {
+          const statusConfig = {
+            reported: { label: "Reported", color: "bg-yellow-100 text-yellow-700" },
             verified: { label: "Verified", color: "bg-blue-100 text-blue-700" },
             resolved: { label: "Resolved", color: "bg-green-100 text-green-700" },
           };

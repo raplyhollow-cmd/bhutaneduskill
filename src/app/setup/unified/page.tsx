@@ -3,7 +3,6 @@
 import { logger } from "@/lib/logger";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
 import { WizardContainer } from "@/components/wizard/wizard-container";
 import { WizardNavigation } from "@/components/wizard/wizard-navigation";
 import { SchoolSearchInput, type School as SchoolType } from "@/components/wizard/school-search-input";
@@ -73,9 +72,10 @@ const SPECIALIZATIONS = [
 ];
 const POSITIONS = ["principal", "vice_principal", "admin_officer", "other"];
 
-export default function UnifiedSetupWizard() {
+function UnifiedSetupWizardContent() {
   const router = useRouter();
-  const { user: clerkUser, isLoaded: clerkLoaded } = useUser();
+  // Get user data via API instead of Clerk hooks to avoid build issues
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const [selectedRole, setSelectedRole] = useState<typeof ROLES[0] | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -136,11 +136,24 @@ export default function UnifiedSetupWizard() {
   const [position, setPosition] = useState("principal");
 
   // Auto-fill email from Clerk
+  // Fetch user email from API
   useEffect(() => {
-    if (clerkLoaded && clerkUser?.primaryEmailAddress?.emailAddress && !email) {
-      setEmail(clerkUser.primaryEmailAddress.emailAddress);
-    }
-  }, [clerkLoaded, clerkUser, email]);
+    const fetchUserEmail = async () => {
+      try {
+        const response = await fetch("/api/user/profile");
+        if (response.ok) {
+          const data = await response.json();
+          const userEmail = data.data?.profile?.email || data.profile?.email || data.user?.email;
+          if (userEmail && !email) {
+            setEmail(userEmail);
+          }
+        }
+      } catch (error) {
+        console.debug("Could not fetch user email:", error);
+      }
+    };
+    fetchUserEmail();
+  }, [email]);
 
   // Load classes for students
   useEffect(() => {
@@ -1199,3 +1212,5 @@ export default function UnifiedSetupWizard() {
     </WizardContainer>
   );
 }
+
+export default UnifiedSetupWizardContent;

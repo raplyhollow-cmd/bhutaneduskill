@@ -9,7 +9,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AlertTriangle, School, RefreshCw, ArrowRight, Mail, LogOut } from "lucide-react";
 import { motion } from "framer-motion";
-import { useClerk } from "@clerk/nextjs";
 import { portal } from "@/styles/design-tokens";
 
 interface UserProfile {
@@ -28,7 +27,6 @@ interface UserProfile {
 
 export default function RejectedPage() {
   const router = useRouter();
-  const { signOut } = useClerk();
   const { toast } = useToast();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -99,17 +97,9 @@ export default function RejectedPage() {
     router.push("/setup/unified");
   };
 
-  const handleLogout = async () => {
-    try {
-      await signOut();
-      router.push("/sign-in");
-    } catch (error) {
-      toast({
-        title: "Logout failed",
-        description: "Please try again",
-        variant: "error",
-      });
-    }
+  const handleLogout = () => {
+    // Simply redirect to sign-in
+    window.location.href = "/sign-in";
   };
 
   if (isLoading) {

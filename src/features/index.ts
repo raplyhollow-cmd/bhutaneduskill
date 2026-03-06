@@ -25,6 +25,11 @@ export { SectionsFeature as SectionFeature } from "./sections.feature"; // Singu
 
 // Academic
 export { HomeworkFeature } from "./homework.feature";
+export { AttendanceFeature } from "./attendance.feature";
+export { BehaviorRecordFeature } from "./behavior-records.feature";
+export { InterventionFeature } from "./interventions.feature";
+export { ResultFeature } from "./results.feature";
+export { StudentSkillFeature } from "./student-skills.feature";
 export { LessonFeature } from "./lessons.feature";
 export { LessonFeature as TimetableFeature } from "./lessons.feature"; // Alias for timetables
 export { ExamFeature } from "./exams.feature";
@@ -192,6 +197,11 @@ export const features: Record<string, any> = {
   batches: () => require("./batches.feature").BatchFeature,
   sections: () => require("./sections.feature").SectionsFeature,
   homework: () => require("./homework.feature").HomeworkFeature,
+  attendance: () => require("./attendance.feature").AttendanceFeature,
+  behavior_records: () => require("./behavior-records.feature").BehaviorRecordFeature,
+  interventions: () => require("./interventions.feature").InterventionFeature,
+  results: () => require("./results.feature").ResultFeature,
+  student_skills: () => require("./student-skills.feature").StudentSkillFeature,
   lessons: () => require("./lessons.feature").LessonFeature,
   exams: () => require("./exams.feature").ExamFeature,
   assessments: () => require("./assessments.feature").AssessmentsFeature,

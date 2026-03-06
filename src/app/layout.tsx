@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "next-themes";
 import { ToastProvider } from "@/components/ui/toaster";
 import { NotificationProvider } from "@/components/unified/Notifications";
@@ -10,6 +9,7 @@ import { AppErrorBoundary } from "@/components/error/app-error-boundary";
 import { TransitionProvider } from "@/components/transitions/transition-provider";
 import { GlobalProviders } from "@/components/global/global-providers";
 import { QueryProvider } from "@/components/providers/query-provider";
+import { ClerkProvider } from "@/components/providers/clerk-provider-wrapper";
 import "./globals.css";
 import "../styles/ceramic.css";
 
