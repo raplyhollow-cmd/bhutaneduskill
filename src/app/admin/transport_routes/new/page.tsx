@@ -24,7 +24,7 @@ export default function NewTransportRoutePage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New TransportRoute</h1>
       <FeatureForm
-        schema={TransportRouteFeature.schema}
+        schema={TransportRouteFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

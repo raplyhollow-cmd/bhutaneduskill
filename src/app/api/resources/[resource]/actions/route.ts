@@ -15,6 +15,7 @@ import { createApiRoute } from "@/lib/api/route-handler";
 import { errorResponse, notFoundResponse } from "@/lib/api/response-helpers";
 import { logger } from "@/lib/logger";
 import { getFeature, type FeatureName } from "@/features";
+import { db } from "@/lib/db";
 
 interface RouteContext {
   params: Promise<{ resource: string }>;
@@ -24,13 +25,38 @@ interface RouteContext {
 const resourceMapping: Record<string, FeatureName> = {
   users: "users",
   user: "users",
+  students: "students",
+  student: "students",
+  teachers: "teachers",
+  teacher: "teachers",
+  classes: "classes",
+  class: "classes",
+  subjects: "subjects",
+  subject: "subjects",
+  schools: "schools",
+  school: "schools",
   notifications: "notifications",
   notification: "notifications",
-  timetable: "timetable",
+  timetable: "timetables",
+  timetables: "timetables",
   subscriptions: "subscriptions",
   payments: "payments",
   billing: "billing",
+  "teacher-assignments": "teacher-assignments",
+  "teacher-assignment": "teacher-assignments",
 };
+
+// Convert kebab-case to camelCase (e.g., get-by-teacher → getByTeacher)
+function toCamelCase(str: string): string {
+  return str.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+}
+
+// Helper function to get the schema table for a feature
+function getFeatureTable(tableName: string) {
+  // Import the schema and find the table
+  const schema = require("@/lib/db/schema");
+  return schema[tableName];
+}
 
 // Helper function to execute an action
 async function executeAction(
@@ -49,12 +75,21 @@ async function executeAction(
     return notFoundResponse(`Feature "${featureName}" not found`);
   }
 
-  const action = feature.actions?.[actionName];
+  // Try kebab-case and camelCase versions
+  let action = feature.actions?.[actionName];
+  if (!action && actionName.includes("-")) {
+    action = feature.actions?.[toCamelCase(actionName)];
+  }
   if (!action) {
     return notFoundResponse(`Action "${actionName}" not found`);
   }
 
   // Check action-specific permissions
+  // auth comes from createApiRoute wrapper as { userId, user }
+  if (!auth) {
+    return errorResponse("Unauthorized", 401);
+  }
+
   const { user } = auth;
   const allowedRoles = action.allowedRoles;
   if (allowedRoles && user && !allowedRoles.includes(user.type as any)) {
@@ -62,7 +97,25 @@ async function executeAction(
   }
 
   try {
-    return await action.handler(undefined, data, auth);
+    // Get the schema table for this feature
+    const tableName = feature.tableName || feature.name;
+    const schema = getFeatureTable(tableName);
+
+    // Build context object for handlers
+    const context = {
+      db,
+      params: { ...data, id: data.id, body: data },
+      auth: {
+        userId: auth.userId,
+        user: auth.user,
+        role: auth.user?.type,
+        schoolId: auth.user?.schoolId,
+        type: auth.user?.type, // Add type for leave.feature.ts
+      },
+      schema,
+      request: undefined,
+    };
+    return await action.handler(context);
   } catch (error) {
     logger.error(`Action ${actionName} error for ${resource}`, { error });
     return errorResponse(error instanceof Error ? error.message : "Action failed", 500);

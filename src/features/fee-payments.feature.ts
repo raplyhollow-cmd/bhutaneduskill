@@ -10,11 +10,11 @@ export const FeePaymentFeature = defineFeature({
 
   schema: {
     id: { type: "text", required: true, primary: true },
-    studentId: { type: "reference", reference: { table: "users", onDelete: "cascade" }, required: true, label: "Student" },
-    feeId: { type: "reference", reference: { table: "fees", onDelete: "cascade" }, required: true, label: "Fee" },
+    studentFeeId: { type: "reference", reference: { table: "users", onDelete: "cascade" }, required: true, label: "Student" },
+    feeIdRef: { type: "reference", reference: { table: "fees", onDelete: "cascade" }, required: true, label: "Fee" },
     schoolId: { type: "reference", reference: { table: "schools", onDelete: "cascade" } },
     amount: { type: "float", required: true, label: "Amount", sortable: true },
-    paymentDate: { type: "date", required: true, label: "Payment Date", sortable: true },
+    paidDate: { type: "date", required: true, label: "Payment Date", sortable: true },
     paymentMethod: { type: "enum", options: ["cash", "bank_transfer", "online", "cheque"], label: "Method", filterable: true },
     transactionId: { type: "text", label: "Transaction ID" },
     status: { type: "enum", options: ["pending", "completed", "failed", "refunded"], label: "Status", filterable: true },
@@ -40,7 +40,7 @@ export const FeePaymentFeature = defineFeature({
       { key: "studentName", label: "Student" },
       { key: "feeName", label: "Fee Type" },
       { key: "amount", label: "Amount", sortable: true },
-      { key: "paymentDate", label: "Date", type: "date", sortable: true },
+      { key: "paidDate", label: "Date", type: "date", sortable: true },
       { key: "paymentMethod", label: "Method", filterable: true },
       { key: "status", label: "Status", filterable: true },
       { key: "receiptNumber", label: "Receipt" },
@@ -53,12 +53,12 @@ export const FeePaymentFeature = defineFeature({
       const { feePayments, users, fees } = await import("@/lib/db/schema");
       const { eq, and, desc, sql } = await import("drizzle-orm");
 
-      const { page = "1", limit = "20", studentId, status, paymentMethod } = params;
+      const { page = "1", limit = "20", studentFeeId, status, paymentMethod } = params;
       const offset = (parseInt(page) - 1) * parseInt(limit);
 
       const conditions = [];
       if (auth.user?.schoolId) conditions.push(eq(feePayments.schoolId, auth.user.schoolId));
-      if (studentId) conditions.push(eq(feePayments.studentId, studentId));
+      if (studentFeeId) conditions.push(eq(feePayments.studentFeeId, studentFeeId));
       if (status) conditions.push(eq(feePayments.status, status));
       if (paymentMethod) conditions.push(eq(feePayments.paymentMethod, paymentMethod));
 
@@ -67,10 +67,9 @@ export const FeePaymentFeature = defineFeature({
       const data = await db
         .select({
           id: feePayments.id,
-          studentId: feePayments.studentId,
-          feeId: feePayments.feeId,
+          transactionId: feePayments.transactionId,
           amount: feePayments.amount,
-          paymentDate: feePayments.paymentDate,
+          paidDate: feePayments.paidDate,
           paymentMethod: feePayments.paymentMethod,
           status: feePayments.status,
           receiptNumber: feePayments.receiptNumber,
@@ -79,10 +78,10 @@ export const FeePaymentFeature = defineFeature({
           feeName: fees.name,
         })
         .from(feePayments)
-        .innerJoin(users, eq(feePayments.studentId, users.id))
-        .innerJoin(fees, eq(feePayments.feeId, fees.id))
+        .innerJoin(users, eq(feePayments.studentFeeId, users.id))
+        .innerJoin(fees, eq((feePayments as any).feeIdRef, fees.id))
         .where(whereClause)
-        .orderBy(desc(feePayments.paymentDate))
+        .orderBy(desc(feePayments.paidDate))
         .limit(parseInt(limit))
         .offset(offset);
 

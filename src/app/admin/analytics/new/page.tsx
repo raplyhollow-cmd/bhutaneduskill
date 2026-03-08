@@ -24,7 +24,7 @@ export default function NewAnalyticPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New Analytic</h1>
       <FeatureForm
-        schema={AnalyticFeature.schema}
+        schema={AnalyticFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

@@ -142,7 +142,7 @@ export default function LessonDetailPage() {
 
         {/* Full details using FeatureView */}
         <FeatureView
-          schema={LessonFeature.config.schema}
+          schema={LessonFeature.config.schema as any}
           data={lesson}
           title="Lesson Details"
         />

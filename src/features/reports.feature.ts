@@ -129,7 +129,7 @@ export const ReportFeature = defineFeature({
         schoolId: auth.user?.schoolId,
         classId,
         generatedBy: auth.user?.id,
-        reportData: data,
+        reportData: JSON.stringify(data),
         dateFrom,
         dateTo,
         status: "ready",

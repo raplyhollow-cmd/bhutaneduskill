@@ -8,6 +8,7 @@
  * - Create/Update/Delete: School-admin only
  */
 import { defineFeature } from "@/lib/features/define-feature";
+import { sql } from "drizzle-orm";
 
 export const AnnouncementFeature = defineFeature({
   name: "announcements",
@@ -124,7 +125,7 @@ export const AnnouncementFeature = defineFeature({
   customHandlers: {
     list: async (params: any, auth: any) => {
       const { db } = await import("@/lib/db");
-      const { announcements, users, schools } = await import("@/lib/db/schema");
+      const { announcements, users, schools } = await import("@/lib/db/schema") as any;
       const { eq, and, desc, count, or, gte, lte, isNull } = await import("drizzle-orm");
 
       const { page = 1, limit = 20, search, category, priority, targetAudience, isActive } = params;
@@ -188,8 +189,8 @@ export const AnnouncementFeature = defineFeature({
       if (search) {
         const searchTerm = `%${search}%`;
         searchCondition = or(
-          sql`${announcements.title} ILIKE ${searchTerm}`,
-          sql`${announcements.content} ILIKE ${searchTerm}`
+          (sql as any)`${(announcements as any).title} ILIKE ${searchTerm}`,
+          (sql as any)`${(announcements as any).content} ILIKE ${searchTerm}`
         );
       }
 
@@ -245,7 +246,7 @@ export const AnnouncementFeature = defineFeature({
 
     get: async (id: string, auth: any) => {
       const { db } = await import("@/lib/db");
-      const { announcements, users, schools } = await import("@/lib/db/schema");
+      const { announcements, users, schools } = await import("@/lib/db/schema") as any;
       const { eq } = await import("drizzle-orm");
       const { successResponse, notFoundResponse, forbiddenResponse } = await import("@/lib/api/response-helpers");
 
@@ -291,7 +292,7 @@ export const AnnouncementFeature = defineFeature({
 
     create: async (data: any, auth: any) => {
       const { db } = await import("@/lib/db");
-      const { announcements } = await import("@/lib/db/schema");
+      const { announcements } = await import("@/lib/db/schema") as any;
       const { createdResponse } = await import("@/lib/api/response-helpers");
       const { nanoid } = await import("nanoid");
 
@@ -322,7 +323,7 @@ export const AnnouncementFeature = defineFeature({
 
     update: async (id: string, data: any, auth: any) => {
       const { db } = await import("@/lib/db");
-      const { announcements } = await import("@/lib/db/schema");
+      const { announcements } = await import("@/lib/db/schema") as any;
       const { eq, and } = await import("drizzle-orm");
       const { updatedResponse, notFoundResponse, forbiddenResponse } = await import("@/lib/api/response-helpers");
 
@@ -365,7 +366,7 @@ export const AnnouncementFeature = defineFeature({
 
     delete: async (id: string, auth: any) => {
       const { db } = await import("@/lib/db");
-      const { announcements } = await import("@/lib/db/schema");
+      const { announcements } = await import("@/lib/db/schema") as any;
       const { eq } = await import("drizzle-orm");
       const { successResponse, notFoundResponse, forbiddenResponse } = await import("@/lib/api/response-helpers");
 

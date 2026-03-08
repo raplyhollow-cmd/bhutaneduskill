@@ -14,7 +14,7 @@
 
 import { pgTable, text, integer, boolean, timestamp, pgSchema } from "drizzle-orm/pg-core";
 import { db } from "@/lib/db";
-import { eq, and, desc, count, sql, type SQL } from "drizzle-orm";
+import { eq, and, desc, count, sql, like, inArray, type SQL } from "drizzle-orm";
 import { successResponse, errorResponse, notFoundResponse, badRequestResponse, createdResponse, updatedResponse } from "@/lib/api/response-helpers";
 import { logger } from "@/lib/logger";
 import { nanoid } from "nanoid";
@@ -29,11 +29,13 @@ type useState = any;
 // TYPES
 // ============================================================================
 
-type UserRole = "student" | "teacher" | "school-admin" | "counselor" | "parent" | "admin";
+type UserRole = "student" | "teacher" | "school-admin" | "counselor" | "parent" | "admin" | "ministry";
 
 type ColumnType =
   | "text"
   | "integer"
+  | "float"
+  | "select"
   | "boolean"
   | "timestamp"
   | "date"
@@ -53,7 +55,7 @@ type ColumnDefinition<T> = {
   sortable?: boolean;
   filterable?: boolean;
   searchable?: boolean;
-  options?: string[]; // for enum type
+  options?: string[] | Array<{ value: string; label: string; icon?: React.ComponentType<{ className?: string }> }>; // for enum type
   multiline?: boolean; // for text fields that should use textarea
   rows?: number; // for multiline text fields
   index?: boolean; // Create database index
@@ -87,7 +89,7 @@ type UIConfig = {
   columns?: ColumnConfig[];
   title?: string;
   titlePlural?: string;
-  icon?: React.ComponentType<{ className?: string }>;
+  icon?: React.ComponentType<{ className?: string }> | string;
   basePath?: string;
 };
 
@@ -96,19 +98,37 @@ type UIConfig = {
 // ============================================================================
 
 /**
- * Action Handler - Non-CRUD operations
- * Accessed via: POST /api/resources/{resource}/actions/{actionName}
- *
- * @param id - Optional resource ID (if action is on a specific record)
- * @param data - Request body data
- * @param auth - Auth context with user info
- * @returns API response object
+ * Action Handler Context - Passed to context-based handlers
  */
-type ActionHandler = (
+interface ActionHandlerContext {
+  db: any;
+  params: { id?: string; body?: any; [key: string]: any };
+  auth: { userId: string; user?: any; [key: string]: any };
+  schema: any;
+  request?: Request;
+}
+
+/**
+ * Old-style Action Handler (3 params)
+ * Accessed via: POST /api/resources/{resource}/actions/{actionName}
+ */
+type OldActionHandler = (
   id: string | undefined,
   data: any,
   auth: any
 ) => Promise<any>;
+
+/**
+ * New-style Context Action Handler (1 param - context object)
+ */
+type ContextActionHandler = (
+  context: ActionHandlerContext
+) => Promise<any>;
+
+/**
+ * Action Handler - Union of both signatures for backward compatibility
+ */
+type ActionHandler = OldActionHandler | ContextActionHandler;
 
 /**
  * Webhook Handler - External service callbacks
@@ -166,7 +186,7 @@ type PublicEndpointConfig = {
   rateLimit?: number; // Max requests per window
 };
 
-type FeatureConfig = {
+export type FeatureConfig = {
   name: string;
   schema: SchemaDefinition;
   permissions?: PermissionConfig;
@@ -346,14 +366,14 @@ function generateApiHandlers(config: FeatureConfig, tableName: string) {
       const { user } = auth;
       const offset = (page - 1) * limit;
 
-      // Build where conditions
-      const conditions = buildWhereConditions(config.schema, filters, user);
-
-      // Get the schema table
+      // Get the schema table first
       const table = getTable(tableName);
       if (!table) {
         throw new Error(`Table ${tableName} not found`);
       }
+
+      // Build where conditions (pass table for column references)
+      const conditions = buildWhereConditions(table, config.schema, filters, user);
 
       // Execute query
       const [dataResult, countResult] = await Promise.all([
@@ -361,7 +381,7 @@ function generateApiHandlers(config: FeatureConfig, tableName: string) {
           .select()
           .from(table)
           .where(conditions)
-          .orderBy(sortBy ? table[sortBy] : desc(table.createdAt))
+          .orderBy(sortBy && table[sortBy] ? table[sortBy] : desc(table.createdAt))
           .limit(limit)
           .offset(offset),
         db
@@ -491,23 +511,33 @@ function generateTypes<T extends SchemaDefinition>(config: FeatureConfig & { sch
 // HELPER FUNCTIONS
 // ============================================================================
 
-function buildWhereConditions(schema: SchemaDefinition, filters: any, user: any) {
+function buildWhereConditions(table: any, schema: SchemaDefinition, filters: any, user: any) {
   const conditions: any[] = [];
 
-  // Add school filter if user has schoolId
-  if (user.schoolId && schema.schoolId) {
-    conditions.push(eq(sql`${user.schoolId}`, sql`${schema.schoolId}`));
+  // Add school filter if user has schoolId and table has schoolId column
+  if (user?.schoolId && schema.schoolId && table.schoolId) {
+    conditions.push(eq(table.schoolId, user.schoolId));
   }
 
-  // Add isActive filter for soft deletes
-  if (schema.isActive) {
-    conditions.push(eq(sql`true`, sql`is_active`));
+  // Add isActive filter for soft deletes if column exists
+  if (schema.isActive && table.isActive) {
+    conditions.push(eq(table.isActive, true));
   }
 
   // Add custom filters
   for (const [key, value] of Object.entries(filters)) {
-    if (value !== undefined && value !== null && value !== "") {
-      // Implement filter logic based on column type
+    if (value !== undefined && value !== null && value !== "" && table[key]) {
+      // Handle different filter types
+      if (typeof value === "string") {
+        // Text search - use like for partial matching
+        conditions.push(like(table[key], `%${value}%`));
+      } else if (Array.isArray(value)) {
+        // Array filter - use inArray
+        conditions.push(inArray(table[key], value));
+      } else {
+        // Exact match
+        conditions.push(eq(table[key], value));
+      }
     }
   }
 
@@ -515,9 +545,9 @@ function buildWhereConditions(schema: SchemaDefinition, filters: any, user: any)
 }
 
 function getTable(tableName: string) {
-  // Import tables dynamically
-  const { tables } = require("@/lib/db/schema");
-  return tables[tableName];
+  // Import the schema directly - tables are exported as named exports, not in a tables object
+  const schema = require("@/lib/db/schema");
+  return schema[tableName];
 }
 
 // ============================================================================
@@ -608,7 +638,23 @@ function createRouteHandler(
         if (!auth.user || !hasPermission(auth.user.type, allowedRoles)) {
           return errorResponse("Unauthorized for action: " + action, 401);
         }
-        return await actionConfig.handler(id, data, auth);
+        // Check if handler is context-based (1 param) or old-style (3 params)
+        const handler = actionConfig.handler as any;
+        const funcStr = handler.toString();
+        const isContextBased = funcStr.includes('context:') || funcStr.includes('{ db');
+        if (isContextBased) {
+          // Context-based handler
+          return await (handler as ContextActionHandler)({
+            db,
+            params: { id, ...data },
+            auth,
+            schema: null,
+            request,
+          });
+        } else {
+          // Old-style handler
+          return await (handler as OldActionHandler)(id, data, auth);
+        }
       }
 
       // Check for webhook endpoint (no auth)
@@ -695,11 +741,15 @@ function hasPermission(userRole: string, allowedRoles: string[]): boolean {
 
 /**
  * Normalize action definitions - convert simple handlers to config objects
+ * Auto-detects context-based handlers by checking parameter length
  */
 function normalizeActions(actions: Record<string, ActionHandler | ActionConfig>): Record<string, ActionConfig> {
   const normalized: Record<string, ActionConfig> = {};
   for (const [name, handlerOrConfig] of Object.entries(actions)) {
     if (typeof handlerOrConfig === 'function') {
+      // Detect context-based handler (has 1 parameter) vs old signature (3 parameters)
+      const funcStr = handlerOrConfig.toString();
+      const useContext = funcStr.includes('context:') || funcStr.includes('{ db');
       normalized[name] = {
         handler: handlerOrConfig as ActionHandler,
         allowedRoles: undefined, // Will use default permissions
@@ -867,6 +917,8 @@ function getPostgresTypeForMigration(type: ColumnType): string {
   const types: Record<ColumnType, string> = {
     text: "TEXT",
     integer: "INTEGER",
+    float: "NUMERIC(10,2)",
+    select: "TEXT",
     boolean: "BOOLEAN",
     timestamp: "TIMESTAMP WITH TIME ZONE",
     date: "TEXT",
@@ -886,28 +938,3 @@ function formatMigrationDefaultValue(value: any): string {
   return `'${value}'`;
 }
 
-/**
- * Get all table names from feature definitions
- */
-export function getFeatureTables(features: Record<string, ReturnType<typeof defineFeature>>): string[] {
-  return Object.values(features).map(f => f.tableName || f.name);
-}
-
-/**
- * Generate comprehensive migration for all features
- */
-export function generateFullMigration(features: Record<string, ReturnType<typeof defineFeature>>): string {
-  let sql = `-- Full Database Migration\n`;
-  sql += `-- Generated: ${new Date().toISOString()}\n`;
-  sql += `-- Bhutan EduSkill Platform - Unified Architecture\n\n`;
-
-  const tableNames = new Set<string>();
-
-  for (const [name, feature] of Object.entries(features)) {
-    sql += generateFeatureMigration(feature.config, tableNames);
-    tableNames.add(feature.tableName || name);
-    sql += '\n';
-  }
-
-  return sql;
-}

@@ -24,6 +24,7 @@ export function FeatureGraph({
 }: FeatureGraphProps) {
   const [graphData, setGraphData] = useState<GraphData | null>(null);
   const [loading, setLoading] = useState(true);
+  // @ts-ignore
   const fgRef = useRef<any>();
 
   // Fetch graph data
@@ -117,6 +118,7 @@ export function FeatureGraph({
         height={600}
         cooldownTicks={100}
         enableNodeDrag={true}
+        // @ts-ignore
         enableZoomPanInteraction={true}
         backgroundColor="#0f172a"
       />

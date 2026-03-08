@@ -10,7 +10,7 @@ import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, badRequestResponse } from "@/lib/api/response-helpers";
 
 export const POST = createApiRoute(
-  async (request: NextRequest, auth, context) => {
+  async (request: NextRequest, auth, context: { params: Promise<{ id: string }> }) => {
     const { userId } = auth;
     const { id } = await context.params;
 

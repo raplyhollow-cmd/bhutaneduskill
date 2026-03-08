@@ -60,7 +60,9 @@ export default function SchoolAdminSetupWizard() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const res = await fetch("/api/auth/set-role");
+        const res = await fetch("/api/resources/users/actions?action=get-role", {
+          credentials: "include",
+        });
         const data = await res.json();
 
         if (!data.needsSetup && data.userType === "school-admin") {

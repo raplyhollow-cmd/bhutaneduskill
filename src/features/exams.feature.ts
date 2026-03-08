@@ -1,4 +1,5 @@
 /**
+import { sql } from "drizzle-orm";
  * EXAMS FEATURE DEFINITION
  *
  * Unified definition for exams and assessments.
@@ -110,8 +111,8 @@ export const ExamFeature = defineFeature({
   customHandlers: {
     list: async (params: any, auth: any) => {
       const { db } = await import("@/lib/db");
-      const { exams, classes, subjects } = await import("@/lib/db/schema");
-      const { eq, and, desc } = await import("drizzle-orm");
+      const { exams, classes, subjects } = await import("@/lib/db/schema") as any;
+      const { eq, and, desc, sql } = await import("drizzle-orm");
 
       const { page = "1", limit = "20", classId, subjectId, examType, status } = params;
       const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -165,7 +166,7 @@ export const ExamFeature = defineFeature({
   bulkOperations: {
     scheduleExamSeries: async (classId: string, subjects: Array<{subjectId: string, date: string}>, examType: string, auth: any) => {
       const { db } = await import("@/lib/db");
-      const { exams } = await import("@/lib/db/schema");
+      const { exams } = await import("@/lib/db/schema") as any;
       const { nanoid } = await import("nanoid");
 
       const records = subjects.map(s => ({

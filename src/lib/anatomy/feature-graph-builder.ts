@@ -5,8 +5,6 @@
  * Creates a "star pattern" with all features connected to the central API node.
  */
 
-import { features } from "@/features";
-
 // ============================================================================
 // TYPES
 // ============================================================================
@@ -29,6 +27,66 @@ export interface FeatureGraphData {
   nodes: GraphNode[];
   links: GraphLink[];
 }
+
+// ============================================================================
+// FEATURE NAMES (static list to avoid import issues)
+// ============================================================================
+
+const FEATURE_NAMES = [
+  // Core entities
+  "users", "schools", "students", "teachers", "classes", "subjects",
+
+  // Organization
+  "departments", "batches", "sections",
+
+  // Academic
+  "attendance", "homework", "lessons", "exams", "results", "assessments",
+
+  // Skills & Career
+  "skills", "student_skills", "careers", "learning_paths",
+
+  // Behavior & Support
+  "behavior_records", "interventions", "counselor_notes",
+
+  // Transport
+  "transport", "transport_allocations", "transport_routes",
+
+  // Library
+  "library_books", "library_loans", "library_fines",
+
+  // Fees & Billing
+  "fees", "fee_payments", "invoices", "plans", "subscriptions",
+
+  // Communication
+  "announcements", "communication", "notifications", "messages",
+
+  // Reports & Analytics
+  "reports", "analytics", "audit_logs",
+
+  // Resources
+  "teaching_resources", "resource_shares",
+
+  // Meetings & Sessions
+  "meetings", "sessions", "appointments",
+
+  // Ministry
+  "workforce_data",
+
+  // Timetable & Scheduling
+  "timetable_slots", "schedule_exceptions",
+
+  // Submissions & Assessment
+  "submissions", "rubrics",
+
+  // Career & Skills
+  "roadmaps", "skill_gaps",
+
+  // Counseling
+  "treatment_plans",
+
+  // Teacher Assignments
+  "teacher_assignments",
+];
 
 // ============================================================================
 // FEATURE GROUPS
@@ -70,9 +128,12 @@ const FEATURE_GROUPS: Record<string, string> = {
   // Transport
   transport: "Transport",
   transport_allocations: "Transport",
+  transport_routes: "Transport",
 
   // Library
   library_books: "Library",
+  library_loans: "Library",
+  library_fines: "Library",
 
   // Fees & Billing
   fees: "Billing",
@@ -84,6 +145,8 @@ const FEATURE_GROUPS: Record<string, string> = {
   // Communication
   announcements: "Communication",
   communication: "Communication",
+  notifications: "Communication",
+  messages: "Communication",
 
   // Reports & Analytics
   reports: "Reports",
@@ -92,13 +155,33 @@ const FEATURE_GROUPS: Record<string, string> = {
 
   // Resources
   teaching_resources: "Resources",
+  resource_shares: "Resources",
 
   // Meetings & Sessions
   meetings: "Meetings",
   sessions: "Meetings",
+  appointments: "Meetings",
 
   // Ministry
   workforce_data: "Ministry",
+
+  // Timetable & Scheduling
+  timetable_slots: "Academic",
+  schedule_exceptions: "Academic",
+
+  // Submissions & Assessment
+  submissions: "Academic",
+  rubrics: "Academic",
+
+  // Career & Skills
+  roadmaps: "Skills",
+  skill_gaps: "Skills",
+
+  // Counseling
+  treatment_plans: "Behavior",
+
+  // Teacher Assignments
+  teacher_assignments: "Organization",
 };
 
 // ============================================================================
@@ -148,8 +231,6 @@ function getGroupColor(group: string): string {
  * - Links: all features → center
  */
 export function buildFeatureGraph(): FeatureGraphData {
-  const featureNames = Object.keys(features);
-
   // Create center API node
   const centerNode: GraphNode = {
     id: "api-center",
@@ -160,7 +241,7 @@ export function buildFeatureGraph(): FeatureGraphData {
   };
 
   // Create feature nodes
-  const featureNodes: GraphNode[] = featureNames.map((name) => ({
+  const featureNodes: GraphNode[] = FEATURE_NAMES.map((name) => ({
     id: name,
     name: getDisplayName(name),
     group: FEATURE_GROUPS[name] || "Other",
@@ -169,7 +250,7 @@ export function buildFeatureGraph(): FeatureGraphData {
   }));
 
   // Create links (all features → center)
-  const links: GraphLink[] = featureNames.map((name) => ({
+  const links: GraphLink[] = FEATURE_NAMES.map((name) => ({
     source: name,
     target: "api-center",
     value: 1,
@@ -223,17 +304,16 @@ export function getNodeSize(baseSize: number, healthScore: number): number {
  * Get all feature names
  */
 export function getFeatureNames(): string[] {
-  return Object.keys(features);
+  return [...FEATURE_NAMES];
 }
 
 /**
  * Get features by group
  */
 export function getFeaturesByGroup(): Record<string, string[]> {
-  const names = getFeatureNames();
   const grouped: Record<string, string[]> = {};
 
-  for (const name of names) {
+  for (const name of FEATURE_NAMES) {
     const group = FEATURE_GROUPS[name] || "Other";
     if (!grouped[group]) {
       grouped[group] = [];
@@ -248,5 +328,5 @@ export function getFeaturesByGroup(): Record<string, string[]> {
  * Get feature count
  */
 export function getFeatureCount(): number {
-  return Object.keys(features).length;
+  return FEATURE_NAMES.length;
 }

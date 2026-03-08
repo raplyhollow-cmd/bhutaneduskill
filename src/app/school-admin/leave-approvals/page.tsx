@@ -154,7 +154,7 @@ export default function LeaveApprovalsPage() {
       setActionLoading(true);
 
       const response = await fetch(`/api/leave/${selectedRequest.id}`, {
-        method: "PATCH",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "approve",
@@ -196,7 +196,7 @@ export default function LeaveApprovalsPage() {
       setActionLoading(true);
 
       const response = await fetch(`/api/leave/${selectedRequest.id}`, {
-        method: "PATCH",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "reject",

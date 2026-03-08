@@ -1,11 +1,3 @@
-import { NextRequest, NextResponse } from "next/server";
-import { auth, createClerkClient } from "@clerk/nextjs/server";
-import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
-import { nanoid } from "nanoid";
-import { logger } from "@/lib/logger";
-
 /**
  * ONE-TIME ADMIN SETUP
  *
@@ -15,33 +7,35 @@ import { logger } from "@/lib/logger";
  * GET /api/admin/setup-admin
  *
  * After calling this, refresh the page and everything should work.
+ *
+ * MIGRATED to Pattern B (createApiRoute) for consistent auth handling.
  */
-export async function GET(request: NextRequest) {
-  try {
-    const { userId } = await auth();
 
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized. Please sign in first." }, { status: 401 });
-    }
+import { NextRequest } from "next/server";
+import { createClerkClient } from "@clerk/nextjs/server";
+import { createApiRoute } from "@/lib/api/route-handler";
+import { db } from "@/lib/db";
+import { users } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
+import { nanoid } from "nanoid";
+import { logger } from "@/lib/logger";
 
-    // Check if user already exists
-    const existing = await db
-      .select()
-      .from(users)
-      .where(eq(users.clerkUserId, userId))
-      .limit(1);
+export const GET = createApiRoute(
+  async (request: NextRequest, auth) => {
+    const { user, userId: dbUserId } = auth;
 
-    if (existing.length > 0) {
-      return NextResponse.json({
+    // If user already exists in DB, return early
+    if (dbUserId) {
+      return {
         message: "Admin record already exists",
-        type: existing[0].type,
-        email: existing[0].email,
-      });
+        type: user.type,
+        email: user.email,
+      };
     }
 
-    // Get user from Clerk
+    // Get user from Clerk using clerkUserId
     const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
-    const clerkUser = await clerkClient.users.getUser(userId);
+    const clerkUser = await clerkClient.users.getUser(user.clerkUserId);
 
     // Create admin record
     const now = new Date().toISOString();
@@ -49,7 +43,7 @@ export async function GET(request: NextRequest) {
 
     await db.insert(users).values({
       id: newUserId,
-      clerkUserId: userId,
+      clerkUserId: user.clerkUserId,
       type: 'admin',
       role: 'admin',
       name: `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || 'Admin',
@@ -63,26 +57,20 @@ export async function GET(request: NextRequest) {
       isActive: true,
       emailVerified: false,
       onboardingComplete: true,
-      onboardingStatus: 'complete',
+      onboardingStatus: null, // Use null for completed (unified pattern)
     });
 
     logger.info("Admin record created via setup-admin endpoint", {
       userId: newUserId,
-      clerkUserId: userId,
+      clerkUserId: user.clerkUserId,
       email: clerkUser.emailAddresses[0]?.emailAddress,
     });
 
-    return NextResponse.json({
+    return {
       success: true,
       message: "Admin record created successfully! Refresh the page to continue.",
       email: clerkUser.emailAddresses[0]?.emailAddress,
-    });
-
-  } catch (error) {
-    logger.error(error, { route: "/api/admin/setup-admin" });
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to create admin record" },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  [] // No auth required - this creates the first admin
+);

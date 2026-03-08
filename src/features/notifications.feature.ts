@@ -63,14 +63,14 @@ export const NotificationsFeature = defineFeature({
   actions: {
     // Get current user's notifications (my-notifications)
     "my-notifications": {
-      handler: async (id: string | undefined, data: any, auth: any) => {
+      handler: async (context: { db: any; params: any; auth: any; schema: any; request?: Request }) => {
         const { db } = await import("@/lib/db");
-        const { notificationDeliveries } = await import("@/lib/db/schema");
+        const { notificationDeliveries, notifications } = await import("@/lib/db/schema");
         const { eq, and, desc, or, sql } = await import("drizzle-orm");
         const { successResponse } = await import("@/lib/api/response-helpers");
 
-        const { userId } = auth;
-        const { page = 1, limit = 20, status } = data;
+        const { userId } = context.auth;
+        const { page = 1, limit = 20, status } = context.params;
         const offset = (page - 1) * limit;
 
         // Build conditions
@@ -92,14 +92,52 @@ export const NotificationsFeature = defineFeature({
 
         const total = countResult[0]?.count || 0;
 
-        // Get notifications
-        const notifications = await db
-          .select()
+        // Get notifications with JOIN to get full notification data
+        const notificationsData = await db
+          .select({
+            // Delivery fields
+            id: notificationDeliveries.id,
+            deliveryId: notificationDeliveries.id,
+            userId: notificationDeliveries.userId,
+            status: notificationDeliveries.status,
+            deliveredAt: notificationDeliveries.deliveredAt,
+            readAt: notificationDeliveries.readAt,
+            // Notification fields
+            notificationId: notifications.id,
+            title: notifications.title,
+            message: notifications.message,
+            type: notifications.type,
+            category: notifications.category,
+            priority: notifications.priority,
+            actionUrl: notifications.actionUrl,
+            actionLabel: notifications.actionLabel,
+            expiresAt: notifications.expiresAt,
+            createdAt: notificationDeliveries.createdAt,
+          })
           .from(notificationDeliveries)
+          .innerJoin(notifications, eq(notificationDeliveries.notificationId, notifications.id))
           .where(whereClause)
           .orderBy(desc(notificationDeliveries.createdAt))
           .limit(limit)
           .offset(offset);
+
+        // Transform data to match expected format
+        const formattedNotifications = notificationsData.map((n) => ({
+          id: n.id,
+          deliveryId: n.deliveryId,
+          title: n.title,
+          message: n.message,
+          type: n.type,
+          category: n.category,
+          priority: n.priority,
+          actionUrl: n.actionUrl,
+          actionLabel: n.actionLabel,
+          isRead: n.status === "read",
+          readAt: n.readAt,
+          deliveredAt: n.deliveredAt,
+          expiresAt: n.expiresAt,
+          createdAt: n.createdAt,
+        }));
 
         // Get unread count
         const unreadResult = await db
@@ -112,9 +150,23 @@ export const NotificationsFeature = defineFeature({
             )
           );
 
+        // Get urgent count (high/urgent priority unread)
+        const urgentResult = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(notificationDeliveries)
+          .innerJoin(notifications, eq(notificationDeliveries.notificationId, notifications.id))
+          .where(
+            and(
+              eq(notificationDeliveries.userId, userId),
+              or(eq(notificationDeliveries.status, "pending"), eq(notificationDeliveries.status, "delivered"))!,
+              or(eq(notifications.priority, "urgent"), eq(notifications.priority, "high"))!
+            )
+          );
+
         return successResponse({
-          notifications,
+          notifications: formattedNotifications,
           unreadCount: unreadResult[0]?.count || 0,
+          urgentCount: urgentResult[0]?.count || 0,
           pagination: {
             page,
             limit,
@@ -128,15 +180,15 @@ export const NotificationsFeature = defineFeature({
 
     // Mark notifications as read
     "mark-read": {
-      handler: async (id: string | undefined, data: any, auth: any) => {
+      handler: async (context: { db: any; params: any; auth: any; schema: any; request?: Request }) => {
         const { db } = await import("@/lib/db");
         const { notificationDeliveries } = await import("@/lib/db/schema");
         const { eq, and, or, sql } = await import("drizzle-orm");
         const { successResponse, badRequestResponse } = await import("@/lib/api/response-helpers");
         const { logger } = await import("@/lib/logger");
 
-        const { userId } = auth;
-        const { deliveryIds, notificationId, markAll } = data;
+        const { userId } = context.auth;
+        const { deliveryIds, notificationId, markAll } = context.params;
 
         const now = new Date();
         let updatedCount = 0;
@@ -236,13 +288,13 @@ export const NotificationsFeature = defineFeature({
 
     // Get unread count
     "unread-count": {
-      handler: async (id: string | undefined, data: any, auth: any) => {
+      handler: async (context: { db: any; params: any; auth: any; schema: any; request?: Request }) => {
         const { db } = await import("@/lib/db");
-        const { notificationDeliveries } = await import("@/lib/db/schema");
+        const { notificationDeliveries, notifications } = await import("@/lib/db/schema");
         const { eq, and, or, sql } = await import("drizzle-orm");
         const { successResponse } = await import("@/lib/api/response-helpers");
 
-        const { userId } = auth;
+        const { userId } = context.auth;
 
         // Get total unread count
         const result = await db
@@ -257,9 +309,24 @@ export const NotificationsFeature = defineFeature({
 
         const unreadCount = result[0]?.count || 0;
 
+        // Get urgent count (high/urgent priority unread)
+        const urgentResult = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(notificationDeliveries)
+          .innerJoin(notifications, eq(notificationDeliveries.notificationId, notifications.id))
+          .where(
+            and(
+              eq(notificationDeliveries.userId, userId),
+              or(eq(notificationDeliveries.status, "pending"), eq(notificationDeliveries.status, "delivered")),
+              or(eq(notifications.priority, "urgent"), eq(notifications.priority, "high"))!
+            )
+          );
+
+        const urgentCount = urgentResult[0]?.count || 0;
+
         return successResponse({
           unreadCount,
-          urgentCount: 0, // Simplified for now
+          urgentCount,
         });
       },
       allowedRoles: ["admin", "school-admin", "teacher", "student", "parent", "counselor"] as any[],
@@ -270,7 +337,7 @@ export const NotificationsFeature = defineFeature({
     list: async (params: any, auth: any) => {
       const { db } = await import("@/lib/db");
       const { notificationDeliveries } = await import("@/lib/db/schema");
-      const { eq, desc } = await import("drizzle-orm");
+      const { eq, desc, sql } = await import("drizzle-orm");
       const { successResponse } = await import("@/lib/api/response-helpers");
 
       const { page = 1, limit = 20 } = params;
@@ -285,17 +352,15 @@ export const NotificationsFeature = defineFeature({
         db
           .select()
           .from(notificationDeliveries)
-          .where(whereCondition)
+          .where(whereCondition || sql`1=1`)
           .orderBy(desc(notificationDeliveries.createdAt))
           .limit(limit)
           .offset(offset),
         db
           .select({ count: sql<number>`count(*)::int` })
           .from(notificationDeliveries)
-          .where(whereCondition)
+          .where(whereCondition || sql`1=1`)
       ]);
-
-      const { sql } = await import("drizzle-orm");
 
       return successResponse({
         data: dataResult,
@@ -346,9 +411,6 @@ export const NotificationsFeature = defineFeature({
           userId: data.userId,
           notificationId: data.notificationId,
           status: "pending",
-          type: data.type || "info",
-          title: data.title,
-          message: data.message,
           createdAt: new Date(),
           updatedAt: new Date(),
         })

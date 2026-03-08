@@ -51,32 +51,32 @@ export const MessageFeature = defineFeature({
   actions: {
     // Mark messages as read
     markRead: {
-      handler: async (id: string | undefined, data: any, auth: any) => {
+      handler: async (context: { db: any; params: any; auth: any; schema: any; request?: Request }) => {
         const { db } = await import("@/lib/db");
         const { messages } = await import("@/lib/db/schema");
         const { eq, or, and } = await import("drizzle-orm");
         const { successResponse } = await import("@/lib/api/response-helpers");
 
-        const { userId } = auth;
-        const { messageIds, markAll } = data;
+        const { userId } = context.auth;
+        const { messageIds, markAll } = context.params;
         const now = new Date();
 
         if (markAll) {
           await db
             .update(messages)
-            .set({ readAt: now, updatedAt: now })
+            .set({ readAt: now, updatedAt: now } as any)
             .where(
               and(
-                eq(messages.toId, userId),
-                or(eq(messages.readAt, null), eq(messages.archived, false))
+                eq((messages as any).toId, userId),
+                or(eq((messages as any).readAt, null), eq((messages as any).archived, false))
               )
             );
         } else if (messageIds && messageIds.length > 0) {
           for (const messageId of messageIds) {
             await db
               .update(messages)
-              .set({ readAt: now, updatedAt: now })
-              .where(and(eq(messages.id, messageId), eq(messages.toId, userId)));
+              .set({ readAt: now, updatedAt: now } as any)
+              .where(and(eq(messages.id, messageId), eq((messages as any).toId, userId)));
           }
         }
 
@@ -87,21 +87,21 @@ export const MessageFeature = defineFeature({
 
     // Get unread count
     unreadCount: {
-      handler: async (id: string | undefined, data: any, auth: any) => {
+      handler: async (context: { db: any; params: any; auth: any; schema: any; request?: Request }) => {
         const { db } = await import("@/lib/db");
         const { messages } = await import("@/lib/db/schema");
         const { eq, or, and, sql } = await import("drizzle-orm");
         const { successResponse } = await import("@/lib/api/response-helpers");
 
-        const { userId } = auth;
+        const { userId } = context.auth;
 
         const [result] = await db
           .select({ count: sql<number>`count(*)::int` })
           .from(messages)
           .where(
             and(
-              eq(messages.toId, userId),
-              or(eq(messages.readAt, null), eq(messages.archived, false))
+              eq((messages as any).toId, userId),
+              or(eq((messages as any).readAt, null), eq((messages as any).archived, false))
             )
           );
 

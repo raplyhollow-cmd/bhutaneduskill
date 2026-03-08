@@ -27,7 +27,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
@@ -36,7 +35,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { CalendarIcon, Check, ChevronsUpDown, Search, X, Plus, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
 
 // Types
 export interface SmartFieldProps {
@@ -344,7 +342,7 @@ function DateField({
             )}
             disabled={disabled}
           >
-            {value ? format(new Date(value), "PPP") : <span>{placeholder}</span>}
+            {value ? <span>{new Date(value).toLocaleDateString()}</span> : <span>{placeholder}</span>}
             <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
           </Button>
         </FormControl>
@@ -401,11 +399,24 @@ function ReferenceField({
       setLoading(true);
       try {
         const endpoint = reference?.searchEndpoint || `/api/resources/${reference.table}`;
-        const response = await fetch(`${endpoint}?search=${encodeURIComponent(searchQuery)}&limit=20`);
+        const response = await fetch(`${endpoint}?search=${encodeURIComponent(searchQuery)}&limit=20`, {
+          credentials: "include",
+        });
         if (response.ok) {
           const result = await response.json();
           const displayField = reference?.displayField || "name";
-          const items = (result.data || []).map((item: any) => ({
+
+          // Extract data array from various possible formats
+          let dataItems: any[] = [];
+          if (Array.isArray(result?.data?.data)) {
+            dataItems = result.data.data;
+          } else if (Array.isArray(result?.data)) {
+            dataItems = result.data;
+          } else if (Array.isArray(result)) {
+            dataItems = result;
+          }
+
+          const items = dataItems.map((item: any) => ({
             value: item.id,
             label: item[displayField] || item.name || item.id,
           }));

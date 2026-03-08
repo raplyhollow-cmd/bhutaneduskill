@@ -1,19 +1,5 @@
 "use client";
 
-/**
- * Next.js Global Error Page
- *
- * Catches errors thrown in root layout or server components
- * This is the "last resort" error handler
- *
- * Docs: https://nextjs.org/docs/app/building-your-application/routing/error-handling
- *
- * This file must have "use client" directive and export a default component
- * that returns <html> and <body> tags (it replaces the entire root layout during errors)
- */
-
-import { ErrorDisplay } from "@/components/error/error-display";
-
 export default function GlobalError({
   error,
   reset,
@@ -22,15 +8,40 @@ export default function GlobalError({
   reset: () => void;
 }) {
   return (
-    <html lang="en">
+    <html>
       <body>
-        <ErrorDisplay
-          title="Critical Error"
-          message="A critical error occurred. Please refresh the page or contact support if the problem persists."
-          onRetry={reset}
-          errorCode={500}
-          homeLink={true}
-        />
+        <div style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+          fontFamily: 'system-ui, sans-serif',
+        }}>
+          <div style={{
+            textAlign: 'center',
+            maxWidth: '400px',
+          }}>
+            <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>Critical Error</h1>
+            <p style={{ color: '#666', marginBottom: '1.5rem' }}>
+              A critical error occurred. Please refresh the page.
+            </p>
+            <button
+              onClick={reset}
+              style={{
+                padding: '12px 24px',
+                background: '#f97316',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+              }}
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
       </body>
     </html>
   );

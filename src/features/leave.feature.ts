@@ -7,6 +7,7 @@
 
 import { defineFeature } from "@/lib/features/define-feature";
 import { z } from "zod";
+import { eq, and, desc } from "drizzle-orm";
 
 export const LeaveFeature = defineFeature({
   name: "leave-requests",
@@ -58,19 +59,29 @@ export const LeaveFeature = defineFeature({
   actions: {
     // Approve a leave request (admin/school-admin only)
     approve: {
-      handler: async ({ db, params, auth, schema }) => {
-        const { id } = params;
-        const { substituteTeacherId, leaveHandoverNotes } = params.body || {};
+      handler: async (id: string | undefined, data: any, auth: any) => {
+        const { db } = await import("@/lib/db");
+        const { leave } = await import("@/lib/db/schema") as any;
+        const { eq, and } = await import("drizzle-orm");
+        const { nanoid } = await import("nanoid");
+        const { successResponse } = await import("@/lib/api/response-helpers");
+        const { notFoundResponse } = await import("@/lib/api/response-helpers");
+
+        if (!id) {
+          return { error: "Leave request ID is required", status: 400 };
+        }
+
+        const { substituteTeacherId, leaveHandoverNotes } = data || {};
 
         const leaveRequest = await db
           .select()
-          .from(schema)
-          .where((eq: any) => eq(schema.id, id))
+          .from(leave)
+          .where(eq(leave.id, id))
           .limit(1)
           .then(r => r[0]);
 
         if (!leaveRequest) {
-          return { error: "Leave request not found", status: 404 };
+          return notFoundResponse("Leave request");
         }
 
         if (leaveRequest.status !== "pending") {
@@ -78,7 +89,7 @@ export const LeaveFeature = defineFeature({
         }
 
         const updated = await db
-          .update(schema)
+          .update(leave)
           .set({
             status: "approved",
             approvedBy: auth.userId,
@@ -87,22 +98,18 @@ export const LeaveFeature = defineFeature({
             leaveHandoverNotes: leaveHandoverNotes || leaveRequest.leaveHandoverNotes,
             updatedAt: new Date(),
           })
-          .where((eq: any) => eq(schema.id, id))
+          .where(eq(leave.id, id))
           .returning();
 
-        return { success: true, data: updated[0] };
+        return successResponse({ data: updated[0] });
       },
-      method: "POST",
-      permission: ["admin", "school-admin"],
-      bodySchema: z.object({
-        substituteTeacherId: z.string().optional(),
-        leaveHandoverNotes: z.string().optional(),
-      }),
+      allowedRoles: ["admin", "school-admin"] as any[],
     },
 
     // Reject a leave request (admin/school-admin only)
     reject: {
-      handler: async ({ db, params, auth, schema }) => {
+      handler: async (context) => {
+        const { db, params, auth, schema } = context;
         const { id } = params;
         const { rejectionReason } = params.body || {};
 
@@ -113,7 +120,7 @@ export const LeaveFeature = defineFeature({
         const leaveRequest = await db
           .select()
           .from(schema)
-          .where((eq: any) => eq(schema.id, id))
+          .where(eq(schema.id, id))
           .limit(1)
           .then(r => r[0]);
 
@@ -134,27 +141,24 @@ export const LeaveFeature = defineFeature({
             rejectionReason,
             updatedAt: new Date(),
           })
-          .where((eq: any) => eq(schema.id, id))
+          .where(eq(schema.id, id))
           .returning();
 
         return { success: true, data: updated[0] };
       },
-      method: "POST",
-      permission: ["admin", "school-admin"],
-      bodySchema: z.object({
-        rejectionReason: z.string().min(1, "Rejection reason is required"),
-      }),
+      allowedRoles: ["admin", "school-admin"] as any[],
     },
 
     // Cancel a leave request (owner or admin only)
     cancel: {
-      handler: async ({ db, params, auth, schema }) => {
+      handler: async (context) => {
+        const { db, params, auth, schema } = context;
         const { id } = params;
 
         const leaveRequest = await db
           .select()
           .from(schema)
-          .where((eq: any) => eq(schema.id, id))
+          .where(eq(schema.id, id))
           .limit(1)
           .then(r => r[0]);
 
@@ -179,25 +183,22 @@ export const LeaveFeature = defineFeature({
             status: "cancelled",
             updatedAt: new Date(),
           })
-          .where((eq: any) => eq(schema.id, id))
+          .where(eq(schema.id, id))
           .returning();
 
         return { success: true, data: updated[0] };
       },
-      method: "POST",
-      permission: ["admin", "school-admin", "teacher", "student"],
+      allowedRoles: ["admin", "school-admin", "teacher", "student"] as any[],
     },
 
     // Get leave balance for a user
     getBalance: {
-      handler: async ({ db, auth, params, schema }) => {
+      handler: async (context) => {
+        const { db, auth, params, schema } = context;
         const { userId, year } = params;
 
         const targetUserId = userId || auth.userId;
         const targetYear = year || new Date().getFullYear().toString();
-
-        // Get all approved leave requests for the user in the given year
-        const { eq, and, desc } = await import("drizzle-orm");
 
         const approvedLeaves = await db
           .select()
@@ -262,73 +263,10 @@ export const LeaveFeature = defineFeature({
           },
         };
       },
-      method: "GET",
-      permission: ["admin", "school-admin", "teacher", "student"],
+      allowedRoles: ["admin", "school-admin", "teacher", "student"] as any[],
     },
   },
 
-  // Public handlers for student/teacher portal access
-  publicHandlers: {
-    // Get my leave requests
-    getMyRequests: async ({ db, auth, schema }) => {
-      const { eq, desc, and } = await import("drizzle-orm");
-
-      const isAdmin = auth.role === "school-admin" || auth.role === "admin";
-
-      let whereClause;
-      if (isAdmin && auth.schoolId) {
-        // Admins see all leave requests for their school
-        whereClause = eq(schema.schoolId, auth.schoolId);
-      } else {
-        // Students/teachers see only their own
-        whereClause = eq(schema.applicantId, auth.userId);
-      }
-
-      const requests = await db
-        .select()
-        .from(schema)
-        .where(whereClause)
-        .orderBy(desc(schema.createdAt));
-
-      return { success: true, data: requests };
-    },
-
-    // Create leave request
-    createRequest: async ({ db, auth, schema, body }) => {
-      const { nanoid } = await import("nanoid");
-
-      const { type, reason, startDate, endDate, documents } = body;
-
-      // Validate dates
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      if (end < start) {
-        return { error: "End date must be after start date", status: 400 };
-      }
-
-      const leaveId = `leave_${nanoid()}`;
-
-      const [created] = await db
-        .insert(schema)
-        .values({
-          id: leaveId,
-          schoolId: auth.schoolId || null,
-          applicantId: auth.userId,
-          applicantType: auth.type,
-          type,
-          startDate,
-          endDate,
-          reason,
-          status: "pending",
-          documents: documents || [],
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .returning();
-
-      return { success: true, data: created };
-    },
-  },
 });
 
 // Also export as LeaveRequest for compatibility

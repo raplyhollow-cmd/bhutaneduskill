@@ -1,5 +1,9 @@
 "use client";
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+
 import { CompactNav } from "@/components/layout/compact-nav";
 import { Footer } from "@/components/layout/footer";
 import { motion } from "framer-motion";

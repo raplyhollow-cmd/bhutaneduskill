@@ -108,11 +108,25 @@ export function createApiRoute<
 
 /**
  * Type for auth context attached to requests
+ *
+ * IMPORTANT: Clarify the two IDs:
+ * - auth.userId = DATABASE id (users.id) - e.g., "user-platform-admin-001"
+ * - auth.user.clerkUserId = Clerk userId - e.g., "user_3AIG..."
+ * - auth.user.id = Same as auth.userId (DATABASE id)
+ *
+ * When querying database:
+ * - Use WHERE users.id = auth.userId ✅
+ * - Do NOT use WHERE users.clerkUserId = auth.userId ❌ (that's wrong!)
+ *
+ * For Clerk userId, use: auth.user.clerkUserId
  */
 export interface AuthContext {
+  /** DATABASE user id (users.id), NOT the Clerk userId */
   userId: string;
   user: {
+    /** DATABASE user id (same as auth.userId) */
     id: string;
+    /** Clerk userId (from Clerk.com) */
     clerkUserId: string;
     type: string;
     schoolId?: string;

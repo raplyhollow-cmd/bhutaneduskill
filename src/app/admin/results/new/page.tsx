@@ -24,7 +24,7 @@ export default function NewResultPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New Result</h1>
       <FeatureForm
-        schema={ResultFeature.schema}
+        schema={ResultFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

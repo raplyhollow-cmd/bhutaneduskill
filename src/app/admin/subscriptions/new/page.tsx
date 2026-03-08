@@ -24,7 +24,7 @@ export default function NewSubscriptionPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New Subscription</h1>
       <FeatureForm
-        schema={SubscriptionFeature.schema}
+        schema={SubscriptionFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

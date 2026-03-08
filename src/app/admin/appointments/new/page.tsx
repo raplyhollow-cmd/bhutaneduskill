@@ -24,7 +24,7 @@ export default function NewAppointmentPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New Appointment</h1>
       <FeatureForm
-        schema={AppointmentFeature.schema}
+        schema={AppointmentFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

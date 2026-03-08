@@ -206,7 +206,7 @@ export default function InfirmaryInventoryPage() {
 
     try {
       const response = await fetch("/api/school-admin/medical/inventory", {
-        method: "PATCH",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: selectedMedicine.id,

@@ -43,7 +43,7 @@ export const AuditLogFeature = defineFeature({
   customHandlers: {
     list: async (params: any, auth: any) => {
       const { db } = await import("@/lib/db");
-      const { auditLogs, users } = await import("@/lib/db/schema");
+      const { auditLogs, users } = await import("@/lib/db/schema") as any;
       const { eq, and, desc, sql } = await import("drizzle-orm");
 
       const { page = "1", limit = "50", action, entityType, userId } = params;

@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { TableQuickActions, ActionIcons } from "@/components/shared/table-quick-actions";
+import { fetchStudentClasses } from "../_actions";
 
 interface ClassData {
   id: string;
@@ -73,25 +74,48 @@ export default function StudentClassesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch classes on mount
+  // Fetch classes on mount using server action
   useEffect(() => {
-    fetch("/api/student/classes")
-      .then((res) => res.json())
-      .then((response) => {
-        // successResponse wraps data in a "data" property
-        const data = response.data || response;
-        if (data.error) {
-          setError(data.error);
-        } else if (data.classes) {
-          setClassesData(data.classes);
-        }
-        setIsLoading(false);
-      })
-      .catch((err) => {
+    const loadClasses = async () => {
+      try {
+        setIsLoading(true);
+        const classes = await fetchStudentClasses();
+
+        // Transform to match ClassData interface
+        const transformedClasses: ClassData[] = classes.map((cls) => ({
+          id: cls.id,
+          name: cls.name,
+          grade: cls.grade,
+          section: cls.section,
+          academicYear: "",
+          teacher: cls.classTeacher ? {
+            id: cls.classTeacher,
+            name: cls.classTeacher,
+            email: "",
+          } : null,
+          subject: null,
+          students: 0, // TODO: Get from enrollment data
+          pendingHomework: 0,
+          attendanceSummary: {
+            present: 0,
+            absent: 0,
+            late: 0,
+            percentage: 0,
+          },
+          enrolledAt: null,
+          status: "active",
+        }));
+
+        setClassesData(transformedClasses);
+      } catch (err) {
         logger.error("Failed to fetch classes:", err);
         setError("Failed to load classes. Please try again.");
+      } finally {
         setIsLoading(false);
-      });
+      }
+    };
+
+    loadClasses();
   }, []);
 
   // Filter classes based on search and subject filter

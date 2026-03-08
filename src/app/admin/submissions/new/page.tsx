@@ -24,7 +24,7 @@ export default function NewSubmissionPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New Submission</h1>
       <FeatureForm
-        schema={SubmissionFeature.schema}
+        schema={SubmissionFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

@@ -12,7 +12,8 @@
  * - All components use the same building blocks
  */
 
-import { features, type FeatureConfig } from "@/features";
+import type { FeatureConfig } from "@/lib/features/define-feature"
+import * as features from "@/features";
 
 // ============================================================================
 // TYPES
@@ -177,7 +178,7 @@ export class GeminiAIAgent {
     private apiKey?: string
   ) {
     this.context = {
-      features,
+      features: features as any,
       apiPattern: "/api/resources/[resource]",
       componentPattern: "@/components/unified",
     };
@@ -213,23 +214,23 @@ export class GeminiAIAgent {
   private analyzeDataNeeds(question: string): DataPlan {
     const plan: DataPlan = { queries: [] };
 
-    const questionLower = question.toLowerCase();
+    const questionLower = question?.toString().toLowerCase();
 
     // Map keywords to features
     for (const [key, feature] of Object.entries(features)) {
-      const featureName = feature.name.toLowerCase();
-      const tableName = feature.tableName.toLowerCase();
+      const featureName = (feature as any).name?.toString().toLowerCase();
+      const tableName = (feature as any).tableName?.toString().toLowerCase();
 
       // Check if question mentions this feature
       if (
         questionLower.includes(featureName) ||
         questionLower.includes(tableName) ||
-        questionLower.includes(key.toLowerCase())
+        questionLower.includes(key?.toString().toLowerCase())
       ) {
         plan.queries.push({
           feature: key,
           operation: "list",
-          filters: this.extractFilters(question, feature),
+          filters: this.extractFilters(question, feature as any),
         });
       }
     }
@@ -250,8 +251,8 @@ export class GeminiAIAgent {
 
     // Look for field names in the question
     for (const [fieldName, config] of Object.entries(feature.schema)) {
-      const label = (config.label || fieldName).toLowerCase();
-      const questionLower = question.toLowerCase();
+      const label = (config.label || fieldName)?.toString().toLowerCase();
+      const questionLower = question?.toString().toLowerCase();
 
       // Simple pattern matching for common filters
       if (questionLower.includes(`${label} is`)) {

@@ -24,7 +24,7 @@ export default function NewLessonPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New Lesson</h1>
       <FeatureForm
-        schema={LessonFeature.schema}
+        schema={LessonFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

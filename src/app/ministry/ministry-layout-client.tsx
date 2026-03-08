@@ -54,7 +54,9 @@ export function MinistryLayoutClient({ children, userName, portalType, needsSetu
           return;
         }
 
-        const roleRes = await fetch("/api/auth/set-role");
+        const roleRes = await fetch("/api/resources/users/actions?action=get-role", {
+          credentials: "include",
+        });
         const roleData = await roleRes.json();
 
         // Check if user is ministry

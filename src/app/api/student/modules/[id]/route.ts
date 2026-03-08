@@ -41,7 +41,7 @@ const MODULES_DB: Record<string, any> = {
 };
 
 export const GET = createApiRoute(
-  async (request: NextRequest, auth, context) => {
+  async (request: NextRequest, auth, context: { params: Promise<{ id: string }> }) => {
     const { userId } = auth;
     const { id } = await context.params;
 

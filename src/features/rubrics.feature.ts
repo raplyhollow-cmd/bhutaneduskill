@@ -52,14 +52,13 @@ export const RubricFeature = defineFeature({
   actions: {
     // Duplicate a rubric
     duplicate: {
-      handler: async (id: string | undefined, data: any, auth: any) => {
+      handler: async (context: { db: any; params: any; auth: any; schema: any; request?: Request }) => {
         const { db } = await import("@/lib/db");
-        const { rubrics } = await import("@/lib/db/schema");
+        const { rubrics } = await import("@/lib/db/schema") as any;
         const { eq, and } = await import("drizzle-orm");
         const { nanoid } = await import("nanoid");
         const { successResponse, notFoundResponse } = await import("@/lib/api/response-helpers");
-
-        if (!id) {
+        if (!context.params?.id) {
           return { error: "Rubric ID is required", status: 400 };
         }
 
@@ -67,7 +66,7 @@ export const RubricFeature = defineFeature({
         const [original] = await db
           .select()
           .from(rubrics)
-          .where(eq(rubrics.id, id))
+          .where(eq(rubrics.id, context.params.id))
           .limit(1);
 
         if (!original) {
@@ -76,7 +75,7 @@ export const RubricFeature = defineFeature({
 
         // Create duplicate
         const newId = `rub-${nanoid()}`;
-        const [duplicate] = await db
+        const inserted = await db
           .insert(rubrics)
           .values({
             id: newId,
@@ -89,16 +88,19 @@ export const RubricFeature = defineFeature({
             totalPoints: original.totalPoints,
             passingScore: original.passingScore,
             scale: original.scale,
-            createdBy: auth.userId,
+            createdBy: context.auth.userId,
             isTemplate: false,
             isPublic: false,
             isActive: true,
             createdAt: new Date(),
             updatedAt: new Date(),
           })
-          .returning();
+          .returning()
+          .then(r => Array.isArray(r) ? r : []);
 
-        return successResponse({ data: duplicate[0] });
+        const duplicate = inserted[0];
+
+        return successResponse({ data: duplicate });
       },
       allowedRoles: ["admin", "school-admin", "teacher"] as any[],
     },

@@ -142,7 +142,7 @@ export function DepartmentsClient({
     setLoading("update");
     try {
       const response = await fetch(`/api/school-admin/departments/${editingDepartment.id}`, {
-        method: "PATCH",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });

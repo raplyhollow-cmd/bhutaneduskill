@@ -79,14 +79,10 @@ export const StudentSkillFeature = defineFeature({
     // Evidence and metadata
     evidence: {
       type: "json",
-      label: "Evidence",
-      description: "Proof of skill (homework scores, portfolio, certificates, etc.)",
-    },
+      label: "Evidence", },
     confidence: {
-      type: "number",
-      label: "Confidence",
-      description: "0-100 for inferred skills",
-      sortable: true,
+      type: "integer",
+      label: "Confidence", sortable: true,
     },
     isInferred: {
       type: "boolean",
@@ -251,7 +247,8 @@ export const StudentSkillFeature = defineFeature({
     // List with joins to get student and validator names
     list: async (params: any, auth: any) => {
       const { db } = await import("@/lib/db");
-      const { studentSkills, users } = await import("@/lib/db/schema/intelligence");
+      const { studentSkills } = await import("@/lib/db/schema/intelligence");
+      const { users } = await import("@/lib/db/schema");
       const { eq, and, desc, like, or, sql } = await import("drizzle-orm");
 
       const {
@@ -356,7 +353,8 @@ export const StudentSkillFeature = defineFeature({
     // Get single record with relations
     get: async (id: string, auth: any) => {
       const { db } = await import("@/lib/db");
-      const { studentSkills, users } = await import("@/lib/db/schema/intelligence");
+      const { studentSkills } = await import("@/lib/db/schema/intelligence");
+      const { users } = await import("@/lib/db/schema");
       const { eq, sql } = await import("drizzle-orm");
 
       const [record] = await db
@@ -577,7 +575,8 @@ export const StudentSkillFeature = defineFeature({
     // Get skills requiring validation
     getPendingSkills: async (auth: any) => {
       const { db } = await import("@/lib/db");
-      const { studentSkills, users } = await import("@/lib/db/schema/intelligence");
+      const { studentSkills } = await import("@/lib/db/schema/intelligence");
+      const { users } = await import("@/lib/db/schema");
       const { eq, sql } = await import("drizzle-orm");
 
       const records = await db

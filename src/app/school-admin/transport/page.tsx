@@ -479,7 +479,7 @@ export default function SchoolAdminTransportPage() {
       } else if (dialogOpen === "editRoute") {
         const route = selectedItem as TransportRoute;
         const response = await fetch("/api/transport/routes", {
-          method: "PATCH",
+          method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             routeId: route.id,
@@ -509,7 +509,7 @@ export default function SchoolAdminTransportPage() {
       } else if (dialogOpen === "editVehicle") {
         const vehicle = selectedItem as Vehicle;
         const response = await fetch("/api/transport/vehicles", {
-          method: "PATCH",
+          method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             vehicleId: vehicle.id,
@@ -537,7 +537,7 @@ export default function SchoolAdminTransportPage() {
       } else if (dialogOpen === "editDriver") {
         const driver = selectedItem as Driver;
         const response = await fetch("/api/transport/drivers", {
-          method: "PATCH",
+          method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             driverId: driver.id,

@@ -235,8 +235,22 @@ export function ToastProvider({
 export function useToast(): ToastContextValue {
   const context = React.useContext(ToastContext)
 
+  // Return safe no-op functions if context is not available (e.g., during SSR)
   if (!context) {
-    throw new Error("useToast must be used within a ToastProvider")
+    const noop = () => {}
+    const noopToast = () => ""
+
+    return {
+      toast: noopToast,
+      success: noopToast,
+      error: noopToast,
+      warning: noopToast,
+      info: noopToast,
+      loading: noopToast,
+      dismiss: noop,
+      dismissAll: noop,
+      toasts: [],
+    }
   }
 
   return context

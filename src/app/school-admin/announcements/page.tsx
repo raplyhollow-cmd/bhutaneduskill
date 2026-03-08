@@ -1,8 +1,12 @@
 import { Suspense } from "react";
 import { fetchAnnouncements } from "../_actions";
-import type { AnnouncementFormData } from "@/components/announcements";
-import { revalidatePath } from "next/cache";
 import { AnnouncementManagerWrapper } from "./announcement-manager-wrapper";
+import {
+  handleCreateAction,
+  handleUpdateAction,
+  handleDeleteAction,
+  handleTogglePinAction,
+} from "./_actions-server";
 
 interface PageProps {
   searchParams: Promise<{
@@ -12,46 +16,6 @@ interface PageProps {
 
 export default async function AnnouncementsPage({ searchParams }: PageProps) {
   const { announcements, total } = await fetchAnnouncements({ limit: 50 });
-
-  // Server action wrappers
-  async function handleCreate(data: AnnouncementFormData) {
-    const { createAnnouncement } = await import("../_actions");
-    const result = await createAnnouncement(data);
-    if (result.success) {
-      revalidatePath("/school-admin/announcements");
-    }
-    return result;
-  }
-
-  async function handleUpdate(id: string, data: Partial<AnnouncementFormData>) {
-    "use server";
-    const { updateAnnouncement } = await import("../_actions");
-    const result = await updateAnnouncement(id, data);
-    if (result.success) {
-      revalidatePath("/school-admin/announcements");
-    }
-    return result;
-  }
-
-  async function handleDelete(id: string) {
-    "use server";
-    const { deleteAnnouncement } = await import("../_actions");
-    const result = await deleteAnnouncement(id);
-    if (result.success) {
-      revalidatePath("/school-admin/announcements");
-    }
-    return result;
-  }
-
-  async function handleTogglePin(id: string) {
-    "use server";
-    const { togglePinAnnouncement } = await import("../_actions");
-    const result = await togglePinAnnouncement(id);
-    if (result.success) {
-      revalidatePath("/school-admin/announcements");
-    }
-    return result;
-  }
 
   return (
     <div className="space-y-6">
@@ -90,10 +54,10 @@ export default async function AnnouncementsPage({ searchParams }: PageProps) {
         <AnnouncementManagerWrapper
           announcements={announcements}
           total={total}
-          onCreate={handleCreate}
-          onUpdate={handleUpdate}
-          onDelete={handleDelete}
-          onTogglePin={handleTogglePin}
+          onCreate={handleCreateAction}
+          onUpdate={handleUpdateAction}
+          onDelete={handleDeleteAction}
+          onTogglePin={handleTogglePinAction}
         />
       </Suspense>
     </div>

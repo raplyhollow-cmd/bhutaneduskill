@@ -372,7 +372,7 @@ export default function SchoolAdminHostelPage() {
     try {
       setSubmitting(true);
       const response = await fetch("/api/hostel", {
-        method: "PATCH",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "resolve-complaint",

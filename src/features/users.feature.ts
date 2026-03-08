@@ -8,7 +8,7 @@
 import { defineFeature } from "@/lib/features/define-feature";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, desc, and, count } from "drizzle-orm";
 
 export const UsersFeature = defineFeature({
   name: "users",
@@ -88,16 +88,74 @@ export const UsersFeature = defineFeature({
     ],
   },
 
+  // Custom handlers for role-based filtering
+  customHandlers: {
+    // Custom list handler that handles role filtering
+    list: async (params: any, auth: any) => {
+      const { page = 1, limit = 20, filters = {}, sortBy, sortOrder, role } = params;
+      const { user } = auth;
+      const offset = (page - 1) * limit;
+
+      const { successResponse } = await import("@/lib/api/response-helpers");
+
+      // Build where conditions
+      const conditions = [];
+
+      // Add school filter if user has schoolId
+      if (user?.schoolId) {
+        conditions.push(eq(users.schoolId, user.schoolId));
+      }
+
+      // Add isActive filter
+      if (users.isActive) {
+        conditions.push(eq(sql`is_active`, true));
+      }
+
+      // Add role filter (frontend sends ?role=teacher)
+      if (role) {
+        conditions.push(eq(users.type, role));
+      }
+
+      // Execute query
+      const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+      const [dataResult, countResult] = await Promise.all([
+        db
+          .select()
+          .from(users)
+          .where(whereClause)
+          .orderBy(sortBy ? users[sortBy] : desc(users.createdAt))
+          .limit(limit)
+          .offset(offset),
+        db
+          .select({ count: count() })
+          .from(users)
+          .where(whereClause),
+      ]);
+
+      return successResponse({
+        data: dataResult,
+        pagination: {
+          total: countResult[0]?.count || 0,
+          page,
+          limit,
+          totalPages: Math.ceil((countResult[0]?.count || 0) / limit),
+        },
+      });
+    },
+  },
+
   // Actions (non-CRUD operations)
   actions: {
     // Set user role (used in setup wizard)
     "set-role": {
-      handler: async (id: string | undefined, data: any, auth: any) => {
+      handler: async (context) => {
         const { NextResponse } = await import("next/server");
         const { logger } = await import("@/lib/logger");
 
+        const { db, params, auth } = context;
         const { user } = auth;
-        const userType = data.userType;
+        const userType = params.userType;
 
         if (!userType || !["student", "teacher", "parent", "counselor", "school-admin", "admin", "ministry"].includes(userType)) {
           return { error: "Invalid user type", status: 400 };
@@ -105,7 +163,6 @@ export const UsersFeature = defineFeature({
 
         // Update user record if exists
         if (user?.userId) {
-          const { db } = await import("@/lib/db");
           const { users: usersTable } = await import("@/lib/db/schema");
           const { eq } = await import("drizzle-orm");
 
@@ -143,7 +200,8 @@ export const UsersFeature = defineFeature({
 
     // Get current user's role
     "get-role": {
-      handler: async (id: string | undefined, data: any, auth: any) => {
+      handler: async (context) => {
+        const { auth } = context;
         const { user } = auth;
 
         if (!user) {
@@ -158,88 +216,12 @@ export const UsersFeature = defineFeature({
             name: user.name,
             email: user.email,
             onboardingStatus: user.onboardingStatus,
+            onboardingComplete: user.onboardingComplete,
             schoolId: user.schoolId,
           },
         };
       },
       allowedRoles: undefined, // Allow all authenticated users
-    },
-  },
-
-  api: {
-    async list(params: any, auth: any) {
-      const { page = "1", limit = "10", search } = params;
-      const offset = (parseInt(page) - 1) * parseInt(limit);
-
-      let where = {};
-      if (search) {
-        where = sql`name ILIKE ${`%${search}%`} OR email ILIKE ${`%${search}%`}`;
-      }
-
-      const [items, total] = await Promise.all([
-        db.select().from(users).where(where).limit(parseInt(limit)).offset(offset),
-        db.select({ count: sql<number>`count(*)::int` }).from(users).where(where)
-      ]);
-
-      return { items, total: total[0]?.count || 0 };
-    },
-
-    async get(id: string, auth: any) {
-      const [user] = await db.select().from(users).where(eq(users.id, id)).limit(1);
-      if (!user) {
-        throw new Error("User not found");
-      }
-      return user;
-    },
-
-    async create(data: any, auth: any) {
-      const { user } = auth;
-
-      // For admin self-setup, allow creating/updating their own record
-      const [newUser] = await db
-        .insert(users)
-        .values({
-          id: data.id || `user-${Date.now()}`,
-          clerkUserId: data.clerkUserId || user?.userId,
-          email: data.email,
-          name: data.name,
-          type: data.type || "student",
-          onboardingStatus: data.onboardingStatus || "restricted",
-          isActive: true,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .returning();
-
-      return newUser;
-    },
-
-    async update(id: string, data: any, auth: any) {
-      const [updatedUser] = await db
-        .update(users)
-        .set({
-          ...data,
-          updatedAt: new Date(),
-        })
-        .where(eq(users.id, id))
-        .returning();
-
-      if (!updatedUser) {
-        throw new Error("User not found");
-      }
-      return updatedUser;
-    },
-
-    async delete(id: string, auth: any) {
-      const [deletedUser] = await db
-        .delete(users)
-        .where(eq(users.id, id))
-        .returning();
-
-      if (!deletedUser) {
-        throw new Error("User not found");
-      }
-      return deletedUser;
     },
   },
 

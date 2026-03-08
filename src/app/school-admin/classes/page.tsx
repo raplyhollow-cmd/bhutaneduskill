@@ -110,39 +110,91 @@ export default function ClassesPage() {
   const fetchClasses = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/school-admin/classes");
-      const data = await res.json();
-      if (res.ok) {
-        setClasses(data.data?.classes || []);
-      }
+      // Use unified API route
+      const res = await fetch("/api/resources/classes", {
+        credentials: "include",
+      });
+      const json = await res.json();
+      console.log("fetchClasses raw response:", json);
+      // Unified API returns { data: { data: [...], pagination: {...} } }
+      const classesData = json?.data?.data || json?.data || [];
+      console.log("Setting classes:", classesData.length, "classes");
+      setClasses(classesData);
     } catch (err) {
       console.error("Failed to fetch classes:", err);
     } finally {
       setLoading(false);
     }
-  };
-
+}
   const fetchTeachers = async () => {
     try {
-      const res = await fetch("/api/school-admin/teachers");
-      if (res.ok) {
-        const data = await res.json();
-        setTeachers(data.data?.teachers || []);
+      setLoading(true);
+      // Use unified API route - filter by role=teacher
+      const res = await fetch("/api/resources/users?role=teacher&limit=100", {
+        credentials: "include",
+      });
+      console.log("Teachers API status:", res.status);
+
+      // Always parse JSON first to handle both success and error cases
+      const json = await res.json();
+      console.log("Teachers API response:", json);
+
+      // Check for error response format
+      if (json.error) {
+        console.error("API returned error:", json.error);
+        setTeachers([]);
+        return;
       }
-    } catch {}
+
+      // Extract data array from various possible formats
+      let teachersData: any[] = [];
+
+      if (Array.isArray(json?.data?.data)) {
+        // Format: { data: { data: [...], pagination: {...} } }
+        teachersData = json.data.data;
+      } else if (Array.isArray(json?.data)) {
+        // Format: { data: [...] }
+        teachersData = json.data;
+      } else if (Array.isArray(json)) {
+        // Format: [...]
+        teachersData = json;
+      } else {
+        console.warn("Unexpected response format:", json);
+        teachersData = [];
+      }
+
+      const teachersList = teachersData.map((u: any) => ({
+        id: u.id,
+        name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email || 'Unknown',
+        firstName: u.firstName,
+        lastName: u.lastName,
+        email: u.email,
+        employeeId: u.employeeId || null,
+      }));
+
+      console.log("Setting teachers:", teachersList.length, "teachers");
+      setTeachers(teachersList);
+    } catch (error) {
+      console.error("Failed to fetch teachers:", error);
+      setTeachers([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchClassDetailData = async (classId: string) => {
     setLoadingTabData(true);
     try {
       if (slideOverTab === "students") {
-        const res = await fetch(`/api/school-admin/classes/${classId}/students`);
+        // Use unified API with action for getting class students
+        const res = await fetch(`/api/resources/classes/actions?action=get-students&id=${classId}`);
         if (res.ok) {
           const data = await res.json();
           setClassStudents(data.data?.students || []);
         }
       } else if (slideOverTab === "subjects") {
-        const res = await fetch(`/api/school-admin/classes/${classId}/subject-teachers`);
+        // Use unified API with action for getting class subjects
+        const res = await fetch(`/api/resources/classes/actions?action=get-subjects&id=${classId}`);
         if (res.ok) {
           const data = await res.json();
           setClassSubjects(data.data?.subjectsWithTeachers || []);
@@ -157,12 +209,27 @@ export default function ClassesPage() {
 
   const fetchAvailableStudents = async () => {
     try {
-      const res = await fetch(`/api/school-admin/students`);
+      // Use unified API route for students
+      const res = await fetch("/api/resources/students", {
+        credentials: "include",
+      });
       if (res.ok) {
-        const data = await res.json();
-        const allStudents = data.data?.students || [];
+        const json = await res.json();
+        // Extract data array from various possible formats
+        let allStudents: Student[] = [];
+
+        if (Array.isArray(json?.data?.data)) {
+          allStudents = json.data.data;
+        } else if (Array.isArray(json?.data)) {
+          allStudents = json.data;
+        } else if (Array.isArray(json)) {
+          allStudents = json;
+        }
+
         const enrolledIds = classStudents.map(s => s.id);
         setAvailableStudents(allStudents.filter((s: Student) => !enrolledIds.includes(s.id)));
+      } else {
+        console.error("Failed to fetch students:", res.status);
       }
     } catch (err) {
       console.error("Failed to fetch available students:", err);
@@ -223,15 +290,17 @@ export default function ClassesPage() {
   const assignTeacher = async (classId: string, teacherId: string | null) => {
     setAssigningTeacher(classId);
     try {
-      const res = await fetch(`/api/school-admin/classes/${classId}/assign-teacher`, {
-        method: "POST",
+      // Use unified API route - update class with classTeacherId
+      const response = await fetch(`/api/resources/classes/${classId}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ teacherId }),
+        credentials: "include",
+        body: JSON.stringify({ classTeacherId: teacherId }),
       });
-      if (res.ok) {
+      if (response.ok) {
         await fetchClasses();
       } else {
-        const data = await res.json();
+        const data = await response.json();
         alert(data.error || "Failed to assign teacher");
       }
     } catch (err) {
@@ -250,7 +319,8 @@ export default function ClassesPage() {
   const handleDeleteClass = async (cls: Class) => {
     if (!confirm(`Delete ${cls.name}? This action cannot be undone.`)) return;
     try {
-      const response = await fetch(`/api/school-admin/classes/${cls.id}`, { method: "DELETE" });
+      // Use unified API route
+      const response = await fetch(`/api/resources/classes/${cls.id}`, { method: "DELETE" });
       if (response.ok) {
         await fetchClasses();
       } else {
@@ -263,9 +333,11 @@ export default function ClassesPage() {
 
   const saveClassName = async (classId: string, newName: string): Promise<void> => {
     try {
-      const response = await fetch(`/api/school-admin/classes/${classId}`, {
-        method: "PATCH",
+      // Use unified API route
+      const response = await fetch(`/api/resources/classes/${classId}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ name: newName }),
       });
 
@@ -289,8 +361,10 @@ export default function ClassesPage() {
         throw new Error("Capacity must be a valid number");
       }
 
-      const response = await fetch(`/api/school-admin/classes/${classId}`, {
-        method: "PATCH",
+      // Use unified API route
+      const response = await fetch(`/api/resources/classes/${classId}`, {
+        method: "PUT",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ capacity: capacityNum }),
       });
@@ -565,7 +639,7 @@ export default function ClassesPage() {
         isOpen={!!selectedClass}
         onClose={() => setSelectedClass(null)}
         title={selectedClass?.name || ""}
-        subtitle={`Grade ${selectedClass?.grade} - Section ${selectedClass?.section}`}
+        subtitle={selectedClass ? `Grade ${selectedClass?.grade ?? 'N/A'} - Section ${selectedClass?.section ?? 'N/A'}` : ''}
         tabs={[
           { id: "overview", label: "Overview", icon: <Settings className="w-4 h-4" /> },
           { id: "students", label: "Students", icon: <Users className="w-4 h-4" /> },

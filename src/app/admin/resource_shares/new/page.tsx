@@ -24,7 +24,7 @@ export default function NewResourceSharePage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New ResourceShare</h1>
       <FeatureForm
-        schema={ResourceShareFeature.schema}
+        schema={ResourceShareFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

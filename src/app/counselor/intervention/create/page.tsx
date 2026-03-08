@@ -11,7 +11,9 @@ export default function CreateInterventionPage() {
 
   useEffect(() => {
     // Verify user is a counselor
-    fetch("/api/auth/set-role")
+    fetch("/api/resources/users/actions?action=get-role", {
+      credentials: "include",
+    })
       .then((res) => res.json())
       .then((data) => {
         if (data.userType !== "counselor") {

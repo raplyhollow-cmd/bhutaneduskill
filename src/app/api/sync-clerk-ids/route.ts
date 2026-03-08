@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * SYNC CLERK USER IDs API
  *

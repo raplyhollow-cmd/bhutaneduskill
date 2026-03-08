@@ -55,7 +55,7 @@ export default function EditLessonPage() {
       </div>
 
       <FeatureForm
-        schema={LessonFeature.config.schema}
+        schema={LessonFeature.config.schema as any}
         mode="edit"
         title="Edit Lesson"
         description="Update lesson plan details"

@@ -185,7 +185,7 @@ export default function InfirmaryReferralsPage() {
 
     try {
       const response = await fetch("/api/school-admin/medical/referrals", {
-        method: "PATCH",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           id: selectedReferral.id,

@@ -8,12 +8,13 @@ const nextConfig: NextConfig = {
     // Reduce memory usage during builds
     workerThreads: false,
     cpus: 1, // Use only 1 CPU core to reduce memory
-    // Optimize Turbopack memory
-    turbo: {
-      rules: {},
-    },
     // Disable memory-heavy features
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+  },
+
+  // Turbopack configuration (moved from experimental.turbo)
+  turbopack: {
+    rules: {},
   },
 
   // Speed up builds by skipping source maps in development
@@ -39,7 +40,10 @@ const nextConfig: NextConfig = {
 
   // Reduce file system watching overhead
   webpack: (config, { dev, isServer }) => {
-    if (dev) {
+    // Disable webpack cache on Windows to avoid ENOENT errors during builds
+    if (process.platform === 'win32') {
+      config.cache = false;
+    } else if (dev) {
       // Speed up HMR - remove polling, use native file watching (much faster)
       config.watchOptions = {
         poll: false, // Use native file watching instead of polling

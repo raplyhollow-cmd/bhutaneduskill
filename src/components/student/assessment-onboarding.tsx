@@ -95,7 +95,9 @@ export function AssessmentOnboarding({ userId, onComplete }: AssessmentOnboardin
 
   const checkAssessmentStatus = async () => {
     try {
-      const res = await fetch("/api/student/assessment-status");
+      const res = await fetch("/api/student/assessment-status", {
+        credentials: "include",
+      });
       const json = await res.json();
 
       if (json.data) {

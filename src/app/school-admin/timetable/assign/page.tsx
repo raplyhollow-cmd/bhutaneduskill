@@ -10,7 +10,9 @@ export default function AssignTeachersPage() {
 
   useEffect(() => {
     // Verify user is a school admin
-    fetch("/api/auth/set-role")
+    fetch("/api/resources/users/actions?action=get-role", {
+      credentials: "include",
+    })
       .then((res) => res.json())
       .then((data) => {
         if (data.userType !== "school-admin") {

@@ -24,7 +24,7 @@ export default function NewNotificationPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New Notification</h1>
       <FeatureForm
-        schema={NotificationFeature.schema}
+        schema={NotificationFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

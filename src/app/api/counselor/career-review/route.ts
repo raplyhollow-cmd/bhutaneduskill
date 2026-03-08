@@ -25,6 +25,7 @@ import { eq, and, desc } from "drizzle-orm";
 export interface AICareerSuggestion {
   careerId: string;
   careerTitle: string;
+  category?: string;
   matchScore: number;
   confidence: "high" | "medium" | "low";
   scores: {
@@ -35,6 +36,7 @@ export interface AICareerSuggestion {
   };
   skillsGap: {
     missing: string[];
+    have: string[];
     readiness: number;
   };
   rubPrograms?: Array<{
@@ -146,6 +148,7 @@ async function generateAISuggestion(
       interests: 80,
     },
     skillsGap: {
+      have: ["Data Structures", "Algorithms"],
       missing: ["System Design", "Advanced Algorithms"],
       readiness: 75,
     },
@@ -182,6 +185,7 @@ export async function submitForReview(input: {
     counselorId: input.counselorId,
     careerId: input.aiSuggestion.careerId,
     careerTitle: input.aiSuggestion.careerTitle,
+    category: input.aiSuggestion.category || "General",
     matchScore: input.aiSuggestion.matchScore,
     confidence: input.aiSuggestion.confidence,
     assessmentScore: input.aiSuggestion.scores?.assessment || 0,
@@ -195,14 +199,12 @@ export async function submitForReview(input: {
     suggestedAt: new Date(),
     createdAt: new Date(),
     updatedAt: new Date(),
-  });
+  } as any);
 
   return recommendationId;
+
 }
 
-/**
- * Get pending reviews for a counselor
- */
 export async function getPendingReviews(counselorId: string): Promise<CounselorReview[]> {
   const recommendations = await db.query.careerRecommendations.findMany({
     where: and(

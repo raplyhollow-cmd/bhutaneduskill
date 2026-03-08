@@ -17,41 +17,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useState, useEffect } from "react";
-
-interface TeacherStats {
-  totalStudents: number;
-  activeClasses: number;
-  pendingAssessments: number;
-  completedThisWeek: number;
-  aiInteractions: number;
-}
-
-interface ClassData {
-  id: string;
-  name: string;
-  grade: number;
-  section: string;
-  students: number;
-  assessmentCompletion: number;
-  nextClass: string;
-}
-
-interface ActivityData {
-  id: number;
-  type: "assessment_completed" | "assessment_started" | "career_explored";
-  student: string;
-  class: string;
-  time: string;
-  result: string;
-}
-
-interface NeedsAttention {
-  id: number;
-  student: string;
-  class: string;
-  reason: string;
-  daysSinceLogin: number;
-}
+import { fetchTeacherDashboard, type TeacherStats, type TeacherClassData, type TeacherActivityData, type TeacherNeedsAttention } from "./_actions";
 
 export default function TeacherDashboardPage() {
   const [stats, setStats] = useState<TeacherStats>({
@@ -61,29 +27,19 @@ export default function TeacherDashboardPage() {
     completedThisWeek: 0,
     aiInteractions: 0,
   });
-  const [classes, setClasses] = useState<ClassData[]>([]);
-  const [recentActivity, setRecentActivity] = useState<ActivityData[]>([]);
-  const [needsAttention, setNeedsAttention] = useState<NeedsAttention[]>([]);
+  const [classes, setClasses] = useState<TeacherClassData[]>([]);
+  const [recentActivity, setRecentActivity] = useState<TeacherActivityData[]>([]);
+  const [needsAttention, setNeedsAttention] = useState<TeacherNeedsAttention[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadDashboardData() {
       try {
-        const response = await fetch("/api/teacher/dashboard");
-        if (!response.ok) throw new Error("Failed to fetch dashboard data");
-        const result = await response.json();
-        const data = result.data || {}; // Access nested data from successResponse
-
-        setStats(data.stats || {
-          totalStudents: 0,
-          activeClasses: 0,
-          pendingAssessments: 0,
-          completedThisWeek: 0,
-          aiInteractions: 0,
-        });
-        setClasses(data.classes || []);
-        setRecentActivity(data.recentActivity || []);
-        setNeedsAttention(data.needsAttention || []);
+        const data = await fetchTeacherDashboard();
+        setStats(data.stats);
+        setClasses(data.classes);
+        setRecentActivity(data.recentActivity);
+        setNeedsAttention(data.needsAttention);
       } catch (error) {
         logger.error("Error loading dashboard data:", error);
       } finally {

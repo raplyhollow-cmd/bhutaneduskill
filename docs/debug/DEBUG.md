@@ -1,11 +1,53 @@
 # Debug Documentation
 
-**Last Updated:** February 25, 2026
+**Last Updated:** March 8, 2026
 **Purpose:** Central reference for debugging common issues in the Bhutan EduSkill project
 
 ---
 
 ## Quick Reference - Common Issues
+
+### 0. React Rendering - "Cannot read properties of undefined" (NEW)
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `Cannot read properties of undefined (reading '0')` | Accessing array index on undefined/null string | Normalize at API boundary: `field || ""` |
+| `Objects are not valid as a React child` | Rendering object values directly | Check schema - JSON fields can be objects |
+| `TypeError: name is undefined` | Conditional name generation missing all branches | Add explicit fallback to default string |
+
+**Pattern - Null-Safe Name Display:**
+```typescript
+// API - Normalize to empty strings (NEVER return null)
+const teachersList = teacherUsers.map((teacherUser: any) => ({
+  id: teacherUser.id,
+  firstName: teacherUser.firstName || "",  // ✅ Always string
+  lastName: teacherUser.lastName || "",
+  email: teacherUser.email || "",
+}));
+
+// Frontend - Defensive name generation
+const firstName = teacher.firstName || "";
+const lastName = teacher.lastName || "";
+const email = teacher.email || "";
+
+let name = "Unknown";  // ✅ Always has a value
+if (firstName && lastName) {
+  name = `${firstName} ${lastName}`;
+} else if (firstName) {
+  name = firstName;
+} else if (lastName) {
+  name = lastName;
+} else if (email) {
+  name = email;
+}
+// Now name[0] is safe: {name[0] || "?"}
+```
+
+**Key Lesson**: When database fields are `string | null`, normalize at API boundary to empty strings before sending to frontend
+
+---
+
+### 1. TypeScript Errors
 
 ### 1. TypeScript Errors
 

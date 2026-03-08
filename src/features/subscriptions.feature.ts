@@ -87,8 +87,8 @@ export const SubscriptionsFeature = defineFeature({
                   stripeSubscriptionId: subscriptionId,
                   stripeCustomerId: customerId,
                   updatedAt: new Date(),
-                })
-                .where(eq(subscriptions.stripeSubscriptionId, subscriptionId));
+                } as any)
+                .where(eq((subscriptions as any).stripeSubscriptionId, subscriptionId));
             }
 
             return { success: true, message: "Checkout completed" };
@@ -108,8 +108,8 @@ export const SubscriptionsFeature = defineFeature({
               .set({
                 status: status === "active" ? "active" : status === "past_due" ? "past_due" : "cancelled",
                 updatedAt: new Date(),
-              })
-              .where(eq(subscriptions.stripeSubscriptionId, subscription.id));
+              } as any)
+              .where(eq((subscriptions as any).stripeSubscriptionId, subscription.id));
 
             return { success: true, message: "Subscription updated" };
           }
@@ -122,12 +122,10 @@ export const SubscriptionsFeature = defineFeature({
 
             await db
               .update(subscriptions)
-              .set({
-                status: "cancelled",
-                cancelledAt: new Date(),
+              .set({ cancelledAt: new Date(),
                 updatedAt: new Date(),
-              })
-              .where(eq(subscriptions.stripeSubscriptionId, subscription.id));
+              } as any)
+              .where(eq((subscriptions as any).stripeSubscriptionId, subscription.id));
 
             return { success: true, message: "Subscription cancelled" };
           }
@@ -146,8 +144,8 @@ export const SubscriptionsFeature = defineFeature({
                 .set({
                   status: "active",
                   updatedAt: new Date(),
-                })
-                .where(eq(subscriptions.stripeSubscriptionId, subscriptionId));
+                } as any)
+                .where(eq((subscriptions as any).stripeSubscriptionId, subscriptionId));
             }
 
             return { success: true, message: "Invoice paid" };
@@ -166,8 +164,8 @@ export const SubscriptionsFeature = defineFeature({
                 .set({
                   status: "past_due",
                   updatedAt: new Date(),
-                })
-                .where(eq(subscriptions.stripeSubscriptionId, subscriptionId));
+                } as any)
+                .where(eq((subscriptions as any).stripeSubscriptionId, subscriptionId));
             }
 
             return { success: true, message: "Payment failed recorded" };

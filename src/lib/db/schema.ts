@@ -1,7 +1,7 @@
 import { pgTable, text, integer, boolean, timestamp, json, jsonb, index, decimal, primaryKey } from "drizzle-orm/pg-core";
 import { relations, sql, eq, and, or, desc, like, inArray } from "drizzle-orm";
 import { rubColleges, rubScholarships } from "./rub-schema";
-import { careerInterests, careerRoadmaps, skillEvidence, careerExplorationActivities, mentorshipConnections, careerCounselingSessions, careerMilestones, careerRecommendations, careerReviewNotes } from "./career-roadmaps-schema";
+import { careerInterests, careerRoadmaps, skillEvidence, careerExplorationActivities, mentorshipConnections, careerCounselingSessions, careerMilestones, careerRecommendations, careerReviewNotes, skillsReference } from "./career-roadmaps-schema";
 import { tenants } from "./tenancy-schema";
 import type { CounselorContent, LearningModuleContent, HomeworkContent, QuestionData } from "@/types";
 
@@ -45,6 +45,7 @@ export {
   careerMilestones,
   careerRecommendations,
   careerReviewNotes,
+  skillsReference,
 };
 
 // Type exports (using different names to avoid duplicates)
@@ -66,6 +67,8 @@ export type CareerRecommendation = typeof careerRecommendations.$inferSelect;
 export type NewCareerRecommendation = typeof careerRecommendations.$inferInsert;
 export type CareerReviewNote = typeof careerReviewNotes.$inferSelect;
 export type NewCareerReviewNote = typeof careerReviewNotes.$inferInsert;
+export type SkillsReference = typeof skillsReference.$inferSelect;
+export type NewSkillsReference = typeof skillsReference.$inferInsert;
 
 export {
   busAttendance,

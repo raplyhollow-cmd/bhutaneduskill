@@ -22,12 +22,24 @@ interface RouteContext {
 const resourceMapping: Record<string, FeatureName> = {
   users: "users",
   user: "users",
+  students: "students",
+  student: "students",
+  teachers: "teachers",
+  teacher: "teachers",
+  classes: "classes",
+  class: "classes",
+  subjects: "subjects",
+  subject: "subjects",
+  schools: "schools",
+  school: "schools",
   notifications: "notifications",
   notification: "notifications",
   timetable: "timetable",
   subscriptions: "subscriptions",
   payments: "payments",
   billing: "billing",
+  "teacher-assignments": "teacher-assignments",
+  "teacher-assignment": "teacher-assignments",
 };
 
 export const POST = createApiRoute(

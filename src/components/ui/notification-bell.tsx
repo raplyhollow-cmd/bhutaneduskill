@@ -432,9 +432,11 @@ export function NotificationBell({
                 ) : (
                   <div className="divide-y divide-gray-100">
                     <AnimatePresence mode="popLayout">
-                      {displayNotifications.map((notification) => (
+                      {displayNotifications
+                        .filter((n) => n.deliveryId) // Filter out notifications without deliveryId
+                        .map((notification) => (
                         <NotificationItemComponent
-                          key={notification.deliveryId}
+                          key={notification.id} // Use id instead of deliveryId for uniqueness
                           notification={notification}
                           onRead={markAsRead}
                         />

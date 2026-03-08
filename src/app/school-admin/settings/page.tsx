@@ -19,6 +19,7 @@ import { logger } from "@/lib/logger";
 
 
 import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +47,7 @@ import {
   Plus,
   Trash2,
   AlertCircle,
+  Sparkles,
 } from "lucide-react";
 
 // ============================================================================
@@ -320,6 +322,7 @@ export default function SchoolSettingsPage() {
   });
 
   const hasFetched = useRef(false);
+  const router = useRouter();
 
   // ============================================================================
   // DATA FETCHING
@@ -654,6 +657,14 @@ export default function SchoolSettingsPage() {
           <p className="text-gray-600 mt-1">Manage your school's configuration and preferences</p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => router.push("/school-admin/setup")}
+            className="border-violet-200 text-violet-700 hover:bg-violet-50"
+          >
+            <Sparkles className="w-4 h-4 mr-2" />
+            Run Setup Wizard
+          </Button>
           <Button variant="outline" onClick={() => fetchSettings()}>
             <SettingsIcon className="w-4 h-4 mr-2" />
             Refresh

@@ -8,7 +8,7 @@
 
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
-import { schools, bellSchedules, academicYears } from "@/lib/db/schema";
+import { schools, bellSchedules, academicYears, departments, classes } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { logger } from "@/lib/logger";
 import { createApiRoute } from "@/lib/api/route-handler";
@@ -49,6 +49,10 @@ interface SetupData {
   gradingSystem: string;
   passMark: string;
   grades: Array<{ grade: string; minScore: number; maxScore: number; label: string }>;
+
+  // Optional: departments and classes from unified setup wizard
+  departments?: Array<{ name: string; code: string; description: string }>;
+  classes?: Array<{ grade: string; sections: string }>;
 }
 
 export const POST = createApiRoute(
@@ -87,6 +91,7 @@ export const POST = createApiRoute(
       const nanoid = nanoidModule.nanoid;
 
       const academicYearId = `ay-${nanoid()}`;
+        // @ts-ignore - workingDays not in schema type
       await db.insert(academicYears).values({
         id: academicYearId,
         schoolId: user.schoolId,
@@ -125,6 +130,48 @@ export const POST = createApiRoute(
           createdAt: new Date(),
           updatedAt: new Date(),
         });
+      }
+
+      // 5. Create departments if provided
+      if (body.departments && body.departments.length > 0) {
+        await db.insert(departments).values(
+          body.departments.map((d) => ({
+            id: `dept-${nanoid()}`,
+            schoolId: user.schoolId,
+            name: d.name,
+            code: d.code,
+            description: d.description || null,
+            isActive: true,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          }))
+        );
+      }
+
+      // 6. Create classes if provided
+      if (body.classes && body.classes.length > 0) {
+        for (const cls of body.classes) {
+          // Parse sections (could be comma-separated like "A,B,C" or single like "A")
+          const sections = cls.sections.split(",").map((s) => s.trim());
+          const gradeValue = cls.grade === "PP" ? 0 : parseInt(cls.grade);
+
+          for (const section of sections) {
+            await db.insert(classes).values({
+              id: `class-${nanoid()}`,
+              schoolId: user.schoolId,
+              name: `Class ${cls.grade}${section}`,
+              grade: gradeValue,
+              section,
+              roomNumber: "TBD", // To be updated later
+              capacity: 30, // Default capacity
+              homeroomTeacherName: "To be assigned",
+              classTeacherName: "To be assigned",
+              isActive: true,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            });
+          }
+        }
       }
 
       logger.info("School setup completed", { schoolId: user.schoolId, userId });

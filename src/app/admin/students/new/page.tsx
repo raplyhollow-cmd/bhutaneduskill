@@ -24,7 +24,7 @@ export default function NewStudentPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New Student</h1>
       <FeatureForm
-        schema={StudentFeature.schema}
+        schema={StudentFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

@@ -41,18 +41,21 @@ export function usePortalAuth(portalType: string): PortalAuthState {
 
     const checkAuth = async () => {
       try {
-        // Use unified API for role check
-        const roleRes = await fetch("/api/resources/users/actions/get-role");
+        // Use unified API for role check - action as query parameter
+        const roleRes = await fetch("/api/resources/users/actions?action=get-role", {
+          credentials: "include",
+        });
         const roleResData = await roleRes.json();
 
-        // Extract user data from response
+// Extract user data from response
         const userType = roleResData.data?.userType || roleResData.userType;
         const onboardingStatus = roleResData.data?.onboardingStatus || roleResData.onboardingStatus;
+        const onboardingComplete = roleResData.data?.onboardingComplete;
         const userName = roleResData.data?.name || `${roleResData.data?.firstName || ""} ${roleResData.data?.lastName || ""}`.trim() || "User";
 
-        // GUARD 0: User needs setup (new user or restricted)
-        if (!userType || onboardingStatus === "restricted" || onboardingStatus === "pending_approval") {
-          logger.info("User needs setup", { portalType, userType, onboardingStatus });
+        // FIX: GUARD 0 - Check onboardingComplete explicitly (!== true handles null correctly)
+        if (!userType || onboardingComplete !== true || onboardingStatus === "restricted" || onboardingStatus === "pending_approval") {
+          logger.info("User needs setup", { portalType, userType, onboardingComplete, onboardingStatus });
           router.push("/setup/unified");
           return;
         }

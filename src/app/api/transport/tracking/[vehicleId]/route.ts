@@ -10,7 +10,7 @@ import { createApiRoute } from "@/lib/api/route-handler";
 import { successResponse, notFoundResponse } from "@/lib/api/response-helpers";
 
 export const GET = createApiRoute(
-  async (request: NextRequest, auth, context) => {
+  async (request: NextRequest, auth, context: { params: Promise<{ vehicleId: string }> }) => {
     const { userId } = auth;
     const { vehicleId } = await context.params;
 

@@ -24,7 +24,7 @@ export default function NewCareerMatchePage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New CareerMatche</h1>
       <FeatureForm
-        schema={CareerMatcheFeature.schema}
+        schema={CareerMatcheFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

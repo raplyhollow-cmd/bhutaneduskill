@@ -31,7 +31,7 @@ export const POST = createApiRoute(
       let scholarshipsUpdated = 0;
 
       // Import colleges
-      for (const collegeData of rubCollegesData.rubCollegesData) {
+      for (const collegeData of rubCollegesData) {
         // Check if college exists
         const [existing] = await db
           .select()
@@ -130,7 +130,7 @@ export const POST = createApiRoute(
       }
 
       // Import scholarships
-      for (const scholarshipData of rubScholarshipsData.rubScholarshipsData) {
+      for (const scholarshipData of rubScholarshipsData) {
         const [existingScholarship] = await db
           .select()
           .from(rubScholarships)

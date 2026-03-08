@@ -2,8 +2,9 @@
 
 > **MANDATORY:** All agents MUST read and follow this SOP for ALL work on this project.
 
-> **LAST UPDATED:** 2026-02-26
-> **VERSION:** 1.7
+> **LAST UPDATED:** 2026-03-07
+> **VERSION:** 1.8
+> **NEW:** Senior Auditor Debugging Methodology - Systematic approach to fixing issues
 
 > **🎉 SPRINT 1 COMPLETE:** All 12+ agents finished successfully. Parallel agent workflow proven.
 
@@ -88,6 +89,124 @@ This project uses a **specialized agent team** approach where each task is assig
 
 ---
 
+## 🔍 SENIOR AUDITOR DEBUGGING METHODOLOGY (MANDATORY)
+
+**When user reports issues, work like a senior auditor/debugger at a big company:**
+
+### Phase 1: Full System Understanding (Before ANY Fix)
+
+**Step 1: Map the Entire Data Flow**
+```
+User Action → Frontend → API Route → Database → Response → UI Update
+```
+
+**Step 2: Identify ALL Points of Failure**
+- Authentication/Authorization checks
+- API route handlers
+- Database queries
+- Response format consistency
+- Client-side data transformation
+- State management
+- Error handling
+
+**Step 3: Find Similar Patterns Across Codebase**
+```
+Grep: Find ALL files using same pattern
+→ Check if they have same issue
+→ Create comprehensive fix for ALL instances
+```
+
+### Phase 2: Root Cause Analysis (5 Whys Method)
+
+```
+❌ BAD: Fix one symptom at a time
+"Teachers not loading → add credentials → done"
+"Classes not loading → add credentials → done"
+
+✅ GOOD: Find root cause, fix everywhere
+"Why are APIs failing?" → "Missing credentials in fetch calls"
+→ Find ALL fetch calls to unified API
+→ Fix ALL at once
+→ Verify pattern is consistent
+```
+
+### Phase 3: Systematic Fix Execution
+
+1. **Group Issues by Root Cause**
+   - Missing credentials → 14 files
+   - Wrong response format → 3 files
+   - Incorrect query → 2 files
+
+2. **Create Comprehensive Fix per Group**
+   - One pattern for credentials issue
+   - Apply to ALL affected files
+
+3. **Verify Fix Completeness**
+   - Search codebase for remaining instances
+   - Ensure zero similar issues remain
+
+### Phase 4: Documentation
+
+**Create Debug Report:**
+```
+## Issue: [Title]
+### Root Cause: [Technical explanation]
+### Files Affected: [List]
+### Fix Applied: [Code pattern]
+### Verification: [How to confirm fix works]
+### Related Issues: [References to similar fixes]
+```
+
+### Anti-Patterns to Avoid
+
+❌ **"Whack-a-Mole" Debugging**
+- Fix one issue, move to next
+- Don't look for patterns
+- Leave similar issues unfixed
+
+❌ **Surface-Level Fixes**
+- Fix symptoms, not root cause
+- Don't understand data flow
+- Break other things
+
+✅ **Senior Auditor Approach**
+- Understand full system first
+- Find root cause
+- Fix ALL instances at once
+- Document pattern for future
+- Verify no regressions
+
+### Example: Unified API Credentials Fix
+
+**Initial Report:** "Teachers not loading in dropdown"
+
+**Senior Auditor Process:**
+1. ✅ Mapped data flow: Frontend → /api/resources/users → Database
+2. ✅ Found root cause: Missing `credentials: "include"` in fetch
+3. ✅ Searched for ALL similar fetch calls (14 files found)
+4. ✅ Fixed ALL instances systematically
+5. ✅ Documented pattern for future
+
+**Files Fixed in One Batch:**
+- teachers/page.tsx
+- classes/page.tsx
+- timetable/assign/page.tsx
+- setup/school-admin/page.tsx
+- route/page.tsx
+- parent/parent-layout-client.tsx
+- parent/link-child/page.tsx
+- ministry/ministry-layout-client.tsx
+- counselor/counselor-layout-client.tsx
+- counselor/intervention/create/page.tsx
+- admin/admin-layout-client.tsx
+- dashboard/page.tsx
+- hooks/use-portal-auth.ts
+- (3 more...)
+
+**Result:** One systematic fix resolved 14 potential failure points.
+
+---
+
 ## PRE-WORK CHECKLIST (MANDATORY)
 
 Before writing ANY code, agent MUST:
@@ -160,6 +279,33 @@ function Component() {
   if (condition) return null;
   const [state] = useState();  // CRASH!
 }
+```
+
+### 🔴 DO NOT BREAK EXISTING FUNCTIONALITY
+
+**CRITICAL:** When fixing one issue, DO NOT create another issue.
+
+**Before any change:**
+1. Run `npx tsc --noEmit` → ensure 0 errors
+2. Test the affected page → ensure it works
+3. Make your change
+
+**After your change:**
+1. Run `npx tsc --noEmit` → must still be 0 errors
+2. If you broke something → FIX IT immediately
+3. Do NOT report "done" until build is clean
+
+**If you accidentally break something:**
+- Own it
+- Fix it before saying you're done
+- Don't leave it for the user to fix
+
+```typescript
+// ❌ WRONG: Fixes issue A, breaks issue B
+// (Then says "done" and leaves)
+
+// ✅ CORRECT: Fixes issue A, verifies B still works
+// If B breaks, fix B too before reporting done
 ```
 
 ### Imports

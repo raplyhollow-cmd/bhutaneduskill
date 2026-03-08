@@ -1,5 +1,11 @@
 "use client";
 
+// Force dynamic rendering - this page does client-side routing
+export const dynamic = 'force-dynamic';
+
+// Prevent any caching
+export const fetchCache = 'force-no-store';
+
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
@@ -8,7 +14,7 @@ import { Loader2 } from "lucide-react";
  * Route Page - Intelligent User Routing
  *
  * This page handles routing after sign-in/sign-up:
- * 1. Checks /api/auth/set-role to get user type
+ * 1. Checks /api/resources/users/actions?action=get-role to get user type
  * 2. If user is set up, redirects to their portal
  * 3. If user needs setup, redirects to /setup/unified
  *
@@ -19,7 +25,9 @@ export default function RoutePage() {
 
   useEffect(() => {
     console.log("[Route] Page loaded, checking auth...");
-    fetch("/api/auth/set-role")
+    fetch("/api/resources/users/actions?action=get-role", {
+      credentials: "include",
+    })
       .then(async (res) => {
         console.log("[Route] API response status:", res.status);
         const data = await res.json();

@@ -51,23 +51,22 @@ export const RoadmapFeature = defineFeature({
 
   actions: {
     updateProgress: {
-      handler: async (id: string | undefined, data: any, auth: any) => {
+      handler: async (context: { db: any; params: any; auth: any; schema: any; request?: Request }) => {
         const { db } = await import("@/lib/db");
-        const { roadmaps } = await import("@/lib/db/schema");
+        const { roadmaps } = await import("@/lib/db/schema") as any;
         const { eq, and } = await import("drizzle-orm");
         const { successResponse, notFoundResponse } = await import("@/lib/api/response-helpers");
-
-        if (!id) {
+        if (!context.params?.id) {
           return { error: "Roadmap ID is required", status: 400 };
         }
 
-        const { milestoneId, completed } = data;
+        const { milestoneId, completed } = context.params?.body || {};
 
         // Get roadmap
         const [roadmap] = await db
           .select()
           .from(roadmaps)
-          .where(eq(roadmaps.id, id))
+          .where(eq(roadmaps.id, context.params.id))
           .limit(1);
 
         if (!roadmap) {
@@ -105,7 +104,7 @@ export const RoadmapFeature = defineFeature({
             progress,
             updatedAt: new Date(),
           })
-          .where(eq(roadmaps.id, id))
+          .where(eq(roadmaps.id, context.params.id))
           .returning();
 
         return successResponse({ data: updated[0] });

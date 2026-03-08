@@ -54,7 +54,8 @@ export default async function StudentLayout({
 
   // Students need to complete setup AND be approved by school admin
   // If they're pending_approval or pending_enrollment, they've completed setup but need approval
-  const needsSetup = !user.onboardingComplete &&
+  // FIX: Use !== true to handle null/undefined correctly (null means incomplete)
+  const needsSetup = user.onboardingComplete !== true &&
     user.onboardingStatus !== "pending_approval" &&
     user.onboardingStatus !== "pending_enrollment";
   const isPendingApproval = user.onboardingStatus === "pending_approval" || user.onboardingStatus === "pending_enrollment";

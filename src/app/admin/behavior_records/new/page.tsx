@@ -24,7 +24,7 @@ export default function NewBehaviorRecordPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New BehaviorRecord</h1>
       <FeatureForm
-        schema={BehaviorRecordFeature.schema}
+        schema={BehaviorRecordFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

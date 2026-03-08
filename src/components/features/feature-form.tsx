@@ -22,7 +22,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Save, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { FeatureDataGrid } from "./feature-data-grid";
 
 interface FeatureFormProps {
   feature: any;
@@ -274,15 +273,6 @@ export function FeatureListPage({
         )}
       </div>
 
-      {/* Data Grid */}
-      <FeatureDataGrid
-        key={refreshKey}
-        feature={feature}
-        onEdit={canEdit ? handleEdit : undefined}
-        onDelete={canDelete ? handleDelete : undefined}
-        onView={canView ? onView : undefined}
-        rowActions={canView && !canEdit ? "view-only" : "all"}
-      />
     </div>
   );
 }

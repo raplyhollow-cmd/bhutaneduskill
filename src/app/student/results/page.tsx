@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { logger } from "@/lib/logger";
+import { fetchResults } from "../_actions";
 
 // Types based on database schema
 interface SubjectResult {
@@ -118,37 +119,78 @@ export default function StudentResultsPage() {
   const [assessmentResults, setAssessmentResults] = useState<AssessmentResult[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch all results from APIs
+  // Fetch all results using server actions
   useEffect(() => {
     const fetchAllResults = async () => {
       try {
         setIsLoading(true);
 
-        // Fetch exam results, homework results, and assessment results
-        const [examRes, homeworkRes, assessmentRes] = await Promise.all([
-          fetch("/api/student/results"),
-          fetch("/api/student/homework-results"),
-          fetch("/api/student/assessment-results"),
-        ]);
+        // Fetch all results using server action
+        const resultsData = await fetchResults();
 
-        if (examRes.ok) {
-          const data = await examRes.json() as ExamResultsResponse;
-          setExamResultsData(data);
-        }
+        // Transform data to match existing interfaces
+        setExamResultsData({
+          results: resultsData.exams.map((e) => ({
+            id: e.id,
+            examName: e.examName,
+            examType: "terminal",
+            examDate: e.date,
+            examYear: new Date().getFullYear(),
+            academicYear: "",
+            term: "",
+            totalMarks: e.totalMarks,
+            maxTotalMarks: e.totalMarks,
+            totalMarksObtained: e.marks,
+            percentage: e.percentage,
+            overallPercentage: e.percentage,
+            grade: e.grade,
+            isVerified: true,
+          })),
+          summary: resultsData.exams.length > 0 ? {
+            totalExams: resultsData.exams.length,
+            averagePercentage: Math.round(resultsData.exams.reduce((sum, e) => sum + e.percentage, 0) / resultsData.exams.length),
+            bestResult: {
+              examName: resultsData.exams[0].examName,
+              overallPercentage: resultsData.exams[0].percentage,
+              division: "I",
+              examYear: new Date().getFullYear(),
+            },
+            worstResult: {
+              examName: resultsData.exams[resultsData.exams.length - 1].examName,
+              overallPercentage: resultsData.exams[resultsData.exams.length - 1].percentage,
+              division: "II",
+              examYear: new Date().getFullYear(),
+            },
+            latestResult: {
+              examName: resultsData.exams[0].examName,
+              overallPercentage: resultsData.exams[0].percentage,
+              division: "I",
+              examYear: new Date().getFullYear(),
+            },
+          } : null,
+        });
 
-        if (homeworkRes.ok) {
-          const data = await homeworkRes.json();
-          setHomeworkResults(data.results || []);
-        }
+        setHomeworkResults(resultsData.homework.map((h) => ({
+          id: h.id,
+          title: h.title,
+          subject: h.subject,
+          submittedDate: h.date,
+          gradedDate: h.date,
+          totalPoints: h.maxScore,
+          earnedPoints: h.score,
+          percentage: Math.round((h.score / h.maxScore) * 100),
+          grade: h.score >= 80 ? "A" : h.score >= 60 ? "B" : "C",
+          teacherName: "Teacher",
+        })));
 
-        if (assessmentRes.ok) {
-          const data = await assessmentRes.json();
-          setAssessmentResults(data.results || []);
-        }
-
-        if (!examRes.ok && !homeworkRes.ok && !assessmentRes.ok) {
-          throw new Error("Failed to fetch results");
-        }
+        setAssessmentResults(resultsData.assessments.map((a) => ({
+          id: a.id,
+          assessmentName: a.title,
+          assessmentType: a.assessmentType as "RIASEC" | "MBTI" | "DISC" | "Learning Styles" | "Work Values",
+          completedDate: a.completedAt,
+          result: "Completed",
+          description: `${a.assessmentType} assessment completed`,
+        })));
       } catch (err) {
         logger.error("Error fetching results:", err);
         setError(err instanceof Error ? err.message : "Failed to fetch results");

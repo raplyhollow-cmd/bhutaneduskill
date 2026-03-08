@@ -26,7 +26,7 @@ import { logger } from "@/lib/logger";
 import { getFeature, type FeatureName } from "@/features";
 
 interface RouteContext {
-  params: Promise<{ resource: string; id?: string[] }>;
+  params: Promise<{ resource: string }>;
 }
 
 // Get feature from resource name
@@ -49,6 +49,8 @@ function getFeatureFromResource(resource: string) {
     assessment: "assessments",
     attendance: "attendance",
     attendance_records: "attendance",
+    notifications: "notifications",
+    notification: "notifications",
   };
 
   const featureName = mapping[resource];
@@ -58,10 +60,10 @@ function getFeatureFromResource(resource: string) {
   return undefined;
 }
 
-// GET handler - list, get single, or public endpoint
+// GET handler - list resources
 export const GET = createApiRoute(
   async (request: NextRequest, auth, context: RouteContext) => {
-    const { resource, id } = await context.params;
+    const { resource } = await context.params;
     const feature = getFeatureFromResource(resource);
 
     if (!feature) {
@@ -89,13 +91,8 @@ export const GET = createApiRoute(
         return errorResponse("Unauthorized", 401);
       }
 
-      if (id && id.length > 0) {
-        // Get single record
-        return await feature.api.get(id[0], auth);
-      } else {
-        // List records
-        return await feature.api.list(params, auth);
-      }
+      // List records
+      return await feature.api.list(params, auth);
     } catch (error) {
       logger.error(`Feature API GET error for ${resource}`, { error });
       return errorResponse(error instanceof Error ? error.message : "Failed to fetch");
@@ -127,69 +124,6 @@ export const POST = createApiRoute(
     } catch (error) {
       logger.error(`Feature API POST error for ${resource}`, { error });
       return errorResponse(error instanceof Error ? error.message : "Failed to create");
-    }
-  },
-  ["school-admin", "admin"]
-);
-
-// PUT handler - update
-export const PUT = createApiRoute(
-  async (request: NextRequest, auth, context: RouteContext) => {
-    const { resource, id } = await context.params;
-    const feature = getFeatureFromResource(resource);
-
-    if (!feature) {
-      return notFoundResponse(`Resource "${resource}" not found`);
-    }
-
-    if (!id || id.length === 0) {
-      return errorResponse("ID required for update", 400);
-    }
-
-    // Check permissions
-    const { user } = auth;
-    const permissions = feature.config.permissions?.update || ["school-admin", "admin"];
-    if (!user || !permissions.includes(user.type as any)) {
-      return errorResponse("Unauthorized", 401);
-    }
-
-    try {
-      const data = await request.json();
-      return await feature.api.update(id[0], data, auth);
-    } catch (error) {
-      logger.error(`Feature API PUT error for ${resource}`, { error });
-      return errorResponse(error instanceof Error ? error.message : "Failed to update");
-    }
-  },
-  ["school-admin", "admin"]
-);
-
-// DELETE handler - delete
-export const DELETE = createApiRoute(
-  async (request: NextRequest, auth, context: RouteContext) => {
-    const { resource, id } = await context.params;
-    const feature = getFeatureFromResource(resource);
-
-    if (!feature) {
-      return notFoundResponse(`Resource "${resource}" not found`);
-    }
-
-    if (!id || id.length === 0) {
-      return errorResponse("ID required for delete", 400);
-    }
-
-    // Check permissions
-    const { user } = auth;
-    const permissions = feature.config.permissions?.delete || ["school-admin", "admin"];
-    if (!user || !permissions.includes(user.type as any)) {
-      return errorResponse("Unauthorized", 401);
-    }
-
-    try {
-      return await feature.api.delete(id[0], auth);
-    } catch (error) {
-      logger.error(`Feature API DELETE error for ${resource}`, { error });
-      return errorResponse(error instanceof Error ? error.message : "Failed to delete");
     }
   },
   ["school-admin", "admin"]

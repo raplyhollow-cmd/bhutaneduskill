@@ -52,7 +52,7 @@ export default function NewLessonPage() {
       </div>
 
       <FeatureForm
-        schema={LessonFeature.config.schema}
+        schema={LessonFeature.config.schema as any}
         mode="create"
         title="Create New Lesson"
         description="Fill in the details to create a new lesson plan"

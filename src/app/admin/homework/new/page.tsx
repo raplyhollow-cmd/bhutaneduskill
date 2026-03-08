@@ -24,7 +24,7 @@ export default function NewHomeworkPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New Homework</h1>
       <FeatureForm
-        schema={HomeworkFeature.schema}
+        schema={HomeworkFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

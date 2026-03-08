@@ -24,7 +24,7 @@ export default function NewSubjectPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New Subject</h1>
       <FeatureForm
-        schema={SubjectFeature.schema}
+        schema={SubjectFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

@@ -32,9 +32,11 @@ export default async function AdminLayout({
 
   const { user } = authResult;
 
-  // Platform admins bypass setup check
+  // Platform admins bypass setup check, but still validate onboardingComplete
+  // FIX: Use !== true to handle null/undefined correctly
   const userName = user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() : "Admin";
   const portalType = "admin" as const;
+  const needsSetup = user.onboardingComplete !== true;
 
   // Use a client component wrapper to avoid Promise wrapper issues
   const AdminLayoutClient = dynamic(() => import("./admin-layout-client").then(mod => mod.AdminLayoutClient), {
@@ -42,7 +44,7 @@ export default async function AdminLayout({
   });
 
   return (
-    <AdminLayoutClient userName={userName} portalType={portalType}>
+    <AdminLayoutClient userName={userName} portalType={portalType} needsSetup={needsSetup}>
       {children}
     </AdminLayoutClient>
   );

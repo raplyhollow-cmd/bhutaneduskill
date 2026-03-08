@@ -41,7 +41,7 @@ export const JournalFeature = {
 
   // Get all journal entries for a user
   getEntries: async (userId: string, db: any): Promise<JournalEntry[]> => {
-    const { users, eq } = await import("@/lib/db/schema");
+    const { users } = await import("@/lib/db/schema");
     const { eq: eqFn } = await import("drizzle-orm");
 
     const [user] = await db
@@ -66,7 +66,7 @@ export const JournalFeature = {
     data: { title: string; content: string; mood: string; tags: string[]; date?: string },
     db: any
   ): Promise<{ success: boolean; entry?: JournalEntry; error?: string; existingEntry?: JournalEntry }> => {
-    const { users, eq } = await import("@/lib/db/schema");
+    const { users } = await import("@/lib/db/schema");
     const { eq: eqFn } = await import("drizzle-orm");
     const { nanoid } = await import("nanoid");
 
@@ -123,7 +123,7 @@ export const JournalFeature = {
     data: { title: string; content: string; mood: string; tags: string[] },
     db: any
   ): Promise<{ success: boolean; entry?: JournalEntry; error?: string }> => {
-    const { users, eq } = await import("@/lib/db/schema");
+    const { users } = await import("@/lib/db/schema");
     const { eq: eqFn } = await import("drizzle-orm");
 
     const [user] = await db
@@ -167,7 +167,7 @@ export const JournalFeature = {
     entryId: string,
     db: any
   ): Promise<{ success: boolean; error?: string }> => {
-    const { users, eq } = await import("@/lib/db/schema");
+    const { users } = await import("@/lib/db/schema");
     const { eq: eqFn } = await import("drizzle-orm");
 
     const [user] = await db
@@ -210,4 +210,3 @@ export const JournalFeature = {
 export { JournalFeature as JournalEntriesFeature };
 
 // Types for use in components
-export type { JournalEntry, UserJournalSettings };

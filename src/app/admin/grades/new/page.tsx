@@ -24,7 +24,7 @@ export default function NewGradePage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New Grade</h1>
       <FeatureForm
-        schema={GradeFeature.schema}
+        schema={GradeFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

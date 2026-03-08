@@ -419,7 +419,7 @@ export default function TimetablePage() {
       if (editingCell.entry) {
         // Update existing entry
         response = await fetch(`/api/school-admin/timetable/${editingCell.entry.id}`, {
-          method: "PATCH",
+          method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });

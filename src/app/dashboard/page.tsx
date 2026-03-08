@@ -17,7 +17,9 @@ export default function DashboardRedirectPage() {
     // Fetch user role and redirect to appropriate dashboard
     const fetchRoleAndRedirect = async () => {
       try {
-        const response = await fetch("/api/auth/set-role");
+        const response = await fetch("/api/resources/users/actions?action=get-role", {
+          credentials: "include",
+        });
         const data = await response.json();
 
         if (data.userType) {

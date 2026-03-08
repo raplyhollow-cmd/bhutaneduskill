@@ -366,8 +366,7 @@ class ResourceApiClient {
 /** Singleton instance */
 export const resourceApi = new ResourceApiClient();
 
-/** Type exports */
-export type { ListParams, ApiResponse, PaginatedResponse };
+// Types are already exported inline above - no need for re-export
 
 /**
  * Helper to create a typed resource API client for a specific resource

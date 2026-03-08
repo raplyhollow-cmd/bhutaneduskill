@@ -12,8 +12,8 @@
 import { notFound } from "next/navigation";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
-import { classes, users, enrollments, subjects, teacherAssignments, attendance, homework } from "@/lib/db/schema";
-import { eq, and, desc, sql } from "drizzle-orm";
+import { classes, users, enrollments, subjects, teacherAssignments, attendance, homework, students as studentsTable } from "@/lib/db/schema";
+import { eq, and, desc, sql, inArray } from "drizzle-orm";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";

@@ -24,7 +24,7 @@ export default function NewTimetableSlotPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New TimetableSlot</h1>
       <FeatureForm
-        schema={TimetableSlotFeature.schema}
+        schema={TimetableSlotFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

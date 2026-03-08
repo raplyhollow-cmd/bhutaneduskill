@@ -24,7 +24,7 @@ export default function NewCommunicationPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New Communication</h1>
       <FeatureForm
-        schema={CommunicationFeature.schema}
+        schema={CommunicationFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

@@ -52,13 +52,12 @@ export const ScheduleExceptionFeature = defineFeature({
 
   actions: {
     approve: {
-      handler: async (id: string | undefined, data: any, auth: any) => {
+      handler: async (context: { db: any; params: any; auth: any; schema: any; request?: Request }) => {
         const { db } = await import("@/lib/db");
-        const { scheduleExceptions } = await import("@/lib/db/schema");
+        const { scheduleExceptions } = await import("@/lib/db/schema") as any;
         const { eq } = await import("drizzle-orm");
         const { successResponse, notFoundResponse } = await import("@/lib/api/response-helpers");
-
-        if (!id) {
+        if (!context.params?.id) {
           return { error: "Exception ID is required", status: 400 };
         }
 
@@ -66,11 +65,11 @@ export const ScheduleExceptionFeature = defineFeature({
           .update(scheduleExceptions)
           .set({
             status: "approved",
-            approvedBy: auth.userId,
+            approvedBy: context.auth.userId,
             approvedAt: new Date(),
             updatedAt: new Date(),
           })
-          .where(eq(scheduleExceptions.id, id))
+          .where(eq(scheduleExceptions.id, context.params.id))
           .returning();
 
         if (!updated.length) {
@@ -83,13 +82,12 @@ export const ScheduleExceptionFeature = defineFeature({
     },
 
     cancel: {
-      handler: async (id: string | undefined, data: any, auth: any) => {
+      handler: async (context: { db: any; params: any; auth: any; schema: any; request?: Request }) => {
         const { db } = await import("@/lib/db");
-        const { scheduleExceptions } = await import("@/lib/db/schema");
+        const { scheduleExceptions } = await import("@/lib/db/schema") as any;
         const { eq } = await import("drizzle-orm");
         const { successResponse, notFoundResponse } = await import("@/lib/api/response-helpers");
-
-        if (!id) {
+        if (!context.params?.id) {
           return { error: "Exception ID is required", status: 400 };
         }
 
@@ -99,7 +97,7 @@ export const ScheduleExceptionFeature = defineFeature({
             status: "cancelled",
             updatedAt: new Date(),
           })
-          .where(eq(scheduleExceptions.id, id))
+          .where(eq(scheduleExceptions.id, context.params.id))
           .returning();
 
         if (!updated.length) {

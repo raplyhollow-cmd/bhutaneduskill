@@ -41,6 +41,8 @@ export async function POST(req: NextRequest) {
           await db.update(careers)
             .set({
               title: careerData.title,
+              name: careerData.title, // Alias for title
+              slug: careerData.id,
               category: careerData.category,
               industry: careerData.industry,
               riasecCode: careerData.riasecCode,
@@ -48,12 +50,14 @@ export async function POST(req: NextRequest) {
               educationLevel: careerData.educationLevel,
               typicalSalary: careerData.typicalSalary,
               bhutanDemand: careerData.bhutanDemand,
-              bhutanOutlook: careerData.bhutanOutlook,
+              growthOutlook: careerData.bhutanOutlook,
               bhutanSpecific: careerData.bhutanSpecific,
               skills: careerData.skills,
               subjects: careerData.subjects,
               workEnvironment: careerData.workEnvironment,
               description: careerData.description,
+              icon: "Briefcase",
+              color: "#3B82F6",
               updatedAt: new Date(),
             })
             .where(eq(careers.id, careerData.id));
@@ -62,6 +66,8 @@ export async function POST(req: NextRequest) {
           await db.insert(careers).values({
             id: careerData.id,
             title: careerData.title,
+            name: careerData.title, // Alias for title
+            slug: careerData.id,
             category: careerData.category,
             industry: careerData.industry,
             riasecCode: careerData.riasecCode,
@@ -69,12 +75,17 @@ export async function POST(req: NextRequest) {
             educationLevel: careerData.educationLevel,
             typicalSalary: careerData.typicalSalary,
             bhutanDemand: careerData.bhutanDemand,
-            bhutanOutlook: careerData.bhutanOutlook,
+            growthOutlook: careerData.bhutanOutlook,
             bhutanSpecific: careerData.bhutanSpecific,
             skills: careerData.skills,
             subjects: careerData.subjects,
             workEnvironment: careerData.workEnvironment,
             description: careerData.description,
+            icon: "Briefcase",
+            color: "#3B82F6",
+            isActive: true,
+            viewCount: 0,
+            salaryCurrency: "BTN",
             createdAt: new Date(),
             updatedAt: new Date(),
           });

@@ -12,10 +12,12 @@
  * - POST /api/setup/counselor - Create counselor account
  * - POST /api/setup/admin - Create platform admin account
  * - POST /api/setup/ministry - Create ministry account
+ *
+ * MIGRATED to Pattern B (createApiRoute) for consistent auth handling.
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { NextRequest } from "next/server";
+import { createApiRoute } from "@/lib/api/route-handler";
 import { db } from "@/lib/db";
 import { users } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
@@ -35,14 +37,9 @@ const ROLE_TO_TYPE: Record<string, string> = {
   ministry: "ministry",
 };
 
-export async function POST(request: NextRequest, context: RouteContext) {
-  try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
+export const POST = createApiRoute(
+  async (request: NextRequest, auth, context: RouteContext) => {
+    const { user } = auth;
     const { roleId } = await context.params;
     const body = await request.json();
     const { step, data } = body;
@@ -50,14 +47,14 @@ export async function POST(request: NextRequest, context: RouteContext) {
     // Validate role
     const userType = ROLE_TO_TYPE[roleId];
     if (!userType) {
-      return NextResponse.json({ error: "Invalid role" }, { status: 400 });
+      return { error: "Invalid role", status: 400 };
     }
 
-    // Check if user already exists
+    // Check if user already exists (by database id)
     const existing = await db
       .select()
       .from(users)
-      .where(eq(users.clerkUserId, userId))
+      .where(eq(users.id, user.id))
       .limit(1);
 
     const now = new Date();
@@ -78,49 +75,50 @@ export async function POST(request: NextRequest, context: RouteContext) {
     }
 
     if (existing.length > 0) {
-      // Update existing user
+      // Update existing user (query by database id)
       await db
         .update(users)
         .set(userData)
-        .where(eq(users.clerkUserId, userId));
+        .where(eq(users.id, user.id));
 
-      return NextResponse.json({
+      return {
         success: true,
         message: "Profile updated",
         user: { ...existing[0], ...userData },
-      });
+      };
     }
 
-    // Create new user
-    const [newUser] = await db
+    // Create new user (shouldn't normally happen with unified flow)
+    // Use .returning() and handle both array and single result
+    const insertResult = await db
       .insert(users)
       .values({
         id: `${userType}-${Date.now()}`,
-        clerkUserId: userId,
+        clerkUserId: user.clerkUserId,
         email: data.email || "",
         name: data.name || "",
         type: userType,
         schoolCode: data.schoolCode,
         classId: data.classId,
         subjectIds: data.subjectIds,
-        onboardingStatus: "completed",
+        onboardingStatus: null, // Use null for completed (unified pattern)
+        onboardingComplete: true,
         isActive: true,
         createdAt: now,
         updatedAt: now,
       })
       .returning();
 
-    return NextResponse.json({
+    // Handle both array and single result formats
+    const newUser = Array.isArray(insertResult) 
+      ? insertResult[0] 
+      : insertResult;
+
+    return {
       success: true,
       message: "Account created successfully",
       user: newUser,
-    });
-
-  } catch (error: any) {
-    console.error("Setup API error:", error);
-    return NextResponse.json(
-      { error: error.message || "Failed to process setup" },
-      { status: 500 }
-    );
-  }
-}
+    };
+  },
+  ["student", "teacher", "parent", "counselor", "school-admin", "admin", "ministry"]
+);

@@ -104,3 +104,333 @@ export async function requestPayout() {
     };
   }
 }
+
+// ============================================================================
+// DASHBOARD ACTIONS
+// ============================================================================
+
+/**
+ * Get current authenticated user data (not tutor-specific)
+ */
+async function getCurrentAuthUser() {
+  try {
+    const { requireAuth } = await import("@/lib/auth-utils");
+    const authResult = await requireAuth(['teacher']);
+    if ('error' in authResult) {
+      return null;
+    }
+    const { userId, user } = authResult;
+    return { id: userId, schoolId: user?.schoolId || null, user };
+  } catch (error) {
+    logger.error("Failed to get current auth user", error);
+    return null;
+  }
+}
+
+export interface TeacherStats {
+  totalStudents: number;
+  activeClasses: number;
+  pendingAssessments: number;
+  completedThisWeek: number;
+  aiInteractions: number;
+}
+
+export interface TeacherClassData {
+  id: string;
+  name: string;
+  grade: number;
+  section: string;
+  students: number;
+  assessmentCompletion: number;
+  nextClass: string;
+}
+
+export interface TeacherActivityData {
+  id: number;
+  type: "assessment_completed" | "assessment_started" | "career_explored";
+  student: string;
+  class: string;
+  time: string;
+  result: string;
+}
+
+export interface TeacherNeedsAttention {
+  id: number;
+  student: string;
+  class: string;
+  reason: string;
+  daysSinceLogin: number;
+}
+
+export interface TeacherDashboardData {
+  stats: TeacherStats;
+  classes: TeacherClassData[];
+  recentActivity: TeacherActivityData[];
+  needsAttention: TeacherNeedsAttention[];
+}
+
+/**
+ * Fetch teacher dashboard data
+ */
+export async function fetchTeacherDashboard(): Promise<TeacherDashboardData> {
+  const authData = await getCurrentAuthUser();
+  if (!authData) {
+    return {
+      stats: {
+        totalStudents: 0,
+        activeClasses: 0,
+        pendingAssessments: 0,
+        completedThisWeek: 0,
+        aiInteractions: 0,
+      },
+      classes: [],
+      recentActivity: [],
+      needsAttention: [],
+    };
+  }
+
+  const { id: teacherId, schoolId } = authData;
+
+  try {
+    const { db } = await import("@/lib/db");
+    const { users, classes: classesTable, enrollments, assessments } = await import("@/lib/db/schema");
+    const { eq, and, count, desc, gte, inArray } = await import("drizzle-orm");
+
+    // Get classes where this teacher is the class teacher
+    const teacherClasses = await db
+      .select()
+      .from(classesTable)
+      .where(eq(classesTable.classTeacherId, teacherId))
+      .limit(20);
+
+    const classIds = teacherClasses.map((c) => c.id);
+
+    // Get students count from enrollments
+    let totalStudents = 0;
+    if (classIds.length > 0) {
+      const [studentCount] = await db
+        .select({ count: count() })
+        .from(enrollments)
+        .where(inArray(enrollments.classId, classIds));
+      totalStudents = studentCount?.count || 0;
+    }
+
+    // Get assessment stats
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+
+    let completedThisWeek = 0;
+    let pendingAssessments = 0;
+
+    if (schoolId && classIds.length > 0) {
+      const classAssessments = await db
+        .select()
+        .from(assessments)
+        .where(
+          and(
+            gte(assessments.dueDate, weekAgo.toISOString()),
+            inArray(assessments.classId, classIds)
+          )
+        );
+
+      completedThisWeek = classAssessments.filter((a) => a.completedAt).length;
+      pendingAssessments = classAssessments.filter((a) => !a.completedAt).length;
+    }
+
+    // Build classes data with student counts
+    const classes: TeacherClassData[] = await Promise.all(
+      teacherClasses.map(async (cls) => {
+        const [enrollmentCount] = await db
+          .select({ count: count() })
+          .from(enrollments)
+          .where(eq(enrollments.classId, cls.id));
+
+        const studentCount = enrollmentCount?.count || 0;
+
+        return {
+          id: cls.id,
+          name: cls.name || `${cls.grade} ${cls.section || ""}`,
+          grade: cls.grade || 0,
+          section: cls.section || "",
+          students: studentCount,
+          assessmentCompletion: 0, // TODO: Calculate from assessments
+          nextClass: "Tomorrow 10:00 AM", // TODO: Get from timetable
+        };
+      })
+    );
+
+    return {
+      stats: {
+        totalStudents,
+        activeClasses: teacherClasses.length,
+        pendingAssessments,
+        completedThisWeek,
+        aiInteractions: 0, // TODO: Track AI interactions
+      },
+      classes,
+      recentActivity: [], // TODO: Populate from activity logs
+      needsAttention: [], // TODO: Populate from student engagement data
+    };
+  } catch (error) {
+    logger.error("Failed to fetch teacher dashboard", error);
+    return {
+      stats: {
+        totalStudents: 0,
+        activeClasses: 0,
+        pendingAssessments: 0,
+        completedThisWeek: 0,
+        aiInteractions: 0,
+      },
+      classes: [],
+      recentActivity: [],
+      needsAttention: [],
+    };
+  }
+}
+
+// ============================================================================
+// CLASSES ACTIONS
+// ============================================================================
+
+export interface TeacherClassDetail {
+  id: string;
+  name: string;
+  grade: number;
+  section: string;
+  students: number;
+  classTeacherId: string;
+  academicYear: string;
+  capacity: number | null;
+}
+
+/**
+ * Fetch all classes for the current teacher
+ */
+export async function fetchTeacherClasses(): Promise<TeacherClassDetail[]> {
+  const authData = await getCurrentAuthUser();
+  if (!authData) {
+    return [];
+  }
+
+  const { id: teacherId } = authData;
+
+  try {
+    const { db } = await import("@/lib/db");
+    const { classes: classesTable, enrollments } = await import("@/lib/db/schema");
+    const { eq, count } = await import("drizzle-orm");
+
+    const classes = await db
+      .select()
+      .from(classesTable)
+      .where(eq(classesTable.classTeacherId, teacherId))
+      .limit(50);
+
+    // Get student count for each class
+    const classesWithCounts = await Promise.all(
+      classes.map(async (cls) => {
+        const [enrollmentCount] = await db
+          .select({ count: count() })
+          .from(enrollments)
+          .where(eq(enrollments.classId, cls.id));
+
+        return {
+          id: cls.id,
+          name: cls.name || `${cls.grade} ${cls.section || ""}`,
+          grade: cls.grade || 0,
+          section: cls.section || "",
+          students: enrollmentCount?.count || 0,
+          classTeacherId: cls.classTeacherId || "",
+          academicYear: cls.academicYear || "",
+          capacity: cls.capacity,
+        };
+      })
+    );
+
+    return classesWithCounts;
+  } catch (error) {
+    logger.error("Failed to fetch teacher classes", error);
+    return [];
+  }
+}
+
+// ============================================================================
+// STUDENTS ACTIONS
+// ============================================================================
+
+export interface TeacherStudentData {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string;
+  grade: number | null;
+  section: string | null;
+  rollNumber: string | null;
+  attendanceRate: number;
+  careerInterests: string[];
+}
+
+/**
+ * Fetch all students for the current teacher's classes
+ */
+export async function fetchTeacherStudents(): Promise<TeacherStudentData[]> {
+  const authData = await getCurrentAuthUser();
+  if (!authData) {
+    return [];
+  }
+
+  const { id: teacherId } = authData;
+
+  try {
+    const { db } = await import("@/lib/db");
+    const { users, classes: classesTable, enrollments: enrollmentsTable } = await import("@/lib/db/schema");
+    const { eq, inArray } = await import("drizzle-orm");
+
+    // Get teacher's classes
+    const teacherClasses = await db
+      .select({ id: classesTable.id })
+      .from(classesTable)
+      .where(eq(classesTable.classTeacherId, teacherId));
+
+    const classIds = teacherClasses.map((c) => c.id);
+
+    if (classIds.length === 0) {
+      return [];
+    }
+
+    // Get enrollments for these classes
+    const enrollments = await db
+      .select({
+        studentId: enrollmentsTable.studentId,
+        classId: enrollmentsTable.classId,
+      })
+      .from(enrollmentsTable)
+      .where(inArray(enrollmentsTable.classId, classIds));
+
+    const studentIds = [...new Set(enrollments.map((e) => e.studentId))];
+
+    if (studentIds.length === 0) {
+      return [];
+    }
+
+    // Get student details
+    const students = await db
+      .select()
+      .from(users)
+      .where(inArray(users.id, studentIds));
+
+    return students.map((student) => ({
+      id: student.id,
+      firstName: student.firstName,
+      lastName: student.lastName,
+      email: student.email || "",
+      grade: student.classGrade || null,
+      section: student.section || null,
+      rollNumber: student.rollNumber || null,
+      attendanceRate: 0, // TODO: Calculate from attendance records
+      careerInterests: [], // TODO: Get from assessment results
+    }));
+  } catch (error) {
+    logger.error("Failed to fetch teacher students", error);
+    return [];
+  }
+}

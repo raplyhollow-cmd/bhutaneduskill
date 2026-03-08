@@ -24,7 +24,7 @@ export default function NewClassPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New Class</h1>
       <FeatureForm
-        schema={ClassFeature.schema}
+        schema={ClassFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

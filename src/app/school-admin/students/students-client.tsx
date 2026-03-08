@@ -206,7 +206,7 @@ export function StudentsClient({
   const handleUpdateField = async (studentId: string, field: string, value: string) => {
     try {
       const response = await fetch(`/api/users/${studentId}`, {
-        method: "PATCH",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ [field]: value }),
       });
@@ -234,7 +234,7 @@ export function StudentsClient({
   const saveStudentName = async (studentId: string, newName: string): Promise<{ success: boolean; error?: string }> => {
     try {
       const response = await fetch(`/api/users/${studentId}`, {
-        method: "PATCH",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: newName }),
       });

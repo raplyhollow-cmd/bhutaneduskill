@@ -230,7 +230,7 @@ export default function SchoolAdminClassesPageModern() {
   const handleUpdate = async (id: string, field: string, value: string) => {
     try {
       const res = await fetch(`/api/school-admin/classes/${id}`, {
-        method: "PATCH",
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           [field === "room" ? "roomNumber" : field]: value,

@@ -50,13 +50,12 @@ export const LibraryLoanFeature = defineFeature({
 
   actions: {
     returnBook: {
-      handler: async (id: string | undefined, data: any, auth: any) => {
+      handler: async (context: { db: any; params: any; auth: any; schema: any; request?: Request }) => {
         const { db } = await import("@/lib/db");
-        const { libraryLoans } = await import("@/lib/db/schema");
+        const { libraryLoans } = await import("@/lib/db/schema") as any;
         const { eq } = await import("drizzle-orm");
         const { successResponse, notFoundResponse } = await import("@/lib/api/response-helpers");
-
-        if (!id) {
+        if (!context.params?.id) {
           return { error: "Loan ID is required", status: 400 };
         }
 
@@ -67,7 +66,7 @@ export const LibraryLoanFeature = defineFeature({
             returnDate: new Date().toISOString().split('T')[0],
             updatedAt: new Date(),
           })
-          .where(eq(libraryLoans.id, id))
+          .where(eq(libraryLoans.id, context.params.id))
           .returning();
 
         if (!updated.length) {
@@ -80,13 +79,12 @@ export const LibraryLoanFeature = defineFeature({
     },
 
     renew: {
-      handler: async (id: string | undefined, data: any, auth: any) => {
+      handler: async (context: { db: any; params: any; auth: any; schema: any; request?: Request }) => {
         const { db } = await import("@/lib/db");
-        const { libraryLoans } = await import("@/lib/db/schema");
+        const { libraryLoans } = await import("@/lib/db/schema") as any;
         const { eq, and, sql } = await import("drizzle-orm");
         const { successResponse, notFoundResponse, badRequestResponse } = await import("@/lib/api/response-helpers");
-
-        if (!id) {
+        if (!context.params?.id) {
           return { error: "Loan ID is required", status: 400 };
         }
 
@@ -94,7 +92,7 @@ export const LibraryLoanFeature = defineFeature({
         const [loan] = await db
           .select()
           .from(libraryLoans)
-          .where(eq(libraryLoans.id, id))
+          .where(eq(libraryLoans.id, context.params.id))
           .limit(1);
 
         if (!loan) {
@@ -117,7 +115,7 @@ export const LibraryLoanFeature = defineFeature({
             renewalCount: sql`${libraryLoans.renewalCount} + 1`,
             updatedAt: new Date(),
           })
-          .where(eq(libraryLoans.id, id))
+          .where(eq(libraryLoans.id, context.params.id))
           .returning();
 
         return successResponse({ data: updated[0] });

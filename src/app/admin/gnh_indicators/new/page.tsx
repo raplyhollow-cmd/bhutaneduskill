@@ -24,7 +24,7 @@ export default function NewGnhIndicatorPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New GnhIndicator</h1>
       <FeatureForm
-        schema={GnhIndicatorFeature.schema}
+        schema={GnhIndicatorFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

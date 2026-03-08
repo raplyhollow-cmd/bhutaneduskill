@@ -24,7 +24,7 @@ export default function NewWorkforceDataPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New WorkforceData</h1>
       <FeatureForm
-        schema={WorkforceDataFeature.schema}
+        schema={WorkforceDataFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

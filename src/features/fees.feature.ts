@@ -1,4 +1,5 @@
 /**
+import { sql } from "drizzle-orm";
  * FEES FEATURE DEFINITION
  */
 
@@ -51,7 +52,7 @@ export const FeeFeature = defineFeature({
     list: async (params: any, auth: any) => {
       const { db } = await import("@/lib/db");
       const { fees, classes } = await import("@/lib/db/schema");
-      const { eq, and, desc } = await import("drizzle-orm");
+      const { eq, and, desc, sql } = await import("drizzle-orm");
 
       const { page = "1", limit = "20", feeType, term, isActive } = params;
       const offset = (parseInt(page) - 1) * parseInt(limit);

@@ -37,7 +37,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
-import { fetchStudentDashboard } from "../_actions";
+import { fetchStudentDashboard, fetchAssessmentStatus } from "../_actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StudentAIInsights } from "./ai-insights-wrapper";
 import { AssessmentProfileCard } from "@/components/student/assessment-profile-card";
@@ -198,11 +198,10 @@ export default function StudentDashboardPage() {
 
     async function loadData() {
       try {
-        // Check onboarding status first
-        const onboardingRes = await fetch("/api/student/assessment-status");
-        const onboardingData = await onboardingRes.json();
+        // Check onboarding status first using server action
+        const onboardingData = await fetchAssessmentStatus();
 
-        if (onboardingData.data && !onboardingData.data.isComplete) {
+        if (onboardingData && !onboardingData.isComplete) {
           setNeedsOnboarding(true);
           setCheckingOnboarding(false);
           setIsLoading(false);

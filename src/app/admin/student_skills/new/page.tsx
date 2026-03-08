@@ -24,7 +24,7 @@ export default function NewStudentSkillPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New StudentSkill</h1>
       <FeatureForm
-        schema={StudentSkillFeature.schema}
+        schema={StudentSkillFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

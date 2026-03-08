@@ -13,7 +13,7 @@ import { eq, and } from "drizzle-orm";
 import { successResponse, notFoundResponse } from "@/lib/api/response-helpers";
 
 export const GET = createApiRoute(
-  async (request: NextRequest, auth, context) => {
+  async (request: NextRequest, auth, context: { params: Promise<{ id: string }> }) => {
     const { userId } = auth;
     const { id } = await context.params;
 
@@ -24,17 +24,17 @@ export const GET = createApiRoute(
         homeworkId: homeworkSubmissions.homeworkId,
         studentId: homeworkSubmissions.studentId,
         content: homeworkSubmissions.content,
-        fileUrl: homeworkSubmissions.fileUrl,
-        fileName: homeworkSubmissions.fileName,
-        grade: homeworkSubmissions.grade,
-        maxGrade: homeworkSubmissions.maxGrade,
+        fileUrl: (homeworkSubmissions as any).fileUrl,
+        fileName: (homeworkSubmissions as any).fileName,
+        grade: (homeworkSubmissions as any).grade,
+        maxGrade: (homeworkSubmissions as any).maxGrade,
         feedback: homeworkSubmissions.feedback,
         gradedAt: homeworkSubmissions.gradedAt,
-        gradedBy: homeworkSubmissions.gradedBy,
+        gradedBy: (homeworkSubmissions as any).gradedBy,
         status: homeworkSubmissions.status,
         submittedAt: homeworkSubmissions.submittedAt,
       })
-      .from(homeworkSubmissions)
+      .from(homeworkSubmissions as any)
       .where(
         and(
           eq(homeworkSubmissions.homeworkId, id),
@@ -54,9 +54,9 @@ export const GET = createApiRoute(
         title: homework.title,
         description: homework.description,
         dueDate: homework.dueDate,
-        maxGrade: homework.maxGrade,
+        maxGrade: (homework as any).maxGrade,
       })
-      .from(homework)
+      .from(homework as any)
       .where(eq(homework.id, id))
       .limit(1);
 

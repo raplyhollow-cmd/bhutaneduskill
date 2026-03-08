@@ -679,3 +679,396 @@ export async function markAnnouncementAsRead(announcementId: string) {
     };
   }
 }
+
+// ============================================================================
+// ASSESSMENT STATUS ACTIONS
+// ============================================================================
+
+export interface AssessmentStatusData {
+  isComplete: boolean;
+  completedAssessments: string[];
+  pendingAssessments: string[];
+  nextAssessment?: string;
+}
+
+/**
+ * Fetch student's assessment completion status
+ */
+export async function fetchAssessmentStatus(): Promise<AssessmentStatusData> {
+  const authData = await getCurrentStudentId();
+  if (!authData) {
+    return {
+      isComplete: false,
+      completedAssessments: [],
+      pendingAssessments: [],
+    };
+  }
+
+  const { id: studentId, schoolId } = authData;
+
+  try {
+    const { db } = await import("@/lib/db");
+    const { assessments } = await import("@/lib/db/schema");
+    const { eq, and, isNotNull } = await import("drizzle-orm");
+
+    // Get completed assessments from assessments table
+    const completed = await db
+      .select({ type: assessments.type })
+      .from(assessments)
+      .where(and(
+        eq(assessments.userId, studentId),
+        isNotNull(assessments.completedAt)
+      ));
+
+    const completedTypes = new Set(completed.map((c) => c.type).filter(Boolean));
+
+    // Define required assessments
+    const requiredAssessments = ["mbti", "riasec", "disc", "work_values", "learning_styles"];
+    const pendingAssessments = requiredAssessments.filter((a) => !completedTypes.has(a));
+
+    return {
+      isComplete: pendingAssessments.length === 0,
+      completedAssessments: Array.from(completedTypes),
+      pendingAssessments,
+      nextAssessment: pendingAssessments[0],
+    };
+  } catch (error) {
+    logger.error("Failed to fetch assessment status", error);
+    return {
+      isComplete: false,
+      completedAssessments: [],
+      pendingAssessments: [],
+    };
+  }
+}
+
+// ============================================================================
+// RESULTS ACTIONS
+// ============================================================================
+
+export interface ExamResult {
+  id: string;
+  examName: string;
+  subject: string;
+  marks: number;
+  totalMarks: number;
+  percentage: number;
+  grade: string;
+  date: string;
+}
+
+export interface HomeworkResult {
+  id: string;
+  title: string;
+  subject: string;
+  score: number;
+  maxScore: number;
+  status: "graded" | "pending" | "submitted";
+  date: string;
+}
+
+export interface AssessmentResult {
+  id: string;
+  assessmentType: string;
+  title: string;
+  completedAt: string;
+  result: unknown;
+}
+
+export interface StudentResultsData {
+  exams: ExamResult[];
+  homework: HomeworkResult[];
+  assessments: AssessmentResult[];
+}
+
+/**
+ * Fetch student's results (exams, homework, assessments)
+ */
+export async function fetchResults(): Promise<StudentResultsData> {
+  const authData = await getCurrentStudentId();
+  if (!authData) {
+    return {
+      exams: [],
+      homework: [],
+      assessments: [],
+    };
+  }
+
+  const { id: studentId } = authData;
+
+  try {
+    const { db } = await import("@/lib/db");
+    const { examResultsEnhanced, homeworkSubmissions, assessments, homework, subjects } = await import("@/lib/db/schema");
+    const { eq, desc } = await import("drizzle-orm");
+    const examData = await db
+      .select()
+      .from(examResultsEnhanced)
+      .where(eq(examResultsEnhanced.userId, studentId))
+      .orderBy(desc(examResultsEnhanced.createdAt))
+      .limit(20);
+
+    // Flatten exam subjects into individual records
+    const exams: ExamResult[] = [];
+    for (const exam of examData) {
+      const subjects = exam.subjects as Array<{
+        subjectId: string;
+        subjectName: string;
+        marksObtained: number;
+        maxMarks: number;
+        grade: string;
+        percentage: number;
+      }> || [];
+
+      for (const subject of subjects) {
+        exams.push({
+          id: `${exam.id}-${subject.subjectId}`,
+          examName: exam.examName,
+          subject: subject.subjectName,
+          marks: subject.marksObtained,
+          totalMarks: subject.maxMarks,
+          percentage: subject.percentage,
+          grade: subject.grade,
+          date: exam.examDate,
+        });
+      }
+    }
+
+    // Get homework submissions with homework details
+    const homeworkData = await db
+      .select({
+        submission: homeworkSubmissions,
+        hw: homework,
+        subj: subjects,
+      })
+      .from(homeworkSubmissions)
+      .leftJoin(homework, eq(homeworkSubmissions.homeworkId, homework.id))
+      .leftJoin(subjects, eq(homework.subjectId, subjects.id))
+      .where(eq(homeworkSubmissions.studentId, studentId))
+      .orderBy(desc(homeworkSubmissions.submittedAt))
+      .limit(20);
+
+    const homeworkResults: HomeworkResult[] = homeworkData.map((h) => ({
+      id: h.submission.id,
+      title: h.hw?.title || "Homework",
+      subject: h.subj?.name || "",
+      score: h.submission.score,
+      maxScore: h.hw?.totalPoints || 100,
+      status: (h.submission.status as "graded" | "pending" | "submitted") || "pending",
+      date: h.submission.submittedAt?.toISOString() || "",
+    }));
+
+    // Get completed assessments from assessments table
+    const assessmentData = await db
+      .select()
+      .from(assessments)
+      .where(eq(assessments.userId, studentId))
+      .orderBy(desc(assessments.completedAt))
+      .limit(10);
+
+    const assessmentResults: AssessmentResult[] = assessmentData
+      .filter((a) => a.completedAt)
+      .map((a) => ({
+        id: a.id,
+        assessmentType: a.type || "",
+        title: a.title,
+        completedAt: a.completedAt?.toISOString() || "",
+        result: a.results,
+      }));
+
+    return {
+      exams,
+      homework: homeworkResults,
+      assessments: assessmentResults,
+    };
+  } catch (error) {
+    logger.error("Failed to fetch student results", error);
+    return {
+      exams: [],
+      homework: [],
+      assessments: [],
+    };
+  }
+}
+
+// ============================================================================
+// CLASSES ACTIONS
+// ============================================================================
+
+export interface StudentClassData {
+  id: string;
+  name: string;
+  grade: number;
+  section: string;
+  classTeacher: string;
+  roomNumber?: string;
+  schedule?: string;
+}
+
+/**
+ * Fetch student's enrolled classes
+ */
+export async function fetchStudentClasses(): Promise<StudentClassData[]> {
+  const authData = await getCurrentStudentId();
+  if (!authData) {
+    return [];
+  }
+
+  const { id: studentId, schoolId } = authData;
+
+  try {
+    const { db } = await import("@/lib/db");
+    const { users, classes: classesTable, enrollments: enrollmentsTable } = await import("@/lib/db/schema");
+    const { eq, and, inArray } = await import("drizzle-orm");
+
+    // Get student's enrollments
+    const studentEnrollments = await db
+      .select({ classId: enrollmentsTable.classId })
+      .from(enrollmentsTable)
+      .where(eq(enrollmentsTable.studentId, studentId));
+
+    if (studentEnrollments.length === 0) {
+      return [];
+    }
+
+    const classIds = studentEnrollments.map((e) => e.classId);
+
+    // Get class details with teacher info
+    const classes = await db
+      .select({
+        id: classesTable.id,
+        name: classesTable.name,
+        grade: classesTable.grade,
+        section: classesTable.section,
+        classTeacherId: classesTable.classTeacherId,
+        roomNumber: classesTable.roomNumber,
+      })
+      .from(classesTable)
+      .where(inArray(classesTable.id, classIds));
+
+    // Get teacher names
+    const teacherIds = classes.map((c) => c.classTeacherId).filter(Boolean);
+    const teachers = teacherIds.length > 0 ? await db
+      .select({ id: users.id, firstName: users.firstName, lastName: users.lastName })
+      .from(users)
+      .where(inArray(users.id, teacherIds))
+      : [];
+
+    const teacherMap = new Map(teachers.map((t) => [t.id, `${t.firstName} ${t.lastName || ""}`.trim()]));
+
+    return classes.map((cls) => ({
+      id: cls.id,
+      name: cls.name || `${cls.grade} ${cls.section || ""}`,
+      grade: cls.grade || 0,
+      section: cls.section || "",
+      classTeacher: teacherMap.get(cls.classTeacherId || "") || "Not Assigned",
+      roomNumber: cls.roomNumber || undefined,
+      schedule: undefined,
+    }));
+  } catch (error) {
+    logger.error("Failed to fetch student classes", error);
+    return [];
+  }
+}
+
+// ============================================================================
+// MEDICAL RECORDS ACTIONS
+// ============================================================================
+
+export interface MedicalRecord {
+  id: string;
+  date: string;
+  type: "checkup" | "vaccination" | "treatment" | "emergency";
+  description: string;
+  doctor?: string;
+  notes?: string;
+}
+
+/**
+ * Fetch student's medical records
+ */
+export async function fetchMedicalRecords(): Promise<MedicalRecord[]> {
+  const authData = await getCurrentStudentId();
+  if (!authData) {
+    return [];
+  }
+
+  const { id: studentId } = authData;
+
+  try {
+    // TODO: Implement when medical records table is available
+    return [];
+  } catch (error) {
+    logger.error("Failed to fetch medical records", error);
+    return [];
+  }
+}
+
+// ============================================================================
+// RUB COLLEGES ACTIONS
+// ============================================================================
+
+export interface RubCollege {
+  id: string;
+  name: string;
+  location: string;
+  programs: string[];
+  requirements: string[];
+}
+
+/**
+ * Fetch RUB colleges data
+ */
+export async function fetchRubColleges(): Promise<RubCollege[]> {
+  try {
+    const { db } = await import("@/lib/db");
+    const { rubColleges } = await import("@/lib/db/schema");
+
+    const colleges = await db.select().from(rubColleges).limit(50);
+
+    return colleges.map((c) => ({
+      id: c.id,
+      name: c.name || "",
+      location: c.location || "",
+      programs: [],
+      requirements: [],
+    }));
+  } catch (error) {
+    logger.error("Failed to fetch RUB colleges", error);
+    return [];
+  }
+}
+
+// ============================================================================
+// RUB PROGRAMS ACTIONS
+// ============================================================================
+
+export interface RubProgram {
+  id: string;
+  collegeId: string;
+  name: string;
+  duration: string;
+  requirements: string[];
+}
+
+/**
+ * Fetch RUB programs data
+ */
+export async function fetchRubPrograms(): Promise<RubProgram[]> {
+  try {
+    const { db } = await import("@/lib/db");
+    const { rubPrograms } = await import("@/lib/db/schema");
+
+    const programs = await db.select().from(rubPrograms).limit(100);
+
+    return programs.map((p) => ({
+      id: p.id,
+      collegeId: p.collegeId || "",
+      name: p.name || "",
+      duration: String(p.duration || ""),
+      requirements: [],
+    }));
+  } catch (error) {
+    logger.error("Failed to fetch RUB programs", error);
+    return [];
+  }
+}

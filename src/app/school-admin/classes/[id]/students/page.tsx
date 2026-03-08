@@ -325,7 +325,7 @@ export default function ClassStudentsPage() {
       const response = await fetch(
         `/api/classes/${classId}/enrollments/${enrollment.studentId}`,
         {
-          method: "PATCH",
+          method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             rollNumber: rollNumberValue || null,

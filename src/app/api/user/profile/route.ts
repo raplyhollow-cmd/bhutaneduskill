@@ -18,7 +18,7 @@ export const GET = createApiRoute(
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Query user from database using clerkUserId
+    // Query user from database - userId is already the database id from requireAuth
     const userRecords = await db
       .select({
         id: users.id,
@@ -45,7 +45,7 @@ export const GET = createApiRoute(
         postalCode: users.postalCode,
       })
       .from(users)
-      .where(eq(users.clerkUserId, userId))
+      .where(eq(users.id, userId))
       .limit(1);
 
     if (userRecords.length === 0) {

@@ -53,10 +53,4 @@ export const LearningPathFeature = defineFeature({
       { key: "createdAt", label: "Created", sortable: true },
     ],
   },
-
-  listConfig: {
-    defaultSort: { field: "createdAt", order: "desc" },
-    pageSize: 20,
-    searchable: true,
-  },
 });

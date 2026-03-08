@@ -24,7 +24,7 @@ export default function NewInvoicePage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New Invoice</h1>
       <FeatureForm
-        schema={InvoiceFeature.schema}
+        schema={InvoiceFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

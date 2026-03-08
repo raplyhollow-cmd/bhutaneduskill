@@ -180,8 +180,8 @@ export function FeatureListPage({
       }
 
       const result = await response.json();
-      setData(result.data || []);
-      setTotal(result.pagination?.total || result.data?.length || 0);
+      setData(result.data?.data || []);
+      setTotal(result.data?.pagination?.total || result.data?.length || 0);
     } catch (err) {
       console.error("Error fetching data:", err);
       toastError({ title: `Failed to load ${displayTitle.toLowerCase()}` });
@@ -454,8 +454,8 @@ export function useFeatureList(feature: FeatureConfig, options?: {
       if (!response.ok) throw new Error("Failed to fetch");
 
       const result = await response.json();
-      setData(result.data || []);
-      setTotal(result.pagination?.total || 0);
+      setData(result.data?.data || []);
+      setTotal(result.data?.pagination?.total || 0);
     } catch (error) {
       console.error("Error fetching:", error);
       throw error;

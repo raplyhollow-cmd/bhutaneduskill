@@ -2,15 +2,18 @@
  * SCHOOL ADMIN SETUP WIZARD
  *
  * After platform admin approval, school admin completes school setup.
- * Multi-step wizard to configure school profile, departments, subjects, etc.
+ * Unified wizard to configure school profile, departments, classes, calendar, etc.
+ *
+ * This page can also be accessed anytime from Settings > Run Setup Wizard
+ * for reconfiguration.
  */
 
 import { redirect } from "next/navigation";
 import { requireAuth } from "@/lib/auth-utils";
 import { db } from "@/lib/db";
-import { users, schools, departments } from "@/lib/db/schema";
-import { eq, sql } from "drizzle-orm";
-import { SchoolAdminSetupClient } from "./school-admin-setup-client";
+import { users, schools } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
+import { UnifiedSetupWizard } from "@/components/school-admin/unified-setup-wizard";
 import { logger } from "@/lib/logger";
 
 export default async function SchoolAdminSetupPage() {
@@ -32,7 +35,6 @@ export default async function SchoolAdminSetupPage() {
       schoolCode: schools.code,
       setupComplete: schools.setupComplete,
       subscriptionStatus: schools.subscriptionStatus,
-      departmentCount: sql`(SELECT COUNT(*) FROM departments WHERE departments.school_id = schools.id)`,
     })
     .from(users)
     .innerJoin(schools, eq(users.schoolId, schools.id))
@@ -44,11 +46,6 @@ export default async function SchoolAdminSetupPage() {
   }
 
   const userData = userRecords[0];
-
-  // Check if setup is already complete
-  if (userData.setupComplete) {
-    redirect("/school-admin");
-  }
 
   // Check if school is active
   if (userData.subscriptionStatus !== "active") {
@@ -79,11 +76,10 @@ export default async function SchoolAdminSetupPage() {
   }
 
   return (
-    <SchoolAdminSetupClient
+    <UnifiedSetupWizard
       schoolId={userData.schoolId!}
       schoolName={userData.schoolName}
       schoolCode={userData.schoolCode}
-      departmentCount={(await userData.departmentCount)[0]?.count || 0}
     />
   );
 }

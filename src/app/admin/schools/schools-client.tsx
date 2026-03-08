@@ -3,23 +3,19 @@
 /**
  * PLATFORM ADMIN - SCHOOLS MANAGEMENT
  *
- * Ultra-luxury intelligent inline-editing grid design:
+ * Using GoogleDataTable for consistent grid experience:
  * - Inline editable fields (click to edit, no panels)
  * - School type selector (inline change)
  * - Status toggle (click to toggle, no confirmation)
  * - Quick action menu (three-dot with all actions)
- * - Keyboard navigation (arrows, enter, space, escape)
  * - Optimistic UI (instant feedback, sync in background)
  * - Bulk actions with conditional bar
- * - Custom grid table (12-column, NOT HTML table)
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { InlineEditText } from "@/components/admin/inline-edit-text";
-import { QuickActionMenu } from "@/components/admin/quick-action-menu";
+import { InlineEdit } from "@/components/ui/inline-edit";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -38,15 +34,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { TableSkeleton } from "@/components/ui/skeleton/table-skeleton";
 import { ExpressAddModal, useExpressAdd } from "@/components/ui/express-add-modal";
+import { GoogleDataTable, GoogleColumn, GoogleAction } from "@/components/admin/google-data-table";
 import {
   Building2,
   Users,
@@ -56,12 +45,9 @@ import {
   Sparkles,
   X,
   Check,
-  Square,
   Trash2,
-  MoreHorizontal,
   Loader2 as Spinner,
   AlertCircle,
-  ChevronDown,
   Eye,
   Edit,
   Upload,
@@ -139,8 +125,6 @@ export function SchoolsClient({
   // State
   const [schools, setSchools] = useState<School[]>(schoolsWithStats);
   const [isLoading, setIsLoading] = useState(false);
-  const [isDeleting, setIsDeleting] = useState<string | null>(null);
-  const [isToggling, setIsToggling] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Search and filter state
@@ -153,12 +137,6 @@ export function SchoolsClient({
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [editingSchool, setEditingSchool] = useState<School | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<School | null>(null);
-
-  // Selection state
-  const [selectedSchools, setSelectedSchools] = useState<Set<string>>(new Set());
-
-  // Keyboard navigation state
-  const [focusedIndex, setFocusedIndex] = useState<number>(-1);
 
   // Quick add modal
   const quickAdd = useExpressAdd();
@@ -180,11 +158,6 @@ export function SchoolsClient({
 
     return matchesSearch && matchesType && matchesStatus;
   });
-
-  // Reset focus when filtered schools change
-  useEffect(() => {
-    setFocusedIndex(-1);
-  }, [filteredSchools]);
 
   // Refresh data
   const refreshData = () => {
@@ -223,139 +196,40 @@ export function SchoolsClient({
     }
   };
 
-  // Update school code with inline edit
-  const updateSchoolCode = async (schoolId: string, newCode: string) => {
-    const school = schools.find((s) => s.id === schoolId);
+  // Update field with inline edit - unified handler
+  const handleUpdate = async (id: string, field: string, value: string): Promise<void> => {
+    const school = schools.find((s) => s.id === id);
     if (!school) return;
 
-    const oldCode = school.code;
+    const oldValue = school[field as keyof School];
 
     // Optimistic update
     setSchools((prev) =>
-      prev.map((s) => (s.id === schoolId ? { ...s, code: newCode } : s))
+      prev.map((s) => (s.id === id ? { ...s, [field]: value } : s))
     );
 
     try {
-      const response = await fetch(`/api/schools/${schoolId}`, {
+      const response = await fetch(`/api/schools/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: newCode }),
+        body: JSON.stringify({ [field]: value }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to update code");
+        throw new Error("Failed to update");
       }
     } catch (err) {
       // Rollback
       setSchools((prev) =>
-        prev.map((s) => (s.id === schoolId ? { ...s, code: oldCode } : s))
+        prev.map((s) => (s.id === id ? { ...s, [field]: oldValue } : s))
       );
-      logger.error(err, { action: "updateSchoolCode", schoolId });
-      throw err;
-    }
-  };
-
-  // Update school name with inline edit
-  const updateSchoolName = async (schoolId: string, newName: string) => {
-    const school = schools.find((s) => s.id === schoolId);
-    if (!school) return;
-
-    const oldName = school.name;
-
-    // Optimistic update
-    setSchools((prev) =>
-      prev.map((s) => (s.id === schoolId ? { ...s, name: newName } : s))
-    );
-
-    try {
-      const response = await fetch(`/api/schools/${schoolId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newName }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update name");
-      }
-    } catch (err) {
-      // Rollback
-      setSchools((prev) =>
-        prev.map((s) => (s.id === schoolId ? { ...s, name: oldName } : s))
-      );
-      logger.error(err, { action: "updateSchoolName", schoolId });
-      throw err;
-    }
-  };
-
-  // Update contact email with inline edit
-  const updateContactEmail = async (schoolId: string, newEmail: string) => {
-    const school = schools.find((s) => s.id === schoolId);
-    if (!school) return;
-
-    const oldEmail = school.contactEmail;
-
-    // Optimistic update
-    setSchools((prev) =>
-      prev.map((s) => (s.id === schoolId ? { ...s, contactEmail: newEmail } : s))
-    );
-
-    try {
-      const response = await fetch(`/api/schools/${schoolId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contactEmail: newEmail }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update email");
-      }
-    } catch (err) {
-      // Rollback
-      setSchools((prev) =>
-        prev.map((s) => (s.id === schoolId ? { ...s, contactEmail: oldEmail } : s))
-      );
-      logger.error(err, { action: "updateContactEmail", schoolId });
-      throw err;
-    }
-  };
-
-  // Update school type with dropdown
-  const updateSchoolType = async (schoolId: string, newType: string) => {
-    const school = schools.find((s) => s.id === schoolId);
-    if (!school) return;
-
-    const oldType = school.schoolType;
-
-    // Optimistic update
-    setSchools((prev) =>
-      prev.map((s) => (s.id === schoolId ? { ...s, schoolType: newType } : s))
-    );
-
-    try {
-      const response = await fetch(`/api/schools/${schoolId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ schoolType: newType }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to update type");
-      }
-    } catch (err) {
-      // Rollback
-      setSchools((prev) =>
-        prev.map((s) => (s.id === schoolId ? { ...s, schoolType: oldType } : s))
-      );
-      logger.error(err, { action: "updateSchoolType", schoolId });
+      logger.error(err, { action: "update", field, id });
       throw err;
     }
   };
 
   // Delete school
   const deleteSchool = async (schoolId: string) => {
-    setIsDeleting(schoolId);
-    setError(null);
-
     try {
       const response = await fetch(`/api/schools/${schoolId}`, {
         method: "DELETE",
@@ -371,58 +245,6 @@ export function SchoolsClient({
     } catch (err) {
       logger.error(err, { action: "deleteSchool", schoolId });
       setError("Failed to delete school. Please try again.");
-    } finally {
-      setIsDeleting(null);
-    }
-  };
-
-  // Toggle selection
-  const toggle = useCallback((schoolId: string) => {
-    setSelectedSchools((prev) => {
-      const next = new Set(prev);
-      if (next.has(schoolId)) {
-        next.delete(schoolId);
-      } else {
-        next.add(schoolId);
-      }
-      return next;
-    });
-  }, []);
-
-  const toggleAll = () => {
-    if (selectedSchools.size === filteredSchools.length) {
-      setSelectedSchools(new Set());
-    } else {
-      setSelectedSchools(new Set(filteredSchools.map((s) => s.id)));
-    }
-  };
-
-  const allSelected = filteredSchools.length > 0 && selectedSchools.size === filteredSchools.length;
-
-  // Bulk actions
-  const bulkAction = async (action: string, value?: any) => {
-    try {
-      if (action === "delete") {
-        if (!confirm(`Delete ${selectedSchools.size} selected schools? This cannot be undone.`)) return;
-        await Promise.all(
-          Array.from(selectedSchools).map((id) => fetch(`/api/schools/${id}`, { method: "DELETE" }))
-        );
-      } else if (action === "status") {
-        await Promise.all(
-          Array.from(selectedSchools).map((id) =>
-            fetch(`/api/schools/${id}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ isActive: value }),
-            })
-          )
-        );
-      }
-      setSelectedSchools(new Set());
-      refreshData();
-    } catch (err) {
-      logger.error(err, { event: "bulkAction", actionType: action });
-      setError("Failed to complete bulk action");
     }
   };
 
@@ -485,58 +307,194 @@ export function SchoolsClient({
     return name.substring(0, 2).toUpperCase();
   };
 
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if typing in an input
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-
-      if (filteredSchools.length === 0) return;
-
-      const focusedSchoolId =
-        focusedIndex >= 0 && focusedIndex < filteredSchools.length
-          ? filteredSchools[focusedIndex]?.id
-          : null;
-
-      switch (e.key) {
-        case "ArrowDown":
-          e.preventDefault();
-          setFocusedIndex((prev) => (prev < filteredSchools.length - 1 ? prev + 1 : prev));
-          break;
-        case "ArrowUp":
-          e.preventDefault();
-          setFocusedIndex((prev) => (prev > 0 ? prev - 1 : -1));
-          break;
-        case "Enter":
-          if (focusedIndex >= 0 && focusedSchoolId) {
-            const school = schools.find((s) => s.id === focusedSchoolId);
-            if (school) {
-              router.push(`/admin/schools/${focusedSchoolId}`);
-            }
-          }
-          break;
-        case " ":
-          if (focusedIndex >= 0 && focusedSchoolId) {
-            e.preventDefault();
-            toggle(focusedSchoolId);
-          }
-          break;
-        case "Escape":
-          setFocusedIndex(-1);
-          if (selectedSchools.size > 0) {
-            setSelectedSchools(new Set());
-          }
-          break;
-      }
-    };
-
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [filteredSchools, focusedIndex, schools, selectedSchools.size, toggle, router]);
-
   // Calculate stats for status chips
   const activeSchools = schools.filter((s) => s.isActive !== false).length;
-  const pendingSchools = schools.filter((s) => s.isActive === false).length;
+
+  // Define columns for GoogleDataTable
+  const columns: GoogleColumn<School>[] = [
+    {
+      id: "name",
+      label: "School",
+      width: "240px",
+      sortable: true,
+      filterable: true,
+      editable: true,
+      render: (row) => (
+        <div className="flex items-center gap-2">
+          <div
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-medium flex-shrink-0 shadow-sm"
+            style={{
+              background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)",
+            }}
+          >
+            {getSchoolInitials(row.name)}
+          </div>
+          <div className="min-w-0">
+            <p className="font-medium text-gray-900 text-xs truncate">{row.name}</p>
+            <div className="flex items-center gap-1 text-xs text-gray-400">
+              <MapPin className="w-3 h-3" />
+              <span className="truncate max-w-[100px]">{row.city || "-"}</span>
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: "code",
+      label: "Code",
+      width: "100px",
+      sortable: true,
+      filterable: true,
+      editable: true,
+    },
+    {
+      id: "schoolType",
+      label: "Type",
+      width: "140px",
+      sortable: true,
+      filterable: true,
+      render: (row) => (
+        <Badge
+          variant="outline"
+          className={cn("text-xs", getSchoolTypeColor(row.schoolType))}
+        >
+          {row.schoolType}
+        </Badge>
+      ),
+    },
+    {
+      id: "contactEmail",
+      label: "Contact",
+      width: "200px",
+      sortable: false,
+      editable: true,
+    },
+    {
+      id: "stats.students",
+      label: "Students",
+      width: "80px",
+      sortable: true,
+      render: (row) => (
+        <div className="flex items-center gap-1 text-gray-600">
+          <Users className="w-3 h-3 text-gray-400" />
+          <span className="text-xs font-medium">{row.stats.students}</span>
+        </div>
+      ),
+    },
+    {
+      id: "isActive",
+      label: "Status",
+      width: "80px",
+      sortable: true,
+      filterable: true,
+      render: (row) => (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleStatus(row.id);
+          }}
+          className={cn(
+            "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium transition-colors hover:opacity-80",
+            row.isActive !== false
+              ? "bg-green-50 text-green-700"
+              : "bg-gray-100 text-gray-500"
+          )}
+        >
+          {row.isActive !== false ? "Active" : "Inactive"}
+        </button>
+      ),
+    },
+  ];
+
+  // Row actions
+  const actions: GoogleAction<School>[] = [
+    {
+      label: "View Details",
+      icon: <Eye className="w-4 h-4" />,
+      onClick: (row) => router.push(`/admin/schools/${row.id}`),
+    },
+    {
+      label: "Edit School",
+      icon: <Edit className="w-4 h-4" />,
+      onClick: (row) => handleEditClick(row),
+    },
+    {
+      label: "",
+      icon: null,
+      onClick: () => {},
+      separator: true,
+    } as GoogleAction<School>,
+    {
+      label: "Delete School",
+      icon: <Trash2 className="w-4 h-4" />,
+      onClick: (row) => handleDeleteClick(row),
+      variant: "danger",
+    },
+  ];
+
+  // Bulk actions bar
+  const bulkActionsBar = (
+    <div className="flex items-center gap-2">
+      <Button
+        size="sm"
+        variant="ghost"
+        className="h-7 text-xs text-pink-700 hover:bg-pink-100"
+        onClick={() => {
+          // Handle bulk enable
+          filteredSchools.forEach(async (school) => {
+            if (!school.isActive) {
+              await fetch(`/api/schools/${school.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ isActive: true }),
+              });
+            }
+          });
+          refreshData();
+        }}
+      >
+        <CheckCircle className="w-3.5 h-3.5 mr-1" />
+        Enable
+      </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        className="h-7 text-xs text-pink-700 hover:bg-pink-100"
+        onClick={() => {
+          // Handle bulk disable
+          filteredSchools.forEach(async (school) => {
+            if (school.isActive !== false) {
+              await fetch(`/api/schools/${school.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ isActive: false }),
+              });
+            }
+          });
+          refreshData();
+        }}
+      >
+        <Ban className="w-3.5 h-3.5 mr-1" />
+        Disable
+      </Button>
+      <Button
+        size="sm"
+        variant="ghost"
+        className="h-7 text-xs text-red-600 hover:bg-red-50"
+        onClick={() => {
+          // Handle bulk delete
+          if (!confirm(`Delete ${filteredSchools.length} selected schools? This cannot be undone.`)) return;
+          filteredSchools.forEach(async (school) => {
+            await fetch(`/api/schools/${school.id}`, { method: "DELETE" });
+          });
+          refreshData();
+        }}
+      >
+        <Trash2 className="w-3.5 h-3.5 mr-1" />
+        Delete
+      </Button>
+    </div>
+  );
 
   return (
     <div className="flex flex-col h-full">
@@ -602,51 +560,6 @@ export function SchoolsClient({
         </div>
       )}
 
-      {/* Bulk Action Bar - Conditional */}
-      {selectedSchools.size > 0 && (
-        <div className="flex items-center justify-between px-3 py-2 bg-pink-50 border border-pink-200 rounded-lg mb-3">
-          <span className="text-sm font-medium text-pink-900">{selectedSchools.size} selected</span>
-          <div className="flex items-center gap-1">
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 text-xs text-pink-700 hover:bg-pink-100"
-              onClick={() => setSelectedSchools(new Set())}
-            >
-              <X className="w-3.5 h-3.5 mr-1" />
-              Clear
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 text-xs text-pink-700 hover:bg-pink-100"
-              onClick={() => bulkAction("status", true)}
-            >
-              <CheckCircle className="w-3.5 h-3.5 mr-1" />
-              Enable
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 text-xs text-pink-700 hover:bg-pink-100"
-              onClick={() => bulkAction("status", false)}
-            >
-              <Ban className="w-3.5 h-3.5 mr-1" />
-              Disable
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 text-xs text-red-600 hover:bg-red-50"
-              onClick={() => bulkAction("delete")}
-            >
-              <Trash2 className="w-3.5 h-3.5 mr-1" />
-              Delete
-            </Button>
-          </div>
-        </div>
-      )}
-
       {/* Stats Overview - Compact */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
         <div className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-pink-200 transition-colors">
@@ -687,254 +600,80 @@ export function SchoolsClient({
         </div>
       </div>
 
-      {/* Toolbar */}
-      <div className="flex items-center gap-2 pb-2">
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-          <Input
-            placeholder="Search schools..."
-            className="pl-8 h-9 text-sm border-gray-200"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-[160px] h-9 text-sm border-gray-200">
-            <SelectValue placeholder="School Type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Types</SelectItem>
-            {schoolTypeOptions.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={statusFilter}
-          onValueChange={(v) => setStatusFilter(v as FilterStatus)}
-        >
-          <SelectTrigger className="w-[140px] h-9 text-sm border-gray-200">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            {statusChips.map((chip) => {
-              const Icon = chip.icon;
-              return (
-                <SelectItem key={chip.value} value={chip.value}>
-                  <div className="flex items-center gap-2">
-                    <Icon className="w-3.5 h-3.5" />
-                    {chip.label}
-                  </div>
-                </SelectItem>
-              );
-            })}
-          </SelectContent>
-        </Select>
-        {filteredSchools.length > 0 && (
-          <button
-            onClick={toggleAll}
-            className="ml-auto flex items-center gap-1.5 px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
-          >
-            {allSelected ? (
-              <Check className="w-4 h-4 text-pink-600" />
-            ) : (
-              <Square className="w-4 h-4 text-gray-400" />
-            )}
-            {allSelected ? "Deselect All" : "Select All"}
-          </button>
-        )}
-        <span className="text-xs text-gray-400">
-          {filteredSchools.length} of {totalSchools}
-        </span>
-      </div>
-
-      {/* Custom Grid Table */}
-      {isLoading ? (
-        <TableSkeleton rows={10} columns={8} />
-      ) : (
-        <div className="flex-1 border border-gray-200 rounded-xl overflow-hidden bg-white">
-          {/* Header */}
-          <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-gray-50/80 border-b border-gray-200 text-xs font-medium text-gray-500">
-            <div className="col-span-1"></div>
-            <div className="col-span-3">School</div>
-            <div className="col-span-2">Code</div>
-            <div className="col-span-2">Type</div>
-            <div className="col-span-2">Contact</div>
-            <div className="col-span-1">Students</div>
-            <div className="col-span-1 text-right">Status</div>
-          </div>
-
-          {/* Rows */}
-          <div className="divide-y divide-gray-100">
-            {filteredSchools.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-40 text-gray-400 text-sm">
-                <Building2 className="w-8 h-8 mb-2 opacity-50" />
+      {/* GoogleDataTable */}
+      <div className="flex-1 min-h-0">
+        <GoogleDataTable<School>
+          data={filteredSchools}
+          columns={columns}
+          keyField="id"
+          isLoading={isLoading}
+          title="Schools"
+          subtitle={`${totalSchools} total schools`}
+          actions={actions}
+          bulkActions={bulkActionsBar}
+          onUpdate={handleUpdate}
+          rowActions={true}
+          toolbar={
+            <div className="flex items-center gap-2">
+              <Select value={typeFilter} onValueChange={setTypeFilter}>
+                <SelectTrigger className="w-[140px] h-8 text-xs">
+                  <SelectValue placeholder="School Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Types</SelectItem>
+                  {schoolTypeOptions.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select
+                value={statusFilter}
+                onValueChange={(v) => setStatusFilter(v as FilterStatus)}
+              >
+                <SelectTrigger className="w-[120px] h-8 text-xs">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {statusChips.map((chip) => {
+                    const Icon = chip.icon;
+                    return (
+                      <SelectItem key={chip.value} value={chip.value}>
+                        <div className="flex items-center gap-2">
+                          <Icon className="w-3 h-3" />
+                          {chip.label}
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+          }
+          emptyState={
+            <div className="text-center py-8">
+              <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-500 mb-4">
                 {searchQuery || typeFilter || statusFilter !== "all"
                   ? "No schools found"
                   : "No schools yet"}
-              </div>
-            ) : (
-              filteredSchools.map((school, idx) => {
-                const selected = selectedSchools.has(school.id);
-                const isFocused = focusedIndex === idx;
-                return (
-                  <div
-                    key={school.id}
-                    className={cn(
-                      "grid grid-cols-12 gap-2 px-4 py-2.5 items-center text-sm transition-colors cursor-pointer group",
-                      selected ? "bg-pink-50" : "hover:bg-gray-50",
-                      isFocused && "ring-2 ring-pink-400 ring-inset z-10"
-                    )}
-                    onClick={(e) => {
-                      if (
-                        !(e.target as HTMLElement).closest("button") &&
-                        !(e.target as HTMLElement).closest("input")
-                      ) {
-                        toggle(school.id);
-                      }
-                    }}
-                  >
-                    {/* Checkbox */}
-                    <div className="col-span-1" onClick={(e) => e.stopPropagation()}>
-                      <div
-                        className={cn(
-                          "w-4 h-4 rounded border-2 flex items-center justify-center transition-all cursor-pointer",
-                          selected
-                            ? "bg-pink-600 border-pink-600"
-                            : "border-gray-300 group-hover:border-pink-400"
-                        )}
-                        onClick={() => toggle(school.id)}
-                      >
-                        {selected && <Check className="w-3 h-3 text-white" />}
-                      </div>
-                    </div>
-
-                    {/* School - Logo/Initials + Name (inline editable) */}
-                    <div className="col-span-3 flex items-center gap-2">
-                      <div
-                        className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs font-medium flex-shrink-0 shadow-sm"
-                        style={{
-                          background: "linear-gradient(135deg, rgb(236 72 153) 0%, rgb(219 39 119) 100%)",
-                        }}
-                      >
-                        {getSchoolInitials(school.name)}
-                      </div>
-                      <div className="min-w-0">
-                        <InlineEditText
-                          value={school.name}
-                          onSave={(newValue) => updateSchoolName(school.id, newValue)}
-                          className="font-medium text-gray-900 text-xs"
-                        />
-                        <div className="flex items-center gap-1 text-xs text-gray-400">
-                          <MapPin className="w-3 h-3" />
-                          <span className="truncate max-w-[100px]">{school.city || "-"}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Code - Inline Editable */}
-                    <div className="col-span-2">
-                      <InlineEditText
-                        value={school.code}
-                        onSave={(newValue) => updateSchoolCode(school.id, newValue)}
-                        className="text-gray-600 text-xs font-mono"
-                      />
-                    </div>
-
-                    {/* Type - Dropdown Selector */}
-                    <div className="col-span-2" onClick={(e) => e.stopPropagation()}>
-                      <Select
-                        value={school.schoolType}
-                        onValueChange={(newType) => updateSchoolType(school.id, newType)}
-                      >
-                        <SelectTrigger className="h-7 text-xs border-gray-200">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {schoolTypeOptions.map((opt) => (
-                            <SelectItem key={opt.value} value={opt.value}>
-                              <Badge
-                                variant="outline"
-                                className={cn("text-xs mr-2", opt.color)}
-                              >
-                                {opt.value}
-                              </Badge>
-                              {opt.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Contact Email - Inline Editable */}
-                    <div className="col-span-2">
-                      <InlineEditText
-                        value={school.contactEmail || ""}
-                        onSave={(newValue) => updateContactEmail(school.id, newValue)}
-                        className="text-gray-600 text-xs"
-                      />
-                    </div>
-
-                    {/* Students Count */}
-                    <div className="col-span-1">
-                      <div className="flex items-center gap-1 text-gray-600">
-                        <Users className="w-3 h-3 text-gray-400" />
-                        <span className="text-xs font-medium">{school.stats.students}</span>
-                      </div>
-                    </div>
-
-                    {/* Status - Clickable Badge */}
-                    <div className="col-span-1 text-right" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={() => toggleStatus(school.id)}
-                        className={cn(
-                          "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium transition-colors hover:opacity-80",
-                          school.isActive !== false
-                            ? "bg-green-50 text-green-700"
-                            : "bg-gray-100 text-gray-500"
-                        )}
-                      >
-                        {school.isActive !== false ? "Active" : "Inactive"}
-                      </button>
-                    </div>
-
-                    {/* Quick Actions Menu */}
-                    <div className="col-span-1 text-right" onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className="p-1.5 hover:bg-gray-100 rounded transition-opacity opacity-0 group-hover:opacity-100">
-                            <MoreHorizontal className="w-4 h-4 text-gray-500" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48">
-                          <DropdownMenuItem onClick={() => router.push(`/admin/schools/${school.id}`)}>
-                            <Eye className="w-4 h-4 mr-2 text-gray-500" />
-                            <span className="text-sm">View Details</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleEditClick(school)}>
-                            <Edit className="w-4 h-4 mr-2 text-gray-500" />
-                            <span className="text-sm">Edit School</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => handleDeleteClick(school)}
-                            className="text-red-600 focus:text-red-600"
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            <span className="text-sm">Delete School</span>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-      )}
+              </p>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setEditingSchool(null);
+                  setIsSlideInOpen(true);
+                }}
+                className="bg-pink-600 hover:bg-pink-700"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add First School
+              </Button>
+            </div>
+          }
+        />
+      </div>
 
       {/* School Types Distribution - Compact */}
       {Object.keys(schoolTypes).length > 0 && (

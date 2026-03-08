@@ -54,9 +54,4 @@ export const CareerFeature = defineFeature({
     ],
   },
 
-  listConfig: {
-    defaultSort: { field: "createdAt", order: "desc" },
-    pageSize: 20,
-    searchable: true,
-  },
 });

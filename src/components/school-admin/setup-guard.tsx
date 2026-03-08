@@ -1,7 +1,7 @@
 /**
  * SETUP GUARD
  *
- * Checks if school setup is complete. If not, shows the InitialSetupWizard.
+ * Checks if school setup is complete. If not, shows the UnifiedSetupWizard.
  * Use this in the school-admin layout or dashboard.
  */
 
@@ -10,7 +10,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import { InitialSetupWizard } from "@/components/school-admin/initial-setup-wizard";
+import { UnifiedSetupWizard } from "@/components/school-admin/unified-setup-wizard";
 
 interface SetupGuardProps {
   schoolId: string | null;
@@ -67,7 +67,7 @@ export function SetupGuard({ schoolId, children }: SetupGuardProps) {
 
   if (needsSetup && schoolData) {
     return (
-      <InitialSetupWizard
+      <UnifiedSetupWizard
         schoolId={schoolId}
         schoolName={schoolData.name}
         schoolCode={schoolData.code}

@@ -43,6 +43,7 @@ import {
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { TableQuickActions } from "@/components/shared/table-quick-actions";
+import { fetchTeacherClasses, fetchTeacherStudents, type TeacherClassDetail, type TeacherStudentData } from "../_actions";
 
 interface TeacherClass {
   id: string;
@@ -126,75 +127,57 @@ export default function TeacherClassesPage() {
   const [sortBy, setSortBy] = useState<"name" | "students" | "schedule">("name");
   const [expandedClassId, setExpandedClassId] = useState<string | null>(null);
 
-  // Fetch classes and students from API
+  // Fetch classes and students from server actions
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
         setError(null);
 
-        // Fetch both classes and students data in parallel
-        const [classesResponse, studentsResponse] = await Promise.all([
-          fetch("/api/classes"),
-          fetch("/api/teacher/students"),
+        // Fetch both classes and students data in parallel using server actions
+        const [classesData, studentsData] = await Promise.all([
+          fetchTeacherClasses(),
+          fetchTeacherStudents(),
         ]);
 
-        if (!classesResponse.ok) {
-          throw new Error(`Failed to fetch classes: ${classesResponse.statusText}`);
-        }
-
-        const classesData = await classesResponse.json();
-
-        // Process students data if available
-        // API returns { data: { students: [...], studentsByClass: [...] } }, so we need to access data.data
-        let studentsData: { studentsByClass?: StudentsByClass[]; students?: ClassStudent[] } = {};
-        if (studentsResponse.ok) {
-          const rawData = await studentsResponse.json();
-          studentsData = rawData.data || rawData;
-        }
+        // Group students by class (mock data structure for now)
+        const studentsByClassMap = new Map<string, TeacherStudentData[]>();
+        studentsData.forEach((student) => {
+          const classKey = `${student.grade || 0}-${student.section || ''}`;
+          if (!studentsByClassMap.has(classKey)) {
+            studentsByClassMap.set(classKey, []);
+          }
+          studentsByClassMap.get(classKey)!.push(student);
+        });
 
         // Process and enrich class data with real student counts
-        // API returns { data: { classes: [...] } }, so we need to access data.data.classes
-        const classesArray = classesData.data?.classes || classesData.classes || [];
-        const processedClasses: TeacherClass[] = classesArray.map((cls: TeacherClass) => {
-          // Find students for this class
-          const classStudents = studentsData.studentsByClass?.find(
-            (sbc) => sbc.classId === cls.id
-          );
-
-          // Calculate stats from real student data
-          const classStudentList = classStudents?.students || [];
-          const studentCount = classStudentList.length;
-
-          // Calculate average attendance from student data
-          const attendanceValues = classStudentList
-            .map((s) => s.attendanceSummary?.percentage)
-            .filter((p): p is number => p !== null && p !== undefined);
-          const avgAttendance = attendanceValues.length > 0
-            ? Math.round(attendanceValues.reduce((a, b) => a + b, 0) / attendanceValues.length)
-            : 0;
-
-          // Calculate homework completion rate
-          const totalHomework = classStudentList.reduce((sum, s) => sum + (s.homeworkSummary?.total || 0), 0);
-          const submittedHomework = classStudentList.reduce((sum, s) => sum + (s.homeworkSummary?.submitted || 0), 0);
-          const homeworkCompletion = totalHomework > 0
-            ? Math.round((submittedHomework / totalHomework) * 100)
-            : 0;
+        const processedClasses: TeacherClass[] = classesData.map((cls) => {
+          const classKey = `${cls.grade}-${cls.section}`;
+          const classStudents = studentsByClassMap.get(classKey) || [];
 
           return {
-            ...cls,
-            students: studentCount,
-            attendanceRate: avgAttendance,
-            homeworkCompletion: homeworkCompletion,
-            averageScore: 0, // Would be calculated from assessment results
-            topic: "Current topic", // Could be fetched from class topics/lessons
-            nextClass: cls.schedule || "Schedule not set",
-            status: cls.isActive !== false ? "active" : "archived",
+            id: cls.id,
+            name: cls.name,
+            grade: cls.grade,
+            section: cls.section,
+            academicYear: cls.academicYear,
+            teacherId: cls.classTeacherId,
+            roomNumber: null,
+            capacity: cls.capacity,
+            schedule: cls.academicYear,
+            isActive: true,
+            status: "active" as const,
+            students: cls.students,
+            attendanceRate: 0,
+            homeworkCompletion: 0,
+            averageScore: 0,
+            topic: "Current topic",
+            nextClass: "Schedule not set",
           };
         });
 
         setClasses(processedClasses);
-        setStudentsByClass(studentsData.studentsByClass || []);
+        setStudentsByClass([]);
       } catch (err) {
         logger.error("Error fetching classes data:", err);
         setError(err instanceof Error ? err.message : "Failed to load classes");

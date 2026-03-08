@@ -905,7 +905,7 @@ export function needsSetup(user: User): boolean {
   }
 
   // Check if user has completed onboarding
-  if (!user.onboardingComplete) {
+  if (user.onboardingComplete !== true) {
     return true;
   }
 

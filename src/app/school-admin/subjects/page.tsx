@@ -187,20 +187,23 @@ export default function SchoolAdminSubjectsPage() {
   };
 
   const loadTeachersForSubjects = async (subjectList: SubjectWithTeachers[]) => {
-    const assignments: Record<string, TeacherAssignment[]> = {};
-    for (const subject of subjectList) {
-      try {
-        const res = await fetch(`/api/school-admin/subjects/${subject.id}/teachers`);
-        const json = await res.json();
-        if (json.data) {
-          assignments[subject.id] = json.data?.assignments || [];
-        }
-      } catch (err) {
-        console.error(`Failed to load teachers for subject ${subject.id}:`, err);
-        assignments[subject.id] = [];
-      }
+    if (subjectList.length === 0) {
+      setTeacherAssignments({});
+      return;
     }
-    setTeacherAssignments(assignments);
+
+    try {
+      // Use batch endpoint - single API call for all subjects
+      const subjectIds = subjectList.map((s) => s.id).join(",");
+      const res = await fetch(`/api/school-admin/subjects/teachers-batch?subjectIds=${subjectIds}`);
+      const json = await res.json();
+      if (json.data) {
+        setTeacherAssignments(json.data?.assignments || {});
+      }
+    } catch (err) {
+      console.error("Failed to load teachers for subjects:", err);
+      setTeacherAssignments({});
+    }
   };
 
   const refreshSubjectTeachers = async (subjectId: string) => {
@@ -1031,181 +1034,270 @@ export default function SchoolAdminSubjectsPage() {
         </div>
       )}
 
-      {/* Teacher Assignment Modal */}
+      {/* Teacher Assignment Modal - Modern */}
       {isTeacherModalOpen && selectedSubjectForTeacher && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <UserPlus className="w-5 h-5" />
+        <div
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setIsTeacherModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header - Clean, Edgeless */}
+            <div className="px-8 pt-8 pb-4">
+              <div className="flex items-start justify-between">
+                <div className="space-y-1">
+                  <h2 className="text-2xl font-semibold tracking-tight text-gray-900">
                     Assign Teacher
-                  </CardTitle>
-                  <CardDescription>
-                    Assign a teacher to {selectedSubjectForTeacher.name}
-                  </CardDescription>
+                  </h2>
+                  <p className="text-sm text-gray-500">
+                    for <span className="font-medium text-violet-600">{selectedSubjectForTeacher.name}</span>
+                  </p>
                 </div>
                 <button
                   onClick={() => setIsTeacherModalOpen(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  className="rounded-full p-2 hover:bg-gray-100 transition-colors"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-5 h-5 text-gray-400" />
                 </button>
               </div>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleAssignTeacher} className="space-y-4">
-                {/* Teacher Selection */}
-                <div>
-                  <Label htmlFor="teacher-select">Select Teacher *</Label>
-                  <select
-                    id="teacher-select"
-                    value={selectedTeacherId}
-                    onChange={(e) => setSelectedTeacherId(e.target.value)}
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
-                    required
-                  >
-                    <option value="">Choose a teacher...</option>
-                    {teachers.map((teacher) => {
-                      const name = teacher.firstName && teacher.lastName
-                        ? `${teacher.firstName} ${teacher.lastName}`
-                        : teacher.email;
+            </div>
+
+            <form onSubmit={handleAssignTeacher} className="px-8 pb-8 space-y-6">
+              {/* Teacher Selection - Clean Cards, Edgeless */}
+              <div>
+                <h3 className="text-sm font-medium text-gray-900 mb-3">Select Teacher</h3>
+                {teachers.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-400 text-sm">No teachers available</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsTeacherModalOpen(false);
+                        router.push('/school-admin/teachers');
+                      }}
+                      className="text-violet-600 text-sm font-medium hover:underline mt-2"
+                    >
+                      Add your first teacher →
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {teachers.map((teacher, idx) => {
+                      // Defensive name generation - ensure we always have a non-empty string
+                      const firstName = teacher.firstName || "";
+                      const lastName = teacher.lastName || "";
+                      const email = teacher.email || "";
+
+                      let name = "Unknown";
+                      if (firstName && lastName) {
+                        name = `${firstName} ${lastName}`;
+                      } else if (firstName) {
+                        name = firstName;
+                      } else if (lastName) {
+                        name = lastName;
+                      } else if (email) {
+                        name = email;
+                      }
+
+                      const isSelected = selectedTeacherId === teacher.id;
                       return (
-                        <option key={teacher.id} value={teacher.id}>
-                          {name} {teacher.employeeId ? `(${teacher.employeeId})` : ""}
-                        </option>
+                        <button
+                          key={teacher.id}
+                          type="button"
+                          onClick={() => setSelectedTeacherId(teacher.id)}
+                          className={`w-full text-left p-4 rounded-xl transition-all duration-200 ${
+                            isSelected
+                              ? "bg-violet-600 text-white shadow-xl shadow-violet-200 scale-[1.02]"
+                              : "bg-gray-50 hover:bg-gray-100 hover:scale-[1.01]"
+                          }`}
+                          style={{
+                            animationDelay: `${idx * 50}ms`
+                          }}
+                        >
+                          <div className="flex items-center gap-4">
+                            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-base font-semibold ${
+                              isSelected ? "bg-white/20 text-white" : "bg-violet-100 text-violet-700"
+                            }`}>
+                              {firstName?.[0] || lastName?.[0] || email?.[0] || name?.[0] || "?"}
+                            </div>
+                            <div className="flex-1">
+                              <p className={`font-semibold ${
+                                isSelected ? "text-white" : "text-gray-900"
+                              }`}>{name}</p>
+                              {teacher.employeeId && (
+                                <p className={`text-xs ${
+                                  isSelected ? "text-violet-100" : "text-gray-500"
+                                }`}>{teacher.employeeId}</p>
+                              )}
+                            </div>
+                            {isSelected && (
+                              <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
+                                <Check className="w-4 h-4 text-white" />
+                              </div>
+                            )}
+                          </div>
+                        </button>
                       );
                     })}
-                  </select>
-                </div>
-
-                {/* Role Selection */}
-                <div>
-                  <Label htmlFor="role-select">Role *</Label>
-                  <select
-                    id="role-select"
-                    value={selectedRole}
-                    onChange={(e) => setSelectedRole(e.target.value as "subject_expert" | "substitute" | "homeroom")}
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
-                    required
-                  >
-                    <option value="subject_expert">Subject Teacher (Primary)</option>
-                    <option value="substitute">Substitute Teacher</option>
-                    <option value="homeroom">Homeroom Teacher</option>
-                  </select>
-                </div>
-
-                {/* Class Selection (Optional) */}
-                <div>
-                  <Label htmlFor="class-select">Specific Class (Optional)</Label>
-                  <select
-                    id="class-select"
-                    value={selectedClassId || ""}
-                    onChange={(e) => setSelectedClassId(e.target.value || null)}
-                    className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
-                  >
-                    <option value="">All classes for this subject</option>
-                    {classes.map((cls) => (
-                      <option key={cls.id} value={cls.id}>
-                        Grade {cls.grade} - {cls.section} ({cls.name})
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Leave empty to assign teacher for all classes teaching this subject
-                  </p>
-                </div>
-
-                {/* Is Primary Checkbox */}
-                {selectedRole === "subject_expert" && (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="is-primary"
-                      checked={isPrimary}
-                      onChange={(e) => setIsPrimary(e.target.checked)}
-                      className="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
-                    />
-                    <Label htmlFor="is-primary" className="cursor-pointer">
-                      Mark as primary teacher for this subject
-                    </Label>
                   </div>
                 )}
+              </div>
 
-                {/* Current Teachers Display */}
-                {teacherAssignments[selectedSubjectForTeacher.id]?.length > 0 && (
-                  <div className="pt-2 border-t border-gray-200">
-                    <p className="text-sm font-medium text-gray-700 mb-2">Currently assigned teachers:</p>
-                    <div className="space-y-2">
-                      {teacherAssignments[selectedSubjectForTeacher.id].map((assignment) => (
-                        <div
-                          key={assignment.id}
-                          className="flex items-center justify-between p-2 bg-gray-50 rounded-lg text-sm"
-                        >
-                          <div className="flex items-center gap-2">
-                            <GraduationCap className="w-4 h-4 text-violet-600" />
-                            <div>
-                              <p className="font-medium">{getTeacherName(assignment.teacher)}</p>
-                              <p className="text-xs text-gray-500">
-                                {assignment.role === "substitute" ? "Substitute" : assignment.role}
-                                {assignment.class && ` • ${assignment.class.name}`}
-                                {assignment.isPrimary && " • Primary"}
-                              </p>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveTeacher(selectedSubjectForTeacher.id, assignment.teacherId, assignment.classId)}
-                            className="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded"
-                            disabled={isSubmitting}
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+              {/* Role Selection - Minimal Pills */}
+              <div>
+                <h3 className="text-sm font-medium text-gray-900 mb-3">Role</h3>
+                <div className="flex gap-2">
+                  {[
+                    { value: "subject_expert", label: "Subject" },
+                    { value: "substitute", label: "Substitute" },
+                    { value: "homeroom", label: "Homeroom" },
+                  ].map((role) => (
+                    <button
+                      key={role.value}
+                      type="button"
+                      onClick={() => setSelectedRole(role.value as any)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
+                        selectedRole === role.value
+                          ? "bg-gray-900 text-white"
+                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      }`}
+                    >
+                      {role.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-                {error && (
-                  <div className="text-sm text-red-600 flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4" />
-                    {error}
-                  </div>
-                )}
-
-                <div className="flex gap-3 pt-2">
-                  <Button
+              {/* Class Selection - Minimal */}
+              <div>
+                <h3 className="text-sm font-medium text-gray-900 mb-3">Class (Optional)</h3>
+                <div className="flex flex-wrap gap-2">
+                  <button
                     type="button"
-                    variant="outline"
-                    className="flex-1"
-                    onClick={() => setIsTeacherModalOpen(false)}
-                    disabled={isSubmitting}
+                    onClick={() => setSelectedClassId(null)}
+                    className={`px-3 py-1.5 rounded-full text-sm transition-all duration-200 ${
+                      !selectedClassId
+                        ? "bg-gray-900 text-white"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    }`}
                   >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    className="flex-1 bg-violet-600 hover:bg-violet-700"
-                    disabled={isSubmitting || !selectedTeacherId}
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Assigning...
-                      </>
-                    ) : (
-                      <>
-                        <Check className="w-4 h-4 mr-2" />
-                        Assign Teacher
-                      </>
-                    )}
-                  </Button>
+                    All Classes
+                  </button>
+                  {classes.map((cls) => (
+                    <button
+                      key={cls.id}
+                      type="button"
+                      onClick={() => setSelectedClassId(cls.id)}
+                      className={`px-3 py-1.5 rounded-full text-sm transition-all duration-200 ${
+                        selectedClassId === cls.id
+                          ? "bg-gray-900 text-white"
+                          : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      }`}
+                    >
+                      {cls.grade}-{cls.section}
+                    </button>
+                  ))}
                 </div>
-              </form>
-            </CardContent>
-          </Card>
+              </div>
+
+              {/* Primary Toggle - Minimal Switch */}
+              {selectedRole === "subject_expert" && (
+                <div className="flex items-center justify-between py-2">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Primary Teacher</p>
+                    <p className="text-xs text-gray-500">Main instructor for this subject</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsPrimary(!isPrimary)}
+                    className={`w-11 h-6 rounded-full transition-all duration-300 ${
+                      isPrimary ? "bg-violet-600" : "bg-gray-300"
+                    }`}
+                  >
+                    <div className={`w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-300 ${
+                      isPrimary ? "translate-x-5" : "translate-x-0.5"
+                    }`} />
+                  </button>
+                </div>
+              )}
+
+              {/* Currently Assigned - Minimal List */}
+              {teacherAssignments[selectedSubjectForTeacher.id]?.length > 0 && (
+                <div className="pt-4 border-t border-gray-100">
+                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                    Currently Assigned ({teacherAssignments[selectedSubjectForTeacher.id].length})
+                  </h3>
+                  <div className="space-y-2">
+                    {teacherAssignments[selectedSubjectForTeacher.id].map((assignment) => (
+                      <div
+                        key={assignment.id}
+                        className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center">
+                            {assignment.teacher.firstName?.[0] || assignment.teacher.email[0]}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{getTeacherName(assignment.teacher)}</p>
+                            <p className="text-xs text-gray-500">{assignment.role}</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveTeacher(selectedSubjectForTeacher.id, assignment.teacherId, assignment.classId)}
+                          className="text-gray-400 hover:text-red-500 transition-colors p-1"
+                          disabled={isSubmitting}
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Error - Clean Alert */}
+              {error && (
+                <div className="p-3 bg-red-50 rounded-lg">
+                  <p className="text-sm text-red-700">{error}</p>
+                </div>
+              )}
+
+              {/* Actions - Edgeless Buttons */}
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsTeacherModalOpen(false)}
+                  className="flex-1 py-3 px-4 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 transition-all duration-200"
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !selectedTeacherId}
+                  className={`flex-1 py-3 px-4 rounded-xl text-sm font-medium text-white transition-all duration-200 ${
+                    !selectedTeacherId
+                      ? "bg-gray-300 cursor-not-allowed"
+                      : "bg-violet-600 hover:bg-violet-700 shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0"
+                  }`}
+                >
+                  {isSubmitting ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Assigning...
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-2">
+                      Assign Teacher
+                    </span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

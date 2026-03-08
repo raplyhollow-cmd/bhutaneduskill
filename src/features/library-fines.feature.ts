@@ -53,13 +53,12 @@ export const LibraryFineFeature = defineFeature({
 
   actions: {
     pay: {
-      handler: async (id: string | undefined, data: any, auth: any) => {
+      handler: async (context: { db: any; params: any; auth: any; schema: any; request?: Request }) => {
         const { db } = await import("@/lib/db");
-        const { libraryFines } = await import("@/lib/db/schema");
+        const { libraryFines } = await import("@/lib/db/schema") as any;
         const { eq } = await import("drizzle-orm");
         const { successResponse, notFoundResponse } = await import("@/lib/api/response-helpers");
-
-        if (!id) {
+        if (!context.params?.id) {
           return { error: "Fine ID is required", status: 400 };
         }
 
@@ -68,10 +67,10 @@ export const LibraryFineFeature = defineFeature({
           .set({
             status: "paid",
             paidAt: new Date(),
-            paidBy: auth.userId,
+            paidBy: context.auth.userId,
             updatedAt: new Date(),
           })
-          .where(eq(libraryFines.id, id))
+          .where(eq(libraryFines.id, context.params.id))
           .returning();
 
         if (!updated.length) {
@@ -84,28 +83,27 @@ export const LibraryFineFeature = defineFeature({
     },
 
     waive: {
-      handler: async (id: string | undefined, data: any, auth: any) => {
+      handler: async (context: { db: any; params: any; auth: any; schema: any; request?: Request }) => {
         const { db } = await import("@/lib/db");
-        const { libraryFines } = await import("@/lib/db/schema");
+        const { libraryFines } = await import("@/lib/db/schema") as any;
         const { eq } = await import("drizzle-orm");
         const { successResponse, notFoundResponse } = await import("@/lib/api/response-helpers");
-
-        if (!id) {
+        if (!context.params?.id) {
           return { error: "Fine ID is required", status: 400 };
         }
 
-        const { waiveReason } = data;
+        const { waiveReason } = context.params?.body || {};
 
         const [updated] = await db
           .update(libraryFines)
           .set({
             status: "waived",
-            waivedBy: auth.userId,
+            waivedBy: context.auth.userId,
             waivedAt: new Date(),
             waiveReason,
             updatedAt: new Date(),
           })
-          .where(eq(libraryFines.id, id))
+          .where(eq(libraryFines.id, context.params.id))
           .returning();
 
         if (!updated.length) {

@@ -24,7 +24,7 @@ export default function NewUserPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New User</h1>
       <FeatureForm
-        schema={UserFeature.schema}
+        schema={UserFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

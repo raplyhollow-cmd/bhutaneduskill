@@ -24,7 +24,7 @@ export default function NewFeePaymentPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New FeePayment</h1>
       <FeatureForm
-        schema={FeePaymentFeature.schema}
+        schema={FeePaymentFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

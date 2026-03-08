@@ -24,7 +24,7 @@ export default function NewRubricPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New Rubric</h1>
       <FeatureForm
-        schema={RubricFeature.schema}
+        schema={RubricFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

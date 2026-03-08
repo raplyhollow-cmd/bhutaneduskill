@@ -1,7 +1,78 @@
 # Common Mistakes - AVOID THESE
 
-> **LAST UPDATED:** 2026-02-24
+> **LAST UPDATED:** 2026-03-08
 > **STATUS:** 🔴 CRITICAL - Review before committing code
+
+---
+
+## React Rendering Mistakes
+
+### ❌ Not Handling null/undefined in Data from API
+
+**Wrong:**
+```tsx
+{teachers.map((teacher) => {
+  const name = teacher.firstName && teacher.lastName
+    ? `${teacher.firstName} ${teacher.lastName}`
+    : teacher.email;  // Can be undefined!
+  return <div>{name[0]}</div>;  // CRASH!
+})}
+```
+
+**Why:** Database fields can be `null`, API returns them as-is, accessing `[0]` on undefined crashes
+
+**Correct:**
+```typescript
+// API - Normalize at boundary
+const teachersList = teacherUsers.map((teacherUser: any) => ({
+  id: teacherUser.id,
+  firstName: teacherUser.firstName || "",  // Always string
+  lastName: teacherUser.lastName || "",
+  email: teacherUser.email || "",
+}));
+
+// Frontend - Defensive rendering
+{teachers.map((teacher) => {
+  const firstName = teacher.firstName || "";
+  const lastName = teacher.lastName || "";
+  const email = teacher.email || "";
+
+  let name = "Unknown";
+  if (firstName && lastName) name = `${firstName} ${lastName}`;
+  else if (firstName) name = firstName;
+  else if (lastName) name = lastName;
+  else if (email) name = email;
+
+  return <div>{name[0] || "?"}</div>;  // Safe
+})}
+```
+
+**Pattern:** Normalize `null` to `""` at API boundary for string fields
+
+---
+
+### ❌ Rendering JSON Object Fields Directly
+
+**Wrong:**
+```tsx
+{teacher.subjects.map((subject) => (
+  <span>{subject}</span>  // CRASH if subject is {subject: "Math", grade: 12}
+))}
+```
+
+**Why:** Database `json` columns can store objects, not just primitives
+
+**Correct:**
+```tsx
+{teacher.subjects.map((subject, idx) => {
+  const subjectText = typeof subject === "string"
+    ? subject
+    : subject?.subject || "-";
+  return <span key={idx}>{subjectText}</span>;
+})}
+```
+
+**Key Lesson:** Always check database schema first - JSON fields can be objects!
 
 ---
 

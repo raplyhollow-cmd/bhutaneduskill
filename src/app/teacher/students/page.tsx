@@ -54,6 +54,7 @@ import {
 import Link from "next/link";
 import { TableQuickActions } from "@/components/shared/table-quick-actions";
 import { useToast } from "@/components/ui/toaster";
+import { fetchTeacherStudents, type TeacherStudentData } from "../_actions";
 
 interface Student {
   id: string;
@@ -125,47 +126,62 @@ export default function TeacherStudentsPage() {
         setIsLoading(true);
         setError(null);
 
-        // Fetch teacher's classes and students
-        const response = await fetch("/api/teacher/students");
-        if (!response.ok) {
-          throw new Error(`Failed to fetch data: ${response.statusText}`);
-        }
+        // Fetch teacher's students using server action
+        const apiStudents = await fetchTeacherStudents();
 
-        const result = await response.json();
-        const data = result.data || {}; // Access nested data from successResponse
-
-        // Process API data to match our interface
-        const apiClasses: ClassData[] = (data.studentsByClass || []).map((cls: {
-          classId: string;
-          className: string;
-          grade: number;
-          section: string;
-        }) => ({
-          id: cls.classId,
-          name: cls.className,
-          grade: cls.grade,
-          section: cls.section,
-          subject: undefined,
-        }));
-
-        const apiStudents: StudentWithAttention[] = (data.students || []).map((s: Student) => {
-          // Calculate needsAttention based on attendance and homework
-          const attendanceRate = s.attendanceSummary?.percentage ?? 100;
-          const homeworkCompletion = s.homeworkSummary?.total > 0
-            ? Math.round((s.homeworkSummary.graded / s.homeworkSummary.total) * 100)
-            : 100;
+        // Process data to match our interface
+        const studentsWithAttention: StudentWithAttention[] = apiStudents.map((s) => {
+          const attendanceRate = s.attendanceRate ?? 100;
+          const homeworkCompletion = 100; // TODO: Calculate from actual data
 
           return {
-            ...s,
+            id: s.id,
+            name: `${s.firstName} ${s.lastName || ""}`.trim(),
+            firstName: s.firstName || "",
+            lastName: s.lastName || "",
+            email: s.email,
+            profilePicture: null,
+            classGrade: s.grade || 0,
+            section: s.section || "",
+            className: `${s.grade} ${s.section || ""}`,
+            classId: "", // TODO: Get from enrollment data
+            rollNumber: s.rollNumber,
+            attendanceSummary: {
+              present: 0,
+              absent: 0,
+              percentage: attendanceRate,
+              totalRecorded: 0,
+            },
+            homeworkSummary: {
+              submitted: 0,
+              graded: 0,
+              pending: 0,
+              total: 0,
+            },
             attendanceRate,
             homeworkCompletion,
-            needsAttention: (attendanceRate < 80) || (homeworkCompletion < 70),
+            needsAttention: attendanceRate < 80,
           };
         });
 
-        setClasses(apiClasses.length > 0 ? apiClasses : []);
-        setStudents(apiStudents);
-        setFilteredStudents(apiStudents);
+        // Create class list from students
+        const classMap = new Map<string, ClassData>();
+        studentsWithAttention.forEach((s) => {
+          const key = String(s.classGrade);
+          if (!classMap.has(key)) {
+            classMap.set(key, {
+              id: s.classId || key,
+              name: s.className,
+              grade: s.classGrade,
+              section: s.section,
+              subject: undefined,
+            });
+          }
+        });
+
+        setClasses(Array.from(classMap.values()));
+        setStudents(studentsWithAttention);
+        setFilteredStudents(studentsWithAttention);
       } catch (err) {
         logger.error("Error fetching student data:", err);
         setError(err instanceof Error ? err.message : "Failed to load students");

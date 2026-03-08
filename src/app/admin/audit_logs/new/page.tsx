@@ -24,7 +24,7 @@ export default function NewAuditLogPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New AuditLog</h1>
       <FeatureForm
-        schema={AuditLogFeature.schema}
+        schema={AuditLogFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

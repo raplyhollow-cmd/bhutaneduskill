@@ -24,7 +24,7 @@ export default function NewAssessmentPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New Assessment</h1>
       <FeatureForm
-        schema={AssessmentFeature.schema}
+        schema={AssessmentFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

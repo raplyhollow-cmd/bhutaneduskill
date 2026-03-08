@@ -24,7 +24,7 @@ export default function NewScheduleExceptionPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New ScheduleException</h1>
       <FeatureForm
-        schema={ScheduleExceptionFeature.schema}
+        schema={ScheduleExceptionFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

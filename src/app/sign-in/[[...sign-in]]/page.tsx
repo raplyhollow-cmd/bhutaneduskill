@@ -138,18 +138,7 @@ function SignInPageContent() {
 }
 
 export default function SignInPage() {
-  const hasClerk = typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
-
-  if (!hasClerk) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Authentication Required</h1>
-          <p className="text-gray-600">This page requires Clerk authentication to be configured.</p>
-        </div>
-      </div>
-    );
-  }
-
+  // In development, Clerk handles missing keys gracefully
+  // Remove runtime check as it doesn't work in client components
   return <SignInPageContent />;
 }

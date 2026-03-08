@@ -9,6 +9,84 @@ import { relations } from "drizzle-orm";
 import { users } from "./schema";
 
 // ============================================================================
+// SKILLS REFERENCE (Ontology)
+// ============================================================================
+
+/**
+ * Skills Reference - Master list of skills with metadata for career matching
+ * This is reference data, not student-specific skill records
+ */
+export const skillsReference = pgTable("skills_reference", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  code: text("code").unique(),
+  category: text("category").notNull(), // academic, soft, technical, creative, service, vocational
+  subcategory: text("subcategory"), // e.g., "programming", "communication"
+
+  // Description and metadata
+  description: text("description"),
+  difficulty: text("difficulty"), // beginner, intermediate, advanced, expert
+
+  // Bhutan context
+  bhutanDemand: text("bhutan_demand"), // high, medium, low
+  bhutanSpecific: boolean("bhutan_specific").default(false),
+  emerging: boolean("emerging").default(false), // Emerging skill in Bhutan
+  typicalDevelopmentTime: text("typical_development_time"), // e.g., "6 months", "2 years"
+
+  // Relationships
+  parentIds: jsonb("parent_ids").$type<string[]>(), // Parent skill IDs (hierarchy)
+  relatedIds: jsonb("related_ids").$type<string[]>(), // Related skill IDs
+  careerRequirements: jsonb("career_requirements").$type<Array<{
+    careerId: string;
+    requiredLevel: string;
+    importance: string; // essential, important, helpful
+  }>>(),
+
+  // Learning resources
+  resources: jsonb("resources").$type<Array<{
+    title: string;
+    type: string;
+    url?: string;
+    provider?: string;
+    difficulty?: string;
+  }>>(),
+  beginnerResources: jsonb("beginner_resources").$type<Array<{
+    title: string;
+    url?: string;
+    provider?: string;
+  }>>(),
+  intermediateResources: jsonb("intermediate_resources").$type<Array<{
+    title: string;
+    url?: string;
+    provider?: string;
+  }>>(),
+  advancedResources: jsonb("advanced_resources").$type<Array<{
+    title: string;
+    url?: string;
+    provider?: string;
+  }>>(),
+
+  // Assessment methods
+  assessments: jsonb("assessments").$type<Array<{
+    method: string;
+    description: string;
+    duration: string;
+    passingCriteria: string;
+  }>>(),
+
+  // Status
+  isActive: boolean("is_active").default(true),
+  viewCount: integer("view_count").default(0),
+
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  categoryIdx: index("skills_reference_category_idx").on(table.category),
+  bhutanDemandIdx: index("skills_reference_bhutan_demand_idx").on(table.bhutanDemand),
+  emergingIdx: index("skills_reference_emerging_idx").on(table.emerging),
+}));
+
+// ============================================================================
 // CAREER INTERESTS
 // ============================================================================
 
@@ -603,3 +681,5 @@ export type CareerRecommendation = typeof careerRecommendations.$inferSelect;
 export type NewCareerRecommendation = typeof careerRecommendations.$inferInsert;
 export type CareerReviewNote = typeof careerReviewNotes.$inferSelect;
 export type NewCareerReviewNote = typeof careerReviewNotes.$inferInsert;
+export type SkillsReference = typeof skillsReference.$inferSelect;
+export type NewSkillsReference = typeof skillsReference.$inferInsert;

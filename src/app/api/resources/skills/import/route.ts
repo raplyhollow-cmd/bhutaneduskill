@@ -9,7 +9,7 @@ import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/db";
-import { skills } from "@/lib/db/schema";
+import { skillsReference } from "@/lib/db/career-roadmaps-schema";
 import { skillsOntology } from "@/lib/data/skills-ontology";
 
 /**
@@ -33,11 +33,11 @@ export async function POST(req: NextRequest) {
     for (const skillData of skillsOntology) {
       try {
         // Check if skill exists
-        const existing = await db.query.skills.findFirst({
-          where: (eq(skills.id, skillData.id)),
+        const existing = await db.query.skillsReference.findFirst({
+          where: (eq(skillsReference.id, skillData.id)),
         });
 
-        const skillRecord = {
+        const baseRecord = {
           id: skillData.id,
           name: skillData.name,
           category: skillData.category,
@@ -55,20 +55,25 @@ export async function POST(req: NextRequest) {
           intermediateResources: skillData.intermediateResources ?? [],
           advancedResources: skillData.advancedResources ?? [],
           assessments: skillData.assessments ?? [],
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          isActive: true,
+          viewCount: 0,
         };
 
         if (existing) {
-          await db.update(skills)
+          const { id, ...updateData } = baseRecord;
+          await db.update(skillsReference)
             .set({
-              ...skillRecord,
+              ...updateData,
               updatedAt: new Date(),
             })
-            .where(eq(skills.id, skillData.id));
+            .where(eq(skillsReference.id, skillData.id));
           updated++;
         } else {
-          await db.insert(skills).values(skillRecord);
+          await db.insert(skillsReference).values({
+            ...baseRecord,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
           created++;
         }
       } catch (error) {
@@ -110,7 +115,7 @@ export async function GET(req: NextRequest) {
     // TODO: Add proper admin check
 
     // Count skills in database
-    const allSkills = await db.query.skills.findMany();
+    const allSkills = await db.query.skillsReference.findMany();
 
     return NextResponse.json({
       totalInDatabase: allSkills.length,

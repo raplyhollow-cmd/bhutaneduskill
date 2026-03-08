@@ -46,7 +46,7 @@ export const TransportAllocationFeature = defineFeature({
   customHandlers: {
     list: async (params: any, auth: any) => {
       const { db } = await import("@/lib/db");
-      const { transportAllocations, users, transport } = await import("@/lib/db/schema");
+      const { transportAllocations, users, transportRoutes, vehicles } = await import("@/lib/db/schema");
       const { eq, and, desc, sql } = await import("drizzle-orm");
 
       const { page = "1", limit = "20", studentId, shift } = params;
@@ -55,7 +55,7 @@ export const TransportAllocationFeature = defineFeature({
       const conditions = [];
       if (auth.user?.schoolId) conditions.push(eq(transportAllocations.schoolId, auth.user.schoolId));
       if (studentId) conditions.push(eq(transportAllocations.studentId, studentId));
-      if (shift) conditions.push(eq(transportAllocations.shift, shift));
+      if (shift) conditions.push(eq((transportAllocations as any).shift, shift));
 
       const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
@@ -63,18 +63,18 @@ export const TransportAllocationFeature = defineFeature({
         .select({
           id: transportAllocations.id,
           studentId: transportAllocations.studentId,
-          transportId: transportAllocations.transportId,
+          transportId: (transportAllocations as any).transportId,
           pickupPoint: transportAllocations.pickupPoint,
           dropPoint: transportAllocations.dropPoint,
           pickupTime: transportAllocations.pickupTime,
-          shift: transportAllocations.shift,
+          shift: (transportAllocations as any).shift,
           isActive: transportAllocations.isActive,
           studentName: sql<string>`concat(${users.firstName}, ' ', ${users.lastName})`,
-          vehicleNumber: transport.vehicleNumber,
+          vehicleNumber: (vehicles as any).vehicleNumber,
         })
         .from(transportAllocations)
         .innerJoin(users, eq(transportAllocations.studentId, users.id))
-        .innerJoin(transport, eq(transportAllocations.transportId, transport.id))
+        .innerJoin(vehicles, eq((transportAllocations as any).vehicleId, vehicles.id))
         .where(whereClause)
         .orderBy(desc(transportAllocations.createdAt))
         .limit(parseInt(limit))

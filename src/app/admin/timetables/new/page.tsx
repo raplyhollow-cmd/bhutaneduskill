@@ -24,7 +24,7 @@ export default function NewTimetablePage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New Timetable</h1>
       <FeatureForm
-        schema={TimetableFeature.schema}
+        schema={TimetableFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

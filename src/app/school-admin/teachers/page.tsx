@@ -66,6 +66,11 @@ import { Textarea } from "@/components/ui/textarea";
 // Types
 // ============================================================================
 
+interface SubjectItem {
+  subject?: string;
+  grade?: string | number;
+}
+
 interface Teacher {
   id: string;
   firstName: string | null;
@@ -74,7 +79,7 @@ interface Teacher {
   email: string | null;
   phone: string | null;
   employeeId: string | null;
-  subjects: string[] | null;
+  subjects: (string | SubjectItem)[] | null;
   department?: string;
   isActive: boolean;
   onLeave?: boolean;
@@ -157,6 +162,8 @@ export default function SchoolAdminTeachersPage() {
   const [activeTab, setActiveTab] = useState("overview");
   const [deleteDialog, setDeleteDialog] = useState(false);
   const [editValue, setEditValue] = useState("");
+  const [assignClassOpen, setAssignClassOpen] = useState(false);
+  const [classes, setClasses] = useState<any[]>([]);
 
   const quickAdd = useExpressAdd();
 
@@ -168,13 +175,119 @@ export default function SchoolAdminTeachersPage() {
   const fetchTeachers = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/school-admin/teachers");
-      if (response.ok) {
-        const data = await response.json();
-        setTeachers(data.data?.teachers || []);
+      const response = await fetch("/api/resources/users?role=teacher&limit=100", {
+        credentials: "include",
+      });
+
+      // Always parse JSON first to handle both success and error cases
+      const json = await response.json();
+      console.log("Teachers API response:", json);
+
+      // Check for error response format
+      if (json.error) {
+        console.error("API returned error:", json.error);
+        setTeachers([]);
+        return;
       }
+
+      // Extract data array from various possible formats
+      let teachersData: any[] = [];
+
+      if (Array.isArray(json?.data?.data)) {
+        // Format: { data: { data: [...], pagination: {...} } }
+        teachersData = json.data.data;
+      } else if (Array.isArray(json?.data)) {
+        // Format: { data: [...] }
+        teachersData = json.data;
+      } else if (Array.isArray(json)) {
+        // Format: [...]
+        teachersData = json;
+      } else {
+        console.warn("Unexpected response format:", json);
+        teachersData = [];
+      }
+
+      console.log("Setting teachers:", teachersData.length, "teachers");
+      setTeachers(teachersData);
+    } catch (error) {
+      console.error("Failed to fetch teachers:", error);
+      setTeachers([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch classes for assignment
+  const fetchClasses = async () => {
+    try {
+      const response = await fetch("/api/resources/classes?limit=100");
+      if (response.ok) {
+        const json = await response.json();
+        setClasses(json?.data?.data || json?.data || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch classes:", error);
+    }
+  };
+
+  // Fetch teacher assignments
+  const fetchTeacherAssignments = async (teacherId: string) => {
+    try {
+      const response = await fetch("/api/resources/teacher-assignments?action=getByTeacher", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teacherId }),
+      });
+      if (response.ok) {
+        const json = await response.json();
+        const assignments = json?.data?.assignments || [];
+
+        const classAssignments: ClassAssignment[] = assignments.map((a: any) => ({
+          id: a.id,
+          classId: a.classId,
+          className: a.className || `${a.classGrade}${a.section ? " - " + a.section : ""}`,
+          subject: a.subjectName || "Homeroom",
+          isPrimary: a.isPrimary || a.role === "homeroom",
+        }));
+
+        setSelectedTeacher((prev) =>
+          prev ? { ...prev, assignedClasses: classAssignments } : null
+        );
+      }
+    } catch (error) {
+      console.error("Failed to fetch teacher assignments:", error);
+    }
+  };
+
+  // Fetch teacher assignments when teacher is selected
+  useEffect(() => {
+    if (selectedTeacher && slideOverOpen) {
+      fetchTeacherAssignments(selectedTeacher.id);
+    }
+  }, [selectedTeacher?.id, slideOverOpen]);
+
+  // Assign class to teacher
+  const assignClass = async (classId: string) => {
+    if (!selectedTeacher) return;
+    try {
+      const response = await fetch("/api/resources/teacher-assignments?action=assign", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          teacherId: selectedTeacher.id,
+          classId,
+          role: "subject_teacher",
+          academicYear: new Date().getFullYear().toString(),
+        }),
+      });
+      if (response.ok) {
+        setAssignClassOpen(false);
+        fetchTeacherAssignments(selectedTeacher.id);
+      }
+    } catch (error) {
+      console.error("Failed to assign class:", error);
     }
   };
 
@@ -182,7 +295,7 @@ export default function SchoolAdminTeachersPage() {
   const handleQuickAdd = async (name: string): Promise<{ success: true } | { success: false; error: string }> => {
     const [first, ...rest] = name.trim().split(" ");
     const last = rest.join(" ") || "";
-    const res = await fetch("/api/school-admin/teachers", {
+    const res = await fetch("/api/resources/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -215,9 +328,10 @@ export default function SchoolAdminTeachersPage() {
     value: string
   ): Promise<void> => {
     try {
-      const response = await fetch(`/api/school-admin/teachers/${teacherId}`, {
-        method: "PATCH",
+      const response = await fetch(`/api/resources/users/${teacherId}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify({ [field]: value }),
       });
 
@@ -244,8 +358,9 @@ export default function SchoolAdminTeachersPage() {
   // Delete teacher
   const deleteTeacher = async (teacherId: string) => {
     try {
-      const response = await fetch(`/api/school-admin/teachers/${teacherId}`, {
+      const response = await fetch(`/api/resources/users/${teacherId}`, {
         method: "DELETE",
+        credentials: "include",
       });
       if (response.ok) {
         setTeachers((prev) => prev.filter((t) => t.id !== teacherId));
@@ -341,11 +456,14 @@ export default function SchoolAdminTeachersPage() {
       render: (teacher) => (
         <div className="flex flex-wrap gap-1">
           {teacher.subjects && teacher.subjects.length > 0 ? (
-            teacher.subjects.slice(0, 2).map((subject, idx) => (
-              <Badge key={idx} variant="secondary" className="text-xs">
-                {subject}
-              </Badge>
-            ))
+            teacher.subjects.slice(0, 2).map((item, idx) => {
+              const subjectText = typeof item === "string" ? item : item?.subject || "-";
+              return (
+                <Badge key={idx} variant="secondary" className="text-xs">
+                  {subjectText}
+                </Badge>
+              );
+            })
           ) : (
             <span className="text-gray-400 text-sm">-</span>
           )}
@@ -734,11 +852,14 @@ export default function SchoolAdminTeachersPage() {
 
                 {selectedTeacher.subjects && selectedTeacher.subjects.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
-                    {selectedTeacher.subjects.map((subject, idx) => (
-                      <Badge key={idx} variant="secondary" className="text-sm px-3 py-1">
-                        {subject}
-                      </Badge>
-                    ))}
+                    {selectedTeacher.subjects.map((item, idx) => {
+                      const subjectText = typeof item === "string" ? item : item?.subject || "-";
+                      return (
+                        <Badge key={idx} variant="secondary" className="text-sm px-3 py-1">
+                          {subjectText}
+                        </Badge>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="text-center py-12 bg-gray-50 rounded-lg">
@@ -785,13 +906,14 @@ export default function SchoolAdminTeachersPage() {
                       Classes this teacher is assigned to
                     </p>
                   </div>
-                  <Button size="sm">
+                  <Button size="sm" onClick={() => { setAssignClassOpen(true); fetchClasses(); }}>
                     <Plus className="w-4 h-4 mr-2" />
                     Assign Class
                   </Button>
                 </div>
 
-                {selectedTeacher.classGrade ? (
+                {/* Show homeroom assignment if exists */}
+                {selectedTeacher.classGrade && (
                   <div className="bg-gray-50 rounded-lg p-4">
                     <div className="flex items-center justify-between">
                       <div>
@@ -804,7 +926,26 @@ export default function SchoolAdminTeachersPage() {
                       <Badge variant="outline">Primary</Badge>
                     </div>
                   </div>
-                ) : (
+                )}
+
+                {/* Show assigned classes from teacher_assignments table */}
+                {selectedTeacher.assignedClasses && selectedTeacher.assignedClasses.length > 0 ? (
+                  <div className="space-y-3">
+                    {selectedTeacher.assignedClasses.map((assignment) => (
+                      <div key={assignment.id} className="bg-gray-50 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium text-gray-900">{assignment.className}</p>
+                            <p className="text-sm text-gray-500">{assignment.subject}</p>
+                          </div>
+                          {assignment.isPrimary && (
+                            <Badge variant="outline">Primary</Badge>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : !selectedTeacher.classGrade ? (
                   <div className="text-center py-12 bg-gray-50 rounded-lg">
                     <GraduationCap className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                     <p className="text-gray-500 mb-1">No classes assigned</p>
@@ -812,7 +953,7 @@ export default function SchoolAdminTeachersPage() {
                       Assign this teacher to a class as homeroom or subject teacher
                     </p>
                   </div>
-                )}
+                ) : null}
               </div>
             )}
           </>
@@ -844,6 +985,34 @@ export default function SchoolAdminTeachersPage() {
             >
               Delete
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Assign Class Dialog */}
+      <AlertDialog open={assignClassOpen} onOpenChange={setAssignClassOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Assign Class to {selectedTeacher?.name}</AlertDialogTitle>
+            <AlertDialogDescription>
+              Select a class to assign to this teacher
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="max-h-60 overflow-y-auto space-y-2 my-4">
+            {classes.map((cls) => (
+              <button
+                key={cls.id}
+                onClick={() => assignClass(cls.id)}
+                className="w-full text-left p-3 rounded-lg border hover:bg-gray-50 flex items-center justify-between"
+              >
+                <span>{cls.name || `${cls.grade}${cls.section ? " - " + cls.section : ""}`}</span>
+                <Plus className="w-4 h-4" />
+              </button>
+            ))}
+            {classes.length === 0 && <p className="text-gray-500 text-center py-4">No classes available</p>}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

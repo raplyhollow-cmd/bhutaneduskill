@@ -108,6 +108,7 @@ export function CommandPalette({ isOpen, onClose, items, commands, trigger, plac
 
         {/* Command dialog */}
         <Dialog.Content className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh] sm:pt-[20vh]">
+          <Dialog.Title className="sr-only">Command Palette</Dialog.Title>
           <div className="w-full max-w-lg mx-4 overflow-hidden rounded-[8px] bg-white border border-gray-200 shadow-[0_0_0_1px_rgba(255,255,255,0.8)_inset,0_16px_48px_rgba(0,0,0,0.15)] animate-in fade-in slide-in-from-top-4 duration-150 ease-out dark:bg-gray-900 dark:border-gray-700">
             <Command
               className="w-full"

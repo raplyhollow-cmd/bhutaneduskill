@@ -1,10 +1,14 @@
 /**
- * SCHOOL ADMIN - FEE MANAGEMENT
+ * SCHOOL ADMIN - SMART FEE MANAGEMENT
  *
- * Server component that fetches fee data and passes to client component.
+ * Enhanced fee management with AI-powered insights:
+ * - Predictive defaulting alerts
+ * - Smart payment reminder timing
+ * - Payment health scores
+ * - Luxury glassmorphism UI
  */
 
-import { FeeClient } from "./fee-client";
+import { SmartFeeClient } from "./smart-fee-client";
 import { getFeeData } from "@/lib/api/school-admin";
 import { getCurrentSchoolId } from "@/lib/api/school-admin";
 
@@ -15,6 +19,6 @@ export default async function SchoolAdminFeesPage() {
   // Fetch initial fee data
   const initialData = await getFeeData(schoolId);
 
-  // Pass data to client component for interactivity
-  return <FeeClient initialData={initialData} />;
+  // Pass data to smart client component with AI insights
+  return <SmartFeeClient initialData={initialData} />;
 }

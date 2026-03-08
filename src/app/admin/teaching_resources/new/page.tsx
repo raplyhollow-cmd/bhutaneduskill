@@ -24,7 +24,7 @@ export default function NewTeachingResourcePage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New TeachingResource</h1>
       <FeatureForm
-        schema={TeachingResourceFeature.schema}
+        schema={TeachingResourceFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

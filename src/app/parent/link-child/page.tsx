@@ -11,7 +11,9 @@ export default function LinkChildPage() {
 
   useEffect(() => {
     // Verify user is a parent
-    fetch("/api/auth/set-role")
+    fetch("/api/resources/users/actions?action=get-role", {
+      credentials: "include",
+    })
       .then((res) => res.json())
       .then((data) => {
         if (data.userType !== "parent") {

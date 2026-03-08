@@ -1,4 +1,5 @@
 /**
+import { sql } from "drizzle-orm";
  * SKILLS FEATURE DEFINITION
  *
  * Unified definition for skills catalog.
@@ -85,7 +86,7 @@ export const SkillFeature = defineFeature({
     list: async (params: any, auth: any) => {
       const { db } = await import("@/lib/db");
       const { skills, departments } = await import("@/lib/db/schema");
-      const { eq, and, desc } = await import("drizzle-orm");
+      const { eq, and, desc, sql } = await import("drizzle-orm");
 
       const { page = "1", limit = "20", category, isActive, search } = params;
       const offset = (parseInt(page) - 1) * parseInt(limit);

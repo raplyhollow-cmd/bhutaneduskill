@@ -8,6 +8,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { fetchRubColleges, fetchRubPrograms } from "../../_actions";
 
 interface RUBApplication {
   id: string;
@@ -85,12 +86,14 @@ export default function StudentRUBApplicationsPage() {
 
   const fetchColleges = async () => {
     try {
-      const response = await fetch("/api/rub/colleges");
-      const data = await response.json();
-
-      if (data.success) {
-        setColleges(data.data.colleges);
-      }
+      const collegesData = await fetchRubColleges();
+      setColleges(collegesData.map((c) => ({
+        id: c.id,
+        name: c.name,
+        code: "",
+        dzongkhag: c.location,
+        location: c.location,
+      })));
     } catch (error) {
       console.error("Failed to fetch colleges:", error);
     }
@@ -98,12 +101,16 @@ export default function StudentRUBApplicationsPage() {
 
   const fetchPrograms = async () => {
     try {
-      const response = await fetch("/api/rub/programs");
-      const data = await response.json();
-
-      if (data.success) {
-        setPrograms(data.data.programs);
-      }
+      const programsData = await fetchRubPrograms();
+      setPrograms(programsData.map((p) => ({
+        id: p.id,
+        name: p.name,
+        code: "",
+        level: "Bachelor",
+        field: "",
+        duration: 4,
+        collegeId: p.collegeId,
+      })));
     } catch (error) {
       console.error("Failed to fetch programs:", error);
     }

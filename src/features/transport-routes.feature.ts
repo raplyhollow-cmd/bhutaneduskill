@@ -51,20 +51,19 @@ export const TransportRouteFeature = defineFeature({
 
   actions: {
     getStops: {
-      handler: async (id: string | undefined, data: any, auth: any) => {
+      handler: async (context: { db: any; params: any; auth: any; schema: any; request?: Request }) => {
         const { db } = await import("@/lib/db");
-        const { transportRoutes } = await import("@/lib/db/schema");
+        const { transportRoutes } = await import("@/lib/db/schema") as any;
         const { eq } = await import("drizzle-orm");
         const { successResponse, notFoundResponse } = await import("@/lib/api/response-helpers");
-
-        if (!id) {
+        if (!context.params?.id) {
           return { error: "Route ID is required", status: 400 };
         }
 
         const [route] = await db
           .select()
           .from(transportRoutes)
-          .where(eq(transportRoutes.id, id))
+          .where(eq(transportRoutes.id, context.params.id))
           .limit(1);
 
         if (!route) {
@@ -85,17 +84,16 @@ export const TransportRouteFeature = defineFeature({
     },
 
     updateLoad: {
-      handler: async (id: string | undefined, data: any, auth: any) => {
+      handler: async (context: { db: any; params: any; auth: any; schema: any; request?: Request }) => {
         const { db } = await import("@/lib/db");
-        const { transportRoutes } = await import("@/lib/db/schema");
+        const { transportRoutes } = await import("@/lib/db/schema") as any;
         const { eq } = await import("drizzle-orm");
         const { successResponse, notFoundResponse } = await import("@/lib/api/response-helpers");
-
-        if (!id) {
+        if (!context.params?.id) {
           return { error: "Route ID is required", status: 400 };
         }
 
-        const { currentLoad } = data;
+        const { currentLoad } = context.params?.body || {};
 
         const [updated] = await db
           .update(transportRoutes)
@@ -103,7 +101,7 @@ export const TransportRouteFeature = defineFeature({
             currentLoad,
             updatedAt: new Date(),
           })
-          .where(eq(transportRoutes.id, id))
+          .where(eq(transportRoutes.id, context.params.id))
           .returning();
 
         if (!updated.length) {

@@ -24,7 +24,7 @@ export default function NewSectionPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New Section</h1>
       <FeatureForm
-        schema={SectionFeature.schema}
+        schema={SectionFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

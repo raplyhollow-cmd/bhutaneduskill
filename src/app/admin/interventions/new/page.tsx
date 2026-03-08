@@ -24,7 +24,7 @@ export default function NewInterventionPage() {
     <div className="container mx-auto py-8">
       <h1 className="text-3xl font-bold mb-6">Create New Intervention</h1>
       <FeatureForm
-        schema={InterventionFeature.schema}
+        schema={InterventionFeature.config.schema as any}
         mode="create"
         onSubmit={handleSubmit}
       />

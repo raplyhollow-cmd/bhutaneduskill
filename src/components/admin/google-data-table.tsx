@@ -111,6 +111,9 @@ export function GoogleDataTable<T extends Record<string, any>>({
   renderExpanded,
   defaultExpanded = false,
 }: GoogleDataTableProps<T>) {
+  // Ensure data is always an array
+  const safeData = Array.isArray(data) ? data : [];
+
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [sortField, setSortField] = useState<SortField>("");
@@ -119,12 +122,12 @@ export function GoogleDataTable<T extends Record<string, any>>({
     new Set(columns.map((c) => c.id))
   );
   const [expandedIds, setExpandedIds] = useState<Set<string>>(
-    defaultExpanded ? new Set(data.map((d) => d[keyField])) : new Set()
+    defaultExpanded ? new Set(safeData.map((d) => d[keyField])) : new Set()
   );
 
   // Apply filters, sort, and search
   const processedData = useMemo(() => {
-    let result = [...data];
+    let result = [...safeData];
 
     // Search
     if (searchQuery) {
@@ -165,7 +168,7 @@ export function GoogleDataTable<T extends Record<string, any>>({
     }
 
     return result;
-  }, [data, searchQuery, sortField, sortOrder, columns]);
+  }, [safeData, searchQuery, sortField, sortOrder, columns]);
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -219,7 +222,7 @@ export function GoogleDataTable<T extends Record<string, any>>({
   // Get unique filter values for each column
   const getFilterValues = (colId: string) => {
     const values = new Set<string>();
-    data.forEach((row) => {
+    safeData.forEach((row) => {
       const val = row[colId];
       if (val != null) values.add(String(val));
     });
@@ -271,7 +274,7 @@ export function GoogleDataTable<T extends Record<string, any>>({
                   <ColumnFilter
                     key={col.id}
                     column={col}
-                    data={data}
+                    data={safeData}
                     onFilter={(value) => {
                       // Apply filter logic here
                       console.log("Filter", col.id, value);
@@ -482,7 +485,9 @@ export function GoogleDataTable<T extends Record<string, any>>({
                             col.render(row, row[col.id])
                           ) : (
                             <span className="text-sm text-gray-900 truncate block">
-                              {row[col.id] ?? "—"}
+                              {typeof row[col.id] === 'object' && row[col.id] !== null 
+                                ? JSON.stringify(row[col.id]) 
+                                : (row[col.id] ?? "—")}
                             </span>
                           )}
                         </div>
@@ -539,7 +544,7 @@ export function GoogleDataTable<T extends Record<string, any>>({
             <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-2">
               <div className="flex items-center justify-between text-xs text-gray-500">
                 <span>
-                  Showing {processedData.length} of {data.length} records
+                  Showing {processedData.length} of {safeData.length} records
                 </span>
                 {selectedIds.size > 0 && (
                   <span>{selectedIds.size} selected</span>
@@ -565,14 +570,15 @@ function ColumnFilter<T extends Record<string, any>>({
   data: T[];
   onFilter: (value: string | null) => void;
 }) {
+  const safeData = Array.isArray(data) ? data : [];
   const values = useMemo(() => {
     const uniqueValues = new Set<string>();
-    data.forEach((row) => {
+    safeData.forEach((row) => {
       const val = row[column.id];
       if (val != null && val !== "") uniqueValues.add(String(val));
     });
     return Array.from(uniqueValues).sort();
-  }, [data, column.id]);
+  }, [safeData, column.id]);
 
   return (
     <DropdownMenu>

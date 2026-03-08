@@ -25,6 +25,7 @@ interface AdminLayoutClientProps {
   children: React.ReactNode;
   userName: string;
   portalType: "admin";
+  needsSetup?: boolean;
 }
 
 /**
@@ -36,7 +37,7 @@ interface AdminLayoutClientProps {
  * IMPORTANT: Always render the same components to avoid hooks mismatch errors.
  * PORTAL COLOR: Pink (rgb(236, 72, 153))
  */
-export function AdminLayoutClient({ children, userName, portalType }: AdminLayoutClientProps) {
+export function AdminLayoutClient({ children, userName, portalType, needsSetup }: AdminLayoutClientProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -132,7 +133,10 @@ export function AdminLayoutClient({ children, userName, portalType }: AdminLayou
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const roleRes = await fetch("/api/resources/users/actions/get-role");
+        // Unified API uses action query parameter (supports both GET and POST)
+        const roleRes = await fetch("/api/resources/users/actions?action=get-role", {
+          credentials: "include",
+        });
         const roleResData = await roleRes.json();
 
         // Check if user is admin
@@ -143,9 +147,14 @@ export function AdminLayoutClient({ children, userName, portalType }: AdminLayou
           return;
         }
 
-        // Redirect to setup if not admin or if restricted
-        if (roleResData.data?.onboardingStatus === "restricted" ||
-            roleResData.data?.onboardingStatus === "pending_approval" ||
+        // FIX: Check onboardingComplete explicitly (!== true handles null correctly)
+        // Also check restricted status and pending approval
+        const onboardingComplete = roleResData.data?.onboardingComplete;
+        const onboardingStatus = roleResData.data?.onboardingStatus;
+
+        if (onboardingComplete !== true ||
+            onboardingStatus === "restricted" ||
+            onboardingStatus === "pending_approval" ||
             !userType) {
           router.push("/setup/unified");
           return;

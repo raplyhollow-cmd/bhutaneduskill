@@ -37,7 +37,8 @@ export default async function MinistryLayout({
   // Get user data regardless of onboarding status
   const userName = user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() : "Ministry Official";
   const portalType = "ministry" as const;
-  const needsSetup = !user.onboardingComplete;
+  // FIX: Use !== true to handle null/undefined correctly (null means incomplete)
+  const needsSetup = user.onboardingComplete !== true;
 
   // Use a client component wrapper to avoid Promise wrapper issues
   // ALWAYS render this - never return early to avoid hooks mismatch

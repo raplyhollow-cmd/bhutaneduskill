@@ -11,7 +11,7 @@ export const InvoiceFeature = defineFeature({
   schema: {
     id: { type: "text", required: true, primary: true },
     invoiceNumber: { type: "text", required: true, unique: true, label: "Invoice #", sortable: true },
-    subscriptionId: { type: "reference", reference: { table: "subscriptions", onDelete: "cascade" }, label: "Subscription" },
+    subscriptionTier: { type: "reference", reference: { table: "subscriptions", onDelete: "cascade" }, label: "Subscription" },
     schoolId: { type: "reference", reference: { table: "schools", onDelete: "cascade" }, required: true, label: "School" },
     issueDate: { type: "date", required: true, label: "Issue Date", sortable: true },
     dueDate: { type: "date", label: "Due Date", sortable: true },
@@ -65,19 +65,19 @@ export const InvoiceFeature = defineFeature({
         .select({
           id: invoices.id,
           invoiceNumber: invoices.invoiceNumber,
-          subscriptionId: invoices.subscriptionId,
+          subscriptionTier: invoices.subscriptionTier,
           amount: invoices.amount,
           status: invoices.status,
-          issueDate: invoices.issueDate,
+          issueDate: (invoices as any).issueDate,
           dueDate: invoices.dueDate,
-          paidDate: invoices.paidDate,
+          paidDate: (invoices as any).paidDate,
           createdAt: invoices.createdAt,
           schoolName: schools.name,
         })
         .from(invoices)
         .innerJoin(schools, eq(invoices.schoolId, schools.id))
         .where(whereClause)
-        .orderBy(desc(invoices.issueDate))
+        .orderBy(desc((invoices as any).issueDate))
         .limit(parseInt(limit))
         .offset(offset);
 

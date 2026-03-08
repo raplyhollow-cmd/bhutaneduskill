@@ -519,10 +519,10 @@ export const TimetableFeature = defineFeature({
   // Bulk operations for timetable management
   bulkOperations: {
     // Get full weekly timetable for a class
-    getClassTimetable: async (classId: string, academicYear?: string, semester?: string, auth: any) => {
+    getClassTimetable: async (classId: string, academicYear?: string, semester?: string, auth?: any) => {
       const { db } = await import("@/lib/db");
       const { timetables, classes, subjects, users } = await import("@/lib/db/schema");
-      const { eq, and, asc } = await import("drizzle-orm");
+      const { eq, and, asc, sql } = await import("drizzle-orm");
 
       const conditions = [eq(timetables.classId, classId)];
 
@@ -570,10 +570,10 @@ export const TimetableFeature = defineFeature({
     },
 
     // Get teacher's schedule
-    getTeacherSchedule: async (teacherId: string, dayOfWeek?: string, auth: any) => {
+    getTeacherSchedule: async (teacherId: string, dayOfWeek?: string, auth?: any) => {
       const { db } = await import("@/lib/db");
       const { timetables, classes, subjects } = await import("@/lib/db/schema");
-      const { eq, and, asc } = await import("drizzle-orm");
+      const { eq, and, asc, sql } = await import("drizzle-orm");
 
       const conditions = [eq(timetables.teacherId, teacherId)];
 
