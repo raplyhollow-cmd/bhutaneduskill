@@ -10,26 +10,50 @@
  * 3. Updates clerkUserId in database
  */
 
-import { clerkClient } from "@clerk/nextjs/server";
-import { db } from "@/lib/db";
-import { users } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { createClerkClient } from "@clerk/backend";
+import { config } from "dotenv";
+import { resolve } from "path";
+
+// Load .env from project root
+config({ path: resolve(process.cwd(), ".env") });
+
+const db = require("../src/lib/db").db;
+const { users } = require("../src/lib/db/schema");
+const { eq } = require("drizzle-orm");
 
 async function syncClerkIds() {
   console.log("🔄 Syncing Clerk User IDs...\n");
 
+  const clerkClient = createClerkClient({
+    secretKey: process.env.CLERK_SECRET_KEY!,
+  });
+
   try {
-    // Get all users from Clerk
-    const clerkUsers = await clerkClient.users.getUserList();
-    console.log(`📋 Found ${clerkUsers.data.length} users in Clerk\n`);
+    // Get all users from Clerk (paginated)
+    let allClerkUsers: any[] = [];
+    let offset = 0;
+    const limit = 100;
+
+    while (true) {
+      const response = await clerkClient.users.getUserList({
+        limit,
+        offset,
+      });
+      allClerkUsers.push(...response.data);
+      console.log(`📋 Fetched ${response.data.length} users from Clerk (total: ${allClerkUsers.length})`);
+      if (response.data.length < limit) break;
+      offset += limit;
+    }
+
+    console.log(`\n📋 Total users in Clerk: ${allClerkUsers.length}\n`);
 
     let updated = 0;
     let notFound = 0;
     let skipped = 0;
 
-    for (const clerkUser of clerkUsers.data) {
+    for (const clerkUser of allClerkUsers) {
       const email = clerkUser.emailAddresses.find(
-        (e) => e.id === clerkUser.primaryEmailAddressId
+        (e: any) => e.id === clerkUser.primaryEmailAddressId
       )?.emailAddress;
 
       if (!email) {
